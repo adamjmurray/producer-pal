@@ -120,6 +120,31 @@ suffix. With no exact hit it falls back to substring. More than one hit is a 409
 listing candidate paths — pass one back as `path`. A plugin installed in more
 than one format shares its name across them, so expect this.
 
+### `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`
+
+Clip automation envelopes, which Max for Live's LOM can't reach. **Session clips
+only**: Live refuses envelope writes on Arrangement clips and reads them as
+empty, so write in Session and duplicate to the Arrangement. That copies the
+envelope into the track's automation lane, which stays after the clip is deleted
+but can't be read back.
+
+Common params: `track` (`t0`, `rt0`, `mt`), `slot` (0-based Session slot) or
+`arrangement_index`, and a parameter: `parameter` = `volume`, `pan`, `send0`..
+for the mixer, or `device` (`d0`, `d0/c1/d0` into rack chains) plus `parameter`
+as an exact name or 0-based index.
+
+| Route    | Params                                 | Returns                                                                             |
+| -------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `/list`  | clip                                   | every automated parameter on the clip with its event count                          |
+| `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range: `time`, `value` (raw), `display` (Hz/dB), `display_str`  |
+| `/write` | clip, parameter, `points`, `shape`     | replaces the whole envelope; `points` = `[{time, value}]` raw, `shape` steps/linear |
+| `/clear` | clip, optional parameter               | removes one envelope, or all of them                                                |
+
+Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
+device params are `0..1`); `display` is what Live shows. `linear` on a quantized
+parameter holds each value until the next, so it's always safe. Capped at 1000
+events per read or write.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -132,6 +157,7 @@ the queue and runs them. The HTTP thread waits up to 30s for the reply.
   surface
 - `routes.py`: what each route does; main thread only
 - `browser.py`: browser tree walking and name matching
+- `envelopes.py`: clip automation envelopes
 
 ## Notes
 

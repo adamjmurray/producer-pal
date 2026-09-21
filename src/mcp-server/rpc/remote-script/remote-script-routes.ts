@@ -12,11 +12,12 @@ import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
 import { lookUpBrowserDevice } from "./browser-device-lookup.ts";
 import { remoteScriptRequest, replyError } from "./remote-script-client.ts";
+import { registerRemoteScriptEnvelopeRoutes } from "./remote-script-envelope-routes.ts";
 
 /**
- * Register the routes V8's create-device uses to load a plug-in or Max for
- * Live device through the remote script. Both outlast the remote script's own
- * 30s wait on Live.
+ * Register every route V8 uses to reach the remote script: create-device's
+ * plug-in and Max for Live device loading, plus clip envelopes. The device
+ * routes outlast the remote script's own 30s wait on Live.
  */
 export function registerRemoteScriptRoutes(): void {
   registerNodeRoute(
@@ -30,6 +31,8 @@ export function registerRemoteScriptRoutes(): void {
     loadBrowserItem,
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
+
+  registerRemoteScriptEnvelopeRoutes();
 }
 
 /**

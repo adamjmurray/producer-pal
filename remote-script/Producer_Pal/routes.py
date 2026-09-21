@@ -223,3 +223,8 @@ ROUTES = {
     "/list": list_items,
     "/load": load,
 }
+
+# Imported after ROUTES so envelopes.py can import RouteError from here.
+from .envelopes import ROUTES as _ENVELOPE_ROUTES  # noqa: E402
+
+ROUTES.update(_ENVELOPE_ROUTES)
