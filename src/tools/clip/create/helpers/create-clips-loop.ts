@@ -10,7 +10,6 @@ import {
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
@@ -36,6 +35,7 @@ import {
   type ArrangementPosition,
   type DestinationRef,
 } from "./create-clip-destinations.ts";
+import { type ClipPlan } from "./clip-plans.ts";
 import { processClipIteration } from "./clip-iteration.ts";
 import { type ClipResultObject } from "./created-clip-result.ts";
 import {
@@ -55,24 +55,15 @@ export interface CreateClipsParams {
   baseName: string | null;
   parsedNames: ListEntries | null;
   parsedColors: ListEntries | null;
-  initialClipLength: number;
+  /** What to build at each destination, in call order */
+  plans: ClipPlan[];
   liveSet: LiveAPI;
-  startBeats: number | null;
-  endBeats: number | null;
-  firstStartBeats: number | null;
   looping: boolean | null;
   color: string | null;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
-  /** The raw timeSignature argument, or null when the song's meter was used */
-  timeSignature: string | null;
   notationString: string | null;
-  notes: MidiNote[];
   transformString: string | null;
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
-  length: string | null;
-  sampleFile: string | null;
   deadline: number | null | undefined;
   code: string | null;
   /** Take lane per arrangement destination; no entry means the main lane */
@@ -102,20 +93,10 @@ export async function createClips(
 ): Promise<CreatedClipEntry[]> {
   const { order, deadline } = params;
   const entries: CreatedClipEntry[] = [];
-
-  // Constant transform inputs for the call; read the scale mask once (it is a
-  // Live Set global). Per-clip context (index/count/position) is applied below.
-  const transformInputs: ClipTransformInputs = {
-    notes: params.notes,
-    clipLength: params.initialClipLength,
-    transformString: params.transformString,
-    isAudio: params.sampleFile != null,
-    endBeats: params.endBeats,
-    timeSigNumerator: params.timeSigNumerator,
-    timeSigDenominator: params.timeSigDenominator,
-    scaleMask:
-      params.transformString != null ? readLiveSetScaleMask() : undefined,
-  };
+  // Read the scale mask once: it is a Live Set global, and the rest of a
+  // clip's transform inputs comes from its own plan.
+  const scaleMask =
+    params.transformString != null ? readLiveSetScaleMask() : undefined;
 
   for (const [index, ref] of order.entries()) {
     if (isDeadlineExceeded(deadline ?? null)) {
@@ -123,10 +104,35 @@ export async function createClips(
       break;
     }
 
-    entries.push(await createClipAtIndex(params, transformInputs, ref, index));
+    entries.push(await createClipAtIndex(params, scaleMask, ref, index));
   }
 
   return entries;
+}
+
+/**
+ * The transform inputs for one clip: its own notes, meter and region, plus the
+ * Live Set scale the whole call shares.
+ * @param params - All parameters for clip creation
+ * @param plan - What this destination is being built from
+ * @param scaleMask - Live Set scale mask, or undefined when nothing transforms
+ * @returns The inputs for this clip's transform
+ */
+function transformInputsFor(
+  params: CreateClipsParams,
+  plan: ClipPlan,
+  scaleMask: number | undefined,
+): ClipTransformInputs {
+  return {
+    notes: plan.notes,
+    clipLength: plan.clipLength,
+    transformString: params.transformString,
+    isAudio: plan.sampleFile != null,
+    endBeats: plan.timing.endBeats,
+    timeSigNumerator: plan.timing.timeSigNumerator,
+    timeSigDenominator: plan.timing.timeSigDenominator,
+    scaleMask,
+  };
 }
 
 /**
@@ -189,19 +195,21 @@ interface IterationPosition {
  * Create the clip one destination asked for, keeping a failure for that
  * destination's own entry to report so the loop carries on.
  * @param params - All parameters for clip creation
- * @param transformInputs - Constant transform inputs for the call
+ * @param scaleMask - Live Set scale mask, or undefined when nothing transforms
  * @param ref - Which destination this is
  * @param index - The destination's place in the call
  * @returns The clip, or the skip entry standing in for it
  */
 async function createClipAtIndex(
   params: CreateClipsParams,
-  transformInputs: ClipTransformInputs,
+  scaleMask: number | undefined,
   ref: DestinationRef,
   index: number,
 ): Promise<CreatedClipEntry> {
   const { view } = ref;
   const { baseName, parsedNames, parsedColors, code } = params;
+  const plan = params.plans[index] as ClipPlan;
+  const transformInputs = transformInputsFor(params, plan, scaleMask);
 
   // clip.index/clip.count (transforms and code-exec) span the whole create
   // batch: the index is the destination's place in the call, the same place
@@ -244,7 +252,7 @@ async function createClipAtIndex(
     // Truthiness, not a null check: it is what picks the audio create below,
     // and an empty sampleFile makes a MIDI clip.
     const blocker = clipCopyBlocker(
-      !params.sampleFile,
+      !plan.sampleFile,
       pos.trackIndex,
       params.tracks.get(pos.trackIndex),
     );
@@ -260,18 +268,18 @@ async function createClipAtIndex(
       pos.arrangementStartBeats,
       clipLength,
       params.liveSet,
-      params.startBeats,
-      params.endBeats,
-      params.firstStartBeats,
+      plan.timing.startBeats,
+      plan.timing.endBeats,
+      plan.timing.firstStartBeats,
       params.looping,
       clipName,
       clipColor ?? null,
-      params.timeSigNumerator,
-      params.timeSigDenominator,
+      plan.timing.timeSigNumerator,
+      plan.timing.timeSigDenominator,
       params.notationString,
       clipNotes,
-      params.length,
-      params.sampleFile,
+      plan.length,
+      plan.sampleFile,
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
       takeLaneFor(params, pos),
@@ -281,7 +289,7 @@ async function createClipAtIndex(
         pitchShift: params.pitchShift,
         warpMode: params.warpMode,
       },
-      params.timeSignature,
+      plan.timeSignature,
       params.tracks.get(pos.trackIndex) ?? null,
     );
 

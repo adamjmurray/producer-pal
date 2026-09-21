@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { createClip } from "../create-clip.ts";
+import { createClip } from "../../create-clip.ts";
 import {
   registerEmptyClipSlot,
   setupArrangementClipMocks,
-} from "./create-clip-test-helpers.ts";
+} from "../create-clip-test-helpers.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),

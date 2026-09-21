@@ -7,9 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { prepareClipData } from "../helpers/clip-data-preparation.ts";
-import { createClip } from "../create-clip.ts";
-import { setupSessionMocks } from "./create-clip-test-helpers.ts";
+import { prepareClipData } from "../../helpers/clip-data-preparation.ts";
+import { createClip } from "../../create-clip.ts";
+import { setupSessionMocks } from "../create-clip-test-helpers.ts";
 
 // Mock the scale-mask read so we can assert exactly when createClips reads it
 // (the transformString != null ? readLiveSetScaleMask() : undefined ternary).

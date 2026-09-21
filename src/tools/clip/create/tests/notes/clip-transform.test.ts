@@ -8,7 +8,7 @@ import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ClipTransformInputs,
   resolveClipTransform,
-} from "../helpers/clip-transform.ts";
+} from "../../helpers/clip-transform.ts";
 
 // Mock applyTransforms so we can (a) detect whether the guard let the transform
 // run and (b) capture the ClipContext the helper builds (clipDuration /

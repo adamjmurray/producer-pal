@@ -19,14 +19,14 @@ import {
   resolveCreateClipDestinations,
   type DestinationRef,
 } from "./helpers/create-clip-destinations.ts";
-import { prepareClipData } from "./helpers/clip-data-preparation.ts";
+import { buildClipPlans, type ClipPlan } from "./helpers/clip-plans.ts";
 import {
   createClips,
   type CreatedClipEntry,
 } from "./helpers/create-clips-loop.ts";
 import { type ClipResultObject } from "./helpers/created-clip-result.ts";
 import {
-  resolveClipTimingContext,
+  readSongMeter,
   resolveCreateClipTakeLanes,
   validateArrangementPositions,
 } from "./helpers/clip-timing-context.ts";
@@ -157,7 +157,18 @@ export async function createClip(
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
 
-  refuseUnreadableCall({ path, slot, arrangementStart, name, color });
+  refuseUnreadableCall({
+    path,
+    slot,
+    arrangementStart,
+    name,
+    color,
+    sampleFile,
+    timeSignature,
+    start,
+    length,
+    firstStart,
+  });
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -181,25 +192,23 @@ export async function createClip(
   warnAudioOnlyMidiParams(sampleFile, audio);
   const tracks = validateDestinationTracks(destinations);
 
-  // Resolve time signatures and convert timing parameters to Ableton beats
-  // (arrangementStart is converted per-position later)
-  const timing = resolveClipTimingContext(liveSet, timeSignature, sampleFile, {
-    start,
-    firstStart,
-    length,
-    looping,
-  });
+  const song = readSongMeter(liveSet);
 
-  // Parse notation and determine clip length (transforms run per clip below)
-  const { notes, clipLength: initialClipLength } = prepareClipData(
+  // sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
+  // positions, so each clip gets its own sample, meter and region.
+  const plans = buildClipPlans({
+    count: order.length,
+    song,
     sampleFile,
+    timeSignature,
+    start,
+    length,
+    firstStart,
+    looping,
     notationString,
-    timing.endBeats,
-    timing.timeSigNumerator,
-    timing.timeSigDenominator,
-    _context.notation,
     transformString,
-  );
+    notation: _context.notation,
+  });
 
   const { parsedNames, parsedColors } = clipLabels(name, color, order.length);
 
@@ -207,8 +216,8 @@ export async function createClip(
   // stop the call while there is still nothing to report.
   validateArrangementPositions(
     arrangementPositions,
-    timing.songTimeSigNumerator,
-    timing.songTimeSigDenominator,
+    song.songTimeSigNumerator,
+    song.songTimeSigDenominator,
   );
 
   // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap
@@ -226,30 +235,21 @@ export async function createClip(
     baseName: name,
     parsedNames,
     parsedColors,
-    initialClipLength,
+    plans,
     liveSet,
-    startBeats: timing.startBeats,
-    endBeats: timing.endBeats,
-    firstStartBeats: timing.firstStartBeats,
     looping,
     color,
-    timeSigNumerator: timing.timeSigNumerator,
-    timeSigDenominator: timing.timeSigDenominator,
-    timeSignature,
     notationString,
-    notes,
     transformString,
-    songTimeSigNumerator: timing.songTimeSigNumerator,
-    songTimeSigDenominator: timing.songTimeSigDenominator,
-    length,
-    sampleFile,
+    songTimeSigNumerator: song.songTimeSigNumerator,
+    songTimeSigDenominator: song.songTimeSigDenominator,
     // Set once per request by the V8 adapter (see buildRequestContext).
     deadline: _context.deadline,
     code,
     ...audio,
   });
 
-  noteIgnoredFirstStart(createdClips, timing.firstStartIgnored);
+  noteIgnoredFirstStart(createdClips, plans);
 
   return finalizeCreatedClips({
     entries: createdClips,
@@ -272,6 +272,11 @@ export async function createClip(
  * @param args.arrangementStart - Arrangement positions
  * @param args.name - Clip names
  * @param args.color - Clip colors
+ * @param args.sampleFile - Audio files
+ * @param args.timeSignature - Clip meters
+ * @param args.start - Clip region starts
+ * @param args.length - Clip lengths
+ * @param args.firstStart - Playback starts
  */
 function refuseUnreadableCall({
   path,
@@ -279,9 +284,23 @@ function refuseUnreadableCall({
   arrangementStart,
   name,
   color,
+  sampleFile,
+  timeSignature,
+  start,
+  length,
+  firstStart,
 }: Pick<
   CreateClipArgs,
-  "path" | "slot" | "arrangementStart" | "name" | "color"
+  | "path"
+  | "slot"
+  | "arrangementStart"
+  | "name"
+  | "color"
+  | "sampleFile"
+  | "timeSignature"
+  | "start"
+  | "length"
+  | "firstStart"
 >): void {
   validateListLengths([
     {
@@ -292,6 +311,11 @@ function refuseUnreadableCall({
     { param: "arrangementStart", value: arrangementStart },
     { param: "name", value: name },
     { param: "color", value: color },
+    { param: "sampleFile", value: sampleFile },
+    { param: "timeSignature", value: timeSignature },
+    { param: "start", value: start },
+    { param: "length", value: length },
+    { param: "firstStart", value: firstStart },
   ]);
 
   // A "[...]" in path and arrangementStart are two spellings of one position,
@@ -429,19 +453,15 @@ function clipLabels(
  * Say on each clip's own entry that firstStart did nothing: it sets where a
  * looping clip starts playing, and these clips don't loop.
  * @param createdClips - The clips the call made
- * @param ignored - Whether firstStart was sent for clips that won't loop
+ * @param plans - What each destination was built from, in call order
  */
 function noteIgnoredFirstStart(
   createdClips: CreatedClipEntry[],
-  ignored: boolean,
+  plans: ClipPlan[],
 ): void {
-  if (!ignored) {
-    return;
-  }
-
-  for (const clip of createdClips) {
+  for (const [index, clip] of createdClips.entries()) {
     // A destination that got no clip already says why in its own reason.
-    if (!("ok" in clip)) {
+    if (plans[index]?.timing.firstStartIgnored && !("ok" in clip)) {
       appendReason(clip, "firstStart ignored: set looping: true to use it");
     }
   }

@@ -17,9 +17,13 @@ import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
 
-export interface ClipTimingContext {
+/** The song's meter, read once per call — every clip's positions share it. */
+export interface SongMeter {
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
+}
+
+export interface ClipTimingContext {
   timeSigNumerator: number;
   timeSigDenominator: number;
   startBeats: number | null;
@@ -42,17 +46,19 @@ export interface ClipTimingParams {
 }
 
 /**
- * Resolve song/clip time signatures and convert timing parameters to beats.
- * Bundles the song time signature read, clip time signature resolution, and
- * bar|beat-to-beats conversion used at the start of clip creation.
- * @param liveSet - The live_set LiveAPI object
+ * Resolve one clip's time signature and convert its timing parameters to beats.
+ *
+ * Runs per clip: timeSignature, start, length and firstStart all pair 1:1 with
+ * the positions the call names, so two clips in one call can be on different
+ * meters and regions.
+ * @param song - The song's meter, read once for the call
  * @param timeSignature - Custom clip time signature (e.g. "4/4"), or null
  * @param sampleFile - Audio file path, or null for a MIDI clip
  * @param timing - The MIDI-only timing params, ignored for an audio clip
- * @returns Resolved time signatures, timing in beats, and whether firstStart did nothing
+ * @returns The clip's meter, its timing in beats, and whether firstStart did nothing
  */
 export function resolveClipTimingContext(
-  liveSet: LiveAPI,
+  song: SongMeter,
   timeSignature: string | null,
   sampleFile: string | null,
   timing: ClipTimingParams,
@@ -66,12 +72,7 @@ export function resolveClipTimingContext(
       ? { start: null, firstStart: null, length: null, looping: null }
       : timing;
 
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { songTimeSigNumerator, songTimeSigDenominator } = song;
 
   const { timeSigNumerator, timeSigDenominator } = resolveTimeSignature(
     timeSignature,
@@ -93,14 +94,26 @@ export function resolveClipTimingContext(
     );
 
   return {
-    songTimeSigNumerator,
-    songTimeSigDenominator,
     timeSigNumerator,
     timeSigDenominator,
     startBeats,
     firstStartBeats,
     endBeats,
     firstStartIgnored,
+  };
+}
+
+/**
+ * Read the song's meter, once for the whole call.
+ * @param liveSet - The live_set LiveAPI object
+ * @returns The song time signature
+ */
+export function readSongMeter(liveSet: LiveAPI): SongMeter {
+  return {
+    songTimeSigNumerator: liveSet.getProperty("signature_numerator") as number,
+    songTimeSigDenominator: liveSet.getProperty(
+      "signature_denominator",
+    ) as number,
   };
 }
 

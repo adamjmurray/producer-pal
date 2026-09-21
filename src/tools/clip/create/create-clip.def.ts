@@ -14,6 +14,9 @@ import {
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
+/** How every per-position string param pairs with the positions path names. */
+const PER_POSITION = " One for all, or comma-separated one per position.";
+
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   // The MIDI-only list names the params in play, so small model mode gets its
@@ -22,11 +25,13 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     default:
       "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
-      "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
+      "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only. " +
+      "Params with no list form apply to every clip.",
     smallModel:
       "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
-      "The sample defines an audio clip's region, so start/length/looping are MIDI-only.",
+      "The sample defines an audio clip's region, so start/length/looping are MIDI-only. " +
+      "Params with no list form apply to every clip.",
   },
   annotations: {
     readOnlyHint: false,
@@ -85,25 +90,29 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     timeSignature: z
       .string()
       .optional()
-      .describe(`N/D (4/4), default: global time signature`),
+      .describe(`N/D (4/4), default: global time signature.${PER_POSITION}`),
 
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins (clip meter)"),
+      .describe(
+        `bar|beat position where loop/clip region begins (clip meter).${PER_POSITION}`,
+      ),
 
     length: z
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample",
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample." +
+          PER_POSITION,
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
 
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)",
+        "bar|beat playback start (looping clips, when different from start; clip meter)." +
+        PER_POSITION,
       smallModel: null,
     }),
 
@@ -138,7 +147,9 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     sampleFile: z
       .string()
       .optional()
-      .describe("absolute path to audio file - audio clips only"),
+      .describe(
+        `absolute path to audio file - audio clips only.${PER_POSITION} A list makes every clip audio`,
+      ),
 
     warping: param(z.boolean().optional(), {
       default:
