@@ -211,6 +211,22 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     expectCleanedUp(1);
   });
 
+  // A device list can hold both kinds, and only the browser one needs a temp
+  // track.
+  it("loads one path's device and inserts the next one natively", async () => {
+    track.methods.insert_device = () => ["id", "native-1"];
+    registerMockObject("native-1", { path: livePath.track(0).device(2) });
+
+    expect(
+      await createDevice({ device: "Pro-Q 4,Reverb", path: "t0/d+,t0/d+" }),
+    ).toStrictEqual([
+      { id: "loaded-1", path: "t0/d1" },
+      { id: "native-1", path: "t0/d2" },
+    ]);
+    expect(track.call).toHaveBeenCalledWith("insert_device", "Reverb");
+    expectCleanedUp(1);
+  });
+
   it("answers the native invalid device error when the remote script isn't running", async () => {
     answerRemoteScript({ resolution: { available: false } });
 

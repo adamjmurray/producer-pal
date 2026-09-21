@@ -12,7 +12,7 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
   description:
-    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain.",
+    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Params with no list form apply to every device.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -22,7 +22,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe(
-        'device to create (e.g. "Wavetable", "Drum Rack"), omit to list available devices',
+        'device for all (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path, in order; omit to list available devices',
       ),
 
     deviceName: deprecatedParam(z.string().optional(), {

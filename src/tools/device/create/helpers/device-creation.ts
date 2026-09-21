@@ -20,6 +20,7 @@ import {
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface CreateDeviceResult {
@@ -39,6 +40,74 @@ export interface CreationTarget {
   containerPath: string;
   /** The rack chains the path made on the way to the container, if any */
   createdChains?: string;
+}
+
+/**
+ * Insert a native device at a path (track or chain).
+ * @param deviceName - The device, as the call named it
+ * @param path - Device path
+ * @returns The device and its result entry
+ * @throws Error when Live turns the insert down
+ */
+export function insertNativeDevice(
+  deviceName: string,
+  path: string,
+): { device: LiveAPI; entry: CreateDeviceResult } {
+  const target = resolveCreationTarget(path);
+  const { container } = target;
+  const { position, deviceCount } = insertionPosition(target, path, deviceName);
+
+  const result =
+    position != null
+      ? (container.call("insert_device", deviceName, position) as [
+          string,
+          string | number,
+        ])
+      : (container.call("insert_device", deviceName) as [
+          string,
+          string | number,
+        ]);
+
+  // A positioned insert shifts every later device down a slot; an append can
+  // too, when Live re-sorts the chain around it.
+  if (position != null || (deviceCount > 0 && appendRenumbers(deviceName))) {
+    invalidateDevicePathCache();
+  }
+
+  const rawId = result[1];
+  const id = rawId ? String(rawId) : null;
+  const device = id ? LiveAPI.from(`id ${id}`) : null;
+
+  if (!id || !device?.exists()) {
+    // Live refuses an insert by giving back no id and no device. The usual
+    // cause is a second instrument in a chain that already has one — that's
+    // Live, not a bug, and an audio effect on the same chains succeeds — so
+    // name it when the container shows it.
+    throw new Error(
+      insertRefusal(
+        deviceName,
+        target.position,
+        path,
+        insertRefusalCause(deviceName, container),
+      ),
+    );
+  }
+
+  return { device, entry: createdDeviceEntry(id, device, target) };
+}
+
+/**
+ * Whether inserting this device at the end of a chain can renumber what's
+ * already there. Live keeps a chain sorted by device type, so an instrument
+ * lands ahead of the audio effects and a MIDI effect ahead of everything: both
+ * push siblings down a slot. Only an audio effect is guaranteed to land last.
+ * @param deviceName - The device being inserted
+ * @returns True when an append can move a sibling
+ */
+export function appendRenumbers(deviceName: string): boolean {
+  return !(VALID_DEVICES.audioEffects as readonly string[]).includes(
+    deviceName,
+  );
 }
 
 /**

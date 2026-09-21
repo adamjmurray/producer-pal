@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { VALID_DEVICES } from "#src/tools/constants.ts";
+import { appendRenumbers } from "#src/tools/device/create/helpers/device-creation.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolveDevicePath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolveDeviceTypeSegments } from "#src/tools/shared/device/helpers/path/device-type-segments.ts";
@@ -39,29 +39,28 @@ interface InsertionTarget {
   appendsChain: boolean;
 }
 
+/** One entry of the path list, and the device it inserts. */
+export interface InsertionEntry {
+  path: string;
+  device: string;
+}
+
 /**
  * Refuse a path list whose later entries are spelled through a chain an earlier
  * entry has renumbered. An insert shifts every later device down a slot, so a
  * `d<n>` written after it — in that chain or below it — names something that
  * has already moved. An append renumbers too when Live re-sorts the chain
  * around it, which is every device but an audio effect (ADR-0035).
- * @param paths - The path entries, in order
- * @param deviceName - The device every entry inserts
+ * @param entries - The path entries and the device each one inserts, in order
  * @throws Error when an entry is spelled through a renumbered chain
  */
-export function validateInsertionOrder(
-  paths: string[],
-  deviceName: string,
-): void {
+export function validateInsertionOrder(entries: InsertionEntry[]): void {
   // One entry has nothing earlier to have gone stale against, and checking it
   // would read the Live Set for an answer that is already known.
-  if (paths.length < 2) {
+  if (entries.length < 2) {
     return;
   }
 
-  const appendRenumbers = !(
-    VALID_DEVICES.audioEffects as readonly string[]
-  ).includes(deviceName);
   const renumbered: InsertionTarget[] = [];
   // Devices earlier entries add, per container, so a position is measured
   // against the chain as it will be when this entry runs.
@@ -72,7 +71,7 @@ export function validateInsertionOrder(
   // own.
   const chainsMemo = new Map<string, LiveAPI[]>();
 
-  for (const p of paths) {
+  for (const { path: p, device } of entries) {
     const target = insertionTarget(p, pending, chainsMemo);
 
     if (target == null) {
@@ -99,7 +98,7 @@ export function validateInsertionOrder(
       pending.set(target.liveKey, (pending.get(target.liveKey) ?? 0) + 1);
     }
 
-    if (target.positioned || appendRenumbers) {
+    if (target.positioned || appendRenumbers(device)) {
       renumbered.push(target);
     }
   }

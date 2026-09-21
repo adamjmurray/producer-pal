@@ -183,6 +183,28 @@ describe("ppal-create-device", () => {
     expect((await readDevice(arp.id)).type).toContain("Arpeggiator");
   });
 
+  // `device` pairs with `path` the way `name` does, so one call builds two
+  // different devices in two places.
+  it("pairs a device list with the paths, in order", async () => {
+    const first = await createTrack("midi");
+    const second = await createTrack("midi");
+    const results = parseToolResult<CreateDeviceResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Compressor,Reverb",
+          path: `t${first}/d+,t${second}/d+`,
+        },
+      }),
+    );
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.path).toMatch(new RegExp(`^t${first}/d\\d+$`));
+    expect(results[1]?.path).toMatch(new RegExp(`^t${second}/d\\d+$`));
+    expect((await readDevice(results[0]!.id)).type).toContain("Compressor");
+    expect((await readDevice(results[1]!.id)).type).toContain("Reverb");
+  });
+
   it("creates a device on the master track", async () => {
     expect((await createDevice("Limiter", "mt")).id).toBeDefined();
   });

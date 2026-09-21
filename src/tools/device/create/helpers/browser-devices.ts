@@ -7,7 +7,6 @@
 // Producer Pal remote script loads each one from Live's browser onto a temp
 // track, and it moves from there to the path the call named.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
@@ -18,96 +17,42 @@ import {
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import {
-  type NamedTarget,
-  type TargetSkip,
-  skipEntry,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type CreateDeviceResult,
   type CreationTarget,
   createdDeviceEntry,
   insertionPosition,
   insertRefusal,
-  labelCreatedDevice,
   resolveCreationTarget,
 } from "./device-creation.ts";
 
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 
-interface BrowserDeviceArgs {
-  item: BrowserItem;
-  /** The device as the call named it, for errors and warnings */
-  deviceName: string;
-  targets: NamedTarget[];
-  name: string | undefined;
-  parsedNames: ListEntries | null;
-  params: ParamEntry[] | undefined;
-}
-
 /**
- * Load a browser device at every path the call named. `writeFanOut`'s rules,
- * hand-rolled because each load has to be awaited.
- * @param args - The item, how the call named it, and the call's per-path args
- * @param args.item - What to load
- * @param args.deviceName - The device as the call named it
- * @param args.targets - Where each one goes, in the order the call named them
- * @param args.name - The call's name arg
- * @param args.parsedNames - Comma-separated display names, or null
- * @param args.params - {name, value} entries applied to each device
- * @returns The device when one path was named, otherwise one entry per path
+ * Load one device and move it to a path. The path resolves first, so it fails
+ * the way a native insert does, and a `c+` makes its chain once.
+ * @param item - What to load
+ * @param deviceName - The device as the call named it
+ * @param path - Where it goes
+ * @returns The device and its result entry
  */
-export async function createBrowserDevices({
-  item,
-  deviceName,
-  targets,
-  name,
-  parsedNames,
-  params,
-}: BrowserDeviceArgs): Promise<WriteResult<CreateDeviceResult>> {
-  const createOne = async (
-    target: NamedTarget,
-    index: number,
-  ): Promise<CreateDeviceResult> => {
-    const { device, entry } = await createAtPath(
-      item,
-      deviceName,
-      target.value,
-    );
+export async function createBrowserDevice(
+  item: BrowserItem,
+  deviceName: string,
+  path: string,
+): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
+  const target = resolveCreationTarget(path);
 
-    return labelCreatedDevice(
-      device,
-      entry,
-      getNameForIndex(name, index, parsedNames),
-      params,
-    );
-  };
+  return await withTempTrack(deviceName, async (track) => {
+    const device = await loadOnto(track, item, deviceName);
 
-  // A lone path throws, as a native insert does: nothing was created, so
-  // there is no list for an entry to hold a place in. A blank `path` was
-  // already refused, so there is always at least one target.
-  if (targets.length < 2) {
-    return await createOne(targets[0] as NamedTarget, 0);
-  }
+    moveIntoPlace(device, target, deviceName, path);
 
-  const entries: Array<CreateDeviceResult | TargetSkip> = [];
-
-  for (const [i, target] of targets.entries()) {
-    try {
-      entries.push(await createOne(target, i));
-    } catch (error) {
-      entries.push(skipEntry(target, errorMessage(error)));
-    }
-  }
-
-  return entries;
+    return { device, entry: createdDeviceEntry(device.id, device, target) };
+  });
 }
 
 /**
@@ -145,30 +90,6 @@ export async function resolveBrowserDevice(
 }
 
 // --- Helpers below main exports ---
-
-/**
- * Load one device and move it to a path. The path resolves first, so it fails
- * the way a native insert does, and a `c+` makes its chain once.
- * @param item - What to load
- * @param deviceName - The device as the call named it
- * @param path - Where it goes
- * @returns The device and its result entry
- */
-async function createAtPath(
-  item: BrowserItem,
-  deviceName: string,
-  path: string,
-): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
-  const target = resolveCreationTarget(path);
-
-  return await withTempTrack(deviceName, async (track) => {
-    const device = await loadOnto(track, item, deviceName);
-
-    moveIntoPlace(device, target, deviceName, path);
-
-    return { device, entry: createdDeviceEntry(device.id, device, target) };
-  });
-}
 
 /**
  * Run `body` with a temp MIDI track at the end of the regular tracks, then
