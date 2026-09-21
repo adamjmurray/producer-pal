@@ -46,10 +46,10 @@ import {
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
- * @param args.timeSignature - Time signature in format "4/4"
- * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction>. end = start + length
- * @param args.firstStart - Bar|beat position for initial playback start
+ * @param args.timeSignature - Time signature in format "4/4", one per clip
+ * @param args.start - Bar|beat position where loop/clip region begins, one per clip
+ * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction> (end = start + length), one per clip
+ * @param args.firstStart - Bar|beat position for initial playback start, one per clip
  * @param args.looping - Enable looping for the clip
  * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
@@ -78,7 +78,7 @@ export async function updateClip(
   args: ClipUpdateArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipEntry | ClipEntry[]> {
-  const { id, ids, path, paths, name, color, toPath, toSlot } = args;
+  const { id, ids, path, paths, toPath, toSlot } = args;
   const { arrangementStart, arrangementLength, arrangementSplit, split } = args;
   // Set once per request by the V8 adapter, so a nested call (duplicate ->
   // updateClip) spends the caller's remaining budget instead of restarting it.
@@ -86,18 +86,9 @@ export async function updateClip(
 
   // Refuses a call whose lists disagree, or that names no clip at all, before
   // resolving anything.
-  const targets = clipTargets(
-    { id, ids, path, paths },
-    { name, color, arrangementStart, arrangementLength, toPath, toSlot },
-  );
+  const targets = clipTargets({ id, ids, path, paths }, args);
 
-  refuseUnreadableCall(
-    args.timeSignature,
-    args.quantizePitch,
-    toPath,
-    arrangementStart,
-    targets.named.length,
-  );
+  refuseUnreadableCall(args, toPath, arrangementStart, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 
   // What the clips the call did reach have to say beyond their own results.
@@ -148,25 +139,22 @@ export async function updateClip(
  * different clips and add up, so the target count is their sum — comparing the
  * two to each other would refuse a call naming two of each.
  * @param targets - The call's id/ids and path/paths params
- * @param values - The lists paired against the clips those params name
+ * @param values - The tool arguments as received, for the lists paired against
+ *   the clips those params name
  * @returns The targets the call names, and the clips they found
  */
 function clipTargets(
   targets: Pick<ClipUpdateArgs, "id" | "ids" | "path" | "paths">,
-  values: Pick<
-    ClipUpdateArgs,
-    | "name"
-    | "color"
-    | "arrangementStart"
-    | "arrangementLength"
-    | "toPath"
-    | "toSlot"
-  >,
+  values: ClipUpdateArgs,
 ): ClipTargets {
   validateListLengths([
     { param: targetParamLabel(targets), count: targetCount(targets) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
+    { param: "timeSignature", value: values.timeSignature },
+    { param: "start", value: values.start },
+    { param: "length", value: values.length },
+    { param: "firstStart", value: values.firstStart },
     { param: "arrangementStart", value: values.arrangementStart },
     { param: "arrangementLength", value: values.arrangementLength },
     {

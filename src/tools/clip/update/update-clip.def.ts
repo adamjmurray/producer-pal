@@ -12,11 +12,17 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
+/** How every per-clip string param pairs with the targets the call names. */
+const PER_CLIP = " One for all, or comma-separated one per clip, in order.";
+
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
-    default: "Update clip(s), MIDI notes, and warp settings (audio clips).",
-    smallModel: "Update clip(s) and MIDI notes",
+    default:
+      "Update clip(s), MIDI notes, and warp settings (audio clips). " +
+      "Params with no list form apply to every clip.",
+    smallModel:
+      "Update clip(s) and MIDI notes. Params with no list form apply to every clip",
   },
 
   annotations: {
@@ -50,18 +56,21 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "#RRGGBB for all, or comma-separated one per target named, in order",
       smallModel: "#RRGGBB",
     }),
-    timeSignature: z.string().optional().describe("N/D (4/4)"),
+    timeSignature: z.string().optional().describe(`N/D (4/4).${PER_CLIP}`),
 
     // Clip region and loop settings
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins (clip meter)"),
+      .describe(
+        `bar|beat position where loop/clip region begins (clip meter).${PER_CLIP}`,
+      ),
     length: z
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter",
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter." +
+          PER_CLIP,
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
@@ -72,7 +81,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)",
+        "bar|beat playback start (looping clips, when different from start; clip meter)." +
+        PER_CLIP,
       smallModel: null,
     }),
     arrangementStart: deprecatedParam(z.coerce.string().optional(), {
