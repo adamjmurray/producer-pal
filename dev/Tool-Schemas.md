@@ -43,6 +43,15 @@ empty. Anything else is refused before any work runs. Nothing cycles — includi
 holds one item — broadcasting a lone clip slot to three clips would destroy two
 of them.
 
+A boolean or number that pairs per target is declared as a coerced string and
+parsed one entry at a time (`booleanList` / `numberList` in
+`src/tools/shared/validation/lists/typed-lists.ts`), because `z.boolean()` and
+`z.coerce.number()` refuse `"true,false"` before the handler runs. The coercion
+keeps a single typed value working, a blank is still refused, and models fill a
+plain `type: string` param with lists like `"true,false,true"` correctly — probe
+evidence is in `evals/schema-compat/README.md`. Read an entry back with
+`booleanForIndex` / `numberForIndex`.
+
 ## An empty entry is a hole in either kind of list
 
 One trailing comma is not an entry in either kind, the way most languages read a
