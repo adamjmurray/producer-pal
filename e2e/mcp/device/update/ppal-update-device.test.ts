@@ -247,6 +247,55 @@ describe("ppal-update-device", () => {
     expect(device.name).toBe("Reached");
   });
 
+  // A number pairs with the targets the way a name does, so one call can give
+  // two chains different levels.
+  it("gives each chain the gain and pan at its own position", async () => {
+    const entries = await updateTargets({
+      path: "t6/d0/c0,t6/d0/c1",
+      gainDb: "-6,-12",
+      pan: "-0.5,0.5",
+    });
+
+    expect(entries).toHaveLength(2);
+
+    await sleep(100);
+    const rack = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: "t6/d0", include: ["chains"] },
+      }),
+    );
+    const chains = (rack.chains ?? []) as Array<{
+      gainDb?: number;
+      pan?: number;
+    }>;
+
+    expect(chains[0]?.gainDb).toBeCloseTo(-6, 1);
+    expect(chains[1]?.gainDb).toBeCloseTo(-12, 1);
+    expect(chains[0]?.pan).toBeCloseTo(-0.5, 1);
+    expect(chains[1]?.pan).toBeCloseTo(0.5, 1);
+
+    // Back to the defaults the Set holds, so the rest of the file sees the
+    // chains it expects.
+    await updateTargets({
+      path: "t6/d0/c0,t6/d0/c1",
+      gainDb: "0",
+      pan: "0",
+    });
+  });
+
+  it("refuses a number list that names the wrong number of targets", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: "t6/d0/c0,t6/d0/c1", gainDb: "-6,-12,-18" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path names 2 entries but gainDb names 3 entries.",
+    );
+  });
+
   it("reports a path that names no device in its own slot", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
     // One name for both targets, so only the one it reaches is renamed.

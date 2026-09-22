@@ -141,7 +141,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set chokeGroup on a DrumChain", () => {
       const result = updateDevice({
         id: "789",
-        chokeGroup: 1,
+        chokeGroup: "1",
       });
 
       expect(drumChain.set).toHaveBeenCalledWith("choke_group", 1);
@@ -149,13 +149,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should refuse chokeGroup on a Chain", () => {
-      expect(() => updateDevice({ id: "456", chokeGroup: 1 })).toThrow(
+      expect(() => updateDevice({ id: "456", chokeGroup: "1" })).toThrow(
         "chokeGroup not applicable to a chain",
       );
     });
 
     it("should refuse chokeGroup on a Device", () => {
-      expect(() => updateDevice({ id: "123", chokeGroup: 1 })).toThrow(
+      expect(() => updateDevice({ id: "123", chokeGroup: "1" })).toThrow(
         "chokeGroup not applicable to a device",
       );
     });
@@ -243,7 +243,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["macroVariation", { macroVariation: "create" }, "800"],
       [
         "macroVariation, macroVariationIndex",
-        { macroVariation: "load", macroVariationIndex: 1 },
+        { macroVariation: "load", macroVariationIndex: "1" },
         "800",
       ],
       ["solo", { solo: true }, "123"],
@@ -266,9 +266,9 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["macroVariation", { macroVariation: "create" }],
       [
         "macroVariation, macroVariationIndex",
-        { macroVariation: "load", macroVariationIndex: 1 },
+        { macroVariation: "load", macroVariationIndex: "1" },
       ],
-      ["macroCount", { macroCount: 4 }],
+      ["macroCount", { macroCount: "4" }],
       ["abCompare", { abCompare: "a" }],
     ] as const)(
       "says %s is not applicable to a chain, beside what did land",

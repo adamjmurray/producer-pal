@@ -281,7 +281,7 @@ describe("updateDevice - moving a drum chain", () => {
     it("writes the pad-wide properties to every layer", () => {
       const result = updateDevice({
         id: "pad-36",
-        chokeGroup: 3,
+        chokeGroup: "3",
         mappedPitch: "C3",
       });
 
@@ -306,7 +306,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     it("skips the per-layer settings on a stacked pad and names the paths", () => {
       // gainDb was the whole call, so nothing landed on the pad.
-      expect(() => updateDevice({ id: "pad-36", gainDb: -6 })).toThrow(
+      expect(() => updateDevice({ id: "pad-36", gainDb: "-6" })).toThrow(
         "Set them on t0/d0/pC1/c0, t0/d0/pC1/c1.",
       );
 

@@ -5,10 +5,14 @@
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
+import { numberList } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+
+/** How every per-target param pairs with the targets the call names. */
+const PER_TARGET = " One for all, or comma-separated one per target, in order.";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
@@ -42,8 +46,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per device, in order (not drum pads)",
+      default: `display name (not drum pads).${PER_TARGET}`,
       smallModel: "display name (not drum pads)",
     }),
     // Kept for potential future use
@@ -89,14 +92,17 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         smallModel: null,
       },
     ),
-    macroVariationIndex: param(z.coerce.number().int().min(0).optional(), {
+    macroVariationIndex: param(numberList({ min: 0, int: true }).optional(), {
       default:
-        "Rack only: variation index for load/delete operations (0-based)",
+        "Rack only: variation index for load/delete, a whole number 0 or " +
+        `greater (0-based).${PER_TARGET}`,
       smallModel: null,
     }),
-    macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
+    macroCount: param(numberList({ min: 0, max: 16, int: true }).optional(), {
       default:
-        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up; the entry says where the count landed.",
+        "Rack only: set visible macro count, a whole number 0-16. Macros " +
+        "come in pairs, so an odd count rounds up; the entry says where the " +
+        `count landed.${PER_TARGET}`,
       smallModel: null,
     }),
     abCompare: param(z.enum(["a", "b", "save"]).optional(), {
@@ -108,24 +114,26 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per chain, in order (chains only)",
+      default: `#RRGGBB (chains only).${PER_TARGET}`,
       smallModel: "#RRGGBB (chains only)",
     }),
-    gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
+    gainDb: param(numberList({ min: -70, max: 6 }).optional(), {
       default:
-        "chain's own gain in dB (chains only; a pad path works unless the " +
-        "pad has layers, which take a layer path like 't0/d0/pC1/c1')",
+        "chain's own gain in dB, -70 to 6 (chains only; a pad path works " +
+        "unless the pad has layers, which take a layer path like " +
+        `'t0/d0/pC1/c1').${PER_TARGET}`,
       smallModel: null,
     }),
-    pan: param(z.coerce.number().min(-1).max(1).optional(), {
+    pan: param(numberList({ min: -1, max: 1 }).optional(), {
       default:
         "chain's own pan, -1 (left) to 1 (right) (chains only; a pad path " +
-        "works unless the pad has layers, which take a layer path)",
+        `works unless the pad has layers, which take a layer path).${PER_TARGET}`,
       smallModel: null,
     }),
-    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
-      default: "chain's send level in dB, requires sendReturn (chains only)",
+    sendGainDb: param(numberList({ min: -70, max: 0 }).optional(), {
+      default:
+        "chain's send level in dB, -70 to 0, requires sendReturn (chains " +
+        `only).${PER_TARGET}`,
       smallModel: null,
     }),
     sendReturn: param(z.coerce.string().optional(), {
@@ -138,8 +146,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "set several of a chain's sends at once: [{return, gainDb}], where return is a rack return chain's id, exact name, or letter — the `return`/`returnId` read-device reports. Use instead of sendGainDb + sendReturn, which set one",
       smallModel: null,
     }),
-    chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
-      default: "choke group 0-16, 0=none (drum chains only)",
+    chokeGroup: param(numberList({ min: 0, max: 16, int: true }).optional(), {
+      default: `choke group, a whole number 0-16, 0=none (drum chains only).${PER_TARGET}`,
       smallModel: null,
     }),
     mappedPitch: param(z.string().optional(), {

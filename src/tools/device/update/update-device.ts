@@ -16,6 +16,11 @@ import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.t
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import {
+  type DeviceValueArgs,
+  deviceValueListArgs,
+  parseDeviceValueLists,
+} from "./device-value-lists.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
@@ -27,7 +32,8 @@ import {
   targetParamLabel,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 
-interface UpdateDeviceArgs extends UpdateTargetOptions {
+interface UpdateDeviceArgs
+  extends Omit<UpdateTargetOptions, keyof DeviceValueArgs>, DeviceValueArgs {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
@@ -51,18 +57,18 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
  *   a drum pad or one of its layers)
  * @param args.actions - Device-specific action strings (devices only)
  * @param args.macroVariation - Rack variation action (racks only)
- * @param args.macroVariationIndex - Rack variation index (racks only)
- * @param args.macroCount - Rack visible macro count 0-16 (racks only)
+ * @param args.macroVariationIndex - Rack variation index, one per target (racks only)
+ * @param args.macroCount - Rack visible macro count 0-16, one per target (racks only)
  * @param args.abCompare - A/B Compare action (devices only)
  * @param args.mute - Mute state (chains/drum pads only)
  * @param args.solo - Solo state (chains/drum pads only)
  * @param args.color - Color #RRGGBB (chains only)
- * @param args.gainDb - Chain gain in dB (chains only)
- * @param args.pan - Chain pan -1 to 1 (chains only)
- * @param args.sendGainDb - Chain send level in dB, requires sendReturn (chains only)
+ * @param args.gainDb - Chain gain in dB, one per target (chains only)
+ * @param args.pan - Chain pan -1 to 1, one per target (chains only)
+ * @param args.sendGainDb - Chain send level in dB, one per target, requires sendReturn (chains only)
  * @param args.sendReturn - Rack return chain id, name, or letter, requires sendGainDb (chains only)
  * @param args.sends - Several sends at once as [{return, gainDb}] (chains only)
- * @param args.chokeGroup - Choke group 0-16 (drum chains only)
+ * @param args.chokeGroup - Choke group 0-16, one per target (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
  * @param args.force - Allow a destructive pad-device swap a `sample` write needs
@@ -112,6 +118,15 @@ export function updateDevice(
   validateSendPair(sendGainDb, sendReturn);
   params = validateParamEntries(params);
 
+  const valueArgs: DeviceValueArgs = {
+    gainDb,
+    pan,
+    sendGainDb,
+    chokeGroup,
+    macroCount,
+    macroVariationIndex,
+  };
+
   // One value for the whole call, so a per-target skip would repeat itself
   // down the list. Refused before any target is touched (ADR-0035).
   if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
@@ -143,6 +158,7 @@ export function updateDevice(
       },
       { param: "name", value: name },
       { param: "color", value: color },
+      ...deviceValueListArgs(valueArgs),
     ]);
 
     const items = namedTargets({ id: ids, path });
@@ -153,25 +169,21 @@ export function updateDevice(
       color,
     });
     const destinations = moveDestinations(toPath, items.length);
+    const values = parseDeviceValueLists(valueArgs, items.length);
 
-    // No toPath here: each target takes the destination at its own position.
+    // No toPath here, and none of the per-target values: each target takes
+    // the entry at its own position.
     const updateOptions: UpdateTargetOptions = {
       name,
       params,
       actions,
       macroVariation,
-      macroVariationIndex,
-      macroCount,
       abCompare,
       mute,
       solo,
       color,
-      gainDb,
-      pan,
-      sendGainDb,
       sendReturn,
       sends,
-      chokeGroup,
       mappedPitch,
       force,
     };
@@ -180,6 +192,7 @@ export function updateDevice(
       names: parsedNames,
       colors: parsedColors,
       destinations,
+      values,
     });
   }
 

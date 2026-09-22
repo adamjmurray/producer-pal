@@ -53,12 +53,13 @@ export function updateMacroVariation(
  * Nothing about a device decides it, so the call is refused before any of its
  * targets is touched (ADR-0035).
  * @param action - Variation action
- * @param index - Variation index
+ * @param index - Variation index, a list where it pairs per target; only its
+ *   presence is read here
  * @returns The reason, or null when the pair is usable
  */
 export function macroVariationParamsReason(
   action: string | undefined,
-  index: number | undefined,
+  index: number | string | undefined,
 ): string | null {
   if (index == null) {
     return action === "load" || action === "delete"

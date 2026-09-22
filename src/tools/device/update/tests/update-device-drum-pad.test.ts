@@ -96,7 +96,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     const result = updateDevice({
       path: "t0/d0/pC1",
-      chokeGroup: 3,
+      chokeGroup: "3",
       mappedPitch: "C3",
     });
 
@@ -126,7 +126,12 @@ describe("updateDevice - bare drum pad paths", () => {
 
     // They were the whole call, so nothing landed on the pad.
     expect(() =>
-      updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" }),
+      updateDevice({
+        path: "t0/d0/pC1",
+        gainDb: "-6",
+        pan: "0.5",
+        name: "Kick",
+      }),
     ).toThrow(
       "the pad has 2 layers, so per-layer settings " +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
@@ -158,7 +163,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     const result = updateDevice({
       path: "t0/d0/pC1",
-      gainDb: -6,
+      gainDb: "-6",
       name: "Kick",
     });
 
@@ -254,7 +259,7 @@ describe("updateDevice - bare drum pad paths", () => {
   it("names a device-only property once for the whole pad", () => {
     registerDrumRack(2);
 
-    expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: 4 })).toThrow(
+    expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: "4" })).toThrow(
       "macroCount not applicable to a drum pad chain",
     );
     expect(capturedWarnings()).toStrictEqual([]);

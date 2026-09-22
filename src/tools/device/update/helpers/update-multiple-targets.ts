@@ -20,6 +20,10 @@ import {
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import {
+  type DeviceValueLists,
+  deviceValuesAt,
+} from "../device-value-lists.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
@@ -85,6 +89,8 @@ export interface TargetLists {
   colors: ListEntries | null;
   /** Where each target moves, undefined where the call named nowhere */
   destinations: Array<string | undefined>;
+  /** The booleans and numbers, split one entry per target */
+  values: DeviceValueLists;
 }
 
 /**
@@ -113,6 +119,7 @@ export function updateMultipleTargets(
 
     const options: UpdateTargetOptions = {
       ...updateOptions,
+      ...deviceValuesAt(lists.values, i),
       name: getNameForIndex(updateOptions.name, i, lists.names),
       color: getColorForIndex(updateOptions.color, i, lists.colors),
       toPath: lists.destinations[i],

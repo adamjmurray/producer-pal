@@ -12,6 +12,7 @@ import {
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { updateMacroCount } from "../helpers/rack-macro-updates.ts";
 import { updateDevice } from "../update-device.ts";
+import { registerMacroRack } from "./update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -46,7 +47,7 @@ describe("updateDevice - macroVariation", () => {
       updateDevice({
         id: "123",
         macroVariation: "load",
-        macroVariationIndex: index,
+        macroVariationIndex: String(index),
       }),
     ).toThrow(`variation index ${index} is out of range (3 available)`);
 
@@ -115,7 +116,7 @@ describe("updateDevice - macroVariation", () => {
     const result = updateDevice({
       id: "123",
       macroVariation: "load",
-      macroVariationIndex: 1,
+      macroVariationIndex: "1",
     });
 
     // 'load' selects the index first, then recalls it; a valid index is used,
@@ -142,7 +143,7 @@ describe("updateDevice - macroVariation", () => {
     const result = updateDevice({
       id: "123",
       macroVariation: "delete",
-      macroVariationIndex: 1,
+      macroVariationIndex: "1",
     });
 
     // 'delete' also selects the index before deleting it.
@@ -173,7 +174,7 @@ describe("updateDevice - macroVariation", () => {
 
     updateDevice({
       id: "123",
-      macroVariationIndex: 0,
+      macroVariationIndex: "0",
       macroVariation: "load",
     });
 
@@ -185,7 +186,7 @@ describe("updateDevice - macroVariation", () => {
   // The pair says nothing about any one device, so a call that can't be read
   // is refused before any target is touched (ADR-0035).
   it("refuses macroVariationIndex sent on its own", () => {
-    expect(() => updateDevice({ id: "123", macroVariationIndex: 2 })).toThrow(
+    expect(() => updateDevice({ id: "123", macroVariationIndex: "2" })).toThrow(
       "macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
 
@@ -215,7 +216,7 @@ describe("updateDevice - macroVariation", () => {
         updateDevice({
           id: "123",
           macroVariation: action,
-          macroVariationIndex: 1,
+          macroVariationIndex: "1",
         }),
       ).toThrow(
         `macroVariationIndex does nothing for macroVariation '${action}' — ` +
@@ -249,5 +250,38 @@ describe("updateMacroCount", () => {
     });
     expect(nonRackDevice.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+});
+
+describe("updateDevice - one macro number per rack", () => {
+  it("gives each rack the count at its own position", () => {
+    const first = registerMacroRack("rack-a", { count: 4 });
+    const second = registerMacroRack("rack-b", { count: 4 });
+
+    updateDevice({ id: "rack-a,rack-b", macroCount: "8,2" });
+
+    expect(first.call).toHaveBeenCalledWith("add_macro");
+    expect(second.call).toHaveBeenCalledWith("remove_macro");
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // macroVariation covers both racks; only the index varies.
+  it("loads a different variation on each rack", () => {
+    const racks = ["rack-a", "rack-b"].map((id) =>
+      registerMockObject(id, {
+        path: livePath.track(0).device(0),
+        type: "RackDevice",
+        properties: { can_have_chains: 1, variation_count: 3 },
+      }),
+    );
+
+    updateDevice({
+      id: "rack-a,rack-b",
+      macroVariation: "load",
+      macroVariationIndex: "0,2",
+    });
+
+    expect(racks[0]?.set).toHaveBeenCalledWith("selected_variation_index", 0);
+    expect(racks[1]?.set).toHaveBeenCalledWith("selected_variation_index", 2);
   });
 });
