@@ -29,6 +29,7 @@ import {
   type CopyLabels,
 } from "./copy-labels.ts";
 import { duplicateSceneToArrangementAtPositions } from "./scene-arrangement-positions.ts";
+import { type SourceCopyParams } from "./source-copy-params.ts";
 import { type SourceShare } from "./source-plan.ts";
 import { duplicateTrack } from "./duplicate-track.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
@@ -60,11 +61,13 @@ export interface OneSourceArgs {
 /** Every source's turn, and what they share. */
 export interface EverySourceArgs extends Omit<
   OneSourceArgs,
-  "source" | "clipDestinations"
+  "source" | "clipDestinations" | "count" | "params"
 > {
   sources: SourceShare[];
   /** One destination set per source, or null for a type with no clip path. */
   clipDestinations: ClipDestinations[] | null;
+  /** One source's copy count and exclusions, in source order. */
+  perSource: SourceCopyParams[];
 }
 
 /**
@@ -79,13 +82,18 @@ export async function duplicateEverySource(
   const created: object[] = [];
 
   for (const [index, source] of args.sources.entries()) {
+    const copies = args.perSource[index] as SourceCopyParams;
+
     created.push(
       ...(await duplicateOneSource({
         ...args,
         source,
         clipDestinations: args.clipDestinations?.[index] ?? null,
+        count: copies.count,
         params: {
-          ...args.params,
+          withoutClips: copies.withoutClips,
+          withoutDevices: copies.withoutDevices,
+          routeToSource: copies.routeToSource,
           arrangementStart: source.arrangementStart,
           arrangementLength: source.arrangementLength,
         },
@@ -141,15 +149,17 @@ export async function duplicateOneSource(
  * @param type - "device" or "drum-pad"
  * @param sources - The shares to copy, in order
  * @param labels - The call's names and colors
- * @param count - The raw count param, which neither type uses
+ * @param perSource - Each source's copy params, none of which either type uses
  * @returns One entry per destination each source named, in source order
  */
 export function duplicateChainSources(
   type: string,
   sources: SourceShare[],
   labels: CopyLabels,
-  count: number,
+  perSource: SourceCopyParams[],
 ): object[] {
+  const count = Math.max(...perSource.map((copies) => copies.count));
+
   return sources.flatMap((source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.

@@ -18,8 +18,13 @@ export interface CopyLabels {
   color: string | undefined;
   /** Sources this call copies. */
   sources: number;
+  /** Copies each source makes, when `count` named a different number for each
+   * — otherwise the first source's share speaks for them all. */
+  perSource: number[] | null;
   /** Copies the whole call asks for, once a source has reported its share. */
   total: number | null;
+  /** Copies the source whose turn it is asked for. */
+  claimed: number;
   names: ListEntries | null;
   colors: ListEntries | null;
   /** Where the current source's copies start in the call's copy list. */
@@ -31,18 +36,22 @@ export interface CopyLabels {
  * @param name - The raw name param
  * @param color - The raw color param
  * @param sources - How many sources the call copies
+ * @param perSource - Copies each source makes, when they differ
  * @returns The pool
  */
 export function copyLabels(
   name: string | undefined,
   color: string | undefined,
   sources: number,
+  perSource: number[] | null = null,
 ): CopyLabels {
   return {
     name,
     color,
     sources,
+    perSource,
     total: null,
+    claimed: 0,
     names: null,
     colors: null,
     offset: 0,
@@ -51,19 +60,26 @@ export function copyLabels(
 
 /**
  * Claims this source's share of the labels. Copies are the same for every
- * source, so the first to report settles the batch total — and it must settle
- * before any name is handed out: it decides whether one value splits into many.
+ * source unless `count` said otherwise, so the first to report settles the
+ * batch total — and it must settle before any name is handed out: it decides
+ * whether one value splits into many.
  * @param labels - The call's label pool
  * @param copies - Copies this source asks for
  */
 export function claimLabels(labels: CopyLabels, copies: number): void {
   if (labels.total != null) {
-    labels.offset += copies;
+    // Where the source before this one left off, which is its copies rather
+    // than this one's — the two differ when `count` named one per source.
+    labels.offset += labels.claimed;
+    labels.claimed = copies;
 
     return;
   }
 
-  labels.total = labels.sources * copies;
+  labels.claimed = copies;
+  labels.total =
+    labels.perSource?.reduce((sum, each) => sum + each, 0) ??
+    labels.sources * copies;
 
   // The first source settles the total, and nothing has been copied yet, so a
   // name list that doesn't match the copies is still refusable up front.

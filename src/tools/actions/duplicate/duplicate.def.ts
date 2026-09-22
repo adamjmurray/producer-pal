@@ -14,6 +14,13 @@ import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import {
+  booleanList,
+  numberList,
+} from "#src/tools/shared/validation/lists/typed-lists.ts";
+
+/** How a per-source param pairs with the sources the call names. */
+const PER_SOURCE = " One for all, or comma-separated one per source, in order.";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
@@ -62,18 +69,17 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: "#RRGGBB",
     }),
 
-    count: param(z.coerce.number().int().min(1).default(1), {
-      default:
-        "copies per source (tracks/scenes only, ignored for clips/devices)",
+    count: param(numberList({ min: 1, int: true }).default("1"), {
+      default: `copies per source, a whole number 1 or more (tracks/scenes only, ignored for clips/devices).${PER_SOURCE}`,
       smallModel: null,
     }),
 
-    withoutClips: param(z.boolean().optional(), {
-      default: "exclude clips?",
+    withoutClips: param(booleanList().optional(), {
+      default: `exclude clips? true/false.${PER_SOURCE}`,
       smallModel: null,
     }),
-    withoutDevices: param(z.boolean().optional(), {
-      default: "exclude devices?",
+    withoutDevices: param(booleanList().optional(), {
+      default: `exclude devices? true/false.${PER_SOURCE}`,
       smallModel: null,
     }),
 
@@ -90,8 +96,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .describe(
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'); song meter. " +
-          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length. " +
-          "One for all, or comma-separated one per source, in order",
+          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length." +
+          PER_SOURCE,
       ),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
@@ -119,9 +125,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
     }),
 
-    routeToSource: param(z.boolean().optional(), {
-      default:
-        "tracks only (errors otherwise): the copy gets no clips or devices of its own and plays the source track's instrument (for MIDI layering/polyrhythms)",
+    routeToSource: param(booleanList().optional(), {
+      default: `tracks only (errors otherwise), true/false: the copy gets no clips or devices of its own and plays the source track's instrument (for MIDI layering/polyrhythms).${PER_SOURCE}`,
       smallModel: null,
     }),
 

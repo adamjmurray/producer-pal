@@ -4,7 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { numberForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 
 /**
  * Applies tempo property to a scene
@@ -62,5 +64,30 @@ export function validateTimeSignatures(
     if (entry !== "disabled") {
       parseTimeSignature(entry);
     }
+  }
+}
+
+/**
+ * Refuse a tempo Live can't hold before any scene is touched, so a bad entry
+ * can't leave the scenes before it already changed.
+ * @param value - The raw tempo param
+ * @param parsed - The split tempos, or null
+ * @throws Error when an entry names no number, or one outside Live's range
+ */
+export function validateTempos(
+  value: string | null | undefined,
+  parsed: ListEntries | null,
+): void {
+  const entries = parsed ?? (value == null ? [] : [value]);
+
+  for (let i = 0; i < entries.length; i++) {
+    const tempo = numberForIndex(value ?? undefined, i, parsed);
+
+    // With one scene the whole value is literal, so "120,90" names no number.
+    if (tempo == null) {
+      throw new Error(`invalid tempo "${value}" - it must be a number`);
+    }
+
+    validateTempo(tempo, -1);
   }
 }

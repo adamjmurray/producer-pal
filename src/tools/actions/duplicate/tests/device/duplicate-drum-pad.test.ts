@@ -473,7 +473,7 @@ describe("duplicate - drum pad", () => {
   it("warns that count does not apply", async () => {
     registerCopyReadyRack();
 
-    await copyC1ToD1({ count: 3 });
+    await copyC1ToD1({ count: "3" });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining("count 3 ignored"),

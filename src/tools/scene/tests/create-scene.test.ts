@@ -59,7 +59,7 @@ describe("createScene", () => {
       sceneIndex: 1,
       name: "New Scene",
       color: "#FF0000",
-      tempo: 120,
+      tempo: "120",
       timeSignature: "3/4",
     });
 
@@ -120,7 +120,7 @@ describe("createScene", () => {
   it("should disable tempo when -1 is passed", () => {
     createScene({
       sceneIndex: 0,
-      tempo: -1,
+      tempo: "-1",
     });
 
     expect(scene0.set).toHaveBeenCalledWith("tempo_enabled", false);
@@ -130,7 +130,7 @@ describe("createScene", () => {
   // Checked before the padding scenes are created, so a bad tempo doesn't
   // leave a run of empty scenes behind.
   it("refuses an out-of-range tempo before creating anything", () => {
-    expect(() => createScene({ sceneIndex: 0, tempo: 0 })).toThrow(
+    expect(() => createScene({ sceneIndex: 0, tempo: "0" })).toThrow(
       `${TEMPO_REFUSAL} Pass -1 to disable it.`,
     );
     expect(liveSet.call).not.toHaveBeenCalled();
@@ -240,7 +240,7 @@ describe("createScene", () => {
   it("should include disabled tempo and timeSignature in result", () => {
     const result = createScene({
       sceneIndex: 0,
-      tempo: -1,
+      tempo: "-1",
       timeSignature: "disabled",
     });
 
@@ -454,7 +454,7 @@ describe("createScene", () => {
         capture: true,
         name: "Captured with Props",
         color: "#FF0000",
-        tempo: 140,
+        tempo: "140",
         timeSignature: "3/4",
       });
 
@@ -471,7 +471,7 @@ describe("createScene", () => {
 
     it.each([
       ["color only", { color: "#FF0000" }, "color", 16711680],
-      ["tempo only", { tempo: 140 }, "tempo", 140],
+      ["tempo only", { tempo: "140" }, "tempo", 140],
       [
         "timeSignature only",
         { timeSignature: "3/4" },
@@ -490,7 +490,7 @@ describe("createScene", () => {
     it("should handle disabled tempo and timeSignature in capture mode", () => {
       const result = createScene({
         capture: true,
-        tempo: -1,
+        tempo: "-1",
         timeSignature: "disabled",
       });
 

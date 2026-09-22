@@ -305,7 +305,7 @@ describe("REST API Routes", () => {
       const body = (await response.json()) as ToolCallBody;
 
       expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toStrictEqual({
-        count: 1,
+        count: "1",
         id: "1",
         type: "clip",
         toSlot: "2/0",
@@ -383,7 +383,7 @@ describe("REST API Routes", () => {
 
       expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toStrictEqual({
         path: "s+",
-        tempo: 100,
+        tempo: "100",
         capture: false,
       });
       expect(body.warnings).toBeUndefined();

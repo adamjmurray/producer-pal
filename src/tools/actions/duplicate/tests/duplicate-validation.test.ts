@@ -39,7 +39,7 @@ describe("duplicate - input validation", () => {
 
   it("should throw an error when count is less than 1", async () => {
     await expect(
-      duplicate({ type: "track", id: "some-id", count: 0 }),
+      duplicate({ type: "track", id: "some-id", count: "0" }),
     ).rejects.toThrow("count must be at least 1");
   });
 
@@ -136,7 +136,7 @@ describe("duplicate - clip session validation", () => {
       type: "clip",
       id: "clip1",
       toPath: "t0/s1",
-      count: 3,
+      count: "3",
     });
 
     expect(result).toStrictEqual({
@@ -232,7 +232,7 @@ describe("duplicate - return format", () => {
   it("should return single object format when count=1", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
 
-    const result = await duplicate({ type: "track", id: "track1", count: 1 });
+    const result = await duplicate({ type: "track", id: "track1", count: "1" });
 
     expect(result).toStrictEqual({
       id: expect.any(String),
@@ -244,7 +244,7 @@ describe("duplicate - return format", () => {
   it("should return objects array format when count>1", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
 
-    const result = await duplicate({ type: "track", id: "track1", count: 2 });
+    const result = await duplicate({ type: "track", id: "track1", count: "2" });
 
     expect(result).toStrictEqual([
       expect.objectContaining({ path: expect.any(String) }),

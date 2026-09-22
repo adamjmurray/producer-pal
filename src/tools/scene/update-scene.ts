@@ -8,7 +8,6 @@ import {
   landedColor,
   type LandedColor,
 } from "#src/tools/shared/helpers/landed-color.ts";
-import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
@@ -17,6 +16,7 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { numberForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import {
   targetObject,
   writeFanOut,
@@ -27,6 +27,7 @@ import { sceneIdAtPath } from "#src/tools/shared/validation/path-target-lookup.t
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
+  validateTempos,
   validateTimeSignatures,
 } from "./helpers/scene-tempo-signature.ts";
 
@@ -47,7 +48,7 @@ interface UpdateSceneArgs {
   paths?: string;
   name?: string;
   color?: string;
-  tempo?: number | null;
+  tempo?: string | null;
   timeSignature?: string | null;
   focus?: boolean;
 }
@@ -61,7 +62,7 @@ interface UpdateSceneArgs {
  * @param args.paths - Hidden alias for path
  * @param args.name - Name for the scenes
  * @param args.color - Color for the scenes (CSS format: hex)
- * @param args.tempo - Tempo in BPM. Pass -1 to disable.
+ * @param args.tempo - Tempo in BPM for all, or one per scene, in order (-1 disables)
  * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled")
  * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
@@ -86,10 +87,15 @@ export function updateScene(
     targets: { id, ids, path, paths },
     name,
     color,
-    extraLists: [{ param: "timeSignature", value: timeSignature }],
+    extraLists: [
+      { param: "timeSignature", value: timeSignature },
+      { param: "tempo", value: tempo },
+    ],
   });
 
-  validateTempo(tempo, -1);
+  const parsedTempos = splitList(tempo ?? undefined, targets.length, "tempo");
+
+  validateTempos(tempo, parsedTempos);
 
   const parsedTimeSignatures = splitList(
     timeSignature ?? undefined,
@@ -118,7 +124,10 @@ export function updateScene(
       landed = landedColor(scene, sceneColor);
     }
 
-    applyTempoProperty(scene, tempo);
+    applyTempoProperty(
+      scene,
+      numberForIndex(tempo ?? undefined, i, parsedTempos),
+    );
     applyTimeSignatureProperty(
       scene,
       valueForIndex(timeSignature ?? undefined, i, parsedTimeSignatures),

@@ -137,6 +137,37 @@ describe("ppal-duplicate track options", () => {
     ]);
   });
 
+  it("pairs count and withoutDevices one value per source", async () => {
+    const tracks = (await readTracks()).tracks;
+    const drums = tracks[0]!;
+    const bass = tracks[1]!;
+
+    const copies = parseToolResult<DuplicateTrackResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "track",
+          id: `${drums.id},${bass.id}`,
+          count: "1,2",
+          withoutDevices: "true,false",
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    // One copy of the first source, two of the second.
+    expect(copies).toHaveLength(3);
+
+    const [fromDrums, ...fromBass] = copies;
+
+    expect((await readTrack(fromDrums!.id)).deviceCount).toBe(0);
+
+    for (const copy of fromBass) {
+      expect((await readTrack(copy.id)).deviceCount).toBeGreaterThan(0);
+    }
+  });
+
   it("refuses routeToSource for anything but a track", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",

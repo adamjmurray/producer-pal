@@ -24,6 +24,10 @@ import {
   duplicateEverySource,
 } from "./helpers/sources/duplicate-one-source.ts";
 import {
+  sourceCopyParams,
+  type SourceCopyParams,
+} from "./helpers/sources/source-copy-params.ts";
+import {
   planSources,
   resolveSourceClipDestinations,
   type SourceShare,
@@ -42,10 +46,7 @@ import {
   hasArrangementPosition,
   resolveDestinationAndWarn,
 } from "./helpers/duplicate-destinations.ts";
-import {
-  validateBasicInputs,
-  validateAndConfigureRouteToSource,
-} from "./helpers/duplicate-input-validation.ts";
+import { validateBasicInputs } from "./helpers/duplicate-input-validation.ts";
 
 interface DuplicateArgs {
   type: string;
@@ -55,7 +56,7 @@ interface DuplicateArgs {
   path?: string;
   /** Hidden alias for path */
   paths?: string;
-  count?: number;
+  count?: string;
 
   arrangementStart?: string;
   /** Deprecated: locator ref(s), folded onto arrangementStart as `loc:` */
@@ -63,9 +64,9 @@ interface DuplicateArgs {
   arrangementLength?: string;
   name?: string;
   color?: string;
-  withoutClips?: boolean;
-  withoutDevices?: boolean;
-  routeToSource?: boolean;
+  withoutClips?: string;
+  withoutDevices?: string;
+  routeToSource?: string;
   focus?: boolean;
   toSlot?: string;
   toPath?: string;
@@ -83,15 +84,15 @@ interface DuplicateArgs {
  * @param args.ids - Hidden alias for id
  * @param args.path - Source path(s), comma-separated, instead of or alongside id
  * @param args.paths - Hidden alias for path
- * @param args.count - Number of duplicates
+ * @param args.count - Copies per source: one for all, or one per source
  * @param args.arrangementStart - Arrangement position(s): bar|beat or `loc:<locator>`
  * @param args.locator - Deprecated locator ref(s); use arrangementStart
  * @param args.arrangementLength - Span(s) to fill: one for all, or one per source
  * @param args.name - Name for duplicates
  * @param args.color - Color for all the copies, or comma-separated one per copy
- * @param args.withoutClips - Exclude clips
- * @param args.withoutDevices - Exclude devices
- * @param args.routeToSource - Route to source
+ * @param args.withoutClips - Exclude clips: one for all, or one per source
+ * @param args.withoutDevices - Exclude devices: one for all, or one per source
+ * @param args.routeToSource - Route to source: one for all, or one per source
  * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Deprecated destination clip slot(s); use toPath
  * @param args.toPath - Destination path(s): track, clip slot, or device
@@ -109,7 +110,7 @@ export async function duplicate(
     ids,
     path,
     paths,
-    count = 1,
+    count = "1",
     arrangementStart,
     locator,
     arrangementLength,
@@ -144,15 +145,6 @@ export async function duplicate(
   const toTakeLane = namesTakeLaneDestination(type, toPath, fromLane);
   const laneCopy = fromLane || toTakeLane;
 
-  if (!laneCopy) {
-    ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
-      type,
-      routeToSource,
-      withoutClips,
-      withoutDevices,
-    ));
-  }
-
   // One spelling from here down: a scene's whole destination is its position,
   // the deprecated locator folds onto the position it named, and every `loc:`
   // entry becomes the bar|beat it names. Nothing below knows any of that.
@@ -178,6 +170,14 @@ export async function duplicate(
 
   validateSourceIds(type, sources, laneCopy);
 
+  // How many copies each source makes, and what each copy leaves behind: one
+  // value covers every source, a list gives one each.
+  const perSource = sourceCopyParams(
+    { count, withoutClips, withoutDevices, routeToSource },
+    sources,
+    laneCopy ? undefined : type,
+  );
+
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
   const clipDestinations =
@@ -190,7 +190,7 @@ export async function duplicate(
     // Every source's destination is the same kind, and the warnings are about
     // the params rather than the places, so one of them speaks for the call.
     clipDestinations: clipDestinations?.[0] ?? null,
-    count,
+    count: Math.max(...perSource.map((copies) => copies.count)),
     toPath,
     toSlot,
     arrangementStart,
@@ -203,14 +203,18 @@ export async function duplicate(
     toTakeLane,
   });
 
-  const labels = copyLabels(name, color, sources.length);
+  const labels = copyLabels(
+    name,
+    color,
+    sources.length,
+    unevenCounts(perSource),
+  );
 
   if (laneCopy) {
     const laneCopies = duplicateTracksToLanes({
       sources,
       labels,
-      count,
-      params: { withoutClips, withoutDevices, routeToSource },
+      perSource,
       takeLaneName,
     });
 
@@ -224,7 +228,7 @@ export async function duplicate(
   // All three take comma-separated toPath for multiple destinations, and answer
   // with one entry per destination named.
   if (type === "drum-pad" || type === "device" || type === "chain") {
-    return oneOrAll(duplicateChainSources(type, sources, labels, count));
+    return oneOrAll(duplicateChainSources(type, sources, labels, perSource));
   }
 
   const createdObjects = await duplicateEverySource({
@@ -232,9 +236,8 @@ export async function duplicate(
     sources,
     destination,
     clipDestinations,
-    count,
+    perSource,
     labels,
-    params: { arrangementLength, withoutClips, withoutDevices, routeToSource },
     takeLane,
     takeLaneName,
     context,
@@ -261,6 +264,19 @@ export async function duplicate(
   focusIfRequested(focus, destination, type, createdObjects);
 
   return oneOrAll(createdObjects);
+}
+
+/**
+ * The copies each source makes, when `count` named a different number for each
+ * — the label pool needs them to know how many names the call hands out. With
+ * one count for every source the first to report speaks for them all.
+ * @param perSource - Each source's copy params
+ * @returns The counts, or null when they all match
+ */
+function unevenCounts(perSource: SourceCopyParams[]): number[] | null {
+  const counts = perSource.map((copies) => copies.count);
+
+  return new Set(counts).size > 1 ? counts : null;
 }
 
 /**

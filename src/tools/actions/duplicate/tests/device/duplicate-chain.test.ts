@@ -405,7 +405,7 @@ describe("duplicate - chain", () => {
   it("warns that count is ignored, since only one copy is made", async () => {
     setupRack();
 
-    await duplicate({ type: "chain", id: "chain-0", count: 2 });
+    await duplicate({ type: "chain", id: "chain-0", count: "2" });
 
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
       "count 2 ignored: chain copies go one per toPath",

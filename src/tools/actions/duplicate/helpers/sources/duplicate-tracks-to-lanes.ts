@@ -56,8 +56,8 @@ import {
   type CopyLabels,
 } from "./copy-labels.ts";
 import { laneSource, type LaneSource } from "./lane-sources.ts";
+import { type SourceCopyParams } from "./source-copy-params.ts";
 import { type SourceShare } from "./source-plan.ts";
-import { type DuplicateParams } from "./duplicate-one-source.ts";
 
 /** What a lane copy leaves behind, said once on the lane's own entry. */
 const LANE_COPY_NOTE =
@@ -71,8 +71,8 @@ const MAIN_LANE_COPY_NOTE =
 export interface TracksToLanesArgs {
   sources: SourceShare[];
   labels: CopyLabels;
-  count: number;
-  params: DuplicateParams;
+  /** Each source's copy params, none of which a lane copy can use. */
+  perSource: SourceCopyParams[];
   takeLaneName: string | undefined;
 }
 
@@ -83,7 +83,7 @@ export interface TracksToLanesArgs {
  * @returns One entry per destination, in the order toPath named them
  */
 export function duplicateTracksToLanes(args: TracksToLanesArgs): object[] {
-  warnUnusedTrackParams(args.count, args.params);
+  warnUnusedTrackParams(args.perSource);
 
   const meter = songMeter();
 
@@ -209,10 +209,11 @@ function parsedPath(entry: string): ObjectPath | null {
  * Warns for the params a lane copy can't use. A lane takes clips at the
  * positions they already have, so the count and the new-track params say
  * nothing about it.
- * @param count - Requested number of copies
- * @param params - The track params the call sent
+ * @param perSource - Each source's copy params
  */
-function warnUnusedTrackParams(count: number, params: DuplicateParams): void {
+function warnUnusedTrackParams(perSource: SourceCopyParams[]): void {
+  const count = Math.max(...perSource.map((copies) => copies.count));
+
   if (count > 1) {
     console.warn(
       `count ${count} ignored: a track's clips go once to each lane toPath names`,
@@ -220,11 +221,15 @@ function warnUnusedTrackParams(count: number, params: DuplicateParams): void {
   }
 
   // routeToSource turns the other two on itself, so it speaks for all three.
-  const unusable = params.routeToSource
+  const unusable = perSource.some((copies) => copies.routeToSource)
     ? ["routeToSource"]
     : [
-        ...(params.withoutClips === true ? ["withoutClips"] : []),
-        ...(params.withoutDevices === true ? ["withoutDevices"] : []),
+        ...(perSource.some((copies) => copies.withoutClips === true)
+          ? ["withoutClips"]
+          : []),
+        ...(perSource.some((copies) => copies.withoutDevices === true)
+          ? ["withoutDevices"]
+          : []),
       ];
 
   if (unusable.length > 0) {
