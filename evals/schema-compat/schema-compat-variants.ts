@@ -11,6 +11,7 @@
  */
 
 import { type jsonSchema } from "ai";
+import { PER_TARGET_LIST_VARIANTS } from "./per-target-list-variants.ts";
 
 export type JsonSchemaInput = Parameters<typeof jsonSchema>[0];
 export type Args = Record<string, unknown>;
@@ -283,6 +284,7 @@ export const VARIANTS: Variant[] = [
       "with id 27 to 0.5.",
     check: (i) => isNameOrIdEntries(i.params),
   },
+  ...PER_TARGET_LIST_VARIANTS,
 ];
 
 /**
