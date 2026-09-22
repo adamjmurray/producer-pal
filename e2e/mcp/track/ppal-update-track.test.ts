@@ -44,14 +44,17 @@ async function readTracks(): Promise<LiveSetResult> {
   return parseToolResult<LiveSetResult>(result);
 }
 
-/** Read a track's mixer after giving Live a moment to settle. */
-async function readTrackMixer(trackId: string): Promise<ReadTrackResult> {
+/** Read a track's mixer, and whatever else is asked, once Live has settled. */
+async function readTrackMixer(
+  trackId: string,
+  include: string[] = ["mixer"],
+): Promise<ReadTrackResult> {
   await sleep(100);
 
   return parseToolResult<ReadTrackResult>(
     await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
+      arguments: { id: trackId, include },
     }),
   );
 }
@@ -277,6 +280,36 @@ describe("ppal-update-track", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain("gainDb names 3 entries");
+  });
+
+  // monitoringState and panningMode pair the same way the mixer numbers do.
+  it("pairs monitoringState and panningMode one per track", async () => {
+    const liveSet = await readTracks();
+    const first = liveSet.tracks![0]!.id;
+    const second = liveSet.tracks![1]!.id;
+
+    await updateTrack({
+      id: `${first},${second}`,
+      monitoringState: "in,off",
+      panningMode: "split,stereo",
+    });
+
+    const parts = ["mixer", "routings"];
+    const firstTrack = await readTrackMixer(first, parts);
+    const secondTrack = await readTrackMixer(second, parts);
+
+    expect(firstTrack.monitoringState).toBe("in");
+    expect(secondTrack.monitoringState).toBe("off");
+
+    // Only split is reported — stereo is the mode a caller assumes.
+    expect(firstTrack.panningMode).toBe("split");
+    expect(secondTrack.panningMode).toBeUndefined();
+
+    await updateTrack({
+      id: `${first},${second}`,
+      monitoringState: "auto",
+      panningMode: "stereo",
+    });
   });
 
   it("updates send levels and monitoring", async () => {

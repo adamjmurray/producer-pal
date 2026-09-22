@@ -37,7 +37,7 @@ interface CreateTrackArgs extends TrackValueArgs {
   count?: number;
   name?: string;
   color?: string;
-  type?: "midi" | "audio" | "return";
+  type?: string;
 }
 
 interface CreatedTrackResult {
@@ -61,7 +61,7 @@ interface CreatedTrackResult {
  * @param args.count - Deprecated repeat of a single path
  * @param args.name - Name for all, or one per track, in order
  * @param args.color - Color for all, or one per track, in order (CSS format: hex)
- * @param args.type - Type of tracks ("midi", "audio", or "return")
+ * @param args.type - "midi" or "audio", one per track
  * @param args.mute - Mute state, one per track
  * @param args.solo - Solo state, one per track
  * @param args.arm - Arm state, one per track
@@ -75,7 +75,9 @@ export function createTrack(
   const { count, name, color } = args;
   const targets = resolveCreateTrackTargets(args);
 
-  if (args.type === "return" && args.trackIndex != null) {
+  // Read off the target rather than the raw param, which the caller may have
+  // spelled in any case.
+  if (targets[0]?.type === "return" && args.trackIndex != null) {
     console.warn(
       "trackIndex is ignored for return tracks (always added at end)",
     );

@@ -15,9 +15,7 @@ import {
   readBackReason,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { roundGainDb, roundPan } from "#src/tools/shared/helpers/rounding.ts";
-
-/** The two ways a track pans, and which pan params apply in each. */
-export type PanningMode = "stereo" | "split";
+import { type PanningMode } from "#src/tools/track/helpers/track-value-lists.ts";
 
 interface MixerParams extends PanParams {
   gainDb?: number;

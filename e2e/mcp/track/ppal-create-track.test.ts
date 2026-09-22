@@ -76,6 +76,20 @@ describe("ppal-create-track", () => {
   }
 
   /**
+   * One track, read back by id.
+   * @param id - The track's id
+   * @returns The read result
+   */
+  async function trackById(id: string): Promise<ReadTrackResult> {
+    return parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id },
+      }),
+    );
+  }
+
+  /**
    * The send letter Live will give the next return track.
    * @returns The letter
    */
@@ -320,6 +334,35 @@ describe("ppal-create-track", () => {
     expect(first.state).toMatch(/^muted/);
     expect(first.isArmed).toBeFalsy();
     expect(second.isArmed).toBe(true);
+
+    await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { id: `${created[0]!.id},${created[1]!.id}`, type: "track" },
+    });
+    await sleep(100);
+    expect(await trackCount()).toBe(before);
+  });
+
+  // type pairs the same way, so one call can make a MIDI track and an audio
+  // track side by side.
+  it("pairs the track type one per track", async () => {
+    const before = await trackCount();
+    const created = parseBatchResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: {
+          path: "t+,t+",
+          name: "Pair Midi,Pair Audio",
+          type: "midi,audio",
+        },
+      }),
+      2,
+    );
+
+    await sleep(100);
+
+    expect((await trackById(created[0]!.id)).type).toBe("midi");
+    expect((await trackById(created[1]!.id)).type).toBe("audio");
 
     await ctx.client!.callTool({
       name: "ppal-delete",

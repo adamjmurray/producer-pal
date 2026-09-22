@@ -182,6 +182,47 @@ describe("createTrack by path", () => {
     ).toThrow("each entry must be true or false");
   });
 
+  it("pairs the type with the path list", () => {
+    registerMockObject("midi_track_-1", {});
+    registerMockObject("audio_track_-1", {});
+
+    expect(createTrack({ path: "t+,t+", type: "midi,audio" })).toStrictEqual([
+      { id: "midi_track_-1", path: "t2" },
+      { id: "audio_track_-1", path: "t3" },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
+    expect(liveSet.call).toHaveBeenCalledWith("create_audio_track", -1);
+  });
+
+  it("gives every track one type, in any case", () => {
+    registerMockObject("audio_track_-1", {});
+
+    createTrack({ path: "t+,t+", type: "AUDIO" });
+
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+    expect(liveSet.call).toHaveBeenCalledWith("create_audio_track", -1);
+  });
+
+  it("refuses a type list of the wrong length before making a track", () => {
+    expect(() =>
+      createTrack({ path: "t+,t+", type: "midi,audio,midi" }),
+    ).toThrow("path names 2 tracks but type names 3 entries");
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses a type list where count repeats one path", () => {
+    expect(() =>
+      createTrack({ trackIndex: 0, count: 2, type: "midi,audio" }),
+    ).toThrow("type names one value here");
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses a type outside the set", () => {
+    expect(() =>
+      toolDefCreateTrack.toolOptions.inputSchema.type?.parse("drum"),
+    ).toThrow("each entry must be one of: midi, audio, return");
+  });
+
   it("refuses a return track at an index, since Live appends them", () => {
     expect(() => createTrack({ path: "rt1" })).toThrow(
       'invalid path "rt1" - Live adds return tracks at the end, so they have no index; use "rt+"',

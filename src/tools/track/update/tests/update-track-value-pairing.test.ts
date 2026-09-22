@@ -15,7 +15,13 @@ import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 /** The per-track params this suite parses through the published schema. */
-type PairedParam = "mute" | "solo" | "gainDb" | "sendGainDb";
+type PairedParam =
+  | "mute"
+  | "solo"
+  | "gainDb"
+  | "sendGainDb"
+  | "monitoringState"
+  | "panningMode";
 
 /**
  * Parse one param the way the MCP layer does before the handler runs.
@@ -27,10 +33,12 @@ function coerced(param: PairedParam, value: unknown): unknown {
   return toolDefUpdateTrack.toolOptions.inputSchema[param]?.parse(value);
 }
 
-describe("updateTrack - per-track booleans and numbers", () => {
+describe("updateTrack - per-track booleans, numbers and enums", () => {
   let track123: RegisteredMockObject;
   let track456: RegisteredMockObject;
   let track789: RegisteredMockObject;
+  let mixer1: RegisteredMockObject;
+  let mixer2: RegisteredMockObject;
   let volume1: RegisteredMockObject;
   let volume2: RegisteredMockObject;
   let panning1: RegisteredMockObject;
@@ -43,11 +51,11 @@ describe("updateTrack - per-track booleans and numbers", () => {
     track456 = registerMockObject("456", { path: livePath.track(1) });
     track789 = registerMockObject("789", { path: livePath.track(2) });
 
-    registerMockObject("mixer_1", {
+    mixer1 = registerMockObject("mixer_1", {
       path: livePath.track(0).mixerDevice(),
       properties: { sends: children("send_1", "send_2") },
     });
-    registerMockObject("mixer_2", {
+    mixer2 = registerMockObject("mixer_2", {
       path: livePath.track(1).mixerDevice(),
       properties: { sends: children("send_3", "send_4") },
     });
@@ -98,6 +106,43 @@ describe("updateTrack - per-track booleans and numbers", () => {
     expect(() => coerced("sendGainDb", "3")).toThrow(
       "each entry must be a number from -70 to 0",
     );
+  });
+
+  it("refuses an entry outside an enum's set", () => {
+    expect(() => coerced("monitoringState", "in,nope")).toThrow(
+      "each entry must be one of: in, auto, off",
+    );
+    expect(() => coerced("panningMode", "")).toThrow(
+      "each entry must be one of: stereo, split",
+    );
+  });
+
+  it("pairs monitoringState and panningMode one per track", () => {
+    updateTrack({
+      id: "123,456",
+      monitoringState: "in,off",
+      panningMode: "split,stereo",
+    });
+
+    expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 0);
+    expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 2);
+    expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 1);
+    expect(mixer2.set).toHaveBeenCalledWith("panning_mode", 0);
+  });
+
+  it("reads an enum entry in any case, and broadcasts a lone one", () => {
+    updateTrack({ id: "123,456", monitoringState: "AUTO" });
+
+    expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
+    expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 1);
+  });
+
+  it("refuses an enum list of the wrong length", () => {
+    expect(() =>
+      updateTrack({ id: "123,456,789", panningMode: "split,stereo" }),
+    ).toThrow("id names 3 entries but panningMode names 2 entries");
+
+    expect(mixer1.set).not.toHaveBeenCalled();
   });
 
   it("pairs mute, solo and arm one per track", () => {

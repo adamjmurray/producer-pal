@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
-import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
@@ -12,8 +11,10 @@ import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 import {
   booleanList,
+  enumList,
   numberList,
 } from "#src/tools/shared/validation/lists/typed-lists.ts";
+import { MONITORING_STATES, PANNING_MODES } from "#src/tools/constants.ts";
 
 /** How every per-target param pairs with the targets the call names. */
 const PER_TARGET = " One for all, or comma-separated one per target, in order.";
@@ -58,8 +59,8 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     pan: numberList({ min: -1, max: 1 })
       .optional()
       .describe(`pan: -1 (left) to 1 (right).${PER_TARGET}`),
-    panningMode: param(z.enum(["stereo", "split"]).optional(), {
-      default: "panning mode: stereo or split",
+    panningMode: param(enumList(PANNING_MODES).optional(), {
+      default: `stereo or split.${PER_TARGET}`,
       smallModel: null,
     }),
     leftPan: param(numberList({ min: -1, max: 1 }).optional(), {
@@ -105,15 +106,10 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     outputRoutingChannelId: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "outputRoutingChannel",
     }),
-    monitoringState: param(
-      z
-        .enum(Object.values(MONITORING_STATE) as [string, ...string[]])
-        .optional(),
-      {
-        default: "input monitoring",
-        smallModel: null,
-      },
-    ),
+    monitoringState: param(enumList(MONITORING_STATES).optional(), {
+      default: `input monitoring: in, auto or off.${PER_TARGET}`,
+      smallModel: null,
+    }),
     sendGainDb: param(numberList({ min: -70, max: 0 }).optional(), {
       default: `send gain in dB, -70 to 0, requires sendReturn.${PER_TARGET}`,
       smallModel: null,

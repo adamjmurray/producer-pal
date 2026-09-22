@@ -7,8 +7,12 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { booleanList } from "#src/tools/shared/validation/lists/typed-lists.ts";
+import {
+  booleanList,
+  enumList,
+} from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+import { CREATE_TRACK_TYPES } from "#src/tools/constants.ts";
 
 /** How every per-track param pairs with the tracks the call makes. */
 const PER_TRACK = " One for all, or comma-separated one per track, in order.";
@@ -48,10 +52,10 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
       default: `#RRGGBB.${PER_TRACK}`,
       smallModel: "#RRGGBB",
     }),
-    type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+    type: param(enumList(CREATE_TRACK_TYPES).default("midi"), {
       // "return" still works for a caller that hasn't moved to "rt+", but the
       // path is the way to ask for one now, so it isn't offered.
-      default: { description: "type", excludeEnumValues: ["return"] },
+      default: `midi or audio.${PER_TRACK}`,
     }),
     mute: param(booleanList().optional(), {
       default: `muted? true/false.${PER_TRACK}`,

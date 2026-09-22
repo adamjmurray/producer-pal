@@ -302,9 +302,9 @@ describe("updateTrack", () => {
       expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 2);
     });
 
-    it("should warn and skip for invalid monitoring state", () => {
-      // Should not throw, just warn and skip the monitoring state update — and
-      // crucially NOT write an undefined monitoring value onto the track.
+    // The schema refuses a value outside the set; one that got past it writes
+    // nothing rather than an undefined monitoring value.
+    it("should skip a monitoring state outside the set", () => {
       const result = updateTrack({
         id: "123",
         monitoringState: "invalid",
@@ -313,9 +313,6 @@ describe("updateTrack", () => {
       expect(track123.set).not.toHaveBeenCalledWith(
         "current_monitoring_state",
         expect.anything(),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("invalid monitoring state"),
       );
       expect(result).toStrictEqual({ id: "123", path: "t0" });
     });

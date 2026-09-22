@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type TargetNotes,
   newTargetNotes,
@@ -18,7 +17,6 @@ import {
 } from "#src/tools/constants.ts";
 import { returnTrackRename } from "../helpers/return-track-rename.ts";
 import {
-  type PanningMode,
   type TrackMixerApplied,
   applyMixerProperties,
 } from "./helpers/track-mixer-updates.ts";
@@ -38,6 +36,8 @@ import {
   trackSendsAt,
 } from "./helpers/track-send-updates.ts";
 import {
+  type MonitoringState,
+  type PanningMode,
   type TrackValueArgs,
   splitTrackValues,
   trackValueListArgs,
@@ -94,7 +94,6 @@ interface UpdateTrackArgs extends TrackValueArgs {
   paths?: string;
   name?: string;
   color?: string;
-  panningMode?: PanningMode;
   inputRoutingType?: string;
   inputRoutingChannel?: string;
   outputRoutingType?: string;
@@ -107,7 +106,6 @@ interface UpdateTrackArgs extends TrackValueArgs {
   outputRoutingTypeId?: string;
   /** Deprecated: use outputRoutingChannel */
   outputRoutingChannelId?: string;
-  monitoringState?: string;
   sendReturn?: string;
   sends?: SendEntry[];
 }
@@ -137,7 +135,7 @@ interface UpdateTrackResult extends TrackMixerApplied {
  */
 function applyMonitoringState(
   track: LiveAPI,
-  monitoringState: string | undefined,
+  monitoringState: MonitoringState | undefined,
   notes: TargetNotes,
 ): void {
   if (monitoringState == null) {
@@ -156,21 +154,14 @@ function applyMonitoringState(
     return;
   }
 
-  const monitoringValue: number | undefined = {
-    [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
-    [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
-    [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
-  }[monitoringState];
-
-  if (monitoringValue == null) {
-    console.warn(
-      `invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
-    );
-
-    return;
-  }
-
-  track.set("current_monitoring_state", monitoringValue);
+  track.set(
+    "current_monitoring_state",
+    {
+      [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
+      [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
+      [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
+    }[monitoringState],
+  );
 }
 
 /**
@@ -184,7 +175,7 @@ function applyMonitoringState(
  * @param args.color - Optional track color (CSS format: hex)
  * @param args.gainDb - Optional track gain in dB (-70 to 6), one per target
  * @param args.pan - Optional pan position in stereo mode (-1 to 1), one per target
- * @param args.panningMode - Optional panning mode ('stereo' or 'split')
+ * @param args.panningMode - Optional panning mode ('stereo' or 'split'), one per target
  * @param args.leftPan - Optional left channel pan in split mode (-1 to 1), one per target
  * @param args.rightPan - Optional right channel pan in split mode (-1 to 1), one per target
  * @param args.mute - Optional mute state, one per target
@@ -198,7 +189,7 @@ function applyMonitoringState(
  * @param args.inputRoutingChannelId - Deprecated alias for inputRoutingChannel
  * @param args.outputRoutingTypeId - Deprecated alias for outputRoutingType
  * @param args.outputRoutingChannelId - Deprecated alias for outputRoutingChannel
- * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
+ * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off'), one per target
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), one per target, requires sendReturn
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param args.sends - Optional [{return, gainDb}] list, to set several at once
@@ -216,7 +207,6 @@ export function updateTrack(
     paths,
     name,
     color,
-    panningMode,
     inputRoutingType,
     inputRoutingChannel,
     outputRoutingType,
@@ -225,7 +215,6 @@ export function updateTrack(
     inputRoutingChannelId,
     outputRoutingTypeId,
     outputRoutingChannelId,
-    monitoringState,
     sendReturn,
     sends,
   } = args;
@@ -289,7 +278,7 @@ export function updateTrack(
     const mixer = trackMixer(track, {
       gainDb: values.gainDb,
       pan: values.pan,
-      panningMode,
+      panningMode: values.panningMode,
       leftPan: values.leftPan,
       rightPan: values.rightPan,
     });
@@ -305,7 +294,7 @@ export function updateTrack(
     applyRoutingProperties(track, routing, notes);
 
     // Handle monitoring state
-    applyMonitoringState(track, monitoringState, notes);
+    applyMonitoringState(track, values.monitoringState, notes);
 
     const landed = applyTrackSends(
       track,

@@ -3,10 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The booleans and numbers a track tool pairs per track: each one splits on
-// commas and pairs 1:1 with the tracks the call names, the way name and color
-// do. create-track sends only the three booleans; the rest are update-track's.
+// The booleans, numbers and enums a track tool pairs per track: each one splits
+// on commas and pairs 1:1 with the tracks the call names, the way name and
+// color do. create-track sends only the three booleans; the rest are
+// update-track's.
 
+import { MONITORING_STATES, PANNING_MODES } from "#src/tools/constants.ts";
 import { type ListArg } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   type ListEntries,
@@ -14,10 +16,17 @@ import {
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
   booleanForIndex,
+  enumForIndex,
   numberForIndex,
 } from "#src/tools/shared/validation/lists/typed-lists.ts";
 
-/** The per-track booleans and numbers, as one call sent them. */
+/** The two ways a track pans, and which pan params apply in each. */
+export type PanningMode = (typeof PANNING_MODES)[number];
+
+/** A track's input monitoring, as the tool spells it. */
+export type MonitoringState = (typeof MONITORING_STATES)[number];
+
+/** The per-track values, as one call sent them. */
 export interface TrackValueArgs {
   mute?: string;
   solo?: string;
@@ -27,6 +36,8 @@ export interface TrackValueArgs {
   leftPan?: string;
   rightPan?: string;
   sendGainDb?: string;
+  monitoringState?: string;
+  panningMode?: string;
 }
 
 /** What one track takes from them. */
@@ -39,12 +50,20 @@ export interface TrackValues {
   leftPan?: number;
   rightPan?: number;
   sendGainDb?: number;
+  monitoringState?: MonitoringState;
+  panningMode?: PanningMode;
 }
 
 /** Each of those params, split against the tracks the call named. */
 export type TrackValueLists = Record<keyof TrackValueArgs, ListEntries | null>;
 
 const BOOLEANS = new Set(["mute", "solo", "arm"]);
+
+/** The params whose entries name one of a fixed set, and that set. */
+const ENUMS: Partial<Record<keyof TrackValueArgs, readonly string[]>> = {
+  monitoringState: MONITORING_STATES,
+  panningMode: PANNING_MODES,
+};
 
 const PARAMS: Array<keyof TrackValueArgs> = [
   "mute",
@@ -55,6 +74,8 @@ const PARAMS: Array<keyof TrackValueArgs> = [
   "leftPan",
   "rightPan",
   "sendGainDb",
+  "monitoringState",
+  "panningMode",
 ];
 
 /**
@@ -100,9 +121,34 @@ export function trackValuesAt(
   return Object.fromEntries(
     PARAMS.map((param) => [
       param,
-      BOOLEANS.has(param)
-        ? booleanForIndex(args[param], index, lists[param])
-        : numberForIndex(args[param], index, lists[param]),
+      valueAt(param, args[param], index, lists[param]),
     ]),
   );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * One param's value for one track, read in the shape that param holds.
+ * @param param - The param's name
+ * @param value - The raw param, as the caller sent it
+ * @param index - The track's place in the call
+ * @param entries - The split entries, or null when one value covers every track
+ * @returns That track's value, or undefined when nothing pairs with it
+ */
+function valueAt(
+  param: keyof TrackValueArgs,
+  value: string | undefined,
+  index: number,
+  entries: ListEntries | null,
+): boolean | number | string | undefined {
+  const values = ENUMS[param];
+
+  if (values != null) {
+    return enumForIndex(value, index, entries, values);
+  }
+
+  return BOOLEANS.has(param)
+    ? booleanForIndex(value, index, entries)
+    : numberForIndex(value, index, entries);
 }
