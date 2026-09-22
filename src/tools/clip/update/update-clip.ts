@@ -50,8 +50,8 @@ import {
  * @param args.start - Bar|beat position where loop/clip region begins, one per clip
  * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction> (end = start + length), one per clip
  * @param args.firstStart - Bar|beat position for initial playback start, one per clip
- * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
+ * @param args.looping - Enable looping, one per clip
+ * @param args.duplicateLoop - One per clip: double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
  * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: <count>bar, n<fraction>, or <count>bar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
@@ -61,7 +61,7 @@ import {
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param args.warpMode - Audio clip warp mode
- * @param args.warping - Audio clip warping on/off
+ * @param args.warping - Audio clip warping on/off, one per clip
  * @param args.warpOp - Warp marker operation: add, move, remove
  * @param args.warpBeatTime - Beat time for warp marker operation
  * @param args.warpSampleTime - Sample time for warp marker operation
@@ -89,7 +89,12 @@ export async function updateClip(
   const targets = clipTargets({ id, ids, path, paths }, args);
 
   refuseUnreadableCall(args, toPath, arrangementStart, targets.named.length);
-  refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
+  refuseRegionWithDuplicateLoop(
+    args.start,
+    args.length,
+    args.duplicateLoop,
+    targets.named.length,
+  );
 
   // What the clips the call did reach have to say beyond their own results.
   const reasons = newClipReasons();
@@ -155,6 +160,9 @@ function clipTargets(
     { param: "start", value: values.start },
     { param: "length", value: values.length },
     { param: "firstStart", value: values.firstStart },
+    { param: "looping", value: values.looping },
+    { param: "duplicateLoop", value: values.duplicateLoop },
+    { param: "warping", value: values.warping },
     { param: "arrangementStart", value: values.arrangementStart },
     { param: "arrangementLength", value: values.arrangementLength },
     {

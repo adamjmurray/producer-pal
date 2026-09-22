@@ -276,7 +276,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = await updateClip({
       id: "456",
       path: "t1/s1",
-      duplicateLoop: true,
+      duplicateLoop: "true",
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);

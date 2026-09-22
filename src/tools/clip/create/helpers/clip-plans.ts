@@ -4,8 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // What each position the call names gets made from. sampleFile, timeSignature,
-// start, length and firstStart pair 1:1 with the positions, so the meter, the
-// region and even MIDI-vs-audio are settled per clip rather than per call.
+// start, length, firstStart and looping pair 1:1 with the positions, so the
+// meter, the region and even MIDI-vs-audio are settled per clip rather than
+// per call.
 
 import { type Notation } from "#src/shared/notation.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
@@ -15,6 +16,7 @@ import {
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { parsePairedValues } from "#src/tools/shared/validation/lists/paired-values.ts";
+import { booleanForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { prepareClipData } from "./clip-data-preparation.ts";
 import {
   type ClipTimingContext,
@@ -30,6 +32,8 @@ export interface ClipPlan {
   timeSignature: string | null;
   /** The raw length for this clip, echoed back in its result */
   length: string | null;
+  /** Whether this clip loops, or null to leave Live's own choice */
+  looping: boolean | null;
   timing: ClipTimingContext;
   notes: MidiNote[];
   clipLength: number;
@@ -45,7 +49,8 @@ export interface ClipPlanInputs {
   start: string | null;
   length: string | null;
   firstStart: string | null;
-  looping: boolean | null;
+  /** Each entry "true" or "false"; the schema has already checked them */
+  looping: string | null;
   notationString: string | null;
   transformString: string | null;
   notation: Notation | undefined;
@@ -58,6 +63,7 @@ interface ClipValues {
   start: string | null;
   length: string | null;
   firstStart: string | null;
+  looping: boolean | null;
 }
 
 const LABELS: Record<keyof ClipValues, PairLabels> = {
@@ -91,6 +97,12 @@ const LABELS: Record<keyof ClipValues, PairLabels> = {
     item: "position",
     shortfall: "kept the playback start they had",
   },
+  looping: {
+    param: "looping",
+    noun: "value",
+    item: "position",
+    shortfall: "kept Live's own looping",
+  },
 };
 
 /**
@@ -111,6 +123,7 @@ export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
     start: pairedList(inputs.start, count, "start"),
     length: pairedList(inputs.length, count, "length"),
     firstStart: pairedList(inputs.firstStart, count, "firstStart"),
+    looping: pairedList(inputs.looping, count, "looping"),
   };
   const cache = new Map<string, ClipPlan>();
 
@@ -121,6 +134,9 @@ export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
       start: valueAt(inputs.start, index, lists.start),
       length: valueAt(inputs.length, index, lists.length),
       firstStart: valueAt(inputs.firstStart, index, lists.firstStart),
+      looping:
+        booleanForIndex(inputs.looping ?? undefined, index, lists.looping) ??
+        null,
     };
     const key = JSON.stringify(values);
     const cached = cache.get(key);
@@ -184,7 +200,7 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
       start: values.start,
       firstStart: values.firstStart,
       length: values.length,
-      looping: inputs.looping,
+      looping: values.looping,
     },
   );
   const { notes, clipLength } = prepareClipData(
@@ -201,6 +217,7 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
     sampleFile: values.sampleFile,
     timeSignature: values.timeSignature,
     length: values.length,
+    looping: values.looping,
     timing,
     notes,
     clipLength,

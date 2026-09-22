@@ -445,8 +445,8 @@ describe("createClip - audio clips", () => {
         sampleFile: "/path/to/audio.wav",
         start: "1|1",
         length: "2bar",
-        warping: true,
-        looping: true,
+        warping: "true",
+        looping: "true",
         firstStart: "1|2",
       });
 
@@ -586,7 +586,7 @@ describe("createClip - audio clip warping", () => {
     await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
-      warping: false,
+      warping: "false",
     });
 
     expect(clip.set).toHaveBeenCalledWith("warping", 0);
@@ -605,7 +605,7 @@ describe("createClip - audio clip warping", () => {
     await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
-      warping: false,
+      warping: "false",
     });
 
     expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
@@ -617,7 +617,7 @@ describe("createClip - audio clip warping", () => {
     await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
-      warping: true,
+      warping: "true",
     });
 
     expect(clip.set).toHaveBeenCalledWith("warping", 1);
@@ -629,7 +629,7 @@ describe("createClip - audio clip warping", () => {
     const result = await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
-      warping: true,
+      warping: "true",
     });
 
     // The region comes from the sample, so it is still reported.
@@ -671,7 +671,7 @@ describe("createClip - audio clip warping", () => {
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
       length: "4bar",
-      looping: true,
+      looping: "true",
     });
 
     expect(warnSpy).toHaveBeenCalledWith(
@@ -686,7 +686,7 @@ describe("createClip - audio clip warping", () => {
 
     setupSessionMocks();
 
-    await createClip({ slot: "0/0", notes: "1|1 C3", warping: true });
+    await createClip({ slot: "0/0", notes: "1|1 C3", warping: "true" });
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("warping ignored for MIDI clips"),

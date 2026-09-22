@@ -38,8 +38,15 @@ import {
 } from "./process-single-clip-update.ts";
 import { trimmedLandings } from "./trimmed-landings.ts";
 
-/** Every param one update-clip call carries, as the tool received them. */
-export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
+/**
+ * Every param one update-clip call carries, as the tool received them.
+ * warping is omitted and redeclared: it pairs per clip, so it arrives as a
+ * coerced string and is read out one entry at a time.
+ */
+export interface ClipUpdateArgs extends Omit<
+  ClipAudioWarpQuantizeParams,
+  "warping"
+> {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
@@ -55,8 +62,12 @@ export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
   start?: string;
   length?: string;
   firstStart?: string;
-  looping?: boolean;
-  duplicateLoop?: boolean;
+  /** "true" or "false"; a coerced string, so it can pair per clip */
+  looping?: string;
+  /** "true" or "false"; a coerced string, so it can pair per clip */
+  duplicateLoop?: string;
+  /** "true" or "false"; a coerced string, so it can pair per clip */
+  warping?: string;
   arrangementStart?: string;
   arrangementLength?: string;
   toSlot?: string;
@@ -110,7 +121,7 @@ export async function runClipBatch({
     name,
     color,
   });
-  // timeSignature/start/length/firstStart pair with the targets the same way.
+  // timeSignature/start/length/firstStart and the booleans pair the same way.
   const valueLists = parseClipValueLists(args, targets.named.length);
   const updatedClips: ClipResult[] = [];
   // The clips can be processed out of call order, so each one's results are
@@ -167,12 +178,9 @@ export async function runClipBatch({
       name: getNameForIndex(name, slot, parsedNames),
       color: getColorForIndex(color, slot, parsedColors),
       ...clipValuesAt(args, valueLists, slot),
-      looping: args.looping,
-      duplicateLoop: args.duplicateLoop,
       gainDb: args.gainDb,
       pitchShift: args.pitchShift,
       warpMode: args.warpMode,
-      warping: args.warping,
       warpOp: args.warpOp,
       warpBeatTime: args.warpBeatTime,
       warpSampleTime: args.warpSampleTime,

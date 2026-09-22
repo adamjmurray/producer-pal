@@ -16,6 +16,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { splitList } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { booleanForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 
 /**
  * Refuses a call there is no reading of, before any clip is touched: a param
@@ -97,14 +98,16 @@ function refuseSharedClipDestination(
  * still composes: it moves the playback marker, not the region.
  * @param start - Loop region start, if sent
  * @param length - Loop region length, if sent
- * @param duplicateLoop - Whether to double the loop
+ * @param duplicateLoop - Whether to double the loop, one entry per clip
+ * @param targetCount - How many clips the call named
  */
 export function refuseRegionWithDuplicateLoop(
   start: string | undefined,
   length: string | undefined,
-  duplicateLoop: boolean | undefined,
+  duplicateLoop: string | undefined,
+  targetCount: number,
 ): void {
-  if (!duplicateLoop) {
+  if (!doublesAnyClip(duplicateLoop, targetCount)) {
     return;
   }
 
@@ -252,4 +255,22 @@ function validateValueParams(
   if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
     throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
   }
+}
+
+/**
+ * Whether the call doubles any clip at all. A list can ask for it on some
+ * clips and not others, and start/length would still reach the doubled ones.
+ * @param duplicateLoop - The param, as the caller sent it
+ * @param targetCount - How many clips the call named
+ * @returns True when at least one clip is being doubled
+ */
+function doublesAnyClip(
+  duplicateLoop: string | undefined,
+  targetCount: number,
+): boolean {
+  const parsed = splitList(duplicateLoop, targetCount, "duplicateLoop");
+
+  return Array.from({ length: targetCount }, (_unused, index) =>
+    booleanForIndex(duplicateLoop, index, parsed),
+  ).includes(true);
 }

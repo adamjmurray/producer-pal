@@ -187,7 +187,7 @@ describe("updateClip - unwarped audio clip region", () => {
 
     await updateClip({
       id: "123",
-      warping: false,
+      warping: "false",
       start: "1|1",
       length: "n/4",
     });
@@ -217,7 +217,7 @@ describe("updateClip - unwarped audio clip region", () => {
 
     await updateClip({
       id: "123",
-      looping: true,
+      looping: "true",
       start: "1|1",
       length: "1bar",
     });
@@ -234,7 +234,7 @@ describe("updateClip - unwarped audio clip region", () => {
    * @returns The updateClip response
    */
   async function vetoWarpingWithLooping(): Promise<unknown> {
-    return await updateClip({ id: "123", warping: false, looping: true });
+    return await updateClip({ id: "123", warping: "false", looping: "true" });
   }
 
   /**
@@ -297,7 +297,7 @@ describe("updateClip - unwarped audio clip region", () => {
       end_marker: 4,
     });
 
-    await updateClip({ id: "123", looping: true, length: "1bar" });
+    await updateClip({ id: "123", looping: "true", length: "1bar" });
 
     expect(mocks.clip123.set).not.toHaveBeenCalledWith("warping", 1);
   });

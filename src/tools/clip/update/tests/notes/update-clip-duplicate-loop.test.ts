@@ -100,7 +100,7 @@ describe("updateClip - duplicateLoop", () => {
     setupMidiClipMock(mocks.clip123);
     mockNoteCount(mocks.clip123, 8);
 
-    const result = await updateClip({ id: "123", duplicateLoop: true });
+    const result = await updateClip({ id: "123", duplicateLoop: "true" });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(result).toStrictEqual({
@@ -115,7 +115,7 @@ describe("updateClip - duplicateLoop", () => {
     setupArrangementMidiClipMock(mocks.clip789);
     mockNoteCount(mocks.clip789, 4);
 
-    const result = await updateClip({ id: "789", duplicateLoop: true });
+    const result = await updateClip({ id: "789", duplicateLoop: "true" });
 
     expect(mocks.clip789.call).toHaveBeenCalledWith("duplicate_loop");
     expect(result).toStrictEqual({
@@ -131,7 +131,7 @@ describe("updateClip - duplicateLoop", () => {
 
     // One target and nothing else asked of it, so the reason is the error.
     await expect(
-      updateClip({ id: "123", duplicateLoop: true }),
+      updateClip({ id: "123", duplicateLoop: "true" }),
     ).rejects.toThrow("duplicateLoop ignored: the clip is audio");
 
     expect(mocks.clip123.call).not.toHaveBeenCalledWith("duplicate_loop");
@@ -143,7 +143,7 @@ describe("updateClip - duplicateLoop", () => {
     setupAudioClipMock(mocks.clip456);
     mockNoteCount(mocks.clip123, 6);
 
-    const result = await updateClip({ id: "123, 456", duplicateLoop: true });
+    const result = await updateClip({ id: "123, 456", duplicateLoop: "true" });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
@@ -177,7 +177,7 @@ describe("updateClip - duplicateLoop", () => {
     mockNoteCount(mocks.clip123, 8);
 
     await expect(
-      updateClip({ id: "123", duplicateLoop: true, ...region }),
+      updateClip({ id: "123", duplicateLoop: "true", ...region }),
     ).rejects.toThrow(message);
 
     // Refused on the args alone, so nothing ran: no region write, no double.
@@ -191,7 +191,7 @@ describe("updateClip - duplicateLoop", () => {
     setupMidiClipMock(mocks.clip123);
 
     await expect(
-      updateClip({ id: "123", duplicateLoop: true, length: "4bar" }),
+      updateClip({ id: "123", duplicateLoop: "true", length: "4bar" }),
     ).rejects.toThrow(
       /To double the whole clip, send duplicateLoop on its own\. To double just part of it, send length in a separate call first\./,
     );
@@ -215,7 +215,7 @@ describe("updateClip - duplicateLoop", () => {
     await expect(
       updateClip({
         id: "123, 456",
-        duplicateLoop: true,
+        duplicateLoop: "true",
         start: "1|1",
         length: "4bar",
       }),
@@ -238,7 +238,7 @@ describe("updateClip - duplicateLoop", () => {
 
     const result = await updateClip({
       id: "123",
-      duplicateLoop: true,
+      duplicateLoop: "true",
       firstStart: "2|1",
     });
 
@@ -290,7 +290,7 @@ describe("updateClip - duplicateLoop", () => {
 
       const result = await updateClip({
         id: "123",
-        duplicateLoop: true,
+        duplicateLoop: "true",
         [param]: value,
       });
 
@@ -310,7 +310,7 @@ describe("updateClip - duplicateLoop", () => {
 
     const result = await updateClip({
       id: "123",
-      duplicateLoop: true,
+      duplicateLoop: "true",
       preTransforms: "pitch += 12",
       notes: "1|1 C3",
     });
@@ -332,7 +332,7 @@ describe("updateClip - duplicateLoop", () => {
 
     const result = await updateClip({
       id: "123",
-      duplicateLoop: true,
+      duplicateLoop: "true",
       preTransforms: "pitch += 12",
       notes: "1|1 C3",
     });
@@ -352,7 +352,7 @@ describe("updateClip - duplicateLoop", () => {
 
     const result = await updateClip({
       id: "123",
-      duplicateLoop: true,
+      duplicateLoop: "true",
       preTransforms: "C3: pitch += 12",
       transforms: "pitch += 1",
     });
@@ -377,7 +377,7 @@ describe("updateClip - duplicateLoop", () => {
 
     const result = await updateClip({
       id: "123",
-      duplicateLoop: true,
+      duplicateLoop: "true",
       code: "return notes;",
     });
 
@@ -398,7 +398,7 @@ describe("updateClip - duplicateLoop", () => {
 
     await updateClip({
       id: "123",
-      duplicateLoop: true,
+      duplicateLoop: "true",
       preTransforms: "pitch += 12",
       notes: "1|1 C3",
       transforms: "pitch -= 12",

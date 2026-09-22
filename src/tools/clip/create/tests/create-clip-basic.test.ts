@@ -115,7 +115,7 @@ describe("createClip - basic validation and time signatures", () => {
     await createClip({
       slot: "0/0",
       length: "1bar+n3/4",
-      looping: false,
+      looping: "false",
     });
 
     expectClipCreated(clipSlot, 7);
@@ -129,7 +129,7 @@ describe("createClip - basic validation and time signatures", () => {
     await createClip({
       slot: "0/0",
       length: "2bar",
-      looping: true,
+      looping: "true",
     });
 
     expectClipCreated(clipSlot, 8);
@@ -259,7 +259,7 @@ describe("createClip - basic validation and time signatures", () => {
   // `looping` unset means the clip won't loop, so firstStart is dropped there
   // too — the entry has to say so, not just for an explicit `looping: false`.
   it.each([
-    ["looping is off", { looping: false }],
+    ["looping is off", { looping: "false" }],
     ["looping is unset", {}],
   ])(
     "reports an ignored firstStart on the clip's own entry when %s",
@@ -296,7 +296,7 @@ describe("createClip - basic validation and time signatures", () => {
       slot: "0/0,0/1",
       notes: "C4 1|1",
       firstStart: "1|2",
-      looping: false,
+      looping: "false",
     })) as Array<{ reason?: string }>;
 
     expect(result).toHaveLength(2);
@@ -324,7 +324,7 @@ describe("createClip - basic validation and time signatures", () => {
       path: "t1/s0,t0/s1",
       notes: "C4 1|1",
       firstStart: "1|2",
-      looping: false,
+      looping: "false",
     })) as Array<{ reason?: string }>;
 
     expect(result.map((entry) => entry.reason)).toStrictEqual([
@@ -345,7 +345,7 @@ describe("createClip - basic validation and time signatures", () => {
       slot: "0/0",
       notes: "C4 1|1",
       firstStart: "1|2",
-      looping: false,
+      looping: "false",
     })) as { reason?: string };
 
     expect(result.reason).toBe(
@@ -364,7 +364,7 @@ describe("createClip - basic validation and time signatures", () => {
       slot: "0/0",
       notes: "C4 1|1",
       firstStart: "1|2",
-      looping: true,
+      looping: "true",
     });
 
     // 1|2 = 1 beat in 4/4 time

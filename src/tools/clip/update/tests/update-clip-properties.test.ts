@@ -71,7 +71,7 @@ describe("updateClip - Properties and ID handling", () => {
 
     const result = await updateClip({
       id: "123",
-      looping: false,
+      looping: "false",
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", false);

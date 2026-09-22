@@ -53,7 +53,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       start: "1|1",
       length: "4bar",
       firstStart: "3|1",
-      looping: true,
+      looping: "true",
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith(
@@ -82,7 +82,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       start: "1|1",
       length: "4bar",
       firstStart: "2|1",
-      looping: false,
+      looping: "false",
     });
 
     expect(capturedWarnings()).toHaveLength(0);
@@ -103,7 +103,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       id: "123",
       start: "1|1",
       length: "4bar",
-      looping: false,
+      looping: "false",
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith(
@@ -128,7 +128,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       id: "123",
       start: "2|1",
       length: "2bar",
-      looping: true,
+      looping: "true",
     });
 
     // start_marker is auto-set to match loop_start for looping clips

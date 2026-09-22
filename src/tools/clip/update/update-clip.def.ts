@@ -8,11 +8,12 @@ import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
+import { booleanList } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
-/** How every per-clip string param pairs with the targets the call names. */
+/** How every per-clip param pairs with the targets the call names. */
 const PER_CLIP = " One for all, or comma-separated one per clip, in order.";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -72,12 +73,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter." +
           PER_CLIP,
       ),
-    looping: z.boolean().optional().describe("enable looping for the clip"),
-    duplicateLoop: param(z.boolean().optional(), {
+    looping: booleanList()
+      .optional()
+      .describe(`enable looping, true or false.${PER_CLIP}`),
+    duplicateLoop: param(booleanList().optional(), {
       default:
-        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - they set the region this doubles, so the clip would end up twice the length you asked for; to double a portion, send start/length in its own call first. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip",
+        "true or false: double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - they set the region this doubles, so the clip would end up twice the length you asked for; to double a portion, send start/length in its own call first. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip." +
+        PER_CLIP,
       smallModel:
-        "double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - send those in their own call first to pick the region. notes merge across the full doubled clip",
+        "true or false: double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - send those in their own call first to pick the region. notes merge across the full doubled clip",
     }),
     firstStart: param(z.string().optional(), {
       default:
@@ -135,11 +139,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
     // Audio clip parameters
     ...audioClipParams(),
-    warping: z
-      .boolean()
+    warping: booleanList()
       .optional()
       .describe(
-        "audio clip warping on/off (ignored for MIDI). false resets the region to the whole file and turns looping off; looping:true forces warping back on",
+        "audio clip warping, true or false (ignored for MIDI). false resets the region to the whole file and turns looping off; looping:true forces warping back on." +
+          PER_CLIP,
       ),
 
     // MIDI note parameters. Notation-keyed `notes` text so the schema reflects

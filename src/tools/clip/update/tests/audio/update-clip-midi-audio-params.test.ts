@@ -48,7 +48,7 @@ describe("updateClip - audio params on a MIDI clip", () => {
       id: "123",
       name: "Renamed",
       warpMode: "Beats",
-      warping: true,
+      warping: "true",
     });
 
     expect(result).toStrictEqual({
@@ -71,7 +71,7 @@ describe("updateClip - audio params on a MIDI clip", () => {
   it("refuses a lone MIDI clip sent only an audio param", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await expect(updateClip({ id: "123", warping: false })).rejects.toThrow(
+    await expect(updateClip({ id: "123", warping: "false" })).rejects.toThrow(
       "warping ignored: the clip is MIDI",
     );
     expect(capturedWarnings()).toHaveLength(0);

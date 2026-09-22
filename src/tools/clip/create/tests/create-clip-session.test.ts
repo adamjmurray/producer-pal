@@ -220,7 +220,7 @@ describe("createClip - session view", () => {
       notes: "C3 D3 E3 1|1",
       name: "New Clip",
       color: "#FF0000",
-      looping: true,
+      looping: "true",
       auto: "play-clip",
     });
 

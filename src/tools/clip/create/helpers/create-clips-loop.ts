@@ -43,6 +43,7 @@ import {
   resolveClipTransform,
 } from "./clip-transform.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { booleanForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 
 /** One entry of a create-clip result: a clip, or the destination it never got. */
 export type CreatedClipEntry = ClipResultObject | TargetSkip;
@@ -58,7 +59,6 @@ export interface CreateClipsParams {
   /** What to build at each destination, in call order */
   plans: ClipPlan[];
   liveSet: LiveAPI;
-  looping: boolean | null;
   color: string | null;
   notationString: string | null;
   transformString: string | null;
@@ -72,8 +72,10 @@ export interface CreateClipsParams {
   droppedTakeLanes: Map<string, string>;
   /** Every destination track, resolved once for the call */
   tracks: Map<number, LiveAPI>;
-  /** Requested audio warp state, or null to keep Live's own choice */
-  warping: boolean | null;
+  /** Requested audio warp state(s), as the caller sent them */
+  warping: string | null;
+  /** warping split against the positions, or null when one value covers all */
+  parsedWarping: ListEntries | null;
   /** Audio clip gain in decibels; omitted leaves it alone */
   gainDb?: number | null;
   /** Audio clip pitch shift in semitones; omitted leaves it alone */
@@ -271,7 +273,7 @@ async function createClipAtIndex(
       plan.timing.startBeats,
       plan.timing.endBeats,
       plan.timing.firstStartBeats,
-      params.looping,
+      plan.looping,
       clipName,
       clipColor ?? null,
       plan.timing.timeSigNumerator,
@@ -284,7 +286,11 @@ async function createClipAtIndex(
       // Take lanes apply only to arrangement clips (ignored for session view)
       takeLaneFor(params, pos),
       {
-        warping: params.warping,
+        warping: booleanForIndex(
+          params.warping ?? undefined,
+          index,
+          params.parsedWarping,
+        ),
         gainDb: params.gainDb,
         pitchShift: params.pitchShift,
         warpMode: params.warpMode,
