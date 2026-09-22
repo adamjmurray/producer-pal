@@ -11,6 +11,7 @@
  */
 
 import { type jsonSchema } from "ai";
+import { ENUM_LIST_VARIANTS } from "./enum-list-variants.ts";
 import { PER_TARGET_LIST_VARIANTS } from "./per-target-list-variants.ts";
 
 export type JsonSchemaInput = Parameters<typeof jsonSchema>[0];
@@ -285,6 +286,7 @@ export const VARIANTS: Variant[] = [
     check: (i) => isNameOrIdEntries(i.params),
   },
   ...PER_TARGET_LIST_VARIANTS,
+  ...ENUM_LIST_VARIANTS,
 ];
 
 /**

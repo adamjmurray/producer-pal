@@ -153,6 +153,24 @@ union buys nothing the probe could see. `z.coerce.string()` still accepts a
 typed `true` or `-6` for the one-target case. See
 `src/tools/shared/validation/lists/typed-lists.ts`.
 
+### Per-target enums (added 2026-09-21)
+
+Same question for an enum: `type: string` with the allowed values in the
+description, versus `anyOf[enum, string]`. `--repeat=3`, tool choice `required`:
+
+| model                 | enum csv-string | enum anyOf[enum,string]       | string, one target | anyOf, one target |
+| --------------------- | --------------- | ----------------------------- | ------------------ | ----------------- |
+| gemini-3.6-flash      | ok 3/3          | wrong-shape 3/3 (sent `midi`) | ok 3/3             | ok 3/3            |
+| gpt-5-mini            | ok 3/3          | ok 3/3                        | ok 3/3             | ok 3/3            |
+| gpt-5-nano            | ok 3/3          | ok 3/3                        | ok 3/3             | ok 3/3            |
+| claude-haiku-4.5 (OR) | ok 3/3          | ok 3/3                        | ok 3/3             | ok 3/3            |
+
+The plain string wins again, and here the union actively loses: Gemini picks the
+enum branch and collapses three tracks to one type. Every model still sent a
+valid value with no `enum` in the schema. gpt-5-nano sent `MIDI,audio,MIDI`, so
+entries are matched case-insensitively. See `enumList` in
+`src/tools/shared/validation/lists/typed-lists.ts`.
+
 ### Agent-CLI snapshot
 
 **Date:** 2026-08-31 · **`codex-code/luna`, 1 draw per cell.** All eight
