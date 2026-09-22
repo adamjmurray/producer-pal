@@ -15,6 +15,8 @@ import { splitList } from "../../lists/list-pairing.ts";
 import {
   booleanForIndex,
   booleanList,
+  enumForIndex,
+  enumList,
   numberForIndex,
   numberList,
 } from "../../lists/typed-lists.ts";
@@ -184,6 +186,59 @@ describe("numberList", () => {
 });
 
 // The shape a tool will actually declare these in.
+describe("enumList", () => {
+  const schema = enumList(["midi", "audio"]);
+
+  it("takes a single value, in any case and with spaces", () => {
+    expect(schema.parse("midi")).toBe("midi");
+    expect(schema.parse(" AUDIO ")).toBe(" AUDIO ");
+  });
+
+  it("takes a list, reading one trailing comma as a typo", () => {
+    expect(schema.parse("midi,audio,MIDI")).toBe("midi,audio,MIDI");
+    expect(schema.parse("midi,audio,")).toBe("midi,audio,");
+  });
+
+  it("refuses a blank, an empty entry and a value not in the set", () => {
+    const message = "each entry must be one of: midi, audio";
+
+    expect(refusal(schema, "")).toBe(message);
+    expect(refusal(schema, "midi,,audio")).toBe(message);
+    expect(refusal(schema, "midi,return")).toBe(message);
+  });
+
+  it("publishes as a plain string with no enum", () => {
+    expect(publishedParam(schema)).toStrictEqual({ type: "string" });
+  });
+
+  it("chains .optional() and .default()", () => {
+    expect(schema.optional().parse(undefined)).toBeUndefined();
+    expect(schema.default("midi").parse(undefined)).toBe("midi");
+  });
+});
+
+describe("enumForIndex", () => {
+  const values = ["midi", "audio"] as const;
+
+  it("gives every target the whole value when there is nothing to pair", () => {
+    expect(enumForIndex("Audio", 2, null, values)).toBe("audio");
+  });
+
+  it("reads the entry in the target's position, in the tool's spelling", () => {
+    const value = "midi, AUDIO, midi";
+    const parsed = splitList(value, 3, "type");
+
+    expect(enumForIndex(value, 0, parsed, values)).toBe("midi");
+    expect(enumForIndex(value, 1, parsed, values)).toBe("audio");
+    expect(enumForIndex(value, 2, parsed, values)).toBe("midi");
+  });
+
+  it("is undefined when the param was not sent, or names no value", () => {
+    expect(enumForIndex(undefined, 0, null, values)).toBeUndefined();
+    expect(enumForIndex("return", 0, null, values)).toBeUndefined();
+  });
+});
+
 describe("through param()", () => {
   it("resolves to a described string a tool can publish", () => {
     const { published, validating } = resolveToolSchema(

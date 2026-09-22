@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Schemas for a boolean or number param that pairs one entry per target.
+// Schemas for a boolean, number or enum param that pairs one entry per target.
 //
-// `z.boolean()` and `z.coerce.number()` refuse "true,false" before the handler
-// runs, so these params declare a coerced string and check each entry here.
+// `z.boolean()`, `z.coerce.number()` and `z.enum()` refuse "true,false" before
+// the handler runs, so these params declare a coerced string and check each entry here.
 // The coercion is what keeps a single typed value working: a model that sends
 // `true` or `-6` gets "true" / "-6" before the entries are read. A blank is
 // refused, which is also how unset-empty-params tells these apart from a text
@@ -63,6 +63,19 @@ export function numberList(options: NumberListOptions = {}): ZodType<string> {
 }
 
 /**
+ * A param whose entries are each one of the allowed values, in any case. The
+ * published schema carries no `enum`, so the description has to list them.
+ * @param values - The allowed values, as the tool spells them
+ * @returns A coerced string schema, `type: "string"` in the published schema
+ */
+export function enumList(values: readonly string[]): ZodType<string> {
+  return entryList(
+    (entry) => enumEntry(entry, values) != null,
+    `each entry must be one of: ${values.join(", ")}`,
+  );
+}
+
+/**
  * One target's boolean: the whole value when the call named one target, else
  * the entry in that position. Mirrors {@link valueForIndex}.
  * @param value - The raw param, as the caller sent it
@@ -97,6 +110,26 @@ export function numberForIndex(
   // An entry that names no number reads as unset rather than as NaN, so a
   // value the schema somehow let through can't reach the Live API.
   return entry == null ? undefined : (entryNumber(entry) ?? undefined);
+}
+
+/**
+ * One target's enum value, spelled the way the tool does, read the same way
+ * {@link booleanForIndex} reads a boolean.
+ * @param value - The raw param, as the caller sent it
+ * @param index - The target's position in the call
+ * @param parsed - The split entries, or null when the value covers every target
+ * @param values - The allowed values, as the tool spells them
+ * @returns The value, or undefined when nothing pairs with this target
+ */
+export function enumForIndex<const T extends string>(
+  value: string | undefined,
+  index: number,
+  parsed: ListEntries | null,
+  values: readonly T[],
+): T | undefined {
+  const entry = valueForIndex(value, index, parsed);
+
+  return entry == null ? undefined : (enumEntry(entry, values) ?? undefined);
 }
 
 /**
@@ -144,6 +177,20 @@ function isBooleanEntry(entry: string): boolean {
   const spelling = entry.trim().toLowerCase();
 
   return spelling === "true" || spelling === "false";
+}
+
+/**
+ * @param entry - One entry of the list
+ * @param values - The allowed values
+ * @returns The allowed value the entry spells, ignoring case, or null
+ */
+function enumEntry<T extends string>(
+  entry: string,
+  values: readonly T[],
+): T | null {
+  const spelling = entry.trim().toLowerCase();
+
+  return values.find((v) => v.toLowerCase() === spelling) ?? null;
 }
 
 /**
