@@ -66,12 +66,11 @@ export function findReturnIndex(
  * the same value for every target, so a per-target skip would repeat one
  * warning down the whole list. Refusing up front costs nothing: no target has
  * been touched yet.
- * @param sendGainDb - Send level in dB, if given; a list where it pairs per
- *   target, and only its presence is read here
+ * @param sendGainDb - Send level in dB, if given
  * @param sendReturn - The return the level applies to, if given
  */
 export function validateSendPair(
-  sendGainDb: number | string | undefined,
+  sendGainDb: number | undefined,
   sendReturn: string | undefined,
 ): void {
   if ((sendGainDb != null) !== (sendReturn != null)) {

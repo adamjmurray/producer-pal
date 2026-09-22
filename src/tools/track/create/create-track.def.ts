@@ -7,15 +7,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import {
-  booleanList,
-  enumList,
-} from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
-import { CREATE_TRACK_TYPES } from "#src/tools/constants.ts";
-
-/** How every per-track param pairs with the tracks the call makes. */
-const PER_TRACK = " One for all, or comma-separated one per track, in order.";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
@@ -45,28 +37,28 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
     }),
 
     name: param(z.string().optional(), {
-      default: `name.${PER_TRACK}`,
+      default: "name for all, or comma-separated one per track, in order",
       smallModel: "track name",
     }),
     color: param(z.string().optional(), {
-      default: `#RRGGBB.${PER_TRACK}`,
+      default: "#RRGGBB for all, or comma-separated one per track, in order",
       smallModel: "#RRGGBB",
     }),
-    type: param(enumList(CREATE_TRACK_TYPES).default("midi"), {
+    type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
       // "return" still works for a caller that hasn't moved to "rt+", but the
       // path is the way to ask for one now, so it isn't offered.
-      default: `midi or audio.${PER_TRACK}`,
+      default: { description: "type", excludeEnumValues: ["return"] },
     }),
-    mute: param(booleanList().optional(), {
-      default: `muted? true/false.${PER_TRACK}`,
+    mute: param(z.boolean().optional(), {
+      default: "muted?",
       smallModel: null,
     }),
-    solo: param(booleanList().optional(), {
-      default: `soloed? true/false.${PER_TRACK}`,
+    solo: param(z.boolean().optional(), {
+      default: "soloed?",
       smallModel: null,
     }),
-    arm: param(booleanList().optional(), {
-      default: `record armed? true/false.${PER_TRACK}`,
+    arm: param(z.boolean().optional(), {
+      default: "record armed?",
       smallModel: null,
     }),
   },

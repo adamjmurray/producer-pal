@@ -167,33 +167,6 @@ describe("ppal-update-scene", () => {
     expect(meters).toStrictEqual(["6/8", "7/4"]);
   });
 
-  it("pairs one tempo per scene in one call", async () => {
-    const [sceneId, secondSceneId] = await createScenes();
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id: `${sceneId},${secondSceneId}`, tempo: "120,90" },
-    });
-
-    parseBatchResult<UpdateSceneResult>(result, 2);
-
-    await sleep(100);
-
-    const tempos = [];
-
-    for (const id of [sceneId!, secondSceneId!]) {
-      const scene = parseToolResult<ReadSceneResult>(
-        await ctx.client!.callTool({
-          name: "ppal-read-scene",
-          arguments: { id },
-        }),
-      );
-
-      tempos.push(scene.tempo);
-    }
-
-    expect(tempos).toStrictEqual([120, 90]);
-  });
-
   it("updates several scenes in one call", async () => {
     const [sceneId, secondSceneId] = await createScenes();
     const result = await ctx.client!.callTool({

@@ -4,27 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { CREATE_TRACK_TYPES } from "#src/tools/constants.ts";
 import {
   type InsertionSpot,
   refuseCountWithPathList,
   repeatForCount,
   validateCount,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
-import {
-  countListEntries,
-  validateListLengths,
-} from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  type ListEntries,
-  splitList,
-} from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { enumForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
-export type CreateTrackType = (typeof CREATE_TRACK_TYPES)[number];
+export type CreateTrackType = "midi" | "audio" | "return";
 
 export interface CreateTrackTarget {
   /** Which Live call makes the track */
@@ -37,7 +27,7 @@ interface CreateTrackTargetArgs {
   path?: string;
   trackIndex?: number;
   count?: number;
-  type?: string;
+  type?: CreateTrackType;
 }
 
 /**
@@ -46,25 +36,21 @@ interface CreateTrackTargetArgs {
  * @param args.path - "t+", "t2", "rt+", comma-separated for several tracks
  * @param args.trackIndex - Deprecated index, -1 or unset to append
  * @param args.count - Deprecated repeat of a single path
- * @param args.type - Which signal a regular track carries, one per track
+ * @param args.type - Which signal a regular track carries
  * @returns One target per track to create, in the order the call named them
  */
 export function resolveCreateTrackTargets({
   path,
   trackIndex,
   count,
-  type,
+  type = "midi",
 }: CreateTrackTargetArgs): CreateTrackTarget[] {
   const entries = pathEntries(path, "path");
 
   if (entries.length === 0) {
     validateCount(count);
-    refuseTypeList(type);
 
-    return repeatForCount(
-      [targetFromIndex(trackIndex, typeAt(type, 0))],
-      count,
-    );
+    return repeatForCount([targetFromIndex(trackIndex, type)], count);
   }
 
   if (trackIndex != null) {
@@ -76,56 +62,13 @@ export function resolveCreateTrackTargets({
   refuseCountWithPathList(count, entries.length, "track", "t+,t+,t+");
   validateCount(count);
 
-  // count repeats one path, so there is only ever one type to repeat with it.
-  if (count != null) {
-    refuseTypeList(type);
-  }
-
-  validateListLengths([
-    { param: "path", count: entries.length, noun: "track" },
-    { param: "type", value: type },
-  ]);
-
-  const types = splitList(type, entries.length, "type");
-
   return repeatForCount(
-    entries.map((entry, i) => targetFromPath(entry, typeAt(type, i, types))),
+    entries.map((entry) => targetFromPath(entry, type)),
     count,
   );
 }
 
 // --- Helpers below main exports ---
-
-/**
- * The type one track takes from the list.
- * @param type - The type param, as the caller sent it
- * @param index - The track's place in the call
- * @param parsed - The split entries, or null when one value covers every track
- * @returns The type, midi when the call named none
- */
-function typeAt(
-  type: string | undefined,
-  index: number,
-  parsed: ListEntries | null = null,
-): CreateTrackType {
-  return enumForIndex(type, index, parsed, CREATE_TRACK_TYPES) ?? "midi";
-}
-
-/**
- * Refuses a type list where the call makes one kind of track: the deprecated
- * trackIndex names one place, and count repeats one path.
- * @param type - The type param, as the caller sent it
- */
-function refuseTypeList(type: string | undefined): void {
-  if (countListEntries(type) < 2) {
-    return;
-  }
-
-  throw new Error(
-    "type names one value here. Use a path list to give each track its own " +
-      '(e.g. path: "t+,t+", type: "midi,audio").',
-  );
-}
 
 /**
  * Reads the params the path replaced as a place to put a new track.

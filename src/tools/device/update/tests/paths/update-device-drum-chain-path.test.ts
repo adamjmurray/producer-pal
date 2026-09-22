@@ -181,7 +181,7 @@ describe("updateDevice — drum chain path spelling", () => {
     });
 
     expect(
-      updateDevice({ path: "t0/d0/pC1/d0/pD1", mute: "true" }),
+      updateDevice({ path: "t0/d0/pC1/d0/pD1", mute: true }),
     ).toStrictEqual({ id: "inner-chain", path: "t0/d0/pC1/d0/pD1/c0" });
   });
 

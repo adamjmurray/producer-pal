@@ -5,22 +5,10 @@
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
-import {
-  AB_COMPARE_ACTIONS,
-  MACRO_VARIATIONS,
-} from "#src/tools/device/update/device-value-enums.ts";
-import {
-  booleanList,
-  enumList,
-  numberList,
-} from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-
-/** How every per-target param pairs with the targets the call names. */
-const PER_TARGET = " One for all, or comma-separated one per target, in order.";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
@@ -54,7 +42,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
-      default: `display name (not drum pads).${PER_TARGET}`,
+      default:
+        "name for all, or comma-separated one per device, in order (not drum pads)",
       smallModel: "display name (not drum pads)",
     }),
     // Kept for potential future use
@@ -92,58 +81,51 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a reason when there was nothing to do, or `ok:false` and why nothing happened',
       smallModel: null,
     }),
-    macroVariation: param(enumList(MACRO_VARIATIONS).optional(), {
+    macroVariation: param(
+      z.enum(["create", "load", "delete", "revert", "randomize"]).optional(),
+      {
+        default:
+          "Rack only: create/load/delete/revert variation, or randomize macros. load/delete require macroVariationIndex. create always appends.",
+        smallModel: null,
+      },
+    ),
+    macroVariationIndex: param(z.coerce.number().int().min(0).optional(), {
       default:
-        "Rack only: create, load, delete or revert a macro variation, or " +
-        "randomize macros. load/delete need macroVariationIndex; create " +
-        `appends.${PER_TARGET}`,
+        "Rack only: variation index for load/delete operations (0-based)",
       smallModel: null,
     }),
-    macroVariationIndex: param(numberList({ min: 0, int: true }).optional(), {
+    macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
       default:
-        "Rack only: variation index for load/delete, a whole number 0 or " +
-        `greater (0-based).${PER_TARGET}`,
+        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up; the entry says where the count landed.",
       smallModel: null,
     }),
-    macroCount: param(numberList({ min: 0, max: 16, int: true }).optional(), {
+    abCompare: param(z.enum(["a", "b", "save"]).optional(), {
       default:
-        "Rack only: set visible macro count, a whole number 0-16. Macros " +
-        "come in pairs, so an odd count rounds up; the entry says where the " +
-        `count landed.${PER_TARGET}`,
-      smallModel: null,
-    }),
-    abCompare: param(enumList(AB_COMPARE_ACTIONS).optional(), {
-      default: `AB Compare: a, b, or save current to the other slot.${PER_TARGET}`,
+        "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
       smallModel: null,
     }),
 
-    mute: booleanList()
-      .optional()
-      .describe(`muted? true/false (chains/drum pads only).${PER_TARGET}`),
-    solo: booleanList()
-      .optional()
-      .describe(`soloed? true/false (chains/drum pads only).${PER_TARGET}`),
+    mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
+    solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
-      default: `#RRGGBB (chains only).${PER_TARGET}`,
+      default:
+        "#RRGGBB for all, or comma-separated one per chain, in order (chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
-    gainDb: param(numberList({ min: -70, max: 6 }).optional(), {
+    gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
       default:
-        "chain's own gain in dB, -70 to 6 (chains only; a pad path works " +
-        "unless the pad has layers, which take a layer path like " +
-        `'t0/d0/pC1/c1').${PER_TARGET}`,
+        "chain's own gain in dB (chains only; a pad path works unless the " +
+        "pad has layers, which take a layer path like 't0/d0/pC1/c1')",
       smallModel: null,
     }),
-    pan: param(numberList({ min: -1, max: 1 }).optional(), {
+    pan: param(z.coerce.number().min(-1).max(1).optional(), {
       default:
         "chain's own pan, -1 (left) to 1 (right) (chains only; a pad path " +
-        `works unless the pad has layers, which take a layer path).${PER_TARGET}`,
+        "works unless the pad has layers, which take a layer path)",
       smallModel: null,
     }),
-    sendGainDb: param(numberList({ min: -70, max: 0 }).optional(), {
-      default:
-        "chain's send level in dB, -70 to 0, requires sendReturn (chains " +
-        `only).${PER_TARGET}`,
+    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
+      default: "chain's send level in dB, requires sendReturn (chains only)",
       smallModel: null,
     }),
     sendReturn: param(z.coerce.string().optional(), {
@@ -156,8 +138,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "set several of a chain's sends at once: [{return, gainDb}], where return is a rack return chain's id, exact name, or letter — the `return`/`returnId` read-device reports. Use instead of sendGainDb + sendReturn, which set one",
       smallModel: null,
     }),
-    chokeGroup: param(numberList({ min: 0, max: 16, int: true }).optional(), {
-      default: `choke group, a whole number 0-16, 0=none (drum chains only).${PER_TARGET}`,
+    chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
+      default: "choke group 0-16, 0=none (drum chains only)",
       smallModel: null,
     }),
     mappedPitch: param(z.string().optional(), {

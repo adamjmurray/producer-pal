@@ -58,7 +58,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain with exact return name", () => {
     updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "A-Reverb",
     });
 
@@ -68,7 +68,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain with letter prefix", () => {
     updateTrack({
       id: "123",
-      sendGainDb: "-6",
+      sendGainDb: -6,
       sendReturn: "A",
     });
 
@@ -78,7 +78,7 @@ describe("updateTrack - send properties", () => {
   it("should set second send with letter prefix", () => {
     updateTrack({
       id: "123",
-      sendGainDb: "-3",
+      sendGainDb: -3,
       sendReturn: "B",
     });
 
@@ -88,7 +88,7 @@ describe("updateTrack - send properties", () => {
   it("should match a return track letter in lower case", () => {
     updateTrack({
       id: "123",
-      sendGainDb: "-6",
+      sendGainDb: -6,
       sendReturn: "a",
     });
 
@@ -98,7 +98,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain to minimum value", () => {
     updateTrack({
       id: "123",
-      sendGainDb: "-70",
+      sendGainDb: -70,
       sendReturn: "A",
     });
 
@@ -108,7 +108,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain to maximum value (0 dB)", () => {
     updateTrack({
       id: "123",
-      sendGainDb: "0",
+      sendGainDb: 0,
       sendReturn: "A",
     });
 
@@ -129,7 +129,7 @@ describe("updateTrack - send properties", () => {
 
     updateTrack({
       id: "123",
-      sendGainDb: "-6",
+      sendGainDb: -6,
       sendReturn: "return_B",
     });
 
@@ -140,7 +140,7 @@ describe("updateTrack - send properties", () => {
   it("reports an id that is not a return track on the entry", () => {
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "123",
     });
 
@@ -150,7 +150,7 @@ describe("updateTrack - send properties", () => {
   // Half a pair names no send, and it names the same non-send for every track
   // in the list. Refused before any of them is touched.
   it.each([
-    ["sendGainDb", { sendGainDb: "-12" }],
+    ["sendGainDb", { sendGainDb: -12 }],
     ["sendReturn", { sendReturn: "A" }],
   ])("refuses the call when only %s is provided", (_label, args) => {
     expect(() => updateTrack({ id: "123", ...args })).toThrow(
@@ -166,7 +166,7 @@ describe("updateTrack - send properties", () => {
     // write the wrong send instead of skipping.
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "C",
     });
 
@@ -184,7 +184,7 @@ describe("updateTrack - send properties", () => {
 
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-9",
+      sendGainDb: -9,
       sendReturn: "A",
     });
 
@@ -200,7 +200,7 @@ describe("updateTrack - send properties", () => {
 
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "A",
     });
 
@@ -211,7 +211,7 @@ describe("updateTrack - send properties", () => {
     // The model has to be able to tell what it could have said instead.
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "ZZZ",
     });
 
@@ -233,7 +233,7 @@ describe("updateTrack - send properties", () => {
 
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "A",
     });
 
@@ -252,7 +252,7 @@ describe("updateTrack - send properties", () => {
     // no track named by the call is left without an answer.
     const result = updateTrack({
       id: "123,456",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "ZZZ",
     });
 
@@ -276,7 +276,7 @@ describe("updateTrack - send properties", () => {
   it("should set sends on multiple tracks", () => {
     updateTrack({
       id: "123,456",
-      sendGainDb: "-6",
+      sendGainDb: -6,
       sendReturn: "A",
     });
 
@@ -362,7 +362,7 @@ describe("updateTrack - send properties", () => {
     it("honors the scalar pair alongside a list naming another return", () => {
       updateTrack({
         id: "123",
-        sendGainDb: "-6",
+        sendGainDb: -6,
         sendReturn: "A",
         sends: [{ return: "B", gainDb: -12 }],
       });
@@ -375,7 +375,7 @@ describe("updateTrack - send properties", () => {
       // A send holds one value, so the caller has to be told which one held.
       updateTrack({
         id: "123",
-        sendGainDb: "-6",
+        sendGainDb: -6,
         sendReturn: "A",
         sends: [{ return: "A-Reverb", gainDb: -12 }],
       });
@@ -523,7 +523,7 @@ describe("updateTrack - send properties", () => {
 
       const result = updateTrack({
         id: "123",
-        sendGainDb: "-6",
+        sendGainDb: -6,
         sendReturn: "A",
       });
 
@@ -636,7 +636,7 @@ describe("updateTrack - send properties", () => {
     updateTrack({
       id: "123",
       name: "Test Track",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "B",
     });
 
@@ -674,7 +674,7 @@ describe("updateTrack - send properties", () => {
 
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "A",
     });
 
@@ -696,7 +696,7 @@ describe("updateTrack - send properties", () => {
 
     const result = updateTrack({
       id: "123",
-      sendGainDb: "-12",
+      sendGainDb: -12,
       sendReturn: "C", // Matches return track at index 2
     });
 

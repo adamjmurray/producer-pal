@@ -37,7 +37,7 @@ describe("updateScene", () => {
       id: "123",
       name: "Updated Scene",
       color: "#FF0000",
-      tempo: "140",
+      tempo: 140,
       timeSignature: "3/4",
     });
 
@@ -49,7 +49,7 @@ describe("updateScene", () => {
     const result = updateScene({
       id: "123, 456",
       color: "#00FF00",
-      tempo: "120",
+      tempo: 120,
     });
 
     expect(scene1.set).toHaveBeenCalledTimes(3);
@@ -91,7 +91,7 @@ describe("updateScene", () => {
   it("should disable tempo when -1 is passed", () => {
     const result = updateScene({
       id: "123",
-      tempo: "-1",
+      tempo: -1,
     });
 
     expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", false);
@@ -102,7 +102,7 @@ describe("updateScene", () => {
   // One value for every scene in the call, so a per-scene skip repeated the
   // same message and still let the names land. Refused before any scene is
   // touched instead.
-  it.each(["0", "1000"])("refuses an out-of-range tempo of %s", (tempo) => {
+  it.each([0, 1000])("refuses an out-of-range tempo of %i", (tempo) => {
     expect(() => updateScene({ id: "123", tempo })).toThrow(
       `${TEMPO_REFUSAL} Pass -1 to disable it.`,
     );
@@ -111,10 +111,10 @@ describe("updateScene", () => {
 
   it("accepts boundary tempos of exactly 20 and 999", () => {
     // Boundaries: 20 and 999 are valid (< 20 / > 999 are the reject bounds).
-    updateScene({ id: "123", tempo: "20" });
+    updateScene({ id: "123", tempo: 20 });
     expect(scene1.set).toHaveBeenCalledWith("tempo", 20);
 
-    updateScene({ id: "456", tempo: "999" });
+    updateScene({ id: "456", tempo: 999 });
     expect(scene2.set).toHaveBeenCalledWith("tempo", 999);
   });
 

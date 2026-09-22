@@ -4,16 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import {
-  lookupMockObject,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
-import { toolDefCreateClip } from "../create-clip.def.ts";
 import { createClip } from "../create-clip.ts";
 import {
   setupMultiSessionAudioClipMocks,
@@ -86,7 +82,7 @@ describe("createClip - per-position timing params", () => {
 
     await createClip({
       path: "t0/s0,t0/s1",
-      looping: "true",
+      looping: true,
       length: "4bar",
       firstStart: "1|1,3|1",
     });
@@ -192,80 +188,3 @@ describe("createClip - per-position sampleFile", () => {
     ).rejects.toThrow("path names 2 entries but sampleFile names 3 entries");
   });
 });
-
-describe("createClip - per-position booleans", () => {
-  it("gives each position its own looping", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
-
-    await createClip({ path: "t0/s0,t0/s1", looping: "true,false" });
-
-    expect(first.clip.set).toHaveBeenCalledWith("looping", 1);
-    expect(second.clip.set).toHaveBeenCalledWith("looping", 0);
-  });
-
-  it("applies a single looping to every position", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
-
-    await createClip({ path: "t0/s0,t0/s1", looping: "true" });
-
-    expect(first.clip.set).toHaveBeenCalledWith("looping", 1);
-    expect(second.clip.set).toHaveBeenCalledWith("looping", 1);
-  });
-
-  it("gives each position its own warping", async () => {
-    setupMultiSessionAudioClipMocks([0, 1]);
-
-    await createClip({
-      path: "t0/s0,t0/s1",
-      sampleFile: "/samples/kick.wav",
-      warping: "true,false",
-    });
-
-    expect(audioClipAt(0).set).toHaveBeenCalledWith("warping", 1);
-    expect(audioClipAt(1).set).toHaveBeenCalledWith("warping", 0);
-  });
-
-  it("refuses a boolean list that names a different number of positions", async () => {
-    twoSessionSlots();
-
-    await expect(
-      createClip({ path: "t0/s0,t0/s1", looping: "true,false,true" }),
-    ).rejects.toThrow("path names 2 entries but looping names 3 entries");
-  });
-
-  // The MCP layer coerces before the handler runs, so the handler only ever
-  // sees strings.
-  it("takes a plain boolean through the tool schema", () => {
-    const params = resolveToolSchema(
-      toolDefCreateClip.toolOptions.inputSchema,
-      {},
-    ).validating;
-    const args = z.object(params).parse({ looping: true, warping: false });
-
-    expect(args.looping).toBe("true");
-    expect(args.warping).toBe("false");
-  });
-
-  it("refuses an entry that names no boolean", () => {
-    const params = resolveToolSchema(
-      toolDefCreateClip.toolOptions.inputSchema,
-      {},
-    ).validating;
-
-    expect(() => z.object(params).parse({ looping: "true,maybe" })).toThrow(
-      "each entry must be true or false",
-    );
-  });
-});
-
-/**
- * The audio clip one session slot holds.
- * @param sceneIndex - Which slot on track 0
- * @returns Its mock handle
- */
-function audioClipAt(sceneIndex: number): RegisteredMockObject {
-  return lookupMockObject(
-    undefined,
-    livePath.track(0).clipSlot(sceneIndex).clip(),
-  ) as RegisteredMockObject;
-}

@@ -78,7 +78,7 @@ describe("updateDevice - bare drum pad paths", () => {
   it("writes mute to the DrumPad rather than to each chain", () => {
     const { pad, chains } = registerDrumRack(2);
 
-    const result = updateDevice({ path: "t0/d0/pC1", mute: "true" });
+    const result = updateDevice({ path: "t0/d0/pC1", mute: true });
 
     // Live broadcasts a pad's mute to its chains and reads it back aggregated,
     // so one write is both correct and what Live's own UI does.
@@ -96,7 +96,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     const result = updateDevice({
       path: "t0/d0/pC1",
-      chokeGroup: "3",
+      chokeGroup: 3,
       mappedPitch: "C3",
     });
 
@@ -126,12 +126,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     // They were the whole call, so nothing landed on the pad.
     expect(() =>
-      updateDevice({
-        path: "t0/d0/pC1",
-        gainDb: "-6",
-        pan: "0.5",
-        name: "Kick",
-      }),
+      updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" }),
     ).toThrow(
       "the pad has 2 layers, so per-layer settings " +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
@@ -149,7 +144,7 @@ describe("updateDevice - bare drum pad paths", () => {
     registerDrumRack(2);
 
     expect(
-      updateDevice({ path: "t0/d0/pC1", name: "Kick", mute: "true" }),
+      updateDevice({ path: "t0/d0/pC1", name: "Kick", mute: true }),
     ).toStrictEqual({
       id: "pad-36",
       reason:
@@ -163,7 +158,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     const result = updateDevice({
       path: "t0/d0/pC1",
-      gainDb: "-6",
+      gainDb: -6,
       name: "Kick",
     });
 
@@ -181,7 +176,7 @@ describe("updateDevice - bare drum pad paths", () => {
   it("omits the id for a virtual pad and writes mute to the chains", () => {
     const { chains } = registerDrumRack(2, false);
 
-    const result = updateDevice({ path: "t0/d0/pC1", mute: "true" });
+    const result = updateDevice({ path: "t0/d0/pC1", mute: true });
 
     for (const chain of chains) {
       expect(chain.set).toHaveBeenCalledWith("mute", 1);
@@ -197,7 +192,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     // Live drops the write — set returns 1 and the read-back stays 0 — so a
     // result here would say a mute happened that didn't.
-    expect(() => updateDevice({ path: "t0/d0/pC1", mute: "true" })).toThrow(
+    expect(() => updateDevice({ path: "t0/d0/pC1", mute: true })).toThrow(
       "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
         "to update — Live ignores writes to an empty pad",
     );
@@ -259,7 +254,7 @@ describe("updateDevice - bare drum pad paths", () => {
   it("names a device-only property once for the whole pad", () => {
     registerDrumRack(2);
 
-    expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: "4" })).toThrow(
+    expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: 4 })).toThrow(
       "macroCount not applicable to a drum pad chain",
     );
     expect(capturedWarnings()).toStrictEqual([]);

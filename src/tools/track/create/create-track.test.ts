@@ -138,9 +138,9 @@ describe("createTrack", () => {
     const result = createTrack({
       trackIndex: 0,
       name: "Armed Track",
-      mute: "true",
-      solo: "false",
-      arm: "true",
+      mute: true,
+      solo: false,
+      arm: true,
     });
 
     expect(track.set).toHaveBeenCalledWith("name", "Armed Track");
@@ -158,9 +158,9 @@ describe("createTrack", () => {
 
     const result = createTrack({
       trackIndex: 0,
-      mute: "false",
-      solo: "false",
-      arm: "false",
+      mute: false,
+      solo: false,
+      arm: false,
     });
 
     expect(track.set).toHaveBeenCalledWith("mute", false);

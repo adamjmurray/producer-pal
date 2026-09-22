@@ -31,7 +31,6 @@ import {
   expectedSampleLength,
   readSongTiming,
 } from "../helpers/audio-warp-test-helpers.ts";
-import { readClipFully } from "../helpers/clip-io-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
@@ -533,8 +532,8 @@ describe("ppal-create-clip audio warping", () => {
 });
 
 // ============================================================================
-// sampleFile, timeSignature, start, length, firstStart, looping and warping
-// pair 1:1 with the positions path names, the way name and color do.
+// sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
+// positions path names, the way name and color do.
 // ============================================================================
 
 describe("ppal-create-clip per-position params", () => {
@@ -603,47 +602,5 @@ describe("ppal-create-clip per-position params", () => {
     expect(clips[1]?.timeSignature).toBe("3/4");
     expect(clips[0]?.length).toBe("2bar");
     expect(clips[1]?.length).toBe("4bar");
-  });
-
-  it("gives each MIDI clip its own looping", async () => {
-    const created = parseToolResult<CreateClipResult[]>(
-      await ctx.client!.callTool({
-        name: "ppal-create-clip",
-        arguments: {
-          path: `t${EMPTY_MIDI_TRACK}/s22,t${EMPTY_MIDI_TRACK}/s23`,
-          looping: "true,false",
-        },
-      }),
-    );
-
-    expect(created).toHaveLength(2);
-
-    const clips = await readCreated(created);
-
-    expect(clips.map((clip) => clip.looping)).toStrictEqual([true, false]);
-  });
-
-  it("gives each audio clip its own warping", async () => {
-    const created = parseToolResult<CreateClipResult[]>(
-      await ctx.client!.callTool({
-        name: "ppal-create-clip",
-        arguments: {
-          path: `t${AUDIO_TRACK}/s8,t${AUDIO_TRACK}/s9`,
-          sampleFile: SAMPLE_FILE,
-          warping: "true,false",
-        },
-      }),
-    );
-
-    expect(created).toHaveLength(2);
-
-    await sleep(100);
-
-    const clips = [
-      await readClipFully(ctx.client!, { id: created[0]!.id }),
-      await readClipFully(ctx.client!, { id: created[1]!.id }),
-    ];
-
-    expect(clips.map((clip) => clip.warping)).toStrictEqual([true, false]);
   });
 });

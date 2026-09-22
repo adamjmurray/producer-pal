@@ -38,7 +38,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set mute on a Chain", () => {
       const result = updateDevice({
         id: "456",
-        mute: "true",
+        mute: true,
       });
 
       expect(chain.set).toHaveBeenCalledWith("mute", 1);
@@ -48,7 +48,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set solo on a Chain", () => {
       const result = updateDevice({
         id: "456",
-        solo: "true",
+        solo: true,
       });
 
       expect(chain.set).toHaveBeenCalledWith("solo", 1);
@@ -58,7 +58,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should clear solo on a Chain", () => {
       const result = updateDevice({
         id: "456",
-        solo: "false",
+        solo: false,
       });
 
       expect(chain.set).toHaveBeenCalledWith("solo", 0);
@@ -68,7 +68,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set mute on a DrumChain", () => {
       const result = updateDevice({
         id: "789",
-        mute: "true",
+        mute: true,
       });
 
       expect(drumChain.set).toHaveBeenCalledWith("mute", 1);
@@ -78,7 +78,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("refuses a lone drum pad with no chains", () => {
       // Live drops writes to an empty pad, so there is nothing to report and
       // nothing was done.
-      expect(() => updateDevice({ id: "790", mute: "true" })).toThrow(
+      expect(() => updateDevice({ id: "790", mute: true })).toThrow(
         "drum pad t0/d0/pC1 (id 790) has no chains, so there is " +
           "nothing to update — Live ignores writes to an empty pad",
       );
@@ -89,7 +89,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set mute to false (unmute)", () => {
       const result = updateDevice({
         id: "456",
-        mute: "false",
+        mute: false,
       });
 
       expect(chain.set).toHaveBeenCalledWith("mute", 0);
@@ -99,7 +99,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     // Nothing else was asked, so the lone target has nothing to report and
     // throws instead (ADR-0042).
     it("should refuse mute on a Device", () => {
-      expect(() => updateDevice({ id: "123", mute: "true" })).toThrow(
+      expect(() => updateDevice({ id: "123", mute: true })).toThrow(
         "mute not applicable to a device",
       );
       expect(capturedWarnings()).toStrictEqual([]);
@@ -141,7 +141,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set chokeGroup on a DrumChain", () => {
       const result = updateDevice({
         id: "789",
-        chokeGroup: "1",
+        chokeGroup: 1,
       });
 
       expect(drumChain.set).toHaveBeenCalledWith("choke_group", 1);
@@ -149,13 +149,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should refuse chokeGroup on a Chain", () => {
-      expect(() => updateDevice({ id: "456", chokeGroup: "1" })).toThrow(
+      expect(() => updateDevice({ id: "456", chokeGroup: 1 })).toThrow(
         "chokeGroup not applicable to a chain",
       );
     });
 
     it("should refuse chokeGroup on a Device", () => {
-      expect(() => updateDevice({ id: "123", chokeGroup: "1" })).toThrow(
+      expect(() => updateDevice({ id: "123", chokeGroup: 1 })).toThrow(
         "chokeGroup not applicable to a device",
       );
     });
@@ -243,10 +243,10 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["macroVariation", { macroVariation: "create" }, "800"],
       [
         "macroVariation, macroVariationIndex",
-        { macroVariation: "load", macroVariationIndex: "1" },
+        { macroVariation: "load", macroVariationIndex: 1 },
         "800",
       ],
-      ["solo", { solo: "true" }, "123"],
+      ["solo", { solo: true }, "123"],
       ["mappedPitch", { mappedPitch: "C3" }, "123"],
     ] as const)(
       "says %s is not applicable to a device, beside what did land",
@@ -266,9 +266,9 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["macroVariation", { macroVariation: "create" }],
       [
         "macroVariation, macroVariationIndex",
-        { macroVariation: "load", macroVariationIndex: "1" },
+        { macroVariation: "load", macroVariationIndex: 1 },
       ],
-      ["macroCount", { macroCount: "4" }],
+      ["macroCount", { macroCount: 4 }],
       ["abCompare", { abCompare: "a" }],
     ] as const)(
       "says %s is not applicable to a chain, beside what did land",
@@ -313,7 +313,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("does not touch chokeGroup/mappedPitch on a DrumChain when only mute is set", () => {
-      updateDevice({ id: "789", mute: "true" });
+      updateDevice({ id: "789", mute: true });
 
       expect(drumChain.set).not.toHaveBeenCalledWith(
         "choke_group",

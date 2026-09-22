@@ -19,7 +19,6 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { numberForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
 import {
@@ -28,6 +27,7 @@ import {
 } from "#src/tools/shared/helpers/landed-color.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
   resolveCreateSceneIndex,
   resolveCreateSceneSpots,
@@ -36,7 +36,6 @@ import {
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
-  validateTempos,
   validateTimeSignatures,
 } from "./helpers/scene-tempo-signature.ts";
 
@@ -64,7 +63,7 @@ interface CreateSceneArgs {
   capture?: boolean;
   name?: string;
   color?: string;
-  tempo?: string | null;
+  tempo?: number | null;
   timeSignature?: string | null;
   focus?: boolean;
 }
@@ -78,7 +77,7 @@ interface CreateSceneArgs {
  * @param args.capture - Capture currently playing Session clips instead of creating empty scenes
  * @param args.name - Name for all, or one per scene, in order
  * @param args.color - Color for all, or one per scene, in order (CSS format: hex)
- * @param args.tempo - Tempo in BPM for all, or one per scene, in order (-1 disables)
+ * @param args.tempo - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled" when capturing)
  * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
@@ -103,19 +102,9 @@ export function createScene(
   if (capture) {
     const sceneIndex = resolveCreateSceneIndex(path, sceneIndexParam, liveSet);
 
-    // One scene, so the whole value is this scene's.
-    validateTempos(tempo, null);
+    validateTempo(tempo, -1);
 
-    return runCapture(
-      sceneIndex,
-      {
-        color,
-        tempo: numberForIndex(tempo ?? undefined, 0, null),
-        timeSignature,
-      },
-      name,
-      focus,
-    );
+    return runCapture(sceneIndex, { color, tempo, timeSignature }, name, focus);
   }
 
   const sceneCount = liveSet.getChildIds("scenes").length;
@@ -125,6 +114,8 @@ export function createScene(
     count,
     sceneCount,
   );
+
+  validateTempo(tempo, -1);
 
   const insertions = planInsertions(spots, sceneCount, true);
 
@@ -136,15 +127,8 @@ export function createScene(
     count: spots.length,
     name,
     color,
-    extraLists: [
-      { param: "timeSignature", value: timeSignature },
-      { param: "tempo", value: tempo },
-    ],
+    extraLists: [{ param: "timeSignature", value: timeSignature }],
   });
-  const parsedTempos = splitList(tempo ?? undefined, spots.length, "tempo");
-
-  validateTempos(tempo, parsedTempos);
-
   const parsedTimeSignatures = splitList(
     timeSignature ?? undefined,
     spots.length,
@@ -157,7 +141,7 @@ export function createScene(
     createSingleScene(liveSet, insertion, {
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
-      tempo: numberForIndex(tempo ?? undefined, i, parsedTempos),
+      tempo,
       timeSignature: valueForIndex(
         timeSignature ?? undefined,
         i,

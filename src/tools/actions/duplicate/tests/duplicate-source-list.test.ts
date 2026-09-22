@@ -212,7 +212,7 @@ describe("duplicate - a list of sources", () => {
       const result = await duplicate({
         type: "clip",
         id: "clipA",
-        count: "3",
+        count: 3,
         toPath: "t2/s0",
       });
 
@@ -628,7 +628,7 @@ describe("duplicate - a list of sources", () => {
       const result = await duplicate({
         type: "track",
         id: "track1,track2",
-        count: "2",
+        count: 2,
         name: "a,b,c,d",
       });
 

@@ -339,7 +339,7 @@ describe("updateClip - Basic operations", () => {
       id: "123",
       name: "Updated Clip",
       color: "#FF0000",
-      looping: "true",
+      looping: true,
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Updated Clip");
@@ -393,7 +393,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({
       id: "123, 456",
       color: "#00FF00",
-      looping: "false",
+      looping: false,
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("color", 65280);

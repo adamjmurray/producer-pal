@@ -137,7 +137,7 @@ describe("updateTrack take lane targets", () => {
       path: "t0/l+",
       name: "Take A",
       color: "#FF0000",
-      mute: "true",
+      mute: true,
     });
 
     expect(lane(0)?.set).not.toHaveBeenCalledWith("color", expect.anything());

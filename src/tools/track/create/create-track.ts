@@ -21,23 +21,20 @@ import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { returnTrackRename } from "../helpers/return-track-rename.ts";
 import {
-  type TrackValueArgs,
-  splitTrackValues,
-  trackValueListArgs,
-  trackValuesAt,
-} from "../helpers/track-value-lists.ts";
-import {
   type CreateTrackTarget,
   resolveCreateTrackTargets,
 } from "./create-track-targets.ts";
 
-interface CreateTrackArgs extends TrackValueArgs {
+interface CreateTrackArgs {
   path?: string;
   trackIndex?: number;
   count?: number;
   name?: string;
   color?: string;
-  type?: string;
+  type?: "midi" | "audio" | "return";
+  mute?: boolean;
+  solo?: boolean;
+  arm?: boolean;
 }
 
 interface CreatedTrackResult {
@@ -61,10 +58,10 @@ interface CreatedTrackResult {
  * @param args.count - Deprecated repeat of a single path
  * @param args.name - Name for all, or one per track, in order
  * @param args.color - Color for all, or one per track, in order (CSS format: hex)
- * @param args.type - "midi" or "audio", one per track
- * @param args.mute - Mute state, one per track
- * @param args.solo - Solo state, one per track
- * @param args.arm - Arm state, one per track
+ * @param args.type - Type of tracks ("midi", "audio", or "return")
+ * @param args.mute - Mute state for the tracks
+ * @param args.solo - Solo state for the tracks
+ * @param args.arm - Arm state for the tracks
  * @param _context - Internal context object (unused)
  * @returns One object per track, unwrapped when the call named one
  */
@@ -72,12 +69,10 @@ export function createTrack(
   args: CreateTrackArgs = {},
   _context: Partial<ToolContext> = {},
 ): CreatedTrackResult | CreatedTrackResult[] {
-  const { count, name, color } = args;
+  const { count, name, color, mute, solo, arm } = args;
   const targets = resolveCreateTrackTargets(args);
 
-  // Read off the target rather than the raw param, which the caller may have
-  // spelled in any case.
-  if (targets[0]?.type === "return" && args.trackIndex != null) {
+  if (args.type === "return" && args.trackIndex != null) {
     console.warn(
       "trackIndex is ignored for return tracks (always added at end)",
     );
@@ -94,9 +89,7 @@ export function createTrack(
     count: targets.length,
     name,
     color,
-    extraLists: trackValueListArgs(args),
   });
-  const valueLists = splitTrackValues(args, targets.length);
 
   const created: CreatedTrackResult[] = [];
   let returnIndex = returnTrackBase(liveSet, targets);
@@ -115,14 +108,13 @@ export function createTrack(
     );
 
     const trackColor = getColorForIndex(color, i, parsedColors);
-    const values = trackValuesAt(args, valueLists, i);
 
     track.setAll({
       name: rename.write,
       color: trackColor,
-      mute: values.mute,
-      solo: values.solo,
-      arm: values.arm,
+      mute,
+      solo,
+      arm,
     });
 
     const landed = trackColor == null ? {} : landedColor(track, trackColor);

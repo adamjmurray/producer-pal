@@ -247,69 +247,6 @@ describe("ppal-update-device", () => {
     expect(device.name).toBe("Reached");
   });
 
-  /**
-   * The Audio Effect Rack's chains, with their mixer values.
-   * @returns The chains, in rack order
-   */
-  async function readRackChains(): Promise<ChainMixerRead[]> {
-    const rack = parseToolResult<ReadDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { path: "t6/d0", include: ["chains"] },
-      }),
-    );
-
-    return (rack.chains ?? []) as ChainMixerRead[];
-  }
-
-  // A value pairs with the targets the way a name does, so one call can give
-  // two chains different levels and different mute states.
-  it("gives each chain the gain, pan and mute at its own position", async () => {
-    const entries = await updateTargets({
-      path: "t6/d0/c0,t6/d0/c1",
-      gainDb: "-6,-12",
-      pan: "-0.5,0.5",
-      mute: "true,false",
-    });
-
-    expect(entries).toHaveLength(2);
-
-    await sleep(100);
-    const chains = await readRackChains();
-
-    expect(chains[0]?.gainDb).toBeCloseTo(-6, 1);
-    expect(chains[1]?.gainDb).toBeCloseTo(-12, 1);
-    expect(chains[0]?.pan).toBeCloseTo(-0.5, 1);
-    expect(chains[1]?.pan).toBeCloseTo(0.5, 1);
-    expect(chains[0]?.state).toBe("muted");
-    expect(chains[1]?.state).not.toBe("muted");
-
-    // Back to the defaults the Set holds, so the rest of the file sees the
-    // chains it expects.
-    await updateTargets({
-      path: "t6/d0/c0,t6/d0/c1",
-      gainDb: "0",
-      pan: "0",
-      mute: "false",
-    });
-
-    await sleep(100);
-
-    expect((await readRackChains())[0]?.state).not.toBe("muted");
-  });
-
-  it("refuses a number list that names the wrong number of targets", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: { path: "t6/d0/c0,t6/d0/c1", gainDb: "-6,-12,-18" },
-    });
-
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      "path names 2 entries but gainDb names 3 entries.",
-    );
-  });
-
   it("reports a path that names no device in its own slot", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
     // One name for both targets, so only the one it reaches is renamed.
@@ -465,30 +402,6 @@ describe("ppal-update-device", () => {
     expect((await readRackParams(rackId)).variations?.count ?? 0).toBe(0);
   });
 
-  // macroVariation pairs per target too, so one call can act on both racks.
-  it("creates a variation on each of two racks from one call", async () => {
-    const first = await rackWithOneChain();
-    const second = await rackWithOneChain();
-
-    const written = parseToolResultWithWarnings<UpdateDeviceResult[]>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          id: `${first},${second}`,
-          macroVariation: "create,create",
-        },
-      }),
-    );
-
-    expect(written.data.map((entry) => entry.id)).toStrictEqual([
-      first,
-      second,
-    ]);
-    expect(written.warnings).toStrictEqual([]);
-    expect((await readRackParams(first)).variations?.count).toBe(1);
-    expect((await readRackParams(second)).variations?.count).toBe(1);
-  });
-
   // The count comes back off Live's own `visible_macro_count`. This rack has no
   // mappings, so both writes land exactly and the entry says nothing.
   it("raises and lowers macroCount with nothing to report", async () => {
@@ -552,13 +465,6 @@ interface ReadDeviceResult {
   chains?: unknown[];
   macros?: { count: number; hasMappings: boolean };
   variations?: { count: number; selected: number };
-}
-
-/** What a chain read reports of its own mixer and state. */
-interface ChainMixerRead {
-  gainDb?: number;
-  pan?: number;
-  state?: string;
 }
 
 interface UpdateDeviceResult {

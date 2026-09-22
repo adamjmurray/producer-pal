@@ -57,7 +57,7 @@ describe("updateTrack - mixer properties", () => {
   it("should update gain only", () => {
     updateTrack({
       id: "123",
-      gainDb: "-6",
+      gainDb: -6,
     });
 
     expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -6);
@@ -66,7 +66,7 @@ describe("updateTrack - mixer properties", () => {
   it("should update pan only", () => {
     updateTrack({
       id: "123",
-      pan: "0.5",
+      pan: 0.5,
     });
 
     expect(panningParam1.set).toHaveBeenCalledWith("value", 0.5);
@@ -75,8 +75,8 @@ describe("updateTrack - mixer properties", () => {
   it("should update both gain and pan", () => {
     updateTrack({
       id: "123",
-      gainDb: "-3",
-      pan: "-0.25",
+      gainDb: -3,
+      pan: -0.25,
     });
 
     expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -3);
@@ -87,9 +87,9 @@ describe("updateTrack - mixer properties", () => {
     updateTrack({
       id: "123",
       name: "Test Track",
-      gainDb: "-12",
-      pan: "1",
-      mute: "true",
+      gainDb: -12,
+      pan: 1,
+      mute: true,
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
@@ -101,7 +101,7 @@ describe("updateTrack - mixer properties", () => {
   it("should handle minimum gain value", () => {
     updateTrack({
       id: "123",
-      gainDb: "-70",
+      gainDb: -70,
     });
 
     expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -70);
@@ -110,7 +110,7 @@ describe("updateTrack - mixer properties", () => {
   it("should handle maximum gain value", () => {
     updateTrack({
       id: "123",
-      gainDb: "6",
+      gainDb: 6,
     });
 
     expect(volumeParam1.set).toHaveBeenCalledWith("display_value", 6);
@@ -119,7 +119,7 @@ describe("updateTrack - mixer properties", () => {
   it("should handle minimum pan value (full left)", () => {
     updateTrack({
       id: "123",
-      pan: "-1",
+      pan: -1,
     });
 
     expect(panningParam1.set).toHaveBeenCalledWith("value", -1);
@@ -128,7 +128,7 @@ describe("updateTrack - mixer properties", () => {
   it("should handle maximum pan value (full right)", () => {
     updateTrack({
       id: "123",
-      pan: "1",
+      pan: 1,
     });
 
     expect(panningParam1.set).toHaveBeenCalledWith("value", 1);
@@ -137,8 +137,8 @@ describe("updateTrack - mixer properties", () => {
   it("should handle zero gain and center pan", () => {
     updateTrack({
       id: "123",
-      gainDb: "0",
-      pan: "0",
+      gainDb: 0,
+      pan: 0,
     });
 
     expect(volumeParam1.set).toHaveBeenCalledWith("display_value", 0);
@@ -148,8 +148,8 @@ describe("updateTrack - mixer properties", () => {
   it("should update mixer properties for multiple tracks", () => {
     updateTrack({
       id: "123,456",
-      gainDb: "-6",
-      pan: "0.5",
+      gainDb: -6,
+      pan: 0.5,
     });
 
     expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -6);
@@ -166,8 +166,8 @@ describe("updateTrack - mixer properties", () => {
 
     updateTrack({
       id: "123",
-      gainDb: "-6",
-      pan: "0.5",
+      gainDb: -6,
+      pan: 0.5,
     });
 
     // Should not attempt to set mixer properties when mixer doesn't exist
@@ -206,8 +206,8 @@ describe("updateTrack - mixer properties", () => {
 
     updateTrack({
       id: "123",
-      leftPan: "-0.75",
-      rightPan: "0.5",
+      leftPan: -0.75,
+      rightPan: 0.5,
     });
 
     expect(leftSplitParam1.set).toHaveBeenCalledWith("value", -0.75);
@@ -221,7 +221,7 @@ describe("updateTrack - mixer properties", () => {
 
     splitMode();
 
-    expect(updateTrack({ id: "123", pan: "0.5" })).toStrictEqual({
+    expect(updateTrack({ id: "123", pan: 0.5 })).toStrictEqual({
       id: "123",
       path: "t0",
       panningMode: "split",
@@ -238,7 +238,7 @@ describe("updateTrack - mixer properties", () => {
     // Default panning_mode is 0 (stereo) from createGetMock fallback
 
     expect(
-      updateTrack({ id: "123", leftPan: "-0.5", rightPan: "0.5" }),
+      updateTrack({ id: "123", leftPan: -0.5, rightPan: 0.5 }),
     ).toStrictEqual({
       id: "123",
       path: "t0",
@@ -257,8 +257,8 @@ describe("updateTrack - mixer properties", () => {
     updateTrack({
       id: "123",
       panningMode: "split",
-      leftPan: "-1",
-      rightPan: "1",
+      leftPan: -1,
+      rightPan: 1,
     });
 
     // Should set mode first
@@ -275,7 +275,7 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} volume`,
     });
 
-    updateTrack({ id: "123", gainDb: "-6" });
+    updateTrack({ id: "123", gainDb: -6 });
 
     expect(volumeParam1.set).not.toHaveBeenCalled();
   });
@@ -286,7 +286,7 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} panning`,
     });
 
-    updateTrack({ id: "123", pan: "0.5" });
+    updateTrack({ id: "123", pan: 0.5 });
 
     expect(panningParam1.set).not.toHaveBeenCalled();
   });
@@ -307,7 +307,7 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
-    updateTrack({ id: "123", leftPan: "-0.75", rightPan: "0.5" });
+    updateTrack({ id: "123", leftPan: -0.75, rightPan: 0.5 });
 
     expect(leftSplitParam1.set).not.toHaveBeenCalled();
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
@@ -319,7 +319,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam1, -6.02);
     keepsParamValue(panningParam1, 0.26);
 
-    const result = updateTrack({ id: "123", gainDb: "-6", pan: "0.25" });
+    const result = updateTrack({ id: "123", gainDb: -6, pan: 0.25 });
 
     // Stereo is the mode every caller assumes, so it goes unsaid.
     expect(result).toStrictEqual({
@@ -335,12 +335,10 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam1, -6);
     keepsParamValue(panningParam1, 0.25);
 
-    expect(updateTrack({ id: "123", gainDb: "-6", pan: "0.25" })).toStrictEqual(
-      {
-        id: "123",
-        path: "t0",
-      },
-    );
+    expect(updateTrack({ id: "123", gainDb: -6, pan: 0.25 })).toStrictEqual({
+      id: "123",
+      path: "t0",
+    });
   });
 
   it("counts the raw float32 as the value asked for", () => {
@@ -350,7 +348,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(panningParam1, -0.30000001192092896);
 
     expect(
-      updateTrack({ id: "123", gainDb: "-6.333333", pan: "-0.3" }),
+      updateTrack({ id: "123", gainDb: -6.333333, pan: -0.3 }),
     ).toStrictEqual({ id: "123", path: "t0" });
   });
 
@@ -360,7 +358,7 @@ describe("updateTrack - mixer properties", () => {
   it("says nothing when Live answers with a string for the pan it kept", () => {
     keepsParamValue(panningParam1, "9.999999747378752e-05");
 
-    expect(updateTrack({ id: "123", pan: "0.0001" })).toStrictEqual({
+    expect(updateTrack({ id: "123", pan: 0.0001 })).toStrictEqual({
       id: "123",
       path: "t0",
     });
@@ -371,7 +369,7 @@ describe("updateTrack - mixer properties", () => {
   it("reports a gain that reads back as a label instead of a number", () => {
     keepsParamValue(volumeParam1, "-inf");
 
-    expect(updateTrack({ id: "123", gainDb: "-70" })).toStrictEqual({
+    expect(updateTrack({ id: "123", gainDb: -70 })).toStrictEqual({
       id: "123",
       path: "t0",
       gainDb: "-inf",
@@ -383,7 +381,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam1, -6.02);
     keepsParamValue(volumeParam2, -5.98);
 
-    expect(updateTrack({ id: "123,456", gainDb: "-6" })).toStrictEqual([
+    expect(updateTrack({ id: "123,456", gainDb: -6 })).toStrictEqual([
       { id: "123", path: "t0", gainDb: -6.02, reason: CHANGED_GAIN },
       { id: "456", path: "t1", gainDb: -5.98, reason: CHANGED_GAIN },
     ]);
@@ -393,7 +391,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam1, -6.02);
 
     // pan wasn't asked for, so neither it nor the panning mode is reported.
-    expect(updateTrack({ id: "123", gainDb: "-6" })).toStrictEqual({
+    expect(updateTrack({ id: "123", gainDb: -6 })).toStrictEqual({
       id: "123",
       path: "t0",
       gainDb: -6.02,
@@ -409,7 +407,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(rightSplitParam1, 0.51000002);
 
     expect(
-      updateTrack({ id: "123", leftPan: "-0.75", rightPan: "0.5" }),
+      updateTrack({ id: "123", leftPan: -0.75, rightPan: 0.5 }),
     ).toStrictEqual({
       id: "123",
       path: "t0",
@@ -428,7 +426,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(rightSplitParam1, 0.5);
 
     expect(
-      updateTrack({ id: "123", leftPan: "-0.75", rightPan: "0.5" }),
+      updateTrack({ id: "123", leftPan: -0.75, rightPan: 0.5 }),
     ).toStrictEqual({ id: "123", path: "t0", panningMode: "split" });
   });
 
@@ -440,7 +438,7 @@ describe("updateTrack - mixer properties", () => {
     splitMode();
     keepsParamValue(rightSplitParam1, 0.5);
 
-    expect(updateTrack({ id: "123", rightPan: "0.5" })).toStrictEqual({
+    expect(updateTrack({ id: "123", rightPan: 0.5 })).toStrictEqual({
       id: "123",
       path: "t0",
       panningMode: "split",
@@ -456,7 +454,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(rightSplitParam1, 1);
 
     expect(
-      updateTrack({ id: "123", gainDb: "-6", leftPan: "-1", rightPan: "1" }),
+      updateTrack({ id: "123", gainDb: -6, leftPan: -1, rightPan: 1 }),
     ).toStrictEqual({
       id: "123",
       path: "t0",
@@ -478,8 +476,8 @@ describe("updateTrack - mixer properties", () => {
       updateTrack({
         id: "123",
         panningMode: "split",
-        leftPan: "-1",
-        rightPan: "1",
+        leftPan: -1,
+        rightPan: 1,
       }),
     ).toStrictEqual({ id: "123", path: "t0" });
 
@@ -497,7 +495,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(rightSplitParam1, 1);
 
     expect(
-      updateTrack({ id: "123", panningMode: "stereo", pan: "0.5" }),
+      updateTrack({ id: "123", panningMode: "stereo", pan: 0.5 }),
     ).toStrictEqual({
       id: "123",
       path: "t0",
@@ -518,9 +516,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(rightSplitParam1, 1);
 
     // Nothing was written, so nothing may report as landed — the entry says why.
-    expect(
-      updateTrack({ id: "123", leftPan: "-1", rightPan: "1" }),
-    ).toStrictEqual({
+    expect(updateTrack({ id: "123", leftPan: -1, rightPan: 1 })).toStrictEqual({
       id: "123",
       path: "t0",
       reason: SPLIT_ONLY,
@@ -538,9 +534,7 @@ describe("updateTrack - mixer properties", () => {
 
     keepsParamValue(rightSplitParam1, 0.98);
 
-    expect(
-      updateTrack({ id: "123", leftPan: "-1", rightPan: "1" }),
-    ).toStrictEqual({
+    expect(updateTrack({ id: "123", leftPan: -1, rightPan: 1 })).toStrictEqual({
       id: "123",
       path: "t0",
       rightPan: 0.98,
@@ -554,7 +548,7 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(panningParam1, -0.5);
 
     // Nothing was written, so nothing may report as landed — the entry says why.
-    expect(updateTrack({ id: "123", pan: "0.5" })).toStrictEqual({
+    expect(updateTrack({ id: "123", pan: 0.5 })).toStrictEqual({
       id: "123",
       path: "t0",
       panningMode: "split",
@@ -570,7 +564,7 @@ describe("updateTrack - mixer properties", () => {
       properties: { is_enabled: 0 },
     });
 
-    const result = updateTrack({ id: "123", gainDb: "-6" });
+    const result = updateTrack({ id: "123", gainDb: -6 });
 
     expect(volumeParam1.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);

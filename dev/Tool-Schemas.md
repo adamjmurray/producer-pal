@@ -43,18 +43,6 @@ empty. Anything else is refused before any work runs. Nothing cycles — includi
 holds one item — broadcasting a lone clip slot to three clips would destroy two
 of them.
 
-A boolean, number or enum that pairs per target is declared as a coerced string
-and parsed one entry at a time (`booleanList` / `numberList` / `enumList` in
-`src/tools/shared/validation/lists/typed-lists.ts`), because `z.boolean()`,
-`z.coerce.number()` and `z.enum()` refuse `"true,false"` before the handler
-runs. The coercion keeps a single typed value working, a blank is still refused,
-and models fill a plain `type: string` param with lists like `"true,false,true"`
-or `"midi,audio"` correctly, even with no `enum` in the schema — so the
-description must list the allowed values. Probe evidence is in
-`evals/schema-compat/README.md`. Read an entry back with `booleanForIndex` /
-`numberForIndex` / `enumForIndex`; enum entries match in any case and come back
-in the tool's spelling.
-
 ## An empty entry is a hole in either kind of list
 
 One trailing comma is not an entry in either kind, the way most languages read a

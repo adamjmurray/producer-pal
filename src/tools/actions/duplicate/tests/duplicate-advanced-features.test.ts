@@ -55,7 +55,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     const result = await duplicate({
       type: "track",
       id: "track2", // Duplicate second "Synth" track
-      routeToSource: "true",
+      routeToSource: true,
     });
 
     expectTrackResult(
@@ -76,7 +76,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      routeToSource: "true",
+      routeToSource: true,
     });
 
     expectTrackResult(
@@ -101,7 +101,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     const result = (await duplicate({
       type: "track",
       id: "track1",
-      routeToSource: "true",
+      routeToSource: true,
     })) as { reason?: string };
 
     expect(result.reason).toContain(
@@ -222,7 +222,7 @@ describe("duplicate - focus functionality", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      count: "2",
+      count: 2,
       focus: true,
     });
 
@@ -251,7 +251,7 @@ describe("duplicate - comma-separated names", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      count: "2",
+      count: 2,
       name: "Lead,Pad",
     });
 
@@ -266,7 +266,7 @@ describe("duplicate - comma-separated names", () => {
     await duplicate({
       type: "track",
       id: "track1",
-      count: "2",
+      count: 2,
       name: "Lead",
     });
 

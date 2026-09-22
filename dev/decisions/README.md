@@ -112,3 +112,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0045](0045-c-plus-appends-a-rack-chain.md)                        | `c+` appends a rack chain; nothing ever inserts one                   |
 | [0046](0046-d-plus-appends-a-device.md)                            | `d+` appends a device; `d<n>` still inserts at n                      |
 | [0047](0047-an-arrangement-write-overwrites-and-says-so.md)        | An arrangement write overwrites, and says so on the entry             |
+| [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target  |

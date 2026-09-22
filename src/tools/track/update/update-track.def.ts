@@ -4,20 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import {
-  booleanList,
-  enumList,
-  numberList,
-} from "#src/tools/shared/validation/lists/typed-lists.ts";
-import { MONITORING_STATES, PANNING_MODES } from "#src/tools/constants.ts";
-
-/** How every per-target param pairs with the targets the call names. */
-const PER_TARGET = " One for all, or comma-separated one per target, in order.";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
@@ -46,36 +38,41 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
 
     name: param(z.string().optional(), {
-      default: `name, ideally unique.${PER_TARGET}`,
+      default:
+        "name for all, or comma-separated one per target, in order, ideally unique",
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {
-      default: `#RRGGBB.${PER_TARGET}`,
+      default: "#RRGGBB for all, or comma-separated one per track, in order",
       smallModel: "#RRGGBB",
     }),
-    gainDb: numberList({ min: -70, max: 6 })
+    gainDb: z.coerce
+      .number()
+      .min(-70)
+      .max(6)
       .optional()
-      .describe(`track gain in dB, -70 to 6.${PER_TARGET}`),
-    pan: numberList({ min: -1, max: 1 })
+      .describe("track gain in dB"),
+    pan: z.coerce
+      .number()
+      .min(-1)
+      .max(1)
       .optional()
-      .describe(`pan: -1 (left) to 1 (right).${PER_TARGET}`),
-    panningMode: param(enumList(PANNING_MODES).optional(), {
-      default: `stereo or split.${PER_TARGET}`,
+      .describe("pan: -1 (left) to 1 (right)"),
+    panningMode: param(z.enum(["stereo", "split"]).optional(), {
+      default: "panning mode: stereo or split",
       smallModel: null,
     }),
-    leftPan: param(numberList({ min: -1, max: 1 }).optional(), {
-      default: `left channel pan in split mode, -1 to 1.${PER_TARGET}`,
+    leftPan: param(z.coerce.number().min(-1).max(1).optional(), {
+      default: "left channel pan in split mode (-1 to 1)",
       smallModel: null,
     }),
-    rightPan: param(numberList({ min: -1, max: 1 }).optional(), {
-      default: `right channel pan in split mode, -1 to 1.${PER_TARGET}`,
+    rightPan: param(z.coerce.number().min(-1).max(1).optional(), {
+      default: "right channel pan in split mode (-1 to 1)",
       smallModel: null,
     }),
-    mute: booleanList().optional().describe(`muted? true/false.${PER_TARGET}`),
-    solo: booleanList().optional().describe(`soloed? true/false.${PER_TARGET}`),
-    arm: booleanList()
-      .optional()
-      .describe(`record armed? true/false.${PER_TARGET}`),
+    mute: z.boolean().optional().describe("muted?"),
+    solo: z.boolean().optional().describe("soloed?"),
+    arm: z.boolean().optional().describe("record armed?"),
 
     inputRoutingType: param(z.coerce.string().optional(), {
       default: "name from availableInputRoutingTypes, set before channel",
@@ -106,12 +103,17 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     outputRoutingChannelId: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "outputRoutingChannel",
     }),
-    monitoringState: param(enumList(MONITORING_STATES).optional(), {
-      default: `input monitoring: in, auto or off.${PER_TARGET}`,
-      smallModel: null,
-    }),
-    sendGainDb: param(numberList({ min: -70, max: 0 }).optional(), {
-      default: `send gain in dB, -70 to 0, requires sendReturn.${PER_TARGET}`,
+    monitoringState: param(
+      z
+        .enum(Object.values(MONITORING_STATE) as [string, ...string[]])
+        .optional(),
+      {
+        default: "input monitoring",
+        smallModel: null,
+      },
+    ),
+    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
+      default: "send gain in dB, requires sendReturn",
       smallModel: null,
     }),
     sendReturn: param(z.coerce.string().optional(), {

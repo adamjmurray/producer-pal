@@ -7,7 +7,6 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH, TAKE_LANE_NOTE } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
-import { booleanList } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
   aliasParam,
@@ -15,7 +14,7 @@ import {
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
-/** How every per-position param pairs with the positions path names. */
+/** How every per-position string param pairs with the positions path names. */
 const PER_POSITION = " One for all, or comma-separated one per position.";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -108,9 +107,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
           PER_POSITION,
       ),
 
-    looping: booleanList()
-      .optional()
-      .describe(`enable looping, true or false.${PER_POSITION}`),
+    looping: z.boolean().optional().describe("enable looping for the clip"),
 
     firstStart: param(z.string().optional(), {
       default:
@@ -154,12 +151,11 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         `absolute path to audio file - audio clips only.${PER_POSITION} A list makes every clip audio`,
       ),
 
-    warping: param(booleanList().optional(), {
+    warping: param(z.boolean().optional(), {
       default:
-        "audio clips only, true or false. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo. false = play the file as rendered. The state Live settled on comes back as `warping` unless it's the one you asked for." +
-        PER_POSITION,
+        "audio clips only. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo. false = play the file as rendered. The state Live settled on comes back as `warping` unless it's the one you asked for",
       smallModel:
-        "audio clips only, true or false: false plays the file as rendered; omit and Live may time-stretch it to the tempo",
+        "audio clips only: false plays the file as rendered; omit and Live may time-stretch it to the tempo",
     }),
 
     ...audioClipParams(),

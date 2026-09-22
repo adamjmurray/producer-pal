@@ -75,7 +75,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     keepsParamValue(volume, -15.02);
     keepsParamValue(panning, -0.30000001192092896);
 
-    const result = updateDevice({ id: "chain-0", gainDb: "-15", pan: "-0.3" });
+    const result = updateDevice({ id: "chain-0", gainDb: -15, pan: -0.3 });
 
     expect(volume.set).toHaveBeenCalledWith("display_value", -15);
     expect(panning.set).toHaveBeenCalledWith("value", -0.3);
@@ -92,7 +92,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     keepsParamValue(panning, -0.26);
 
     expect(
-      updateDevice({ id: "chain-0", gainDb: "-15", pan: "-0.3" }),
+      updateDevice({ id: "chain-0", gainDb: -15, pan: -0.3 }),
     ).toStrictEqual({
       id: "chain-0",
       path: "t0/d0/c0",
@@ -107,7 +107,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     keepsParamValue(panning, -0.3);
 
     expect(
-      updateDevice({ id: "chain-0", gainDb: "-15", pan: "-0.3" }),
+      updateDevice({ id: "chain-0", gainDb: -15, pan: -0.3 }),
     ).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
   });
 
@@ -141,7 +141,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
 
     const result = updateDevice({
       id: "chain-0",
-      sendGainDb: "-6",
+      sendGainDb: -6,
       sendReturn: "a",
     });
 
@@ -184,14 +184,14 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   it("sets a chain's send to a rack return chain", () => {
-    updateDevice({ id: "chain-0", sendGainDb: "-12", sendReturn: "a" });
+    updateDevice({ id: "chain-0", sendGainDb: -12, sendReturn: "a" });
 
     expect(send.set).toHaveBeenCalledWith("display_value", -12);
     expect(volume.set).not.toHaveBeenCalled();
   });
 
   it("does not touch the mixer when nothing mixer-related is given", () => {
-    updateDevice({ id: "chain-0", mute: "true" });
+    updateDevice({ id: "chain-0", mute: true });
 
     expect(volume.set).not.toHaveBeenCalled();
     expect(panning.set).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   // pan and sendReturn each need their own case: paired with another mixer
   // param they ride along on the other one's gate check.
   it("sets pan when it is the only mixer param given", () => {
-    updateDevice({ id: "chain-0", pan: "0.5" });
+    updateDevice({ id: "chain-0", pan: 0.5 });
 
     expect(panning.set).toHaveBeenCalledWith("value", 0.5);
   });
@@ -233,9 +233,9 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(() =>
       updateDevice({
         id: "target-1",
-        gainDb: "-3",
-        pan: "1",
-        sendGainDb: "-6",
+        gainDb: -3,
+        pan: 1,
+        sendGainDb: -6,
         sendReturn: "a",
         sends: [{ return: "a", gainDb: -6 }],
       }),
@@ -251,7 +251,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     keepsParamValue(volume, -15.02);
 
     expect(
-      updateDevice({ id: "chain-0", gainDb: "-15", macroCount: "4" }),
+      updateDevice({ id: "chain-0", gainDb: -15, macroCount: 4 }),
     ).toStrictEqual({
       id: "chain-0",
       path: "t0/d0/c0",
@@ -265,7 +265,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   it("keeps the device's slot in a call that also names a chain", () => {
     registerMockObject("target-1", { type: "SimplerDevice" });
 
-    const result = updateDevice({ id: "target-1,chain-0", gainDb: "-3" }) as [
+    const result = updateDevice({ id: "target-1,chain-0", gainDb: -3 }) as [
       unknown,
       { id: string },
     ];

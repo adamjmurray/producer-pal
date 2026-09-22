@@ -145,9 +145,9 @@ describe("duplicate track to take lane", () => {
 
     await copyToLanes({
       toPath: "t1/l0",
-      count: "2",
-      withoutClips: "true",
-      withoutDevices: "true",
+      count: 2,
+      withoutClips: true,
+      withoutDevices: true,
     });
 
     expect(capturedWarnings().join("\n")).toContain(
@@ -164,7 +164,7 @@ describe("duplicate track to take lane", () => {
 
     await copyToLanes({
       toPath: "t1/l0",
-      routeToSource: "true",
+      routeToSource: true,
     });
 
     expect(capturedWarnings().join("\n")).toContain(

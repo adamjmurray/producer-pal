@@ -7,10 +7,6 @@ import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { numberList } from "#src/tools/shared/validation/lists/typed-lists.ts";
-
-/** How a per-scene param pairs with the scenes the call names. */
-const PER_SCENE = " One for all, or comma-separated one per scene, in order.";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
@@ -42,12 +38,12 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
       default: "#RRGGBB for all, or comma-separated one per scene, in order",
       smallModel: "#RRGGBB",
     }),
-    tempo: numberList()
-      .optional()
-      .describe(`BPM, 20 to 999 (-1 disables).${PER_SCENE}`),
+    tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z
       .string()
       .optional()
-      .describe(`N/D (4/4), or "disabled" to disable.${PER_SCENE}`),
+      .describe(
+        'N/D (4/4) for all, or comma-separated one per scene, in order ("disabled" disables)',
+      ),
   },
 });

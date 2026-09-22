@@ -39,8 +39,6 @@ import {
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { parsePairedValues } from "#src/tools/shared/validation/lists/paired-values.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 export interface CreateClipArgs {
   /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
@@ -71,10 +69,10 @@ export interface CreateClipArgs {
   length?: string | null;
   /** Bar|beat position for initial playback start */
   firstStart?: string | null;
-  /** Enable looping, "true" or "false", one per position */
-  looping?: string | null;
-  /** Audio clips only: warp state, "true" or "false", one per position */
-  warping?: string | null;
+  /** Enable looping for the clip */
+  looping?: boolean | null;
+  /** Audio clips only: warp state, or null to keep Live's own choice */
+  warping?: boolean | null;
   /** Audio clip gain in decibels (-70 to 24) */
   gainDb?: number | null;
   /** Audio clip pitch shift in semitones (-48 to 48) */
@@ -110,8 +108,8 @@ export interface CreateClipArgs {
  * @param args.start - Bar|beat position where loop/clip region begins
  * @param args.length - Clip length: <count>bar, n<fraction> note value, or <count>bar+n<fraction>
  * @param args.firstStart - Bar|beat position for initial playback start
- * @param args.looping - Enable looping, one per position
- * @param args.warping - Audio warp state, one per position
+ * @param args.looping - Enable looping for the clip
+ * @param args.warping - Audio warp state, or null to keep Live's own choice
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param args.warpMode - Audio clip warp mode
@@ -170,8 +168,6 @@ export async function createClip(
     start,
     length,
     firstStart,
-    looping,
-    warping,
   });
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -215,7 +211,6 @@ export async function createClip(
   });
 
   const { parsedNames, parsedColors } = clipLabels(name, color, order.length);
-  const parsedWarping = pairWarping(warping, order.length);
 
   // Before any clip or take lane exists: a position that won't parse has to
   // stop the call while there is still nothing to report.
@@ -242,7 +237,7 @@ export async function createClip(
     parsedColors,
     plans,
     liveSet,
-    parsedWarping,
+    looping,
     color,
     notationString,
     transformString,
@@ -282,8 +277,6 @@ export async function createClip(
  * @param args.start - Clip region starts
  * @param args.length - Clip lengths
  * @param args.firstStart - Playback starts
- * @param args.looping - Whether each clip loops
- * @param args.warping - Whether each audio clip warps
  */
 function refuseUnreadableCall({
   path,
@@ -296,8 +289,6 @@ function refuseUnreadableCall({
   start,
   length,
   firstStart,
-  looping,
-  warping,
 }: Pick<
   CreateClipArgs,
   | "path"
@@ -310,8 +301,6 @@ function refuseUnreadableCall({
   | "start"
   | "length"
   | "firstStart"
-  | "looping"
-  | "warping"
 >): void {
   validateListLengths([
     {
@@ -327,8 +316,6 @@ function refuseUnreadableCall({
     { param: "start", value: start },
     { param: "length", value: length },
     { param: "firstStart", value: firstStart },
-    { param: "looping", value: looping },
-    { param: "warping", value: warping },
   ]);
 
   // A "[...]" in path and arrangementStart are two spellings of one position,
@@ -459,25 +446,6 @@ function clipLabels(
     count,
     name: name ?? undefined,
     color: color ?? undefined,
-  });
-}
-
-/**
- * Split warping against the positions. looping rides in the plans, since it
- * changes the region; warping doesn't, so it pairs here like name and color.
- * @param warping - The raw param, as the caller sent it
- * @param count - How many positions the call fills
- * @returns One entry per position, or null when one value covers them all
- */
-function pairWarping(
-  warping: string | null,
-  count: number,
-): ListEntries | null {
-  return parsePairedValues(warping, count, {
-    param: "warping",
-    noun: "value",
-    item: "position",
-    shortfall: "kept Live's own warp choice",
   });
 }
 

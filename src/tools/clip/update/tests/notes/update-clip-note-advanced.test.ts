@@ -298,7 +298,7 @@ describe("updateClip - Advanced note operations", () => {
 
     const result = await updateClip({
       id: "123",
-      warping: "true",
+      warping: true,
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith(
@@ -316,7 +316,7 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       id: "123",
       warpMode: "beats",
-      warping: "false",
+      warping: false,
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith(

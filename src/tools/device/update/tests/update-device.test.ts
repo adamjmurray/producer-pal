@@ -451,7 +451,7 @@ describe("updateDevice", () => {
     });
 
     it("should reject non-rack devices with error", () => {
-      expect(() => updateDevice({ id: "456", macroCount: "8" })).toThrow(
+      expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
         "macroCount not applicable to a device",
       );
       expect(device456.call).not.toHaveBeenCalled();
@@ -461,7 +461,7 @@ describe("updateDevice", () => {
     it("should call add_macro when increasing count (macros added in pairs)", () => {
       const result = updateDevice({
         id: "123",
-        macroCount: "8", // 4 -> 8 = diff of 4 = 2 pairs
+        macroCount: 8, // 4 -> 8 = diff of 4 = 2 pairs
       });
 
       expect(device123.call).toHaveBeenCalledTimes(2);
@@ -472,7 +472,7 @@ describe("updateDevice", () => {
     it("should call remove_macro when decreasing count (macros removed in pairs)", () => {
       const result = updateDevice({
         id: "123",
-        macroCount: "0", // 4 -> 0 = diff of 4 = 2 pairs
+        macroCount: 0, // 4 -> 0 = diff of 4 = 2 pairs
       });
 
       expect(device123.call).toHaveBeenCalledTimes(2);
@@ -483,7 +483,7 @@ describe("updateDevice", () => {
     it("should do nothing when count matches", () => {
       const result = updateDevice({
         id: "123",
-        macroCount: "4", // 4 -> 4 = no change
+        macroCount: 4, // 4 -> 4 = no change
       });
 
       expect(device123.call).not.toHaveBeenCalled();
@@ -493,7 +493,7 @@ describe("updateDevice", () => {
     it("should round odd counts up to next even and say so on the entry", () => {
       const result = updateDevice({
         id: "123",
-        macroCount: "7", // rounds to 8, 4 -> 8 = 2 pairs
+        macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
       });
 
       expect(device123.call).toHaveBeenCalledTimes(2);
@@ -510,7 +510,7 @@ describe("updateDevice", () => {
     it("says where the count landed when a mapped rack keeps its macros", () => {
       registerMacroRack("rack", { count: 8, mapped: true, floor: 8 });
 
-      expect(updateDevice({ id: "rack", macroCount: "4" })).toStrictEqual({
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
         reason:
@@ -522,7 +522,7 @@ describe("updateDevice", () => {
     it("says where the count landed when nothing is mapped", () => {
       registerMacroRack("rack", { count: 8, floor: 6 });
 
-      expect(updateDevice({ id: "rack", macroCount: "4" })).toStrictEqual({
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
         reason: "macroCount landed at 6, not 4",
@@ -532,7 +532,7 @@ describe("updateDevice", () => {
     it("says which mapped macros a lowered count hid", () => {
       registerMacroRack("rack", { count: 8, mapped: true });
 
-      expect(updateDevice({ id: "rack", macroCount: "4" })).toStrictEqual({
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
         reason: "macros 5 to 8 hidden; any mappings on them are gone",
@@ -542,7 +542,7 @@ describe("updateDevice", () => {
     it("says nothing extra when a mapped rack takes the macros it is given", () => {
       registerMacroRack("rack", { count: 4, mapped: true });
 
-      expect(updateDevice({ id: "rack", macroCount: "8" })).toStrictEqual({
+      expect(updateDevice({ id: "rack", macroCount: 8 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
       });

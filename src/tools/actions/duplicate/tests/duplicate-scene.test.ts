@@ -132,7 +132,7 @@ describe("duplicate - scene duplication", () => {
     const result = (await duplicate({
       type: "scene",
       id: "scene1",
-      count: "2",
+      count: 2,
       name: "Custom Scene",
     })) as DuplicateSceneResult[];
 
@@ -187,7 +187,7 @@ describe("duplicate - scene duplication", () => {
     const result = (await duplicate({
       type: "scene",
       id: "scene1",
-      withoutClips: "true",
+      withoutClips: true,
     })) as DuplicateSceneResult;
 
     expect(result).toStrictEqual({
@@ -422,7 +422,7 @@ describe("duplicate - scene duplication", () => {
         id: "scene1",
 
         arrangementStart: "5|1",
-        count: "3",
+        count: 3,
         name: "Scene Copy",
       })) as DuplicateSceneResult[];
 
@@ -510,7 +510,7 @@ describe("duplicate - scene duplication", () => {
         type: "scene",
         id: "scene1",
         arrangementStart: "5|1, 9|1",
-        count: "2",
+        count: 2,
       })) as DuplicateSceneResult[];
 
       expect(result).toHaveLength(2);
@@ -560,7 +560,7 @@ describe("duplicate - scene duplication", () => {
         id: "scene1",
 
         arrangementStart: "5|1",
-        withoutClips: "true",
+        withoutClips: true,
       })) as DuplicateSceneResult;
 
       // Verify that duplicate_clip_to_arrangement was NOT called on any track

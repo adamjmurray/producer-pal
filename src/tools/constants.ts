@@ -91,22 +91,12 @@ export const CHAIN_TYPE = {
   DRUM_CHAIN: "drum-chain",
 } as const;
 
-// The track types ppal-create-track takes. "return" is retired in favor of the
-// "rt+" path, but still accepted.
-export const CREATE_TRACK_TYPES = ["midi", "audio", "return"] as const;
-
 // Monitoring states for user-facing API
 export const MONITORING_STATE = {
   IN: "in",
   AUTO: "auto",
   OFF: "off",
 } as const;
-
-// The same states as a list, for the schema and the per-track pairing
-export const MONITORING_STATES = Object.values(MONITORING_STATE);
-
-// The two ways a track pans
-export const PANNING_MODES = ["stereo", "split"] as const;
 
 // Live API numeric values for monitoring states
 export const LIVE_API_MONITORING_STATE_IN = 0;

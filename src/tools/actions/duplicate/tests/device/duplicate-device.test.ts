@@ -167,7 +167,7 @@ describe("duplicate - device duplication", () => {
   it("should emit warning when count > 1", async () => {
     setupDeviceDuplicationMocks();
 
-    await duplicate({ type: "device", id: "device1", count: "3" });
+    await duplicate({ type: "device", id: "device1", count: 3 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       "count 3 ignored: device copies go one per toPath",

@@ -31,9 +31,9 @@ describe("updateTrack", () => {
       id: "123",
       name: "Updated Track",
       color: "#FF0000",
-      mute: "true",
-      solo: "false",
-      arm: "true",
+      mute: true,
+      solo: false,
+      arm: true,
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
@@ -48,7 +48,7 @@ describe("updateTrack", () => {
     const result = updateTrack({
       id: "123, 456",
       color: "#00FF00",
-      mute: "true",
+      mute: true,
     });
 
     expect(track123.set).toHaveBeenCalledWith("color", 65280);
@@ -86,9 +86,9 @@ describe("updateTrack", () => {
   it("should handle boolean false values correctly", () => {
     const result = updateTrack({
       id: "123",
-      mute: "false",
-      solo: "false",
-      arm: "false",
+      mute: false,
+      solo: false,
+      arm: false,
     });
 
     expect(track123.set).toHaveBeenCalledWith("mute", false);
@@ -302,9 +302,9 @@ describe("updateTrack", () => {
       expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 2);
     });
 
-    // The schema refuses a value outside the set; one that got past it writes
-    // nothing rather than an undefined monitoring value.
-    it("should skip a monitoring state outside the set", () => {
+    it("should warn and skip for invalid monitoring state", () => {
+      // Should not throw, just warn and skip the monitoring state update — and
+      // crucially NOT write an undefined monitoring value onto the track.
       const result = updateTrack({
         id: "123",
         monitoringState: "invalid",
@@ -314,6 +314,9 @@ describe("updateTrack", () => {
         "current_monitoring_state",
         expect.anything(),
       );
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("invalid monitoring state"),
+      );
       expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
@@ -322,7 +325,7 @@ describe("updateTrack", () => {
         id: "123",
         name: "Test Track",
         color: "#FF0000",
-        mute: "true",
+        mute: true,
         inputRoutingType: "17",
         monitoringState: MONITORING_STATE.IN,
       });

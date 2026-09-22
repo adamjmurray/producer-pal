@@ -45,7 +45,7 @@ describe("duplicate - track duplication", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      count: "3",
+      count: 3,
       name: "Custom Track",
     });
 
@@ -71,7 +71,7 @@ describe("duplicate - track duplication", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      withoutClips: "true",
+      withoutClips: true,
     });
 
     expect(result).toStrictEqual(createTrackResult(1));
@@ -140,7 +140,7 @@ describe("duplicate - track duplication", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      withoutDevices: "true",
+      withoutDevices: true,
     });
 
     expect(result).toStrictEqual(createTrackResult(1));
@@ -150,10 +150,10 @@ describe("duplicate - track duplication", () => {
 
   it.each([
     ["withoutDevices not specified", undefined],
-    ["withoutDevices is false", "false"],
+    ["withoutDevices is false", false],
   ] as const)(
     "should duplicate a track with devices when %s",
-    async (_desc: string, withoutDevices: string | undefined) => {
+    async (_desc: string, withoutDevices: boolean | undefined) => {
       registerMockObject("track1", { path: livePath.track(0) });
       const liveSet = registerMockObject("live_set", {
         path: livePath.liveSet,
@@ -213,7 +213,7 @@ describe("duplicate - track duplication", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      withoutDevices: "true",
+      withoutDevices: true,
     });
 
     expect(result).toStrictEqual(createTrackResult(1));
@@ -230,7 +230,7 @@ describe("duplicate - track duplication", () => {
   describe("routeToSource functionality", () => {
     it("should throw an error when routeToSource is used with non-track type", async () => {
       await expect(
-        duplicate({ type: "scene", id: "scene1", routeToSource: "true" }),
+        duplicate({ type: "scene", id: "scene1", routeToSource: true }),
       ).rejects.toThrow("routeToSource is only supported for type 'track'");
     });
 
@@ -243,7 +243,7 @@ describe("duplicate - track duplication", () => {
       const result = await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
+        routeToSource: true,
       });
 
       expect(result).toStrictEqual({
@@ -278,7 +278,7 @@ describe("duplicate - track duplication", () => {
         inputRoutingName: "Audio In",
       });
 
-      await duplicate({ type: "track", id: "track1", routeToSource: "true" });
+      await duplicate({ type: "track", id: "track1", routeToSource: true });
 
       expect(newTrack.set).toHaveBeenCalledWith(
         "output_routing_type",
@@ -322,7 +322,7 @@ describe("duplicate - track duplication", () => {
       const result = (await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
+        routeToSource: true,
       })) as { reason?: string };
 
       expect(newTrack.set).not.toHaveBeenCalledWith(
@@ -342,7 +342,7 @@ describe("duplicate - track duplication", () => {
       await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
+        routeToSource: true,
       });
 
       // Verify monitoring was NOT changed
@@ -358,7 +358,7 @@ describe("duplicate - track duplication", () => {
       await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
+        routeToSource: true,
       });
 
       // Verify input routing was NOT changed (setProperty calls this.set for routing)
@@ -374,8 +374,8 @@ describe("duplicate - track duplication", () => {
       const result = await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
-        withoutClips: "false", // This should be overridden
+        routeToSource: true,
+        withoutClips: false, // This should be overridden
       });
 
       expect(result).toStrictEqual({
@@ -391,8 +391,8 @@ describe("duplicate - track duplication", () => {
       const result = await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
-        withoutDevices: "false", // This should be overridden
+        routeToSource: true,
+        withoutDevices: false, // This should be overridden
       });
 
       expect(result).toStrictEqual({
@@ -411,7 +411,7 @@ describe("duplicate - track duplication", () => {
       const result = (await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
+        routeToSource: true,
       })) as { reason?: string };
 
       // Verify the source track was armed
@@ -430,7 +430,7 @@ describe("duplicate - track duplication", () => {
       const result = (await duplicate({
         type: "track",
         id: "track1",
-        routeToSource: "true",
+        routeToSource: true,
       })) as { reason?: string };
 
       // Verify the source track was still set to armed (even though it already was)
@@ -461,7 +461,7 @@ describe("duplicate - track duplication", () => {
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
     const result = await duplicate(
-      { type: "track", id: "track1", count: "3" },
+      { type: "track", id: "track1", count: 3 },
       { deadline: Date.now() - 1 },
     );
 

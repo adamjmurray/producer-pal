@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * timeSignature, start, length, firstStart and the booleans pair 1:1 with the
- * clips the call names, the way name and color do.
+ * timeSignature, start, length and firstStart pair 1:1 with the clips the call
+ * names, the way name and color do.
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-value-pairing
  */
@@ -84,25 +84,5 @@ describe("ppal-update-clip per-clip values", () => {
       "5/4",
       "7/8",
     ]);
-  });
-
-  it("gives each clip its own looping in one call", async () => {
-    const ids = [
-      await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s4`, {
-        notes: "C3 1|1",
-      }),
-      await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s5`, {
-        notes: "E3 1|1",
-      }),
-    ];
-
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { id: ids.join(","), looping: "true,false" },
-    });
-
-    const clips = await readClips(ids);
-
-    expect(clips.map((clip) => clip.looping)).toStrictEqual([true, false]);
   });
 });

@@ -8,10 +8,6 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
-import { numberList } from "#src/tools/shared/validation/lists/typed-lists.ts";
-
-/** How a per-scene param pairs with the scenes the call names. */
-const PER_SCENE = " One for all, or comma-separated one per scene, in order.";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
@@ -59,12 +55,13 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       default: "#RRGGBB for all, or comma-separated one per scene, in order",
       smallModel: "#RRGGBB",
     }),
-    tempo: param(numberList().optional(), {
-      default: `BPM, 20 to 999 (-1 disables when capturing).${PER_SCENE}`,
+    tempo: param(z.coerce.number().optional(), {
+      default: "BPM (-1 disables when capturing)",
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {
-      default: `N/D (4/4), or "disabled" when capturing.${PER_SCENE}`,
+      default:
+        'N/D (4/4) for all, or comma-separated one per scene, in order ("disabled" when capturing)',
       smallModel: null,
     }),
   },

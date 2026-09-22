@@ -274,7 +274,7 @@ describe("updateDevice - written param values", () => {
       id: "rack",
       params: [{ name: "Macro 1", value: "50" }],
       macroVariation: "load",
-      macroVariationIndex: "0",
+      macroVariationIndex: 0,
     });
 
     // 50 is what the write landed; 90 is what the same call left behind, and

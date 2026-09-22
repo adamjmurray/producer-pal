@@ -27,18 +27,17 @@ import {
 const ctx = setupMcpTestContext();
 
 const DRIFT_PATH = "live_set tracks 3 devices 0";
-const COMPRESSOR_PATH = "live_set tracks 3 devices 1";
 
 interface LiveApiResult {
   results: Array<{ result?: unknown }>;
 }
 
-async function usingPresetB(path = DRIFT_PATH): Promise<number> {
+async function usingPresetB(): Promise<number> {
   const result = parseToolResult<LiveApiResult>(
     await ctx.client!.callTool({
       name: "ppal-live-api",
       arguments: {
-        path,
+        path: DRIFT_PATH,
         operations: [
           { type: "getProperty", property: "is_using_compare_preset_b" },
         ],
@@ -81,30 +80,6 @@ describe("ppal-update-device abCompare", () => {
     expect(await abCompare("t3/d0", "save")).toStrictEqual([]);
     // Saving copies A into B; it does not switch, so A stays selected.
     expect(await usingPresetB()).toBe(0);
-  });
-
-  // Each device takes the entry at its own position: one paired call leaves
-  // the first on A and the second on B.
-  it("gives each device the slot at its own position", async () => {
-    expect(await abCompare("t3/d0,t3/d1", "b")).toStrictEqual([]);
-    expect(await usingPresetB()).toBe(1);
-    expect(await usingPresetB(COMPRESSOR_PATH)).toBe(1);
-
-    const result = parseToolResult<Array<{ id: string; path?: string }>>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { path: "t3/d0,t3/d1", abCompare: "a,b" },
-      }),
-    );
-
-    await sleep(100);
-
-    expect(result.map((entry) => entry.path)).toStrictEqual(["t3/d0", "t3/d1"]);
-    expect(await usingPresetB()).toBe(0);
-    expect(await usingPresetB(COMPRESSOR_PATH)).toBe(1);
-
-    // Put the Compressor back on A, the way the set has it.
-    expect(await abCompare("t3/d1", "a")).toStrictEqual([]);
   });
 
   it("refuses a device with no A/B", async () => {
