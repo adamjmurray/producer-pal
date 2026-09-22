@@ -6,7 +6,12 @@
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import {
+  AB_COMPARE_ACTIONS,
+  MACRO_VARIATIONS,
+} from "#src/tools/device/update/device-value-enums.ts";
+import {
   booleanList,
+  enumList,
   numberList,
 } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
@@ -87,14 +92,13 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a reason when there was nothing to do, or `ok:false` and why nothing happened',
       smallModel: null,
     }),
-    macroVariation: param(
-      z.enum(["create", "load", "delete", "revert", "randomize"]).optional(),
-      {
-        default:
-          "Rack only: create/load/delete/revert variation, or randomize macros. load/delete require macroVariationIndex. create always appends.",
-        smallModel: null,
-      },
-    ),
+    macroVariation: param(enumList(MACRO_VARIATIONS).optional(), {
+      default:
+        "Rack only: create, load, delete or revert a macro variation, or " +
+        "randomize macros. load/delete need macroVariationIndex; create " +
+        `appends.${PER_TARGET}`,
+      smallModel: null,
+    }),
     macroVariationIndex: param(numberList({ min: 0, int: true }).optional(), {
       default:
         "Rack only: variation index for load/delete, a whole number 0 or " +
@@ -108,9 +112,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         `count landed.${PER_TARGET}`,
       smallModel: null,
     }),
-    abCompare: param(z.enum(["a", "b", "save"]).optional(), {
-      default:
-        "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
+    abCompare: param(enumList(AB_COMPARE_ACTIONS).optional(), {
+      default: `AB Compare: a, b, or save current to the other slot.${PER_TARGET}`,
       smallModel: null,
     }),
 

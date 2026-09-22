@@ -18,7 +18,9 @@ import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import {
   type DeviceValueArgs,
+  type DeviceValueLists,
   deviceValueListArgs,
+  deviceValuesAt,
   parseDeviceValueLists,
 } from "./device-value-lists.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
@@ -56,10 +58,10 @@ interface UpdateDeviceArgs
  * @param args.params - {name, value} entries to set (devices, plus `sample` on
  *   a drum pad or one of its layers)
  * @param args.actions - Device-specific action strings (devices only)
- * @param args.macroVariation - Rack variation action (racks only)
+ * @param args.macroVariation - Rack variation action, one per target (racks only)
  * @param args.macroVariationIndex - Rack variation index, one per target (racks only)
  * @param args.macroCount - Rack visible macro count 0-16, one per target (racks only)
- * @param args.abCompare - A/B Compare action (devices only)
+ * @param args.abCompare - A/B Compare action, one per target (devices only)
  * @param args.mute - Mute state, one per target (chains/drum pads only)
  * @param args.solo - Solo state, one per target (chains/drum pads only)
  * @param args.color - Color #RRGGBB (chains only)
@@ -127,21 +129,14 @@ export function updateDevice(
     chokeGroup,
     macroCount,
     macroVariationIndex,
+    macroVariation,
+    abCompare,
   };
 
   // One value for the whole call, so a per-target skip would repeat itself
   // down the list. Refused before any target is touched (ADR-0035).
   if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
     throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
-  }
-
-  const badVariation = macroVariationParamsReason(
-    macroVariation,
-    macroVariationIndex,
-  );
-
-  if (badVariation != null) {
-    throw new Error(badVariation);
   }
 
   let result: WriteResult<Record<string, unknown>>;
@@ -173,14 +168,14 @@ export function updateDevice(
     const destinations = moveDestinations(toPath, items.length);
     const values = parseDeviceValueLists(valueArgs, items.length);
 
+    refuseUnreadableVariations(values, items.length);
+
     // No toPath here, and none of the per-target values: each target takes
     // the entry at its own position.
     const updateOptions: UpdateTargetOptions = {
       name,
       params,
       actions,
-      macroVariation,
-      abCompare,
       color,
       sendReturn,
       sends,
@@ -205,6 +200,31 @@ export function updateDevice(
   }
 
   return result;
+}
+
+/**
+ * Refuse a macroVariation/macroVariationIndex pair no target could act on,
+ * before any of them is touched (ADR-0035). Both pair per target, so each
+ * position is read on its own.
+ * @param values - The per-target values, split against the targets
+ * @param count - How many targets the call names
+ * @throws Error when one position's pair can't be read
+ */
+function refuseUnreadableVariations(
+  values: DeviceValueLists,
+  count: number,
+): void {
+  for (let index = 0; index < count; index++) {
+    const target = deviceValuesAt(values, index);
+    const reason = macroVariationParamsReason(
+      target.macroVariation,
+      target.macroVariationIndex,
+    );
+
+    if (reason != null) {
+      throw new Error(reason);
+    }
+  }
 }
 
 /**

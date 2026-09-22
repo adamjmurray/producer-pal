@@ -267,13 +267,7 @@ describe("updateDevice - one macro number per rack", () => {
 
   // macroVariation covers both racks; only the index varies.
   it("loads a different variation on each rack", () => {
-    const racks = ["rack-a", "rack-b"].map((id) =>
-      registerMockObject(id, {
-        path: livePath.track(0).device(0),
-        type: "RackDevice",
-        properties: { can_have_chains: 1, variation_count: 3 },
-      }),
-    );
+    const racks = variationRacks();
 
     updateDevice({
       id: "rack-a,rack-b",
@@ -284,4 +278,72 @@ describe("updateDevice - one macro number per rack", () => {
     expect(racks[0]?.set).toHaveBeenCalledWith("selected_variation_index", 0);
     expect(racks[1]?.set).toHaveBeenCalledWith("selected_variation_index", 2);
   });
+
+  it("pairs the action with its own index down the list", () => {
+    const racks = variationRacks();
+
+    updateDevice({
+      id: "rack-a,rack-b",
+      macroVariation: "load,load",
+      macroVariationIndex: "0,1",
+    });
+
+    expect(racks[0]?.set).toHaveBeenCalledWith("selected_variation_index", 0);
+    expect(racks[1]?.set).toHaveBeenCalledWith("selected_variation_index", 1);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("gives each rack its own action, in any case", () => {
+    const racks = variationRacks();
+
+    updateDevice({ id: "rack-a,rack-b", macroVariation: "Create,RANDOMIZE" });
+
+    expect(racks[0]?.call).toHaveBeenCalledWith("store_variation");
+    expect(racks[1]?.call).toHaveBeenCalledWith("randomize_macros");
+  });
+
+  // The pair is read per target, so an entry that contradicts its index takes
+  // the whole call down before any rack is touched.
+  it("refuses an entry whose action takes no index", () => {
+    const racks = variationRacks();
+
+    expect(() =>
+      updateDevice({
+        id: "rack-a,rack-b",
+        macroVariation: "load,create",
+        macroVariationIndex: "0,1",
+      }),
+    ).toThrow("macroVariationIndex does nothing for macroVariation 'create'");
+
+    for (const rack of racks) {
+      expect(rack.set).not.toHaveBeenCalled();
+    }
+  });
+
+  it("refuses an action list of the wrong length", () => {
+    variationRacks();
+
+    expect(() =>
+      updateDevice({
+        id: "rack-a,rack-b",
+        macroVariation: "create,create,create",
+      }),
+    ).toThrow(
+      "id names 2 entries but macroVariation names 3 entries. Comma-separated",
+    );
+  });
 });
+
+/**
+ * Register two racks that each hold three variations.
+ * @returns The rack mocks, in call order
+ */
+function variationRacks(): RegisteredMockObject[] {
+  return ["rack-a", "rack-b"].map((id) =>
+    registerMockObject(id, {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { can_have_chains: 1, variation_count: 3 },
+    }),
+  );
+}

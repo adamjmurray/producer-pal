@@ -465,6 +465,30 @@ describe("ppal-update-device", () => {
     expect((await readRackParams(rackId)).variations?.count ?? 0).toBe(0);
   });
 
+  // macroVariation pairs per target too, so one call can act on both racks.
+  it("creates a variation on each of two racks from one call", async () => {
+    const first = await rackWithOneChain();
+    const second = await rackWithOneChain();
+
+    const written = parseToolResultWithWarnings<UpdateDeviceResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          id: `${first},${second}`,
+          macroVariation: "create,create",
+        },
+      }),
+    );
+
+    expect(written.data.map((entry) => entry.id)).toStrictEqual([
+      first,
+      second,
+    ]);
+    expect(written.warnings).toStrictEqual([]);
+    expect((await readRackParams(first)).variations?.count).toBe(1);
+    expect((await readRackParams(second)).variations?.count).toBe(1);
+  });
+
   // The count comes back off Live's own `visible_macro_count`. This rack has no
   // mappings, so both writes land exactly and the entry says nothing.
   it("raises and lowers macroCount with nothing to report", async () => {

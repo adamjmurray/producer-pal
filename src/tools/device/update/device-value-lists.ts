@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The booleans and numbers that pair one entry per target, the way name and
-// color do. Each arrives as a string so a list can reach the handler at all.
+// The booleans, numbers and enums that pair one entry per target, the way name
+// and color do. Each arrives as a string so a list can reach the handler at all.
 
 import { type ListArg } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
@@ -13,11 +13,13 @@ import {
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
   booleanForIndex,
+  enumForIndex,
   numberForIndex,
 } from "#src/tools/shared/validation/lists/typed-lists.ts";
+import { AB_COMPARE_ACTIONS, MACRO_VARIATIONS } from "./device-value-enums.ts";
 import { type UpdatePropertyOptions } from "./helpers/update-device-properties.ts";
 
-/** The per-target booleans and numbers, as one call sent them. */
+/** The per-target booleans, numbers and enums, as one call sent them. */
 export interface DeviceValueArgs {
   mute?: string;
   solo?: string;
@@ -27,6 +29,8 @@ export interface DeviceValueArgs {
   chokeGroup?: string;
   macroCount?: string;
   macroVariationIndex?: string;
+  macroVariation?: string;
+  abCompare?: string;
 }
 
 /** One target's share of them, read back as the types Live is written with. */
@@ -49,10 +53,12 @@ const NUMBERS = [
   "macroVariationIndex",
 ] as const;
 
-const PARAMS = [...BOOLEANS, ...NUMBERS];
+const ENUMS = ["macroVariation", "abCompare"] as const;
+
+const PARAMS = [...BOOLEANS, ...NUMBERS, ...ENUMS];
 
 /**
- * Every per-target boolean and number, for the whole-call length check.
+ * Every per-target boolean, number and enum, for the whole-call length check.
  * @param args - The tool arguments as received
  * @returns One list arg per param, in the order to report them
  */
@@ -83,7 +89,7 @@ export function parseDeviceValueLists(
 }
 
 /**
- * The booleans and numbers one target gets.
+ * The booleans, numbers and enums one target gets.
  * @param lists - The split entries, from {@link parseDeviceValueLists}
  * @param index - The target's place in the call
  * @returns That target's values, each undefined where the call named none
@@ -107,5 +113,17 @@ export function deviceValuesAt(
     chokeGroup: num("chokeGroup"),
     macroCount: num("macroCount"),
     macroVariationIndex: num("macroVariationIndex"),
+    macroVariation: enumForIndex(
+      args.macroVariation,
+      index,
+      entries.macroVariation,
+      MACRO_VARIATIONS,
+    ),
+    abCompare: enumForIndex(
+      args.abCompare,
+      index,
+      entries.abCompare,
+      AB_COMPARE_ACTIONS,
+    ),
   };
 }

@@ -165,12 +165,77 @@ describe("updateDevice - per-target values", () => {
       expect(validating.solo?.safeParse(false).data).toBe("false");
     });
 
+    it("takes an enum list, in any case", () => {
+      expect(validating.abCompare?.safeParse("b,a").success).toBe(true);
+      expect(validating.macroVariation?.safeParse("Create,LOAD").success).toBe(
+        true,
+      );
+    });
+
     it("refuses an entry out of range, a fraction, a non-boolean, and a blank", () => {
       expect(validating.gainDb?.safeParse("-6,99").success).toBe(false);
       expect(validating.chokeGroup?.safeParse("1.5").success).toBe(false);
       expect(validating.mute?.safeParse("yes").success).toBe(false);
       expect(validating.gainDb?.safeParse("").success).toBe(false);
       expect(validating.mute?.safeParse("").success).toBe(false);
+      expect(validating.abCompare?.safeParse("a,c").success).toBe(false);
+      expect(validating.abCompare?.safeParse("").success).toBe(false);
     });
+  });
+});
+
+describe("updateDevice - one abCompare per device", () => {
+  let devices: RegisteredMockObject[];
+
+  beforeEach(() => {
+    devices = [0, 1].map((index) =>
+      registerMockObject(`dev-${index}`, {
+        path: livePath.track(0).device(index),
+        type: "Device",
+        properties: { can_compare_ab: 1 },
+      }),
+    );
+  });
+
+  it("gives each device the slot at its own position", () => {
+    const result = updateDevice({ id: "dev-0,dev-1", abCompare: "b,a" });
+
+    expect(devices[0]?.set).toHaveBeenCalledWith(
+      "is_using_compare_preset_b",
+      1,
+    );
+    expect(devices[1]?.set).toHaveBeenCalledWith(
+      "is_using_compare_preset_b",
+      0,
+    );
+    expect(result).toStrictEqual([
+      { id: "dev-0", path: "t0/d0" },
+      { id: "dev-1", path: "t0/d1" },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("reads an entry in any case", () => {
+    updateDevice({ id: "dev-0,dev-1", abCompare: "B,Save" });
+
+    expect(devices[0]?.set).toHaveBeenCalledWith(
+      "is_using_compare_preset_b",
+      1,
+    );
+    expect(devices[1]?.call).toHaveBeenCalledWith(
+      "save_preset_to_compare_ab_slot",
+    );
+  });
+
+  it("refuses a list of the wrong length before writing anything", () => {
+    expect(() =>
+      updateDevice({ id: "dev-0,dev-1", abCompare: "a,b,save" }),
+    ).toThrow(
+      "id names 2 entries but abCompare names 3 entries. Comma-separated",
+    );
+
+    for (const device of devices) {
+      expect(device.set).not.toHaveBeenCalled();
+    }
   });
 });
