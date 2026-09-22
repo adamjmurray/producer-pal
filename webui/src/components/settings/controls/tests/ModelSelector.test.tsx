@@ -82,26 +82,24 @@ describe("ModelSelector", () => {
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.6-terra" });
+      renderModelSelector({ provider: "openai", model: "gpt-6-sol" });
+      expect(screen.getByRole("option", { name: /^GPT-6 Sol$/ })).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /^GPT-5\.6 Terra$/ }),
-      ).toBeDefined();
-      expect(
-        screen.getByRole("option", { name: /^GPT-5\.3 Codex$/ }),
+        screen.getByRole("option", { name: /^GPT-6 Luna$/ }),
       ).toBeDefined();
     });
 
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-5.6-terra",
+        model: "gpt-6-sol",
       });
 
-      expectModelSelected("gpt-5.3-codex", setModel);
+      expectModelSelected("gpt-6-luna", setModel);
     });
 
     it("includes the realtime (voice) model in the OpenAI dropdown", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.6-terra" });
+      renderModelSelector({ provider: "openai", model: "gpt-6-sol" });
       expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
     });
   });
@@ -254,7 +252,7 @@ describe("ModelSelector", () => {
 
     it("shows provider-specific placeholders for OpenAI", () => {
       renderModelSelector({ provider: "openai", model: "my-custom-openai" });
-      expect(screen.getByPlaceholderText(/e.g., gpt-5.6-luna/)).toBeDefined();
+      expect(screen.getByPlaceholderText(/e.g., gpt-6-luna/)).toBeDefined();
     });
 
     it("shows provider-specific placeholders for Mistral", () => {
@@ -270,7 +268,7 @@ describe("ModelSelector", () => {
         model: "my-custom-openrouter",
       });
       expect(
-        screen.getByPlaceholderText(/e.g., openai\/gpt-5.6-luna/),
+        screen.getByPlaceholderText(/e.g., openai\/gpt-6-luna/),
       ).toBeDefined();
     });
 

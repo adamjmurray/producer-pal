@@ -122,11 +122,10 @@ be inferred from the prefix:
 | --------------------------- | ----------- |
 | `gemini-3.8-flash`          | google      |
 | `claude-sonnet-5`           | anthropic   |
-| `gpt-5.6-terra`             | openai      |
+| `gpt-6-sol`                 | openai      |
 | `google/gemini-3.8-flash`   | google      |
 | `anthropic/claude-sonnet-5` | anthropic   |
 | `codex-code/sol`            | codex-code  |
-| `codex-code/terra`          | codex-code  |
 | `codex-code/luna`           | codex-code  |
 | `claude-code/sonnet`        | claude-code |
 | `claude-code/opus`          | claude-code |
@@ -150,10 +149,10 @@ scripts/eval -t connect-to-ableton -m gemini-3.8-flash -m claude-sonnet-5
 
 # Compare Codex subscription models (requires `codex login`)
 scripts/eval -t connect-to-ableton \
-  -m codex-code/sol -m codex-code/terra -m codex-code/luna
+  -m codex-code/sol -m codex-code/luna
 
 # Compare subscription CLIs against each other (requires `codex` and `claude`)
-scripts/eval -t connect-to-ableton -m codex-code/terra -m claude-code/sonnet
+scripts/eval -t connect-to-ableton -m codex-code/luna -m claude-code/sonnet
 
 # Run one family instead of the whole suite
 scripts/eval --tag notation -m gemini-3.8-flash
@@ -206,7 +205,7 @@ is a fresh process that resumes the previous turn's session id.
 scripts/eval -m claude-code/sonnet -t connect-to-ableton
 
 # Requires `codex` on PATH and `codex login`
-scripts/eval -m codex-code/terra -t connect-to-ableton
+scripts/eval -m codex-code/luna -t connect-to-ableton
 ```
 
 Both transports strip the vendor's API-key environment variables before
@@ -497,7 +496,7 @@ scripts/chat -m local/some-model -b http://localhost:1234/v1 -1 "list tracks"
 
 # Subscription CLIs (requires `claude` / `codex` installed and logged in)
 scripts/chat -m claude-code/sonnet -1 -u "list tracks in the set"
-scripts/chat -m codex-code/terra -1 "list tracks in the set"
+scripts/chat -m codex-code/luna -1 "list tracks in the set"
 ```
 
 ## Environment variables

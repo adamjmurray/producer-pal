@@ -13,9 +13,9 @@ import { type Provider } from "#webui/types/settings";
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   anthropic: "e.g., claude-sonnet-5",
   gemini: "e.g., gemini-3.8-flash",
-  openai: "e.g., gpt-5.6-luna",
+  openai: "e.g., gpt-6-luna",
   mistral: "e.g., ministral-14b-latest",
-  openrouter: "e.g., openai/gpt-5.6-luna",
+  openrouter: "e.g., openai/gpt-6-luna",
   ollama: "e.g., qwen3.8",
   lmstudio: "", // Not used (has dedicated input)
   custom: "", // Not used (has dedicated input)

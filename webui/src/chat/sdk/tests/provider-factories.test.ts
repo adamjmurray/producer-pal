@@ -511,7 +511,7 @@ describe("transformOpenRouterRequest", () => {
 
   it("marks the last block of an array-form last message", async () => {
     const parsed = await transform({
-      model: "anthropic/claude-opus-5",
+      model: "anthropic/claude-opus-5.5",
       messages: [
         { role: "system", content: "sys" },
         {

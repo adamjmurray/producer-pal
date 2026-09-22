@@ -7,7 +7,7 @@
 #   ./scripts/chat -m gemini-3.8-flash -1 "list tracks in the set"
 #   ./scripts/chat -m anthropic/claude-sonnet-5
 #   ./scripts/chat -m claude-code/sonnet          # Claude Code subscription CLI
-#   ./scripts/chat -m codex-code/terra            # Codex subscription CLI
+#   ./scripts/chat -m codex-code/luna             # Codex subscription CLI
 #   ./scripts/chat --list-models openai
 #
 # Local OpenAI-compatible servers (use the local/ provider + -b base URL):
