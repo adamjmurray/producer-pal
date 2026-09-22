@@ -37,12 +37,17 @@ const ctx = setupMcpTestContext({ liveSetPath: RACKS_TEST_PATH });
  * Write a sample onto a pad through the rack's path-prefixed param form.
  * @param padNote - Pad note segment (e.g. "pAb1")
  * @param force - Whether to pass force:true
- * @returns The `params` the result reports, and the warnings the write produced
+ * @returns The `params` and `reason` the result reports, and the warnings the
+ * write produced
  */
 async function writeSample(
   padNote: string,
   force = false,
-): Promise<{ params: ParamEntryResult[]; warnings: string[] }> {
+): Promise<{
+  params: ParamEntryResult[];
+  reason?: string;
+  warnings: string[];
+}> {
   const { data, warnings } = await callWithWarnings(
     ctx.client!,
     "ppal-update-device",
@@ -53,7 +58,11 @@ async function writeSample(
     },
   );
 
-  return { params: (data.params as ParamEntryResult[]) ?? [], warnings };
+  return {
+    params: (data.params as ParamEntryResult[]) ?? [],
+    reason: data.reason as string | undefined,
+    warnings,
+  };
 }
 
 /**
@@ -101,13 +110,12 @@ function padSwapTests(
   });
 
   it("replaces it with a Simpler under force, and says what was lost", async () => {
-    const { warnings } = await writeSample(pad, true);
+    const { reason, warnings } = await writeSample(pad, true);
 
-    expect(
-      warnings.some(
-        (w) => w.includes("force:true") && w.includes("settings are gone"),
-      ),
-    ).toBe(true);
+    // The swap is destructive, so the target's own entry says what it cost.
+    expect(reason).toContain("force:true");
+    expect(reason).toContain("settings are gone");
+    expect(warnings).toStrictEqual([]);
 
     const devices = await padDevices(padName);
 
