@@ -10,6 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
+import { toolDefCreateTrack } from "./create-track.def.ts";
 import { createTrack } from "./create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -141,6 +142,44 @@ describe("createTrack by path", () => {
     expect(() => createTrack({ path: "t+,t+,t+", name: "Kick,Snare" })).toThrow(
       "path names 3 tracks but name names 2 entries",
     );
+  });
+
+  it("pairs mute, solo and arm with the path list", () => {
+    const first = registerMockObject("midi_track_0", {});
+    const second = registerMockObject("midi_track_1", {});
+
+    createTrack({
+      path: "t0,t0",
+      mute: "true,false",
+      solo: "false",
+      arm: "false,true",
+    });
+
+    expect(first.set).toHaveBeenCalledWith("mute", true);
+    expect(second.set).toHaveBeenCalledWith("mute", false);
+    // One value still covers every track.
+    expect(first.set).toHaveBeenCalledWith("solo", false);
+    expect(second.set).toHaveBeenCalledWith("solo", false);
+    expect(first.set).toHaveBeenCalledWith("arm", false);
+    expect(second.set).toHaveBeenCalledWith("arm", true);
+  });
+
+  it("refuses a boolean list of the wrong length before making a track", () => {
+    expect(() => createTrack({ path: "t+,t+,t+", arm: "true,false" })).toThrow(
+      "path names 3 tracks but arm names 2 entries",
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  // Published as a string, so a model sending a real boolean still arrives as
+  // one the entries can be read out of.
+  it("coerces a single boolean to a string", () => {
+    expect(toolDefCreateTrack.toolOptions.inputSchema.mute?.parse(true)).toBe(
+      "true",
+    );
+    expect(() =>
+      toolDefCreateTrack.toolOptions.inputSchema.solo?.parse("yes"),
+    ).toThrow("each entry must be true or false");
   });
 
   it("refuses a return track at an index, since Live appends them", () => {

@@ -191,7 +191,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   it("does not touch the mixer when nothing mixer-related is given", () => {
-    updateDevice({ id: "chain-0", mute: true });
+    updateDevice({ id: "chain-0", mute: "true" });
 
     expect(volume.set).not.toHaveBeenCalled();
     expect(panning.set).not.toHaveBeenCalled();

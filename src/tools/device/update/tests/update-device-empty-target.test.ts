@@ -12,13 +12,13 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 // "nothing to do". Refuse it instead.
 describe("updateDevice when id or path names nothing", () => {
   it("refuses an id of only commas and blanks", () => {
-    expect(() => updateDevice({ id: ",  ,", mute: true })).toThrow(
+    expect(() => updateDevice({ id: ",  ,", mute: "true" })).toThrow(
       'invalid id ",  ," - it names nothing',
     );
   });
 
   it("refuses a path of only a comma", () => {
-    expect(() => updateDevice({ path: ",", mute: true })).toThrow(
+    expect(() => updateDevice({ path: ",", mute: "true" })).toThrow(
       'invalid path "," - it names nothing',
     );
   });
@@ -26,7 +26,7 @@ describe("updateDevice when id or path names nothing", () => {
   // Unaffected: a blank value already reads as omitted, so the existing
   // required-param error still fires instead of a warning.
   it("still throws when id is whitespace-only", () => {
-    expect(() => updateDevice({ id: "   ", mute: true })).toThrow(
+    expect(() => updateDevice({ id: "   ", mute: "true" })).toThrow(
       "id or path is required",
     );
   });

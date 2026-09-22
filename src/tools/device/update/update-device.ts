@@ -60,8 +60,8 @@ interface UpdateDeviceArgs
  * @param args.macroVariationIndex - Rack variation index, one per target (racks only)
  * @param args.macroCount - Rack visible macro count 0-16, one per target (racks only)
  * @param args.abCompare - A/B Compare action (devices only)
- * @param args.mute - Mute state (chains/drum pads only)
- * @param args.solo - Solo state (chains/drum pads only)
+ * @param args.mute - Mute state, one per target (chains/drum pads only)
+ * @param args.solo - Solo state, one per target (chains/drum pads only)
  * @param args.color - Color #RRGGBB (chains only)
  * @param args.gainDb - Chain gain in dB, one per target (chains only)
  * @param args.pan - Chain pan -1 to 1, one per target (chains only)
@@ -119,6 +119,8 @@ export function updateDevice(
   params = validateParamEntries(params);
 
   const valueArgs: DeviceValueArgs = {
+    mute,
+    solo,
     gainDb,
     pan,
     sendGainDb,
@@ -179,8 +181,6 @@ export function updateDevice(
       actions,
       macroVariation,
       abCompare,
-      mute,
-      solo,
       color,
       sendReturn,
       sends,

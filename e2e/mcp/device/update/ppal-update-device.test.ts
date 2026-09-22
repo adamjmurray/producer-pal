@@ -247,33 +247,42 @@ describe("ppal-update-device", () => {
     expect(device.name).toBe("Reached");
   });
 
-  // A number pairs with the targets the way a name does, so one call can give
-  // two chains different levels.
-  it("gives each chain the gain and pan at its own position", async () => {
-    const entries = await updateTargets({
-      path: "t6/d0/c0,t6/d0/c1",
-      gainDb: "-6,-12",
-      pan: "-0.5,0.5",
-    });
-
-    expect(entries).toHaveLength(2);
-
-    await sleep(100);
+  /**
+   * The Audio Effect Rack's chains, with their mixer values.
+   * @returns The chains, in rack order
+   */
+  async function readRackChains(): Promise<ChainMixerRead[]> {
     const rack = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
         arguments: { path: "t6/d0", include: ["chains"] },
       }),
     );
-    const chains = (rack.chains ?? []) as Array<{
-      gainDb?: number;
-      pan?: number;
-    }>;
+
+    return (rack.chains ?? []) as ChainMixerRead[];
+  }
+
+  // A value pairs with the targets the way a name does, so one call can give
+  // two chains different levels and different mute states.
+  it("gives each chain the gain, pan and mute at its own position", async () => {
+    const entries = await updateTargets({
+      path: "t6/d0/c0,t6/d0/c1",
+      gainDb: "-6,-12",
+      pan: "-0.5,0.5",
+      mute: "true,false",
+    });
+
+    expect(entries).toHaveLength(2);
+
+    await sleep(100);
+    const chains = await readRackChains();
 
     expect(chains[0]?.gainDb).toBeCloseTo(-6, 1);
     expect(chains[1]?.gainDb).toBeCloseTo(-12, 1);
     expect(chains[0]?.pan).toBeCloseTo(-0.5, 1);
     expect(chains[1]?.pan).toBeCloseTo(0.5, 1);
+    expect(chains[0]?.state).toBe("muted");
+    expect(chains[1]?.state).not.toBe("muted");
 
     // Back to the defaults the Set holds, so the rest of the file sees the
     // chains it expects.
@@ -281,7 +290,12 @@ describe("ppal-update-device", () => {
       path: "t6/d0/c0,t6/d0/c1",
       gainDb: "0",
       pan: "0",
+      mute: "false",
     });
+
+    await sleep(100);
+
+    expect((await readRackChains())[0]?.state).not.toBe("muted");
   });
 
   it("refuses a number list that names the wrong number of targets", async () => {
@@ -514,6 +528,13 @@ interface ReadDeviceResult {
   chains?: unknown[];
   macros?: { count: number; hasMappings: boolean };
   variations?: { count: number; selected: number };
+}
+
+/** What a chain read reports of its own mixer and state. */
+interface ChainMixerRead {
+  gainDb?: number;
+  pan?: number;
+  state?: string;
 }
 
 interface UpdateDeviceResult {

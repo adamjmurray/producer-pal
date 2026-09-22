@@ -7,7 +7,11 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { booleanList } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+
+/** How every per-track param pairs with the tracks the call makes. */
+const PER_TRACK = " One for all, or comma-separated one per track, in order.";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
@@ -37,11 +41,11 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
     }),
 
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per track, in order",
+      default: `name.${PER_TRACK}`,
       smallModel: "track name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per track, in order",
+      default: `#RRGGBB.${PER_TRACK}`,
       smallModel: "#RRGGBB",
     }),
     type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
@@ -49,16 +53,16 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
       // path is the way to ask for one now, so it isn't offered.
       default: { description: "type", excludeEnumValues: ["return"] },
     }),
-    mute: param(z.boolean().optional(), {
-      default: "muted?",
+    mute: param(booleanList().optional(), {
+      default: `muted? true/false.${PER_TRACK}`,
       smallModel: null,
     }),
-    solo: param(z.boolean().optional(), {
-      default: "soloed?",
+    solo: param(booleanList().optional(), {
+      default: `soloed? true/false.${PER_TRACK}`,
       smallModel: null,
     }),
-    arm: param(z.boolean().optional(), {
-      default: "record armed?",
+    arm: param(booleanList().optional(), {
+      default: `record armed? true/false.${PER_TRACK}`,
       smallModel: null,
     }),
   },

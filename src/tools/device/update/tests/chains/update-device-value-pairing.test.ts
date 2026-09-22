@@ -17,7 +17,7 @@ import { updateDevice } from "../../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-describe("updateDevice - per-target numbers", () => {
+describe("updateDevice - per-target values", () => {
   const rackPath = livePath.track(0).device(0);
   let chains: RegisteredMockObject[];
   let volumes: RegisteredMockObject[];
@@ -105,6 +105,14 @@ describe("updateDevice - per-target numbers", () => {
     ).toThrow('invalid chokeGroup "1,,2" - it has an empty entry');
   });
 
+  it("mutes one chain and unmutes the next", () => {
+    updateDevice({ id: "chain-0,chain-1", mute: "true,false" });
+
+    expect(chains[0]?.set).toHaveBeenCalledWith("mute", 1);
+    expect(chains[1]?.set).toHaveBeenCalledWith("mute", 0);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
   it("pairs chokeGroup down the list", () => {
     updateDevice({ id: "chain-0,chain-1,chain-2", chokeGroup: "1,2,0" });
 
@@ -150,15 +158,19 @@ describe("updateDevice - per-target numbers", () => {
       {},
     );
 
-    it("coerces a number to a one-entry string", () => {
+    it("coerces a lone number or boolean to a one-entry string", () => {
       expect(validating.gainDb?.safeParse(-6).data).toBe("-6");
       expect(validating.chokeGroup?.safeParse(2).data).toBe("2");
+      expect(validating.mute?.safeParse(true).data).toBe("true");
+      expect(validating.solo?.safeParse(false).data).toBe("false");
     });
 
-    it("refuses an entry out of range, a fraction, and a blank", () => {
+    it("refuses an entry out of range, a fraction, a non-boolean, and a blank", () => {
       expect(validating.gainDb?.safeParse("-6,99").success).toBe(false);
       expect(validating.chokeGroup?.safeParse("1.5").success).toBe(false);
+      expect(validating.mute?.safeParse("yes").success).toBe(false);
       expect(validating.gainDb?.safeParse("").success).toBe(false);
+      expect(validating.mute?.safeParse("").success).toBe(false);
     });
   });
 });

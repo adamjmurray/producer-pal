@@ -3,19 +3,24 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The numbers that pair one entry per target, the way name and color do. Each
-// arrives as a string so a list can reach the handler at all.
+// The booleans and numbers that pair one entry per target, the way name and
+// color do. Each arrives as a string so a list can reach the handler at all.
 
 import { type ListArg } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   type ListEntries,
   splitList,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { numberForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
+import {
+  booleanForIndex,
+  numberForIndex,
+} from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { type UpdatePropertyOptions } from "./helpers/update-device-properties.ts";
 
-/** The per-target numbers, as one call sent them. */
+/** The per-target booleans and numbers, as one call sent them. */
 export interface DeviceValueArgs {
+  mute?: string;
+  solo?: string;
   gainDb?: string;
   pan?: string;
   sendGainDb?: string;
@@ -33,7 +38,9 @@ export interface DeviceValueLists {
   entries: Record<keyof DeviceValueArgs, ListEntries | null>;
 }
 
-const PARAMS = [
+const BOOLEANS = ["mute", "solo"] as const;
+
+const NUMBERS = [
   "gainDb",
   "pan",
   "sendGainDb",
@@ -42,8 +49,10 @@ const PARAMS = [
   "macroVariationIndex",
 ] as const;
 
+const PARAMS = [...BOOLEANS, ...NUMBERS];
+
 /**
- * Every per-target number, for the whole-call length check.
+ * Every per-target boolean and number, for the whole-call length check.
  * @param args - The tool arguments as received
  * @returns One list arg per param, in the order to report them
  */
@@ -74,7 +83,7 @@ export function parseDeviceValueLists(
 }
 
 /**
- * The numbers one target gets.
+ * The booleans and numbers one target gets.
  * @param lists - The split entries, from {@link parseDeviceValueLists}
  * @param index - The target's place in the call
  * @returns That target's values, each undefined where the call named none
@@ -84,10 +93,14 @@ export function deviceValuesAt(
   index: number,
 ): DeviceValues {
   const { args, entries } = lists;
-  const num = (param: (typeof PARAMS)[number]): number | undefined =>
+  const bool = (param: (typeof BOOLEANS)[number]): boolean | undefined =>
+    booleanForIndex(args[param], index, entries[param]);
+  const num = (param: (typeof NUMBERS)[number]): number | undefined =>
     numberForIndex(args[param], index, entries[param]);
 
   return {
+    mute: bool("mute"),
+    solo: bool("solo"),
     gainDb: num("gainDb"),
     pan: num("pan"),
     sendGainDb: num("sendGainDb"),

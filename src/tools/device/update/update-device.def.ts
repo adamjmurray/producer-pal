@@ -5,7 +5,10 @@
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
-import { numberList } from "#src/tools/shared/validation/lists/typed-lists.ts";
+import {
+  booleanList,
+  numberList,
+} from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
@@ -111,8 +114,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
 
-    mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
-    solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
+    mute: booleanList()
+      .optional()
+      .describe(`muted? true/false (chains/drum pads only).${PER_TARGET}`),
+    solo: booleanList()
+      .optional()
+      .describe(`soloed? true/false (chains/drum pads only).${PER_TARGET}`),
     color: param(z.string().optional(), {
       default: `#RRGGBB (chains only).${PER_TARGET}`,
       smallModel: "#RRGGBB (chains only)",

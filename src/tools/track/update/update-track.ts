@@ -35,7 +35,14 @@ import {
 import {
   applyTrackSends,
   resolveTrackSends,
+  trackSendsAt,
 } from "./helpers/track-send-updates.ts";
+import {
+  type TrackValueArgs,
+  splitTrackValues,
+  trackValueListArgs,
+  trackValuesAt,
+} from "../helpers/track-value-lists.ts";
 import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import {
@@ -53,6 +60,7 @@ import {
   writeFanOut,
   type WriteResult,
 } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { numberForIndex } from "#src/tools/shared/validation/lists/typed-lists.ts";
 import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 /** Params that name a track rather than asking anything of it, plus the
@@ -77,7 +85,7 @@ interface MixerParams {
   rightPan?: number;
 }
 
-interface UpdateTrackArgs {
+interface UpdateTrackArgs extends TrackValueArgs {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
@@ -86,14 +94,7 @@ interface UpdateTrackArgs {
   paths?: string;
   name?: string;
   color?: string;
-  gainDb?: number;
-  pan?: number;
   panningMode?: PanningMode;
-  leftPan?: number;
-  rightPan?: number;
-  mute?: boolean;
-  solo?: boolean;
-  arm?: boolean;
   inputRoutingType?: string;
   inputRoutingChannel?: string;
   outputRoutingType?: string;
@@ -107,7 +108,6 @@ interface UpdateTrackArgs {
   /** Deprecated: use outputRoutingChannel */
   outputRoutingChannelId?: string;
   monitoringState?: string;
-  sendGainDb?: number;
   sendReturn?: string;
   sends?: SendEntry[];
 }
@@ -182,14 +182,14 @@ function applyMonitoringState(
  * @param args.paths - Hidden alias for path
  * @param args.name - Optional track name
  * @param args.color - Optional track color (CSS format: hex)
- * @param args.gainDb - Optional track gain in dB (-70 to 6)
- * @param args.pan - Optional pan position in stereo mode (-1 to 1)
+ * @param args.gainDb - Optional track gain in dB (-70 to 6), one per target
+ * @param args.pan - Optional pan position in stereo mode (-1 to 1), one per target
  * @param args.panningMode - Optional panning mode ('stereo' or 'split')
- * @param args.leftPan - Optional left channel pan in split mode (-1 to 1)
- * @param args.rightPan - Optional right channel pan in split mode (-1 to 1)
- * @param args.mute - Optional mute state
- * @param args.solo - Optional solo state
- * @param args.arm - Optional arm state
+ * @param args.leftPan - Optional left channel pan in split mode (-1 to 1), one per target
+ * @param args.rightPan - Optional right channel pan in split mode (-1 to 1), one per target
+ * @param args.mute - Optional mute state, one per target
+ * @param args.solo - Optional solo state, one per target
+ * @param args.arm - Optional arm state, one per target
  * @param args.inputRoutingType - Optional input routing type name or identifier
  * @param args.inputRoutingChannel - Optional input routing channel name or identifier
  * @param args.outputRoutingType - Optional output routing type name or identifier
@@ -199,7 +199,7 @@ function applyMonitoringState(
  * @param args.outputRoutingTypeId - Deprecated alias for outputRoutingType
  * @param args.outputRoutingChannelId - Deprecated alias for outputRoutingChannel
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
- * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
+ * @param args.sendGainDb - Optional send gain in dB (-70 to 0), one per target, requires sendReturn
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param args.sends - Optional [{return, gainDb}] list, to set several at once
  * @param _context - Internal context object (unused)
@@ -216,14 +216,7 @@ export function updateTrack(
     paths,
     name,
     color,
-    gainDb,
-    pan,
     panningMode,
-    leftPan,
-    rightPan,
-    mute,
-    solo,
-    arm,
     inputRoutingType,
     inputRoutingChannel,
     outputRoutingType,
@@ -233,7 +226,6 @@ export function updateTrack(
     outputRoutingTypeId,
     outputRoutingChannelId,
     monitoringState,
-    sendGainDb,
     sendReturn,
     sends,
   } = args;
@@ -242,9 +234,12 @@ export function updateTrack(
     targets: { id, ids, path, paths },
     name,
     color,
+    extraLists: trackValueListArgs(args),
   });
 
-  validateSendPair(sendGainDb, sendReturn);
+  validateSendPair(args.sendGainDb, sendReturn);
+
+  const valueLists = splitTrackValues(args, targets.length);
 
   // Lanes are planned before anything runs: a plan over the cap is refused
   // whole, because a lane an earlier entry created can't be taken back.
@@ -253,7 +248,13 @@ export function updateTrack(
 
   // Resolved once: the return tracks belong to the Live Set, so nothing about a
   // track decides this. What matched nothing still rides back on every track.
-  const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
+  // The first track's level stands in while the returns resolve; each track
+  // then writes its own.
+  const resolvedSends = resolveTrackSends(
+    numberForIndex(args.sendGainDb, 0, valueLists.sendGainDb),
+    sendReturn,
+    sends,
+  );
 
   // The collisions belong to the call, not to a track, so they are announced
   // once — off the first track a collision actually landed on.
@@ -269,6 +270,7 @@ export function updateTrack(
 
     const track = targetObject(target, "track", trackIdAtPath);
     const trackColor = getColorForIndex(color, i, parsedColors);
+    const values = trackValuesAt(args, valueLists, i);
     const notes = newTargetNotes();
 
     const rename = returnTrackRename(track.path, trackName);
@@ -276,20 +278,20 @@ export function updateTrack(
     track.setAll({
       name: rename.write,
       color: trackColor,
-      mute,
-      solo,
-      arm,
+      mute: values.mute,
+      solo: values.solo,
+      arm: values.arm,
     });
 
     const colorLanded =
       trackColor == null ? {} : landedColor(track, trackColor);
 
     const mixer = trackMixer(track, {
-      gainDb,
-      pan,
+      gainDb: values.gainDb,
+      pan: values.pan,
       panningMode,
-      leftPan,
-      rightPan,
+      leftPan: values.leftPan,
+      rightPan: values.rightPan,
     });
 
     // Handle routing properties
@@ -305,7 +307,10 @@ export function updateTrack(
     // Handle monitoring state
     applyMonitoringState(track, monitoringState, notes);
 
-    const landed = applyTrackSends(track, resolvedSends.winners);
+    const landed = applyTrackSends(
+      track,
+      trackSendsAt(resolvedSends, values.sendGainDb),
+    );
 
     if (!announcedCollisions) {
       announcedCollisions = warnSendCollisions(

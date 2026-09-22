@@ -10,6 +10,13 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import {
+  booleanList,
+  numberList,
+} from "#src/tools/shared/validation/lists/typed-lists.ts";
+
+/** How every per-target param pairs with the targets the call names. */
+const PER_TARGET = " One for all, or comma-separated one per target, in order.";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
@@ -38,41 +45,36 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
 
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per target, in order, ideally unique",
+      default: `name, ideally unique.${PER_TARGET}`,
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per track, in order",
+      default: `#RRGGBB.${PER_TARGET}`,
       smallModel: "#RRGGBB",
     }),
-    gainDb: z.coerce
-      .number()
-      .min(-70)
-      .max(6)
+    gainDb: numberList({ min: -70, max: 6 })
       .optional()
-      .describe("track gain in dB"),
-    pan: z.coerce
-      .number()
-      .min(-1)
-      .max(1)
+      .describe(`track gain in dB, -70 to 6.${PER_TARGET}`),
+    pan: numberList({ min: -1, max: 1 })
       .optional()
-      .describe("pan: -1 (left) to 1 (right)"),
+      .describe(`pan: -1 (left) to 1 (right).${PER_TARGET}`),
     panningMode: param(z.enum(["stereo", "split"]).optional(), {
       default: "panning mode: stereo or split",
       smallModel: null,
     }),
-    leftPan: param(z.coerce.number().min(-1).max(1).optional(), {
-      default: "left channel pan in split mode (-1 to 1)",
+    leftPan: param(numberList({ min: -1, max: 1 }).optional(), {
+      default: `left channel pan in split mode, -1 to 1.${PER_TARGET}`,
       smallModel: null,
     }),
-    rightPan: param(z.coerce.number().min(-1).max(1).optional(), {
-      default: "right channel pan in split mode (-1 to 1)",
+    rightPan: param(numberList({ min: -1, max: 1 }).optional(), {
+      default: `right channel pan in split mode, -1 to 1.${PER_TARGET}`,
       smallModel: null,
     }),
-    mute: z.boolean().optional().describe("muted?"),
-    solo: z.boolean().optional().describe("soloed?"),
-    arm: z.boolean().optional().describe("record armed?"),
+    mute: booleanList().optional().describe(`muted? true/false.${PER_TARGET}`),
+    solo: booleanList().optional().describe(`soloed? true/false.${PER_TARGET}`),
+    arm: booleanList()
+      .optional()
+      .describe(`record armed? true/false.${PER_TARGET}`),
 
     inputRoutingType: param(z.coerce.string().optional(), {
       default: "name from availableInputRoutingTypes, set before channel",
@@ -112,8 +114,8 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         smallModel: null,
       },
     ),
-    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
-      default: "send gain in dB, requires sendReturn",
+    sendGainDb: param(numberList({ min: -70, max: 0 }).optional(), {
+      default: `send gain in dB, -70 to 0, requires sendReturn.${PER_TARGET}`,
       smallModel: null,
     }),
     sendReturn: param(z.coerce.string().optional(), {

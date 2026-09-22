@@ -31,9 +31,9 @@ describe("updateTrack", () => {
       id: "123",
       name: "Updated Track",
       color: "#FF0000",
-      mute: true,
-      solo: false,
-      arm: true,
+      mute: "true",
+      solo: "false",
+      arm: "true",
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
@@ -48,7 +48,7 @@ describe("updateTrack", () => {
     const result = updateTrack({
       id: "123, 456",
       color: "#00FF00",
-      mute: true,
+      mute: "true",
     });
 
     expect(track123.set).toHaveBeenCalledWith("color", 65280);
@@ -86,9 +86,9 @@ describe("updateTrack", () => {
   it("should handle boolean false values correctly", () => {
     const result = updateTrack({
       id: "123",
-      mute: false,
-      solo: false,
-      arm: false,
+      mute: "false",
+      solo: "false",
+      arm: "false",
     });
 
     expect(track123.set).toHaveBeenCalledWith("mute", false);
@@ -325,7 +325,7 @@ describe("updateTrack", () => {
         id: "123",
         name: "Test Track",
         color: "#FF0000",
-        mute: true,
+        mute: "true",
         inputRoutingType: "17",
         monitoringState: MONITORING_STATE.IN,
       });

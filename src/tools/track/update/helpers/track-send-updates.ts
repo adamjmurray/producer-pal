@@ -32,6 +32,11 @@ export interface ResolvedSend extends IndexedSend {
 export interface TrackSends extends DedupedSends<ResolvedSend> {
   /** Entries for the sends that named no return track, in the order named */
   unresolved: SendResult[];
+  /**
+   * Which winner the sendGainDb/sendReturn pair won, when it held. sendGainDb
+   * pairs per track, so that send's level is the only one that varies.
+   */
+  scalarIndex: number | null;
 }
 
 /**
@@ -45,7 +50,7 @@ export interface TrackSends extends DedupedSends<ResolvedSend> {
  * The scalar pair is resolved first, so a call using both honors both. They
  * only collide when they name the same return, and then the list is the later
  * word.
- * @param sendGainDb - Send level in dB, if given
+ * @param sendGainDb - The first track's send level in dB, if given
  * @param sendReturn - Return track id, name, or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
  * @returns The sends to write, one per return, in the order they were named,
@@ -59,7 +64,7 @@ export function resolveTrackSends(
   // Nothing to resolve, so nothing to read: every update-track call would
   // otherwise pay for the Live Set's return tracks.
   if (sendReturn == null && (sends ?? []).length === 0) {
-    return { winners: [], collisions: [], unresolved: [] };
+    return { winners: [], collisions: [], unresolved: [], scalarIndex: null };
   }
 
   const returns = readReturnTrackInfo();
@@ -85,7 +90,36 @@ export function resolveTrackSends(
     }
   }
 
-  return { ...dedupeSendsByReturn(scalar, list), unresolved };
+  const deduped = dedupeSendsByReturn(scalar, list);
+  const overridden = deduped.collisions.some((c) => c.overrodeScalar);
+
+  return {
+    ...deduped,
+    unresolved,
+    scalarIndex: scalar != null && !overridden ? scalar.index : null,
+  };
+}
+
+/**
+ * The sends to write on one track: the same returns for every track, with the
+ * sendGainDb/sendReturn pair set to that track's own level.
+ * @param resolved - What the call's sends resolved to
+ * @param gainDb - This track's sendGainDb, if the call sent one
+ * @returns The sends to write on this track
+ */
+export function trackSendsAt(
+  resolved: TrackSends,
+  gainDb: number | undefined,
+): ResolvedSend[] {
+  const { winners, scalarIndex } = resolved;
+
+  if (scalarIndex == null || gainDb == null) {
+    return winners;
+  }
+
+  return winners.map((send) =>
+    send.index === scalarIndex ? { ...send, gainDb } : send,
+  );
 }
 
 /**

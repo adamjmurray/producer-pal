@@ -298,7 +298,7 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     it("still mutes through the DrumPad itself", () => {
-      updateDevice({ id: "pad-36", mute: true });
+      updateDevice({ id: "pad-36", mute: "true" });
 
       expect(pad36.set).toHaveBeenCalledWith("mute", 1);
       expect(chain0.set).not.toHaveBeenCalledWith("mute", expect.anything());

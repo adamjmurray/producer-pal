@@ -197,14 +197,14 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain mute state by path", () => {
-      const result = updateDevice({ path: "t1/d0/c0", mute: true });
+      const result = updateDevice({ path: "t1/d0/c0", mute: "true" });
 
       expect(chain123.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 
     it("should update chain solo state by path", () => {
-      const result = updateDevice({ path: "t1/d0/c0", solo: true });
+      const result = updateDevice({ path: "t1/d0/c0", solo: "true" });
 
       expect(chain123.set).toHaveBeenCalledWith("solo", 1);
       expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
@@ -363,7 +363,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "t1/d0/pC1", mute: true });
+      const result = updateDevice({ path: "t1/d0/pC1", mute: "true" });
 
       // A bare pad path writes mute to the DrumPad; Live broadcasts from there.
       expect(chains.get("chain-36")?.set).not.toHaveBeenCalledWith("mute", 1);
@@ -376,7 +376,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "t1/d0/pC1", solo: true });
+      const result = updateDevice({ path: "t1/d0/pC1", solo: "true" });
 
       expect(chains.get("chain-36")?.set).not.toHaveBeenCalledWith("solo", 1);
       expect(result).toStrictEqual({ id: "pad-36" });
@@ -388,7 +388,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      expect(() => updateDevice({ path: "t1/d0/pC3", mute: true })).toThrow(
+      expect(() => updateDevice({ path: "t1/d0/pC3", mute: "true" })).toThrow(
         'nothing at path "t1/d0/pC3"',
       );
     });
@@ -414,7 +414,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "t1/d0/pC1/c0", mute: true });
+      const result = updateDevice({ path: "t1/d0/pC1/c0", mute: "true" });
 
       expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/pC1/c0" });

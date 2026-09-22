@@ -286,6 +286,49 @@ describe("ppal-create-track", () => {
     expect(await trackCount()).toBe(before);
   });
 
+  // mute, solo and arm each split on commas and pair 1:1 with the tracks the
+  // call makes, the way name and color do.
+  it("pairs mute and arm one per track", async () => {
+    const before = await trackCount();
+    const created = parseBatchResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: {
+          path: "t+,t+",
+          name: "Pair Muted,Pair Armed",
+          mute: "true,false",
+          arm: "false,true",
+        },
+      }),
+      2,
+    );
+
+    await sleep(100);
+    const first = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: created[0]!.id },
+      }),
+    );
+    const second = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: created[1]!.id },
+      }),
+    );
+
+    expect(first.state).toMatch(/^muted/);
+    expect(first.isArmed).toBeFalsy();
+    expect(second.isArmed).toBe(true);
+
+    await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { id: `${created[0]!.id},${created[1]!.id}`, type: "track" },
+    });
+    await sleep(100);
+    expect(await trackCount()).toBe(before);
+  });
+
   it("creates multiple tracks in batch", async () => {
     // Get initial track count
     const initialResult = await ctx.client!.callTool({
@@ -503,4 +546,5 @@ interface ReadTrackResult {
   name: string;
   color?: string;
   state?: string;
+  isArmed?: boolean;
 }
