@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /**
  * Applies tempo property to a scene
@@ -41,26 +40,5 @@ export function applyTimeSignatureProperty(
     scene.set("time_signature_numerator", parsed.numerator);
     scene.set("time_signature_denominator", parsed.denominator);
     scene.set("time_signature_enabled", true);
-  }
-}
-
-/**
- * Refuse a malformed time signature before any scene is touched, so a bad
- * entry can't leave the scenes before it already changed. "disabled" is a
- * sentinel each scene handles, not a time signature.
- * @param value - The raw timeSignature param
- * @param parsed - The split time signatures, or null
- * @throws Error when an entry isn't "disabled" or an N/D time signature
- */
-export function validateTimeSignatures(
-  value: string | null | undefined,
-  parsed: ListEntries | null,
-): void {
-  const entries = parsed ?? (value == null ? [] : [value]);
-
-  for (const entry of entries) {
-    if (entry !== "disabled") {
-      parseTimeSignature(entry);
-    }
   }
 }

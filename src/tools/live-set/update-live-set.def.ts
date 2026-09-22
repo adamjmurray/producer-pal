@@ -56,7 +56,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
     }),
     locatorName: param(z.coerce.string().optional(), {
       default:
-        "Name for create/rename, or name-match filter for delete; name for all, or comma-separated one per locator, in order",
+        "Name for create/rename, or name-match filter for delete; or comma-separated one per locator",
       smallModel: null,
     }),
     // No arrangementFollower param: play-arrangement always auto-follows.

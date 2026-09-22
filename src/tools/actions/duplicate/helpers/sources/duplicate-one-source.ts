@@ -84,11 +84,7 @@ export async function duplicateEverySource(
         ...args,
         source,
         clipDestinations: args.clipDestinations?.[index] ?? null,
-        params: {
-          ...args.params,
-          arrangementStart: source.arrangementStart,
-          arrangementLength: source.arrangementLength,
-        },
+        params: { ...args.params, arrangementStart: source.arrangementStart },
       })),
     );
   }

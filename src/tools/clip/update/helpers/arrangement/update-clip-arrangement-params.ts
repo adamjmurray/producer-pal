@@ -38,25 +38,19 @@ const START_LABELS: PairLabels = {
   shortfall: "were not moved",
 };
 
-const LENGTH_LABELS: PairLabels = {
-  param: "arrangementLength",
-  noun: "length",
-  item: "clip",
-  shortfall: "kept the length they had",
-};
-
 /**
  * Parse arrangementStart and arrangementLength into one value per clip.
  *
- * Both take a comma-separated list paired with the ids in order. A single
- * value covers the whole call.
+ * arrangementStart takes a comma-separated list paired with the ids in order;
+ * a single value covers the whole call. arrangementLength is one duration for
+ * every clip.
  *
  * A `[...]` in toPath is the other spelling of the start, already one position
  * per clip, so it needs no pairing and never broadcasts. The two can't both be
  * in play: a coordinate beside arrangementStart is refused before any of this
  * runs.
  * @param arrangementStart - Bar|beat position(s), comma-separated
- * @param arrangementLength - Duration(s) (`<count>bar`, `n<fraction>`, or `<count>bar+n<fraction>`), comma-separated
+ * @param arrangementLength - Duration (`<count>bar`, `n<fraction>`, or `<count>bar+n<fraction>`)
  * @param clipCount - How many clips the call named, before any are dropped
  * @param pathPositions - The position a toPath coordinate named, per clip
  * @returns Start and length beats per clip
@@ -76,14 +70,11 @@ export function parseArrangementParams(
     namedParam(arrangementStart, "arrangementStart"),
     "arrangementStart",
   );
-  const durations = targetEntries(
-    namedParam(arrangementLength, "arrangementLength"),
-    "arrangementLength",
-  );
+  const duration = namedParam(arrangementLength, "arrangementLength");
 
   const fromPath = pathPositions.some((position) => position != null);
 
-  if (positions.length === 0 && durations.length === 0 && !fromPath) {
+  if (positions.length === 0 && duration == null && !fromPath) {
     return { startBeats: NO_BEATS, lengthBeats: NO_BEATS };
   }
 
@@ -113,19 +104,13 @@ export function parseArrangementParams(
           ),
         }
       : fanOut(positions.map(toBeats), clipCount, START_LABELS),
-    lengthBeats: fanOut(
-      durations.map((duration) => {
-        const beats = durationToAbletonBeats(duration, numerator, denominator);
-
-        if (beats <= 0) {
-          throw new Error("arrangementLength must be greater than 0");
-        }
-
-        return beats;
-      }),
-      clipCount,
-      LENGTH_LABELS,
-    ),
+    lengthBeats:
+      duration == null
+        ? NO_BEATS
+        : {
+            broadcast: lengthToBeats(duration, numerator, denominator),
+            perClip: [],
+          },
   };
 }
 
@@ -149,6 +134,27 @@ export function beatsForClip(
   return requestedIndex == null
     ? null
     : (beats.perClip[requestedIndex] ?? null);
+}
+
+/**
+ * Convert arrangementLength to beats, refusing a span that isn't positive.
+ * @param duration - The duration as sent
+ * @param numerator - Song time signature numerator
+ * @param denominator - Song time signature denominator
+ * @returns Beats
+ */
+function lengthToBeats(
+  duration: string,
+  numerator: number,
+  denominator: number,
+): number {
+  const beats = durationToAbletonBeats(duration, numerator, denominator);
+
+  if (beats <= 0) {
+    throw new Error("arrangementLength must be greater than 0");
+  }
+
+  return beats;
 }
 
 /**

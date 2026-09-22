@@ -22,7 +22,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe(
-        'device for all (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path, in order; omit to list available devices',
+        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit to list available devices',
       ),
 
     deviceName: deprecatedParam(z.string().optional(), {
@@ -36,7 +36,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
         "insertion path, required with device ('t0/d+' appends, 't0/d1' inserts at 1, 't0/d0/c0/d+'; 't0/d0/c+' appends a new rack chain)",
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per device, in order",
+      default: "name, or comma-separated one per path",
       smallModel: "display name",
     }),
     params: param(paramsInputSchema, {

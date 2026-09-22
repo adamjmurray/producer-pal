@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { validateBarBeatPosition } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  durationToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -89,9 +92,16 @@ describe("parseArrangementParams", () => {
     );
   });
 
-  it("refuses a length list that names nothing", () => {
-    expect(() => parseArrangementParams(undefined, ", ,", 2)).toThrow(
-      'invalid arrangementLength ", ," - it names nothing',
+  // One length covers every clip, so a comma is never a list.
+  it("parses a comma-bearing length whole rather than pairing it", () => {
+    // The mock reads it as 0 beats; the real parser rejects its format.
+    expect(() => parseArrangementParams(undefined, "1bar,2bar", 2)).toThrow(
+      "arrangementLength must be greater than 0",
+    );
+    expect(durationToAbletonBeats).toHaveBeenCalledWith(
+      "1bar,2bar",
+      expect.anything(),
+      expect.anything(),
     );
   });
 
@@ -132,14 +142,6 @@ describe("parseArrangementParams", () => {
     expect(console.warn).not.toHaveBeenCalled();
   });
 
-  it("fans a length list out one per clip", () => {
-    const { lengthBeats } = parseArrangementParams(undefined, "1bar,2bar", 2);
-
-    expect([0, 1].map((i) => beatsForClip(lengthBeats, i))).toStrictEqual([
-      4, 8,
-    ]);
-  });
-
   it("does not cycle a short list", () => {
     const { startBeats } = parseArrangementParams("1|1,2|1", undefined, 3);
 
@@ -161,14 +163,6 @@ describe("parseArrangementParams", () => {
     ]);
     expect(console.warn).toHaveBeenCalledWith(
       "arrangementStart: 3 positions for 2 clips; the extra positions went unused",
-    );
-  });
-
-  it("warns about a mismatched length list", () => {
-    parseArrangementParams(undefined, "1bar,2bar,1bar", 2);
-
-    expect(console.warn).toHaveBeenCalledWith(
-      "arrangementLength: 3 lengths for 2 clips; the extra lengths went unused",
     );
   });
 

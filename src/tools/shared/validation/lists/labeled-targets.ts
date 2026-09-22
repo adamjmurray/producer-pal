@@ -47,7 +47,6 @@ interface PairLabelsArgs {
 
 interface NewTargetsArgs extends PairLabelsArgs {
   param: string;
-  extraLists?: ListArg[];
 }
 
 interface LabeledTargetsArgs {
@@ -107,7 +106,6 @@ export function resolveLabeledTargets({
  * @param args.count - How many the call makes
  * @param args.name - The raw name param
  * @param args.color - The raw color param
- * @param args.extraLists - Further per-target lists, in the order to report them
  * @returns The call's name and color lists
  */
 export function labelNewTargets({
@@ -116,13 +114,11 @@ export function labelNewTargets({
   count,
   name,
   color,
-  extraLists = [],
 }: NewTargetsArgs): PairedLabels {
   validateListLengths([
     { param, count, noun },
     { param: "name", value: name },
     { param: "color", value: color },
-    ...extraLists,
   ]);
 
   return pairLabels({ noun, count, name, color });

@@ -14,9 +14,6 @@ import {
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
-/** How every per-position string param pairs with the positions path names. */
-const PER_POSITION = " One for all, or comma-separated one per position.";
-
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   // The MIDI-only list names the params in play, so small model mode gets its
@@ -76,43 +73,37 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     }),
 
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per position, in the order path names them",
+      default: "name, or comma-separated one per path",
       smallModel: "clip name",
     }),
 
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per position, in the order path names them",
+      default: "#RRGGBB, or comma-separated one per path",
       smallModel: "#RRGGBB",
     }),
 
     timeSignature: z
       .string()
       .optional()
-      .describe(`N/D (4/4), default: global time signature.${PER_POSITION}`),
+      .describe("N/D (4/4), default: global time signature"),
 
     start: z
       .string()
       .optional()
-      .describe(
-        `bar|beat position where loop/clip region begins (clip meter).${PER_POSITION}`,
-      ),
+      .describe("bar|beat position where loop/clip region begins (clip meter)"),
 
     length: z
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample." +
-          PER_POSITION,
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
 
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)." +
-        PER_POSITION,
+        "bar|beat playback start (looping clips, when different from start; clip meter)",
       smallModel: null,
     }),
 
@@ -148,7 +139,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        `absolute path to audio file - audio clips only.${PER_POSITION} A list makes every clip audio`,
+        "absolute path to audio file - audio clips only; or comma-separated one per path",
       ),
 
     warping: param(z.boolean().optional(), {

@@ -104,7 +104,7 @@ export interface ClipUpdatePlan {
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination slot(s)
  * @param args.arrangementStart - Bar|beat position(s)
- * @param args.arrangementLength - Arrangement span duration(s)
+ * @param args.arrangementLength - Arrangement span duration
  * @param args.arrangementSplit - Song-timeline split positions
  * @param args.split - Deprecated clip-relative split positions
  * @param args.reasons - What each clip has to say beyond its result

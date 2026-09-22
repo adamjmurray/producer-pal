@@ -15,10 +15,6 @@ import {
   labelNewTargets,
   pairLabels,
 } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import {
-  splitList,
-  valueForIndex,
-} from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
 import {
@@ -36,7 +32,6 @@ import {
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
-  validateTimeSignatures,
 } from "./helpers/scene-tempo-signature.ts";
 
 interface SceneResult {
@@ -78,7 +73,7 @@ interface CreateSceneArgs {
  * @param args.name - Name for all, or one per scene, in order
  * @param args.color - Color for all, or one per scene, in order (CSS format: hex)
  * @param args.tempo - Tempo in BPM for the scenes. Pass -1 to disable.
- * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled" when capturing)
+ * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
  * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
  * @returns One object per scene, unwrapped when the call named one
@@ -127,26 +122,14 @@ export function createScene(
     count: spots.length,
     name,
     color,
-    extraLists: [{ param: "timeSignature", value: timeSignature }],
   });
-  const parsedTimeSignatures = splitList(
-    timeSignature ?? undefined,
-    spots.length,
-    "timeSignature",
-  );
-
-  validateTimeSignatures(timeSignature, parsedTimeSignatures);
 
   const createdScenes = insertions.map((insertion, i) =>
     createSingleScene(liveSet, insertion, {
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       tempo,
-      timeSignature: valueForIndex(
-        timeSignature ?? undefined,
-        i,
-        parsedTimeSignatures,
-      ),
+      timeSignature,
     }),
   );
 

@@ -21,7 +21,11 @@ every target.** A caller that wants different values per target makes separate
 calls in the same turn.
 
 String args that say what or where each target is — a name, a color, a
-destination — still pair per target.
+destination, a sample file — still pair per target. Other strings take one value
+too: a clip's timing (`timeSignature`, `start`, `length`, `firstStart`,
+`arrangementLength`) and a scene's `timeSignature`. A clip's length follows its
+notes, so a different length usually means different notes, which is a separate
+call anyway.
 
 ## Why
 

@@ -38,12 +38,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
     toPath: param(z.coerce.string().optional(), {
       default:
-        "move to path ('t2/d+' appends to that track, 't2/d1' inserts at 1, 't0/d0/c1/d+', 't0/d0/pD1'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one destination per id/path, in order — a destination holds one object, so it never covers several targets. To move a whole drum pad (chain trim, choke group and devices together), target the pad path (e.g. path 't0/d0/pC1', toPath 't0/d0/pD1') rather than its device; a pad move stays within one rack and layers onto an occupied destination rather than replacing it. Moving just a device carries its chain's trim only when the destination chain is empty and untouched, and warns otherwise",
+        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. To move a whole drum pad (trim, choke group, devices), target the pad path (path 't0/d0/pC1', toPath 't0/d0/pD1'); it stays in its rack and layers onto an occupied pad. A device moved alone keeps its chain's trim only into an empty, untouched chain",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per device, in order (not drum pads)",
+      default: "name, or comma-separated one per target (not drum pads)",
       smallModel: "display name (not drum pads)",
     }),
     // Kept for potential future use
@@ -108,8 +107,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per chain, in order (chains only)",
+      default: "#RRGGBB, or comma-separated one per target (chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
     gainDb: param(z.coerce.number().min(-70).max(6).optional(), {

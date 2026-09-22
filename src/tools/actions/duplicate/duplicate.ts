@@ -86,7 +86,7 @@ interface DuplicateArgs {
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement position(s): bar|beat or `loc:<locator>`
  * @param args.locator - Deprecated locator ref(s); use arrangementStart
- * @param args.arrangementLength - Span(s) to fill: one for all, or one per source
+ * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
  * @param args.color - Color for all the copies, or comma-separated one per copy
  * @param args.withoutClips - Exclude clips
@@ -161,6 +161,7 @@ export async function duplicate(
   toPath = dest.toPath;
   arrangementStart = dest.arrangementStart;
 
+  const hasArrangementParams = dest.onArrangement;
   // An arrangement destination pairs across the sources — one covers them all,
   // a list gives one per source — where a slot-shaped one is dealt out.
   const sources = planSources({
@@ -170,8 +171,7 @@ export async function duplicate(
     toPath,
     toSlot,
     arrangementStart,
-    arrangementLength,
-    onArrangement: type === "clip" && dest.onArrangement,
+    onArrangement: type === "clip" && hasArrangementParams,
     // A lane copy takes a lane source, which the track lookup rejects.
     idPerPath: laneCopy ? laneSourceIds : undefined,
   });
@@ -182,7 +182,7 @@ export async function duplicate(
   // is created. Other types have no destination path.
   const clipDestinations =
     type === "clip"
-      ? resolveSourceClipDestinations(sources, dest.onArrangement)
+      ? resolveSourceClipDestinations(sources, hasArrangementParams)
       : null;
 
   const destination = resolveDestinationAndWarn({

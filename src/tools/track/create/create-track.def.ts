@@ -37,11 +37,11 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
     }),
 
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per track, in order",
+      default: "name, or comma-separated one per track",
       smallModel: "track name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per track, in order",
+      default: "#RRGGBB, or comma-separated one per track",
       smallModel: "#RRGGBB",
     }),
     type: param(z.enum(["midi", "audio", "return"]).default("midi"), {

@@ -31,19 +31,14 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     }),
 
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per scene, in order",
+      default: "name, or comma-separated one per scene",
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per scene, in order",
+      default: "#RRGGBB, or comma-separated one per scene",
       smallModel: "#RRGGBB",
     }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
-    timeSignature: z
-      .string()
-      .optional()
-      .describe(
-        'N/D (4/4) for all, or comma-separated one per scene, in order ("disabled" disables)',
-      ),
+    timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
   },
 });

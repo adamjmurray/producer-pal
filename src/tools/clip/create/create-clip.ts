@@ -194,8 +194,7 @@ export async function createClip(
 
   const song = readSongMeter(liveSet);
 
-  // sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
-  // positions, so each clip gets its own sample, meter and region.
+  // sampleFile pairs 1:1 with the positions, so each clip gets its own sample.
   const plans = buildClipPlans({
     count: order.length,
     song,

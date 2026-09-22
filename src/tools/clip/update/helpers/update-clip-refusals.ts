@@ -15,29 +15,25 @@ import {
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { splitList } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /**
- * Refuses a call there is no reading of, before any clip is touched: a param
- * with no valid value, one position spelled two ways, or one toPath that names
- * a lane or slot for more than one clip.
- * @param args - The meter and quantize-pitch params, as the caller sent them
- * @param args.timeSignature - Meter(s), if sent
- * @param args.quantizePitch - Whole-call quantize pitch, if sent
+ * Refuses a call there is no reading of, before any clip is touched: a
+ * whole-call param with no valid value, one position spelled two ways, or one
+ * toPath that names a lane or slot for more than one clip.
+ * @param timeSignature - Whole-call meter, if sent
+ * @param quantizePitch - Whole-call quantize pitch, if sent
  * @param toPath - Destination path(s), if sent
  * @param arrangementStart - Deprecated destination position(s), if sent
  * @param targetCount - How many ids the call named
  */
 export function refuseUnreadableCall(
-  {
-    timeSignature,
-    quantizePitch,
-  }: { timeSignature?: string; quantizePitch?: string },
+  timeSignature: string | undefined,
+  quantizePitch: string | undefined,
   toPath: string | undefined,
   arrangementStart: string | undefined,
   targetCount: number,
 ): void {
-  validateValueParams(timeSignature, quantizePitch, targetCount);
+  validateWholeCallParams(timeSignature, quantizePitch);
   refuseDoubledPosition(toPath, arrangementStart, "toPath");
   refuseSharedClipDestination(toPath, targetCount);
 }
@@ -165,7 +161,7 @@ export interface SplitMoveArgs {
  * @param args.toPath - Destination path(s), if sent
  * @param args.toSlot - Deprecated destination slot(s), if sent
  * @param args.arrangementStart - Position(s), if sent
- * @param args.arrangementLength - Span duration(s), if sent
+ * @param args.arrangementLength - Span duration, if sent
  */
 export function refuseSplitWithMove({
   arrangementSplit,
@@ -195,16 +191,14 @@ export function refuseSplitWithMove({
     return;
   }
 
-  // "pairs", not "pair": subjects joined by "or" take the nearer one.
   const named = conflicts.join(" or ");
 
   throw new Error(
     `${splitParam} cannot be combined with ${named}: the split makes new ` +
-      `clips, and ${named} pairs 1:1 with the clips this call names, while a ` +
-      `single value covers every one of them. The new pieces either miss it ` +
-      `or all take it, and neither is the call you wrote. Send ${splitParam} ` +
-      `on its own, then ${named} in a second call, on the ids the split ` +
-      `returns.`,
+      `clips, and ${named} can't tell them from the clips this call names. ` +
+      `The new pieces either miss it or all take it, and neither is the call ` +
+      `you wrote. Send ${splitParam} on its own, then ${named} in a second ` +
+      `call, on the ids the split returns.`,
   );
 }
 
@@ -226,27 +220,20 @@ function namedSplitParam(
 }
 
 /**
- * Refuse a value the tool can't read, before any clip is touched.
+ * Refuse a whole-call param the tool can't read, before any clip is touched.
  *
- * A meter that won't parse is the whole call's problem whichever clip it was
- * meant for, so every entry is checked here: a per-clip skip would repeat the
- * same message down the list, and the per-clip warn-and-skip wrapper would
- * swallow a throw from inside the loop.
- * @param timeSignature - Meter(s) to apply, if given
+ * These are one value for every clip in the call, so a per-clip skip would
+ * repeat the same message down the list - and the per-clip warn-and-skip
+ * wrapper would swallow a throw from inside the loop.
+ * @param timeSignature - Time signature to apply, if given
  * @param quantizePitch - Pitch to limit quantization to, if given
- * @param targetCount - How many ids the call named
  */
-function validateValueParams(
+function validateWholeCallParams(
   timeSignature: string | undefined,
   quantizePitch: string | undefined,
-  targetCount: number,
 ): void {
   if (timeSignature != null) {
-    const entries = splitList(timeSignature, targetCount, "timeSignature");
-
-    for (const entry of entries ?? [timeSignature]) {
-      parseTimeSignature(entry);
-    }
+    parseTimeSignature(timeSignature);
   }
 
   if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {

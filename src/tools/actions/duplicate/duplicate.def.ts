@@ -54,11 +54,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per copy, in order",
+      default: "name, or comma-separated one per copy",
       smallModel: "name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per copy, in order",
+      default: "#RRGGBB, or comma-separated one per copy",
       smallModel: "#RRGGBB",
     }),
 
@@ -90,15 +90,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .describe(
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'); song meter. " +
-          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length. " +
-          "One for all, or comma-separated one per source, in order",
+          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
       ),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
     }),
     toPath: param(z.coerce.string().optional(), {
       default:
-        "destination(s), comma-separated for multiple. Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
+        "destination(s). Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
         "'t2[5|1]' = that spot on that track's arrangement, and '[5|1]' the same spot on the source clip's " +
         "own track (a position is bar|beat or loc:<locator name or id> — 't2[loc:Chorus]' names a " +
         "section instead of counting bars; an arrangement track must match " +
@@ -113,8 +112,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "Clips only, and the two tracks must match MIDI/audio type; name/color label the copies. " +
         "A track copy needs no toPath otherwise. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "One arrangement position covers every source; a list pairs one per copy, in order, and never cycles. " +
-        "A clip slot, device or pad holds one object, so name one per copy — any other count is refused",
+        "Comma-separated, one per copy; a lone arrangement position covers every source",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
     }),

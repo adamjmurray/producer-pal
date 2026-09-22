@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// What each position the call names gets made from. sampleFile, timeSignature,
-// start, length and firstStart pair 1:1 with the positions, so the meter, the
-// region and even MIDI-vs-audio are settled per clip rather than per call.
+// What each position the call names gets made from. sampleFile pairs 1:1 with
+// the positions, so MIDI-vs-audio is settled per clip; the timing params apply
+// to every clip.
 
 import { type Notation } from "#src/shared/notation.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
@@ -35,7 +35,7 @@ export interface ClipPlan {
   clipLength: number;
 }
 
-/** The per-clip params, as the caller sent them, plus the call-wide ones. */
+/** The call's params, as the caller sent them. */
 export interface ClipPlanInputs {
   /** How many positions the call fills */
   count: number;
@@ -51,7 +51,7 @@ export interface ClipPlanInputs {
   notation: Notation | undefined;
 }
 
-/** The per-clip values one position ended up with. */
+/** The values one position is built from. */
 interface ClipValues {
   sampleFile: string | null;
   timeSignature: string | null;
@@ -60,67 +60,39 @@ interface ClipValues {
   firstStart: string | null;
 }
 
-const LABELS: Record<keyof ClipValues, PairLabels> = {
-  sampleFile: {
-    param: "sampleFile",
-    noun: "file",
-    item: "position",
-    shortfall: "got no clip",
-  },
-  timeSignature: {
-    param: "timeSignature",
-    noun: "time signature",
-    item: "position",
-    shortfall: "used the song's meter",
-  },
-  start: {
-    param: "start",
-    noun: "position",
-    item: "position",
-    shortfall: "started where the notes do",
-  },
-  length: {
-    param: "length",
-    noun: "length",
-    item: "position",
-    shortfall: "were sized from their notes",
-  },
-  firstStart: {
-    param: "firstStart",
-    noun: "position",
-    item: "position",
-    shortfall: "kept the playback start they had",
-  },
+const SAMPLE_FILE_LABELS: PairLabels = {
+  param: "sampleFile",
+  noun: "file",
+  item: "position",
+  shortfall: "got no clip",
 };
 
 /**
  * Work out what to build at each position the call names.
  *
- * Positions asking for the same timing share one plan, so the notation is
- * interpreted once per distinct meter and region — and its duplicate-note
- * warning is raised once, not once per clip.
- * @param inputs - The per-clip params as sent, and the call-wide ones
+ * Positions with the same sampleFile share one plan, so the notation is
+ * interpreted once — and its duplicate-note warning is raised once, not once
+ * per clip.
+ * @param inputs - The call's params, as sent
  * @returns One plan per position, in the order the call named them
  * @throws Error when a list disagrees with the positions, or a value won't parse
  */
 export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
   const { count } = inputs;
-  const lists = {
-    sampleFile: pairedList(inputs.sampleFile, count, "sampleFile"),
-    timeSignature: pairedList(inputs.timeSignature, count, "timeSignature"),
-    start: pairedList(inputs.start, count, "start"),
-    length: pairedList(inputs.length, count, "length"),
-    firstStart: pairedList(inputs.firstStart, count, "firstStart"),
-  };
+  const sampleFiles = parsePairedValues(
+    inputs.sampleFile,
+    count,
+    SAMPLE_FILE_LABELS,
+  );
   const cache = new Map<string, ClipPlan>();
 
   return Array.from({ length: count }, (_unused, index) => {
     const values: ClipValues = {
-      sampleFile: valueAt(inputs.sampleFile, index, lists.sampleFile),
-      timeSignature: valueAt(inputs.timeSignature, index, lists.timeSignature),
-      start: valueAt(inputs.start, index, lists.start),
-      length: valueAt(inputs.length, index, lists.length),
-      firstStart: valueAt(inputs.firstStart, index, lists.firstStart),
+      sampleFile: valueAt(inputs.sampleFile, index, sampleFiles),
+      timeSignature: inputs.timeSignature,
+      start: inputs.start,
+      length: inputs.length,
+      firstStart: inputs.firstStart,
     };
     const key = JSON.stringify(values);
     const cached = cache.get(key);
@@ -140,22 +112,7 @@ export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
 // --- Helpers below main exports ---
 
 /**
- * Split one per-clip param against the positions.
- * @param value - The raw param, as the caller sent it
- * @param count - How many positions the call fills
- * @param param - Which param it is
- * @returns One entry per position, or null when the value covers every one
- */
-function pairedList(
-  value: string | null,
-  count: number,
-  param: keyof ClipValues,
-): ListEntries | null {
-  return parsePairedValues(value, count, LABELS[param]);
-}
-
-/**
- * One position's value for a per-clip param.
+ * One position's sampleFile.
  * @param value - The raw param, as the caller sent it
  * @param index - The position's place in the call
  * @param parsed - The split entries, or null when the value covers every one
@@ -171,7 +128,7 @@ function valueAt(
 
 /**
  * Resolve one position's timing and notes.
- * @param inputs - The per-clip params as sent, and the call-wide ones
+ * @param inputs - The call's params, as sent
  * @param values - What this position asked for
  * @returns The plan for that position
  */

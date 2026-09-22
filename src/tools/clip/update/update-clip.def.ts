@@ -12,9 +12,6 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
-/** How every per-clip string param pairs with the targets the call names. */
-const PER_CLIP = " One for all, or comma-separated one per clip, in order.";
-
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
@@ -47,30 +44,25 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
 
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per target named, in order",
+      default: "name, or comma-separated one per clip",
       smallModel: "clip name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per target named, in order",
+      default: "#RRGGBB, or comma-separated one per clip",
       smallModel: "#RRGGBB",
     }),
-    timeSignature: z.string().optional().describe(`N/D (4/4).${PER_CLIP}`),
+    timeSignature: z.string().optional().describe("N/D (4/4)"),
 
     // Clip region and loop settings
     start: z
       .string()
       .optional()
-      .describe(
-        `bar|beat position where loop/clip region begins (clip meter).${PER_CLIP}`,
-      ),
+      .describe("bar|beat position where loop/clip region begins (clip meter)"),
     length: z
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter." +
-          PER_CLIP,
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
@@ -81,8 +73,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)." +
-        PER_CLIP,
+        "bar|beat playback start (looping clips, when different from start; clip meter)",
       smallModel: null,
     }),
     arrangementStart: deprecatedParam(z.coerce.string().optional(), {
@@ -93,8 +84,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration(s), comma-separated: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
-          "One length applies to every clip; a list pairs 1:1 with id/path in order. " +
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
     arrangementSplit: param(z.string().optional(), {
@@ -112,16 +102,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>' " +
+        "where to move the clip(s): a clip slot 't<track>/s<scene>' " +
           "(scenes are created up to that index), " +
           "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
           "loc:<locator name or id>), a take lane 't<track>/l<lane>' (lanes are created up to that " +
           "index), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation envelopes. One '[<position>]' moves every clip, each on its " +
-          "own lane; anything naming a lane pairs 1:1 with id/path in order, since a lane or slot " +
-          "holds one clip and the rest would land on top of it",
+          "take lane drops its automation envelopes. Comma-separated, one per clip; a lone " +
+          "'[<position>]' moves every clip, each on its own lane",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged

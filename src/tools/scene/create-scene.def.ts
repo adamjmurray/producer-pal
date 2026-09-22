@@ -48,11 +48,11 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per scene, in order",
+      default: "name, or comma-separated one per scene",
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per scene, in order",
+      default: "#RRGGBB, or comma-separated one per scene",
       smallModel: "#RRGGBB",
     }),
     tempo: param(z.coerce.number().optional(), {
@@ -60,8 +60,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {
-      default:
-        'N/D (4/4) for all, or comma-separated one per scene, in order ("disabled" when capturing)',
+      default: 'N/D (4/4) or "disabled" when capturing',
       smallModel: null,
     }),
   },
