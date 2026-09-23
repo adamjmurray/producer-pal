@@ -30,6 +30,10 @@ import {
 } from "./copy-labels.ts";
 import { duplicateSceneToArrangementAtPositions } from "./scene-arrangement-positions.ts";
 import { type SourceShare } from "./source-plan.ts";
+import {
+  refuseClipOverwrites,
+  refusePadOverwrites,
+} from "./source-overwrites.ts";
 import { duplicateTrack } from "./duplicate-track.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -69,7 +73,9 @@ export interface EverySourceArgs extends Omit<
 
 /**
  * Makes every source's copies, in the order the call named them. Each source
- * takes its own share of the destinations and positions.
+ * takes its own share of the destinations and positions. A copy that would
+ * land on another source refuses the call first: it would wreck that source's
+ * own turn.
  * @param args - The sources, and what they share
  * @returns Every copy, source by source
  */
@@ -77,6 +83,13 @@ export async function duplicateEverySource(
   args: EverySourceArgs,
 ): Promise<object[]> {
   const created: object[] = [];
+
+  if (args.clipDestinations != null) {
+    refuseClipOverwrites(args.sources, args.clipDestinations, {
+      arrangementLength: args.params.arrangementLength,
+      takeLane: args.takeLane,
+    });
+  }
 
   for (const [index, source] of args.sources.entries()) {
     created.push(
@@ -133,7 +146,8 @@ export async function duplicateOneSource(
 
 /**
  * Copies a device or a drum pad — the two types whose destination is a slot in
- * a device chain rather than a spot on the timeline.
+ * a device chain rather than a spot on the timeline. A pad copy onto another
+ * source pad refuses the call first.
  * @param type - "device" or "drum-pad"
  * @param sources - The shares to copy, in order
  * @param labels - The call's names and colors
@@ -146,6 +160,10 @@ export function duplicateChainSources(
   labels: CopyLabels,
   count: number,
 ): object[] {
+  if (type === "drum-pad") {
+    refusePadOverwrites(sources);
+  }
+
   return sources.flatMap((source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.

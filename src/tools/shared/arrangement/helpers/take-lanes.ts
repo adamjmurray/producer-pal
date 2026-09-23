@@ -230,6 +230,31 @@ export function normalizeTakeLaneTarget(
 }
 
 /**
+ * Folds the deprecated `takeLane` param onto destinations. It names one lane
+ * for the whole call, so it only applies when no destination names its own.
+ * @param targets - Destinations, null where one can't be used
+ * @param takeLane - Raw takeLane value from a tool argument
+ * @returns The destinations, with the lane applied when it applies
+ */
+export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
+  targets: (T | null)[],
+  takeLane: number | string | null | undefined,
+): (T | null)[] {
+  if (
+    !isTakeLaneRequested(takeLane) ||
+    targets.some((target) => target?.takeLane != null)
+  ) {
+    return targets;
+  }
+
+  const lane = normalizeTakeLaneTarget(takeLane);
+
+  return targets.map((target) =>
+    target == null ? null : { ...target, takeLane: lane },
+  );
+}
+
+/**
  * Resolve (auto-creating as needed) the target take lane on a track.
  * The target auto-creates lanes up to that index (mirroring scene
  * auto-create). The MAX_TAKE_LANES cap is enforced. takeLaneName names only the

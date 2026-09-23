@@ -6,9 +6,9 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  aliasTakeLane,
   isTakeLaneClip,
   isTakeLaneRequested,
-  normalizeTakeLaneTarget,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
@@ -424,21 +424,14 @@ function applyTakeLaneAlias(
   targets: (ArrangementTrack | null)[],
   takeLane: number | string | undefined,
 ): (ArrangementTrack | null)[] {
-  if (!isTakeLaneRequested(takeLane)) {
-    return targets;
-  }
-
   // A destination this call can't use is null and names no lane, so it can't
   // block the alias for the ones around it.
-  if (targets.some((target) => target?.takeLane != null)) {
+  if (
+    isTakeLaneRequested(takeLane) &&
+    targets.some((target) => target?.takeLane != null)
+  ) {
     console.warn('takeLane ignored — "toPath" already names the take lane');
-
-    return targets;
   }
 
-  const target = normalizeTakeLaneTarget(takeLane);
-
-  return targets.map((entry) =>
-    entry == null ? null : { ...entry, takeLane: target },
-  );
+  return aliasTakeLane(targets, takeLane);
 }

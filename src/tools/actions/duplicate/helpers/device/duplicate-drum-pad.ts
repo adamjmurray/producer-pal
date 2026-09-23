@@ -142,7 +142,7 @@ function refuseRackWithoutPads(rack: LiveAPI): void {
  * @returns The pad target
  * @throws Error when the path doesn't name one pad
  */
-function resolvePadTarget(path: string, label: string): PadTarget {
+export function resolvePadTarget(path: string, label: string): PadTarget {
   const resolved = resolvePathToLiveApi(path, label);
 
   if (resolved.namesNothing != null) {

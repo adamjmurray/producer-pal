@@ -382,6 +382,46 @@ describe("duplicate - drum pad", () => {
     ]);
   });
 
+  // copy_pad layers, so D1's own turn would copy C1's chains along with its own.
+  it("refuses a copy onto another source pad before any copy", async () => {
+    const rack = registerDrumRack([
+      { note: 36, chainIds: ["kick"] },
+      { note: 38, chainIds: ["snare"] },
+      { note: 40, chainIds: [] },
+    ]);
+
+    await expect(
+      duplicate({
+        type: "drum-pad",
+        id: "pad36,pad38",
+        toPath: "t0/d0/pD1,t0/d0/pE1",
+      }),
+    ).rejects.toThrow(
+      'a copy to "t0/d0/pD1" would overwrite id "pad38", another source of ' +
+        "this call; duplicate that one in its own call first",
+    );
+
+    expectNoCopy(rack);
+  });
+
+  // Each is refused on its own entry, so the check for a copy onto another
+  // source leaves both alone.
+  it("leaves a chain source and a bad destination to their own entries", async () => {
+    const rack = registerCopyReadyRack();
+
+    const result = await duplicate({
+      type: "drum-pad",
+      id: "pad36,kick",
+      toPath: "t0/d0/pD1,t0/d0/pC1/d0",
+    });
+
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+    expect(result).toStrictEqual([
+      { id: "pad38", path: "t0/d0/pD1" },
+      expect.objectContaining({ ok: false }),
+    ]);
+  });
+
   it("requires toPath, which has no sensible default for a pad", async () => {
     registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 
