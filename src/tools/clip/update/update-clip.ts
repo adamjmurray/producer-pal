@@ -91,13 +91,7 @@ export async function updateClip(
     { name, color, arrangementStart, toPath, toSlot },
   );
 
-  refuseUnreadableCall(
-    args.timeSignature,
-    args.quantizePitch,
-    toPath,
-    arrangementStart,
-    targets.named.length,
-  );
+  refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 
   // What the clips the call did reach have to say beyond their own results.

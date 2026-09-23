@@ -3,6 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  barBeatToAbletonBeats,
+  durationToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
@@ -16,26 +21,31 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
+/** The update-clip params read before any clip is touched. */
+export interface WholeCallArgs {
+  timeSignature?: string;
+  quantizePitch?: string;
+  start?: string;
+  length?: string;
+  firstStart?: string;
+  toPath?: string;
+  arrangementStart?: string;
+}
+
 /**
  * Refuses a call there is no reading of, before any clip is touched: a
  * whole-call param with no valid value, one position spelled two ways, or one
  * toPath that names a lane or slot for more than one clip.
- * @param timeSignature - Whole-call meter, if sent
- * @param quantizePitch - Whole-call quantize pitch, if sent
- * @param toPath - Destination path(s), if sent
- * @param arrangementStart - Deprecated destination position(s), if sent
+ * @param args - The call's whole-call params, as sent
  * @param targetCount - How many ids the call named
  */
 export function refuseUnreadableCall(
-  timeSignature: string | undefined,
-  quantizePitch: string | undefined,
-  toPath: string | undefined,
-  arrangementStart: string | undefined,
+  args: WholeCallArgs,
   targetCount: number,
 ): void {
-  validateWholeCallParams(timeSignature, quantizePitch);
-  refuseDoubledPosition(toPath, arrangementStart, "toPath");
-  refuseSharedClipDestination(toPath, targetCount);
+  validateWholeCallParams(args);
+  refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
+  refuseSharedClipDestination(args.toPath, targetCount);
 }
 
 /**
@@ -223,20 +233,57 @@ function namedSplitParam(
  * Refuse a whole-call param the tool can't read, before any clip is touched.
  *
  * These are one value for every clip in the call, so a per-clip skip would
- * repeat the same message down the list - and the per-clip warn-and-skip
- * wrapper would swallow a throw from inside the loop.
- * @param timeSignature - Time signature to apply, if given
- * @param quantizePitch - Pitch to limit quantization to, if given
+ * repeat the same message down the list. Worse, a clip's update throwing
+ * partway has already written to it by then.
+ * @param args - The call's whole-call params, as sent
+ * @param args.timeSignature - Time signature to apply, if given
+ * @param args.quantizePitch - Pitch to limit quantization to, if given
+ * @param args.start - Loop region start, if given
+ * @param args.length - Loop region length, if given
+ * @param args.firstStart - Playback start, if given
  */
-function validateWholeCallParams(
-  timeSignature: string | undefined,
-  quantizePitch: string | undefined,
-): void {
+function validateWholeCallParams({
+  timeSignature,
+  quantizePitch,
+  start,
+  length,
+  firstStart,
+}: WholeCallArgs): void {
   if (timeSignature != null) {
     parseTimeSignature(timeSignature);
   }
 
   if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
     throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
+  }
+
+  validateClipRegion(start, length, firstStart);
+}
+
+// No parse error depends on the meter, so any meter finds them all. One this
+// wide keeps a beat past the bar from warning here: that warning is per clip,
+// in the clip's own meter.
+const ANY_BEATS_PER_BAR = Number.MAX_SAFE_INTEGER;
+
+/**
+ * Refuse a start, length or firstStart that can't be read in any meter.
+ * @param start - Loop region start, if sent
+ * @param length - Loop region length, if sent
+ * @param firstStart - Playback start, if sent
+ */
+function validateClipRegion(
+  start: string | undefined,
+  length: string | undefined,
+  firstStart: string | undefined,
+): void {
+  for (const position of [start, firstStart]) {
+    if (position != null) {
+      validateBarBeatPosition(position);
+      barBeatToAbletonBeats(position, ANY_BEATS_PER_BAR, 4);
+    }
+  }
+
+  if (length != null) {
+    durationToAbletonBeats(length, 4, 4);
   }
 }
