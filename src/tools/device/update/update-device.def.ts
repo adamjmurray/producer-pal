@@ -146,7 +146,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     wrapInRack: param(z.boolean().optional(), {
       default:
-        "Wrap device(s) in a new rack (auto-detects type from device); only one instrument at a time, and MIDI and audio effects can't share a rack",
+        "Wrap device(s) in a new rack (type auto-detected), in series in one chain: MIDI effects, instrument, audio effects, each kind in the order named. One instrument max; MIDI and audio effects together need an instrument",
       smallModel: null,
     }),
   },

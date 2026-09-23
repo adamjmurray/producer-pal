@@ -135,8 +135,8 @@ describe("ppal-create-device", () => {
 
     await sleep(150);
 
-    // One past the rack's last chain, so the gap below it is filled as well.
-    const firstNew = rack.deviceCount;
+    // A wrap makes one chain; aim one past the next, so the gap fills too.
+    const firstNew = 1;
     const target = firstNew + 1;
     const created = await createDevice(
       "Compressor",
@@ -689,9 +689,8 @@ interface ReadDeviceResult {
   name?: string;
 }
 
-/** What a wrapInRack answers with; `deviceCount` is the rack's chain count. */
+/** What a wrapInRack answers with. */
 interface WrapResult {
   id: string;
   path: string;
-  deviceCount: number;
 }

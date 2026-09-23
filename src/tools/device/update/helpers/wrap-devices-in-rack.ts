@@ -60,6 +60,7 @@ interface WrapResult {
   id: string;
   path?: string;
   type: string;
+  /** Devices in the rack's one chain */
   deviceCount: number;
   /** Which of the devices the call named didn't make it into the rack */
   reason?: string;
@@ -73,7 +74,7 @@ interface RackDestination {
 }
 
 /**
- * Wrap device(s) in a new rack
+ * Wrap device(s) in a new rack, in series in one chain
  * @param options - The options
  * @param options.ids - Comma-separated device ID(s)
  * @param options.path - Comma-separated device path(s)
@@ -89,7 +90,9 @@ export function wrapDevicesInRack({
   name,
 }: WrapDevicesOptions): WrapResult {
   const reasons: string[] = [];
-  const devices = resolveDevices(namedTargets({ id: ids, path }), reasons);
+  const devices = uniqueDevices(
+    resolveDevices(namedTargets({ id: ids, path }), reasons),
+  );
 
   refuseEmptyWrap(devices, reasons);
 
@@ -97,28 +100,43 @@ export function wrapDevicesInRack({
 
   // Instruments require temp-track workaround
   if (rackType === RACK_TYPE_INSTRUMENT) {
-    // Live allows one instrument per track, so a second move onto the staging
-    // track would silently do nothing — refuse before anything is staged.
-    if (devices.length > 1) {
-      const named = devices.map((d) => `${d.param} "${d.value}"`).join(", ");
-
-      throw new Error(
-        `wrapInRack can wrap only one instrument at a time; ` +
-          `${devices.length} named: ${named}`,
-      );
-    }
-
-    return wrapInstrumentInRack(
-      assertDefined(devices[0], "first device").device,
-      toPath,
-      name,
-    );
+    return wrapInstrumentInRack(devices, reasons, toPath, name);
   }
 
   const { container, position } = toPath
     ? rackDestination(toPath)
     : getDeviceInsertionPoint(assertDefined(devices[0], "first device").device);
+  const rack = insertRack(container, position, rackType);
 
+  nameRack(rack, name);
+  const chain = firstChain(rack);
+
+  if (chain == null) {
+    for (const { param, value } of devices) {
+      reasons.push(`${param} "${value}" stayed put: Live made no chain for it`);
+    }
+
+    reasons.push("the new rack was left empty");
+  } else {
+    moveDevicesIntoChain(chain, devices, reasons);
+  }
+
+  return rackResult(rack, rackType, chain, reasons);
+}
+
+/**
+ * Insert an empty rack.
+ * @param container - Where the rack goes
+ * @param position - The slot in it, or null for the front
+ * @param rackType - Which kind of rack
+ * @returns The new rack
+ * @throws Error when Live refuses the insert
+ */
+function insertRack(
+  container: LiveAPI,
+  position: number | null,
+  rackType: RackType,
+): LiveAPI {
   const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType];
   const rackId = container.call(
     "insert_device",
@@ -127,67 +145,134 @@ export function wrapDevicesInRack({
   ) as string;
   const rack = LiveAPI.from(rackId);
 
+  // Live refuses an insert by answering with no id, not by throwing.
+  if (!rack.exists()) {
+    throw new Error(`wrapInRack: Live refused to insert the ${rackName}`);
+  }
+
+  return rack;
+}
+
+/**
+ * Name the new rack, if the call asked.
+ * @param rack - The new rack
+ * @param name - Name for it
+ */
+function nameRack(rack: LiveAPI, name?: string): void {
   if (name) {
     rack.set("name", name);
   }
+}
 
-  moveDevicesIntoChains(rack, devices, reasons);
-
+/**
+ * What a wrap answers with. deviceCount is read back from the chain, so a
+ * move Live ignored doesn't count.
+ * @param rack - The new rack
+ * @param type - Which kind of rack
+ * @param chain - The rack's one chain, or null when Live made none
+ * @param reasons - Why a device the call named isn't in the rack
+ * @returns The rack's entry
+ */
+function rackResult(
+  rack: LiveAPI,
+  type: RackType,
+  chain: LiveAPI | null,
+  reasons: string[],
+): WrapResult {
   return {
     id: rack.id,
     ...pathField(rack),
-    type: rackType,
-    deviceCount: rack.getChildCount("chains"),
+    type,
+    deviceCount: chain?.getChildCount("devices") ?? 0,
     ...(reasons.length > 0 ? { reason: reasons.join("; ") } : {}),
   };
 }
 
 /**
- * Put each device in its own chain of the new rack, making the chains as it
- * goes. A chain Live won't make is the one device that didn't get in, so it
- * lands on the rack's own entry rather than dropping out of sight.
- * @param rack - The new rack
- * @param devices - The devices to wrap, in order
+ * Put the devices in series in one chain, in the order Live requires: MIDI
+ * effects, then the instrument, then audio effects, each kind in the order
+ * named. Each goes on the chain's end as it stands, so a move Live ignores
+ * doesn't push the rest past it.
+ * @param chain - The rack's chain
+ * @param devices - The devices to wrap
  * @param reasons - Why a device the call named isn't in the rack, added to
  */
-function moveDevicesIntoChains(
-  rack: LiveAPI,
+function moveDevicesIntoChain(
+  chain: LiveAPI,
   devices: ResolvedDevice[],
   reasons: string[],
 ): void {
   const liveSet = LiveAPI.from(livePath.liveSet);
+  const chainId = toLiveApiId(chain.id);
+  const ordered = devices.toSorted((a, b) => chainRank(a) - chainRank(b));
 
-  for (const [index, { param, value, device }] of devices.entries()) {
-    const chain = chainAt(rack, index);
+  for (const { device } of ordered) {
+    const end = chain.getChildCount("devices");
 
-    if (chain == null) {
-      reasons.push(`${param} "${value}" stayed put: Live made no chain for it`);
-      continue;
+    liveSet.call("move_device", toLiveApiId(device.id), chainId, end);
+  }
+
+  for (const { param, value, device } of ordered) {
+    if (!holdsDevice(chain, device)) {
+      reasons.push(
+        `${param} "${value}" is not in the rack: Live didn't move it`,
+      );
     }
-
-    liveSet.call(
-      "move_device",
-      toLiveApiId(device.id),
-      toLiveApiId(chain.id),
-      0,
-    );
   }
 }
 
 /**
- * The rack's chain at an index, appending chains until it exists.
- * @param rack - The new rack
- * @param index - The chain index wanted
- * @returns The chain, or null when Live wouldn't make one
+ * Whether a track or chain holds a device right now.
+ * @param container - The track or chain
+ * @param device - The device
+ * @returns True when the device is in it
  */
-function chainAt(rack: LiveAPI, index: number): LiveAPI | null {
-  for (let i = rack.getChildCount("chains"); i <= index; i++) {
-    if (appendChain(rack) == null) {
-      return null;
-    }
+function holdsDevice(container: LiveAPI, device: LiveAPI): boolean {
+  return container.getChildIds("devices").includes(toLiveApiId(device.id));
+}
+
+/**
+ * Drop repeats, so a device named twice (or by id and by path) is wrapped
+ * once and counts once.
+ * @param devices - The devices that resolved
+ * @returns Each device once, in the order first named
+ */
+function uniqueDevices(devices: ResolvedDevice[]): ResolvedDevice[] {
+  const seen = new Set<string>();
+
+  return devices.filter(({ device }) => {
+    const fresh = !seen.has(device.id);
+
+    seen.add(device.id);
+
+    return fresh;
+  });
+}
+
+/**
+ * Where a device's kind sits in a chain.
+ * @param resolved - A device to wrap
+ * @returns 0 for MIDI effects, 1 for the instrument, 2 for the rest
+ */
+function chainRank(resolved: ResolvedDevice): number {
+  const type = resolved.device.getProperty("type");
+
+  if (type === LIVE_API_DEVICE_TYPE_MIDI_EFFECT) {
+    return 0;
   }
 
-  return rack.child("chains", String(index));
+  return type === LIVE_API_DEVICE_TYPE_INSTRUMENT ? 1 : 2;
+}
+
+/**
+ * The new rack's first chain, made if the rack has none.
+ * @param rack - The new rack
+ * @returns The chain, or null when Live wouldn't make one
+ */
+function firstChain(rack: LiveAPI): LiveAPI | null {
+  return rack.getChildCount("chains") > 0
+    ? rack.child("chains", "0")
+    : appendChain(rack);
 }
 
 /**
@@ -338,7 +423,9 @@ function determineRackType(devices: LiveAPI[]): RackType {
     types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) &&
     types.has(LIVE_API_DEVICE_TYPE_MIDI_EFFECT)
   ) {
-    throw new Error("wrapInRack cannot mix MIDI and audio effects in one rack");
+    throw new Error(
+      "wrapInRack cannot mix MIDI and audio effects in one rack without an instrument",
+    );
   }
 
   if (types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT)) {
@@ -370,20 +457,39 @@ function getDeviceInsertionPoint(device: LiveAPI): {
 }
 
 /**
- * Wrap one instrument in an Instrument Rack using a temp-track workaround.
- * Live doesn't allow creating an Instrument Rack on a track that already has
- * an instrument, and doesn't allow two instruments on one track — so this
- * only ever handles one instrument; the caller refuses more than one up front.
- * @param device - Instrument device to wrap
+ * Wrap one instrument, plus any effects named with it, in an Instrument Rack.
+ * Live won't create an Instrument Rack on a track that already has an
+ * instrument, so the instrument waits on a temp track while the rack is made.
+ * @param devices - The devices to wrap, at least one of them an instrument
+ * @param reasons - Why a device the call named isn't in the rack
  * @param toPath - Target path for the new rack
  * @param name - Name for the new rack
  * @returns Info about the created rack
+ * @throws Error when more than one instrument is named
  */
 function wrapInstrumentInRack(
-  device: LiveAPI,
+  devices: ResolvedDevice[],
+  reasons: string[],
   toPath?: string,
   name?: string,
 ): WrapResult {
+  const instruments = devices.filter(
+    ({ device }) =>
+      device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  );
+
+  // Live allows one instrument per track, so a second move onto the staging
+  // track would silently do nothing — refuse before anything is staged.
+  if (instruments.length > 1) {
+    const named = instruments.map((d) => `${d.param} "${d.value}"`).join(", ");
+
+    throw new Error(
+      `wrapInRack can wrap only one instrument at a time; ` +
+        `${instruments.length} named: ${named}`,
+    );
+  }
+
+  const device = assertDefined(instruments[0], "instrument").device;
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   // 1. Get source track from the instrument
@@ -391,8 +497,8 @@ function wrapInstrumentInRack(
     getDeviceInsertionPoint(device);
 
   // 2. Resolve and validate the destination BEFORE moving anything. A bad
-  // toPath must fail here, while the instruments are still safely on their
-  // source track — never after they've been staged on the temp track.
+  // toPath must fail here, while the instrument is still on its source track
+  // — never after it's been staged on the temp track.
   const { container, position } = toPath
     ? rackDestination(toPath)
     : { container: sourceContainer, position: devicePosition };
@@ -401,9 +507,10 @@ function wrapInstrumentInRack(
   const tempTrackId = liveSet.call("create_midi_track", -1) as string;
   const tempTrack = LiveAPI.from(tempTrackId);
   const tempTrackIndex = tempTrack.trackIndex;
+  let rack: LiveAPI | null = null;
 
   try {
-    // 4. Move the instrument to the temp track
+    // 4. Stage the instrument on the temp track
     liveSet.call(
       "move_device",
       toLiveApiId(device.id),
@@ -412,93 +519,99 @@ function wrapInstrumentInRack(
     );
 
     // 5. Create Instrument Rack on source track (or toPath)
-    const rackId = container.call(
-      "insert_device",
-      "Instrument Rack",
-      position ?? 0,
-    ) as string;
-    const rack = LiveAPI.from(rackId);
+    rack = insertRack(container, position, RACK_TYPE_INSTRUMENT);
+    nameRack(rack, name);
+    const chain = firstChain(rack);
 
-    if (name) {
-      rack.set("name", name);
+    // No chain means nowhere for the staged instrument: fail, so it goes back.
+    if (chain == null) {
+      throw new Error("wrapInRack: Live made no chain in the new rack");
     }
 
-    // 6. Move the instrument from the temp track into the rack's chain
-    rack.call("insert_chain");
-    const chainIndex = rack.getChildCount("chains") - 1;
-    const chain = LiveAPI.from(`${rack.path} chains ${chainIndex}`);
-    const tempDevice = LiveAPI.from(`${tempTrack.path} devices 0`);
+    // 6. Everything goes in one chain; the held instrument object followed
+    // its device to the temp track, so it moves from there.
+    moveDevicesIntoChain(chain, devices, reasons);
 
-    liveSet.call(
-      "move_device",
-      toLiveApiId(tempDevice.id),
-      toLiveApiId(chain.id),
-      0,
-    );
+    // 7. Delete the temp track, unless the instrument never left it
+    const kept = releaseTempTrack(liveSet, tempTrack, tempTrackIndex, device);
 
-    // 7. Delete temp track
-    liveSet.call("delete_track", tempTrackIndex);
-
-    return {
-      id: rack.id,
-      ...pathField(rack),
-      type: RACK_TYPE_INSTRUMENT,
-      deviceCount: rack.getChildCount("chains"),
-    };
+    return rackResult(rack, RACK_TYPE_INSTRUMENT, chain, [...reasons, ...kept]);
   } catch (error) {
-    // The instruments were staged on the temp track before/while the rack was
-    // built. Move any that are still on it back to the source container FIRST,
-    // so deleting the temp track can never destroy the user's instruments.
-    restoreStrandedInstruments(
-      liveSet,
-      tempTrack,
-      sourceContainer,
-      devicePosition,
-    );
+    // The empty rack goes first: it holds the source track's one instrument
+    // slot, so the instrument can't go back while it's there.
+    const notes = rack == null ? [] : removeEmptyRack(rack);
 
-    // Cleanup: delete temp track if it still exists
-    try {
-      liveSet.call("delete_track", tempTrackIndex);
-    } catch {
-      // Ignore cleanup errors
+    if (holdsDevice(tempTrack, device)) {
+      liveSet.call(
+        "move_device",
+        toLiveApiId(device.id),
+        toLiveApiId(sourceContainer.id),
+        devicePosition,
+      );
     }
 
-    throw error;
+    notes.push(...releaseTempTrack(liveSet, tempTrack, tempTrackIndex, device));
+
+    if (notes.length === 0) {
+      throw error;
+    }
+
+    throw new Error(`${errorMessage(error)}; ${notes.join("; ")}`, {
+      cause: error,
+    });
   }
 }
 
 /**
- * Move any instruments still staged on the temp track back to their original
- * container. Used on the wrap failure path so deleting the temp track never
- * takes instruments down with it. Best-effort: a failed move on one device does
- * not stop the others.
- * @param liveSet - The live_set LiveAPI object (owns move_device)
- * @param tempTrack - Temp track instruments were staged on
- * @param sourceContainer - Original container to restore instruments into
- * @param position - Original device position within the source container
+ * Delete the temp track — but never while it holds the instrument, since that
+ * would delete the instrument too. A failed delete is a note, not a failure:
+ * the wrap itself is already done or already failing.
+ * @param liveSet - The live_set LiveAPI object
+ * @param tempTrack - The temp track
+ * @param index - The temp track's index
+ * @param instrument - The instrument that was staged on it
+ * @returns What was left behind, if anything
  */
-function restoreStrandedInstruments(
+function releaseTempTrack(
   liveSet: LiveAPI,
   tempTrack: LiveAPI,
-  sourceContainer: LiveAPI,
-  position: number,
-): void {
-  const sourceId = toLiveApiId(sourceContainer.id);
-  // Bounded by the initial count: each move removes device 0, so re-reading
-  // slot 0 walks the list; the cap guards against a move that silently no-ops.
-  const count = tempTrack.getChildCount("devices");
+  index: number | null,
+  instrument: LiveAPI,
+): string[] {
+  if (holdsDevice(tempTrack, instrument)) {
+    return [`the instrument was left on new track t${index}`];
+  }
 
-  for (let i = 0; i < count; i++) {
-    const stranded = tempTrack.child("devices", "0");
+  try {
+    liveSet.call("delete_track", index);
 
-    if (!stranded.exists()) {
-      break;
-    }
+    return [];
+  } catch {
+    return [`new track t${index} could not be deleted`];
+  }
+}
 
-    try {
-      liveSet.call("move_device", toLiveApiId(stranded.id), sourceId, position);
-    } catch {
-      // Best-effort restore; continue with the remaining instruments.
-    }
+/**
+ * Delete the new rack if nothing got into it.
+ * @param rack - The new rack
+ * @returns A note when an empty rack was left behind
+ */
+function removeEmptyRack(rack: LiveAPI): string[] {
+  const empty = rack
+    .getChildren("chains")
+    .every((chain) => chain.getChildCount("devices") === 0);
+
+  if (!empty) {
+    return [];
+  }
+
+  try {
+    const { container, position } = getDeviceInsertionPoint(rack);
+
+    container.call("delete_device", position);
+
+    return [];
+  } catch {
+    return [`the empty new rack ${targetLabel(rack)} was left in place`];
   }
 }
