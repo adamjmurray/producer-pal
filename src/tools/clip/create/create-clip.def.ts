@@ -143,7 +143,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "absolute path to audio file - audio clips only; or comma-separated one per path",
+        "absolute path to audio file - audio clips only; or comma-separated one per path (a path with a comma needs a single-target call)",
       ),
 
     warping: param(z.boolean().optional(), {
