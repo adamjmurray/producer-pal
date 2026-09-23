@@ -489,6 +489,31 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     });
   });
 
+  // Each entry on a pad is written on its own, so both would load.
+  it("loads only the last of two samples", () => {
+    registerPadRack();
+
+    const simpler = registerCreatedSimpler();
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      params: [
+        { name: "sample", value: "/snare.wav" },
+        { name: "Sample", value: KICK },
+      ],
+    });
+
+    expect(simpler.call).toHaveBeenCalledTimes(1);
+    expect(simpler.call).toHaveBeenCalledWith("replace_sample", KICK);
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "sample",
+        ok: false,
+        reason: 'set again by "Sample" later in the list',
+      },
+      { name: "sample", value: KICK },
+    ]);
+  });
+
   it("skips a pad whose instrument has no settable sample, and says why in the entry", () => {
     const [chain] = registerPadRack();
 
@@ -612,6 +637,27 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     );
     expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Neither is written, so neither overrides the other.
+  it("refuses a param sent twice on a chain in each entry, by id where sent by id", () => {
+    registerPadRack();
+
+    const result = updateDevice({
+      path: "t0/d0/pC1/c0",
+      params: [
+        { name: "Volume", value: "50" },
+        { name: "volume", value: "60" },
+        { id: "7", value: "1" },
+      ],
+    });
+    const notApplicable = expect.stringContaining("'params' not applicable");
+
+    expect(paramsOf(result)).toStrictEqual([
+      { name: "Volume", ok: false, reason: notApplicable },
+      { name: "volume", ok: false, reason: notApplicable },
+      { id: "7", ok: false, reason: notApplicable },
+    ]);
   });
 
   it("still refuses every other param on a chain, in its own entry", () => {

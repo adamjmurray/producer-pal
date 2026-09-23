@@ -34,7 +34,6 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { moveDeviceToPath } from "./move-device.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
-import { refuseDuplicateParams } from "./params/param-entry-validation.ts";
 import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import { updateDrumPadGroup } from "./update-drum-pad-group.ts";
 import {
@@ -307,11 +306,6 @@ function updateTarget(
     throw new Error(
       `cannot update ${liveObjectWords(type)}: ${targetLabel(target)}`,
     );
-  }
-
-  // Before the move and the rename, so a refused target is left untouched.
-  if (isDeviceType(type) && options.params != null) {
-    refuseDuplicateParams(target, options.params);
   }
 
   const notes = newTargetNotes();

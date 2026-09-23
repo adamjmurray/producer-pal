@@ -32,6 +32,7 @@ import {
   resolveParamsByName,
 } from "./helpers/params/param-name-resolution.ts";
 import { setParamValue } from "./helpers/params/param-value-interpretation.ts";
+import { supersededParamReasons } from "./helpers/params/superseded-params.ts";
 import { type ParamWriteOutcome } from "./helpers/params/param-write-verification.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -45,15 +46,13 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * landed on, or the reason nothing was written. Nothing here warns — the param's
  * own entry is where the caller reads what happened to it.
  *
- * Two entries reaching one param aren't caught here: the caller refuses them or
- * passes them in `skips`, since both would read back the last write's value.
+ * When entries reach one param, only the last is written; each earlier one
+ * comes back skipped, naming the entry that overrides it.
  * @param device - LiveAPI device object to update
  * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param notes - What the device's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
- * @param skips - Why an entry is written nowhere, keyed by its position in
- *   `params`
  * @returns One entry per param named, in order
  */
 export function setParamValues(
@@ -61,8 +60,8 @@ export function setParamValues(
   params: ParamEntry[],
   force = false,
   notes?: TargetNotes,
-  skips?: ReadonlyMap<number, string>,
 ): ParamOutcome[] {
+  const skips = supersededParamReasons(device, params);
   const results: ParamOutcome[] = [];
   // Read once per device, not per param: it only names the device for the
   // recorded-unit lookup.
@@ -74,7 +73,7 @@ export function setParamValues(
     // Malformed entries were refused up front, so both sides are non-empty.
     const { key, byId } = paramEntryKey(entry);
     const rawValue = entry.value.trim();
-    const skip = skips?.get(index);
+    const skip = skips.get(index);
 
     if (skip != null) {
       results.push(

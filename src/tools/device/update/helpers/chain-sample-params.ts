@@ -16,10 +16,12 @@ import {
   type ParamResult,
   refreshParamValues,
   skippedParam,
+  skippedParamById,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { resolveDrumChainSampleTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
+import { supersededParamReasons } from "./params/superseded-params.ts";
 import { type UpdatePropertyOptions } from "./update-device-properties.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { notApplicableReason } from "./update-target-types.ts";
@@ -47,18 +49,29 @@ export function applyChainSampleParams(
 ): ParamResult[] {
   const params = options.params ?? [];
   const force = options.force ?? false;
+  const writable = params.filter(
+    (entry) => type === "DrumChain" && isSampleParam(paramEntryKey(entry).key),
+  );
+  // Each entry is written on its own below, so a later `sample` entry has to
+  // be spotted here, or both would load. Only entries that would be written
+  // compete: the rest are not applicable either way.
+  const superseded = supersededParamReasons(null, writable);
 
   return refreshParamValues(
-    params.flatMap((entry) =>
-      type === "DrumChain" && isSampleParam(paramEntryKey(entry).key)
-        ? writeChainSample(target, entry, force, notes)
-        : [
-            skippedParam(
-              paramEntryKey(entry).key,
-              notApplicableReason("params", type, target),
-            ),
-          ],
-    ),
+    params.flatMap((entry) => {
+      const { key, byId } = paramEntryKey(entry);
+      const writableIndex = writable.indexOf(entry);
+      const skip =
+        writableIndex === -1
+          ? notApplicableReason("params", type, target)
+          : superseded.get(writableIndex);
+
+      if (skip == null) {
+        return writeChainSample(target, entry, force, notes);
+      }
+
+      return [byId ? skippedParamById(key, skip) : skippedParam(key, skip)];
+    }),
   );
 }
 

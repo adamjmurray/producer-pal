@@ -204,6 +204,31 @@ describe("updateDevice - a name that matches more than one param", () => {
     expect(capturedWarnings()).toHaveLength(0);
   });
 
+  it("reports an ambiguous name sent twice once per entry", () => {
+    const result = updateDevice({
+      id: "123",
+      params: [
+        { name: "Width", value: "5" },
+        { name: "width", value: "6" },
+      ],
+    });
+
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "Width",
+        ok: false,
+        reason: 'set again by "width" later in the list',
+      },
+      {
+        name: "width",
+        ok: false,
+        reason: expect.stringContaining("names 2 params"),
+      },
+    ]);
+    expect(bandwidth.set).not.toHaveBeenCalled();
+    expect(stereoWidth.set).not.toHaveBeenCalled();
+  });
+
   it("still writes a param addressed by its id", () => {
     updateDevice({ id: "123", params: [{ name: "95", value: "80" }] });
 
@@ -422,11 +447,10 @@ describe("updateDevice - enum values", () => {
   });
 });
 
-// Values are read back once after every write in the call lands, keyed by the
-// param, so two entries reaching one param would report the last write's value
-// for both. The call is refused instead, before anything is written.
+// When entries reach one param, the last wins and each earlier one is skipped.
 describe("updateDevice - one param named twice", () => {
   let paramThreshold: RegisteredMockObject;
+  let paramMacro1: RegisteredMockObject;
 
   beforeEach(() => {
     registerMockObject("125", {
@@ -448,7 +472,7 @@ describe("updateDevice - one param named twice", () => {
       },
     });
 
-    registerMockObject("p-macro-1", {
+    paramMacro1 = registerMockObject("p-macro-1", {
       path: livePath.track(0).device(2).parameter(1),
       type: "DeviceParameter",
       properties: {
@@ -462,61 +486,93 @@ describe("updateDevice - one param named twice", () => {
     });
   });
 
-  it("refuses the same name twice", () => {
-    expect(() =>
-      updateDevice({
-        id: "125",
-        params: [
-          { name: "Threshold", value: "0.2" },
-          { name: "Threshold", value: "0.8" },
-        ],
-      }),
-    ).toThrow('params entry "Threshold" is set more than once');
+  it("writes only the last of the same name in different case", () => {
+    const result = updateDevice({
+      id: "125",
+      params: [
+        { name: "Threshold", value: "0.2" },
+        { name: "threshold", value: "0.8" },
+      ],
+    });
+
+    expect(paramThreshold.set).toHaveBeenCalledTimes(1);
+    expect(paramThreshold.set).toHaveBeenCalledWith("value", 0.8);
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "Threshold",
+        ok: false,
+        reason: 'set again by "threshold" later in the list',
+      },
+      { id: "789", name: "Threshold" },
+    ]);
   });
 
-  it("refuses the same name in different case", () => {
-    expect(() =>
-      updateDevice({
-        id: "125",
-        params: [
-          { name: "Threshold", value: "0.2" },
-          { name: "threshold", value: "0.8" },
-        ],
-      }),
-    ).toThrow('params entry "threshold" is set more than once');
-  });
+  it("writes only the last of three entries reaching one param", () => {
+    const result = updateDevice({
+      id: "125",
+      params: [
+        { name: "Threshold", value: "0.2" },
+        { name: "789", value: "0.4" },
+        { name: "threshold", value: "0.8" },
+      ],
+    });
 
-  // Comparing the text can't see this one — the two spellings are the same
-  // param, so the refusal names both.
-  it("refuses a param named once by id and once by name", () => {
-    expect(() =>
-      updateDevice({
-        id: "125",
-        params: [
-          { name: "789", value: "0.2" },
-          { name: "Threshold", value: "0.8" },
-        ],
-      }),
-    ).toThrow(
-      'params entry "Threshold" is set more than once — "789" names the same param (id 789)',
-    );
-    expect(paramThreshold.set).not.toHaveBeenCalled();
+    expect(paramThreshold.set).toHaveBeenCalledTimes(1);
+    expect(paramThreshold.set).toHaveBeenCalledWith("value", 0.8);
+    expect(paramsOf(result).slice(0, 2)).toStrictEqual([
+      {
+        name: "Threshold",
+        ok: false,
+        reason: 'set again by "threshold" later in the list',
+      },
+      {
+        name: "789",
+        ok: false,
+        reason: 'set again by "threshold" later in the list',
+      },
+    ]);
   });
 
   // A rack macro answers to its own name and to the "name (original_name)"
   // form read-device reports it by.
-  it("refuses a macro named by both of its spellings", () => {
-    expect(() =>
-      updateDevice({
-        id: "125",
-        params: [
-          { name: "Reverb", value: "0.2" },
-          { name: "Reverb (Macro 1)", value: "0.8" },
-        ],
-      }),
-    ).toThrow(
-      'params entry "Reverb (Macro 1)" is set more than once — "Reverb" names the same param (id p-macro-1)',
-    );
+  it("writes only the last of a macro's two spellings", () => {
+    const result = updateDevice({
+      id: "125",
+      params: [
+        { name: "Reverb", value: "0.2" },
+        { name: "Reverb (Macro 1)", value: "0.8" },
+        { name: "Threshold", value: "0.4" },
+      ],
+    });
+
+    expect(paramsOf(result)[0]).toStrictEqual({
+      name: "Reverb",
+      ok: false,
+      reason: 'set again by "Reverb (Macro 1)" later in the list',
+    });
+    expect(paramMacro1.set).toHaveBeenCalledTimes(1);
+    expect(paramMacro1.set).toHaveBeenCalledWith("value", 0.8);
+    expect(paramThreshold.set).toHaveBeenCalledWith("value", 0.4);
+  });
+
+  // Two misses with one key: the last reports the miss, the first is skipped.
+  it("skips an earlier copy of a name that reaches nothing", () => {
+    const result = updateDevice({
+      id: "125",
+      params: [
+        { name: "Nope", value: "0.2" },
+        { name: "nope", value: "0.8" },
+      ],
+    });
+
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "Nope",
+        ok: false,
+        reason: 'set again by "nope" later in the list',
+      },
+      { name: "nope", ok: false, reason: expect.stringContaining("not found") },
+    ]);
   });
 
   // An id that reaches no param of this device is written nowhere, so it is

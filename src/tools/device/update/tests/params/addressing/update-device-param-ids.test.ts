@@ -9,6 +9,7 @@ import {
   children,
   livePath,
   mockWorkingDeviceMoves,
+  paramsOf,
   registerDeviceWithParams,
   registerMockObject,
   updateDevice,
@@ -178,30 +179,36 @@ describe("updateDevice - params addressed by id", () => {
     );
   });
 
-  it("refuses the same id twice", () => {
-    expect(() =>
-      updateDevice({
-        id: "dev1",
-        params: [
-          { id: "1", value: "0.75" },
-          { id: "1", value: "0.25" },
-        ],
-      }),
-    ).toThrow('params entry "1" is set more than once');
+  it("writes only the last of the same id twice", () => {
+    const result = updateDevice({
+      id: "dev1",
+      params: [
+        { id: "1", value: "0.75" },
+        { id: "1", value: "0.25" },
+      ],
+    });
+
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "1", ok: false, reason: "set again by id 1 later in the list" },
+      { id: "1", name: "Volume" },
+    ]);
   });
 
-  it("refuses a param addressed once by id and once by name", () => {
-    expect(() =>
-      updateDevice({
-        id: "dev1",
-        params: [
-          { id: "1", value: "0.75" },
-          { name: "Volume", value: "0.25" },
-        ],
-      }),
-    ).toThrow(
-      'params entry "Volume" is set more than once — "1" names the same param (id 1)',
-    );
+  it("reports an id that reaches nothing, sent twice, once per entry", () => {
+    const result = updateDevice({
+      id: "dev1",
+      params: [
+        { id: "999", value: "0.75" },
+        { id: "999", value: "0.25" },
+      ],
+    });
+
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "999", ok: false, reason: "set again by id 999 later in the list" },
+      { id: "999", ok: false, reason: "not found on t0/d0 (id dev1)" },
+    ]);
   });
 
   const sameParamTwice = [
@@ -209,14 +216,27 @@ describe("updateDevice - params addressed by id", () => {
     { name: "Volume", value: "0.25" },
   ];
 
-  it("refuses a param reached twice before renaming the device", () => {
-    expect(() =>
-      updateDevice({ id: "dev1", name: "Renamed", params: sameParamTwice }),
-    ).toThrow('params entry "Volume" is set more than once');
-    expect(device.set).not.toHaveBeenCalled();
+  it("writes only the last of an id and a name reaching one param", () => {
+    const result = updateDevice({ id: "dev1", params: sameParamTwice });
+
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "1", ok: false, reason: 'set again by "Volume" later in the list' },
+      { id: "1", name: "Volume" },
+    ]);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
-  it("refuses a param reached twice before moving the device", () => {
+  it("still renames the device when a param is reached twice", () => {
+    updateDevice({ id: "dev1", name: "Renamed", params: sameParamTwice });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+  });
+
+  it("still moves the device when a param is reached twice", () => {
     const liveSet = mockWorkingDeviceMoves();
 
     registerMockObject("track-0", {
@@ -230,10 +250,25 @@ describe("updateDevice - params addressed by id", () => {
       properties: { devices: children() },
     });
 
-    expect(() =>
-      updateDevice({ id: "dev1", toPath: "t1/d+", params: sameParamTwice }),
-    ).toThrow('params entry "Volume" is set more than once');
-    expect(liveSet.call).not.toHaveBeenCalled();
+    const result = updateDevice({
+      id: "dev1",
+      toPath: "t1/d+",
+      params: sameParamTwice,
+    });
+
+    expect(liveSet.call).toHaveBeenCalledWith(
+      "move_device",
+      "id dev1",
+      "id track-1",
+      0,
+    );
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)[0]).toStrictEqual({
+      id: "1",
+      ok: false,
+      reason: 'set again by "Volume" later in the list',
+    });
   });
 
   it("does not confuse id 1 with the param named 1 when deduplicating", () => {

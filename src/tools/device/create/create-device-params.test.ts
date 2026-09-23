@@ -200,36 +200,50 @@ describe("createDevice params", () => {
       ).rejects.toThrow('params entry "Volume" has an empty value');
     });
 
-    it("refuses the same name twice, creating nothing", async () => {
-      const { track } = registerThresholdDevice();
-
-      await expect(
-        createDevice({
-          device: "Compressor",
-          path: "t0",
-          params: [
-            { name: "Threshold", value: "-20 dB" },
-            { name: "threshold", value: "-30 dB" },
-          ],
-        }),
-      ).rejects.toThrow('params entry "threshold" is set more than once');
-      expect(track.call).not.toHaveBeenCalled();
-    });
-
-    // Only the new device shows that an id and a name reach one param. It
-    // exists by then, so both entries are skipped instead of failing it.
-    it("skips a param reached by both id and name, keeping the device", async () => {
+    it("writes only the last of the same name twice", async () => {
       const { threshold } = registerThresholdDevice();
 
       const result = await createDevice({
         device: "Compressor",
         path: "t0",
         params: [
-          { id: "threshold", value: "0.2" },
           { name: "Threshold", value: "-20 dB" },
+          { name: "threshold", value: "-30 dB" },
         ],
       });
 
+      expect(threshold.set).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [
+          {
+            name: "Threshold",
+            ok: false,
+            reason: 'set again by "threshold" later in the list',
+          },
+          { id: "threshold", name: "Threshold", value: -30 },
+        ],
+      });
+    });
+
+    it("writes only the last of an id and a name reaching one param", async () => {
+      const { threshold } = registerThresholdDevice();
+
+      const result = await createDevice({
+        device: "Compressor",
+        path: "t0",
+        params: [
+          { id: "threshold", value: "-40 dB" },
+          { name: "Threshold", value: "-30 dB" },
+        ],
+      });
+
+      expect(threshold.set).toHaveBeenCalledTimes(1);
+      expect(threshold.set).toHaveBeenCalledWith(
+        "value",
+        expect.closeTo(0.5, 6),
+      );
       expect(result).toStrictEqual({
         id: "comp-new",
         path: "t0/d2",
@@ -237,18 +251,11 @@ describe("createDevice params", () => {
           {
             id: "threshold",
             ok: false,
-            reason:
-              '"Threshold" names the same param (id threshold), so nothing was written to it — send one',
+            reason: 'set again by "Threshold" later in the list',
           },
-          {
-            name: "Threshold",
-            ok: false,
-            reason:
-              '"threshold" names the same param (id threshold), so nothing was written to it — send one',
-          },
+          { id: "threshold", name: "Threshold", value: -30 },
         ],
       });
-      expect(threshold.set).not.toHaveBeenCalled();
     });
 
     it("does not call replace_sample on a non-Simpler when sample is in params", async () => {

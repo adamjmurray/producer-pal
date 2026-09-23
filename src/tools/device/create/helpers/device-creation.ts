@@ -10,7 +10,6 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
-import { duplicateParamReasons } from "#src/tools/device/update/helpers/params/param-entry-validation.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,
@@ -248,16 +247,8 @@ export function labelCreatedDevice(
   }
 
   if (params != null) {
-    // Every param the call named comes back, written or not. Entries reaching
-    // one param are skipped rather than refused: the device only exists now,
-    // and failing the call would leave it behind.
-    const outcomes = setParamValues(
-      device,
-      params,
-      false,
-      undefined,
-      duplicateParamReasons(device, params),
-    );
+    // Every param the call named comes back, written or not.
+    const outcomes = setParamValues(device, params);
 
     if (outcomes.length > 0) {
       entry.params = refreshParamValues(outcomes);
