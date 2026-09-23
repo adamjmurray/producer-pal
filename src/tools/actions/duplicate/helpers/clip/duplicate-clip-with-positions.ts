@@ -131,6 +131,10 @@ async function duplicateClipToArrangementPositions(
     requestedPositions,
   } = planCopies(requested, positionsInBeats);
 
+  // Before any lane or copy: neither can be undone, so a label list that
+  // doesn't match the copies, or a length that won't parse, refuses the call.
+  claimLabels(labels, copies);
+
   const perDestination = {
     requestIndices,
     copies,
@@ -182,8 +186,6 @@ async function duplicateClipToArrangementPositions(
   const noSample = canRecreateClip(object)
     ? null
     : "it's an audio clip with no sample file; drag it in Live's UI";
-
-  claimLabels(labels, copies);
 
   const results = await makeCopies({
     copy: {

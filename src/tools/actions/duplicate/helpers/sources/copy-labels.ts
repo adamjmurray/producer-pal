@@ -9,6 +9,10 @@
 // them a, b, c, d.
 
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import {
+  songMeter,
+  type SongMeter,
+} from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
@@ -16,6 +20,7 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { parseArrangementLength } from "../clip/arrangement-length.ts";
 
 /** The per-copy values a call hands out, and where the current source is. */
 export interface CopyLabels {
@@ -31,21 +36,28 @@ export interface CopyLabels {
   lengths: ListEntries | null;
   /** Where the current source's copies start in the call's copy list. */
   offset: number;
+  /** The song meter, when some copy lands on the arrangement and reads a length. */
+  lengthMeter: SongMeter | null;
 }
 
 /**
  * The label pool for one duplicate call, before any source has claimed a share.
- * @param name - The raw name param
- * @param color - The raw color param
+ * @param values - The raw per-copy params
+ * @param values.name - The raw name param
+ * @param values.color - The raw color param
+ * @param values.arrangementLength - The raw arrangementLength param
  * @param sources - How many sources the call copies
- * @param arrangementLength - The raw arrangementLength param
+ * @param lengthMeter - The song meter, when some copy reads arrangementLength
  * @returns The pool
  */
 export function copyLabels(
-  name: string | undefined,
-  color: string | undefined,
+  {
+    name,
+    color,
+    arrangementLength,
+  }: { name?: string; color?: string; arrangementLength?: string },
   sources: number,
-  arrangementLength?: string,
+  lengthMeter: SongMeter | null = null,
 ): CopyLabels {
   return {
     name,
@@ -57,6 +69,7 @@ export function copyLabels(
     colors: null,
     lengths: null,
     offset: 0,
+    lengthMeter,
   };
 }
 
@@ -96,6 +109,33 @@ export function claimLabels(labels: CopyLabels, copies: number): void {
     labels.total,
     "arrangementLength",
   );
+  refuseUnreadableLengths(labels);
+}
+
+/**
+ * The song meter arrangementLength is read in, when any clip or scene copy in
+ * the call lands on the arrangement. It is read up front so the first source's
+ * claim can check every length, even when that source's own copies go to clip
+ * slots.
+ * @param type - What is being duplicated
+ * @param destination - Where the call's copies go; "arrangement" when any does
+ * @param arrangementLength - The raw arrangementLength param
+ * @returns The song meter, or null when no copy reads a length
+ */
+export function arrangementLengthMeter(
+  type: string,
+  destination: string | undefined,
+  arrangementLength: string | undefined,
+): SongMeter | null {
+  if (
+    (type !== "clip" && type !== "scene") ||
+    destination !== "arrangement" ||
+    arrangementLength == null
+  ) {
+    return null;
+  }
+
+  return songMeter();
 }
 
 /**
@@ -139,4 +179,23 @@ export function labelLength(
     labels.offset + index,
     labels.lengths,
   );
+}
+
+/**
+ * Refuses the call when any copy's arrangementLength won't parse or isn't
+ * positive. Checked per copy instead, a bad entry would strand the copies
+ * before it. The song meter matters: "1bar-n/2d" is one beat in 4/4 and none
+ * in 3/4.
+ * @param labels - The call's label pool, just claimed
+ */
+function refuseUnreadableLengths(labels: CopyLabels): void {
+  const meter = labels.lengthMeter;
+
+  if (meter == null || labels.arrangementLength == null) {
+    return;
+  }
+
+  for (const length of labels.lengths ?? [labels.arrangementLength]) {
+    parseArrangementLength(length, meter.numerator, meter.denominator);
+  }
 }

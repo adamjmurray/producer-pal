@@ -17,8 +17,12 @@ import {
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { type ClipDestinations } from "./helpers/clip/clip-destinations.ts";
 import { focusIfRequested } from "./helpers/focus-if-requested.ts";
-import { copyLabels } from "./helpers/sources/copy-labels.ts";
+import {
+  arrangementLengthMeter,
+  copyLabels,
+} from "./helpers/sources/copy-labels.ts";
 import { noteUnhonoredTrackToPath } from "./helpers/sources/duplicate-track.ts";
 import {
   duplicateChainSources,
@@ -188,9 +192,7 @@ export async function duplicate(
 
   const destination = resolveDestinationAndWarn({
     type,
-    // Every source's destination is the same kind, and the warnings are about
-    // the params rather than the places, so one of them speaks for the call.
-    clipDestinations: clipDestinations?.[0] ?? null,
+    clipDestinations: callClipDestinations(clipDestinations),
     count,
     toPath,
     toSlot,
@@ -204,7 +206,11 @@ export async function duplicate(
     toTakeLane,
   });
 
-  const labels = copyLabels(name, color, sources.length, arrangementLength);
+  const labels = copyLabels(
+    { name, color, arrangementLength },
+    sources.length,
+    arrangementLengthMeter(type, destination, arrangementLength),
+  );
 
   if (laneCopy) {
     const laneCopies = duplicateTracksToLanes({
@@ -294,6 +300,23 @@ async function finishCopies(
       context,
     );
   }
+}
+
+/**
+ * The one source's destinations that speak for the call's warnings, which are
+ * about the params rather than the places: one bound for the arrangement when
+ * any is, since that one reads the arrangement params.
+ * @param clipDestinations - One destination set per source, or null
+ * @returns The destinations that speak for the call, or null
+ */
+function callClipDestinations(
+  clipDestinations: ClipDestinations[] | null,
+): ClipDestinations | null {
+  return (
+    clipDestinations?.find((each) => each.destination === "arrangement") ??
+    clipDestinations?.[0] ??
+    null
+  );
 }
 
 /**

@@ -239,7 +239,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,
-      copyLabels(undefined, undefined, 1),
+      copyLabels({}, 1),
       undefined,
       undefined,
       undefined,
