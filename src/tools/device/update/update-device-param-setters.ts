@@ -26,7 +26,6 @@ import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { refuseDuplicateParams } from "./helpers/params/param-entry-validation.ts";
 import {
   ambiguousNameReason,
   resolveParamById,
@@ -45,11 +44,16 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * Every entry comes back as one result entry, in the order sent: what the write
  * landed on, or the reason nothing was written. Nothing here warns — the param's
  * own entry is where the caller reads what happened to it.
+ *
+ * Two entries reaching one param aren't caught here: the caller refuses them or
+ * passes them in `skips`, since both would read back the last write's value.
  * @param device - LiveAPI device object to update
  * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param notes - What the device's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
+ * @param skips - Why an entry is written nowhere, keyed by its position in
+ *   `params`
  * @returns One entry per param named, in order
  */
 export function setParamValues(
@@ -57,11 +61,8 @@ export function setParamValues(
   params: ParamEntry[],
   force = false,
   notes?: TargetNotes,
+  skips?: ReadonlyMap<number, string>,
 ): ParamOutcome[] {
-  // Before the first write: two entries reaching one param can only report the
-  // last one's value for both, and the caller can retry with nothing to undo.
-  refuseDuplicateParams(device, params);
-
   const results: ParamOutcome[] = [];
   // Read once per device, not per param: it only names the device for the
   // recorded-unit lookup.
@@ -69,10 +70,18 @@ export function setParamValues(
     | string
     | undefined;
 
-  for (const entry of params) {
+  for (const [index, entry] of params.entries()) {
     // Malformed entries were refused up front, so both sides are non-empty.
     const { key, byId } = paramEntryKey(entry);
     const rawValue = entry.value.trim();
+    const skip = skips?.get(index);
+
+    if (skip != null) {
+      results.push(
+        byId ? skippedParamById(key, skip) : skippedParam(key, skip),
+      );
+      continue;
+    }
 
     // An id names one parameter outright, so it skips the name lookups — a
     // param that happens to be named "1" can't shadow id 1.

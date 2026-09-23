@@ -83,6 +83,15 @@ function blankToUndefined(field: string | undefined): string | undefined {
   return trimmed == null || trimmed === "" ? undefined : trimmed;
 }
 
+/** An entry that reaches a parameter an earlier entry already reached. */
+interface ParamClash {
+  index: number;
+  key: string;
+  firstIndex: number;
+  firstKey: string;
+  paramId: string;
+}
+
 /**
  * Refuse a params list that reaches one parameter twice.
  *
@@ -90,11 +99,6 @@ function blankToUndefined(field: string | undefined): string | undefined {
  * id and once by name gets past it. Values are read back once after every write
  * in the call lands, keyed by the param, so both entries would report the last
  * write's value.
- *
- * Only entries that reach a parameter here are compared. A nested path, a
- * pseudo-param or an ambiguous name keeps whatever the write path does with it
- * — and resolving a nested path can create the chain it names, which a check
- * must not do.
  * @param device - The device the entries are looked up on
  * @param params - The params list as the caller sent it
  */
@@ -102,15 +106,74 @@ export function refuseDuplicateParams(
   device: LiveAPI,
   params: ParamEntry[],
 ): void {
+  const [clash] = paramClashes(device, params);
+
+  // Both spellings, because neither one alone shows the caller that the two
+  // entries are the same control.
+  if (clash != null) {
+    throw new Error(
+      `params entry "${clash.key}" is set more than once — "${clash.firstKey}" names the same param (id ${clash.paramId})`,
+    );
+  }
+}
+
+/**
+ * Why each entry that shares a parameter with another is skipped, keyed by its
+ * position in the list. For where a refusal comes too late: create-device can
+ * only look once the device exists. Every entry reaching the shared param is
+ * skipped, since nothing says which value the caller meant.
+ * @param device - The device the entries are looked up on
+ * @param params - The params list as the caller sent it
+ * @returns The skip reason for each clashing entry
+ */
+export function duplicateParamReasons(
+  device: LiveAPI,
+  params: ParamEntry[],
+): Map<number, string> {
+  const reasons = new Map<number, string>();
+
+  for (const clash of paramClashes(device, params)) {
+    reasons.set(clash.index, sameParamReason(clash.firstKey, clash.paramId));
+
+    if (!reasons.has(clash.firstIndex)) {
+      reasons.set(clash.firstIndex, sameParamReason(clash.key, clash.paramId));
+    }
+  }
+
+  return reasons;
+}
+
+/**
+ * @param other - Another entry's key that reaches the same param
+ * @param paramId - The param both reach
+ * @returns Why this entry was skipped
+ */
+function sameParamReason(other: string, paramId: string): string {
+  return `"${other}" names the same param (id ${paramId}), so nothing was written to it — send one`;
+}
+
+/**
+ * Every entry that reaches a parameter an earlier entry already reached.
+ *
+ * Only entries that reach a parameter here are compared. A nested path, a
+ * pseudo-param or an ambiguous name keeps whatever the write path does with it
+ * — and resolving a nested path can create the chain it names, which a check
+ * must not do.
+ * @param device - The device the entries are looked up on
+ * @param params - The params list as the caller sent it
+ * @returns The clashes, in list order
+ */
+function paramClashes(device: LiveAPI, params: ParamEntry[]): ParamClash[] {
   if (params.length < 2) {
-    return;
+    return [];
   }
 
   // Read once for the whole list: every entry matches against these.
   const parameters = device.getChildren("parameters");
-  const claimedBy = new Map<string, string>();
+  const claimedBy = new Map<string, { index: number; key: string }>();
+  const clashes: ParamClash[] = [];
 
-  for (const entry of params) {
+  for (const [index, entry] of params.entries()) {
     const { key, byId } = paramEntryKey(entry);
     const param = byId
       ? (parameters.find((candidate) => candidate.id === key) ?? null)
@@ -122,16 +185,21 @@ export function refuseDuplicateParams(
 
     const first = claimedBy.get(param.id);
 
-    // Both spellings, because neither one alone shows the caller that the two
-    // entries are the same control.
-    if (first != null) {
-      throw new Error(
-        `params entry "${key}" is set more than once — "${first}" names the same param (id ${param.id})`,
-      );
+    if (first == null) {
+      claimedBy.set(param.id, { index, key });
+      continue;
     }
 
-    claimedBy.set(param.id, key);
+    clashes.push({
+      index,
+      key,
+      firstIndex: first.index,
+      firstKey: first.key,
+      paramId: param.id,
+    });
   }
+
+  return clashes;
 }
 
 /**

@@ -6,7 +6,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
+  children,
   livePath,
+  mockWorkingDeviceMoves,
   registerDeviceWithParams,
   registerMockObject,
   updateDevice,
@@ -33,12 +35,13 @@ function continuousParam(name: string) {
 }
 
 describe("updateDevice - params addressed by id", () => {
+  let device: RegisteredMockObject;
   let volume: RegisteredMockObject;
   // A param whose name is the digits of another param's id.
   let namedOne: RegisteredMockObject;
 
   beforeEach(() => {
-    registerDeviceWithParams("1", "42");
+    device = registerDeviceWithParams("1", "42");
     namedOne = registerMockObject("42", {
       path: livePath.track(0).device(0).parameter(0),
       ...continuousParam("1"),
@@ -199,6 +202,38 @@ describe("updateDevice - params addressed by id", () => {
     ).toThrow(
       'params entry "Volume" is set more than once — "1" names the same param (id 1)',
     );
+  });
+
+  const sameParamTwice = [
+    { id: "1", value: "0.75" },
+    { name: "Volume", value: "0.25" },
+  ];
+
+  it("refuses a param reached twice before renaming the device", () => {
+    expect(() =>
+      updateDevice({ id: "dev1", name: "Renamed", params: sameParamTwice }),
+    ).toThrow('params entry "Volume" is set more than once');
+    expect(device.set).not.toHaveBeenCalled();
+  });
+
+  it("refuses a param reached twice before moving the device", () => {
+    const liveSet = mockWorkingDeviceMoves();
+
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { devices: children("dev1") },
+    });
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children() },
+    });
+
+    expect(() =>
+      updateDevice({ id: "dev1", toPath: "t1/d+", params: sameParamTwice }),
+    ).toThrow('params entry "Volume" is set more than once');
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("does not confuse id 1 with the param named 1 when deduplicating", () => {

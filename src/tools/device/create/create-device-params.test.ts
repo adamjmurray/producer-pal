@@ -44,18 +44,24 @@ function registerSimplerCreationFixture(): RegisteredMockObject {
 /**
  * Register a freshly-created device at track 0 / device 2 holding a Threshold
  * param that displays -60 to 0 dB, plus the track that inserts it.
+ * @returns The track and the Threshold param mocks
  */
-function registerThresholdDevice(): void {
-  registerMockObject("track-0", {
+function registerThresholdDevice(): {
+  track: RegisteredMockObject;
+  threshold: RegisteredMockObject;
+} {
+  const track = registerMockObject("track-0", {
     path: livePath.track(0),
     methods: { insert_device: () => ["id", "comp-new"] },
   });
+
   registerMockObject("comp-new", {
     path: livePath.track(0).device(2),
     type: "Device",
     properties: { parameters: children("threshold") },
   });
-  registerMockObject("threshold", {
+
+  const threshold = registerMockObject("threshold", {
     properties: {
       name: "Threshold",
       original_name: "Threshold",
@@ -68,6 +74,8 @@ function registerThresholdDevice(): void {
       str_for_value: (v: unknown) => `${Math.round(Number(v) * 60) - 60} dB`,
     },
   });
+
+  return { track, threshold };
 }
 
 describe("createDevice params", () => {
@@ -190,6 +198,57 @@ describe("createDevice params", () => {
           params: [{ name: "Volume", value: "" }],
         }),
       ).rejects.toThrow('params entry "Volume" has an empty value');
+    });
+
+    it("refuses the same name twice, creating nothing", async () => {
+      const { track } = registerThresholdDevice();
+
+      await expect(
+        createDevice({
+          device: "Compressor",
+          path: "t0",
+          params: [
+            { name: "Threshold", value: "-20 dB" },
+            { name: "threshold", value: "-30 dB" },
+          ],
+        }),
+      ).rejects.toThrow('params entry "threshold" is set more than once');
+      expect(track.call).not.toHaveBeenCalled();
+    });
+
+    // Only the new device shows that an id and a name reach one param. It
+    // exists by then, so both entries are skipped instead of failing it.
+    it("skips a param reached by both id and name, keeping the device", async () => {
+      const { threshold } = registerThresholdDevice();
+
+      const result = await createDevice({
+        device: "Compressor",
+        path: "t0",
+        params: [
+          { id: "threshold", value: "0.2" },
+          { name: "Threshold", value: "-20 dB" },
+        ],
+      });
+
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [
+          {
+            id: "threshold",
+            ok: false,
+            reason:
+              '"Threshold" names the same param (id threshold), so nothing was written to it — send one',
+          },
+          {
+            name: "Threshold",
+            ok: false,
+            reason:
+              '"threshold" names the same param (id threshold), so nothing was written to it — send one',
+          },
+        ],
+      });
+      expect(threshold.set).not.toHaveBeenCalled();
     });
 
     it("does not call replace_sample on a non-Simpler when sample is in params", async () => {
