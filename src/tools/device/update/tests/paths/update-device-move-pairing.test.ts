@@ -12,6 +12,7 @@ import {
   type RegisteredMockObject,
   children,
   livePath,
+  mockNonExistentObjects,
   mockWorkingDeviceMoves,
   registerMockObject,
   updateDevice,
@@ -79,6 +80,53 @@ describe("updateDevice — pairing toPath with the targets", () => {
       "id track-1",
       1,
     );
+  });
+
+  // Every path resolves before the first move: resolved afterwards, t0/d1
+  // would name src-2, which slid up when src-0 left.
+  it("moves the devices the paths named before any of them moved", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { devices: children("src-0", "src-1", "src-2") },
+    });
+    registerMockObject("src-2", {
+      path: livePath.track(0).device(2),
+      type: "Device",
+    });
+
+    const result = updateDevice({
+      path: "t0/d0,t0/d1",
+      toPath: "t2/d+,t2/d+",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "src-0", path: "t2/d0" },
+      { id: "src-1", path: "t2/d1" },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+    expect(liveSet.call).toHaveBeenNthCalledWith(
+      2,
+      "move_device",
+      "id src-1",
+      "id track-2",
+      1,
+    );
+  });
+
+  // A path that names nothing still gets its own entry, and the rest move.
+  it("reports a path that names nothing in its own slot", () => {
+    mockNonExistentObjects();
+
+    const result = updateDevice({
+      path: "t0/d0,t0/d5",
+      toPath: "t2/d+,t2/d+",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "src-0", path: "t2/d0" },
+      { path: "t0/d5", ok: false, reason: expect.stringContaining("t0/d5") },
+    ]);
   });
 
   it("refuses one destination for several devices, moving nothing", () => {

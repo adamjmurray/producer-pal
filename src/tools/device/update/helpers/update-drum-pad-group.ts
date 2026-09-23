@@ -224,10 +224,10 @@ function applyToChains(
 ): NonDeviceWrites {
   const first = chains[0] as LiveAPI;
 
-  // in_note is what puts a chain on a pad, and this already retargets every
-  // chain sharing the note, so the whole pad lands together.
+  // Moves the chains the pad held when the call began, not whatever shares the
+  // note now: an earlier move in the same call may have landed on this pad.
   if (options.toPath != null) {
-    moveDrumChainToPath(first, options.toPath, true, notes);
+    moveDrumChainToPath(chains, options.toPath, notes);
   }
 
   // Only reachable on a single-chain pad; a stacked pad drops `name` above.

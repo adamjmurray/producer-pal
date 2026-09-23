@@ -99,18 +99,13 @@ export function updateMultipleTargets(
   updateOptions: UpdateTargetOptions,
   lists: TargetLists,
 ): WriteResult<Record<string, unknown>> {
+  // Resolve every target before the first write: a move re-indexes what it
+  // leaves, so a later path would name whatever slid into the slot.
+  const targets = items.map(resolveUpFront);
+
   return writeFanOut(items, ({ param, value }, i) => {
-    // Resolution throws for a path that names nothing a target can sit in, and
-    // that message is the target's reason — so it is not caught here.
-    const resolved =
-      param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
-
-    if (!resolved) {
-      throw new Error(
-        param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
-      );
-    }
-
+    // Rethrows a failed resolution, whose message is the target's reason.
+    const resolved = (targets[i] as () => ResolvedTarget)();
     const options: UpdateTargetOptions = {
       ...updateOptions,
       name: getNameForIndex(updateOptions.name, i, lists.names),
@@ -132,6 +127,44 @@ export function updateMultipleTargets(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Resolve one target now, keeping a failure to throw when its turn comes.
+ * @param item - The target, tagged with the param that named it
+ * @returns Hands back the resolved target, or throws why it has none
+ */
+function resolveUpFront(item: NamedTarget): () => ResolvedTarget {
+  try {
+    const resolved = resolveNamedTarget(item);
+
+    return () => resolved;
+  } catch (error) {
+    return () => {
+      throw error;
+    };
+  }
+}
+
+/**
+ * Resolve a target by the param that named it.
+ * @param item - The target, tagged with the param that named it
+ * @param item.param - Which param named it
+ * @param item.value - The id or path
+ * @returns The resolved target
+ * @throws Error when it names nothing a target can be
+ */
+function resolveNamedTarget({ param, value }: NamedTarget): ResolvedTarget {
+  const resolved =
+    param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
+
+  if (!resolved) {
+    throw new Error(
+      param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
+    );
+  }
+
+  return resolved;
+}
 
 /**
  * Resolve an ID to a LiveAPI target
@@ -365,7 +398,7 @@ function moveTargetToPath(
   }
 
   if (type === "DrumChain") {
-    moveDrumChainToPath(target, toPath, false, notes);
+    moveDrumChainToPath([target], toPath, notes);
 
     return {};
   }

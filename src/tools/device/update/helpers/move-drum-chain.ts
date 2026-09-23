@@ -22,18 +22,17 @@ import {
 import { pathTargetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
- * Move a drum chain to a different pad by updating in_note
- * @param chain - LiveAPI drum chain object
+ * Move drum chains to a different pad by updating their in_note
+ * @param chains - The chains to move, all on one pad of one rack
  * @param toPath - Target drum pad path
- * @param moveEntirePad - If true, move all chains with same in_note
  * @param notes - What the pad's entry has to say, added to
  */
 export function moveDrumChainToPath(
-  chain: LiveAPI,
+  chains: LiveAPI[],
   toPath: string,
-  moveEntirePad: boolean,
   notes: TargetNotes,
 ): void {
+  const chain = chains[0] as LiveAPI;
   const drumRackPath = chain.path.replace(/ chains \d+$/, "");
   const targetNote = targetPadNote(toPath, drumRackPath, notes);
 
@@ -72,14 +71,8 @@ export function moveDrumChainToPath(
     notes,
   );
 
-  if (moveEntirePad) {
-    for (const [index, c] of rackChains.entries()) {
-      if (inNotes[index] === sourceInNote) {
-        c.set("in_note", targetInNote);
-      }
-    }
-  } else {
-    chain.set("in_note", targetInNote);
+  for (const moving of chains) {
+    moving.set("in_note", targetInNote);
   }
 }
 

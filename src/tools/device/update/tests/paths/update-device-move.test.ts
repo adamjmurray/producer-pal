@@ -159,6 +159,19 @@ describe("updateDevice - moving a drum chain", () => {
     });
   });
 
+  // Every pad resolves before the first move: resolved afterwards, pD1 would
+  // hold C1's chains too and send all three on to E1.
+  it("moves each pad's own chains when one pad moves onto the next", () => {
+    updateDevice({
+      path: "t0/d0/pC1,t0/d0/pD1",
+      toPath: "t0/d0/pD1,t0/d0/pE1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+  });
+
   // Live layers rather than replaces, so the destination ends up playing both
   // the sound that was there and the one that arrived.
   it("says on the pad's entry that a move onto an occupied pad layers", () => {
