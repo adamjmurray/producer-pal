@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-duplicate with a list of sources in `id`.
+ * E2E tests for ppal-duplicate's lists: a list of sources in `id`, and values
+ * that pair one per copy.
  * Uses: e2e-test-set (t8 and t10 are empty MIDI tracks; s5-s7 are empty scenes)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -354,5 +355,40 @@ describe("ppal-duplicate with a source list", () => {
 
     await sleep(100);
     await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+  });
+
+  // arrangementLength pairs one per copy, as name does, so one clip holding an
+  // A-B phrase lays out A-A-AB in one call.
+  it("gives each copy of one source its own arrangementLength", async () => {
+    const sourceId = await createSource(
+      `t${EMPTY_MIDI_TRACK}/s0`,
+      "C3 1|1\nG3 2|1",
+      "2bar",
+    );
+
+    await sleep(100);
+
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id: sourceId,
+        toPath: `t${EMPTY_MIDI_TRACK}[1|1],[2|1],[3|1]`,
+        arrangementLength: "1bar,1bar,2bar",
+      }),
+    );
+
+    await sleep(100);
+
+    const lengths: Array<string | undefined> = [];
+
+    for (const copy of copies) {
+      const read = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: copy.id, include: ["timing"] },
+      });
+
+      lengths.push(parseToolResult<ReadClipResult>(read).arrangementLength);
+    }
+
+    expect(lengths).toStrictEqual(["1bar", "1bar", "2bar"]);
   });
 });

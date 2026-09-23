@@ -51,13 +51,18 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       default: "#RRGGBB, or comma-separated one per clip",
       smallModel: "#RRGGBB",
     }),
-    timeSignature: z.string().optional().describe("N/D (4/4)"),
+    timeSignature: z
+      .string()
+      .optional()
+      .describe("N/D (4/4), or comma-separated one per clip"),
 
     // Clip region and loop settings
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins (clip meter)"),
+      .describe(
+        "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per clip",
+      ),
     length: z
       .string()
       .optional()
@@ -73,7 +78,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)",
+        "bar|beat playback start (looping clips, when different from start; clip meter); or comma-separated one per clip",
       smallModel: null,
     }),
     arrangementStart: deprecatedParam(z.coerce.string().optional(), {
@@ -84,14 +89,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per clip. Arrangement clips only; song meter. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
     arrangementSplit: param(z.string().optional(), {
       default:
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
-        "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter. " +
+        "One list for every clip, not one per clip: each clip is cut wherever a position falls inside it, and a position outside it is ignored. Arrangement clips only; song meter. " +
         "Cannot be combined with toPath or arrangementLength: the cut makes new clips, so those would either miss the new pieces or apply to every one of them - cut in one call, then move/resize the pieces in the next",
       smallModel: null,
     }),

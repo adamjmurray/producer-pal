@@ -29,14 +29,14 @@ import { parseArrangementLength } from "./arrangement-length.ts";
  * @param source - The clip being copied
  * @param targets - Destination per copy
  * @param positions - Start position per copy, in Ableton beats
- * @param spanBeats - How far each copy clears forward from its start
+ * @param spanBeats - How far each copy clears forward from its start, per copy
  * @returns Copy indexes, in the order to make them
  */
 export function sourceLastOrder(
   source: LiveAPI,
   targets: ArrangementTrack[],
   positions: number[],
-  spanBeats: number,
+  spanBeats: number[],
 ): number[] {
   const indexes = positions.map((_, i) => i);
 
@@ -62,7 +62,7 @@ export function sourceLastOrder(
       ((targets[i] as ArrangementTrack).trackIndex === sourceTrackIndex &&
         sameLane(i))) &&
     (positions[i] as number) < sourceEnd &&
-    (positions[i] as number) + spanBeats > sourceStart;
+    (positions[i] as number) + (spanBeats[i] as number) > sourceStart;
 
   return [
     ...indexes.filter((i) => !overwritesSource(i)),

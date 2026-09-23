@@ -3,25 +3,32 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The names and colors one duplicate call hands out. With a list of sources the
-// indices run across every copy the call makes, not across each source's own —
-// so "a,b,c,d" over two sources of two copies names them a, b, c, d.
+// The names, colors and arrangement lengths one duplicate call hands out. With
+// a list of sources the indices run across every copy the call makes, not
+// across each source's own — so "a,b,c,d" over two sources of two copies names
+// them a, b, c, d.
 
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  type ListEntries,
+  splitList,
+  valueForIndex,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 
-/** The names and colors a call hands out, and where the current source is. */
+/** The per-copy values a call hands out, and where the current source is. */
 export interface CopyLabels {
   name: string | undefined;
   color: string | undefined;
+  arrangementLength: string | undefined;
   /** Sources this call copies. */
   sources: number;
   /** Copies the whole call asks for, once a source has reported its share. */
   total: number | null;
   names: ListEntries | null;
   colors: ListEntries | null;
+  lengths: ListEntries | null;
   /** Where the current source's copies start in the call's copy list. */
   offset: number;
 }
@@ -31,20 +38,24 @@ export interface CopyLabels {
  * @param name - The raw name param
  * @param color - The raw color param
  * @param sources - How many sources the call copies
+ * @param arrangementLength - The raw arrangementLength param
  * @returns The pool
  */
 export function copyLabels(
   name: string | undefined,
   color: string | undefined,
   sources: number,
+  arrangementLength?: string,
 ): CopyLabels {
   return {
     name,
     color,
+    arrangementLength,
     sources,
     total: null,
     names: null,
     colors: null,
+    lengths: null,
     offset: 0,
   };
 }
@@ -73,10 +84,18 @@ export function claimLabels(labels: CopyLabels, copies: number): void {
     count: labels.total,
     name: labels.name,
     color: labels.color,
+    extraLists: [
+      { param: "arrangementLength", value: labels.arrangementLength },
+    ],
   });
 
   labels.names = parsedNames;
   labels.colors = parsedColors;
+  labels.lengths = splitList(
+    labels.arrangementLength,
+    labels.total,
+    "arrangementLength",
+  );
 }
 
 /**
@@ -103,4 +122,21 @@ export function labelColor(
   index: number,
 ): string | undefined {
   return getColorForIndex(labels.color, labels.offset + index, labels.colors);
+}
+
+/**
+ * The arrangement length for one copy of the source whose turn it is.
+ * @param labels - The call's label pool
+ * @param index - The copy's place in this source's requested copies
+ * @returns The length, or undefined when the call named none
+ */
+export function labelLength(
+  labels: CopyLabels,
+  index: number,
+): string | undefined {
+  return valueForIndex(
+    labels.arrangementLength,
+    labels.offset + index,
+    labels.lengths,
+  );
 }

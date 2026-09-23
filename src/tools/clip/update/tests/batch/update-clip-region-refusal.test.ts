@@ -32,10 +32,10 @@ describe("updateClip - unreadable region refused before any clip is touched", ()
     }
   };
 
-  it("refuses a length list, writing nothing to the audio clip first", async () => {
+  it("refuses a bad entry in a length list, writing nothing to the audio clip first", async () => {
     await expect(
-      updateClip({ id: "123,456", gainDb: -6, name: "X", length: "1bar,2bar" }),
-    ).rejects.toThrow('Invalid duration format: "1bar,2bar"');
+      updateClip({ id: "123,456", gainDb: -6, name: "X", length: "1bar,n/0" }),
+    ).rejects.toThrow("division by zero");
 
     expectNothingWritten();
   });

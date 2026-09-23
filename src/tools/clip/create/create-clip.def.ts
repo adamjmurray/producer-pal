@@ -85,25 +85,29 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     timeSignature: z
       .string()
       .optional()
-      .describe("N/D (4/4), default: global time signature"),
+      .describe(
+        "N/D (4/4), default: global time signature; or comma-separated one per path",
+      ),
 
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins (clip meter)"),
+      .describe(
+        "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per path",
+      ),
 
     length: z
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample",
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample. Or comma-separated one per path",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
 
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)",
+        "bar|beat playback start (looping clips, when different from start; clip meter); or comma-separated one per path",
       smallModel: null,
     }),
 

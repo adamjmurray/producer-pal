@@ -20,19 +20,20 @@ should follow from them unambiguously, without being spelled out here.
 
 2. Multi-target: Every tool that could possibly operate on multiple objects
    supports it by accepting a comma-separated list of targets (`id`, `path`),
-   named in the singular. A string arg that says what or where each target is —
-   a name, a color, a destination — may also take a list. Lists pair 1:1 with
-   their targets, so all lists must be the same length. A single value applies
-   to all of them, unless it fully determines a location — one place holds one
-   object, so it must be named once per target rather than broadcast. A number,
-   boolean, or enum arg keeps its type and takes one value for every target: a
-   caller that wants different values makes separate calls in one turn, which
-   costs less than giving up the schema's type checking. An empty entry is
-   refused rather than guessed at. A comma splits a value only when the call
-   names more than one target; with one target the whole value is literal, which
-   is how a name containing a comma is set. A call that named N targets returns
-   N entries in the order they were named. A single target returns its entry
-   unwrapped: an array where they asked for one object confuses small models.
+   named in the singular. Every string arg also takes a list, unless its value
+   is already a list of its own (notes, transforms, split points), which applies
+   to every target. Lists pair 1:1 with their targets, so all lists must be the
+   same length. A single value applies to all of them, unless it fully
+   determines a location — one place holds one object, so it must be named once
+   per target rather than broadcast. A number, boolean, or enum arg keeps its
+   type and takes one value for every target: a caller that wants different
+   values makes separate calls in one turn, which costs less than giving up the
+   schema's type checking. An empty entry is refused rather than guessed at. A
+   comma splits a value only when the call names more than one target; with one
+   target the whole value is literal, which is how a name containing a comma is
+   set. A call that named N targets returns N entries in the order they were
+   named. A single target returns its entry unwrapped: an array where they asked
+   for one object confuses small models.
 
 3. Relocation: Any object that can exist at different paths always supports
    moving and duplicating to a different location. Where the API lacks a move,

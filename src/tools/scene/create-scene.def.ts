@@ -60,7 +60,8 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {
-      default: 'N/D (4/4) or "disabled" when capturing',
+      default:
+        'N/D (4/4) or "disabled" when capturing, or comma-separated one per scene',
       smallModel: null,
     }),
   },

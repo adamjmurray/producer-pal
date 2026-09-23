@@ -48,8 +48,9 @@ export interface ClipTimingParams {
 /**
  * Resolve one clip's time signature and convert its timing parameters to beats.
  *
- * Runs per clip: sampleFile pairs 1:1 with the positions, and an audio clip
- * ignores the timing params.
+ * Runs per clip: timeSignature, start, length and firstStart all pair 1:1 with
+ * the positions the call names, so two clips in one call can be on different
+ * meters and regions.
  * @param song - The song's meter, read once for the call
  * @param timeSignature - Custom clip time signature (e.g. "4/4"), or null
  * @param sampleFile - Audio file path, or null for a MIDI clip

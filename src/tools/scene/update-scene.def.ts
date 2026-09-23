@@ -39,6 +39,9 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
       smallModel: "#RRGGBB",
     }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
-    timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
+    timeSignature: z
+      .string()
+      .optional()
+      .describe('N/D (4/4) or "disabled", or comma-separated one per scene'),
   },
 });

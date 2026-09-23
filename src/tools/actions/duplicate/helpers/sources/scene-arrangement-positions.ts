@@ -14,6 +14,7 @@ import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   claimLabels,
   labelColor,
+  labelLength,
   labelName,
   type CopyLabels,
 } from "./copy-labels.ts";
@@ -50,7 +51,7 @@ export async function duplicateSceneToArrangementAtPositions(
   params: SceneArrangementParams,
   context: Partial<ToolContext>,
 ): Promise<object[]> {
-  const { arrangementStart, arrangementLength } = params;
+  const { arrangementStart } = params;
   const withoutClips = params.withoutClips;
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -116,7 +117,7 @@ export async function duplicateSceneToArrangementAtPositions(
       labelName(labels, i),
       labelColor(labels, i),
       withoutClips,
-      arrangementLength,
+      labelLength(labels, i),
       songTimeSigNumerator,
       songTimeSigDenominator,
       context,

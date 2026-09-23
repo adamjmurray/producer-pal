@@ -14,6 +14,7 @@ import {
 import {
   claimLabels,
   labelColor,
+  labelLength,
   labelName,
   type CopyLabels,
 } from "../sources/copy-labels.ts";
@@ -194,7 +195,6 @@ async function duplicateClipToArrangementPositions(
       object,
       id,
       labels,
-      arrangementLength,
       songTimeSigNumerator,
       songTimeSigDenominator,
       context,
@@ -218,7 +218,6 @@ interface SharedCopyOptions {
   object: LiveAPI;
   id: string;
   labels: CopyLabels;
-  arrangementLength: string | undefined;
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   context: Partial<ToolContext>;
@@ -255,15 +254,20 @@ async function makeCopies({
   const { songTimeSigNumerator, songTimeSigDenominator, context } = copy;
   // Results keep the order the destinations were asked for, even though the
   // copies are made in another one.
+  const lengths = requestIndices.map((index) =>
+    labelLength(copy.labels, index),
+  );
   const order = sourceLastOrder(
     copy.object,
     targetTracks,
     targetPositions,
-    copySpanBeats(
-      copy.object,
-      copy.arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
+    lengths.map((length) =>
+      copySpanBeats(
+        copy.object,
+        length,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      ),
     ),
   );
   const results: (object | null)[] = targetTracks.map(() => null);
@@ -298,6 +302,7 @@ async function makeCopies({
       startBeats: targetPositions[i] as number,
       name: labelName(copy.labels, requestIndex),
       color: labelColor(copy.labels, requestIndex),
+      arrangementLength: lengths[i],
     });
 
     if (attempt.copy != null) {

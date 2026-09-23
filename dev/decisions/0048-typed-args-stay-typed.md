@@ -1,6 +1,7 @@
 # ADR-0048: Number, boolean and enum args stay typed
 
-- **Status:** Accepted
+- **Status:** Superseded in part by [ADR-0049](0049-every-string-arg-pairs.md) —
+  which string args pair
 - **Date logged:** 2026-09-22
 
 ## Context

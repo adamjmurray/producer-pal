@@ -40,7 +40,16 @@ function twoSessionSlots(): SessionSlot[] {
   }));
 }
 
-describe("createClip - timing params", () => {
+describe("createClip - per-position timing params", () => {
+  it("gives each position its own length", async () => {
+    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+
+    await createClip({ path: "t0/s0,t0/s1", length: "1bar,2bar" });
+
+    expect(first.clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(second.clipSlot.call).toHaveBeenCalledWith("create_clip", 8);
+  });
+
   it("applies a single length to every position", async () => {
     const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
 
@@ -50,13 +59,53 @@ describe("createClip - timing params", () => {
     expect(second.clipSlot.call).toHaveBeenCalledWith("create_clip", 8);
   });
 
-  // Timing takes one value for every clip, so a comma is never a list.
-  it("does not split a timing param across positions", async () => {
+  it("gives each position its own time signature", async () => {
+    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+
+    await createClip({ path: "t0/s0,t0/s1", timeSignature: "4/4,3/4" });
+
+    expect(first.clip.set).toHaveBeenCalledWith("signature_numerator", 4);
+    expect(second.clip.set).toHaveBeenCalledWith("signature_numerator", 3);
+  });
+
+  it("gives each position its own region start", async () => {
+    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+
+    await createClip({ path: "t0/s0,t0/s1", start: "1|1,2|1" });
+
+    expect(first.clip.set).toHaveBeenCalledWith("loop_start", 0);
+    expect(second.clip.set).toHaveBeenCalledWith("loop_start", 4);
+  });
+
+  it("gives each position its own firstStart", async () => {
+    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+
+    await createClip({
+      path: "t0/s0,t0/s1",
+      looping: true,
+      length: "4bar",
+      firstStart: "1|1,3|1",
+    });
+
+    expect(first.clip.set).toHaveBeenCalledWith("playing_position", 0);
+    expect(second.clip.set).toHaveBeenCalledWith("playing_position", 8);
+  });
+
+  it("refuses a list that names a different number of positions", async () => {
+    twoSessionSlots();
+
+    await expect(
+      createClip({ path: "t0/s0,t0/s1", length: "1bar,2bar,3bar" }),
+    ).rejects.toThrow("path names 2 entries but length names 3 entries");
+  });
+
+  // A trailing comma isn't an entry, so this is a short list, not one value.
+  it("refuses a short list before creating anything", async () => {
     const [first] = twoSessionSlots() as [SessionSlot, SessionSlot];
 
     await expect(
-      createClip({ path: "t0/s0,t0/s1", timeSignature: "4/4,3/4" }),
-    ).rejects.toThrow("Time signature must be in format");
+      createClip({ path: "t0/s0,t0/s1", timeSignature: "3/4," }),
+    ).rejects.toThrow("path names 2 entries but timeSignature names 1 entry");
 
     expect(first.clipSlot.call).not.toHaveBeenCalledWith(
       "create_clip",
@@ -64,13 +113,26 @@ describe("createClip - timing params", () => {
     );
   });
 
-  // A count that differs from path's must not read as a list that disagrees.
-  it("gives a comma-bearing length its format error, not a count mismatch", async () => {
+  it("refuses an empty entry rather than guessing", async () => {
     twoSessionSlots();
 
     await expect(
-      createClip({ path: "t0/s0,t0/s1", length: "1bar,2bar,4bar" }),
-    ).rejects.toThrow('Invalid duration format: "1bar,2bar,4bar"');
+      createClip({ path: "t0/s0,t0/s1", length: "1bar,," }),
+    ).rejects.toThrow('invalid length "1bar,," - it has an empty entry');
+  });
+
+  // With one position there is no list to pair, so the value stays whole.
+  it("takes a whole timeSignature literally when the call names one position", async () => {
+    const [first] = twoSessionSlots() as [SessionSlot, SessionSlot];
+
+    await expect(
+      createClip({ path: "t0/s0", timeSignature: "4/4,3/4" }),
+    ).rejects.toThrow("Time signature must be in format");
+
+    expect(first.clipSlot.call).not.toHaveBeenCalledWith(
+      "create_clip",
+      expect.anything(),
+    );
   });
 });
 
@@ -124,27 +186,5 @@ describe("createClip - per-position sampleFile", () => {
     await expect(
       createClip({ path: "t0/s0,t0/s1", sampleFile: "/a.wav,/b.wav,/c.wav" }),
     ).rejects.toThrow("path names 2 entries but sampleFile names 3 entries");
-  });
-
-  // A trailing comma isn't an entry, so this is a short list, not one value.
-  it("refuses a short sample list before creating anything", async () => {
-    const { clipSlots } = setupMultiSessionAudioClipMocks([0, 1]);
-
-    await expect(
-      createClip({ path: "t0/s0,t0/s1", sampleFile: "/a.wav," }),
-    ).rejects.toThrow("path names 2 entries but sampleFile names 1 entry");
-
-    expect(clipSlots[0]?.call).not.toHaveBeenCalledWith(
-      "create_audio_clip",
-      expect.anything(),
-    );
-  });
-
-  it("refuses an empty sample entry rather than guessing", async () => {
-    setupMultiSessionAudioClipMocks([0, 1]);
-
-    await expect(
-      createClip({ path: "t0/s0,t0/s1", sampleFile: "/a.wav,," }),
-    ).rejects.toThrow('invalid sampleFile "/a.wav,," - it has an empty entry');
   });
 });

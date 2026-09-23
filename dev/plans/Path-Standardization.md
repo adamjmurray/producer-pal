@@ -143,9 +143,8 @@ Its three objections and what became of them:
 
 **What was real underneath** was split out at the time and shipped:
 
-- ✅ `arrangementStart` takes a list, paired 1:1 with the ids, matching
-  `toPath`. (`arrangementLength` did too, until ADR-0048 made it one value for
-  every clip.)
+- ✅ `arrangementStart` and `arrangementLength` take a list, paired 1:1 with the
+  ids, matching `toPath`.
 - `id` + `path` on one call had five behaviors (throw, dedupe-union,
   ids-then-paths, path-silently-wins, id-silently-wins). The two silent winners
   contradicted [Object-Paths.md](../Object-Paths.md) tier 4.

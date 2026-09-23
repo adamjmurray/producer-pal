@@ -467,6 +467,44 @@ describe("duplicate - a list of sources", () => {
       );
     });
 
+    // arrangementLength pairs with the sources the same way its position does,
+    // so two sources can fill two different spans in one call.
+    it("pairs arrangementLength one span per source", async () => {
+      registerArrangementSources("clipA", "clipB");
+      registerTrackThatClearsOnDup(2, { has_midi_input: 1 }, 16);
+      registerMockObject("live_set", { path: livePath.liveSet });
+
+      await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2",
+        arrangementStart: "5|1,9|1",
+        arrangementLength: "2bar,3bar",
+      });
+
+      expect(updateClipMock.mock.calls.map(([args]) => args)).toStrictEqual([
+        expect.objectContaining({ arrangementLength: "2bar" }),
+        expect.objectContaining({ arrangementLength: "3bar" }),
+      ]);
+    });
+
+    it("refuses an arrangementLength list too long for the sources", async () => {
+      registerArrangementSources("clipA", "clipB");
+      registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          toPath: "t2",
+          arrangementStart: "5|1,9|1",
+          arrangementLength: "2bar,3bar,4bar",
+        }),
+      ).rejects.toThrow(
+        "this call names 2 copies but arrangementLength names 3 entries",
+      );
+    });
+
     it("refuses more positions than there are sources", async () => {
       registerArrangementSources("clipA", "clipB");
       registerTrackThatClearsOnDup(2, { has_midi_input: 1 });

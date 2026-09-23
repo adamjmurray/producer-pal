@@ -20,9 +20,10 @@ import {
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { splitList } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /** The update-clip params read before any clip is touched. */
-export interface WholeCallArgs {
+export interface UpfrontArgs {
   timeSignature?: string;
   quantizePitch?: string;
   start?: string;
@@ -33,17 +34,17 @@ export interface WholeCallArgs {
 }
 
 /**
- * Refuses a call there is no reading of, before any clip is touched: a
- * whole-call param with no valid value, one position spelled two ways, or one
- * toPath that names a lane or slot for more than one clip.
- * @param args - The call's whole-call params, as sent
+ * Refuses a call there is no reading of, before any clip is touched: a param
+ * with no valid value, one position spelled two ways, or one toPath that names
+ * a lane or slot for more than one clip.
+ * @param args - The call's value params, as sent
  * @param targetCount - How many ids the call named
  */
 export function refuseUnreadableCall(
-  args: WholeCallArgs,
+  args: UpfrontArgs,
   targetCount: number,
 ): void {
-  validateWholeCallParams(args);
+  validateValueParams(args, targetCount);
   refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
   refuseSharedClipDestination(args.toPath, targetCount);
 }
@@ -171,7 +172,7 @@ export interface SplitMoveArgs {
  * @param args.toPath - Destination path(s), if sent
  * @param args.toSlot - Deprecated destination slot(s), if sent
  * @param args.arrangementStart - Position(s), if sent
- * @param args.arrangementLength - Span duration, if sent
+ * @param args.arrangementLength - Span duration(s), if sent
  */
 export function refuseSplitWithMove({
   arrangementSplit,
@@ -201,14 +202,16 @@ export function refuseSplitWithMove({
     return;
   }
 
+  // "pairs", not "pair": subjects joined by "or" take the nearer one.
   const named = conflicts.join(" or ");
 
   throw new Error(
     `${splitParam} cannot be combined with ${named}: the split makes new ` +
-      `clips, and ${named} can't tell them from the clips this call names. ` +
-      `The new pieces either miss it or all take it, and neither is the call ` +
-      `you wrote. Send ${splitParam} on its own, then ${named} in a second ` +
-      `call, on the ids the split returns.`,
+      `clips, and ${named} pairs 1:1 with the clips this call names, while a ` +
+      `single value covers every one of them. The new pieces either miss it ` +
+      `or all take it, and neither is the call you wrote. Send ${splitParam} ` +
+      `on its own, then ${named} in a second call, on the ids the split ` +
+      `returns.`,
   );
 }
 
@@ -230,34 +233,43 @@ function namedSplitParam(
 }
 
 /**
- * Refuse a whole-call param the tool can't read, before any clip is touched.
+ * Refuse a value the tool can't read, before any clip is touched.
  *
- * These are one value for every clip in the call, so a per-clip skip would
- * repeat the same message down the list. Worse, a clip's update throwing
- * partway has already written to it by then.
- * @param args - The call's whole-call params, as sent
- * @param args.timeSignature - Time signature to apply, if given
+ * A value that won't parse is the whole call's problem whichever clip it was
+ * meant for, so every entry is checked here: a per-clip skip would repeat the
+ * same message down the list, and a clip's update throwing partway has already
+ * written to it by then.
+ * @param args - The call's value params, as sent
+ * @param args.timeSignature - Meter(s) to apply, if given
  * @param args.quantizePitch - Pitch to limit quantization to, if given
- * @param args.start - Loop region start, if given
- * @param args.length - Loop region length, if given
- * @param args.firstStart - Playback start, if given
+ * @param args.start - Loop region start(s), if given
+ * @param args.length - Loop region length(s), if given
+ * @param args.firstStart - Playback start(s), if given
+ * @param targetCount - How many ids the call named
  */
-function validateWholeCallParams({
-  timeSignature,
-  quantizePitch,
-  start,
-  length,
-  firstStart,
-}: WholeCallArgs): void {
-  if (timeSignature != null) {
-    parseTimeSignature(timeSignature);
+function validateValueParams(
+  { timeSignature, quantizePitch, start, length, firstStart }: UpfrontArgs,
+  targetCount: number,
+): void {
+  for (const meter of entriesOf(timeSignature, targetCount, "timeSignature")) {
+    parseTimeSignature(meter);
   }
 
   if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
     throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
   }
 
-  validateClipRegion(start, length, firstStart);
+  for (const position of [
+    ...entriesOf(start, targetCount, "start"),
+    ...entriesOf(firstStart, targetCount, "firstStart"),
+  ]) {
+    validateBarBeatPosition(position);
+    barBeatToAbletonBeats(position, ANY_BEATS_PER_BAR, 4);
+  }
+
+  for (const duration of entriesOf(length, targetCount, "length")) {
+    durationToAbletonBeats(duration, 4, 4);
+  }
 }
 
 // No parse error depends on the meter, so any meter finds them all. One this
@@ -266,24 +278,20 @@ function validateWholeCallParams({
 const ANY_BEATS_PER_BAR = Number.MAX_SAFE_INTEGER;
 
 /**
- * Refuse a start, length or firstStart that can't be read in any meter.
- * @param start - Loop region start, if sent
- * @param length - Loop region length, if sent
- * @param firstStart - Playback start, if sent
+ * Every value a param names: its list entries, or the whole value.
+ * @param value - The raw param, if sent
+ * @param count - How many ids the call named
+ * @param param - The param's name, for the error message
+ * @returns The values to check
  */
-function validateClipRegion(
-  start: string | undefined,
-  length: string | undefined,
-  firstStart: string | undefined,
-): void {
-  for (const position of [start, firstStart]) {
-    if (position != null) {
-      validateBarBeatPosition(position);
-      barBeatToAbletonBeats(position, ANY_BEATS_PER_BAR, 4);
-    }
+function entriesOf(
+  value: string | undefined,
+  count: number,
+  param: string,
+): string[] {
+  if (value == null) {
+    return [];
   }
 
-  if (length != null) {
-    durationToAbletonBeats(length, 4, 4);
-  }
+  return splitList(value, count, param) ?? [value];
 }

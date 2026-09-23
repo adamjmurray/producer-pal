@@ -116,11 +116,19 @@ describe("updateClip - arrangement params per clip", () => {
     }
   });
 
-  // One length covers every clip, so a comma is never a list.
-  it("refuses a length list rather than pairing it", async () => {
+  it("gives each clip its own length", async () => {
+    await updateClip({ id: "100,101", arrangementLength: "2bar,1bar" });
+
+    expect(tracks[0]?.call).toHaveBeenCalledWith("create_midi_clip", 8, 8);
+    expect(tracks[1]?.call).toHaveBeenCalledWith("create_midi_clip", 4, 12);
+  });
+
+  it("refuses a short length list", async () => {
     await expect(
-      updateClip({ id: "100,101", arrangementLength: "2bar,1bar" }),
-    ).rejects.toThrow('Invalid duration format: "2bar,1bar"');
+      updateClip({ id: "100,101,102", arrangementLength: "2bar,1bar" }),
+    ).rejects.toThrow(
+      "id names 3 entries but arrangementLength names 2 entries.",
+    );
 
     for (const track of tracks) {
       expect(track.call).not.toHaveBeenCalledWith(

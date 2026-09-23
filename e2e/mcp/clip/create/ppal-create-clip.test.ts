@@ -532,11 +532,11 @@ describe("ppal-create-clip audio warping", () => {
 });
 
 // ============================================================================
-// sampleFile pairs 1:1 with the positions path names, the way name and color
-// do.
+// sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
+// positions path names, the way name and color do.
 // ============================================================================
 
-describe("ppal-create-clip per-position sampleFile", () => {
+describe("ppal-create-clip per-position params", () => {
   /** Read back every clip a create call made, in the order it made them. */
   async function readCreated(
     created: CreateClipResult[],
@@ -580,5 +580,27 @@ describe("ppal-create-clip per-position sampleFile", () => {
     expect(clips[1]?.name).toBe("paired kick");
     // Different files, so the two clips can't be the same length.
     expect(clips[0]?.length).not.toBe(clips[1]?.length);
+  });
+
+  it("gives each MIDI clip its own time signature and length", async () => {
+    const created = parseToolResult<CreateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}/s20,t${EMPTY_MIDI_TRACK}/s21`,
+          timeSignature: "4/4,3/4",
+          length: "2bar,4bar",
+        },
+      }),
+    );
+
+    expect(created).toHaveLength(2);
+
+    const clips = await readCreated(created);
+
+    expect(clips[0]?.timeSignature).toBe("4/4");
+    expect(clips[1]?.timeSignature).toBe("3/4");
+    expect(clips[0]?.length).toBe("2bar");
+    expect(clips[1]?.length).toBe("4bar");
   });
 });

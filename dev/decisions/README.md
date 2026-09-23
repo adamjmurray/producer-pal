@@ -113,3 +113,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0046](0046-d-plus-appends-a-device.md)                            | `d+` appends a device; `d<n>` still inserts at n                      |
 | [0047](0047-an-arrangement-write-overwrites-and-says-so.md)        | An arrangement write overwrites, and says so on the entry             |
 | [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target  |
+| [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |

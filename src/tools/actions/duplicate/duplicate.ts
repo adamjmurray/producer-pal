@@ -87,7 +87,7 @@ interface DuplicateArgs {
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement position(s): bar|beat or `loc:<locator>`
  * @param args.locator - Deprecated locator ref(s); use arrangementStart
- * @param args.arrangementLength - Arrangement length
+ * @param args.arrangementLength - Span to fill: one for all, or one per copy
  * @param args.name - Name for duplicates
  * @param args.color - Color for all the copies, or comma-separated one per copy
  * @param args.withoutClips - Exclude clips
@@ -204,7 +204,7 @@ export async function duplicate(
     toTakeLane,
   });
 
-  const labels = copyLabels(name, color, sources.length);
+  const labels = copyLabels(name, color, sources.length, arrangementLength);
 
   if (laneCopy) {
     const laneCopies = duplicateTracksToLanes({
