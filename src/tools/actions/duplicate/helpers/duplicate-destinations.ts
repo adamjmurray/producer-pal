@@ -234,7 +234,7 @@ export function resolveDestinationAndWarn(
   const { type, clipDestinations, arrangementStart } = params;
   const { arrangementLength, takeLane, takeLaneName } = params;
 
-  warnUnusedDestination(type, params.toPath, params.toSlot, params.laneCopy);
+  warnUnusedDestination(type, params.toSlot);
   warnUnusedArrangementParams(type, arrangementStart, arrangementLength);
 
   if (clipDestinations != null) {

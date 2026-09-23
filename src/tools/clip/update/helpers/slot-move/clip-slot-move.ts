@@ -23,6 +23,7 @@ import {
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import { recreateIntoSlot } from "#src/tools/shared/clip/recreate-into-slot.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -36,10 +37,6 @@ import {
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
-import {
-  recreateIntoEmptySlot,
-  recreateIntoOccupiedSlot,
-} from "./recreate-into-slot.ts";
 
 /** A destination slot, and the scenes reaching it had to make. */
 interface PreparedDestination {
@@ -220,35 +217,23 @@ export function handleArrangementToSlotMove({
   const losses = recreatedClipLosses(clip);
   const sourceTrack = LiveAPI.from(livePath.track(clip.trackIndex as number));
   const destPath = slotPath(toSlot.trackIndex, toSlot.sceneIndex);
-  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
+  const recreated = recreateIntoSlot(clip, toSlot, destClipSlot, {}, losses);
 
-  // An occupied destination tries the safe path first (build the replacement
-  // elsewhere, verify it, swap it in atomically) and only destroys the
-  // occupant up front when the track has nowhere else to build in. See
-  // recreate-into-slot.ts.
-  const newClip = destinationWasOccupied
-    ? recreateIntoOccupiedSlot(
-        clip,
-        toSlot,
-        destClipSlot,
-        destPath,
-        updatedClips,
-        noteResult,
-        reasons,
-        losses,
-      )
-    : recreateIntoEmptySlot(
-        clip,
-        destClipSlot,
-        destPath,
-        updatedClips,
-        noteResult,
-        reasons,
-        losses,
-      );
+  if (!recreated.ok) {
+    refuseClipWork(
+      reasons,
+      clip.id,
+      `not moved: ${recreated.reason} The source clip in the arrangement is untouched.`,
+    );
+    keepClip(clip, updatedClips, noteResult);
 
-  if (newClip == null) {
     return;
+  }
+
+  const newClip = recreated.clip;
+
+  if (recreated.overwrote) {
+    noteClipOverwrite(reasons, clip.id, destPath);
   }
 
   noteClipReason(

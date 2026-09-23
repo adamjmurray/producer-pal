@@ -14,6 +14,7 @@
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   namedEarlierReason,
   namedTargets,
@@ -125,6 +126,24 @@ export function resolveDeleteTargets(
 
 // --- Helpers below main exports ---
 
+/** Why no take lane can be deleted, after the lane's own label. */
+const TAKE_LANE_REFUSAL =
+  "is a take lane, which Live's API can't delete; remove it in Live's UI";
+
+/**
+ * Whether a path names an existing take lane (`t0/l1`).
+ * @param entry - One path, as the caller wrote it
+ * @returns True for a take-lane path; false for anything else, including a
+ *   path that doesn't parse, which the normal lookup reports
+ */
+function namesTakeLane(entry: string): boolean {
+  try {
+    return parseObjectPath(entry).kind === "take-lane";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * One named target: the object to delete, or the entry standing in for it.
  * @param named - The target, as the caller named it
@@ -137,12 +156,24 @@ function resolveTarget(
   type: string,
   requestIndex: number,
 ): TargetOutcome {
-  const lookup: IdLookup =
-    named.param === "id"
-      ? { id: named.value }
-      : resolvePathForType(type, named.value);
   const requestPath = named.param === "path" ? named.value : undefined;
   const address = requestAddress(requestPath);
+
+  if (requestPath != null && namesTakeLane(requestPath)) {
+    return {
+      entry: {
+        ...address,
+        ok: false,
+        reason: `${requestPath} ${TAKE_LANE_REFUSAL}`,
+        requestIndex,
+      },
+    };
+  }
+
+  const lookup: IdLookup =
+    requestPath == null
+      ? { id: named.value }
+      : resolvePathForType(type, requestPath);
 
   if (lookup.id == null) {
     return {
@@ -196,6 +227,10 @@ function requestAddress(requestPath: string | undefined): { path?: string } {
  * @returns The reason, or null when the object can be deleted
  */
 function undeletable(object: LiveAPI, type: string): string | null {
+  if (object.type === "TakeLane") {
+    return `${targetLabel(object)} ${TAKE_LANE_REFUSAL}`;
+  }
+
   const isChain = object.type === "Chain" || object.type === "DrumChain";
 
   // `type="chain"` is how a caller means a chain, so only the other types

@@ -218,8 +218,9 @@ describe("duplicate take lane to a main lane", () => {
       toPath: "t1[5|1]",
     });
 
-    expect(capturedWarnings().join("\n")).toContain("toPath ignored");
-    expect(result).not.toHaveProperty("reason");
+    expect(result.reason).toBe(
+      'toPath "t1[5|1]" not honored; a track copy lands right after its source',
+    );
   });
 
   it("leaves a main-lane source with a bare toPath a new-track copy", async () => {
@@ -233,7 +234,8 @@ describe("duplicate take lane to a main lane", () => {
 
     // A track source still makes a track, and says the destination went
     // unused; a promote would have answered with the "clips only" reason.
-    expect(capturedWarnings().join("\n")).toContain("toPath ignored");
-    expect(result).not.toHaveProperty("reason");
+    expect(result.reason).toBe(
+      'toPath "t1" not honored; a track copy lands right after its source',
+    );
   });
 });

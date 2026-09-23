@@ -120,4 +120,29 @@ describe("deleteObject by track and scene path", () => {
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);
   });
+
+  it("says a take lane can't be deleted, by path or by id", () => {
+    registerMockObject("lane_1", {
+      path: livePath.track(0).takeLane(1),
+      type: "TakeLane",
+    });
+
+    expect(
+      deleteObject({ path: "t0/l1", id: "lane_1", type: "track" }),
+    ).toStrictEqual([
+      {
+        id: "lane_1",
+        ok: false,
+        reason:
+          "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
+      },
+      {
+        path: "t0/l1",
+        ok: false,
+        reason:
+          "t0/l1 is a take lane, which Live's API can't delete; remove it in Live's UI",
+      },
+    ]);
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
 });

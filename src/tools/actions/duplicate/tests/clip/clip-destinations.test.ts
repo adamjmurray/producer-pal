@@ -298,22 +298,19 @@ describe("warnInapplicableClipParams", () => {
 });
 
 describe("warnUnusedDestination", () => {
-  it("says nothing for clips, which use both params", () => {
+  it("says nothing for clips, which take toSlot", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnUnusedDestination("clip", "t2/s1", undefined);
+    warnUnusedDestination("clip", "2/1");
 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns when a track or scene is given a destination", () => {
+  it("warns when any other type is given a toSlot", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnUnusedDestination("scene", "t2", "2/1");
+    warnUnusedDestination("scene", "2/1");
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      'toPath ignored: only supported for clips, devices, drum pads and chains (type "scene")',
-    );
     expect(warnSpy).toHaveBeenCalledWith(
       'toSlot ignored: only supported for clips (type "scene")',
     );
@@ -323,21 +320,8 @@ describe("warnUnusedDestination", () => {
   it("says nothing about a toSlot sent as null", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnUnusedDestination("scene", undefined, "null");
+    warnUnusedDestination("scene", "null");
 
     expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it("leaves toPath alone for devices but still flags toSlot", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnUnusedDestination("device", "t1/d0", "2/1");
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("toPath ignored"),
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      'toSlot ignored: only supported for clips (type "device")',
-    );
   });
 });

@@ -10,7 +10,6 @@
 // is created, so a bad destination fails instead of quietly landing the copy
 // somewhere else.
 
-import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
@@ -169,39 +168,19 @@ export function warnUnusedArrangementParams(
 }
 
 /**
- * Warns when a destination param was sent for a type that has no destination.
+ * Warns when the deprecated toSlot was sent for a type other than clip.
  * @param type - Type of object being duplicated
- * @param rawToPath - Destination path(s)
  * @param rawToSlot - Deprecated clip slot(s)
- * @param laneCopy - Whether the call copies clips lane to lane, where toPath
- *   names where they land
  */
 export function warnUnusedDestination(
   type: string,
-  rawToPath: string | undefined,
   rawToSlot: string | undefined,
-  laneCopy = false,
 ): void {
   if (type === "clip") {
     return;
   }
 
-  const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
-
-  if (
-    !laneCopy &&
-    type !== "device" &&
-    type !== "drum-pad" &&
-    type !== "chain" &&
-    toPath != null
-  ) {
-    console.warn(
-      `toPath ignored: only supported for clips, devices, drum pads and chains (type "${type}")`,
-    );
-  }
-
-  if (toSlot != null) {
+  if (namedHiddenPath(rawToSlot, "toSlot") != null) {
     console.warn(`toSlot ignored: only supported for clips (type "${type}")`);
   }
 }

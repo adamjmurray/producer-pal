@@ -312,6 +312,49 @@ describe("updateLiveSet - locator operations", () => {
       expect(result.locator).toStrictEqual({ operation: "rename", id: "26" });
     });
 
+    it("renames by ID and says a new locatorTime can't move it", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorTime: "9|1",
+        locatorName: "New Intro",
+      });
+
+      expect(cues.get("26")?.set).toHaveBeenCalledWith("name", "New Intro");
+      expect(result.locator).toStrictEqual({
+        operation: "rename",
+        id: "26",
+        reason:
+          "locatorTime 9|1 ignored: a locator can't be moved; delete it and create one at the new time",
+      });
+    });
+
+    it("says nothing when locatorTime is the ID's own time", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorTime: "1|1",
+        locatorName: "New Intro",
+      });
+
+      expect(result.locator).toStrictEqual({ operation: "rename", id: "26" });
+    });
+
+    it("notes an unreadable locatorTime sent with an ID", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorTime: "later",
+        locatorName: "New Intro",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "rename",
+        id: "26",
+        reason: expect.stringContaining("locatorTime later ignored"),
+      });
+    });
+
     it("should rename locator by time", async () => {
       const result = await updateLiveSet({
         locatorOperation: "rename",

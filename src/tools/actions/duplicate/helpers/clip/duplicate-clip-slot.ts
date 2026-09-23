@@ -11,6 +11,12 @@ import {
   clipOverwriteNote,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import {
+  canRecreateClip,
+  recreatedClipLosses,
+  recreateLossesNote,
+} from "#src/tools/shared/clip/recreate-clip.ts";
+import { recreateIntoSlot } from "#src/tools/shared/clip/recreate-into-slot.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -25,7 +31,6 @@ import {
   skippedCopy,
 } from "../minimal-clip-info.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The source objects every copy in one call shares. */
 export interface SlotCopySource {
@@ -172,9 +177,7 @@ export function duplicateClipToSlots(
   const sourceSceneIndex = object.sceneIndex;
 
   if (trackIndex == null || sourceSceneIndex == null) {
-    throw new Error(
-      `${targetLabel(object)} is an arrangement clip; ppal-duplicate cannot copy one into a clip slot`,
-    );
+    return duplicateArrangementClipToSlots(slots, object, labels);
   }
 
   claimLabels(labels, slots.length);
@@ -197,6 +200,68 @@ export function duplicateClipToSlots(
       shared,
     ),
   );
+}
+
+/**
+ * Copies an arrangement clip into clip slots. Live has no API for that, so
+ * each copy is re-created from the clip's notes or sample, and its entry says
+ * what the re-create lost.
+ * @param slots - Destination slots, in order
+ * @param clip - The arrangement clip to copy
+ * @param labels - The call's names and colors
+ * @returns One entry per slot named, whether or not a copy landed in it
+ */
+export function duplicateArrangementClipToSlots(
+  slots: ClipSlotPosition[],
+  clip: LiveAPI,
+  labels: CopyLabels,
+): (MinimalClipInfo | TargetSkip)[] {
+  claimLabels(labels, slots.length);
+
+  const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
+
+  return slots.map((slot, i) => {
+    const destination = slotPath(slot.trackIndex, slot.sceneIndex);
+    const blocker = canRecreateClip(clip)
+      ? clipCopyBlocker(clipIsMidi, slot.trackIndex)
+      : "it's an audio clip with no sample file; drag it in Live's UI";
+
+    if (blocker != null) {
+      return skippedCopy(destination, blocker);
+    }
+
+    const prepared = prepareDestinationSlot(slot.trackIndex, slot.sceneIndex);
+
+    if (typeof prepared === "string") {
+      return skippedCopy(destination, prepared);
+    }
+
+    const losses = recreatedClipLosses(clip);
+    const recreated = recreateIntoSlot(
+      clip,
+      slot,
+      prepared.clipSlot,
+      { name: labelName(labels, i), color: labelColor(labels, i) },
+      losses,
+    );
+
+    if (!recreated.ok) {
+      return skippedCopy(destination, recreated.reason);
+    }
+
+    const copy = getMinimalClipInfo(recreated.clip);
+
+    if (prepared.created != null) {
+      copy.created = prepared.created;
+    }
+
+    copy.reason = [
+      ...(recreated.overwrote ? [clipOverwriteNote(destination)] : []),
+      `re-created from the arrangement clip${recreateLossesNote(losses)}`,
+    ].join("; ");
+
+    return copy;
+  });
 }
 
 // --- Helpers below main exports ---

@@ -19,6 +19,7 @@ import {
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { focusIfRequested } from "./helpers/focus-if-requested.ts";
 import { copyLabels } from "./helpers/sources/copy-labels.ts";
+import { noteUnhonoredTrackToPath } from "./helpers/sources/duplicate-track.ts";
 import {
   duplicateChainSources,
   duplicateEverySource,
@@ -240,27 +241,59 @@ export async function duplicate(
     context,
   });
 
-  // A copy can land on one an earlier copy in this call just made. Say so in
-  // that copy's own entry, before anything downstream spends an id that now
-  // names nothing.
-  if (type === "clip") {
-    markOverwrittenCopies(createdObjects);
-  }
-
-  // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
-  if (type === "clip" && (transforms != null || code != null)) {
-    await applyTransformsToDuplicatedClips(
-      createdObjects,
-      transforms,
-      code,
-      context,
-    );
-  }
+  await finishCopies(
+    type,
+    createdObjects,
+    { toPath, transforms, code },
+    context,
+  );
 
   // Handle view switching if requested
   focusIfRequested(focus, destination, type, createdObjects);
 
   return oneOrAll(createdObjects);
+}
+
+/**
+ * What the entries still need once every copy is made.
+ * @param type - What was duplicated
+ * @param createdObjects - One entry per copy the call asked for
+ * @param params - The call's params that apply after the copy
+ * @param params.toPath - Destination path(s) as the caller wrote them
+ * @param params.transforms - Transforms to apply to clip copies
+ * @param params.code - Code to run on clip copies
+ * @param context - Per-request context
+ */
+async function finishCopies(
+  type: string,
+  createdObjects: object[],
+  params: { toPath?: string; transforms?: string; code?: string },
+  context: Partial<ToolContext>,
+): Promise<void> {
+  if (type === "track") {
+    noteUnhonoredTrackToPath(createdObjects, params.toPath);
+
+    return;
+  }
+
+  if (type !== "clip") {
+    return;
+  }
+
+  // A copy can land on one an earlier copy in this call just made. Say so in
+  // that copy's own entry, before anything downstream spends an id that now
+  // names nothing.
+  markOverwrittenCopies(createdObjects);
+
+  // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
+  if (params.transforms != null || params.code != null) {
+    await applyTransformsToDuplicatedClips(
+      createdObjects,
+      params.transforms,
+      params.code,
+      context,
+    );
+  }
 }
 
 /**

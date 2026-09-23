@@ -153,23 +153,6 @@ describe("duplicate - clip duplication", () => {
         }),
       ).rejects.toThrow(/toPath and toSlot both name a destination/);
     });
-
-    it("should throw an error when trying to duplicate an arrangement clip to session", async () => {
-      registerMockObject("arrangementClip1", {
-        path: livePath.track(0).arrangementClip(0),
-      });
-
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "arrangementClip1",
-
-          toSlot: "1/2",
-        }),
-      ).rejects.toThrow(
-        "is an arrangement clip; ppal-duplicate cannot copy one into a clip slot",
-      );
-    });
   });
 
   describe("arrangement destination", () => {

@@ -265,7 +265,21 @@ export function renameLocator(
 
   found.locator.set("name", locatorName);
 
-  return { operation: "rename", id: found.locator.id };
+  const moveNote =
+    locatorId != null && locatorTime != null
+      ? ignoredMoveNote(
+          found.locator,
+          locatorTime,
+          timeSigNumerator,
+          timeSigDenominator,
+        )
+      : undefined;
+
+  return {
+    operation: "rename",
+    id: found.locator.id,
+    ...(moveNote != null && { reason: moveNote }),
+  };
 }
 
 /**
@@ -295,4 +309,41 @@ export function validateLocatorOperation(
       `${sent.join(", ")} require locatorOperation ("create", "delete", or "rename")`,
     );
   }
+}
+
+/**
+ * When a rename names its locator by id and also sends a different time, the
+ * caller likely meant to move it, which Live's API can't do.
+ * @param locator - The locator the id named
+ * @param locatorTime - The time the call also sent
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns The note for the entry, or undefined when the time is the locator's own
+ */
+function ignoredMoveNote(
+  locator: LiveAPI,
+  locatorTime: string,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): string | undefined {
+  try {
+    validateBarBeatPosition(locatorTime);
+
+    const timeInBeats = barBeatToAbletonBeats(
+      locatorTime,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+
+    if (
+      Math.abs((locator.getProperty("time") as number) - timeInBeats) <
+      SAME_TIME_EPSILON
+    ) {
+      return undefined;
+    }
+  } catch {
+    // An unreadable time is ignored the same way.
+  }
+
+  return `locatorTime ${locatorTime} ignored: a locator can't be moved; delete it and create one at the new time`;
 }

@@ -5,7 +5,11 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import {
+  appendReason,
+  joinReasons,
+} from "#src/tools/shared/helpers/entry-reasons.ts";
+import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   newTargetNotes,
   noteTarget,
@@ -221,4 +225,29 @@ export function duplicateTrack(
     clips: duplicatedClips,
     ...(reason == null ? {} : { reason }),
   };
+}
+
+/**
+ * Says on each track copy's entry that its toPath wasn't honored: Live only
+ * duplicates a track to right after its source, and each entry's path says
+ * where it went.
+ * @param entries - One entry per track copy
+ * @param rawToPath - The toPath the call sent
+ */
+export function noteUnhonoredTrackToPath(
+  entries: object[],
+  rawToPath: string | undefined,
+): void {
+  const toPath = namedParam(rawToPath, "toPath");
+
+  if (toPath == null) {
+    return;
+  }
+
+  for (const entry of entries) {
+    appendReason(
+      entry,
+      `toPath "${toPath}" not honored; a track copy lands right after its source`,
+    );
+  }
 }
