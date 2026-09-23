@@ -63,6 +63,15 @@ describe("createClip - timing params", () => {
       expect.anything(),
     );
   });
+
+  // A count that differs from path's must not read as a list that disagrees.
+  it("gives a comma-bearing length its format error, not a count mismatch", async () => {
+    twoSessionSlots();
+
+    await expect(
+      createClip({ path: "t0/s0,t0/s1", length: "1bar,2bar,4bar" }),
+    ).rejects.toThrow('Invalid duration format: "1bar,2bar,4bar"');
+  });
 });
 
 describe("createClip - per-position sampleFile", () => {

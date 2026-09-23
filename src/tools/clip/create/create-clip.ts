@@ -164,10 +164,6 @@ export async function createClip(
     name,
     color,
     sampleFile,
-    timeSignature,
-    start,
-    length,
-    firstStart,
   });
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -272,10 +268,6 @@ export async function createClip(
  * @param args.name - Clip names
  * @param args.color - Clip colors
  * @param args.sampleFile - Audio files
- * @param args.timeSignature - Clip meters
- * @param args.start - Clip region starts
- * @param args.length - Clip lengths
- * @param args.firstStart - Playback starts
  */
 function refuseUnreadableCall({
   path,
@@ -284,22 +276,9 @@ function refuseUnreadableCall({
   name,
   color,
   sampleFile,
-  timeSignature,
-  start,
-  length,
-  firstStart,
 }: Pick<
   CreateClipArgs,
-  | "path"
-  | "slot"
-  | "arrangementStart"
-  | "name"
-  | "color"
-  | "sampleFile"
-  | "timeSignature"
-  | "start"
-  | "length"
-  | "firstStart"
+  "path" | "slot" | "arrangementStart" | "name" | "color" | "sampleFile"
 >): void {
   validateListLengths([
     {
@@ -311,10 +290,6 @@ function refuseUnreadableCall({
     { param: "name", value: name },
     { param: "color", value: color },
     { param: "sampleFile", value: sampleFile },
-    { param: "timeSignature", value: timeSignature },
-    { param: "start", value: start },
-    { param: "length", value: length },
-    { param: "firstStart", value: firstStart },
   ]);
 
   // A "[...]" in path and arrangementStart are two spellings of one position,
