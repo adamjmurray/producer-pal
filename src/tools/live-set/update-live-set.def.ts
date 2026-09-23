@@ -46,17 +46,17 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
     }),
     locatorId: param(z.coerce.string().optional(), {
       default:
-        "Locator ID(s) from read-live-set for delete/rename, comma-separated for several",
+        "Locator ID(s) from read-live-set, for delete/rename; comma-separated for several",
       smallModel: null,
     }),
     locatorTime: param(z.coerce.string().optional(), {
       default:
-        "Bar|beat position(s), song meter (required for create, alt ID for delete/rename), comma-separated for several",
+        "Bar|beat position(s), song meter; comma-separated for several. Required for create. Delete/rename: more locators, after any locatorId",
       smallModel: null,
     }),
     locatorName: param(z.coerce.string().optional(), {
       default:
-        "Name for create/rename, or name-match filter for delete; or comma-separated one per locator",
+        "Create/rename: one name for all, or one per locator. Delete: each name is also a target, deleting every locator with that name",
       smallModel: null,
     }),
     // No arrangementFollower param: play-arrangement always auto-follows.

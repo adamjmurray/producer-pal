@@ -3,34 +3,20 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  barBeatToAbletonBeats,
-  validateBarBeatPosition,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
+import { findLocator } from "#src/tools/shared/locator/locators.ts";
 import {
-  type LocatorMatch,
-  findLocator,
-  findLocatorsByName,
-} from "#src/tools/shared/locator/locators.ts";
-
-interface DeleteLocatorOptions {
-  locatorId?: string;
-  locatorTime?: string;
-  locatorName?: string;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
-}
-
-interface RenameLocatorOptions {
-  locatorId?: string;
-  locatorTime?: string;
-  locatorName?: string;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
-}
+  type ActedLocator,
+  earlierAct,
+  locateTarget,
+  type LocatorTarget,
+  repeatEntry,
+  type SongMeter,
+} from "./locator-targets.ts";
+import { cleanupTempClip, extendSongIfNeeded } from "./song-extension.ts";
 
 /**
  * Stop playback if currently playing (required for locator modifications)
@@ -51,169 +37,152 @@ export function stopPlaybackIfNeeded(liveSet: LiveAPI): boolean {
 }
 
 /**
- * Wait for the playhead position to reach the target time.
+ * Wait for the playhead to reach a time. Live moves it asynchronously after a
+ * `current_song_time` write, and `set_or_delete_cue` acts wherever it is.
  *
- * This is required because `set_or_delete_cue` operates on the actual playhead
- * position, not a parameter. When we call `liveSet.set("current_song_time", X)`,
- * Live updates the playhead asynchronously. If we call `set_or_delete_cue`
- * immediately, it may operate on the old position. We must poll until the
- * playhead reaches the target before proceeding.
- *
- * Note: The playhead cannot be positioned past the song's content length. If you
- * need to create a locator beyond the current song end, use `extendSongIfNeeded`
- * to temporarily add content that extends the song length first.
- *
+ * The playhead can't pass the song's end: extend the song first
+ * (`extendSongIfNeeded`) to reach a time beyond it.
  * @param liveSet - The live_set LiveAPI object
  * @param targetBeats - Expected position in beats
+ * @returns True once it's there, false if it never got there
  */
 export async function waitForPlayheadPosition(
   liveSet: LiveAPI,
   targetBeats: number,
-): Promise<void> {
-  const success = await waitUntil(
+): Promise<boolean> {
+  return await waitUntil(
     () =>
       Math.abs(
         (liveSet.getProperty("current_song_time") as number) - targetBeats,
       ) < SAME_TIME_EPSILON,
     { pollingInterval: 10, maxRetries: 10 },
   );
-
-  if (!success) {
-    console.warn(
-      `Playhead position did not reach target ${targetBeats} after waiting`,
-    );
-  }
 }
 
 /**
- * Delete locator(s) by ID, time, or name
+ * Toggle Live's cue at one time, which deletes the locator there — or creates
+ * one where there is none. Stop playback first.
  * @param liveSet - The live_set LiveAPI object
- * @param options - Delete options
- * @param options.locatorId - Locator ID to delete
- * @param options.locatorTime - Bar|beat position to delete
- * @param options.locatorName - Name filter for batch delete
- * @param options.timeSigNumerator - Time signature numerator
- * @param options.timeSigDenominator - Time signature denominator
- * @returns Deletion result
+ * @param beats - The time, in beats
+ * @param meter - The song meter, to name the time in an error
+ * @throws Error when the playhead doesn't get there: a toggle where it stalled
+ *   would hit some other locator
  */
-export async function deleteLocator(
+export async function toggleCueAt(
   liveSet: LiveAPI,
-  {
-    locatorId,
-    locatorTime,
-    locatorName,
-    timeSigNumerator,
-    timeSigDenominator,
-  }: DeleteLocatorOptions,
+  beats: number,
+  meter: SongMeter,
+): Promise<void> {
+  liveSet.set("current_song_time", beats);
+
+  if (!(await waitForPlayheadPosition(liveSet, beats))) {
+    const time = abletonBeatsToBarBeat(
+      beats,
+      meter.timeSigNumerator,
+      meter.timeSigDenominator,
+    );
+
+    throw new Error(
+      `Live didn't move the playhead to ${time}, so nothing changed there`,
+    );
+  }
+
+  liveSet.call("set_or_delete_cue");
+}
+
+/**
+ * Create a locator at the target's time.
+ * @param liveSet - The live_set LiveAPI object
+ * @param target - The time to create at, and the name to give it
+ * @param meter - The song meter a bar|beat is read in
+ * @param acted - The locators this call already acted on; this one is added
+ * @param context - Context object with silenceWavPath
+ * @returns Created locator info
+ */
+export async function createLocator(
+  liveSet: LiveAPI,
+  target: LocatorTarget,
+  meter: SongMeter,
+  acted: ActedLocator[],
+  context: { silenceWavPath?: string },
 ): Promise<Record<string, unknown>> {
-  // Validate that at least one identifier is provided
-  if (locatorId == null && locatorTime == null && locatorName == null) {
+  if (target.param == null) {
     return {
       operation: "skipped",
       ok: false,
-      reason: "delete needs locatorId, locatorTime, or locatorName",
+      reason: "create needs locatorTime",
     };
   }
 
-  // Delete by name (can match multiple locators)
-  if (locatorId == null && locatorTime == null && locatorName != null) {
-    const matches = findLocatorsByName(liveSet, locatorName);
+  const { beats, found: existing } = locateTarget(liveSet, target, meter);
+  const targetBeats = beats as number;
+  const earlier = earlierAct(acted, target, targetBeats);
 
-    if (matches.length === 0) {
-      return {
-        operation: "skipped",
-        reason: `nothing to delete: no locator named "${locatorName}"`,
-        name: locatorName,
-      };
-    }
+  if (earlier != null) {
+    return repeatEntry("create", earlier);
+  }
 
-    stopPlaybackIfNeeded(liveSet);
-
-    // Delete in reverse order to avoid index shifting issues
-    const times = matches.map((m) => m.time).toSorted((a, b) => b - a);
-
-    for (const time of times) {
-      liveSet.set("current_song_time", time);
-      await waitForPlayheadPosition(liveSet, time);
-      liveSet.call("set_or_delete_cue");
-    }
-
+  if (existing) {
     return {
-      operation: "delete",
-      count: matches.length,
-      name: locatorName,
+      operation: "skipped",
+      reason: `a locator is already at ${target.value}`,
+      time: target.value,
+      existingId: existing.locator.id,
     };
   }
-
-  // Delete by ID or time (single locator)
-  let found: LocatorMatch | null;
-  let timeInBeats: number;
-
-  if (locatorId != null) {
-    found = findLocator(liveSet, { locatorId });
-
-    if (!found) {
-      return {
-        operation: "skipped",
-        reason: `nothing to delete: no locator with id "${locatorId}"`,
-        id: locatorId,
-      };
-    }
-
-    timeInBeats = found.locator.getProperty("time") as number;
-  } else {
-    // locatorTime must be defined here (validated above)
-    validateBarBeatPosition(locatorTime as string);
-    timeInBeats = barBeatToAbletonBeats(
-      locatorTime as string,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-    found = findLocator(liveSet, { timeInBeats });
-
-    if (!found) {
-      return {
-        operation: "skipped",
-        reason: `nothing to delete: no locator at ${locatorTime}`,
-        time: locatorTime,
-      };
-    }
-  }
-
-  // The id, while the locator is still there to read it off.
-  const deletedId = found.locator.id;
 
   stopPlaybackIfNeeded(liveSet);
 
-  liveSet.set("current_song_time", timeInBeats);
-  await waitForPlayheadPosition(liveSet, timeInBeats);
-  liveSet.call("set_or_delete_cue");
+  // The playhead can't pass the song's end, so extend it for a later locator.
+  const tempClipInfo = extendSongIfNeeded(liveSet, targetBeats, context);
 
-  return { operation: "delete", id: deletedId };
+  try {
+    await toggleCueAt(liveSet, targetBeats, meter);
+  } finally {
+    cleanupTempClip(tempClipInfo);
+  }
+
+  const found = findLocator(liveSet, { timeInBeats: targetBeats });
+
+  if (found == null) {
+    return {
+      operation: "skipped",
+      time: target.value,
+      ...(target.name != null && { name: target.name }),
+      ok: false,
+      reason: `Live made no locator at ${target.value}`,
+    };
+  }
+
+  if (target.name != null) {
+    found.locator.set("name", target.name);
+  }
+
+  acted.push({
+    id: found.locator.id,
+    beats: targetBeats,
+    name: target.name ?? "",
+    target,
+  });
+
+  return { operation: "create", id: found.locator.id };
 }
 
 /**
- * Rename a locator by ID or time
+ * Rename the locator an id or time target names.
  * @param liveSet - The live_set LiveAPI object
- * @param options - Rename options
- * @param options.locatorId - Locator ID to rename
- * @param options.locatorTime - Bar|beat position to rename
- * @param options.locatorName - New name for the locator
- * @param options.timeSigNumerator - Time signature numerator
- * @param options.timeSigDenominator - Time signature denominator
+ * @param target - The locator, and its new name
+ * @param meter - The song meter a bar|beat is read in
+ * @param acted - The locators this call already acted on; this one is added
  * @returns Rename result
  */
 export function renameLocator(
   liveSet: LiveAPI,
-  {
-    locatorId,
-    locatorTime,
-    locatorName,
-    timeSigNumerator,
-    timeSigDenominator,
-  }: RenameLocatorOptions,
+  target: LocatorTarget,
+  meter: SongMeter,
+  acted: ActedLocator[],
 ): Record<string, unknown> {
-  if (locatorName == null) {
+  if (target.name == null) {
     return {
       operation: "skipped",
       ok: false,
@@ -221,7 +190,7 @@ export function renameLocator(
     };
   }
 
-  if (locatorId == null && locatorTime == null) {
+  if (target.param == null) {
     return {
       operation: "skipped",
       ok: false,
@@ -229,57 +198,34 @@ export function renameLocator(
     };
   }
 
-  let found;
+  const { beats, found } = locateTarget(liveSet, target, meter);
+  const earlier = earlierAct(acted, target, beats);
 
-  if (locatorId != null) {
-    found = findLocator(liveSet, { locatorId });
-
-    if (!found) {
-      return {
-        operation: "skipped",
-        ok: false,
-        reason: `no locator with id "${locatorId}"`,
-        id: locatorId,
-      };
-    }
-  } else {
-    // locatorTime must be defined here (validated above)
-    validateBarBeatPosition(locatorTime as string);
-    const timeInBeats = barBeatToAbletonBeats(
-      locatorTime as string,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-
-    found = findLocator(liveSet, { timeInBeats });
-
-    if (!found) {
-      return {
-        operation: "skipped",
-        ok: false,
-        reason: `no locator at ${locatorTime}`,
-        time: locatorTime,
-      };
-    }
+  if (earlier != null) {
+    return repeatEntry("rename", earlier);
   }
 
-  found.locator.set("name", locatorName);
+  if (found == null) {
+    return {
+      operation: "skipped",
+      ok: false,
+      ...(target.param === "locatorId"
+        ? { reason: `no locator with id "${target.value}"`, id: target.value }
+        : { reason: `no locator at ${target.value}`, time: target.value }),
+    };
+  }
 
-  const moveNote =
-    locatorId != null && locatorTime != null
-      ? ignoredMoveNote(
-          found.locator,
-          locatorTime,
-          timeSigNumerator,
-          timeSigDenominator,
-        )
-      : undefined;
-
-  return {
-    operation: "rename",
+  const act = {
     id: found.locator.id,
-    ...(moveNote != null && { reason: moveNote }),
+    beats: found.locator.getProperty("time") as number,
+    name: found.locator.getName(),
+    target,
   };
+
+  found.locator.set("name", target.name);
+  acted.push(act);
+
+  return { operation: "rename", id: found.locator.id };
 }
 
 /**
@@ -309,41 +255,4 @@ export function validateLocatorOperation(
       `${sent.join(", ")} require locatorOperation ("create", "delete", or "rename")`,
     );
   }
-}
-
-/**
- * When a rename names its locator by id and also sends a different time, the
- * caller likely meant to move it, which Live's API can't do.
- * @param locator - The locator the id named
- * @param locatorTime - The time the call also sent
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns The note for the entry, or undefined when the time is the locator's own
- */
-function ignoredMoveNote(
-  locator: LiveAPI,
-  locatorTime: string,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): string | undefined {
-  try {
-    validateBarBeatPosition(locatorTime);
-
-    const timeInBeats = barBeatToAbletonBeats(
-      locatorTime,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-
-    if (
-      Math.abs((locator.getProperty("time") as number) - timeInBeats) <
-      SAME_TIME_EPSILON
-    ) {
-      return undefined;
-    }
-  } catch {
-    // An unreadable time is ignored the same way.
-  }
-
-  return `locatorTime ${locatorTime} ignored: a locator can't be moved; delete it and create one at the new time`;
 }

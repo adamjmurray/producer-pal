@@ -442,6 +442,65 @@ describe("ppal-update-live-set", () => {
     expect(locators).toStrictEqual(initialLocators);
   });
 
+  it("deletes by id, time and name in one call, each locator once", async () => {
+    // Only real Live proves a locator named twice isn't toggled twice: a
+    // second toggle at its time would create a new one there.
+    const initialLocators = await readLocatorList();
+
+    const created = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "5|1,6|1,7|1",
+          locatorName: "E2E Comma,E2E Solo,E2E Tail",
+        },
+      }),
+    );
+    const soloId = created.locator?.[1]?.id;
+
+    expect(soloId).toBeDefined();
+
+    // A lone target takes the comma literally, so this names one locator.
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "rename",
+        locatorTime: "5|1",
+        locatorName: "E2E Comma, Two",
+      },
+    });
+
+    await sleep(100);
+
+    const deleted = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "delete",
+          locatorId: soloId,
+          locatorTime: "6|1,7|1",
+          locatorName: "E2E Comma, Two",
+        },
+      }),
+    );
+
+    expect(deleted.locator).toStrictEqual([
+      { operation: "delete", id: soloId },
+      {
+        operation: "delete",
+        id: soloId,
+        reason: `already named as id ${soloId} earlier in this call`,
+      },
+      { operation: "delete", id: expect.any(String) },
+      { operation: "delete", count: 1, name: "E2E Comma, Two" },
+    ]);
+
+    await sleep(100);
+
+    expect(await readLocatorList()).toStrictEqual(initialLocators);
+  });
+
   it("refuses locator lists that name different numbers of locators", async () => {
     // Nothing is written: the lists are split before the first locator runs.
     const before = await readLocatorList();

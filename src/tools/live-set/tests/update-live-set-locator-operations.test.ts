@@ -184,28 +184,6 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
-    it("prefers locatorId over locatorName when both are given", async () => {
-      // The name-delete branch requires BOTH id and time to be null; with an id
-      // present we delete that single locator, never every cue sharing the name.
-      const result = await updateLiveSet({
-        locatorOperation: "delete",
-        locatorId: "26",
-        locatorName: "Verse", // the second locator is "Verse" — must be ignored
-      });
-
-      expect(result.locator).toStrictEqual({ operation: "delete", id: "26" });
-    });
-
-    it("prefers locatorTime over locatorName when both are given", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "delete",
-        locatorTime: "5|1", // 16 beats → the second locator
-        locatorName: "Intro", // must be ignored
-      });
-
-      expect(result.locator).toStrictEqual({ operation: "delete", id: "27" });
-    });
-
     it("should skip if no identifier provided for delete", async () => {
       const result = await updateLiveSet({
         locatorOperation: "delete",
@@ -265,11 +243,12 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "",
       });
 
+      // A blank param is an unsent one, so the call names no locator.
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: 'nothing to delete: no locator named ""',
-        name: "",
+        ok: false,
+        reason: "delete needs locatorId, locatorTime, or locatorName",
       });
     });
 
@@ -310,49 +289,6 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(cues.get("26")?.set).toHaveBeenCalledWith("name", "New Intro");
       expect(result.locator).toStrictEqual({ operation: "rename", id: "26" });
-    });
-
-    it("renames by ID and says a new locatorTime can't move it", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorId: "26",
-        locatorTime: "9|1",
-        locatorName: "New Intro",
-      });
-
-      expect(cues.get("26")?.set).toHaveBeenCalledWith("name", "New Intro");
-      expect(result.locator).toStrictEqual({
-        operation: "rename",
-        id: "26",
-        reason:
-          "locatorTime 9|1 ignored: a locator can't be moved; delete it and create one at the new time",
-      });
-    });
-
-    it("says nothing when locatorTime is the ID's own time", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorId: "26",
-        locatorTime: "1|1",
-        locatorName: "New Intro",
-      });
-
-      expect(result.locator).toStrictEqual({ operation: "rename", id: "26" });
-    });
-
-    it("notes an unreadable locatorTime sent with an ID", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorId: "26",
-        locatorTime: "later",
-        locatorName: "New Intro",
-      });
-
-      expect(result.locator).toStrictEqual({
-        operation: "rename",
-        id: "26",
-        reason: expect.stringContaining("locatorTime later ignored"),
-      });
     });
 
     it("should rename locator by time", async () => {

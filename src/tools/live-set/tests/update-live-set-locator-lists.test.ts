@@ -5,13 +5,13 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
+import { simulateLocators } from "./update-live-set-test-helpers.ts";
 
 /** Locators the list tests start from. */
 const INTRO_VERSE = [
@@ -19,6 +19,7 @@ const INTRO_VERSE = [
   { time: 16, name: "Verse" },
 ];
 
+/** Ids 26, 27, 28 at bars 1, 5, 9. */
 const INTRO_VERSE_DROP = [...INTRO_VERSE, { time: 32, name: "Drop" }];
 
 describe("updateLiveSet - locator lists", () => {
@@ -179,32 +180,45 @@ describe("updateLiveSet - locator lists", () => {
   });
 
   describe("partial completion", () => {
-    it("keeps going past a locator it can't create", async () => {
+    it("refuses an unreadable time before creating any", async () => {
       const set = simulateLocators(liveSet);
 
-      const result = await updateLiveSet({
-        locatorOperation: "create",
-        locatorTime: "1|1,nope,9|1",
-        locatorName: "Intro,Verse,Drop",
-      });
+      await expect(
+        updateLiveSet({
+          locatorOperation: "create",
+          locatorTime: "1|1,nope,9|1",
+          locatorName: "Intro,Verse,Drop",
+        }),
+      ).rejects.toThrow('Invalid bar|beat format: "nope"');
+      expect(set.locators()).toStrictEqual([]);
+    });
 
-      const entries = result.locator as Array<Record<string, unknown>>;
+    it("refuses an unreadable time before a new meter is written", async () => {
+      simulateLocators(liveSet);
 
-      expect(entries[0]).toStrictEqual({ operation: "create", id: "26" });
-      // The skip carries every spelling the caller wrote, so they can tell
-      // which section it was.
-      expect(entries[1]).toStrictEqual({
-        operation: "skipped",
-        time: "nope",
-        name: "Verse",
-        ok: false,
-        reason: expect.stringContaining('Invalid bar|beat format: "nope"'),
-      });
-      expect(entries[2]).toStrictEqual({ operation: "create", id: "27" });
-      expect(set.locators()).toStrictEqual([
-        { time: 0, name: "Intro" },
-        { time: 32, name: "Drop" },
-      ]);
+      await expect(
+        updateLiveSet({
+          timeSignature: "6/8",
+          locatorOperation: "create",
+          locatorTime: "nope",
+        }),
+      ).rejects.toThrow('Invalid bar|beat format: "nope"');
+      expect(liveSet.set).not.toHaveBeenCalledWith("signature_numerator", 6);
+    });
+
+    it("refuses an unreadable time before the tempo or any delete", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE);
+
+      await expect(
+        updateLiveSet({
+          tempo: 100,
+          locatorOperation: "delete",
+          locatorId: "26",
+          locatorTime: "nope",
+        }),
+      ).rejects.toThrow('Invalid bar|beat format: "nope"');
+      expect(liveSet.set).not.toHaveBeenCalledWith("tempo", 100);
+      expect(set.locators()).toStrictEqual(INTRO_VERSE);
     });
 
     it("throws when the only locator named can't be created", async () => {
@@ -213,24 +227,6 @@ describe("updateLiveSet - locator lists", () => {
       await expect(
         updateLiveSet({ locatorOperation: "create", locatorTime: "nope" }),
       ).rejects.toThrow("nope");
-    });
-
-    it("names an unnamed locator by its position alone", async () => {
-      simulateLocators(liveSet);
-
-      const result = await updateLiveSet({
-        locatorOperation: "create",
-        locatorTime: "1|1,nope",
-      });
-
-      expect(
-        (result.locator as Array<Record<string, unknown>>)[1],
-      ).toStrictEqual({
-        operation: "skipped",
-        time: "nope",
-        ok: false,
-        reason: expect.stringContaining('Invalid bar|beat format: "nope"'),
-      });
     });
 
     it("reports a locator Live wouldn't rename", async () => {
@@ -278,100 +274,397 @@ describe("updateLiveSet - locator lists", () => {
   });
 });
 
-interface SimulatedLocator {
-  time: number;
-  name: string;
-}
+// locatorId and locatorTime form one target list, ids first; on delete each
+// name is a target too. A locator named twice is acted on once.
+describe("updateLiveSet - locator targets", () => {
+  let liveSet: RegisteredMockObject;
 
-/**
- * A live_set whose cue points really come and go, so a call that creates or
- * deletes several locators reads back what the earlier ones did.
- * @param liveSetHandle - The live_set mock object handle
- * @param initial - Locators already in the Set, in time order
- * @returns A reader for the locators the Set holds now
- */
-function simulateLocators(
-  liveSetHandle: RegisteredMockObject,
-  initial: SimulatedLocator[] = [],
-): { locators: () => SimulatedLocator[] } {
-  const cues: Array<{ id: string; properties: Record<string, unknown> }> = [];
-  let playhead = 0;
-  // Live hands out ordinary object ids, assigned on creation.
-  let nextId = 26;
+  beforeEach(() => {
+    liveSet = registerMockObject("live_set_id", { path: "live_set" });
+  });
 
-  const register = (): void => {
-    for (const [index, cue] of cues.entries()) {
-      const handle = registerMockObject(cue.id, {
-        path: livePath.cuePoint(index),
-        properties: cue.properties,
-      });
-
-      // The default set mock only stores numbers, so a name write needs this to
-      // read back.
-      handle.set.mockImplementation((property: string, value: unknown) => {
-        cue.properties[property] = value;
-      });
-    }
-  };
-
-  const addCue = (time: number, name: string): void => {
-    cues.push({ id: String(nextId++), properties: { time, name } });
-    cues.sort(
-      (a, b) => (a.properties.time as number) - (b.properties.time as number),
-    );
-    register();
-  };
-
-  for (const locator of initial) {
-    addCue(locator.time, locator.name);
+  /**
+   * How many times the call toggled a cue.
+   * @returns The set_or_delete_cue call count
+   */
+  function cueToggles(): number {
+    return liveSet.call.mock.calls.filter((c) => c[0] === "set_or_delete_cue")
+      .length;
   }
 
-  liveSetHandle.get.mockImplementation((prop: string) => {
-    switch (prop) {
-      case "signature_numerator":
-      case "signature_denominator":
-        return [4];
-      case "song_length":
-        return [1000];
-      case "current_song_time":
-        return [playhead];
-      case "cue_points":
-        return children(...cues.map((cue) => cue.id));
-      default:
-        return [0];
-    }
+  describe("delete by a name with a comma in it", () => {
+    it("deletes the locator named the whole value", async () => {
+      const set = simulateLocators(liveSet, [
+        { time: 0, name: "Verse, part 2" },
+        { time: 16, name: "Verse" },
+        { time: 32, name: "part 2" },
+      ]);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "Verse, part 2",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "delete",
+        count: 1,
+        name: "Verse, part 2",
+      });
+      expect(set.locators()).toStrictEqual([
+        { time: 16, name: "Verse" },
+        { time: 32, name: "part 2" },
+      ]);
+    });
+
+    it("splits the value when no locator has the whole name", async () => {
+      const set = simulateLocators(liveSet, [
+        { time: 0, name: "Verse" },
+        { time: 16, name: "Chorus" },
+        { time: 32, name: "Verse" },
+      ]);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "Verse, Chorus",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", count: 2, name: "Verse" },
+        { operation: "delete", count: 1, name: "Chorus" },
+      ]);
+      expect(set.locators()).toStrictEqual([]);
+    });
   });
 
-  liveSetHandle.set.mockImplementation((prop: string, value: unknown) => {
-    if (prop === "current_song_time") {
-      playhead = value as number;
-    }
+  describe("delete by ids, times and names together", () => {
+    it("deletes each id, then each time, then each name", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "27",
+        locatorTime: "1|1",
+        locatorName: "Drop",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "27" },
+        { operation: "delete", id: "26" },
+        { operation: "delete", count: 1, name: "Drop" },
+      ]);
+      expect(set.locators()).toStrictEqual([]);
+    });
+
+    it("doesn't spread one id across a time list", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "27",
+        locatorTime: "1|1,9|1",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "27" },
+        { operation: "delete", id: "26" },
+        { operation: "delete", id: "28" },
+      ]);
+      expect(set.locators()).toStrictEqual([]);
+    });
+
+    it("deletes a locator named by id and time once", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "26",
+        locatorTime: "1|1",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "26" },
+        {
+          operation: "delete",
+          id: "26",
+          reason: "already named as id 26 earlier in this call",
+        },
+      ]);
+      // A second toggle at 1|1 would have created a new locator there.
+      expect(cueToggles()).toBe(1);
+      expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
+    });
+
+    it("deletes a time named twice once", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorTime: "1|1,1|1",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "26" },
+        {
+          operation: "delete",
+          id: "26",
+          reason: 'already named as "1|1" earlier in this call',
+        },
+      ]);
+      expect(cueToggles()).toBe(1);
+      expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
+    });
+
+    it("points a name at the id that already deleted it", async () => {
+      simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "27",
+        locatorName: "Verse",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "27" },
+        {
+          operation: "delete",
+          id: "27",
+          reason: "already named as id 27 earlier in this call",
+        },
+      ]);
+      expect(cueToggles()).toBe(1);
+    });
+
+    it("points a repeated name at the entry that deleted it", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "Verse,Verse",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", count: 1, name: "Verse" },
+        {
+          operation: "delete",
+          id: "27",
+          reason: 'already named as "Verse" earlier in this call',
+        },
+      ]);
+      expect(cueToggles()).toBe(1);
+      expect(set.locators()).toStrictEqual([
+        { time: 0, name: "Intro" },
+        { time: 32, name: "Drop" },
+      ]);
+    });
+
+    it("deletes the rest of a name an id already took one of", async () => {
+      const set = simulateLocators(liveSet, [
+        { time: 0, name: "Verse" },
+        { time: 16, name: "Chorus" },
+        { time: 32, name: "Verse" },
+      ]);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "26",
+        locatorName: "Verse",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "26" },
+        { operation: "delete", count: 1, name: "Verse" },
+      ]);
+      expect(cueToggles()).toBe(2);
+      expect(set.locators()).toStrictEqual([{ time: 16, name: "Chorus" }]);
+    });
+
+    it("reads a time in the song's meter", async () => {
+      // Bar 2 of 6/8 is 3 beats in; read as 8/6 it would be 5.33.
+      const set = simulateLocators(
+        liveSet,
+        [
+          { time: 0, name: "A" },
+          { time: 3, name: "B" },
+        ],
+        { meter: [6, 8] },
+      );
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorTime: "2|1",
+      });
+
+      expect(result.locator).toStrictEqual({ operation: "delete", id: "27" });
+      expect(set.locators()).toStrictEqual([{ time: 0, name: "A" }]);
+    });
+
+    it("says which target in a list named nothing", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "26,99",
+        locatorTime: "20|1",
+        locatorName: "Outro",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", id: "26" },
+        {
+          operation: "skipped",
+          reason: 'nothing to delete: no locator with id "99"',
+          id: "99",
+        },
+        {
+          operation: "skipped",
+          reason: "nothing to delete: no locator at 20|1",
+          time: "20|1",
+        },
+        {
+          operation: "skipped",
+          reason: 'nothing to delete: no locator named "Outro"',
+          name: "Outro",
+        },
+      ]);
+      expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
+    });
   });
 
-  // set_or_delete_cue toggles a locator at the playhead, the way Live does.
-  liveSetHandle.call.mockImplementation((method: string) => {
-    if (method !== "set_or_delete_cue") {
-      return;
-    }
+  describe("rename by ids and times together", () => {
+    it("pairs each name with ids first, then times", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
 
-    const index = cues.findIndex((cue) => cue.properties.time === playhead);
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "27",
+        locatorTime: "1|1,9|1",
+        locatorName: "B,A,C",
+      });
 
-    if (index === -1) {
-      addCue(playhead, "");
-    } else {
-      cues.splice(index, 1);
-      register();
-    }
+      expect(result.locator).toStrictEqual([
+        { operation: "rename", id: "27" },
+        { operation: "rename", id: "26" },
+        { operation: "rename", id: "28" },
+      ]);
+      expect(set.locators().map((locator) => locator.name)).toStrictEqual([
+        "A",
+        "B",
+        "C",
+      ]);
+    });
+
+    it("gives every target the one name it was sent", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorTime: "9|1",
+        locatorName: "Same",
+      });
+
+      expect(set.locators().map((locator) => locator.name)).toStrictEqual([
+        "Same",
+        "Verse",
+        "Same",
+      ]);
+    });
+
+    it("refuses a name list that doesn't match the targets", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      await expect(
+        updateLiveSet({
+          locatorOperation: "rename",
+          locatorId: "26",
+          locatorTime: "5|1,9|1",
+          locatorName: "A,B",
+        }),
+      ).rejects.toThrow(
+        "locatorId and locatorTime names 3 locators but locatorName names 2 locators",
+      );
+      expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP);
+    });
+
+    it("keeps a comma in the name when the call names one locator", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorName: "A,B",
+      });
+
+      expect(result.locator).toStrictEqual({ operation: "rename", id: "26" });
+      expect(set.locators()[0]).toStrictEqual({ time: 0, name: "A,B" });
+    });
+
+    it("renames a locator named by id and time once", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorTime: "1|1",
+        locatorName: "A,B",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "rename", id: "26" },
+        {
+          operation: "rename",
+          id: "26",
+          reason: "already named as id 26 earlier in this call",
+        },
+      ]);
+      expect(set.locators()[0]).toStrictEqual({ time: 0, name: "A" });
+    });
+
+    it("says which target in a list found no locator", async () => {
+      simulateLocators(liveSet, INTRO_VERSE_DROP);
+
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "26",
+        locatorTime: "20|1",
+        locatorName: "New",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "rename", id: "26" },
+        {
+          operation: "skipped",
+          ok: false,
+          reason: "no locator at 20|1",
+          time: "20|1",
+        },
+      ]);
+    });
   });
 
-  return {
-    locators: () =>
-      cues.map((cue) => ({
-        time: cue.properties.time as number,
-        name: cue.properties.name as string,
-      })),
-  };
-}
+  describe("create", () => {
+    it("creates a time named twice once", async () => {
+      const set = simulateLocators(liveSet);
+
+      const result = await updateLiveSet({
+        locatorOperation: "create",
+        locatorTime: "1|1,1|1",
+        locatorName: "A,B",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "create", id: "26" },
+        {
+          operation: "create",
+          id: "26",
+          reason: 'already named as "1|1" earlier in this call',
+        },
+      ]);
+      expect(cueToggles()).toBe(1);
+      expect(set.locators()).toStrictEqual([{ time: 0, name: "A" }]);
+    });
+  });
+});
 
 /**
  * Rename both locators in one call: the first to Head, the second to Chorus.
