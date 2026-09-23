@@ -362,7 +362,7 @@ export function evaluateTransform(
  * @returns Parsed AST
  * @throws Error with formatted message if parsing fails
  */
-function tryParseTransform(
+export function tryParseTransform(
   transformString: string,
   timeSigDenominator: number,
   timeSigNumerator: number,

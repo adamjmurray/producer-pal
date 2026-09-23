@@ -40,6 +40,7 @@ import {
   getTimeSignature,
 } from "../clip-beat-positions.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
+import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 
 interface ClipResult {
   id: string;
@@ -161,6 +162,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     });
     forceWarpForLooping(clip, reasons, looping, warping);
   } else {
+    parseNoteEdits(params, timeSigNumerator, timeSigDenominator);
     ignoreAudioParams(clip.id, reasons, params);
   }
 

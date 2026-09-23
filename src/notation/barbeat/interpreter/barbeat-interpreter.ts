@@ -319,66 +319,83 @@ export function interpretNotation(
 
   const { timeSigDenominator } = options;
   const beatsPerBar = parseBeatsPerBar(options);
+  const ast = parseNotation(barBeatExpression, options);
+
+  // Bar copy tracking: Map bar number -> array of note metadata
+  const notesByBar = new Map<number, BarCopyNote[]>();
+  const events: NoteEvent[] = [];
+
+  // Create state object for easier passing to helper functions
+  const state: InterpreterState = {
+    currentTime: DEFAULT_TIME,
+    currentVelocity: DEFAULT_VELOCITY,
+    currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
+    currentProbability: DEFAULT_PROBABILITY,
+    currentVelocityMin: null,
+    currentVelocityMax: null,
+    currentPitches: [],
+    currentPitchStreams: [],
+    pitchStreamCursor: 0,
+    currentVelocityStream: null,
+    velocityStreamCursor: 0,
+    currentDurationStream: null,
+    durationStreamCursor: 0,
+    currentProbabilityStream: null,
+    probabilityStreamCursor: 0,
+    pitchGroupStarted: false,
+    pitchesEmitted: false,
+    stateChangedSinceLastPitch: false,
+    stateChangedAfterEmission: false,
+  };
+
+  for (const element of ast) {
+    processElementInLoop(
+      element,
+      state,
+      beatsPerBar,
+      timeSigDenominator,
+      notesByBar,
+      events,
+    );
+  }
+
+  // Warn if pitches buffered but never emitted (includes a dangling pattern
+  // bracket as a new species of un-emitted pitch state).
+  const buffered = countBufferedPitches(state);
+
+  if (buffered > 0 && !state.pitchesEmitted) {
+    console.warn(
+      `${buffered} pitch(es) buffered but no time position to emit them`,
+    );
+  }
+
+  // Apply v0 deletions as final post-processing step
+  return applyV0Deletions(events);
+}
+
+/**
+ * Parse bar|beat notation without interpreting it, so it warns nothing.
+ * @param barBeatExpression - Bar|beat notation string
+ * @param options - Interpretation options (the meter)
+ * @returns The parsed elements
+ */
+export function parseNotation(
+  barBeatExpression: string,
+  options: InterpretOptions = {},
+): ASTElement[] {
+  if (!barBeatExpression) {
+    return [];
+  }
 
   try {
     // Pass the denominator so the grammar can resolve `±n` beat offsets
     // (whole-note fractions) into musical beats during the parse, and
     // beatsPerBar so it can borrow across a bar line when a `-n` offset pulls a
     // position earlier than beat 1 (e.g. `2|1-n/12`).
-    const ast = parser.parse(barBeatExpression, {
-      timeSigDenominator,
-      beatsPerBar,
+    return parser.parse(barBeatExpression, {
+      timeSigDenominator: options.timeSigDenominator,
+      beatsPerBar: parseBeatsPerBar(options),
     });
-    // Bar copy tracking: Map bar number -> array of note metadata
-    const notesByBar = new Map<number, BarCopyNote[]>();
-    const events: NoteEvent[] = [];
-
-    // Create state object for easier passing to helper functions
-    const state: InterpreterState = {
-      currentTime: DEFAULT_TIME,
-      currentVelocity: DEFAULT_VELOCITY,
-      currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
-      currentProbability: DEFAULT_PROBABILITY,
-      currentVelocityMin: null,
-      currentVelocityMax: null,
-      currentPitches: [],
-      currentPitchStreams: [],
-      pitchStreamCursor: 0,
-      currentVelocityStream: null,
-      velocityStreamCursor: 0,
-      currentDurationStream: null,
-      durationStreamCursor: 0,
-      currentProbabilityStream: null,
-      probabilityStreamCursor: 0,
-      pitchGroupStarted: false,
-      pitchesEmitted: false,
-      stateChangedSinceLastPitch: false,
-      stateChangedAfterEmission: false,
-    };
-
-    for (const element of ast) {
-      processElementInLoop(
-        element,
-        state,
-        beatsPerBar,
-        timeSigDenominator,
-        notesByBar,
-        events,
-      );
-    }
-
-    // Warn if pitches buffered but never emitted (includes a dangling pattern
-    // bracket as a new species of un-emitted pitch state).
-    const buffered = countBufferedPitches(state);
-
-    if (buffered > 0 && !state.pitchesEmitted) {
-      console.warn(
-        `${buffered} pitch(es) buffered but no time position to emit them`,
-      );
-    }
-
-    // Apply v0 deletions as final post-processing step
-    return applyV0Deletions(events);
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       const formatted = formatParserError(

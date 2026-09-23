@@ -18,13 +18,20 @@
  */
 
 import { formatNotation as formatBarbeat } from "#src/notation/barbeat/barbeat-format-notation.ts";
-import { interpretNotation as interpretBarbeat } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import {
+  interpretNotation as interpretBarbeat,
+  parseNotation as parseBarbeat,
+} from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type FormatOptions } from "#src/notation/barbeat/serializer/barbeat-serializer.ts";
 import {
   formatMidiJson,
   interpretMidiJson,
+  parseMidiJsonNotes,
 } from "#src/notation/midi-json/midi-json-notation.ts";
-import { interpretNotation as interpretStark } from "#src/notation/stark/stark-interpreter.ts";
+import {
+  interpretNotation as interpretStark,
+  parseNotation as parseStark,
+} from "#src/notation/stark/stark-interpreter.ts";
 import { formatNotation as formatStark } from "#src/notation/stark/stark-serializer.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
@@ -86,6 +93,27 @@ export function interpretNotation(
   }
 
   return interpretBarbeat(input, rest);
+}
+
+/**
+ * Parse a notation string without interpreting it, so it warns nothing.
+ * @param input - Notation string (bar|beat text, a MIDI JSON array, or Stark)
+ * @param options - Interpretation options including the notation to use
+ */
+export function parseNotation(
+  input: string,
+  options: InterpretNotationOptions = {},
+): void {
+  const { notation, ...rest } = options;
+  const resolved = resolveNotation(notation);
+
+  if (resolved === "midi-json") {
+    parseMidiJsonNotes(input);
+  } else if (resolved === "stark") {
+    parseStark(input);
+  } else {
+    parseBarbeat(input, rest);
+  }
 }
 
 /**
