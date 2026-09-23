@@ -340,6 +340,12 @@ function applySplittingIfNeeded({
 
   const arrangementClips = clips.filter((clip) => {
     if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
+      refuseClipWork(
+        reasons,
+        clip.id,
+        `${mode.param} ignored: this is a session clip`,
+      );
+
       return false;
     }
 
@@ -358,6 +364,12 @@ function applySplittingIfNeeded({
 
     return true;
   });
+
+  // Every clip left out already says why on its own entry; don't warn too.
+  if (arrangementClips.length === 0) {
+    return { clips, slots };
+  }
+
   const splitPoints = prepareSplitParams(
     value,
     arrangementClips,

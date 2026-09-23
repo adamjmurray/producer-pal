@@ -354,6 +354,56 @@ describe("updateClip - splitting smoke tests", () => {
     );
   });
 
+  it("refuses a session clip in a batch while the arrangement clip splits", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    registerMockObject("session_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+    });
+
+    const result = await updateClip(
+      { ids: "session_clip,clip_1", arrangementSplit: "2|1" },
+      {},
+    );
+
+    expectDuplicateCalled(callState.trackMock);
+    expect(result).toStrictEqual([
+      {
+        id: "session_clip",
+        ok: false,
+        reason: "arrangementSplit ignored: this is a session clip",
+      },
+      { id: "clip_1", path: "t0[1|1]" },
+      { id: "dup_2", path: "t0[2|1]" },
+    ]);
+  });
+
+  // With a name to write, the name lands, so the clip keeps a real entry and
+  // carries the reason on it.
+  it("keeps a session clip's entry when its rename lands beside the split", async () => {
+    setupClipSplittingMocks("clip_1");
+
+    const sessionClip = registerMockObject("session_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+    });
+
+    const result = await updateClip(
+      { id: "session_clip", arrangementSplit: "2|1", name: "Renamed Anyway" },
+      {},
+    );
+
+    expect(sessionClip.set).toHaveBeenCalledWith("name", "Renamed Anyway");
+    expect(result).toStrictEqual({
+      id: "session_clip",
+      path: "t0/s0",
+      reason: "arrangementSplit ignored: this is a session clip",
+    });
+  });
+
   it("should not warn about split on a take-lane clip when split is not given", async () => {
     const clipId = "take_lane_clip";
     const consoleSpy = vi.spyOn(console, "warn");

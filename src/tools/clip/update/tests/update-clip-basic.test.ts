@@ -827,20 +827,18 @@ describe("updateClip - Basic operations", () => {
 });
 
 describe("updateClip - splitting mutation coverage", () => {
-  it("should warn when arrangementSplit targets a non-arrangement clip", async () => {
+  it("refuses arrangementSplit on a session clip, on the clip's own entry", async () => {
     const mocks = setupUpdateClipMocks();
 
     setupMidiClipMock(mocks.clip123); // session clip: is_arrangement_clip = 0
 
-    const result = await updateClip({ id: "123", arrangementSplit: "2|1" });
-
-    // Session clips are excluded from arrangementClips, so prepareSplitParams
-    // sees an empty list and warns. The <= 0 guard must return false for them
-    // (forced-true / never-false mutants would include the clip and split it).
-    expect(capturedWarnings()).toContain(
-      "arrangementSplit requires arrangement clips",
-    );
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    // The <= 0 guard must refuse it: a mutant that skips the guard would try to
+    // split it instead. A lone target with nothing else to do throws.
+    await expect(
+      updateClip({ id: "123", arrangementSplit: "2|1" }),
+    ).rejects.toThrow("arrangementSplit ignored: this is a session clip");
+    // The entry says it, so no warning repeats it.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should split an arrangement clip and return the fresh clips only", async () => {
