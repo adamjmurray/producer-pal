@@ -86,6 +86,67 @@ describe("createScene by path", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(5, "create_scene", 6);
   });
 
+  describe("past the end", () => {
+    beforeEach(() => {
+      for (let i = 4; i <= 6; i++) {
+        registerMockObject(`live_set/scenes/${i}`, { path: livePath.scene(i) });
+      }
+    });
+
+    // s+ appends to the Set as it stands when it runs, after the scene the
+    // first entry padded out to.
+    it("appends s+ after an entry past the end", () => {
+      expect(createScene({ path: "s5,s+" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+        { id: "live_set/scenes/6", path: "s6" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 5],
+        ["create_scene", 6],
+      ]);
+    });
+
+    it("puts each entry at the index it names", () => {
+      expect(createScene({ path: "s5,s6" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+        { id: "live_set/scenes/6", path: "s6" },
+      ]);
+      expect(liveSet.call).toHaveBeenCalledTimes(5);
+    });
+
+    // The second insert goes in under the first, so the first ends up at s6.
+    it("puts each entry at the index it names in reverse order", () => {
+      expect(createScene({ path: "s6,s5" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s6" },
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 5],
+        ["create_scene", 5],
+      ]);
+    });
+
+    // The insert at s1 takes the place of one empty scene, so s5 stays at s5.
+    it("keeps an entry past the end in place around an insert inside", () => {
+      expect(createScene({ path: "s5,s1" })).toStrictEqual([
+        { id: "live_set/scenes/4", path: "s5", created: "s3-s4" },
+        { id: "live_set/scenes/1", path: "s1" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 4],
+        ["create_scene", 1],
+      ]);
+    });
+  });
+
   it("refuses count sent with a path list", () => {
     expect(() => createScene({ path: "s+,s+", count: 2 })).toThrow(
       'count repeats one path, but path names 2. Drop count and let path name each scene (e.g. path: "s+,s+").',

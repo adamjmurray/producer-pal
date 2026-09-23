@@ -107,19 +107,23 @@ export function createScene(
     return runCapture(sceneIndex, { color, tempo, timeSignature }, name, focus);
   }
 
-  const sceneCount = liveSet.getChildIds("scenes").length;
-  const spots = resolveCreateSceneSpots(
-    path,
-    sceneIndexParam,
-    count,
-    sceneCount,
-  );
+  const spots = resolveCreateSceneSpots(path, sceneIndexParam, count);
 
   validateTempo(tempo, -1);
+  // Checked before planning too: a huge index would fill the plan with that
+  // many empty scenes first.
+  validateSceneIndexCap(
+    spots.filter((spot): spot is number => spot !== "end"),
+    spots.length,
+  );
 
-  const insertions = planInsertions(spots, sceneCount, true);
+  const insertions = planInsertions(
+    spots,
+    liveSet.getChildIds("scenes").length,
+    true,
+  );
 
-  validateSceneIndexCap(insertions.map((insertion) => insertion.insertIndex));
+  validateSceneIndexCap(insertions.map((insertion) => insertion.finalIndex));
 
   const { parsedNames, parsedColors } = labelNewTargets({
     noun: "scene",
@@ -250,10 +254,10 @@ function applyCaptureProperties(
  */
 function createSingleScene(
   liveSet: LiveAPI,
-  insertion: Insertion<number>,
+  insertion: Insertion,
   props: SceneProperties & { name?: string },
 ): SceneResult {
-  const sceneIndex = insertion.insertIndex;
+  const sceneIndex = insertion.atIndex;
 
   // An index past the end has no scene to insert before, so fill the gap first.
   for (let i = 0; i < insertion.padCount; i++) {
@@ -273,15 +277,13 @@ function createSingleScene(
   return {
     id: scene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: insertion.finalIndex }),
-    // Named at the indices they were made at, before this scene went in above
-    // them.
-    ...(insertion.padCount === 0
+    ...(insertion.emptyBelow === 0
       ? {}
       : {
           created: createdRange(
             "s",
-            sceneIndex - insertion.padCount,
-            sceneIndex - 1,
+            insertion.finalIndex - insertion.emptyBelow,
+            insertion.finalIndex - 1,
           ),
         }),
     ...landed,

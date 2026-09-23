@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Shared by the create tools that make several objects in one container:
-// tracks and scenes. Each path entry names a position in the container as the
-// caller read it, and creating one moves the ones after it, so where an entry
-// is created and where it ends up are two different numbers.
+// tracks and scenes. An entry inside the container names a place as the caller
+// read it, so creating one moves the ones after it. Past the end of a container
+// that fills gaps (scenes), there is nothing to read, so an entry names the
+// index it ends up at.
 
 /** Where one new object goes: an index in the container, or its end. */
 export type InsertionSpot = number | "end";
@@ -16,21 +17,30 @@ export interface Insertion<S extends InsertionSpot = InsertionSpot> {
   /** Index to create at, clamped to the container as it stands when this one
    * runs: Live refuses an index past the end instead of appending. */
   insertIndex: S;
+  /** insertIndex with "end" read as the container's length when this one runs */
+  atIndex: number;
   /** The index asked for before that clamp, so a cap sees the call's reach. */
   reachIndex: S;
   /** Empty objects to add on the end first, so that index exists. */
   padCount: number;
   /** Where it sits once every object the call named has been created. */
   finalIndex: number;
+  /** Empty objects right below it at the end, made to fill a gap */
+  emptyBelow: number;
 }
+
+// Tokens in a planned layout; entries are their own index (0 and up).
+const EXISTING = -1;
+const EMPTY = -2;
 
 /**
  * Works out where each new object is created and where it ends up.
  *
- * An entry is pushed along by every earlier entry that landed at or before it,
- * so "t2,t2" creates the second track after the first rather than in front of
- * it. A later entry can move an earlier one, which is why the reported index
- * comes from the finished order rather than from the index Live was asked for.
+ * Entries inside the container shift past earlier ones at or before them, so
+ * "t2,t2" creates the second track after the first. An entry past the end lands
+ * at the index it names: "s6,s5" on two scenes ends with s5 and s6 new and
+ * s2-s4 empty. Where it can, an insert takes the place of an empty object
+ * rather than pushing later entries off the index they named.
  * @param spots - Where each new object goes, in the order the call named them
  * @param existingCount - Objects in the container before the call
  * @param padsGaps - Add empty objects when a spot is past the end (scenes)
@@ -41,37 +51,51 @@ export function planInsertions<S extends InsertionSpot>(
   existingCount: number,
   padsGaps = false,
 ): Insertion<S>[] {
-  const shifted: InsertionSpot[] = spots.map((spot, i) =>
-    shiftPastEarlier(spot, spots.slice(0, i)),
+  const layout: number[] = Array.from(
+    { length: existingCount },
+    () => EXISTING,
   );
-  const layout: number[] = Array.from({ length: existingCount }, () => -1);
-  const padCounts: number[] = [];
-  const insertIndexes: InsertionSpot[] = [];
+  const reaches = spots.map((spot, i) => {
+    const reach = reachFor(
+      spot,
+      spots.slice(0, i),
+      layout,
+      padsGaps ? existingCount : Infinity,
+    );
 
-  for (const [i, spot] of shifted.entries()) {
-    const pad =
-      padsGaps && spot !== "end" ? Math.max(0, spot - layout.length) : 0;
+    placeEntry(layout, i, reach === "end" ? layout.length : reach, padsGaps);
 
-    padCounts.push(pad);
+    return reach;
+  });
 
-    for (let n = 0; n < pad; n++) {
-      layout.push(-1);
-    }
+  // The layout is final only once every entry is in, and a later insert can
+  // take an empty object an earlier one padded, so the Live calls are worked
+  // out from the finished layout.
+  let emptiesMade = 0;
 
-    const at = spot === "end" ? layout.length : Math.min(spot, layout.length);
+  return spots.map((spot, i) => {
+    const finalIndex = layout.indexOf(i);
+    const below = layout.slice(0, finalIndex);
+    const padCount = Math.max(
+      0,
+      below.filter((token) => token === EMPTY).length - emptiesMade,
+    );
 
-    insertIndexes.push(spot === "end" ? "end" : at);
-    layout.splice(at, 0, i);
-  }
+    emptiesMade += padCount;
 
-  // A numeric spot stays a number and "end" stays "end", so the entries come
-  // back in the shape the caller passed in.
-  return insertIndexes.map((insertIndex, i) => ({
-    insertIndex: insertIndex as S,
-    reachIndex: shifted[i] as S,
-    padCount: padCounts[i] as number,
-    finalIndex: layout.indexOf(i),
-  }));
+    // Everything below it that exists by now: old objects, empties and the
+    // entries created before it.
+    const atIndex = below.filter((token) => token < i).length;
+
+    return {
+      insertIndex: (spot === "end" ? "end" : atIndex) as S,
+      atIndex,
+      reachIndex: reaches[i] as S,
+      padCount,
+      finalIndex,
+      emptyBelow: countTrailingEmpties(below),
+    };
+  });
 }
 
 /**
@@ -129,20 +153,85 @@ export function repeatForCount<T>(
 // --- Helpers below main exports ---
 
 /**
- * An entry's index in the container as it will stand when it runs.
+ * The index an entry asks for in the container as it stands when it runs.
  * @param spot - Where this entry goes
  * @param earlier - The entries ahead of it, as the caller wrote them
- * @returns The index to create at
+ * @param layout - The container so far
+ * @param gapStart - Where a gap past the end starts; Infinity when it can't
+ * have one, so every spot reads as inside (tracks)
+ * @returns The index to create at, before any clamp
  */
-function shiftPastEarlier(
+function reachFor(
   spot: InsertionSpot,
   earlier: InsertionSpot[],
+  layout: number[],
+  gapStart: number,
 ): InsertionSpot {
   if (spot === "end") {
     return "end";
   }
 
-  return (
-    spot + earlier.filter((other) => other !== "end" && other <= spot).length
+  if (spot < gapStart) {
+    return (
+      spot + earlier.filter((other) => other !== "end" && other <= spot).length
+    );
+  }
+
+  // Past the end: it goes after earlier entries at or before its index,
+  // wherever they sit now, and never among the objects already there.
+  const lastEarlier = Math.max(
+    -1,
+    ...earlier.map((other, j) =>
+      other !== "end" && other <= spot ? layout.indexOf(j) : -1,
+    ),
   );
+
+  return Math.max(spot, lastEarlier + 1, layout.lastIndexOf(EXISTING) + 1);
+}
+
+/**
+ * Puts one entry into the planned layout.
+ * @param layout - The container so far, changed in place
+ * @param entry - The entry's position in the call
+ * @param index - Where it goes
+ * @param padsGaps - Fill a gap past the end with empty objects
+ */
+function placeEntry(
+  layout: number[],
+  entry: number,
+  index: number,
+  padsGaps: boolean,
+): void {
+  if (padsGaps) {
+    while (layout.length < index) {
+      layout.push(EMPTY);
+    }
+  }
+
+  const at = Math.min(index, layout.length);
+
+  layout.splice(at, 0, entry);
+
+  // Taking the first empty object above it keeps the entries past that one at
+  // the index they named.
+  const empty = layout.indexOf(EMPTY, at + 1);
+
+  if (empty !== -1) {
+    layout.splice(empty, 1);
+  }
+}
+
+/**
+ * Counts the empty objects at the top of a stretch of the layout.
+ * @param below - The layout under one entry
+ * @returns How many empty objects sit right below it
+ */
+function countTrailingEmpties(below: number[]): number {
+  let count = 0;
+
+  while (below[below.length - 1 - count] === EMPTY) {
+    count++;
+  }
+
+  return count;
 }
