@@ -78,6 +78,27 @@ export function splitList(
 }
 
 /**
+ * Every value a param names, for checking each one before any item is touched:
+ * its list entries, or the whole value.
+ * @param value - The raw param, if sent
+ * @param count - How many items the call acts on
+ * @param param - The param's name, for the error message
+ * @returns The values, empty when the param wasn't sent
+ * @throws Error when an entry inside the list is empty
+ */
+export function everyEntry(
+  value: string | undefined,
+  count: number,
+  param: string,
+): string[] {
+  if (value == null) {
+    return [];
+  }
+
+  return splitList(value, count, param) ?? [value];
+}
+
+/**
  * The value for one item: the whole param when the call named one, else the
  * entry in that position.
  * @param value - The raw param, as the caller sent it

@@ -20,7 +20,7 @@ import {
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { splitList } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /** The update-clip params read before any clip is touched. */
 export interface UpfrontArgs {
@@ -241,7 +241,7 @@ function namedSplitParam(
  * written to it by then.
  * @param args - The call's value params, as sent
  * @param args.timeSignature - Meter(s) to apply, if given
- * @param args.quantizePitch - Pitch to limit quantization to, if given
+ * @param args.quantizePitch - Pitch(es) to limit quantization to, if given
  * @param args.start - Loop region start(s), if given
  * @param args.length - Loop region length(s), if given
  * @param args.firstStart - Playback start(s), if given
@@ -251,23 +251,25 @@ function validateValueParams(
   { timeSignature, quantizePitch, start, length, firstStart }: UpfrontArgs,
   targetCount: number,
 ): void {
-  for (const meter of entriesOf(timeSignature, targetCount, "timeSignature")) {
+  for (const meter of everyEntry(timeSignature, targetCount, "timeSignature")) {
     parseTimeSignature(meter);
   }
 
-  if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
-    throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
+  for (const pitch of everyEntry(quantizePitch, targetCount, "quantizePitch")) {
+    if (noteNameToMidi(pitch) == null) {
+      throw new Error(`invalid note name "${pitch}" for quantizePitch`);
+    }
   }
 
   for (const position of [
-    ...entriesOf(start, targetCount, "start"),
-    ...entriesOf(firstStart, targetCount, "firstStart"),
+    ...everyEntry(start, targetCount, "start"),
+    ...everyEntry(firstStart, targetCount, "firstStart"),
   ]) {
     validateBarBeatPosition(position);
     barBeatToAbletonBeats(position, ANY_BEATS_PER_BAR, 4);
   }
 
-  for (const duration of entriesOf(length, targetCount, "length")) {
+  for (const duration of everyEntry(length, targetCount, "length")) {
     durationToAbletonBeats(duration, 4, 4);
   }
 }
@@ -276,22 +278,3 @@ function validateValueParams(
 // wide keeps a beat past the bar from warning here: that warning is per clip,
 // in the clip's own meter.
 const ANY_BEATS_PER_BAR = Number.MAX_SAFE_INTEGER;
-
-/**
- * Every value a param names: its list entries, or the whole value.
- * @param value - The raw param, if sent
- * @param count - How many ids the call named
- * @param param - The param's name, for the error message
- * @returns The values to check
- */
-function entriesOf(
-  value: string | undefined,
-  count: number,
-  param: string,
-): string[] {
-  if (value == null) {
-    return [];
-  }
-
-  return splitList(value, count, param) ?? [value];
-}

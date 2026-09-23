@@ -155,6 +155,7 @@ function clipTargets(
     { param: "start", value: values.start },
     { param: "length", value: values.length },
     { param: "firstStart", value: values.firstStart },
+    { param: "quantizePitch", value: values.quantizePitch },
     { param: "arrangementStart", value: values.arrangementStart },
     { param: "arrangementLength", value: values.arrangementLength },
     {

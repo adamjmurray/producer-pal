@@ -65,6 +65,17 @@ describe("updateTrack - send properties", () => {
     expect(send1.set).toHaveBeenCalledWith("display_value", -12);
   });
 
+  it("gives each track its own sendReturn", () => {
+    const send4 = registerMockObject("send_4", {});
+
+    updateTrack({ id: "123,456", sendGainDb: -12, sendReturn: "A,B" });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+    expect(send4.set).toHaveBeenCalledWith("display_value", -12);
+    expect(send2.set).not.toHaveBeenCalled();
+    expect(send3.set).not.toHaveBeenCalled();
+  });
+
   it("should set send gain with letter prefix", () => {
     updateTrack({
       id: "123",

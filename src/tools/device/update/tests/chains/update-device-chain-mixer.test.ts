@@ -183,6 +183,31 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("gives each chain its own sendReturn", () => {
+    const secondMixer = `${rackPath.chain(1)} mixer_device`;
+
+    registerMockObject("rack-0", {
+      path: rackPath,
+      properties: { return_chains: children("rc-0", "rc-1") },
+    });
+    registerMockObject("rc-1", { properties: { name: "b Delay" } });
+    registerMockObject("chain-1", {
+      path: rackPath.chain(1),
+      type: "DrumChain",
+    });
+    registerMockObject("mixer-1", {
+      path: secondMixer,
+      properties: { sends: children("send-1a", "send-1b") },
+    });
+    registerMockObject("send-1a");
+    const secondB = registerMockObject("send-1b");
+
+    updateDevice({ id: "chain-0,chain-1", sendGainDb: -12, sendReturn: "a,b" });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    expect(secondB.set).toHaveBeenCalledWith("display_value", -12);
+  });
+
   it("sets a chain's send to a rack return chain", () => {
     updateDevice({ id: "chain-0", sendGainDb: -12, sendReturn: "a" });
 

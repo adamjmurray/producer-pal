@@ -7,6 +7,7 @@ import {
   type ListEntries,
   type PairLabels,
   splitList,
+  valueForIndex,
   warnPairingMismatch,
 } from "./list-pairing.ts";
 
@@ -32,4 +33,38 @@ export function parsePairedValues(
   warnPairingMismatch(parsed?.length ?? 0, count, labels);
 
   return parsed;
+}
+
+/** What to call each paired param in a mismatch warning. */
+export type PairedParamLabels<K extends string> = Record<K, PairLabels>;
+
+/**
+ * Split several string params against the targets, and hand back a lookup for
+ * one target's values.
+ *
+ * Paired against the targets named, not the ones that resolved, so entry k
+ * still lands on target k when an earlier target was skipped.
+ * @param args - The params, as the caller sent them
+ * @param labels - Each param to pair, and what to call it in a warning
+ * @param count - How many targets the call named
+ * @returns The values for the target at an index
+ * @throws Error when a list has an empty entry
+ */
+export function pairParams<K extends string>(
+  args: Partial<Record<K, string>>,
+  labels: PairedParamLabels<K>,
+  count: number,
+): (index: number) => Partial<Record<K, string>> {
+  const params = Object.keys(labels) as K[];
+  const lists = params.map((param) =>
+    parsePairedValues(args[param], count, labels[param]),
+  );
+
+  return (index) =>
+    Object.fromEntries(
+      params.map((param, i) => [
+        param,
+        valueForIndex(args[param], index, lists[i] as ListEntries | null),
+      ]),
+    ) as Partial<Record<K, string>>;
 }

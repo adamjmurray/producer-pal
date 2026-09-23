@@ -30,7 +30,7 @@ import {
   clipAddresses,
   markBuriedClips,
 } from "./buried-clips.ts";
-import { clipValuesAt, parseClipValueLists } from "./clip-value-lists.ts";
+import { clipValuesAt } from "./clip-value-lists.ts";
 import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
@@ -110,8 +110,8 @@ export async function runClipBatch({
     name,
     color,
   });
-  // timeSignature/start/length/firstStart pair with the targets the same way.
-  const valueLists = parseClipValueLists(args, targets.named.length);
+  // The other per-clip strings pair with the targets the same way.
+  const valuesAt = clipValuesAt(args, targets.named.length);
   const updatedClips: ClipResult[] = [];
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
@@ -166,7 +166,7 @@ export async function runClipBatch({
       preTransformString: args.preTransforms,
       name: getNameForIndex(name, slot, parsedNames),
       color: getColorForIndex(color, slot, parsedColors),
-      ...clipValuesAt(args, valueLists, slot),
+      ...valuesAt(slot),
       looping: args.looping,
       duplicateLoop: args.duplicateLoop,
       gainDb: args.gainDb,
@@ -179,7 +179,6 @@ export async function runClipBatch({
       warpDistance: args.warpDistance,
       quantize: args.quantize,
       quantizeGrid: args.quantizeGrid,
-      quantizePitch: args.quantizePitch,
       arrangementLengthBeats: plan.lengthBeatsFor(clip),
       arrangementStartBeats: plan.startBeatsFor(clip),
       destination: destinationById.get(clip.id) ?? null,

@@ -320,6 +320,32 @@ describe("ppal-update-track", () => {
     expect(track.sends![1]!.gainDb).toBeCloseTo(-21, 1);
   });
 
+  // sendReturn is a string, so it pairs one per track like name does.
+  it("gives each track its own sendReturn", async () => {
+    const liveSet = await readTracks();
+    const ids = [liveSet.tracks![3]!.id, liveSet.tracks![4]!.id].join(",");
+    const [first, second] = liveSet.returnTracks!;
+
+    await updateTrack({
+      id: ids,
+      sends: [
+        { return: first!.id, gainDb: -40 },
+        { return: second!.id, gainDb: -40 },
+      ],
+    });
+    await updateTrack({
+      id: ids,
+      sendGainDb: -15,
+      sendReturn: `${first!.id},${second!.id}`,
+    });
+
+    const one = await readTrackMixer(liveSet.tracks![3]!.id);
+    const two = await readTrackMixer(liveSet.tracks![4]!.id);
+
+    expect(one.sends!.map((send) => send.gainDb)).toStrictEqual([-15, -40]);
+    expect(two.sends!.map((send) => send.gainDb)).toStrictEqual([-40, -15]);
+  });
+
   it("reports track and send gain at Live's display resolution", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![2]!.id;

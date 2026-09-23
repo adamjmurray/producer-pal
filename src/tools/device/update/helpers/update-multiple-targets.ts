@@ -85,6 +85,10 @@ export interface TargetLists {
   colors: ListEntries | null;
   /** Where each target moves, undefined where the call named nowhere */
   destinations: Array<string | undefined>;
+  /** The other per-target strings for the target at an index */
+  valuesAt: (
+    index: number,
+  ) => Pick<UpdateTargetOptions, "sendReturn" | "mappedPitch">;
 }
 
 /**
@@ -111,6 +115,7 @@ export function updateMultipleTargets(
       name: getNameForIndex(updateOptions.name, i, lists.names),
       color: getColorForIndex(updateOptions.color, i, lists.colors),
       toPath: lists.destinations[i],
+      ...lists.valuesAt(i),
     };
 
     const result =

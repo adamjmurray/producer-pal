@@ -22,6 +22,11 @@ import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts"
 import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
 import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  type PairedParamLabels,
+  pairParams,
+} from "#src/tools/shared/validation/lists/paired-values.ts";
 import {
   targetCount,
   targetParamLabel,
@@ -37,6 +42,22 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
   wrapInRack?: boolean;
   focus?: boolean;
 }
+
+/** The other string params that pair per target, beside name and color. */
+const DEVICE_VALUE_LABELS: PairedParamLabels<"sendReturn" | "mappedPitch"> = {
+  sendReturn: {
+    param: "sendReturn",
+    noun: "return",
+    item: "target",
+    shortfall: "kept their sends",
+  },
+  mappedPitch: {
+    param: "mappedPitch",
+    noun: "pitch",
+    item: "target",
+    shortfall: "kept their pitch",
+  },
+};
 
 /**
  * Update device(s), chain(s), or drum pad(s) by ID or path
@@ -112,10 +133,16 @@ export function updateDevice(
   validateSendPair(sendGainDb, sendReturn);
   params = validateParamEntries(params);
 
-  // One value for the whole call, so a per-target skip would repeat itself
+  // Checked for the whole call, so a per-target skip wouldn't repeat itself
   // down the list. Refused before any target is touched (ADR-0035).
-  if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
-    throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
+  for (const pitch of everyEntry(
+    mappedPitch,
+    targetCount({ ids, path }),
+    "mappedPitch",
+  )) {
+    if (noteNameToMidi(pitch) == null) {
+      throw new Error(`invalid note name "${pitch}" for mappedPitch`);
+    }
   }
 
   const badVariation = macroVariationParamsReason(
@@ -143,6 +170,8 @@ export function updateDevice(
       },
       { param: "name", value: name },
       { param: "color", value: color },
+      { param: "sendReturn", value: sendReturn },
+      { param: "mappedPitch", value: mappedPitch },
     ]);
 
     const items = namedTargets({ id: ids, path });
@@ -180,6 +209,11 @@ export function updateDevice(
       names: parsedNames,
       colors: parsedColors,
       destinations,
+      valuesAt: pairParams(
+        { sendReturn, mappedPitch },
+        DEVICE_VALUE_LABELS,
+        items.length,
+      ),
     });
   }
 

@@ -128,7 +128,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     sendReturn: param(z.coerce.string().optional(), {
       default:
-        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"); requires sendGainDb',
+        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"), or comma-separated one per target; requires sendGainDb',
       smallModel: null,
     }),
     sends: param(sendsInputSchema, {
@@ -141,7 +141,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
     mappedPitch: param(z.string().optional(), {
-      default: "output MIDI note e.g. 'C3' (drum chains only)",
+      default:
+        "output MIDI note e.g. 'C3', or comma-separated one per target (drum chains only)",
       smallModel: null,
     }),
     wrapInRack: param(z.boolean().optional(), {

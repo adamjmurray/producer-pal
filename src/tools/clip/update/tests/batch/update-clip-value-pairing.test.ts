@@ -12,7 +12,7 @@ import {
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
-describe("updateClip - per-clip timing params", () => {
+describe("updateClip - per-clip string params", () => {
   let mocks: UpdateClipMocks;
 
   /** A two-bar 4/4 region, so a new start or length moves a real boundary. */
@@ -68,6 +68,31 @@ describe("updateClip - per-clip timing params", () => {
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("start_marker", 0);
     expect(mocks.clip456.set).toHaveBeenCalledWith("start_marker", 4);
+  });
+
+  it("gives each clip its own quantizePitch", async () => {
+    await updateClip({ id: "123,456", quantize: 1, quantizePitch: "C3,D3" });
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
+      "quantize_pitch",
+      60,
+      expect.any(Number),
+      1,
+    );
+    expect(mocks.clip456.call).toHaveBeenCalledWith(
+      "quantize_pitch",
+      62,
+      expect.any(Number),
+      1,
+    );
+  });
+
+  it("refuses an unreadable quantizePitch entry before touching a clip", async () => {
+    await expect(
+      updateClip({ id: "123,456", quantize: 1, quantizePitch: "C3,nope" }),
+    ).rejects.toThrow('invalid note name "nope" for quantizePitch');
+
+    expect(mocks.clip123.call).not.toHaveBeenCalled();
   });
 
   it("refuses a list that names a different number of clips", async () => {

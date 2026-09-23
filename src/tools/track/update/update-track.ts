@@ -23,8 +23,10 @@ import {
   applyMixerProperties,
 } from "./helpers/track-mixer-updates.ts";
 import {
+  ROUTING_PARAMS,
   type RoutingParams,
   applyRoutingProperties,
+  routingValuesAt,
 } from "./helpers/track-routing-updates.ts";
 import {
   paramsTakeLanesIgnore,
@@ -33,8 +35,9 @@ import {
   type UpdateTakeLaneResult,
 } from "./helpers/track-take-lanes.ts";
 import {
+  type TrackSends,
   applyTrackSends,
-  resolveTrackSends,
+  trackSendsAt,
 } from "./helpers/track-send-updates.ts";
 import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
@@ -224,14 +227,6 @@ export function updateTrack(
     mute,
     solo,
     arm,
-    inputRoutingType,
-    inputRoutingChannel,
-    outputRoutingType,
-    outputRoutingChannel,
-    inputRoutingTypeId,
-    inputRoutingChannelId,
-    outputRoutingTypeId,
-    outputRoutingChannelId,
     monitoringState,
     sendGainDb,
     sendReturn,
@@ -242,7 +237,12 @@ export function updateTrack(
     targets: { id, ids, path, paths },
     name,
     color,
+    extraLists: [...ROUTING_PARAMS, "sendReturn" as const].map((param) => ({
+      param,
+      value: args[param],
+    })),
   });
+  const routingAt = routingValuesAt(args, targets.length);
 
   validateSendPair(sendGainDb, sendReturn);
 
@@ -251,13 +251,13 @@ export function updateTrack(
   const laneTargets = planTakeLaneTargets(targets);
   const laneIgnores = laneTargets.size === 0 ? [] : paramsTakeLanesIgnore(args);
 
-  // Resolved once: the return tracks belong to the Live Set, so nothing about a
-  // track decides this. What matched nothing still rides back on every track.
-  const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
+  // The return tracks belong to the Live Set, so only the sendReturn a track
+  // was given decides what its sends resolve to.
+  const sendsAt = trackSendsAt(sendGainDb, sendReturn, sends, targets.length);
 
-  // The collisions belong to the call, not to a track, so they are announced
+  // Collisions belong to a resolution, not to a track, so each is announced
   // once — off the first track a collision actually landed on.
-  let announcedCollisions = false;
+  const announced = new Set<TrackSends>();
 
   return writeFanOut(targets, (target, i) => {
     const trackName = getNameForIndex(name, i, parsedNames);
@@ -292,26 +292,21 @@ export function updateTrack(
       rightPan,
     });
 
-    // Handle routing properties
-    const routing = {
-      inputRoutingType: inputRoutingType ?? inputRoutingTypeId,
-      inputRoutingChannel: inputRoutingChannel ?? inputRoutingChannelId,
-      outputRoutingType: outputRoutingType ?? outputRoutingTypeId,
-      outputRoutingChannel: outputRoutingChannel ?? outputRoutingChannelId,
-    };
+    const routing = routingAt(i);
 
     applyRoutingProperties(track, routing, notes);
 
     // Handle monitoring state
     applyMonitoringState(track, monitoringState, notes);
 
+    const resolvedSends = sendsAt(i);
     const landed = applyTrackSends(track, resolvedSends.winners);
 
-    if (!announcedCollisions) {
-      announcedCollisions = warnSendCollisions(
-        resolvedSends.collisions,
-        landed,
-      );
+    if (
+      !announced.has(resolvedSends) &&
+      warnSendCollisions(resolvedSends.collisions, landed)
+    ) {
+      announced.add(resolvedSends);
     }
 
     // A send that took the level asked for has nothing to say — the caller

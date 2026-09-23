@@ -65,6 +65,41 @@ describe("updateTrack routing by name", () => {
     );
   });
 
+  it("gives each track its own routing", () => {
+    const other = registerMockObject("456", {
+      path: livePath.track(1),
+      properties: routingProperties,
+    });
+
+    updateTrack({
+      id: "123,456",
+      inputRoutingChannel: "1,2",
+      inputRoutingType: "Ext. In",
+    });
+
+    expect(track.set).toHaveBeenCalledWith(
+      "input_routing_channel",
+      '{"input_routing_channel":{"identifier":1}}',
+    );
+    expect(other.set).toHaveBeenCalledWith(
+      "input_routing_channel",
+      '{"input_routing_channel":{"identifier":2}}',
+    );
+    expect(other.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      '{"input_routing_type":{"identifier":17}}',
+    );
+  });
+
+  it("refuses a routing list that doesn't match the tracks", () => {
+    registerMockObject("456", { path: livePath.track(1) });
+
+    expect(() =>
+      updateTrack({ id: "123,456", outputRoutingChannel: "Master,A,A" }),
+    ).toThrow("outputRoutingChannel names 3 entries");
+    expect(track.set).not.toHaveBeenCalled();
+  });
+
   it("matches names case-insensitively and ignores surrounding space", () => {
     updateTrack({ id: "123", inputRoutingType: "  ext. in  " });
 

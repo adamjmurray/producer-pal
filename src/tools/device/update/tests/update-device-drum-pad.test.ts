@@ -91,6 +91,24 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ id: "pad-36" });
   });
 
+  it("gives each chain its own mappedPitch", () => {
+    const { chains } = registerDrumRack(2);
+
+    updateDevice({ id: "chain-0,chain-1", mappedPitch: "C3,D3" });
+
+    expect(chains[0]?.set).toHaveBeenCalledWith("out_note", 60);
+    expect(chains[1]?.set).toHaveBeenCalledWith("out_note", 62);
+  });
+
+  it("refuses an unreadable mappedPitch entry before touching a chain", () => {
+    const { chains } = registerDrumRack(2);
+
+    expect(() =>
+      updateDevice({ id: "chain-0,chain-1", mappedPitch: "C3,nope" }),
+    ).toThrow('invalid note name "nope" for mappedPitch');
+    expect(chains[0]?.set).not.toHaveBeenCalled();
+  });
+
   it("broadcasts chokeGroup and mappedPitch to every chain on the pad", () => {
     const { chains } = registerDrumRack(2);
 

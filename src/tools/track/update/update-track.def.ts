@@ -74,19 +74,23 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     arm: z.boolean().optional().describe("record armed?"),
 
     inputRoutingType: param(z.coerce.string().optional(), {
-      default: "name from availableInputRoutingTypes, set before channel",
+      default:
+        "name from availableInputRoutingTypes, set before channel; or comma-separated one per target",
       smallModel: null,
     }),
     inputRoutingChannel: param(z.coerce.string().optional(), {
-      default: "name from availableInputRoutingChannels",
+      default:
+        "name from availableInputRoutingChannels, or comma-separated one per target",
       smallModel: null,
     }),
     outputRoutingType: param(z.coerce.string().optional(), {
-      default: "name from availableOutputRoutingTypes, set before channel",
+      default:
+        "name from availableOutputRoutingTypes, set before channel; or comma-separated one per target",
       smallModel: null,
     }),
     outputRoutingChannel: param(z.coerce.string().optional(), {
-      default: "name from availableOutputRoutingChannels",
+      default:
+        "name from availableOutputRoutingChannels, or comma-separated one per target",
       smallModel: null,
     }),
 
@@ -117,7 +121,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     sendReturn: param(z.coerce.string().optional(), {
       default:
-        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A")',
+        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A"), or comma-separated one per target',
       smallModel: null,
     }),
     sends: param(sendsInputSchema, {

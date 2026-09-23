@@ -211,7 +211,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ),
 
     quantizePitch: param(z.string().optional(), {
-      default: "limit quantization to specific pitch (e.g., C3, D#4)",
+      default:
+        "limit quantization to one pitch (e.g. C3 or D#4), or comma-separated one per clip",
       smallModel: null,
     }),
 
