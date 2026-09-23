@@ -11,13 +11,15 @@
 #
 # The "Run Test Suite" workflow uses cancel-in-progress on a per-branch
 # concurrency group, so a second push while a build is running KILLS the first
-# one and that commit ends up with no build at all. These three rules keep the
+# one and that commit ends up with no build at all. These rules keep the
 # sequence one-commit-one-green-build:
 #
 #   1. one commit per push
 #   2. no push while a build is in flight
 #   3. no push when the latest build is red, or ran against something other
 #      than what is on the remote right now (a stale green proves nothing)
+#   4. no push while the Netlify docs preview of the remote head is building
+#      or red
 #
 # refs/heads/dev is always guarded. A feature branch normally isn't — its commits
 # get squashed, so only the tip ever needs a build, and waiting on CI per push
@@ -175,6 +177,33 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
 	if [ "$run_conclusion" != "success" ]; then
 		block "the $branch build is $run_conclusion" \
 			"Fix $run_short before stacking another commit on it."
+	fi
+
+	# --- 4. the Netlify docs preview -------------------------------------
+	# Netlify reports a commit status, not a workflow run. Statuses come newest
+	# first. None at all means no PR is open (or a fork), so nothing to wait on.
+	netlify_err=$(mktemp)
+	netlify=$(gh api "repos/{owner}/{repo}/commits/$remote_sha/statuses" \
+		--jq '[.[] | select(.context | startswith("netlify/"))][0] // empty | "\(.state) \(.target_url)"' \
+		2>"$netlify_err")
+	netlify_stderr=$(cat "$netlify_err")
+	rm -f "$netlify_err"
+
+	if [ -n "$netlify_stderr" ]; then
+		block "cannot read the Netlify status of $remote_short" "$netlify_stderr"
+	fi
+
+	netlify_state=${netlify%% *}
+	netlify_url=${netlify#* }
+
+	if [ "$netlify_state" = "pending" ]; then
+		block "the Netlify preview of $remote_short is still building" \
+			"Wait for it: $netlify_url"
+	fi
+
+	if [ -n "$netlify" ] && [ "$netlify_state" != "success" ]; then
+		block "the Netlify preview of $remote_short is $netlify_state" \
+			"Fix or retry it before stacking another commit: $netlify_url"
 	fi
 done
 
