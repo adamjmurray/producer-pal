@@ -331,5 +331,37 @@ describe("locators", () => {
         resolveLocatorRefToBeats(liveSet, "99");
       }).toThrow("locator not found: 99");
     });
+
+    it("resolves an all-digit name when no locator has that id", () => {
+      const liveSet = setupMockLocators(
+        { id: "26", name: "1", time: 0 },
+        { id: "27", name: "2", time: 16 },
+      );
+
+      expect(resolveLocatorRefToBeats(liveSet, "2")).toBe(16);
+    });
+
+    it("resolves a locator whose id and name are the same", () => {
+      const liveSet = setupMockLocators({ id: "26", name: "26", time: 8 });
+
+      expect(resolveLocatorRefToBeats(liveSet, "26")).toBe(8);
+    });
+
+    it("refuses a ref that is one locator's id and another's name", () => {
+      const liveSet = setupMockLocators(
+        { id: "26", name: "Verse", time: 0 },
+        { id: "31", name: "26", time: 64 },
+      );
+
+      expect(() => {
+        resolveLocatorRefToBeats(liveSet, "26", "for startTime");
+      }).toThrow(
+        'locator "26" is ambiguous for startTime: it is the id of locator 26 ' +
+          "and the name of locator 31",
+      );
+      expect(() => resolveLocatorRefToBeats(liveSet, "26")).toThrow(
+        'locator "26" is ambiguous: it is the id',
+      );
+    });
   });
 });
