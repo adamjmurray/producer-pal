@@ -98,6 +98,7 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
     for (const sceneIndex of [0, 1]) {
       registerMockObject(`clip-slot-0-${sceneIndex}`, {
         path: livePath.track(0).clipSlot(sceneIndex),
+        properties: { has_clip: 0 },
         methods: {
           create_clip: () => {
             throw new Error("boom");

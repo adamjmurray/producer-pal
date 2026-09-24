@@ -16,6 +16,7 @@ import {
 import { createNote } from "#src/test/test-data-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "../create-clip.ts";
+import { mockScratchSwap } from "./create-clip-test-helpers.ts";
 
 interface SessionClipSetupOptions {
   hasClip?: number;
@@ -438,48 +439,61 @@ describe("createClip - session view", () => {
   it("replaces the clip an occupied slot already holds", async () => {
     setupLiveSet();
     setupTrack(0);
-    const { clipSlot, clip } = setupSessionClip(0, 0, {
+    const { clipSlot } = setupSessionClip(0, 0, {
       hasClip: 1,
       clipId: "clip_0_0",
       clipProperties: { length: 4 },
     });
+    const scratch = mockScratchSwap(0, 1, 0, { id: "new_clip" });
 
     const result = await createClip({ slot: "0/0", name: "Replacement" });
 
-    expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
-    expect(clipSlot.call).toHaveBeenCalledWith(
-      "create_clip",
-      expect.anything(),
-    );
+    // Built in a temp scene and copied over; the old clip is never deleted.
+    expect(scratch.call).toHaveBeenCalledWith("create_clip", expect.anything());
+    expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(result).toStrictEqual({
-      id: clip.id,
+      id: "new_clip",
       path: "t0/s0",
       reason: "overwrote the existing clip at t0/s0",
     });
   });
 
+  it("keeps the old clip when the create in its place fails", async () => {
+    const liveSet = setupLiveSet();
+
+    setupTrack(0);
+    const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
+
+    mockScratchSwap(0, 1, 0, { id: "new_clip", buildFails: true });
+
+    await expect(createClip({ slot: "0/0" })).rejects.toThrow(
+      "Live created no clip at t0/s0; the clip at t0/s0 was not touched",
+    );
+    expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+    expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
+  });
+
   it("replaces an occupied slot's clip and creates the rest", async () => {
     setupLiveSet({ scenes: children("scene0") });
     setupTrack(0);
-    const occupied = setupSessionClip(0, 0, {
-      hasClip: 1,
-      clipId: "clip_0_0",
-      clipProperties: { length: 4 },
-    });
+    setupSessionClip(0, 0, { hasClip: 1, clipProperties: { length: 4 } });
     const { clip } = setupSessionClip(0, 1, {
       clipId: "clip_0_1",
       clipProperties: { length: 4 },
     });
 
-    const result = await createClip({ path: "t0/s0,t0/s1" });
+    // t0/s1 is made first, so the temp scene for t0/s0 is s2.
+    mockScratchSwap(0, 2, 0, { id: "new_clip" });
+
+    const result = await createClip({ path: "t0/s1,t0/s0" });
 
     expect(result).toStrictEqual([
+      { id: clip.id, path: "t0/s1", created: "s1" },
       {
-        id: occupied.clip.id,
+        id: "new_clip",
         path: "t0/s0",
         reason: "overwrote the existing clip at t0/s0",
       },
-      { id: clip.id, path: "t0/s1", created: "s1" },
     ]);
   });
 
