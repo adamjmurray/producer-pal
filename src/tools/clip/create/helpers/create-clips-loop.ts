@@ -99,6 +99,7 @@ export async function createClips(
   // clip's transform inputs comes from its own plan.
   const scaleMask =
     params.transformString != null ? readLiveSetScaleMask() : undefined;
+  const claimedSlots = new Set<string>();
 
   for (const [index, ref] of order.entries()) {
     if (isDeadlineExceeded(deadline ?? null)) {
@@ -106,7 +107,10 @@ export async function createClips(
       break;
     }
 
-    entries.push(await createClipAtIndex(params, scaleMask, ref, index));
+    entries.push(
+      repeatedSlotSkip(params, ref, claimedSlots) ??
+        (await createClipAtIndex(params, scaleMask, ref, index)),
+    );
   }
 
   return entries;
@@ -183,6 +187,42 @@ function refuseUnreached(
   console.warn(
     `Ran out of time after creating ${step} of ${params.order.length} clips. ` +
       `Re-run for the clips whose entries say so.`,
+  );
+}
+
+/**
+ * Skips a clip slot an earlier destination in the call already named. Creating
+ * there again would replace that clip, and its entry would report a clip that
+ * no longer exists.
+ * @param params - All parameters for clip creation
+ * @param ref - Which destination it is
+ * @param claimedSlots - Slots taken so far, added to
+ * @returns The skip entry, or null when the slot is free to take
+ */
+function repeatedSlotSkip(
+  params: CreateClipsParams,
+  ref: DestinationRef,
+  claimedSlots: Set<string>,
+): TargetSkip | null {
+  if (ref.view !== "session") {
+    return null;
+  }
+
+  const { trackIndex, sceneIndex } = params.clipSlots[
+    ref.index
+  ] as ClipSlotPosition;
+  const slot = slotPath(trackIndex, sceneIndex);
+
+  if (!claimedSlots.has(slot)) {
+    claimedSlots.add(slot);
+
+    return null;
+  }
+
+  return destinationSkip(
+    params,
+    ref,
+    `not created: ${slot} is named earlier in this call; name each slot once`,
   );
 }
 
