@@ -47,21 +47,21 @@ The theme is that a result now says _where_ its object is, once, in a `path` you
 can pass straight back into the next call, instead of scattering `trackIndex`,
 `sceneIndex`, `deviceIndex` and `arrangementStart` across the response.
 
-| Tool                                            | Change                                                         | What to do                                                                      |
-| ----------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `ppal-read-live-set`                            | `masterTrack` → `mainTrack`                                    | rename the key you read                                                         |
-| read-live-set, read-track, select               | `type` is gone from return tracks and the main track           | read `path` (`rt0`, `mt`); `type` is now only `midi`/`audio`, on regular tracks |
-| create-track, read-track, read-live-set, select | `trackIndex`, `returnTrackIndex` removed                       | parse `path` (`t3`, `rt0`)                                                      |
-| create-scene, read-scene, read-live-set         | `sceneIndex` removed                                           | parse `path` (`s2`)                                                             |
-| create-device                                   | `deviceIndex` removed                                          | parse `path` (`t1/d2`)                                                          |
-| every clip result                               | `arrangementStart` removed                                     | the clip's `path` carries it: `t0[5\|1]`                                        |
-| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on the key: `deletedPath` means removed, `path` means still there        |
-| `ppal-playback`                                 | `currentTime` removed                                          | it was never the playhead; read `startTime` for where the next play begins      |
-| `ppal-playback`                                 | `arrangementLoop: {start, end}` → `loop`/`loopStart`/`loopEnd` | read the three flat fields                                                      |
-| `ppal-playback`                                 | `sceneIndex`, `sceneName` → `scene: {id, path, name}`          | read `scene.name`; `scene.path` is an address you can spend                     |
-| `ppal-duplicate`                                | a buried copy has no `id`                                      | `{path, overwritten: true}` marks a copy this call destroyed                    |
-| `ppal-duplicate`                                | `name` removed from scene→arrangement clip entries             | it only echoed your own argument; entries are `{id, path}`                      |
-| update-device, create-device                    | a device inside a drum pad reports `p<pitch>/c<n>`, not `c<n>` | don't rebuild rack-relative chain paths from a write result                     |
+| Tool                                            | Change                                                         | What to do                                                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `ppal-read-live-set`                            | `masterTrack` → `mainTrack`                                    | rename the key you read                                                                                  |
+| read-live-set, read-track, select               | `type` is gone from return tracks and the main track           | read `path` (`rt0`, `mt`); `type` is now only `midi`/`audio`, on regular tracks                          |
+| create-track, read-track, read-live-set, select | `trackIndex`, `returnTrackIndex` removed                       | parse `path` (`t3`, `rt0`)                                                                               |
+| create-scene, read-scene, read-live-set         | `sceneIndex` removed                                           | parse `path` (`s2`)                                                                                      |
+| create-device                                   | `deviceIndex` removed                                          | parse `path` (`t1/d2`)                                                                                   |
+| every clip result                               | `arrangementStart` removed                                     | the clip's `path` carries it: `t0[5\|1]`                                                                 |
+| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on the key: `deletedPath` means removed, `path` means still there                                 |
+| `ppal-playback`                                 | `currentTime` removed                                          | it was never the playhead; read `startTime` for where the next play begins                               |
+| `ppal-playback`                                 | `arrangementLoop: {start, end}` → `loop`/`loopStart`/`loopEnd` | read the three flat fields                                                                               |
+| `ppal-playback`                                 | `sceneIndex`, `sceneName` → `scene: {id, path, name}`          | read `scene.name`; `scene.path` is an address you can spend                                              |
+| `ppal-duplicate`                                | a buried copy has no `id`                                      | `{path, overwritten: true}` marks a copy this call destroyed (plus `created` when that copy made scenes) |
+| `ppal-duplicate`                                | `name` removed from scene→arrangement clip entries             | it only echoed your own argument; entries are `{id, path}`                                               |
+| update-device, create-device                    | a device inside a drum pad reports `p<pitch>/c<n>`, not `c<n>` | don't rebuild rack-relative chain paths from a write result                                              |
 
 `type` is the subtle one. It used to answer two questions (which signal a track
 carries, and what role it plays) and now answers only the first. A script

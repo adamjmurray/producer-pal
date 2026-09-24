@@ -12,6 +12,8 @@ import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 /** A copy a later copy in the same call replaced. It has no id: it is gone. */
 interface OverwrittenClipInfo {
   path: string;
+  /** The scenes this copy made, which outlive it. */
+  created?: string;
   overwritten: true;
 }
 
@@ -46,13 +48,17 @@ export function markOverwrittenCopies(createdObjects: object[]): void {
   }
 
   for (const slot of slots) {
-    const { path } = slot.entry;
+    const { path, created } = slot.entry;
 
     if (path == null || stillAtPath(slot.entry.id, path)) {
       continue;
     }
 
-    const marker: OverwrittenClipInfo = { path, overwritten: true };
+    const marker: OverwrittenClipInfo = {
+      path,
+      ...(created != null && { created }),
+      overwritten: true,
+    };
 
     slot.list[slot.index] = marker;
   }

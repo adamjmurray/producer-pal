@@ -22,6 +22,11 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  deleteMockObject,
+  mockNonExistentObjects,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 /**
  * The session clip on t0 that every copy in this suite is made from.
@@ -31,6 +36,58 @@ function registerSourceClip(properties?: Record<string, unknown>): void {
   registerMockObject("clip1", {
     path: livePath.track(0).clipSlot(0).clip(),
     properties,
+  });
+}
+
+/**
+ * A two-scene Set whose every copy of the source lands in t1/s3, replacing the
+ * copy before it the way Live does.
+ */
+function registerCopiesIntoOneNewSlot(): void {
+  mockNonExistentObjects();
+  registerSourceClip({ is_midi_clip: 1 });
+
+  const destination = livePath.track(1).clipSlot(3);
+  let slot: RegisteredMockObject | undefined;
+  let copies = 0;
+
+  registerMockObject("live_set/tracks/0/clip_slots/0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 1 },
+    methods: {
+      duplicate_clip_to: () => {
+        if (copies > 0) {
+          deleteMockObject(`copy_${copies}`);
+        }
+
+        copies++;
+        registerMockObject(`copy_${copies}`, { path: destination.clip() });
+
+        if (slot != null) {
+          slot.properties.has_clip = 1;
+        }
+
+        return null;
+      },
+    },
+  });
+  registerMockObject("live_set/tracks/1", {
+    path: livePath.track(1),
+    properties: { has_midi_input: 1, is_frozen: 0 },
+  });
+  registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { scenes: ["id", 1, "id", 2] },
+    methods: {
+      create_scene: () => {
+        slot = registerMockObject("live_set/tracks/1/clip_slots/3", {
+          path: destination,
+          properties: { has_clip: 0 },
+        });
+
+        return null;
+      },
+    },
   });
 }
 
@@ -152,6 +209,27 @@ describe("duplicate - clip duplication", () => {
           toSlot: "0/2",
         }),
       ).rejects.toThrow(/toPath and toSlot both name a destination/);
+    });
+
+    // The first copy made the scenes and the second found them there, so the
+    // replaced copy's entry is the only one left to say they were made.
+    it("keeps the scenes a replaced copy created", async () => {
+      registerCopiesIntoOneNewSlot();
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toPath: "t1/s3,t1/s3",
+      });
+
+      expect(result).toStrictEqual([
+        { path: "t1/s3", created: "s2-s3", overwritten: true },
+        {
+          id: "copy_2",
+          path: "t1/s3",
+          reason: "overwrote the existing clip at t1/s3",
+        },
+      ]);
     });
   });
 
