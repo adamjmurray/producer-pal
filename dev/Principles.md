@@ -39,7 +39,12 @@ should follow from them unambiguously, without being spelled out here.
    moving and duplicating to a different location. Where the API lacks a move,
    duplicate and delete; where it lacks a duplicate, create anew and report in
    the result entry what couldn't be recreated exactly; where it lacks a delete,
-   leave an empty disabled object and say so in the result entry.
+   leave an empty disabled object and say so in the result entry. A destination
+   list pairs one per source, in order. One source may go to several
+   destinations, one copy each. Several sources never share one destination, and
+   never split several each. A bare arrangement position is a shared value when
+   each clip keeps its own track. For a scene, which spans every track, it is a
+   location.
 
 4. Partial completion: A call that can do part of what was asked does what it
    can and skips the rest, rather than refusing the whole. Skips are reported in
