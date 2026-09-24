@@ -435,6 +435,106 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     });
   });
 
+  // V8 must answer before Node's tool timeout, or V8 goes on creating devices
+  // after Node has told the caller the call timed out.
+  describe("stays inside the request deadline", () => {
+    const START = 1_000_000;
+    let now = START;
+
+    beforeEach(() => {
+      now = START;
+      vi.spyOn(Date, "now").mockImplementation(() => now);
+    });
+
+    it("waits only as long as the time left", async () => {
+      await createDevice(
+        { device: "Pro-Q 4", path: "t0/d+" },
+        { deadline: START + 10_000 },
+      );
+
+      expect(requestNode).toHaveBeenCalledWith(
+        REMOTE_SCRIPT_ROUTES.resolve,
+        { name: "Pro-Q 4" },
+        10_000,
+      );
+      // Less the time the arrival poll can take.
+      expect(requestNode).toHaveBeenCalledWith(
+        REMOTE_SCRIPT_ROUTES.load,
+        expect.anything(),
+        8000,
+      );
+    });
+
+    it("waits its usual time when there's plenty left", async () => {
+      await createDevice(
+        { device: "Pro-Q 4", path: "t0/d+" },
+        { deadline: START + 10 * REMOTE_SCRIPT_REQUEST_TIMEOUT_MS },
+      );
+
+      expect(requestNode).toHaveBeenLastCalledWith(
+        REMOTE_SCRIPT_ROUTES.load,
+        expect.anything(),
+        REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
+      );
+    });
+
+    it("looks nothing up once time is up", async () => {
+      await expect(
+        createDevice({ device: "Pro-Q 4", path: "t0" }, { deadline: START }),
+      ).rejects.toThrow(
+        `could not look up "Pro-Q 4" in Live's browser: the request ran out ` +
+          `of time; nothing was created`,
+      );
+      expect(requestNode).not.toHaveBeenCalled();
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("starts no load it can't wait out, keeping the loads that landed", async () => {
+      // The first load uses up the time.
+      answerRemoteScript({ afterLoad: () => (now = START + 9000) });
+
+      expect(
+        await createDevice(
+          { device: "Pro-Q 4", path: "t0/d+,t0/d+" },
+          { deadline: START + 10_000 },
+        ),
+      ).toStrictEqual([
+        { id: "loaded-1", path: "t0/d1" },
+        {
+          path: "t0/d+",
+          ok: false,
+          reason:
+            'could not load "Pro-Q 4": the request ran out of time; re-run ' +
+            "for this path",
+        },
+      ]);
+      expect(
+        vi
+          .mocked(liveSet.call)
+          .mock.calls.filter(([method]) => method === "create_midi_track"),
+      ).toHaveLength(1);
+      expectCleanedUp(1);
+    });
+
+    it("warns that a load it stopped waiting for may still land", async () => {
+      answerRemoteScript({
+        load: { success: false, error: "timed out after 8000ms" },
+        arrives: false,
+      });
+
+      await expect(
+        createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { deadline: START + 10_000 },
+        ),
+      ).rejects.toThrow(
+        `could not load "Pro-Q 4": timed out after 8000ms; Live may still ` +
+          `add it, so check before retrying`,
+      );
+      expectCleanedUp();
+    });
+  });
+
   describe("cleans up what it can", () => {
     it("leaves the selection alone when Live named no selected track", async () => {
       mockNonExistentObjects();

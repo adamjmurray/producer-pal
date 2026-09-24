@@ -22,7 +22,11 @@ export const REMOTE_SCRIPT_HTTP_TIMEOUT_MS = 35_000;
 /** How long Node lets a remote-script route run. */
 export const REMOTE_SCRIPT_ROUTE_TIMEOUT_MS = 40_000;
 
-/** How long V8 waits for a remote-script route. */
+/**
+ * How long V8 waits for a remote-script route. Cut short to fit the request's
+ * deadline: V8 must answer before Node's tool timeout does, even if that
+ * leaves a load running.
+ */
 export const REMOTE_SCRIPT_REQUEST_TIMEOUT_MS = 45_000;
 
 /** Something in Live's browser the remote script can load. */
