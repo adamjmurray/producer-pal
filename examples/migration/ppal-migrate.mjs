@@ -3,8 +3,9 @@
 // Producer Pal migration adapter (Node 18+, no dependencies).
 //
 // Rewrites pre-2.4 tool arguments onto the `path` grammar that replaced them.
-// The old params still work in 2.3 — they warn — and are removed in 2.4. Run
-// your existing args through migrateArgs() and send back what it returns.
+// The old params still work — they warn — and will be removed in a later
+// release. Run your existing args through migrateArgs() and send back what it
+// returns.
 //
 // CLI:
 //   node ppal-migrate.mjs <tool-name> '<json-args>'

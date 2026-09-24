@@ -18,7 +18,7 @@ single API key with pay-per-use pricing. Access it via the
 
 ### Recommended Models
 
-- **Gemini 3.6 Flash** - fast and capable
+- **Gemini 3.8 Flash** - fast and capable
 - **Claude Opus 5.5** - strong reasoning
 - **GPT-6 Sol** - solid all-rounder
 - **Mistral Large** - competitive performance and pricing

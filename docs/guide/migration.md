@@ -2,7 +2,7 @@
 title: Migration Guide
 description:
   Upgrading a script that drives Producer Pal. What changed in 2.3 and 2.4, what
-  is removed in 2.4, and an adapter script that rewrites the old arguments.
+  is deprecated, and an adapter script that rewrites the old arguments.
 head:
   - - meta
     - name: keywords
@@ -15,8 +15,8 @@ head:
   - - meta
     - property: og:description
       content:
-        What changed for scripts in Producer Pal 2.3 and 2.4, what is removed in
-        2.4, and how to rewrite the old arguments.
+        What changed for scripts in Producer Pal 2.3 and 2.4, what is
+        deprecated, and how to rewrite the old arguments.
 ---
 
 # Migration Guide
@@ -29,10 +29,10 @@ conversation and writes calls in the current spelling.
 
 There are two migrations here and they are not equally urgent:
 
-| What                      | When                          | Urgency                                                        |
-| ------------------------- | ----------------------------- | -------------------------------------------------------------- |
-| **Response fields** moved | 2.3, and trimmed again in 2.4 | **Do this now.** No field kept a back-compat key.              |
-| **Input params** removed  | 2.4                           | Forward notice. Everything still works, and warns, until then. |
+| What                        | When                          | Urgency                                                        |
+| --------------------------- | ----------------------------- | -------------------------------------------------------------- |
+| **Response fields** moved   | 2.3, and trimmed again in 2.4 | **Do this now.** No field kept a back-compat key.              |
+| **Input params** deprecated | removed in a later release    | Forward notice. Everything still works, and warns, until then. |
 
 Most upgrade guides lead with the deprecations. This one leads with the
 responses, because that is the half that breaks the moment you install 2.3.
@@ -368,6 +368,17 @@ what was there, the way `ppal-duplicate` and `ppal-update-clip`'s `toPath`
 already do. The new clip's entry says so, with
 `reason: "overwrote the existing clip at t0/s0"`.
 
+**An arrangement position names the clip covering it.** As a target, `t0[5|1]`
+used to find only a clip starting at bar 5. It now finds the clip playing there,
+even one that started earlier. As a destination it still means where the new
+clip starts.
+
+**`wrapInRack` puts every device in one chain.** The devices you name land in
+series in a single chain, the way Live's Group (Cmd/Ctrl+G) does it: MIDI
+effects, then the instrument, then audio effects, each kind in the order you
+named them. 2.3 gave each device its own chain, even when wrapping only effects.
+`deviceCount` is the number of devices in that chain.
+
 ### Results name what a call had to make first
 
 A path that reaches past the end makes the objects below it, and the entry now
@@ -394,10 +405,10 @@ raw Live path (`live_set return_tracks 0`) print the path you wrote instead.
 `not applicable to a drum pad chain` and `cannot update a track` where they used
 to read `DrumChain` and `Track objects`.
 
-## Params being removed in 2.4
+## Deprecated params
 
-Every param below still works today and emits a deprecation warning saying what
-to use instead. They are removed in 2.4.
+Every param below still works in 2.4 and emits a deprecation warning saying what
+to use instead. They will be removed in a later release.
 
 A param that warns is not always one of these. `ppal-read-clip` takes
 `trackIndex` and `sceneIndex` as **aliases**: names a model reaches for on its
@@ -421,10 +432,12 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `startLocator`, `loopStartLocator`, `loopEndLocator` | `startTime` / `loopStart` / `loopEnd`: `loc:Chorus` |
 | `devicePath` on select                               | `path`                                              |
 | `inputRoutingTypeId` and the other three `*Id`       | drop the `Id` suffix                                |
+| `deviceName` on create-device                        | `device`                                            |
+| `split` on update-clip                               | `arrangementSplit`, but see below                   |
 
-The last row is a plain rename: the surviving param already accepts a name or an
-id. Most of the rest are mechanical. **Three are not**, and a find-and-replace
-on them writes a call that quietly does the wrong thing.
+The `*Id` and `deviceName` rows are plain renames: the `*Id` survivors already
+accept a name or an id. Most of the rest are mechanical. **Four are not**, and a
+find-and-replace on them writes a call that quietly does the wrong thing.
 
 ### `count` becomes one path entry per object
 
@@ -619,5 +632,5 @@ lane.
 ```
 
 Over the REST API these arrive in a `warnings` array beside the result; over MCP
-they're appended to the tool result. Run your existing scripts against 2.3, log
+they're appended to the tool result. Run your existing scripts against 2.4, log
 every warning, and you have the list of calls to fix, with no auditing by hand.

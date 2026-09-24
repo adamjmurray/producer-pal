@@ -338,7 +338,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Change audio clip gain, pitch shift, and warp settings (see
   [Audio Clips](#audio-clips))
 - Move clips and change their length in the Arrangement, addressing a clip by
-  where it starts (`t0[5|1]`, or `t0[loc:Chorus]`)
+  any position it covers (`t0[5|1]`, or `t0[loc:Chorus]`)
 - Move a clip with `toPath`: along its own track, to another track, onto or off
   a [take lane](/features#take-lanes), or back into a session slot. A move Live
   has no API for re-creates the clip, which costs its automation envelopes; the

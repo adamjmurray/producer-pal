@@ -121,14 +121,18 @@ third track, `t2/s3` a clip slot, `s3` a scene, `rt0` the first return track,
 report a path next to every id and the write tools accept one, so the AI can act
 on what it just read instead of looking it up again.
 
-An arrangement clip is addressed by where it starts: `t0[5|1]` is the clip at
-bar 5 on track 0, and `t0/l1[5|1]` the one on its second
-[take lane](#take-lanes). A position can name a locator rather than counting
-bars, `t0[loc:Chorus]`, which still lands right after you move that section.
+An arrangement clip is addressed by a position on the timeline: `t0[5|1]` is the
+clip playing at bar 5 on track 0, even if it started earlier, and `t0/l1[5|1]`
+the one on its second [take lane](#take-lanes). A position can name a locator
+rather than counting bars, `t0[loc:Chorus]`, which still lands right after you
+move that section.
 
-A `+` names a place that doesn't exist yet, for creating: `t+` appends a track,
-`s+` a scene. It's only ever the start of a path, and only the tool that creates
-that kind of object takes one.
+A `+` names a place that doesn't exist yet, for creating or moving: `t+` appends
+a track, `s+` a scene, `rt+` a return track, and deeper in a path `t0/d+` a
+device, `t0/d0/c+` a rack chain, and `t0/l+` a take lane.
+
+A device can also be named by kind: `t0/inst` is the track's instrument wherever
+it sits, and `t0/afx0` / `t0/mfx0` its first audio / MIDI effect.
 
 ## Take Lanes {#take-lanes}
 
