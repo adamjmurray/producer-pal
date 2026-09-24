@@ -8,6 +8,7 @@
 // region and even MIDI-vs-audio are settled per clip rather than per call.
 
 import { type Notation } from "#src/shared/notation.ts";
+import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ListEntries,
@@ -187,6 +188,18 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
       looping: inputs.looping,
     },
   );
+
+  // Parsed once per meter before anything is created: the per-clip transform
+  // runs after take lanes exist, and Live can't delete a lane. Even with no
+  // notes to apply it to, a transform that can't be read is refused.
+  if (inputs.transformString != null && !values.sampleFile) {
+    tryParseTransform(
+      inputs.transformString,
+      timing.timeSigDenominator,
+      timing.timeSigNumerator,
+    );
+  }
+
   const { notes, clipLength } = prepareClipData(
     values.sampleFile,
     inputs.notationString,

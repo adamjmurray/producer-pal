@@ -71,6 +71,12 @@ export function clipCopyBlocker(
     return `track ${arrangementPath(trackIndex)} does not exist`;
   }
 
+  // Before the type read too: a group reports no MIDI input, so it would be
+  // called an audio track.
+  if ((track.getProperty("is_foldable") as number) > 0) {
+    return `track ${targetLabel(track)} is a group track; it holds no clips`;
+  }
+
   const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
   if (clipIsMidi !== trackIsMidi) {

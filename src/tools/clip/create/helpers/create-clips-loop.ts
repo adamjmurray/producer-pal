@@ -16,7 +16,9 @@ import { withClipWarningLabel } from "#src/notation/transform/transform-warning-
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import {
+  type ArrangementTrack,
   takeLaneLabel,
+  takeLanesBlocker,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
@@ -108,6 +110,27 @@ export async function createClips(
   }
 
   return entries;
+}
+
+/**
+ * Says why a destination's track won't take the clip planned there.
+ * @param clipIsMidi - Whether the clip is MIDI
+ * @param destination - The track, and the take lane if one was named
+ * @param track - The destination track
+ * @returns The reason, or null when the track takes the clip
+ */
+export function createClipBlocker(
+  clipIsMidi: boolean,
+  destination: ArrangementTrack,
+  track: LiveAPI | undefined,
+): string | null {
+  const { trackIndex, takeLane } = destination;
+  const laneBlocker =
+    takeLane != null && track != null
+      ? takeLanesBlocker(track, trackIndex)
+      : null;
+
+  return laneBlocker ?? clipCopyBlocker(clipIsMidi, trackIndex, track);
 }
 
 /**
@@ -251,9 +274,9 @@ async function createClipAtIndex(
     // the refusal as this position's failure.
     // Truthiness, not a null check: it is what picks the audio create below,
     // and an empty sampleFile makes a MIDI clip.
-    const blocker = clipCopyBlocker(
+    const blocker = createClipBlocker(
       !plan.sampleFile,
-      pos.trackIndex,
+      pos,
       params.tracks.get(pos.trackIndex),
     );
 

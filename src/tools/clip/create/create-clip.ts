@@ -16,11 +16,14 @@ import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
+  type ArrangementPosition,
+  type ClipDestinations,
   resolveCreateClipDestinations,
   type DestinationRef,
 } from "./helpers/create-clip-destinations.ts";
 import { buildClipPlans, type ClipPlan } from "./helpers/clip-plans.ts";
 import {
+  createClipBlocker,
   createClips,
   type CreatedClipEntry,
 } from "./helpers/create-clips-loop.ts";
@@ -221,9 +224,13 @@ export async function createClip(
   );
 
   // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap
-  // replaces existing clips, like the main lane.
+  // replaces existing clips, like the main lane. Live can't delete a lane, so a
+  // destination whose track will refuse the clip gets none; its entry says why.
   const { lanes: takeLanes, dropped: droppedTakeLanes } =
-    resolveCreateClipTakeLanes(takeLaneName, arrangementPositions);
+    resolveCreateClipTakeLanes(
+      takeLaneName,
+      positionsTracksTake(destinations, plans, tracks),
+    );
 
   const createdClips = await createClips({
     order,
@@ -321,6 +328,37 @@ function refuseUnreadableCall({
   // A "[...]" in path and arrangementStart are two spellings of one position,
   // so there is no combined reading.
   refuseDoubledPosition(path, arrangementStart, "path");
+}
+
+/**
+ * The arrangement destinations whose track can take the clip planned there.
+ * @param destinations - Every destination, in call order
+ * @param destinations.order - Which bucket each destination is in
+ * @param destinations.arrangementPositions - The arrangement destinations
+ * @param plans - What each destination is built from, in call order
+ * @param tracks - Every destination track, keyed by track index
+ * @returns The arrangement positions the track won't refuse
+ */
+function positionsTracksTake(
+  { order, arrangementPositions }: ClipDestinations,
+  plans: ClipPlan[],
+  tracks: Map<number, LiveAPI>,
+): ArrangementPosition[] {
+  return order.flatMap((ref, index) => {
+    if (ref.view !== "arrangement") {
+      return [];
+    }
+
+    const position = arrangementPositions[ref.index] as ArrangementPosition;
+    // Truthiness, like the create loop: an empty sampleFile makes a MIDI clip.
+    const blocker = createClipBlocker(
+      !plans[index]?.sampleFile,
+      position,
+      tracks.get(position.trackIndex),
+    );
+
+    return blocker == null ? [position] : [];
+  });
 }
 
 /**

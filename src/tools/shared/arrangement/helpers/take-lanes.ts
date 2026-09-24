@@ -99,11 +99,27 @@ export function assertTrackTakesLanes(
   track: LiveAPI,
   trackIndex: number,
 ): void {
-  if ((track.getProperty("is_foldable") as number) > 0) {
-    throw new Error(
-      `only regular tracks have take lanes; "t${trackIndex}" is a group track`,
-    );
+  const blocker = takeLanesBlocker(track, trackIndex);
+
+  if (blocker != null) {
+    throw new Error(blocker);
   }
+}
+
+/**
+ * Says why a track can't hold take lanes, for a caller that reports it on an
+ * entry instead of throwing.
+ * @param track - The track a lane path named
+ * @param trackIndex - Its index, for the message
+ * @returns The reason, or null when the track takes lanes
+ */
+export function takeLanesBlocker(
+  track: LiveAPI,
+  trackIndex: number,
+): string | null {
+  return (track.getProperty("is_foldable") as number) > 0
+    ? `only regular tracks have take lanes; "t${trackIndex}" is a group track`
+    : null;
 }
 
 /**
