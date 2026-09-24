@@ -110,15 +110,6 @@ describe("arrangement-move", () => {
   });
 
   describe("handleArrangementStartOperation", () => {
-    it("reports arrangementStart on a session clip's own entry", () => {
-      const result = runStartOperation(clipStub("123", 0), 16);
-
-      expect(clipReason("123")).toBe(
-        "arrangementStart ignored: this is a session clip",
-      );
-      expect(result).toBe("123");
-    });
-
     it("reports an unknown track on the clip's own entry", () => {
       // Should not throw, just report it and return the original clip id
       const result = runStartOperation(clipStub("456", 1, null), 16);

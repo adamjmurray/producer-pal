@@ -73,6 +73,8 @@ export interface ClipUpdatePlan {
   moveOrder: number[];
   destinationById: Map<string, ClipPath>;
   destinationParam: "toPath" | "toSlot";
+  /** The param that named the clips' start: a toPath `[...]` or arrangementStart. */
+  startParam: "toPath" | "arrangementStart";
   /** Clips to clear rather than move, or null when nothing can be skipped */
   overwrites: OverwritePlan | null;
   startBeatsFor: (clip: LiveAPI) => number | null;
@@ -213,6 +215,10 @@ export function planClipUpdate({
     moveOrder: order,
     destinationById,
     destinationParam: moveDestinationParam(toPath, toSlot),
+    // The two can't both be set: a coordinate beside arrangementStart is refused.
+    startParam: moves.positions.some((position) => position != null)
+      ? "toPath"
+      : "arrangementStart",
     // Weighed in processing order, and without the refused moves: the plan
     // holds a clip back for an overwrite that would now never come.
     overwrites: computeOverwritePlan(

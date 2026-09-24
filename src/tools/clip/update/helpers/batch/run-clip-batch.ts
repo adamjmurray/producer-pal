@@ -183,6 +183,7 @@ export async function runClipBatch({
       arrangementStartBeats: plan.startBeatsFor(clip),
       destination: destinationById.get(clip.id) ?? null,
       destinationParam: plan.destinationParam,
+      startParam: plan.startParam,
       nonSurvivorClipIds: plan.overwrites?.nonSurvivorIds,
       destinationTracks,
       context,

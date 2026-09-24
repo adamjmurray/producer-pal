@@ -578,6 +578,7 @@ describe("handleClipSlotMove", () => {
 interface PositionOpsOptions {
   isArrangementClip?: boolean;
   destinationParam?: "toPath" | "toSlot";
+  startParam?: "toPath" | "arrangementStart";
   toSlot?: { trackIndex: number; sceneIndex: number };
   /** An arrangement-lane destination, instead of a slot */
   toLane?: ClipPath;
@@ -595,6 +596,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
   const {
     isArrangementClip = false,
     destinationParam = "toPath",
+    startParam = "arrangementStart",
     toSlot,
     toLane,
     arrangementStartBeats,
@@ -613,6 +615,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
     } as unknown as LiveAPI,
     isAudioClip: false,
     destinationParam,
+    startParam,
     destination:
       toSlot == null ? (toLane ?? null) : { kind: "slot", ...toSlot },
     arrangementStartBeats,

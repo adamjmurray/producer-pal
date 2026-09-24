@@ -811,6 +811,7 @@ describe("updateClip - Basic operations", () => {
       clipIndex: 0,
       clipCount: 1,
       destinationParam: "toPath",
+      startParam: "arrangementStart",
       context: {},
       reasons: newClipReasons(),
       updatedClips: [],

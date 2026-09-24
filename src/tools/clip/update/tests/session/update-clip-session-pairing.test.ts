@@ -243,6 +243,26 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  // A toPath position is a spelling of the start, so the refusal names toPath —
+  // never the arrangementStart the caller didn't send — and says it once.
+  it.each([
+    ["[5|1]", "not moved: toPath names an arrangement position"],
+    ["t1[5|1]", 'not moved: toPath "t1" names an arrangement lane'],
+  ])(
+    "refuses a toPath of %s on a session clip once, naming toPath",
+    async (toPath, reason) => {
+      setupMidiClipMock(mocks.clip123);
+
+      await expect(updateClip({ id: "123", toPath })).rejects.toThrow(
+        `${reason} and this is a session clip; name a clip slot ("t2/s3") ` +
+          "to move it, or use ppal-duplicate to copy it into the arrangement",
+      );
+      await expect(updateClip({ id: "123", toPath })).rejects.not.toThrow(
+        "arrangementStart",
+      );
+    },
+  );
+
   // The same call with a name to write: the name lands, so the clip keeps a real
   // entry and the reasons ride along on it.
   it("keeps a real entry when something else the call asked for landed", async () => {

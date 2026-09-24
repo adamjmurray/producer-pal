@@ -87,19 +87,7 @@ export function handleArrangementStartOperation({
   reasons,
   isNonSurvivor,
 }: HandleArrangementStartArgs): string | null {
-  const isArrangementClip =
-    (clip.getProperty("is_arrangement_clip") as number) > 0;
-
-  if (!isArrangementClip) {
-    refuseClipWork(
-      reasons,
-      clip.id,
-      "arrangementStart ignored: this is a session clip",
-    );
-
-    return clip.id;
-  }
-
+  // A session clip never gets here: position-operations.ts refuses it first.
   const sourceTrackIndex = clip.trackIndex;
 
   if (sourceTrackIndex == null) {
