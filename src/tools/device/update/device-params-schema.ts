@@ -13,16 +13,26 @@ import { z } from "zod";
  * field is coerced to a string (a numeric `value: 1` or `id: 3` arrives as
  * `"1"`/`"3"`): the setter pipeline interprets the value at write time, and
  * an all-digit `name` still resolves as an id for callers that predate `id`.
- * The nullish guard (rather than z.coerce.string) makes a null field fail
- * validation with a clear error instead of silently becoming the literal
- * string "null". A `preprocess` (input-side) is used rather than a `.transform`
- * so the schema stays representable as JSON Schema for tools/list.
+ * A null `name` or `id` counts as left out: a model may send null for the
+ * field it doesn't use. A null `value` fails validation rather than becoming
+ * the string "null" (so no z.coerce.string). A `preprocess` (input-side) is
+ * used rather than a `.transform` so the schema stays representable as JSON
+ * Schema for tools/list.
  */
 export const paramEntrySchema = z.object({
-  name: z.preprocess(coerceFieldToString, z.string().optional()),
-  id: z.preprocess(coerceFieldToString, z.string().optional()),
+  name: z.preprocess(coerceAddressToString, z.string().optional()),
+  id: z.preprocess(coerceAddressToString, z.string().optional()),
   value: z.preprocess(coerceFieldToString, z.string()),
 });
+
+/**
+ * Coerce a `name` or `id` to a string, reading null as left out.
+ * @param value - The raw field value
+ * @returns The value as a string, or undefined when nullish
+ */
+function coerceAddressToString(value: unknown): unknown {
+  return value === null ? undefined : coerceFieldToString(value);
+}
 
 /**
  * Coerce a param field to a string, leaving nullish alone so it still fails

@@ -49,10 +49,23 @@ describe("paramsInputSchema", () => {
     expect(result).toStrictEqual([{ name: '{"oops":1}', value: '["a"]' }]);
   });
 
-  it("rejects a null field or a missing value", () => {
-    expect(() => paramsInputSchema.parse([{ name: null, value: "1" }])).toThrow(
-      "Invalid input: expected string, received null",
-    );
+  it("reads a null name or id as left out", () => {
+    // A model may send null for the addressing field it doesn't use.
+    const result = paramsInputSchema.parse([
+      { name: null, id: "42", value: "1" },
+      { name: "Freq", id: null, value: "2" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { name: undefined, id: "42", value: "1" },
+      { name: "Freq", id: undefined, value: "2" },
+    ]);
+  });
+
+  it("rejects a null or missing value", () => {
+    expect(() =>
+      paramsInputSchema.parse([{ name: "Freq", value: null }]),
+    ).toThrow("Invalid input: expected string, received null");
     expect(() => paramsInputSchema.parse([{ name: "Freq" }])).toThrow(
       "Invalid input: expected string, received undefined",
     );
