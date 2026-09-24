@@ -15,12 +15,14 @@ import {
 import {
   expectClipCreated,
   expectNotesAdded,
+  mockScratchSwap,
   note,
   registerEmptyClipSlot,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 describe("createClip - basic validation and time signatures", () => {
@@ -336,9 +338,17 @@ describe("createClip - basic validation and time signatures", () => {
   // Both are the clip's own news, so neither note replaces the other.
   it("keeps the note about the clip it replaced beside the firstStart note", async () => {
     setupSessionMocks({
-      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      liveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children("scene0"),
+      },
       clip: { signature_numerator: 4, signature_denominator: 4 },
       clipSlot: { has_clip: 1 },
+    });
+    mockScratchSwap(0, 1, 0, {
+      id: "new_clip",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     const result = (await createClip({

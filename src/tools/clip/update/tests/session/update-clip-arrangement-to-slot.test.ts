@@ -69,8 +69,8 @@ interface MoveOptions {
    * has_clip for each of the destination track's other scenes, indexed by
    * scene index (DEST_SCENE's own entry is ignored — destHasClip controls
    * that one). Drives the scratch-slot search: omit for the default (the
-   * track reports no clip_slots at all, so the search finds nothing and
-   * falls straight back).
+   * track reports no clip_slots at all, so the search finds nothing and a
+   * temp scene is appended after them).
    */
   otherScenes?: number[];
   /** Live creates a real clip, then add_new_notes throws — a post-creation failure. */
@@ -170,6 +170,19 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
     registerScratchSlot(sceneIndex, hasClip);
   }
+
+  // The temp scene appended when no other scene is free.
+  const sceneCount = otherScenes?.length ?? 0;
+
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: {
+      scenes: children(
+        ...Array.from({ length: sceneCount }, (_, i) => `s${i}`),
+      ),
+    },
+  });
+  registerScratchSlot(sceneCount, 0);
 
   if (destSlotExists) {
     registerMockObject("dest_slot", {
@@ -389,15 +402,6 @@ describe("handleArrangementToSlotMove", () => {
     expect(movedReason()).toBe(`re-created at t${DEST_TRACK}/s${DEST_SCENE}`);
   });
 
-  it("clears the slot's existing clip first, and says so", () => {
-    runMove({ destHasClip: 1 });
-
-    expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
-      "delete_clip",
-    );
-    expectOverwriteReason();
-  });
-
   // The occupant is never predeleted here: the replacement is built and
   // verified elsewhere first, then swapped in atomically.
   it("builds the replacement in an empty scene first when one is free, instead of deleting the occupant", () => {
@@ -418,36 +422,35 @@ describe("handleArrangementToSlotMove", () => {
     expectMovedToDestination(updatedClips);
   });
 
-  // Distinct from the "clears the slot" case above: here the track's other
-  // scenes are known (not just unreported) and every one is occupied too, so
-  // the search comes back empty rather than the collection being absent.
-  it("falls back to deleting the occupant when every other scene is occupied too", () => {
-    // Index 2 is DEST_SCENE itself — included so the search passes over its
-    // own destination rather than just running out of scenes before reaching it.
+  it("builds in a temp scene when every other scene is occupied, then deletes it", () => {
+    // Index 2 is DEST_SCENE itself, so the search passes over it.
     const updatedClips = runMove({ destHasClip: 1, otherScenes: [1, 1, 1] });
 
-    // The search actually happened — both other scenes were checked...
-    expect(lookupMockObject("scratch_slot_0")?.get).toHaveBeenCalledWith(
-      "has_clip",
-    );
-    expect(lookupMockObject("scratch_slot_1")?.get).toHaveBeenCalledWith(
-      "has_clip",
-    );
-    // ...and, being occupied, neither is ever asked to create anything.
     expect(lookupMockObject("scratch_slot_0")?.call).not.toHaveBeenCalled();
     expect(lookupMockObject("scratch_slot_1")?.call).not.toHaveBeenCalled();
-    expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
+    expect(lookupMockObject("live-set")?.call).toHaveBeenCalledWith(
+      "create_scene",
+      -1,
+    );
+    expect(lookupMockObject("scratch_slot_3")?.call).toHaveBeenCalledWith(
+      "create_clip",
+      16,
+    );
+    expect(lookupMockObject("live-set")?.call).toHaveBeenCalledWith(
+      "delete_scene",
+      3,
+    );
+    expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
       "delete_clip",
     );
     expectOverwriteReason();
     expectMovedToDestination(updatedClips);
   });
 
-  // add_new_notes throws after Live already created a real clip: the
-  // destination now holds an unfinished clip, not nothing, so the warning has
-  // to say that rather than just calling the occupant lost.
+  // add_new_notes throws after Live already created a real clip in the empty
+  // destination: it now holds an unfinished clip, and the warning says so.
   it("reports a post-creation failure as an incomplete clip left behind", () => {
-    const updatedClips = runMove({ destHasClip: 1, incompleteCreate: true });
+    const updatedClips = runMove({ incompleteCreate: true });
 
     const warning = movedReason();
 
@@ -458,8 +461,8 @@ describe("handleArrangementToSlotMove", () => {
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 
-  // Nothing was ever occupied here, so the warning has neither an "is gone"
-  // nor a "was not touched" occupant note to make.
+  // Nothing was ever occupied here, so the warning has no "was not touched"
+  // occupant note to make.
   it("reports a failed create at an already-empty destination, naming nothing lost", () => {
     const updatedClips = runMove({
       isMidi: 0,
@@ -567,32 +570,30 @@ describe("handleArrangementToSlotMove", () => {
   });
 
   // An offline audio clip (sample moved or deleted) still reports a non-empty
-  // file_path, so it passes every guard and only fails once Live actually
-  // tries the create — by which point the occupant is already deleted.
-  it("reports the destination's loss when the create fails, and keeps the source", () => {
+  // file_path, so it passes every guard and only fails once Live tries the
+  // create. The occupant must survive that.
+  it("keeps the occupant when the create fails in a temp scene", () => {
     const updatedClips = runMove({
       isMidi: 0,
       filePath: "/samples/offline.wav",
       destIsMidi: 0,
       destHasClip: 1,
-      destCreateFails: true,
+      scratchCreateFails: true,
     });
 
-    expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
+    expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(movedReason()).toContain(
-      `not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE}`,
+    expect(lookupMockObject("live-set")?.call).toHaveBeenCalledWith(
+      "delete_scene",
+      0,
     );
-    expect(movedReason()).toContain("gone and can't be recovered");
+    expect(movedReason()).toContain(
+      `t${DEST_TRACK}/s${DEST_SCENE} was not touched`,
+    );
     expect(movedReason()).toContain(
       "source clip in the arrangement is untouched",
     );
-    // The source is only reported kept, not actually deleted from the track.
-    expect(
-      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
-    ).not.toHaveBeenCalled();
-    expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 

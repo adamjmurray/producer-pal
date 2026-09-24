@@ -4,9 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
+import {
+  type ScratchSlot,
+  withScratchSlot,
+} from "#src/tools/shared/clip/scratch-slot.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
@@ -29,21 +32,13 @@ type RecreateAttempt =
   | { ok: true; clip: LiveAPI }
   | { ok: false; incomplete: boolean; error: unknown };
 
-/** An empty clip slot found to stage a replacement clip in. */
-interface ScratchSlot {
-  slot: LiveAPI;
-  path: string;
-}
-
 /**
  * Re-create a clip (usually an arrangement clip, which Live can't copy into a
  * slot) in a session clip slot.
  *
- * An occupied destination is not destroyed when the track has room: the clip
- * is built in an empty slot elsewhere on the same track, then swapped onto the
- * destination with duplicate_clip_to, which overwrites in place. Only when the
- * track has no empty slot is the occupant deleted first, which loses it if the
- * create then fails.
+ * An occupied destination is never deleted first: the clip is built in an
+ * empty slot on the same track, then swapped onto the destination with
+ * duplicate_clip_to, which overwrites in place.
  * @param sourceClip - The clip to copy
  * @param toSlot - Destination slot position
  * @param destClipSlot - The destination slot
@@ -70,11 +65,9 @@ export function recreateIntoSlot(
       : failure(attempt, destPath, "n/a", destPath);
   }
 
-  const scratch = findScratchSlot(toSlot);
-
-  return scratch == null
-    ? recreateOverOccupant(build, destClipSlot, destPath)
-    : recreateViaScratchSlot(build, scratch, destClipSlot, destPath);
+  return withScratchSlot(toSlot.trackIndex, toSlot.sceneIndex, (scratch) =>
+    recreateViaScratchSlot(build, scratch, destClipSlot, destPath),
+  );
 }
 
 // --- Helpers below main exports ---
@@ -111,34 +104,6 @@ function attemptRecreate(
   } catch (error) {
     return { ok: false, incomplete: slot.child("clip").exists(), error };
   }
-}
-
-/**
- * An empty clip slot elsewhere on the destination's track, to stage the
- * replacement in. A slot on the same track always takes the same clip type
- * the destination does, and searching one track keeps the search bounded.
- * @param toSlot - Destination slot position
- * @returns An empty ClipSlot, or null when the track has none to spare
- */
-function findScratchSlot(toSlot: ClipSlotPosition): ScratchSlot | null {
-  const destTrack = LiveAPI.from(livePath.track(toSlot.trackIndex));
-  const sceneCount = destTrack.getChildCount("clip_slots");
-
-  for (let sceneIndex = 0; sceneIndex < sceneCount; sceneIndex++) {
-    if (sceneIndex === toSlot.sceneIndex) {
-      continue;
-    }
-
-    const slot = LiveAPI.from(
-      livePath.track(toSlot.trackIndex).clipSlot(sceneIndex),
-    );
-
-    if (!slot.getProperty("has_clip")) {
-      return { slot, path: slotPath(toSlot.trackIndex, sceneIndex) };
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -195,34 +160,12 @@ function recreateViaScratchSlot(
 }
 
 /**
- * Delete the occupant, then create in its place. Used only when the track has
- * no empty slot to build in first, so a failed create loses the occupant.
- * @param build - Re-creates the source clip in a given empty slot
- * @param destClipSlot - The occupied destination
- * @param destPath - The destination, formatted for the entry
- * @returns The new clip, or why none landed
- */
-function recreateOverOccupant(
-  build: (slot: LiveAPI) => RecreateAttempt,
-  destClipSlot: LiveAPI,
-  destPath: string,
-): SlotRecreate {
-  destClipSlot.call("delete_clip");
-
-  const attempt = build(destClipSlot);
-
-  return attempt.ok
-    ? { ok: true, clip: attempt.clip, overwrote: true }
-    : failure(attempt, destPath, "lost", destPath);
-}
-
-/**
  * Say why the recreate failed, naming exactly what's true afterward: whether
- * the destination's occupant survived, was lost, or was never there; whether
+ * the destination's occupant survived or was never there; whether
  * the attempt left an incomplete clip behind; and whether that was cleaned up.
  * @param attempt - The failed attempt
  * @param attemptPath - Where the create was tried
- * @param occupant - Whether the destination's occupant is lost, preserved, or never had one
+ * @param occupant - Whether the destination had an occupant, which survives
  * @param destPath - The destination, formatted for the entry
  * @param wasCleared - Whether an incomplete clip left behind was already deleted
  * @returns The failed outcome
@@ -230,7 +173,7 @@ function recreateOverOccupant(
 function failure(
   attempt: { incomplete: boolean; error: unknown },
   attemptPath: string,
-  occupant: "n/a" | "lost" | "preserved",
+  occupant: "n/a" | "preserved",
   destPath: string,
   wasCleared = false,
 ): SlotRecreate {
@@ -242,11 +185,7 @@ function failure(
     : `create failed at ${attemptPath} (${errorMessage(attempt.error)})`;
 
   const occupantNote =
-    occupant === "lost"
-      ? ` The clip that was there before is gone and can't be recovered.`
-      : occupant === "preserved"
-        ? ` The clip at ${destPath} was not touched.`
-        : "";
+    occupant === "preserved" ? ` The clip at ${destPath} was not touched.` : "";
 
   return { ok: false, reason: `${outcome}.${occupantNote}` };
 }
