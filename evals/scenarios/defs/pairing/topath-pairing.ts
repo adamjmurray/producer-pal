@@ -6,10 +6,8 @@
 /**
  * Scenario: update-clip's destinations pair 1:1 and do NOT cycle.
  *
- * `duplicate` cycles a short `toPath` against `arrangementStart`; `update-clip`
- * does not, on purpose. One destination for two clips used to put both in the
- * same slot and destroy the first, so a model that carries the cycling habit
- * across tools loses a clip silently. Grades that it wrote one destination per
+ * One destination for two clips used to put both in the same slot and destroy
+ * the first; it's now refused. Grades that the model wrote one destination per
  * clip, and that all four slots ended up as a move rather than a copy.
  */
 

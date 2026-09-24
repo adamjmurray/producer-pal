@@ -277,6 +277,18 @@ describe("warnInapplicableClipParams", () => {
     );
   });
 
+  // Several sources take one destination each, so "list more in toPath" would
+  // lead straight to a refusal.
+  it("points several sources at one call each for more copies", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    warnInapplicableClipParams(arrangement, 3, undefined, 2);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "count ignored for clips: one copy per destination — for more copies, send one call per source",
+    );
+  });
+
   it("warns that a session copy ignores arrangementLength", () => {
     const warnSpy = vi.spyOn(console, "warn");
 

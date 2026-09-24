@@ -73,9 +73,11 @@ Two tools can't check their raw args. update-clip's `id` and `path` name
 different clips and add up, so it passes the sum as a count and never compares
 the two. duplicate shares its destinations out across the sources first, so its
 check (`requireSameLength`) runs where the copies are planned. A clip slot,
-device or pad holds one object, so duplicate's destination list never
-broadcasts: `requireDestinationPerSource` refuses one that doesn't divide evenly
-across the sources, before the first copy is made.
+lane, device or pad holds one object, so with several sources the destination
+list must name one per source: `requireDestinationPerSource` refuses anything
+else before the first copy is made. Only a clip destination that leaves the
+copies apart broadcasts: a bare `[5|1]`, or a track whose positions pair one per
+clip.
 
 See ADR-0035.
 

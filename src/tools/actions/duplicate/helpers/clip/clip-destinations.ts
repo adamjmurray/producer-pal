@@ -117,15 +117,20 @@ export function resolveClipDestinations(
  * @param destinations - Where the copies go
  * @param count - Requested number of copies
  * @param arrangementLength - Requested arrangement length
+ * @param sourceCount - How many sources the call names
  */
 export function warnInapplicableClipParams(
   destinations: ClipDestinations,
   count: number,
   arrangementLength: string | undefined,
+  sourceCount = 1,
 ): void {
+  // Several sources take one destination each, so listing more is refused.
   if (count > 1) {
     console.warn(
-      "count ignored for clips: one copy per destination — list more in toPath",
+      sourceCount > 1
+        ? "count ignored for clips: one copy per destination — for more copies, send one call per source"
+        : "count ignored for clips: one copy per destination — list more in toPath",
     );
   }
 

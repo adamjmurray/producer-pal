@@ -216,8 +216,8 @@ describe("updateClip - moving a row of arrangement clips", () => {
     await expect(
       updateClip({ id: "114,113", toPath: "t0[1|1]" }),
     ).rejects.toThrow(
-      "2 clips can't share one spot; give one toPath per clip, or a bare " +
-        "[pos] to keep each clip's own track",
+      "toPath names 1 destination but the call names 2 clips. A destination " +
+        "holds one object, so toPath must name one per clip, in order.",
     );
 
     expect(movedTo()).toStrictEqual([]);

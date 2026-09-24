@@ -365,9 +365,9 @@ describe("ppal-duplicate with a source list", () => {
     await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
   });
 
-  // The other half of the same mismatch: destinations that don't divide across
-  // the sources leave one naming a place no copy goes.
-  it("refuses destinations that don't divide across the sources", async () => {
+  // The other half of the same mismatch: more destinations than sources leave
+  // one naming a place no copy goes.
+  it("refuses more destinations than sources", async () => {
     const [firstId, secondId] = await createSources();
 
     const result = await duplicateClips({
@@ -381,6 +381,63 @@ describe("ppal-duplicate with a source list", () => {
 
     await sleep(100);
     await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+  });
+
+  // Two per source isn't dealt out either: the caller would have to count to
+  // know which copy went where.
+  it("refuses a few destinations per source", async () => {
+    const [firstId, secondId] = await createSources();
+
+    const result = await duplicateClips({
+      id: `${firstId},${secondId}`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s6,t${EMPTY_MIDI_TRACK}/s7,t${CHILD_TRACK}/s6,t${CHILD_TRACK}/s7`,
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 4 destinations but id names 2 sources",
+    );
+
+    await sleep(100);
+    await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+  });
+
+  // A track and a position name one spot, so the second copy would bury the
+  // first. Only a bare position covers several sources.
+  it("refuses one positioned toPath for two sources", async () => {
+    const [firstId, secondId] = await createSources();
+
+    const result = await duplicateClips({
+      id: `${firstId},${secondId}`,
+      toPath: `t${EMPTY_MIDI_TRACK}[117|1]`,
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 1 destination but id names 2 sources",
+    );
+
+    await sleep(100);
+
+    const spot = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}[117|1]` },
+    });
+
+    expect(JSON.stringify(spot)).toContain("no clip at");
+  });
+
+  // Scenes share every track, so one position for two scenes would bury the
+  // first copy under the second.
+  it("refuses one position for two scenes", async () => {
+    await createSources();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "scene", path: "s5,s6", toPath: "[117|1]" },
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 1 destination but path names 2 sources",
+    );
   });
 
   // arrangementLength pairs one per copy, as name does, so one clip holding an

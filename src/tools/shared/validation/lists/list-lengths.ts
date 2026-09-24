@@ -102,27 +102,32 @@ export function requireSameLength(
 }
 
 /**
- * Refuse a destination list that can't be shared out evenly across the sources:
- * a destination holds one copy, so a lone one never broadcasts the way a name
- * does. Still before any copy is made.
+ * Refuse a destination list that doesn't name one destination per source. A
+ * destination holds one object, so a lone one never covers several sources the
+ * way a name does, and a longer list is never dealt out a few per source.
  * @param destinations - The destination param's name and entry count
- * @param sources - What named the sources, and how many there are
- * @throws Error when the destinations don't divide evenly across the sources
+ * @param sources - What named the sources, how many there are, and what one is
+ * called ("source" by default)
+ * @param hint - A sentence to add, naming another way out
+ * @throws Error when the counts differ
  */
 export function requireDestinationPerSource(
   destinations: { param: string; count: number },
-  sources: { param: string; count: number },
+  sources: { param: string; count: number; noun?: string },
+  hint = "",
 ): void {
-  if (destinations.count % sources.count === 0) {
+  if (destinations.count === sources.count) {
     return;
   }
 
-  throw new Error(
+  const noun = sources.noun ?? "source";
+  const message =
     `${destinations.param} names ${plural(destinations.count, "destination")} ` +
-      `but ${sources.param} names ${plural(sources.count, "source")}. A ` +
-      `destination holds one copy, so name one per source, or the same ` +
-      `number for each.`,
-  );
+    `but ${sources.param} names ${plural(sources.count, noun)}. A ` +
+    `destination holds one object, so ${destinations.param} must name one ` +
+    `per ${noun}, in order.`;
+
+  throw new Error(hint === "" ? message : `${message} ${hint}`);
 }
 
 /**

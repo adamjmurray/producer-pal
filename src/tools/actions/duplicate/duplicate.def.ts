@@ -112,7 +112,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "Clips only, and the two tracks must match MIDI/audio type; name/color label the copies. " +
         "A track copy needs no toPath otherwise. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "Comma-separated, one per copy; a lone arrangement position covers every source",
+        "Comma-separated, one per copy; several sources need one each, except a bare '[5|1]' for clips",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
     }),

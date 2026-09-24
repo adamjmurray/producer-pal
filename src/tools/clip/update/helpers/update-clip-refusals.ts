@@ -12,15 +12,15 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
+  destinationLane,
   refuseDoubledPosition,
-  requireClipDestinationPath,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   pathEntries,
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { requireDestinationPerSource } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 /** The update-clip params read before any clip is touched. */
 export interface UpfrontArgs {
@@ -30,13 +30,14 @@ export interface UpfrontArgs {
   length?: string;
   firstStart?: string;
   toPath?: string;
+  toSlot?: string;
   arrangementStart?: string;
 }
 
 /**
  * Refuses a call there is no reading of, before any clip is touched: a param
- * with no valid value, one position spelled two ways, or one toPath that names
- * a lane or slot for more than one clip.
+ * with no valid value, one position spelled two ways, or one lane or slot for
+ * more than one clip.
  * @param args - The call's value params, as sent
  * @param targetCount - How many ids the call named
  */
@@ -46,53 +47,48 @@ export function refuseUnreadableCall(
 ): void {
   validateValueParams(args, targetCount);
   refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
-  refuseSharedClipDestination(args.toPath, targetCount);
+  refuseSharedClipDestination(args.toPath, args.toSlot, targetCount);
 }
 
 /**
- * Refuse a single toPath that names a lane or slot (`t0`, `t0/l0`, `t0/s1`,
- * `t0[5|1]`) for more than one clip. One place holds one object, so it has to
- * be named once per target; a bare `[5|1]` is fine; it leaves each clip on its
- * own lane and only sets where on it they land.
+ * Refuse one destination for several clips. A lane or slot (`t0`, `t0/s1`,
+ * `t0[5|1]`) holds one clip, so it has to be named once per clip. A bare
+ * `[5|1]` is fine: each clip stays on its own lane.
  * @param toPath - Destination path(s), if sent
+ * @param toSlot - Deprecated destination slot(s), if sent
  * @param targetCount - How many ids the call named
  */
 function refuseSharedClipDestination(
   toPath: string | undefined,
+  toSlot: string | undefined,
   targetCount: number,
 ): void {
-  if (!paramNamesSomething(toPath) || targetCount <= 1) {
+  if (targetCount <= 1) {
     return;
   }
 
-  const entries = pathEntries(toPath, "toPath");
+  // Sending both is refused where they're resolved.
+  const param = paramNamesSomething(toPath) ? "toPath" : "toSlot";
+  const value = param === "toPath" ? toPath : toSlot;
 
-  if (entries.length !== 1) {
+  if (!pathNamesSomething(value)) {
     return;
   }
 
-  let destination;
+  const entries = pathEntries(value, param);
 
-  try {
-    destination = requireClipDestinationPath(
-      parseObjectPath(entries[0] as string, "toPath"),
-      "toPath",
-    );
-  } catch {
-    // Not this function's job: the entry gets its own warning where toPath is
-    // actually resolved, once the call runs.
+  // toSlot only ever names a slot; a toPath entry may be a bare position.
+  if (
+    entries.length !== 1 ||
+    (param === "toPath" && destinationLane(entries[0] as string) == null)
+  ) {
     return;
   }
 
-  if (destination.lane == null) {
-    return;
-  }
-
-  const spot = destination.lane.kind === "slot" ? "slot" : "spot";
-
-  throw new Error(
-    `${targetCount} clips can't share one ${spot}; give one toPath per clip, ` +
-      `or a bare [pos] to keep each clip's own track`,
+  requireDestinationPerSource(
+    { param, count: 1 },
+    { param: "the call", count: targetCount, noun: "clip" },
+    param === "toPath" ? "A bare [5|1] keeps each clip on its own track." : "",
   );
 }
 

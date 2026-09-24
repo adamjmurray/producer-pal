@@ -14,14 +14,16 @@ import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
 import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import {
+  requireDestinationPerSource,
+  validateListLengths,
+} from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
   type PairedParamLabels,
@@ -248,13 +250,10 @@ function moveDestinations(
 
   const entries = targetEntries(named, "toPath");
 
-  if (entries.length !== count) {
-    throw new Error(
-      `toPath names ${plural(entries.length, "destination")} but the call ` +
-        `names ${plural(count, "target")}. A destination holds one object, ` +
-        `so toPath must name one per target, in order.`,
-    );
-  }
+  requireDestinationPerSource(
+    { param: "toPath", count: entries.length },
+    { param: "the call", count, noun: "target" },
+  );
 
   return entries;
 }

@@ -142,23 +142,16 @@ describe("requireSameLength", () => {
 });
 
 describe("requireDestinationPerSource", () => {
-  it("takes one destination per source, and a whole number each", () => {
+  it("takes one destination per source", () => {
     expect(() =>
       requireDestinationPerSource(
         { param: "toPath", count: 3 },
         { param: "id", count: 3 },
       ),
     ).not.toThrow();
-
-    expect(() =>
-      requireDestinationPerSource(
-        { param: "toPath", count: 6 },
-        { param: "id", count: 3 },
-      ),
-    ).not.toThrow();
   });
 
-  // A destination holds one copy, so a lone one never broadcasts the way a
+  // A destination holds one object, so a lone one never broadcasts the way a
   // name does — that is the whole difference from requireSameLength.
   it("refuses a lone destination for several sources", () => {
     expect(() =>
@@ -168,17 +161,30 @@ describe("requireDestinationPerSource", () => {
       ),
     ).toThrow(
       "toPath names 1 destination but id/path names 2 sources. A destination " +
-        "holds one copy, so name one per source, or the same number for each.",
+        "holds one object, so toPath must name one per source, in order.",
     );
   });
 
-  it("refuses destinations that don't divide evenly", () => {
+  it("refuses a few destinations per source", () => {
     expect(() =>
       requireDestinationPerSource(
-        { param: "toSlot", count: 5 },
-        { param: "path", count: 2 },
+        { param: "toPath", count: 6 },
+        { param: "id", count: 3 },
       ),
-    ).toThrow("toSlot names 5 destinations but path names 2 sources.");
+    ).toThrow("toPath names 6 destinations but id names 3 sources.");
+  });
+
+  it("names what the sources are, and adds a hint", () => {
+    expect(() =>
+      requireDestinationPerSource(
+        { param: "toSlot", count: 1 },
+        { param: "the call", count: 2, noun: "clip" },
+        "Try again.",
+      ),
+    ).toThrow(
+      "toSlot names 1 destination but the call names 2 clips. A destination " +
+        "holds one object, so toSlot must name one per clip, in order. Try again.",
+    );
   });
 });
 

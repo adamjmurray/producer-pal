@@ -695,7 +695,7 @@ describe("duplicate - several scenes to the arrangement", () => {
     ]);
   });
 
-  it("refuses a position list that matches neither one scene nor all", async () => {
+  it("refuses a position list that doesn't name one per scene", async () => {
     setupTwoScenesOnOneTrack();
 
     await expect(
@@ -704,18 +704,35 @@ describe("duplicate - several scenes to the arrangement", () => {
         id: "scene1,scene2",
         toPath: "[1|1],[9|1],[17|1]",
       }),
-    ).rejects.toThrow("toPath names 3 entries but id names 2");
+    ).rejects.toThrow("toPath names 3 destinations but id names 2 sources");
   });
 
-  // A lone position covers every scene, so scenes sharing a track land on each
-  // other there. The buried copy says so instead of reporting a dead id.
+  // Scenes share every track, so one position for two would bury the first
+  // copy under the second. Refused before anything is copied.
+  it.each([
+    ["toPath", { toPath: "[5|1]" }],
+    ["arrangementStart", { arrangementStart: "5|1" }],
+  ])("refuses one %s position for several scenes", async (param, dest) => {
+    const track0 = setupTwoScenesOnOneTrack();
+
+    await expect(
+      duplicate({ type: "scene", id: "scene1,scene2", ...dest }),
+    ).rejects.toThrow(
+      `${param} names 1 destination but id names 2 sources. A destination ` +
+        `holds one object, so ${param} must name one per source, in order.`,
+    );
+    expect(track0.call).not.toHaveBeenCalled();
+  });
+
+  // Scenes sharing a track can still land on each other when the caller names
+  // one spot twice. The buried copy says so instead of reporting a dead id.
   it("marks a scene copy a later one in the call landed on", async () => {
     setupTwoScenesOnOneTrack();
 
     const result = await duplicate({
       type: "scene",
       id: "scene1,scene2",
-      toPath: "[5|1]",
+      toPath: "[5|1],[5|1]",
     });
 
     expect(result).toStrictEqual([
@@ -746,7 +763,7 @@ describe("duplicate - several scenes to the arrangement", () => {
     );
   });
 
-  it("refuses an arrangementStart list that matches neither one scene nor all", async () => {
+  it("refuses an arrangementStart list that doesn't name one per scene", async () => {
     setupTwoScenesOnOneTrack();
 
     await expect(
@@ -755,7 +772,9 @@ describe("duplicate - several scenes to the arrangement", () => {
         id: "scene1,scene2",
         arrangementStart: "1|1,9|1,17|1",
       }),
-    ).rejects.toThrow("arrangementStart names 3 entries but id names 2");
+    ).rejects.toThrow(
+      "arrangementStart names 3 destinations but id names 2 sources",
+    );
   });
 
   // A position list names one copy per position, however it pairs out, so

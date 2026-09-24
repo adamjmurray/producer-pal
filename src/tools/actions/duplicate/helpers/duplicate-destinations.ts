@@ -218,6 +218,8 @@ interface DestinationParams {
   laneCopy: boolean;
   /** Whether a destination names a take lane, which the call may create. */
   toTakeLane: boolean;
+  /** How many sources the call names. */
+  sourceCount: number;
 }
 
 /**
@@ -242,6 +244,7 @@ export function resolveDestinationAndWarn(
       clipDestinations,
       params.count,
       arrangementLength,
+      params.sourceCount,
     );
   }
 

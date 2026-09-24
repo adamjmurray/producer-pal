@@ -61,7 +61,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain(
-      "2 clips can't share one spot",
+      "toPath names 1 destination but the call names 2 clips",
     );
 
     await sleep(200);
@@ -96,7 +96,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain(
-      "2 clips can't share one slot",
+      "toPath names 1 destination but the call names 2 clips",
     );
   });
 

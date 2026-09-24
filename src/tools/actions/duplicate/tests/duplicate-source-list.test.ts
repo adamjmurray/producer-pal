@@ -183,7 +183,9 @@ describe("duplicate - a list of sources", () => {
       ).rejects.toThrow('invalid id ",clipA" - it has an empty entry.');
     });
 
-    it("splits the destinations evenly when there are more than sources", async () => {
+    // Dealing a longer list out a few per source leaves the caller counting
+    // to know which copy went where, so it's refused like any mismatch.
+    it("refuses a few destinations per source", async () => {
       registerTwoSlotSources([
         [2, 0],
         [2, 1],
@@ -191,18 +193,19 @@ describe("duplicate - a list of sources", () => {
         [3, 1],
       ]);
 
-      const result = await duplicate({
-        type: "clip",
-        id: "clipA,clipB",
-        toPath: "t2/s0,t2/s1,t3/s0,t3/s1",
-      });
-
-      expect(result).toStrictEqual([
-        { id: "clipA-in-t2s0", path: "t2/s0" },
-        { id: "clipA-in-t2s1", path: "t2/s1" },
-        { id: "clipB-in-t3s0", path: "t3/s0" },
-        { id: "clipB-in-t3s1", path: "t3/s1" },
-      ]);
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          toPath: "t2/s0,t2/s1,t3/s0,t3/s1",
+        }),
+      ).rejects.toThrow(
+        "toPath names 4 destinations but id names 2 sources. A destination " +
+          "holds one object, so toPath must name one per source, in order.",
+      );
+      expect(
+        registerMockObject("live_set/tracks/0/clip_slots/0", {}).call,
+      ).not.toHaveBeenCalledWith("duplicate_clip_to", expect.anything());
     });
 
     // One source is the whole call, so the per-source rule never applies to it
@@ -233,7 +236,7 @@ describe("duplicate - a list of sources", () => {
         duplicate({ type: "clip", id: "clipA,clipB", toPath: "t2/s0" }),
       ).rejects.toThrow(
         "toPath names 1 destination but id names 2 sources. A destination " +
-          "holds one copy, so name one per source, or the same number for each.",
+          "holds one object, so toPath must name one per source, in order.",
       );
       // Nothing ran: the source with a slot of its own wasn't copied either.
       expect(
@@ -400,7 +403,8 @@ describe("duplicate - a list of sources", () => {
     );
 
     // A position list pairs with the sources rather than going to each of them,
-    // so two sources take a bar each instead of piling onto both bars.
+    // so two sources take a bar each instead of piling onto both bars. One
+    // track is fine here: the positions keep the copies apart.
     it("pairs a bare track's positions one per source", async () => {
       registerArrangementSources("clipA", "clipB");
 
@@ -462,10 +466,82 @@ describe("duplicate - a list of sources", () => {
           toPath: "t3[5|1],t3[9|1]",
         }),
       ).rejects.toThrow(
-        "toPath names 2 entries but id names 3 entries. Comma-separated " +
-          "params must name the same number of entries, or one value that " +
-          "covers them all.",
+        "toPath names 2 destinations but id names 3 sources. A destination " +
+          "holds one object, so toPath must name one per source, in order. " +
+          "A bare [5|1] keeps each clip on its own track.",
       );
+    });
+
+    // A track and one position name one spot, so every copy after the first
+    // would bury the one before. Refused before anything is copied.
+    it.each([
+      [
+        "a positioned toPath",
+        { toPath: "t2[5|1]" },
+        "A bare [5|1] keeps each clip on its own track.",
+      ],
+      [
+        "a track with one arrangementStart",
+        { toPath: "t2", arrangementStart: "5|1" },
+        'Drop toPath to keep each clip\'s own track, or name one track per clip ("t2,t3").',
+      ],
+      // A slot ignores arrangementStart, so a position list can't keep the
+      // copies apart there.
+      [
+        "a slot with a position list",
+        { toPath: "t2/s1", arrangementStart: "5|1,9|1" },
+        "A bare [5|1] keeps each clip on its own track.",
+      ],
+    ])("refuses %s for several sources", async (_label, dest, hint) => {
+      registerArrangementSources("clipA", "clipB");
+
+      const track2 = registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
+
+      await expect(
+        duplicate({ type: "clip", id: "clipA,clipB", ...dest }),
+      ).rejects.toThrow(
+        "toPath names 1 destination but id names 2 sources. A destination " +
+          `holds one object, so toPath must name one per source, in order. ${hint}`,
+      );
+      expect(track2.call).not.toHaveBeenCalled();
+    });
+
+    // With no toPath each clip stays on its own track, taking its own position.
+    it("pairs a position list one per source on their own tracks", async () => {
+      registerArrangementSources("clipA", "clipB");
+      registerTrackThatClearsOnDup(0, { has_midi_input: 1 });
+      registerTrackThatClearsOnDup(1, { has_midi_input: 1 });
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        arrangementStart: "5|1,9|1",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "live_set tracks 0 arrangement_clips 0", path: "t0[5|1]" },
+        { id: "live_set tracks 1 arrangement_clips 0", path: "t1[9|1]" },
+      ]);
+    });
+
+    // Tracks that pair one per source leave the copies apart, so one position
+    // still covers them all.
+    it("pairs tracks one per source around one position", async () => {
+      registerArrangementSources("clipA", "clipB");
+      registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
+      registerTrackThatClearsOnDup(3, { has_midi_input: 1 });
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2,t3",
+        arrangementStart: "5|1",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "live_set tracks 2 arrangement_clips 0", path: "t2[5|1]" },
+        { id: "live_set tracks 3 arrangement_clips 0", path: "t3[5|1]" },
+      ]);
     });
 
     // arrangementLength pairs with the sources the same way its position does,
@@ -506,9 +582,13 @@ describe("duplicate - a list of sources", () => {
       );
     });
 
+    // With one track the positions are what keep the copies apart, so they
+    // pair exactly: the error mustn't offer one position for all, which is
+    // refused too.
     it("refuses more positions than there are sources", async () => {
       registerArrangementSources("clipA", "clipB");
-      registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
+
+      const track2 = registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
 
       await expect(
         duplicate({
@@ -518,8 +598,11 @@ describe("duplicate - a list of sources", () => {
           arrangementStart: "5|1,9|1,13|1",
         }),
       ).rejects.toThrow(
-        "arrangementStart names 3 entries but id names 2 entries",
+        "arrangementStart names 3 destinations but id names 2 sources. A " +
+          "destination holds one object, so arrangementStart must name one " +
+          "per source, in order.",
       );
+      expect(track2.call).not.toHaveBeenCalled();
     });
 
     // Each source is placed on its own, with no view of the others, so only the
@@ -531,8 +614,7 @@ describe("duplicate - a list of sources", () => {
       const result = await duplicate({
         type: "clip",
         id: "clipA,clipB",
-        toPath: "t2",
-        arrangementStart: "5|1",
+        toPath: "t2[5|1],t2[5|1]",
         transforms: "velocity *= 0.5",
       });
 

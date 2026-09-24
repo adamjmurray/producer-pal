@@ -95,9 +95,10 @@ either way.
 - **Value lists** are properties applied to targets: `name`, `color`.
 
 The distinction settles broadcasting, and nothing else: a lone value covers
-every item, while a lone destination does not, because a slot holds one clip and
-the rest would overwrite each other. Holes and lengths follow the same rule on
-both sides.
+every item, while a lone destination does not, because a lane or slot holds one
+object and the rest would overwrite each other. A bare arrangement position is
+the one exception: each clip lands at it on its own track (ADR-0031). Holes and
+lengths follow the same rule on both sides.
 
 ### 3. An empty entry never carries meaning
 
@@ -118,7 +119,7 @@ counts as one of them — `count: 3` on create-track, the copies duplicate is
 about to make — so a value list has something to disagree with even on a tool
 with no target list. ADR-0031's other rules stand: a single value still
 broadcasts to every item, nothing cycles, and destinations still never
-broadcast, because a slot holds one clip.
+broadcast, because a slot holds one clip — bar a bare arrangement position.
 
 ### 5. A blank string on a non-string param is an error
 

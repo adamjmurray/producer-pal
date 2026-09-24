@@ -164,12 +164,10 @@ export async function duplicate(
   // entry becomes the bar|beat it names. Nothing below knows any of that.
   const dest = settleDestination(type, toPath, arrangementStart, locator);
 
-  toPath = dest.toPath;
-  arrangementStart = dest.arrangementStart;
+  ({ toPath, arrangementStart } = dest);
   count = sceneCopyCount(type, dest, count);
 
-  // An arrangement destination pairs across the sources — one covers them all,
-  // a list gives one per source — where a slot-shaped one is dealt out.
+  // Several sources take one destination each, in order (ADR-0031).
   const sources = planSources({
     type,
     id,
@@ -206,6 +204,7 @@ export async function duplicate(
     code,
     laneCopy,
     toTakeLane,
+    sourceCount: sources.length,
   });
 
   const labels = copyLabels(

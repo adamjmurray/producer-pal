@@ -11,11 +11,11 @@
 // with one item the whole value is literal, which is the only way to set a
 // name that contains a comma (dev/Principles.md, Multi-target).
 //
-// Destinations are the exception, in one direction only: a clip slot holds one
-// clip, so broadcasting a lone slot to three clips would destroy two of them.
-// Those pair exactly (pairExact). Values broadcast (pairValues, valueForIndex)
-// because an arrangement position holds any number of clips, and a name or a
-// color is a property, not a place.
+// Destinations are the exception: a lane or slot holds one object, so a lone
+// one sent to three clips would bury two of them. Those pair exactly
+// (pairExact). A bare arrangement position still broadcasts (pairValues), since
+// each clip lands on its own track, and so does a name or a color: a property,
+// not a place.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { plural } from "./plural.ts";

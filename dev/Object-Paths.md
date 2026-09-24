@@ -232,9 +232,11 @@ A value that **fully determines a location pairs 1:1** with the items; anything
 else broadcasts one value across them (ADR-0031). That single rule covers what
 used to be a carve-out:
 
-- `t0/s3` can't broadcast — a slot holds one clip, so three clips into one slot
-  destroys two.
-- `[5|1]` can — each source keeps its own lane, so the landing spots differ.
+- `t0/s3` and `t0[5|1]` can't broadcast — a slot or spot holds one clip, so
+  three clips into one destroys two. Several sources name one each, in order; a
+  longer list isn't dealt out a few per source either.
+- `[5|1]` can — each clip keeps its own lane, so the landing spots differ.
+  Scenes are the exception: they share every track, so each needs its own.
 - `name` and `color` can — a property, not a place.
 
 ## `path` vs `toPath`

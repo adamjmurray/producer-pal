@@ -11,19 +11,28 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 // resolves against Live, so these throw with no mocks at all.
 describe("updateClip - refuses one toPath place for several clips", () => {
   it.each([
-    ["an arrangement spot", "t0[5|1]", "spot"],
-    ["a take lane", "t0/l0[5|1]", "spot"],
-    ["a session slot", "t0/s1", "slot"],
-  ])("refuses %s shared by 2 ids", async (_label, toPath, noun) => {
+    ["an arrangement spot", "t0[5|1]"],
+    ["a take lane", "t0/l0[5|1]"],
+    ["a session slot", "t0/s1"],
+  ])("refuses %s shared by 2 ids", async (_label, toPath) => {
     await expect(updateClip({ id: "1,2", toPath })).rejects.toThrow(
-      `2 clips can't share one ${noun}; give one toPath per clip, or a bare ` +
-        `[pos] to keep each clip's own track`,
+      "toPath names 1 destination but the call names 2 clips. A destination " +
+        "holds one object, so toPath must name one per clip, in order. A " +
+        "bare [5|1] keeps each clip on its own track.",
     );
   });
 
   it("refuses a lane with no position, shared by 3 ids", async () => {
     await expect(updateClip({ id: "1,2,3", toPath: "t0" })).rejects.toThrow(
-      "3 clips can't share one spot",
+      "toPath names 1 destination but the call names 3 clips.",
+    );
+  });
+
+  // The deprecated spelling only ever names a slot, so it never broadcasts.
+  it("refuses one toSlot shared by 2 ids", async () => {
+    await expect(updateClip({ id: "1,2", toSlot: "0/1" })).rejects.toThrow(
+      "toSlot names 1 destination but the call names 2 clips. A destination " +
+        "holds one object, so toSlot must name one per clip, in order.",
     );
   });
 
