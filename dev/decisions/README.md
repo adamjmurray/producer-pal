@@ -17,8 +17,8 @@ answer belongs here.
 - **ADR** — a decision already made, with lasting consequences, that isn't
   self-evident from the code. Includes "won't fix" calls.
 - **Not an ADR** — proposals still being weighed (→ `dev/plans/`), coding rules
-  (→ `dev/coding-standards/README.md`), or anything the code and tests already make
-  obvious.
+  (→ `dev/coding-standards/README.md`), or anything the code and tests already
+  make obvious.
 
 ## Conventions
 

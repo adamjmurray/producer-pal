@@ -22,7 +22,8 @@ Models paid for the split: `create-clip` drew `trackIndex` + `sceneIndex`
 guesses on 8 of 10 first attempts in one eval, and a slot read out of a result
 would not go back into a `path` param.
 
-The grammar and its rules are in [dev/tools/object-paths/README.md](../tools/object-paths/README.md).
+The grammar and its rules are in
+[dev/tools/object-paths/README.md](../tools/object-paths/README.md).
 
 ## Decision
 

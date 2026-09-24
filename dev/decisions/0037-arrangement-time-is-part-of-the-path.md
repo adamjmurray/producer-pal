@@ -27,11 +27,11 @@ written as bar|beat or named by a locator, and every param that took one took
 two: `startTime`/`startLocator`, `loopStart`/`loopStartLocator`,
 `loopEnd`/`loopEndLocator`, `arrangementStart`/`locator`.
 
-The path-standardization plan considered
-folding time into the path as `t0@5|1` and rejected it, on three grounds: the
-two params are independently usable and `t0@5|1` always names both halves; a
-bar|beat position can contain `/`, which `split("/")` would eat; and `@` already
-means step interval and bar copy in bar|beat.
+The path-standardization plan considered folding time into the path as `t0@5|1`
+and rejected it, on three grounds: the two params are independently usable and
+`t0@5|1` always names both halves; a bar|beat position can contain `/`, which
+`split("/")` would eat; and `@` already means step interval and bar copy in
+bar|beat.
 
 ## Decision
 

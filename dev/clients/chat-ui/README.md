@@ -24,6 +24,15 @@ The UI connects to two external services:
 2. **AI Provider APIs** - Via the Vercel AI SDK (`ai` package + provider
    packages)
 
+## Parts
+
+| File                                                       | What's in it                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------- |
+| [conversation-persistence.md](conversation-persistence.md) | IndexedDB store, schema, auto-save, auto-title, restore fixes |
+| [conversation-branching.md](conversation-branching.md)     | Edit/retry forks, sibling navigation, branch families         |
+| [ai-sdk-integration.md](ai-sdk-integration.md)             | Streaming, locked settings, tool catalog, subagents           |
+| [voice-mode.md](voice-mode.md)                             | Realtime voice: hook graph, OpenAI and Gemini backends        |
+
 ## Technology Stack
 
 - **Framework**: Preact (lightweight React alternative)
@@ -109,7 +118,7 @@ webui/
           │     │     └─> formatChatMessages() → UI-friendly format
           │     ├─> useConversationLock()     → provider lock during chat
           │     └─> useConversations()        → IndexedDB + panel state
-          └─> VoiceApp → useVoiceModeState()  → see Voice Mode below
+          └─> VoiceApp → useVoiceModeState()  → see [Voice Mode](voice-mode.md)
   ```
 
 **ConversationPanel.tsx** - Slide-out sidebar:
@@ -223,251 +232,20 @@ are the user's words and flush on the next normal send.
 
 ### Conversation Persistence
 
-Conversations are persisted to IndexedDB so they survive page reloads. Covers
-save, load, switch, rename, delete, and auto-titling. Forked conversations
-(edit/retry branches) add `forkParentId`/`forkedAtIndex` linkage and a
-sibling-navigation UI — see
-[conversation-branching.md](conversation-branching.md) for that model. The
-`ConversationRecord` definition in `lib/conversation-db.ts` is the source of
-truth for the full field list (the snippet below is illustrative, not
-exhaustive).
-
-**Storage**: IndexedDB via `idb` library. Database:
-`producer-pal-conversations`, single `conversations` object store with
-`updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
-non-bookmarked conversations are auto-deleted on save when the limit is reached.
-
-**Versioning**: IndexedDB is schemaless for record data, so adding a field to a
-stored record needs no version bump — just default it when it's missing on read.
-Only bump `DB_VERSION` for structural changes (creating or deleting an object
-store or index). Prefer a backwards-compatible read over an upgrade-time data
-transform.
-
-**Schema** (`lib/conversation-db.ts`):
-
-```typescript
-interface ConversationRecord {
-  id: string; // crypto.randomUUID()
-  title: string | null; // null = auto-derived from first user message
-  createdAt: number; // Date.now()
-  updatedAt: number; // Date.now() at last save
-  bookmarked: boolean; // protected from auto-deletion
-  provider: string | null; // AI provider (e.g., "anthropic")
-  model: string | null; // model ID
-  modelLabel: string | null; // display name
-  thinking: string | null; // thinking level (e.g., "High", "Off")
-  messages: ChatMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
-}
-```
-
-**Files**:
-
-| File                                                           | Purpose                                                                       |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `lib/conversation-db.ts`                                       | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
-| `lib/conversation-db-open.ts`                                  | DB open/upgrade, version mismatch handling, JSON export                       |
-| `lib/conversations/`                                           | Live-conversation store + the delete/rename/sweep steps chat and voice share  |
-| `hooks/chat/use-conversations.ts`                              | Orchestration hook (save/load/switch/new/delete/rename)                       |
-| `hooks/chat/helpers/conversations/conversation-save-record.ts` | Title derivation, save/fork record builders, locked settings                  |
-| `hooks/chat/helpers/conversations/use-hash-navigation.ts`      | URL hash read/write and back/forward routing                                  |
-| `components/chat/ConversationPanel.tsx`                        | Slide-out sidebar panel with inline rename                                    |
-
-**Auto-save triggers** (wired in `App.tsx`):
-
-- After each new message (watches `messages.length` increase)
-- Before switching conversations
-- On page unload (best-effort via `beforeunload`)
-- NOT during streaming
-
-**Auto-title**: Derived from first user message's first line. If that matches a
-"connect to Ableton" pattern, uses the second user message instead. Manual
-renames are preserved.
-
-**Lazy record creation**: `activeConversationId` is null until first save, which
-creates the record with a new UUID.
-
-**Dangling tool calls on restore**: autosave fires on the first assistant
-content, and a tool-call part counts — so a conversation left mid-tool-call is
-saved with that call missing its result. Restoring runs
-`reconcileDanglingToolCalls` over the record so the call gets the same synthetic
-result the wire form would substitute anyway. Without it the card renders as
-forever "working…" and the next request 400s on the unmatched tool_use. The
-cards read that placeholder back as "stopped" or "interrupted".
-
-Pressing Stop mid-call needs its own fix: the stream reconciles its own history
-on the way out, but that repaint lands after the abort and `onMessageUpdate`
-drops it (it has to — a conversation switch aborts the same way, and a late
-paint would clobber the conversation the user switched to). `stopResponse` marks
-the rendered cards itself, via `haltRunningToolCalls`.
-
-**Active conversation routing**: The active conversation ID is stored in the URL
-hash (`#<conversation-id>`), enabling browser back/forward navigation between
-conversations. On page load, the hash is read to restore the last conversation.
-
-**View state persistence**: UI view state (history panel open/close, settings
-open/close, active settings tab) is persisted to localStorage under a single
-`producer_pal_view_state` key via the `useViewState` hook.
+Conversations are saved to IndexedDB so they survive page reloads. See
+[conversation-persistence.md](conversation-persistence.md) for the store,
+auto-save, and restore details, and
+[conversation-branching.md](conversation-branching.md) for edit/retry forks.
 
 ## Integration Details
 
-**Health Checking:**
-
-`useMcpConnection` hook checks server availability on mount and provides retry
-functionality. Auto-retries on first message if connection failed initially.
-
-### AI SDK Integration
-
-**Streaming:**
-
-The UI uses the Vercel AI SDK's `streamText()` to stream responses from any
-supported provider:
-
-```typescript
-const result = streamText({ model, messages, tools, ... });
-for await (const part of result.fullStream) {
-  // Handle: text-delta, reasoning-delta, tool-call, tool-result, start-step
-}
-```
-
-All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
-through this single code path via provider-specific model factories in
-`provider-factories.ts`.
-
-**Locked Settings:**
-
-Provider, model, thinking level, small-model mode, the resolved system
-instruction, notation, and the toolset (`enabledTools`) are locked per
-conversation. When a conversation is saved, these settings are stored on the
-`ConversationRecord`. When restored, they're passed as
-`ConversationLockedSettings` to prevent settings changes from affecting the
-active conversation.
-
-Notation is hard-locked rather than re-read per init: it decides how clip notes
-are PARSED, so a transcript written in one notation must keep being read in it.
-
-The toolset is locked for the matching reason on the writing side: a transcript
-full of successful calls to a tool is itself an instruction to keep calling it,
-so withdrawing that tool mid-conversation invites a call the client can no
-longer route. Records saved before the toolset was locked have none, and fall
-back to the current selection.
-
-The Direct Live API tool needs `withLiveApiTool` to make that lock hold. Its
-Tools-tab checkbox writes no map entry — it flips the device-global
-`liveApiEnabled`, which adds or removes the tool from the server's catalog — so
-the flag is stamped into the map before it is locked. Every site that compares a
-locked toolset against the current one must stamp BOTH sides, or a conversation
-locked while the tool was off reports a divergence for the rest of its life.
-Nothing enforces this. Two sites compare today — the header's tools indicator
-and the Settings modal's locked-settings notice — and the notice shipped missing
-the stamp, so treat a new comparison site as a place to get this wrong.
-
-Per-message overrides (`MessageOverrides`) can still override thinking for
-individual messages. When used, the overridden value is stamped on the assistant
-`ChatMessage` as `thinkingOverride` — only when it differs from the conversation
-default.
-
-**Response Model Tracking:**
-
-After each stream completes, `ai-sdk-client.ts` captures the `modelId` from the
-API response metadata and stores it on the assistant `ChatMessage` as
-`responseModel`. This persists to IndexedDB automatically (optional field, no
-migration needed).
-
-When the response model differs meaningfully from the requested model — after
-normalizing org prefixes and date suffixes — `MessageList.tsx` shows a
-"responded as {model}" label on the message bubble. This surfaces provider
-routing surprises (e.g., OpenRouter fallbacks, Ollama aliases).
-
-Mismatch detection logic is in `chat/helpers/model-identity.ts`. To test: use
-OpenRouter with the `openrouter/auto` model, which auto-selects a model and
-always triggers the mismatch indicator.
-
-**Tool catalog vs. MCP catalog:**
-
-`fullToolCatalog` (`lib/utils/tool-catalog.ts`) is every tool the user can
-switch on: the MCP `listTools` response plus placeholders for any experimental
-tool missing from it. Two are: `spawn_subagent` never appears (it's
-client-side), and `ppal-live-api` only while the device flag is on —
-deliberately, since `listTools` is what every MCP client offers its model, so a
-withheld tool must not be listed.
-
-The Tools tab and the header's `x/y` indicator both count against this catalog,
-not the MCP response. That keeps the denominator still while the two opt-in
-tools move, so the fraction means "how much of the full set am I running" — it
-reads 21/23 out of the box, and the indicator's tooltip says why. Counting uses
-`isToolEnabled`, since absent means enabled for ordinary tools but disabled for
-`spawn_subagent`.
-
-**Subagents:**
-
-`spawn_subagent` is a client-side tool (no `ppal-` prefix, never in the MCP tool
-list): it runs a nested `ChatSdkClient` in the browser, because a worker needs
-the decrypted API key the server never sees. `buildWorkerConfig` clones the
-orchestrator config — layering a chosen "Subagent preset" over it — and always
-re-strips `spawn_subagent` as the recursion guard.
-
-A worker's system instruction then gets a **briefing** appended: the Live Set
-overview, the skills for its toolset and notation, and the user's context
-layers, fetched once from `GET /subagent-briefing`
-(`subagent/subagent-briefing.ts`). That replaces the `ppal-connect` call each
-worker used to make, so `ppal-connect` and `ppal-context` are withheld from a
-briefed worker. If the briefing can't be fetched, `ppal-connect` comes back and
-the worker bootstraps itself as before; `ppal-context` stays withheld either
-way, since it's withheld to keep parallel workers off the user's context store
-rather than because the briefing replaced it — see the Architecture doc → Subagent
-briefings for why the blob belongs in the system prompt.
-
-**Formatting:**
-
-`formatter.ts` transforms the stream into UI-friendly format:
-
-- Merges consecutive assistant messages into single UI messages
-- Converts to typed parts: `text`, `image`, `thought`, `tool`, `error`
-- Matches tool results to tool calls by ID
-- Tracks original indices for retry functionality
+Health checking, streaming, locked settings, the tool catalog, and subagents are
+in [ai-sdk-integration.md](ai-sdk-integration.md).
 
 ## Voice Mode
 
-Voice mode is a realtime speech-to-speech conversation with the model, reached
-by selecting a realtime model (`App.tsx` routes to `VoiceApp` via
-`isRealtimeSelection`). It reuses the chat conversation store, transcript
-rendering, and MCP tools — only the transport and audio handling are new.
-
-**Hook orchestration:** `use-voice-mode-state.ts` composes the whole voice hook
-graph and picks the backend from the selected model, exposing a single
-`UseVoiceSessionReturn` interface so `VoiceApp` is provider-agnostic:
-
-```
-VoiceApp.tsx
-  └─> useVoiceModeState()                  → orchestrates + routes by provider
-        ├─> useVoiceSession()              → OpenAI Realtime over WebRTC
-        │     (@openai/agents SDK owns mic capture, VAD, playback)
-        ├─> useGeminiVoiceSession()        → Gemini Live over WebSocket
-        │     ├─> GeminiMicCapture         → getUserMedia → AudioWorklet → 16 kHz PCM
-        │     ├─> GeminiPcmPlayer          → gapless 24 kHz PCM playback
-        │     └─> GeminiHistoryBuilder     → WS deltas → RealtimeItem[]
-        └─> useVoicePersistence()          → IndexedDB autosave (shared store)
-```
-
-**Two backends, one interface.** OpenAI leans on the `@openai/agents` Realtime
-SDK (the SDK owns the audio path); Gemini Live is handled explicitly because the
-WebSocket transport carries raw PCM — mic audio is captured through an
-AudioWorklet and posted as 16 kHz PCM, and the model's 24 kHz PCM replies are
-scheduled gaplessly by `GeminiPcmPlayer`. Both backends return the same shape so
-the rest of voice mode doesn't branch on provider.
-
-**Reused from chat:** voice history is converted to chat `UIMessage`s by
-`realtime-items-to-ui-messages.ts` and rendered with the same `MessageList`;
-conversations persist to the same IndexedDB store with a `sessionType: "voice"`
-discriminant and use the shared `ConversationPanel`; MCP tools are dispatched
-through `voice-mcp-call.ts` (a 60s-timeout wrapper that returns errors as text
-rather than throwing), wrapped per provider by `realtime-mcp-tools.ts` (OpenAI)
-and `gemini-mcp-tools.ts` (Gemini).
-
-**Credentials** are minted/relayed by two server routes (`POST /voice-token`,
-`POST /gemini-voice-token`) so the long-lived key stays off the browser for the
-OpenAI path; see [the Architecture doc](../../architecture/README.md#voice-mode) for the server
-side.
+Realtime speech-to-speech conversation, reached by selecting a realtime model.
+See [voice-mode.md](voice-mode.md).
 
 ## Build and Development
 

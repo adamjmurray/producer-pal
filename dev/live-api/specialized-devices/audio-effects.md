@@ -38,11 +38,11 @@ Two writable fields on `update-device`, also returned by `read-device`:
 
 The class-level `available_input_routing_types` and
 `available_input_routing_channels` are used internally for validation. See
-[`options` include](interface-conventions.md#the-options-include-opt-in-discoverability) — opt-in adds
-`sidechainSourceTrackIds` (list of trackIds that are valid sources — regular,
-return, and master tracks with audio-bearing devices). Channel options
-(`"Pre FX"` / `"Post FX"` / `"Post Mixer"`) are stable per Live version and
-documented in the tool description rather than surfaced.
+[`options` include](interface-conventions.md#the-options-include-opt-in-discoverability)
+— opt-in adds `sidechainSourceTrackIds` (list of trackIds that are valid sources
+— regular, return, and master tracks with audio-bearing devices). Channel
+options (`"Pre FX"` / `"Post FX"` / `"Post Mixer"`) are stable per Live version
+and documented in the tool description rather than surfaced.
 
 **Implementation gotchas (verified by probe 2026-05-21):**
 
@@ -220,12 +220,13 @@ Six writable fields on `update-device`, also returned by `read-device`:
 - `irTimeShapingOn` (bool)
 
 Class-level `ir_category_list` and `ir_file_list` are used for validation. See
-[`options` include](interface-conventions.md#the-options-include-opt-in-discoverability) — opt-in adds
-`irCategoryList` (the fixed categories) and `irFileList` (files in the currently
-selected category, 11-29 strings depending on category — dynamic per Live
-install). To browse a different category, set `irCategory` first and re-read
-with the include. Hybrid Reverb's writable params are all dynamic-catalog,
-free-form, or boolean, so it contributes no static `paramOptions`.
+[`options` include](interface-conventions.md#the-options-include-opt-in-discoverability)
+— opt-in adds `irCategoryList` (the fixed categories) and `irFileList` (files in
+the currently selected category, 11-29 strings depending on category — dynamic
+per Live install). To browse a different category, set `irCategory` first and
+re-read with the include. Hybrid Reverb's writable params are all
+dynamic-catalog, free-form, or boolean, so it contributes no static
+`paramOptions`.
 
 **Implementation gotchas (verified by probe 2026-05-21):**
 

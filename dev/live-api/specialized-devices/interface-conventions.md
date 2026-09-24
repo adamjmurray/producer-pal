@@ -218,8 +218,8 @@ Each kind of "what to tell the LLM" lives in a specific layer:
 
 The codebase has first-class support for trimming tool surface in small model
 mode via `smallModelModeConfig` (`excludeParams`, `descriptionOverrides`,
-`toolDescription` — see dev/tools/Tool-Schemas.md). Guidelines for specialized-device
-params:
+`toolDescription` — see dev/tools/Tool-Schemas.md). Guidelines for
+specialized-device params:
 
 - **Write tight base descriptions** that work in both normal and small-model
   modes without needing overrides. Aim for ~100-200 chars per parameter.

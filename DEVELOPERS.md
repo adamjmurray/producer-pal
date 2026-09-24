@@ -185,8 +185,8 @@ Quick commands:
 - `npm run ui:dev` - Dev server at localhost:5173 with hot reload
 - `npm run ui:build` - Production build to `max-for-live-device/chat-ui.html`
 
-See [Chat-UI](dev/clients/chat-ui/README.md) for architecture, component structure, and
-detailed development workflows.
+See [Chat-UI](dev/clients/chat-ui/README.md) for architecture, component
+structure, and detailed development workflows.
 
 ## Documentation Site
 
@@ -222,8 +222,8 @@ Quick commands:
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [Development-Tools](dev/quality/development-tools/README.md) for the CLI tool, Live API
-tool, MCP Inspector setup, debugging tips, and testing workflows.
+See [Development-Tools](dev/quality/development-tools/README.md) for the CLI
+tool, Live API tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ### Portal Script (Internal Testing)
 
@@ -263,6 +263,6 @@ it's about CI sequencing, and an unsigned commit is never what anyone meant.
 
 ## Releasing
 
-See [Releasing](dev/process/Releasing.md) for the complete release process, including
-version bumping, building, creating GitHub releases, testing checklists, and
-publishing to npm.
+See [Releasing](dev/process/Releasing.md) for the complete release process,
+including version bumping, building, creating GitHub releases, testing
+checklists, and publishing to npm.

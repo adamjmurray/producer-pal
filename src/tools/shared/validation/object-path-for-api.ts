@@ -111,7 +111,7 @@ export interface WrittenContainer {
  * `written` names the object's direct parent as the call spelled it, and that
  * spelling is used in place of the derived one. Only a pad spelling is
  * substituted — it is the one path with a second numbering. See
- * dev/tools/object-paths/README.md.
+ * dev/tools/object-paths/results-and-errors.md.
  * @param api - The object to name
  * @param written - The call's spelling of the object's parent, if any
  * @returns `{ path }`, or `{}` for an object the grammar can't spell

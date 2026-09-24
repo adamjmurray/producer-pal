@@ -30,10 +30,11 @@ tree, then narrow per-path exceptions, each with its reason.
 
 `correctness` and `suspicious` are enabled as whole categories at the top level;
 `pedantic` and `style` are not (see
-[ADR-0017](../decisions/0017-oxlint-category-baseline.md)). The last section of the
-overrides array turns back off the category rules this codebase doesn't satisfy
-yet, one commented entry per rule with its violation count. Deleting an entry is
-the unit of work: fix the violations, drop the line, and the rule stays on.
+[ADR-0017](../decisions/0017-oxlint-category-baseline.md)). The last section of
+the overrides array turns back off the category rules this codebase doesn't
+satisfy yet, one commented entry per rule with its violation count. Deleting an
+entry is the unit of work: fix the violations, drop the line, and the rule stays
+on.
 
 Every entry is marked **PERMANENT** (the rule is wrong for this codebase — don't
 re-litigate it) or **DEFERRED** (worth doing, too big for one sitting). The

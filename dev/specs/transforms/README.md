@@ -199,8 +199,8 @@ velocity += 20 * square(n/2, 0, 0.75, sync);
 
 ## Feature specs
 
-| Spec                                                        | Covers                                                                                                          |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Spec                                             | Covers                                                                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | [functions.md](functions.md)                     | Timing functions (`swing`, `quant`, `legato`) and note-count operations (`ratchet`, `repeat`, `split`, `merge`) |
 | [syntax.md](syntax.md)                           | Transform expression syntax and shorthand assignments                                                           |
 | [units-and-variables.md](units-and-variables.md) | Units and time signatures, note/context variables, operators                                                    |

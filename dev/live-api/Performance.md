@@ -69,7 +69,7 @@ kit's drum map went 769 to 129 and `read-device drum-pads` 193 to 49.
 
 Measured with an instrumented build against the counter Set (20 tracks, 13
 scenes, four drum racks, a four-level instrument rack — see
-`dev/quality/development-tools/README.md` -> Dumping a Live Set):
+`dev/quality/development-tools/live-api-measurement.md` -> Dumping a Live Set):
 
 | call                                       | resolved            | constructed, warm pool |
 | ------------------------------------------ | ------------------- | ---------------------- |
@@ -217,9 +217,9 @@ memoized per request instead: every pad of the same rack now shares one scan.
 
 ## Re-measuring
 
-`dev/quality/development-tools/README.md` has both procedures: **Counting LiveAPI Objects** for
-what a call asks the Live API for, and **Timing Tool Calls** for what that
-costs. Two rules carry most of the risk:
+`dev/quality/development-tools/live-api-measurement.md` has both procedures:
+**Counting LiveAPI Objects** for what a call asks the Live API for, and **Timing
+Tool Calls** for what that costs. Two rules carry most of the risk:
 
 - **Measure against real Live before believing a build-count fix.** A fixture
   missing objects a real Set has makes a walk stop early, and the count comes

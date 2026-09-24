@@ -65,7 +65,8 @@ Key entry points:
   Pal in it, use the `ableton-open-live-set` skill's `--add-producer-pal`
   (`examples/skills/ableton-open-live-set/`).
 
-See `dev/architecture/README.md` for system design and `dev/clients/chat-ui/README.md` for the web UI.
+See `dev/architecture/` for system design and `dev/clients/chat-ui/` for the web
+UI.
 
 ## Critical Coding Rules
 
@@ -148,7 +149,7 @@ See `dev/architecture/README.md` for system design and `dev/clients/chat-ui/READ
   has no filesystem, and shipped `src/**` can't shell out. All `node:fs` work
   lives in `src/mcp-server/`. User-content features (`~/.producer-pal`
   overrides, global context, custom system prompt) are MCP/REST concerns that
-  never touch the Live API. See `dev/architecture/README.md` → Runtime Boundary.
+  never touch the Live API. See `dev/architecture/runtime-boundary.md`.
 
 - **Generated parsers**: `generated-*-parser.js` files are gitignored and built
   from the `.peggy` grammars. Never commit them; regenerate
@@ -259,8 +260,8 @@ The practical consequences:
   ignoring or deleting a branch as unreachable, try to write the test — reading
   the code is not enough to prove it, and the attempt is what tells you whether
   the guard is dead or you just hadn't found the input.
-- See `dev/quality/Testing.md` for what counts as a test file, webui test gotchas, and
-  the mock registry. CLI tools and test Live Sets are in
+- See `dev/quality/Testing.md` for what counts as a test file, webui test
+  gotchas, and the mock registry. CLI tools and test Live Sets are in
   `dev/quality/development-tools/README.md`.
 
 ### MCP E2E Testing
@@ -316,20 +317,22 @@ them without asking:**
 
 ## Documentation
 
-Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
-find one. The main ones: `dev/Principles.md` (first principles for tool design —
-read first), `dev/architecture/README.md` (system design), `dev/coding-standards/README.md`
-(full style guide + Live API reference), `dev/quality/Testing.md`,
-`dev/tools/Tool-Schemas.md`, `dev/quality/Linting.md`, `dev/specs/` (bar|beat and transform
-grammars), `dev/quality/development-tools/README.md`, and `dev/decisions/` (ADRs — why settled
+Internal docs live in `dev/`, grouped by topic (`tools/`, `live-api/`,
+`clients/`, `quality/`, `process/`, …). `dev/README.md` indexes them all. The
+main ones: `dev/Principles.md` (first principles for tool design — read first),
+`dev/architecture/` (system design), `dev/coding-standards/` (full style guide +
+Live API reference), `dev/quality/Testing.md`, `dev/tools/Tool-Schemas.md`,
+`dev/quality/Linting.md`, `dev/specs/` (bar|beat and transform grammars),
+`dev/quality/development-tools/`, and `dev/decisions/` (ADRs — why settled
 choices went the way they did, especially the rejections).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
 
-**Keep a doc small enough to read whole.** Past ~20 KB, split it: an index with
-the concepts, plus one file per lookup-table chunk in a sibling directory
-(`dev/quality/mutation-testing/baselines/`, `dev/live-api/specialized-devices/`). Catalogs and per-scope
-results are the parts to move out; the reasoning stays in the index.
+**Keep a doc small enough to read whole.** Past ~20 KB, split it into a folder
+named for the doc: `README.md` is the index with the concepts, and each part is
+a file beside it (`dev/memory-system/`, `dev/live-api/specialized-devices/`).
+Catalogs and per-scope results are the parts to move out; the reasoning stays in
+the index.
 
 ### For agents: reading without burning context
 

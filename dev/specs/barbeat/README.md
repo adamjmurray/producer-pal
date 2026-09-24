@@ -325,8 +325,8 @@ elements. In drum mode each drum pad gets its own line.
 Each of these is a self-contained feature with its own syntax, rules, and
 examples. Read the one you need.
 
-| Spec                                               | Covers                                                   |
-| -------------------------------------------------- | -------------------------------------------------------- |
+| Spec                                       | Covers                                                   |
+| ------------------------------------------ | -------------------------------------------------------- |
 | [v0-deletion.md](v0-deletion.md)           | Deleting notes with `v0`                                 |
 | [repeat-patterns.md](repeat-patterns.md)   | `*n` repeat syntax                                       |
 | [pattern-brackets.md](pattern-brackets.md) | `[...]` streams and cursors                              |

@@ -7,132 +7,17 @@ retrieval of full bodies. It sits alongside the pinned global context
 structured layer: context is a hand-authored, always-on blob; memory is a
 lazy-loaded notebook the assistant reads and writes itself.
 
-## The loadable-collection primitive
+## Parts
 
-Memory is one instance of a generic **loadable markdown collection**: a
-`~/.producer-pal/<subdir>/` directory of frontmatter'd `.md` entries, a derived
-always-injected index of `name → description` recall hooks, and on-demand body
-load via `ppal-context read`. The store, REST routes, and webui editor are all
-built generic so a second collection is a thin binding, not a rewrite:
-
-- **Store**: `src/mcp-server/helpers/config-store/markdown-collection-store.ts`
-  (`makeMarkdownCollectionStore`) owns the CRUD, filesystem-safe slugging +
-  path-traversal guard, and reserved-index-slug protection. A binding supplies
-  only what differs: subdir/index filename, how a file parses into an entry,
-  sort order, and how the index body renders. It sits on the single-slot
-  primitives in `config-markdown-store.ts` (`configDir()` —
-  `PRODUCER_PAL_CONFIG_DIR` override else `~/.producer-pal`; atomic temp+rename
-  writes; `listConfigMarkdownFiles`; `isConfigDirInert` — a Vitest-only guard so
-  unit tests never touch a real `~/.producer-pal`).
-- **REST**: `src/mcp-server/routes/collection-route.ts`
-  (`registerCollectionRoutes`) is a generic GET list / PUT create-or-update
-  (with a create-only 409 guard) / DELETE per collection, origin-gated on writes
-  exactly like `POST /config`.
-- **Webui**: `webui/src/hooks/context/use-doc-collection.ts`
-  (`useDocCollection`) and `webui/src/components/context/collection/` (
-  `CollectionScreen` + editor/list parts) are the generic two-pane manager
-  (list + per-item editor + polling + save/refresh race guard); a collection's
-  tab is a thin binding over both.
-
-**Memory is the only SURFACED collection — but not the only one built.** A
-second, user-authored **custom skills** collection
-(`~/.producer-pal/skills-custom/`) exists end to end: store
-(`helpers/skills-custom/`), REST routes, V8↔Node RPC routes, and a complete
-webui screen (`CustomSkillsScreen` / `CustomSkillEditor` +
-`use-custom-skills-collection`), all with tests. It was hidden in v1.5.0 rather
-than removed, and every entry point that could reach a user or the model is
-disconnected:
-
-- `ppal-context`'s `scope` enum is `project` / `global` / `memory` — there is no
-  `skills` scope, so the `skills.read` / `.remember` / `.forget` / `.list` RPC
-  routes are registered but **uncallable**.
-- `withCustomSkills` (`custom-skills-inject.ts`) has **no callers**, so the
-  skills index never reaches a `ppal-connect` result.
-- `ContextTabs` never imports `CustomSkillsScreen`; its `skills` tab is
-  `SkillsScreen`, the built-in-fragment _override_ editor. The custom-skills
-  component tree is unreferenced.
-
-The one live surface is `registerCustomSkillsCollectionRoutes(app)`, registered
-unconditionally in `create-express-app.ts`. A `PUT /custom-skills` therefore
-still writes a file and regenerates the index — it just sits there, because
-nothing reads it.
-
-**That inertness is the precondition, and restoring the feature is what ends
-it.** Wiring `withCustomSkills` back up turns anything already in
-`skills-custom/` into live instruction text on every connect. The server binds
-all interfaces with no auth, so a restore should audit or clear that directory
-as part of enabling it rather than assume it starts empty.
-
-Beyond custom skills, the generic store / REST / webui kit is written for future
-collections that don't exist yet.
-
-## `ppal-context` tool
-
-The tool that reads and writes all three layers — scopes, action verbs, the
-project-context on-disk backup, and small-model mode — is documented in
-[ppal-context-tool.md](ppal-context-tool.md).
-
-## Memory entry format
-
-One fact per file, `~/.producer-pal/memory/<slug>.md`. Frontmatter is flat
-`key: value` (no YAML dependency — `helpers/config-store/frontmatter.ts`) and
-holds exactly two fields:
-
-```markdown
----
-name: hates-quantized-hats
-description: Dislikes rigidly quantized hi-hats; wants swing/humanization
----
-
-Never hard-quantize hi-hats when generating drums for this user; apply swing or
-timing humanization by default.
-```
-
-- `name` is the filename slug; it is authoritative on read (frontmatter is
-  user-editable and may drift, so the store re-derives it from the filename
-  rather than trusting the field).
-- `description` is the one-line recall hook shown in the index — the _only_
-  always-on signal for that memory, so it must convey when the memory is
-  relevant and what it holds, not just a title.
-- Any other frontmatter key is ignored on read. (A file written by an older
-  build with a `type:` line still parses fine — `parseFrontmatter` tolerates
-  unknown keys, and the store simply never looks at `type`.)
-
-Frontmatter here is plain structure, not the ADR-0010 "eject trap": that
-provenance concept exists for _forked built-in defaults_, which can drift from
-an upstream they were copied from. Memory entries are purely additive user
-content with nothing upstream to drift from.
-
-Slugs are derived by lowercasing, collapsing non-alphanumerics to hyphens, and
-trimming edges (`slugifyCollectionName`) — the result can only contain
-`[a-z0-9-]`, which doubles as the path-traversal guard. The derived index
-filename (`MEMORY.md`) is a **reserved slug**: on a case-insensitive filesystem
-(macOS APFS, Windows NTFS) an entry that happened to slugify to `memory` would
-write the same file as the index and silently clobber it, so every
-read/remember/forget checks for the collision. Linux CI cannot catch this — it's
-a durable gotcha to keep in mind when touching the collection store.
-
-## The index (`MEMORY.md`) — derived, not authored
-
-A flat, name-sorted list of one line per entry, description as the recall hook:
-
-```markdown
-# Producer Pal Memory
-
-- `hates-quantized-hats` — Dislikes rigidly quantized hi-hats; wants
-  swing/humanization
-- `prefers-c-minor` — Default key & genre for new tracks
-```
-
-There is no category/type grouping — the index is one flat list, alphabetical by
-name. `renderMemoryIndex` in `helpers/memory/memory-store.ts` is the single
-renderer for this line format, shared by both the on-disk `MEMORY.md` file and
-the injected connect block below, so the two can never drift from each other.
-
-The backend regenerates `MEMORY.md` from the entry files' frontmatter on every
-`write` / `delete` (and self-heals it on a no-name `read`). There is no
-hand-maintained index to fall out of sync — editing a file's frontmatter
-directly and then issuing a no-name `read` (or reconnecting) re-derives it.
+- [loadable-collections.md](loadable-collections.md) — the generic store / REST
+  / webui kit memory is built on, and the hidden custom-skills collection.
+- [memory-entries.md](memory-entries.md) — entry file format, slugs, the derived
+  `MEMORY.md` index, and the `scope:"memory"` actions.
+- [ppal-context-tool.md](ppal-context-tool.md) — the tool that reads and writes
+  all three layers: scopes, action verbs, the project-context on-disk backup,
+  and small-model mode.
+- [clobber-guard.md](clobber-guard.md) — how a `project`/`global` write that
+  would discard the existing document is blocked in code.
 
 ## Injection — index-only
 
@@ -227,20 +112,6 @@ Skipped in small-model mode, where `ppal-context` has no `scope:memory` at all:
 a small model could neither save what it learned nor record a decline, so it
 would re-ask on every single connect forever.
 
-## Write surface
-
-`ppal-context` `scope:"memory"`:
-
-- `read` — with a `name`, returns that entry's body (or a not-found note); with
-  no `name`, returns the whole index.
-- `write` — `name` + `content` + `description` required; creates or overwrites
-  `memory/<name>.md` (same slug ⇒ update) and re-derives the index.
-- `delete` — `name` required; deletes the file (if present) and re-derives the
-  index.
-
-`write`/`delete` responses append the freshly regenerated index so the model's
-view of what's stored never goes stale mid-conversation.
-
 ## Layer discipline
 
 Instructions for the model live in the shipped skills fragments
@@ -285,45 +156,7 @@ the whole thing:
   agree (or asked in the first place), write immediately; don't ask twice, and
   don't fall back to memory as a way of avoiding the question.
 - Carry the existing content forward. A write that doesn't is now refused rather
-  than applied — see the clobber guard below.
-
-**The clobber guard** (`clobberWarning` in `project-context-operations.ts`).
-Instructions are not a mechanism, so the destructive case is also blocked in
-code: a `project`/`global` write whose content keeps NONE of the existing
-document is skipped, and the model gets a `WARNING:` block plus the current
-document back, so it can re-send a merged write. `force: true` overrides it —
-declared in `context.def.ts` in every mode (a guard whose escape hatch is
-invisible to the tier that hits it would deadlock the write) but deliberately
-absent from the skills, so the model meets it in the warning rather than
-reaching for it.
-
-Detection is line containment, both sides normalized (list marker stripped,
-whitespace collapsed, trailing punctuation dropped) so a reformat _of a line_
-survives — a restructuring that splits one line across several still fires,
-since an existing line must land whole inside one incoming line — and only lines
-of ≥ 8 _alphanumeric_ characters may vouch for a write — otherwise a `---` rule
-or a `| --- | --- |` table separator would satisfy it for free.
-
-That floor picks _which_ line vouches; it does not decide whether a document is
-worth guarding. Applied unconditionally it would measure a document by its
-_longest line_, which is the wrong measure — a twelve-line roster of short
-entries (`- 124` / `- A min` / `- kick: t0` / `- drop: b33`, nothing over 7
-alphanumerics) is a lot of accumulated context and would have had zero
-protection, while one sentence of prose is fully covered. Shorthand is a note
-style, not a signal that there is little to lose. So there is one rule: test
-against the strongest lines the document _has_. When none clear the floor, any
-line carrying letters or digits vouches instead — genuinely weaker, since short
-needles match by coincidence (a write that discards that roster but says "in A
-minor" satisfies the `- A min` needle), but far better than leaving those
-documents unprotected. A document with a substantive line is unaffected. The
-guard is inert on an empty document, on a blank write (the documented clear),
-and on a document of pure structure with no letters or digits anywhere.
-
-It applies to the TOOL path only. The webui/REST editors write through their own
-routes, so the user may select-all-and-replace their own document freely; this
-guards an LLM discarding content it never meant to touch, not the user's
-editing. Automation that legitimately replaces a whole document through the tool
-(the e2e round-trip, the eval seed/restore) passes `force`.
+  than applied — see [the clobber guard](clobber-guard.md).
 
 **Managing memory** (the assistant's own layer):
 
@@ -390,5 +223,6 @@ read-only project folder is not enough: while the upgrade-wipe question is still
 open, an edit goes out as `isEdit: false`, Node declines to overwrite a
 differing sidecar and returns `none`, and no write is attempted — so nothing
 warns. Only a load echo carrying content settles that question (see Edit vs.
-load), so save the Set _with_ project context in the box and reload the device
-first, then make the folder read-only.
+load in [ppal-context-tool.md](ppal-context-tool.md)), so save the Set _with_
+project context in the box and reload the device first, then make the folder
+read-only.

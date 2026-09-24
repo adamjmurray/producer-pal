@@ -100,7 +100,7 @@ export function getToolErrorMessage(result: unknown): string {
  * with ENABLE_BUILD_STATS attaches one to every response. It is instrumentation,
  * not something a tool is telling us, so it never counts as a tool warning —
  * otherwise measuring against real Live would fail this whole suite on the first
- * parseToolResult(). See dev/quality/development-tools/README.md.
+ * parseToolResult(). See dev/quality/development-tools/live-api-measurement.md.
  */
 const BUILD_STATS_WARNING = "WARNING: LiveAPI stats:";
 

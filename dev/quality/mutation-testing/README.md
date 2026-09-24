@@ -87,12 +87,12 @@ up by name.
 
 ## Baselines
 
-Per-scope results live in [baselines/](baselines/) — one file
-each, with the score table, the lowest-scoring files, documented equivalents,
-and a "Gaps closed" log. Read only the one you're working on.
+Per-scope results live in [baselines/](baselines/) — one file each, with the
+score table, the lowest-scoring files, documented equivalents, and a "Gaps
+closed" log. Read only the one you're working on.
 
-| Scope                                      | Break             | Baseline                                                  |
-| ------------------------------------------ | ----------------- | --------------------------------------------------------- |
+| Scope                                      | Break             | Baseline                                         |
+| ------------------------------------------ | ----------------- | ------------------------------------------------ |
 | `notation`                                 | 86                | [notation.md](baselines/notation.md)             |
 | `track`                                    | 85                | [track.md](baselines/track.md)                   |
 | `session`                                  | 89                | [session.md](baselines/session.md)               |
