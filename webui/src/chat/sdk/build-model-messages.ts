@@ -39,7 +39,13 @@ export const FAILED_TOOL_RESULT_TEXT =
  */
 export const MAX_REQUEST_IMAGE_BYTES = 15 * 1024 * 1024;
 
-/** Stands in for an older image left out to stay under the budget. */
+/**
+ * Most images one request may carry, whatever their size. Anthropic, OpenAI and
+ * Gemini allow 100+; Mistral's limit of 8 is lower and not covered.
+ */
+export const MAX_REQUEST_IMAGES = 20;
+
+/** Stands in for an image left out to stay under the budget. */
 export const OMITTED_IMAGE_TEXT =
   "[Image left out to keep the request under the size limit]";
 
@@ -123,8 +129,9 @@ export function buildModelMessages(
 type UserContent = UserModelMessage["content"];
 
 /**
- * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES}, newest first. Once
- * one doesn't fit, it and everything older are left out.
+ * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES} and
+ * {@link MAX_REQUEST_IMAGES}, newest message first. Once one doesn't fit, it
+ * and everything after it are left out.
  * @param history - The messages the request will carry
  * @returns The images to send
  */
@@ -134,7 +141,7 @@ function imagesWithinBudget(history: ChatMessage[]): Set<ChatImage> {
 
   for (const msg of history.toReversed()) {
     for (const image of msg.images ?? []) {
-      if (image.data.length > room) {
+      if (image.data.length > room || kept.size === MAX_REQUEST_IMAGES) {
         return kept;
       }
 

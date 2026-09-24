@@ -199,9 +199,11 @@ produced — a 12 MB screenshot attaches fine. Send is disabled while an image i
 still being read, so it can't miss the message it was meant for.
 
 Every turn re-sends the images in its history, so one request carries at most
-`MAX_REQUEST_IMAGE_BYTES` (15 MB of base64, under Gemini's 20 MB request cap).
-The newest images fill it; older ones go out as a short text note instead, so a
-long chat with screenshots keeps working.
+`MAX_REQUEST_IMAGE_BYTES` (15 MB of base64, under Gemini's 20 MB request cap)
+and `MAX_REQUEST_IMAGES` (20). The newest messages' images fill it; every image
+past whichever limit is hit first, even one in the newest message, goes out as a
+short text note instead, so a long chat with screenshots keeps working. Mistral
+allows only 8 images per request, which this doesn't cover.
 
 ### Message Queue
 

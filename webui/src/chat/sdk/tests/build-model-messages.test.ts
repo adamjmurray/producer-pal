@@ -8,6 +8,7 @@ import {
   buildModelMessages,
   endsOnAssistantTurn,
   MAX_REQUEST_IMAGE_BYTES,
+  MAX_REQUEST_IMAGES,
   OMITTED_IMAGE_TEXT,
 } from "#webui/chat/sdk/build-model-messages";
 import { toolStepHistory } from "#webui/chat/sdk/tests/client-test-helpers";
@@ -526,6 +527,26 @@ describe("buildModelMessages image budget", () => {
 
     expect(result).toStrictEqual([
       { role: "user", content: [filePart(a), filePart(b), omitted] },
+    ]);
+  });
+
+  it("stops at the image count limit even when the bytes fit", () => {
+    const small = (data: string) => ({ mediaType: "image/png", data });
+    const [x, y] = [small("x"), small("y")];
+    const newer = Array.from({ length: MAX_REQUEST_IMAGES - 1 }, (_, i) =>
+      small(`n${i}`),
+    );
+
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [x, y] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "", images: newer },
+    ]);
+
+    expect(result.map((message) => message.content)).toStrictEqual([
+      [filePart(x), omitted],
+      "ok",
+      newer.map(filePart),
     ]);
   });
 });
