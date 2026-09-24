@@ -12,7 +12,12 @@ import {
 import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { withScratchSlot } from "#src/tools/shared/clip/scratch-slot.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
+import {
+  arrangementPath,
+  arrangementPositionPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 export interface MidiNote {
   pitch: number;
@@ -131,6 +136,7 @@ export interface SessionSlotCreate extends SlotWork {
  * @param sceneIndex - Target scene index (0-based)
  * @param liveSet - LiveAPI liveSet object
  * @param create - Makes the clip in the empty slot it's given
+ * @param sampleFile - The file an audio create loads, to name if Live refuses
  * @returns The new clip, the scenes created, and what it replaced
  */
 export function createInSessionSlot(
@@ -138,6 +144,7 @@ export function createInSessionSlot(
   sceneIndex: number,
   liveSet: LiveAPI,
   create: (clipSlot: LiveAPI) => void,
+  sampleFile?: string,
 ): SessionSlotCreate {
   const created = createMissingScenes(sceneIndex, liveSet);
   const destPath = slotPath(trackIndex, sceneIndex);
@@ -149,14 +156,14 @@ export function createInSessionSlot(
     create(clipSlot);
 
     return {
-      clip: requireCreatedSessionClip(clipSlot, destPath),
+      clip: requireCreatedSessionClip(clipSlot, destPath, sampleFile),
       created,
       overwrote: null,
     };
   }
 
   const clip = withScratchSlot(trackIndex, sceneIndex, (scratch) =>
-    replaceFromScratch(scratch.slot, clipSlot, destPath, create),
+    replaceFromScratch(scratch.slot, clipSlot, destPath, create, sampleFile),
   );
 
   return { clip, created, overwrote: clipOverwriteNote(destPath) };
@@ -169,6 +176,7 @@ export function createInSessionSlot(
  * @param destSlot - The occupied destination
  * @param destPath - The destination, as a path
  * @param create - Makes the clip in the slot it's given
+ * @param sampleFile - The file an audio create loads, or undefined
  * @returns The new clip at the destination
  * @throws When no clip landed, saying the one there was not touched
  */
@@ -177,10 +185,11 @@ function replaceFromScratch(
   destSlot: LiveAPI,
   destPath: string,
   create: (clipSlot: LiveAPI) => void,
+  sampleFile: string | undefined,
 ): LiveAPI {
   try {
     create(scratchSlot);
-    requireCreatedSessionClip(scratchSlot, destPath);
+    requireCreatedSessionClip(scratchSlot, destPath, sampleFile);
 
     const copy = copyClipToSlot(scratchSlot, destSlot);
 
@@ -205,14 +214,45 @@ function replaceFromScratch(
  * The clip Live just put in the slot.
  * @param clipSlot - The slot the clip was created in
  * @param position - Where the clip was asked for, as a path
+ * @param sampleFile - The file an audio create loaded, or undefined
  * @returns The new clip
  * @throws When Live created no clip
  */
 export function requireCreatedSessionClip(
   clipSlot: LiveAPI,
   position: string,
+  sampleFile?: string,
 ): LiveAPI {
-  return requireCreatedClip(clipSlot.child("clip"), position);
+  return requireCreatedClip(clipSlot.child("clip"), position, sampleFile);
+}
+
+/**
+ * The clip an arrangement create just made.
+ * @param createResult - What `create_midi_clip`/`create_audio_clip` returned
+ * @param trackIndex - The track it was asked for
+ * @param takeLane - The take lane it was asked for, or null for the main lane
+ * @param startBeats - Where it was asked to start, in Ableton beats
+ * @param sampleFile - The file an audio create loaded, or undefined
+ * @returns The new clip
+ * @throws When Live created no clip
+ */
+export function requireCreatedArrangementClip(
+  createResult: string,
+  trackIndex: number,
+  takeLane: number | null,
+  startBeats: number | null,
+  sampleFile?: string,
+): LiveAPI {
+  const lane: ArrangementLane =
+    takeLane == null
+      ? { kind: "track", trackIndex }
+      : { kind: "take-lane", trackIndex, laneIndex: takeLane };
+  const position =
+    startBeats == null
+      ? arrangementPath(trackIndex, takeLane)
+      : arrangementPositionPath(lane, startBeats);
+
+  return requireCreatedClip(LiveAPI.from(createResult), position, sampleFile);
 }
 
 /**
@@ -224,17 +264,24 @@ export function requireCreatedSessionClip(
  * to be a Clip. Left unchecked that ships as a successful create and poisons
  * every follow-up call that uses the id.
  *
- * The message names the position and nothing else. Callers pre-flight the
- * refusals that can be explained (clipCopyBlocker), so anything reaching here
- * is a refusal no guess would get right.
+ * The message names the position, and the file for an audio create — the
+ * usual cause, which Live never states. Nothing else is guessed: callers
+ * pre-flight the refusals that can be explained (clipCopyBlocker).
  * @param clip - What the create call produced
  * @param position - Where the clip was asked for, as a path
+ * @param sampleFile - The file an audio create loaded, or undefined
  * @returns The new clip
  * @throws When Live created no clip
  */
-export function requireCreatedClip(clip: LiveAPI, position: string): LiveAPI {
+export function requireCreatedClip(
+  clip: LiveAPI,
+  position: string,
+  sampleFile?: string,
+): LiveAPI {
   if (!clip.exists() || clip.type !== "Clip") {
-    throw new Error(`Live created no clip at ${position}`);
+    const from = sampleFile == null ? "" : ` from sampleFile "${sampleFile}"`;
+
+    throw new Error(`Live created no clip at ${position}${from}`);
   }
 
   return clip;

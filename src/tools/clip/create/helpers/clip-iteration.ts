@@ -8,7 +8,7 @@ import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-prope
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
   createInSessionSlot,
-  requireCreatedClip,
+  requireCreatedArrangementClip,
   type MidiNote,
   type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
@@ -19,7 +19,6 @@ import {
   snapshotLane,
 } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
@@ -331,9 +330,11 @@ function createArrangementClip(
     arrangementStartBeats,
     clipLength,
   ) as string;
-  const clip = requireCreatedClip(
-    LiveAPI.from(newClipResult),
-    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  const clip = requireCreatedArrangementClip(
+    newClipResult,
+    trackIndex,
+    takeLane?.takeLaneIndex ?? null,
+    arrangementStartBeats,
   );
 
   return { clip, arrangementStartBeats };

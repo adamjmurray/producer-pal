@@ -10,7 +10,11 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildClipResultObject, createInSessionSlot } from "../clip-results.ts";
+import {
+  buildClipResultObject,
+  createInSessionSlot,
+  requireCreatedArrangementClip,
+} from "../clip-results.ts";
 
 describe("clip-results", () => {
   beforeEach(() => {
@@ -189,6 +193,22 @@ describe("clip-results", () => {
       );
       expect(scratch.call).toHaveBeenCalledWith("delete_clip");
       expect(dest.call).not.toHaveBeenCalledWith("delete_clip");
+    });
+  });
+
+  describe("requireCreatedArrangementClip", () => {
+    it("names the take lane and position, and the file", () => {
+      expect(() =>
+        requireCreatedArrangementClip("id 0", 2, 1, 4, "/samples/gone.wav"),
+      ).toThrow(
+        'Live created no clip at t2/l1[2|1] from sampleFile "/samples/gone.wav"',
+      );
+    });
+
+    it("names only the lane when the create had no start", () => {
+      expect(() =>
+        requireCreatedArrangementClip("id 0", 2, null, null),
+      ).toThrow(/^Live created no clip at t2$/);
     });
   });
 });

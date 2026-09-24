@@ -246,7 +246,7 @@ describe("createClip - audio clips", () => {
       await expect(
         createClip({ slot: "0/0", sampleFile: "/typo/kick.wav" }),
       ).rejects.toThrow(
-        "Live created no clip at t0/s0; the clip at t0/s0 was not touched",
+        'Live created no clip at t0/s0 from sampleFile "/typo/kick.wav"; the clip at t0/s0 was not touched',
       );
       expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
       expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
@@ -405,12 +405,14 @@ describe("createClip - audio clips", () => {
         {
           path: "t0[1|1]",
           ok: false,
-          reason: "Live created no clip at t0",
+          reason:
+            'Live created no clip at t0[1|1] from sampleFile "/path/to/invalid.wav"',
         },
         {
           path: "t0[3|1]",
           ok: false,
-          reason: "Live created no clip at t0",
+          reason:
+            'Live created no clip at t0[3|1] from sampleFile "/path/to/invalid.wav"',
         },
       ]);
     });

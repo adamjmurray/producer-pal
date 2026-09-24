@@ -197,8 +197,8 @@ describe("createClip - arrangement view", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t0[1|1]", ok: false, reason: "Live created no clip at t0" },
-      { path: "t0[3|1]", ok: false, reason: "Live created no clip at t0" },
+      { path: "t0[1|1]", ok: false, reason: "Live created no clip at t0[1|1]" },
+      { path: "t0[3|1]", ok: false, reason: "Live created no clip at t0[3|1]" },
     ]);
   });
 

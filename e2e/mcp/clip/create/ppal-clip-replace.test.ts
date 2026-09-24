@@ -186,7 +186,10 @@ describe("a create Live refuses over an existing clip", () => {
       await create({ path: `t${AUDIO_TRACK}/s0`, sampleFile: MISSING_FILE }),
     );
 
-    expect(message).toContain(`the clip at t${AUDIO_TRACK}/s0 was not touched`);
+    expect(message).toContain(
+      `Live created no clip at t${AUDIO_TRACK}/s0 from sampleFile "${MISSING_FILE}"; ` +
+        `the clip at t${AUDIO_TRACK}/s0 was not touched`,
+    );
     expect(await sceneCount()).toBe(scenes);
 
     const after = await readClipFully(ctx.client!, {
@@ -235,8 +238,15 @@ describe("a create Live refuses over an existing clip", () => {
       await create({ path: `t${AUDIO_TRACK}[1|1]`, sampleFile: SAMPLE_FILE }),
     );
 
-    refusal(
-      await create({ path: `t${AUDIO_TRACK}[1|1]`, sampleFile: MISSING_FILE }),
+    expect(
+      refusal(
+        await create({
+          path: `t${AUDIO_TRACK}[1|1]`,
+          sampleFile: MISSING_FILE,
+        }),
+      ),
+    ).toContain(
+      `Live created no clip at t${AUDIO_TRACK}[1|1] from sampleFile "${MISSING_FILE}"`,
     );
 
     expect((await arrangementClipAt(ctx.client!, AUDIO_TRACK, "1|1"))?.id).toBe(
