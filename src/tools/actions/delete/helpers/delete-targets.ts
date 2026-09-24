@@ -11,10 +11,14 @@
 // object named earlier. A target that is there and this call can't remove is
 // skipped, `ok: false`, with the reason a lone target would have thrown.
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  type ObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import {
   namedEarlierReason,
   namedTargets,
@@ -131,17 +135,31 @@ const TAKE_LANE_REFUSAL =
   "is a take lane, which Live's API can't delete; remove it in Live's UI";
 
 /**
- * Whether a path names an existing take lane (`t0/l1`).
- * @param entry - One path, as the caller wrote it
- * @returns True for a take-lane path; false for anything else, including a
- *   path that doesn't parse, which the normal lookup reports
+ * The id of the take lane a path names, when there is one. No delete type
+ * reaches a take lane, so the type's own lookup would call an existing lane the
+ * wrong kind; with its id, the refusal says what it is.
+ * @param requestPath - One path, as the caller wrote it
+ * @returns The lane's id, or null for any other path or a lane that isn't
+ *   there, which the type's lookup reports
  */
-function namesTakeLane(entry: string): boolean {
+function existingTakeLane(requestPath: string): IdLookup | null {
+  let parsed: ObjectPath;
+
   try {
-    return parseObjectPath(entry).kind === "take-lane";
+    parsed = parseObjectPath(requestPath);
   } catch {
-    return false;
+    return null;
   }
+
+  if (parsed.kind !== "take-lane") {
+    return null;
+  }
+
+  const lane = LiveAPI.from(
+    livePath.track(parsed.trackIndex).takeLane(parsed.laneIndex),
+  );
+
+  return lane.exists() ? { id: lane.id } : null;
 }
 
 /**
@@ -159,21 +177,11 @@ function resolveTarget(
   const requestPath = named.param === "path" ? named.value : undefined;
   const address = requestAddress(requestPath);
 
-  if (requestPath != null && namesTakeLane(requestPath)) {
-    return {
-      entry: {
-        ...address,
-        ok: false,
-        reason: `${requestPath} ${TAKE_LANE_REFUSAL}`,
-        requestIndex,
-      },
-    };
-  }
-
   const lookup: IdLookup =
     requestPath == null
       ? { id: named.value }
-      : resolvePathForType(type, requestPath);
+      : (existingTakeLane(requestPath) ??
+        resolvePathForType(type, requestPath));
 
   if (lookup.id == null) {
     return {
