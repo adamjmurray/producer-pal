@@ -150,9 +150,20 @@ async function loadOnto(
   deviceName: string,
 ): Promise<LiveAPI> {
   const before = new Set(track.getChildIds("devices"));
+  // The remote script finds the track by this name, not the index: tracks can
+  // shift before it runs, and a late load must not land on a user's track.
+  const trackName = `Producer Pal temp ${Math.random().toString(36).slice(2)}`;
+
+  track.set("name", trackName);
+
   const response = await requestNode<BrowserItemLoad>(
     REMOTE_SCRIPT_ROUTES.load,
-    { type: item.type, path: item.path, trackIndex: track.trackIndex },
+    {
+      type: item.type,
+      path: item.path,
+      trackIndex: track.trackIndex,
+      trackName,
+    },
     REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   );
   const failure = !response.success

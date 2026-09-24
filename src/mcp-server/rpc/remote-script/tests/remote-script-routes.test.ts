@@ -18,6 +18,7 @@ const LOAD_ARGS = {
   type: "plugin",
   path: "VST3/FabFilter/Pro-Q 4",
   trackIndex: 3,
+  trackName: "Producer Pal temp abc",
 };
 
 let fake: FakeRemoteScript | undefined;
@@ -75,6 +76,7 @@ describe("remoteScript.load", () => {
           type: "plugin",
           path: "VST3/FabFilter/Pro-Q 4",
           track_index: 3,
+          track_name: "Producer Pal temp abc",
         },
       },
     ]);
@@ -104,5 +106,14 @@ describe("remoteScript.load", () => {
         trackIndex: "3",
       }),
     ).toStrictEqual({ success: false, error: "trackIndex must be a number" });
+  });
+
+  it("needs a track name", async () => {
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
+        ...LOAD_ARGS,
+        trackName: undefined,
+      }),
+    ).toStrictEqual({ success: false, error: "trackName must be a string" });
   });
 });

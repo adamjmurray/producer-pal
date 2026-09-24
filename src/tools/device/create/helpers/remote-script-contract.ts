@@ -12,9 +12,9 @@ export const REMOTE_SCRIPT_ROUTES = {
   load: "remoteScript.load",
 } as const;
 
-// Each wait must outlast the one inside it. The remote script answers 504 after
-// 30s but still runs the job later, so a load V8 stopped waiting for could land
-// after its temp track is gone.
+// Each wait must outlast the one inside it. V8 may still stop waiting and delete
+// its temp track while a load is queued in Live, so a load finds that track by
+// name: a late one is refused, not put on another track.
 
 /** Node's wait for one HTTP reply. Longer than the remote script's own 30s. */
 export const REMOTE_SCRIPT_HTTP_TIMEOUT_MS = 35_000;
