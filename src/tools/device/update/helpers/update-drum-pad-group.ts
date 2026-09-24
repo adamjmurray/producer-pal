@@ -77,8 +77,8 @@ export interface DrumPadUpdateResult extends NonDeviceWrites {
 
 /**
  * Update a whole drum pad: the DrumPad object and every chain on it. Pad-wide
- * properties broadcast to the chains; the per-layer ones are skipped with a
- * warning once a pad is stacked. A single-chain pad takes everything.
+ * properties broadcast to the chains; the per-layer ones are skipped, on the
+ * pad's entry, once a pad is stacked. A single-chain pad takes everything.
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options

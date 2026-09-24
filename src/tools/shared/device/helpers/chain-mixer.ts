@@ -242,9 +242,9 @@ export function sourceChain(device: LiveAPI): LiveAPI | null {
  * mixer still at defaults. That is what an auto-created pad chain looks like,
  * so the trim follows the sound instead of stranding on the chain it left.
  *
- * Anything else keeps its own fader and warns instead: a chain already holding
- * devices would have them re-levelled by a write nobody asked for, and a
- * non-default trim is someone's deliberate setting. So does a destination in
+ * Anything else keeps its own fader and says so instead: a chain already
+ * holding devices would have them re-levelled by a write nobody asked for, and
+ * a non-default trim is someone's deliberate setting. So does a destination in
  * another rack — sends match by return-chain name, which only lines up within
  * one rack, so a cross-rack carry would drop them and leave a partial trim.
  *
@@ -344,7 +344,7 @@ export function carryChainMixer(
  * @param chain - The chain being left behind
  * @param destination - Container the device is going into
  * @param isCopy - True when the device is being copied, not moved
- * @returns Text to append to the warning, or "" when nothing applies
+ * @returns Text to append to the note, or "" when nothing applies
  */
 function padHint(
   chain: LiveAPI,
@@ -374,9 +374,9 @@ function rackPath(chain: LiveAPI): string {
 }
 
 /**
- * Summarize a chain mixer for a warning. Sends are counted, not listed: a
- * factory kit routes most pads to several returns, and the full list buries the
- * warning in text the reader can get from read-device.
+ * Summarize a chain mixer for the left-behind note. Sends are counted, not
+ * listed: a factory kit routes most pads to several returns, and the full list
+ * buries the note in text the reader can get from read-device.
  * @param mixer - Result of readChainMixer
  * @returns Compact description, e.g. "gainDb -15, 5 sends"
  */
