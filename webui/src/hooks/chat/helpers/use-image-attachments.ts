@@ -43,7 +43,8 @@ export interface ImageAttachments {
  * in the CAPTURE phase and stop propagation, so the CodeMirror editor
  * underneath never sees the file and can't insert it; a drag or paste carrying
  * no file passes straight through as ordinary text editing. A paste with both
- * images and text attaches the images and still lets the editor paste the text.
+ * images and text lets the editor paste the text, and attaches the images unless
+ * the HTML shows they're a picture of that text (an Office copy).
  * @returns The attachments and their handlers
  */
 export function useImageAttachments(): ImageAttachments {
@@ -111,14 +112,24 @@ export function useImageAttachments(): ImageAttachments {
         return;
       }
 
-      // Excel, Word and OneNote put a picture next to the copied text: attach
-      // it and let the editor paste the text, which is all CodeMirror inserts.
-      if (event.clipboardData?.getData("text/plain").trim() === "") {
+      const text = event.clipboardData?.getData("text/plain") ?? "";
+
+      // Images alone: attach them, and keep the editor from inserting the file.
+      if (text.trim() === "") {
         event.preventDefault();
         event.stopPropagation();
+        addFiles(files);
+
+        return;
       }
 
-      addFiles(files);
+      // The editor pastes the text (all CodeMirror inserts). Excel, Word and
+      // OneNote add a picture of that text, with HTML holding the text itself:
+      // skip the picture. HTML that is only an image (a browser's Copy Image)
+      // still attaches it.
+      if (!htmlHasText(event.clipboardData?.getData("text/html") ?? "")) {
+        addFiles(files);
+      }
     },
     [addFiles],
   );
@@ -182,6 +193,16 @@ export function useImageAttachments(): ImageAttachments {
       onDropCapture,
     },
   };
+}
+
+/**
+ * Whether clipboard HTML shows any text, not just tags such as a lone `<img>`.
+ * A regex, not a parser: Office HTML can run to megabytes.
+ * @param html - The clipboard's `text/html`
+ * @returns True if some text node isn't blank
+ */
+function htmlHasText(html: string): boolean {
+  return /(?:^|>)\s*[^\s<]/.test(html);
 }
 
 /**

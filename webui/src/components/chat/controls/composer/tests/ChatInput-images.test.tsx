@@ -116,7 +116,7 @@ describe("ChatInput image attachments", () => {
     expect(await screen.findByAltText("Attachment 1")).toBeDefined();
   });
 
-  it("pastes both the text and the picture from an Office app", async () => {
+  it("pastes both the text and the picture when there is no HTML", async () => {
     render(<ChatInput {...defaultProps} />);
 
     const reachedEditor = vi.fn();
