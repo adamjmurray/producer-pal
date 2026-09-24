@@ -175,7 +175,7 @@ export function resolveRequestedClips(
   const clips: LiveAPI[] = [];
   const destinationById = new Map<string, ClipPath>();
   const requestedIndexById = new Map<string, number>();
-  const claimedBy = new Map<string, string>();
+  const claims: Array<[string, ClipPath]> = [];
 
   for (const [index, id] of targets.ids.entries()) {
     // A path that named no clip already holds its slot with the reason.
@@ -207,12 +207,14 @@ export function resolveRequestedClips(
     requestedIndexById.set(clip.id, index);
     noteRefusedDestination(reasons, clip.id, moves.refusals[index]);
 
-    claimDestination(clip.id, moves.destinations[index], {
-      destinationById,
-      claimedBy,
-      reasons,
-    });
+    const destination = moves.destinations[index];
+
+    if (destination != null) {
+      claims.push([clip.id, destination]);
+    }
   }
+
+  assignDestinations(claims, destinationById, reasons);
 
   dropDestinationsHoldingBatchClips(
     destinationById,
@@ -304,51 +306,55 @@ function namesNoLane(entries: Array<DestinationEntry | null>): boolean {
 }
 
 /**
- * Gives a clip the destination named at its position, unless an earlier clip in
- * the batch is already moving there. Two clips sent to one slot means the second
- * overwrites the first, and the response then claims both are in it.
+ * Gives each clip the destination named at its position. When several clips
+ * name one slot, the last wins and the others stay put: moving both would have
+ * the later one overwrite the earlier, and the response claim both are there.
  *
  * Only slots are exclusive. An arrangement lane holds as many clips as fit on
  * it, so several clips can share one — and when they do land on top of each
  * other, the "moved to the same position" warning already says so.
- * @param clipId - The clip being given a destination
- * @param destination - Where the call named it to go, if anywhere
- * @param batch - Destinations by clip id, the clip claiming each slot, and what the clips have to say
+ * @param claims - Each clip and the destination named for it, in call order
+ * @param destinationById - Destinations by clip id, added to
+ * @param reasons - What each clip has to say beyond its result, added to
  */
-function claimDestination(
-  clipId: string,
-  destination: ClipPath | null | undefined,
-  batch: {
-    destinationById: Map<string, ClipPath>;
-    claimedBy: Map<string, string>;
-    reasons: ClipReasons;
-  },
+function assignDestinations(
+  claims: Array<[string, ClipPath]>,
+  destinationById: Map<string, ClipPath>,
+  reasons: ClipReasons,
 ): void {
-  if (destination == null) {
-    return;
+  const lastClaimant = new Map<string, string>();
+
+  for (const [clipId, destination] of claims) {
+    if (destination.kind === "slot") {
+      lastClaimant.set(destinationSlot(destination), clipId);
+    }
   }
 
-  if (destination.kind !== "slot") {
-    batch.destinationById.set(clipId, destination);
+  for (const [clipId, destination] of claims) {
+    const slot =
+      destination.kind === "slot" ? destinationSlot(destination) : null;
+    const winner = slot == null ? clipId : (lastClaimant.get(slot) as string);
 
-    return;
+    if (winner === clipId) {
+      destinationById.set(clipId, destination);
+    } else {
+      refuseClipWork(
+        reasons,
+        clipId,
+        `not moved: clip ${targetLabelForId(winner)} moves to ${slot} later in this call`,
+      );
+    }
   }
+}
 
-  const slot = slotPath(destination.trackIndex, destination.sceneIndex);
-  const claimant = batch.claimedBy.get(slot);
-
-  if (claimant != null) {
-    refuseClipWork(
-      batch.reasons,
-      clipId,
-      `not moved: clip ${targetLabelForId(claimant)} is already moving to ${slot}; name one slot per clip`,
-    );
-
-    return;
-  }
-
-  batch.claimedBy.set(slot, clipId);
-  batch.destinationById.set(clipId, destination);
+/**
+ * @param destination - A slot destination
+ * @returns The slot, as a path
+ */
+function destinationSlot(
+  destination: Extract<ClipPath, { kind: "slot" }>,
+): string {
+  return slotPath(destination.trackIndex, destination.sceneIndex);
 }
 
 /**

@@ -497,10 +497,10 @@ describe("createClip - session view", () => {
     ]);
   });
 
-  it("creates a slot named twice once, skipping the repeat", async () => {
+  it("creates a slot named twice once, as the last naming asks", async () => {
     setupLiveSet();
     setupTrack(0);
-    const { clipSlot } = setupSessionClip(0, 0, {
+    const { clipSlot, clip } = setupSessionClip(0, 0, {
       clipId: "clip_0_0",
       clipProperties: { length: 4 },
     });
@@ -508,14 +508,15 @@ describe("createClip - session view", () => {
     const result = await createClip({ path: "t0/s0,t0/s0", name: "A,B" });
 
     expect(clipSlot.call).toHaveBeenCalledTimes(1);
+    expect(clip.set).toHaveBeenCalledWith("name", "B");
+    expect(clip.set).not.toHaveBeenCalledWith("name", "A");
     expect(result).toStrictEqual([
-      { id: "clip_0_0", path: "t0/s0" },
       {
         ok: false,
         path: "t0/s0",
-        reason:
-          "not created: t0/s0 is named earlier in this call; name each slot once",
+        reason: "not created: t0/s0 is named again later in this call",
       },
+      { id: "clip_0_0", path: "t0/s0" },
     ]);
   });
 

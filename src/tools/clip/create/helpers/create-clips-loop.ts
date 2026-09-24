@@ -99,7 +99,7 @@ export async function createClips(
   // clip's transform inputs comes from its own plan.
   const scaleMask =
     params.transformString != null ? readLiveSetScaleMask() : undefined;
-  const claimedSlots = new Set<string>();
+  const lastNaming = lastNamingBySlot(params);
 
   for (const [index, ref] of order.entries()) {
     if (isDeadlineExceeded(deadline ?? null)) {
@@ -108,7 +108,7 @@ export async function createClips(
     }
 
     entries.push(
-      repeatedSlotSkip(params, ref, claimedSlots) ??
+      repeatedSlotSkip(params, ref, index, lastNaming) ??
         (await createClipAtIndex(params, scaleMask, ref, index)),
     );
   }
@@ -191,39 +191,66 @@ function refuseUnreached(
 }
 
 /**
- * Skips a clip slot an earlier destination in the call already named. Creating
- * there again would replace that clip, and its entry would report a clip that
- * no longer exists.
+ * Skips a clip slot a later destination in the call names again; the last one
+ * wins. Creating at both would replace this clip, and its entry would report a
+ * clip that no longer exists.
  * @param params - All parameters for clip creation
  * @param ref - Which destination it is
- * @param claimedSlots - Slots taken so far, added to
- * @returns The skip entry, or null when the slot is free to take
+ * @param index - Its place in the call
+ * @param lastNaming - The last place in the call that names each slot
+ * @returns The skip entry, or null when no later destination names the slot
  */
 function repeatedSlotSkip(
   params: CreateClipsParams,
   ref: DestinationRef,
-  claimedSlots: Set<string>,
+  index: number,
+  lastNaming: Map<string, number>,
 ): TargetSkip | null {
   if (ref.view !== "session") {
     return null;
   }
 
+  const slot = destinationSlot(params, ref);
+
+  return lastNaming.get(slot) === index
+    ? null
+    : destinationSkip(
+        params,
+        ref,
+        `not created: ${slot} is named again later in this call`,
+      );
+}
+
+/**
+ * @param params - All parameters for clip creation
+ * @returns The last place in the call that names each clip slot
+ */
+function lastNamingBySlot(params: CreateClipsParams): Map<string, number> {
+  const lastNaming = new Map<string, number>();
+
+  for (const [index, ref] of params.order.entries()) {
+    if (ref.view === "session") {
+      lastNaming.set(destinationSlot(params, ref), index);
+    }
+  }
+
+  return lastNaming;
+}
+
+/**
+ * @param params - All parameters for clip creation
+ * @param ref - A session destination
+ * @returns Its clip slot, as a path
+ */
+function destinationSlot(
+  params: CreateClipsParams,
+  ref: DestinationRef,
+): string {
   const { trackIndex, sceneIndex } = params.clipSlots[
     ref.index
   ] as ClipSlotPosition;
-  const slot = slotPath(trackIndex, sceneIndex);
 
-  if (!claimedSlots.has(slot)) {
-    claimedSlots.add(slot);
-
-    return null;
-  }
-
-  return destinationSkip(
-    params,
-    ref,
-    `not created: ${slot} is named earlier in this call; name each slot once`,
-  );
+  return slotPath(trackIndex, sceneIndex);
 }
 
 /**

@@ -416,20 +416,19 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
   });
 
   // Both clips landing in one slot means the second overwrites the first, and
-  // the response claims two clips are in it.
-  it("moves only the first clip when toPath names one slot twice", async () => {
+  // the response claims two clips are in it. The last one named wins.
+  it("moves only the last clip when toPath names one slot twice", async () => {
     const { slots, result } = await moveBothClips("t1/s2,t1/s2");
 
-    expect(result[0]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
-    // The second clip stayed put, so its path is still its own slot.
-    expect(result[1]).toStrictEqual({
-      path: "t1/s1",
+    // The first clip stayed put, so its path is still its own slot.
+    expect(result[0]).toStrictEqual({
+      path: "t0/s0",
       ok: false,
       reason:
-        "not moved: clip t0/s0 (id 123) is already moving to t1/s2; " +
-        "name one slot per clip",
+        "not moved: clip t1/s1 (id 456) moves to t1/s2 later in this call",
     });
-    expect(slots.get("t1/s1")?.call).not.toHaveBeenCalledWith(
+    expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
+    expect(slots.get("t0/s0")?.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to",
       expect.anything(),
     );

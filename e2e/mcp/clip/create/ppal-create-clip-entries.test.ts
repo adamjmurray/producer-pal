@@ -148,9 +148,9 @@ describe("ppal-create-clip result entries", () => {
     expect(await readClipName(entries[1]!.id!)).toBe("Made");
   });
 
-  // A second create there would replace the first, whose entry would then name
-  // a clip that no longer exists.
-  it("skips a slot the call already named", async () => {
+  // Creating at both would replace the first clip, whose entry would then name
+  // a clip that no longer exists. The last naming wins.
+  it("creates a slot named twice once, as the last naming asks", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -160,16 +160,16 @@ describe("ppal-create-clip result entries", () => {
     });
     const entries = parseBatchResult<ClipEntry>(result, 2);
 
-    expect(entries[0]?.ok).toBeUndefined();
-    expect(entries[1]).toStrictEqual({
+    expect(entries[0]).toStrictEqual({
       ok: false,
       path: `t${EMPTY_MIDI_TRACK}/s0`,
-      reason: `not created: t${EMPTY_MIDI_TRACK}/s0 is named earlier in this call; name each slot once`,
+      reason: `not created: t${EMPTY_MIDI_TRACK}/s0 is named again later in this call`,
     });
+    expect(entries[1]?.ok).toBeUndefined();
 
     await sleep(100);
 
-    expect(await readClipName(entries[0]!.id!)).toBe("First");
+    expect(await readClipName(entries[1]!.id!)).toBe("Second");
   });
 
   // Writing into an occupied arrangement range is normal and goes ahead, but

@@ -32,8 +32,10 @@ should follow from them unambiguously, without being spelled out here.
    comma splits a value only when the call names more than one target; with one
    target the whole value is literal, which is how a name containing a comma is
    set. A call that named N targets returns N entries in the order they were
-   named. A single target returns its entry unwrapped: an array where they asked
-   for one object confuses small models.
+   named. When entries write the same place or value, the last wins: each
+   earlier one is skipped unwritten, and its entry says a later one replaced it.
+   A single target returns its entry unwrapped: an array where they asked for
+   one object confuses small models.
 
 3. Relocation: Any object that can exist at different paths always supports
    moving and duplicating to a different location. Where the API lacks a move,
