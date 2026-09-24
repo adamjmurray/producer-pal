@@ -31,9 +31,10 @@
 // Status/progress → stderr.
 
 import { execFile } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { get, request } from "node:http";
 import { basename, extname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -422,12 +423,17 @@ async function loadProducerPal() {
  * @param {{error?: string, candidates?: string[]}} body - The reply.
  * @returns {string} What went wrong and what to do.
  */
-function loadFailure(status, body) {
+export function loadFailure(status, body) {
   if (status === 404) {
     return "Live's browser has no Producer_Pal device. Put Producer_Pal.amxd where the browser's Max for Live section lists it, e.g. the User Library.";
   }
-  if (status === 409) {
-    return `Live's browser has more than one Producer_Pal device: ${(body.candidates ?? []).join(", ")}. Keep only one device named Producer_Pal there.`;
+  if (status === 409 && body.candidates != null) {
+    return `Live's browser has more than one Producer_Pal device: ${body.candidates.join(", ")}. Keep only one device named Producer_Pal there.`;
+  }
+  // A 409 without candidates: the Set already has Producer Pal, but it didn't
+  // answer while we waited.
+  if (status === 409 && body.error != null) {
+    return `${body.error}. It didn't answer on port ${PPAL_PORT}: check that device, or set PPAL_PORT if it uses another port.`;
   }
   const reply = status ? `answered ${status}` : "didn't reply"; // 0: no reply
   return `the remote script ${reply}: ${body.error ?? "(no error text)"}`;
@@ -787,9 +793,24 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-try {
-  await main();
-} catch (err) {
-  process.stderr.write(`Error: ${err.message ?? err}\n`);
-  process.exit(1);
+if (isEntryPoint()) {
+  try {
+    await main();
+  } catch (err) {
+    process.stderr.write(`Error: ${err.message ?? err}\n`);
+    process.exit(1);
+  }
+}
+
+// Compare real paths: argv[1] may go through a symlink, and a file URL is
+// percent-encoded (and /C:/... on Windows).
+function isEntryPoint() {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
 }

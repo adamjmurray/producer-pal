@@ -106,8 +106,8 @@ Exit code 1, with `Error: …` on stderr.
   launch, retry with a longer `--timeout`.
 - **"The Set is open, but …"** — the Set loaded; adding Producer Pal failed.
   Relay the fix in the error: install and select the remote script, keep exactly
-  one `Producer_Pal` device in Live's browser, or (if the device was added but
-  never answered) check the track the error names.
+  one `Producer_Pal` device in Live's browser, or (if the Set already has the
+  device, or it was added but never answered) check the track the error names.
 
 ## After opening
 
