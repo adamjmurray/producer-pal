@@ -10,13 +10,15 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   children,
   createTrackResult,
-  createTrackResultArray,
   expectDeleteDeviceCalls,
   registerBareTrackDuplication,
   registerDuplicatedTrackSlots,
   registerMockObject,
+  registerTrackCopySet,
   setupProducerPalDeviceMocks,
+  setupRouteToSourceMock,
   setupRoutingMocks,
+  type TrackCopySet,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -32,15 +34,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate multiple tracks with same name", async () => {
-    const { liveSet, newTrack: track1 } = registerBareTrackDuplication();
-    const track2 = registerMockObject("live_set/tracks/2", {
-      path: livePath.track(2),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
-    const track3 = registerMockObject("live_set/tracks/3", {
-      path: livePath.track(3),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
+    const { liveSet, tracks } = registerTrackCopySet(["track1"]);
 
     const result = await duplicate({
       type: "track",
@@ -49,15 +43,21 @@ describe("duplicate - track duplication", () => {
       name: "Custom Track",
     });
 
-    expect(result).toStrictEqual(createTrackResultArray(1, 3));
+    expect(result).toStrictEqual([
+      { id: "copy-3", path: "t1", clips: [] },
+      { id: "copy-2", path: "t2", clips: [] },
+      { id: "copy-1", path: "t3", clips: [] },
+    ]);
+    // Every copy is made from the source, never from the copy before it.
+    expect(liveSet.call).toHaveBeenCalledTimes(3);
 
-    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
-    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 1);
-    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 2);
+    for (const n of [1, 2, 3]) {
+      expect(liveSet.call).toHaveBeenNthCalledWith(n, "duplicate_track", 0);
+    }
 
-    expect(track1.set).toHaveBeenCalledWith("name", "Custom Track");
-    expect(track2.set).toHaveBeenCalledWith("name", "Custom Track");
-    expect(track3.set).toHaveBeenCalledWith("name", "Custom Track");
+    for (const id of ["copy-1", "copy-2", "copy-3"]) {
+      expect(tracks.get(id)?.set).toHaveBeenCalledWith("name", "Custom Track");
+    }
   });
 
   it("should duplicate a track without clips when withoutClips is true", async () => {
@@ -470,5 +470,167 @@ describe("duplicate - track duplication", () => {
     expect(capturedWarnings()).toContain(
       "Ran out of time after duplicating 0 of 3 tracks. Re-run for the rest.",
     );
+  });
+});
+
+/**
+ * t0 is a group holding t1; t2 is a plain track after it.
+ * @returns The Live Set and its tracks
+ */
+function groupWithOneMember(): TrackCopySet {
+  return registerTrackCopySet(["group", "member", "other"], {
+    index: 0,
+    members: 1,
+  });
+}
+
+describe("duplicate - group track", () => {
+  it("copies the group itself every time, never a member", async () => {
+    const { liveSet, tracks } = groupWithOneMember();
+
+    const result = await duplicate({
+      type: "track",
+      id: "group",
+      count: 2,
+      name: "A,B",
+      withoutClips: true,
+    });
+
+    // Live puts each copy after the group's members, ahead of earlier copies.
+    expect(result).toStrictEqual([
+      { id: "copy-2", path: "t2", clips: [] },
+      { id: "copy-1", path: "t4", clips: [] },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "duplicate_track", 0);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "duplicate_track", 0);
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "A");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "B");
+    expect(tracks.get("member")?.set).not.toHaveBeenCalled();
+    expect(tracks.get("member")?.get).not.toHaveBeenCalledWith("clip_slots");
+  });
+
+  it("refuses when Live makes no new track", async () => {
+    const { liveSet } = groupWithOneMember();
+
+    liveSet.methods.duplicate_track = () => null;
+
+    await expect(duplicate({ type: "track", id: "group" })).rejects.toThrow(
+      "Live made no copy of t0",
+    );
+  });
+});
+
+describe("duplicate - several copies of one track", () => {
+  it("routes the copies only once all of them exist", async () => {
+    const { liveSet } = registerTrackCopySet(["track1"]);
+    const routing = setupRouteToSourceMock({ inputRoutingName: "Audio In" });
+    const source = registerMockObject("track1", {
+      path: livePath.track(0),
+      properties: {
+        ...routing[String(livePath.track(0))],
+        devices: [],
+        clip_slots: [],
+        arrangement_clips: [],
+      },
+    });
+
+    await duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      routeToSource: true,
+    });
+
+    // Routing takes the source's input away, and a copy made after that would
+    // come out with no input.
+    const lastCopy = Math.max(...liveSet.call.mock.invocationCallOrder);
+    const firstSourceWrite = Math.min(...source.set.mock.invocationCallOrder);
+
+    expect(source.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      expect.stringContaining("no_input_id"),
+    );
+    expect(firstSourceWrite).toBeGreaterThan(lastCopy);
+  });
+
+  it("gives the first labels to the copies made before the deadline", async () => {
+    const context = { deadline: Date.now() + 60_000 };
+    const { liveSet, tracks } = registerTrackCopySet(["track1"]);
+    const copyTrack = liveSet.methods.duplicate_track!;
+
+    liveSet.methods.duplicate_track = (...args: unknown[]) => {
+      context.deadline = Date.now() - 1;
+
+      return copyTrack(...args);
+    };
+
+    const result = await duplicate(
+      { type: "track", id: "track1", count: 2, name: "A,B" },
+      context,
+    );
+
+    expect(result).toStrictEqual({ id: "copy-1", path: "t1", clips: [] });
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "A");
+    expect(capturedWarnings()).toContain(
+      "Ran out of time after duplicating 1 of 2 tracks. Re-run for the rest.",
+    );
+  });
+
+  it("reports each copy's clips on the track the copy ended up on", async () => {
+    const { liveSet } = registerTrackCopySet(["track1"]);
+    const copyTrack = liveSet.methods.duplicate_track!;
+    let made = 0;
+
+    // Give each copy a clip in its first slot as it lands at t1.
+    liveSet.methods.duplicate_track = (...args: unknown[]) => {
+      copyTrack(...args);
+      made++;
+
+      const slot = livePath.track(1).clipSlot(0);
+
+      registerMockObject(`copy-${made}`, {
+        path: livePath.track(1),
+        properties: {
+          devices: [],
+          clip_slots: children(`slot-${made}`),
+          arrangement_clips: [],
+        },
+      });
+      registerMockObject(`slot-${made}`, {
+        path: slot,
+        properties: { has_clip: 1 },
+      });
+      registerMockObject(`clip-${made}`, {
+        path: slot.clip(),
+        properties: { is_arrangement_clip: 0 },
+      });
+
+      return null;
+    };
+
+    const result = await duplicate({ type: "track", id: "track1", count: 2 });
+
+    expect(result).toStrictEqual([
+      { id: "copy-2", path: "t1", clips: [{ id: "clip-2", path: "t1/s0" }] },
+      { id: "copy-1", path: "t2", clips: [{ id: "clip-1", path: "t2/s0" }] },
+    ]);
+  });
+
+  it("still names the copies made before one fails", async () => {
+    const { liveSet, tracks } = registerTrackCopySet(["track1"]);
+    const copyTrack = liveSet.methods.duplicate_track!;
+    let calls = 0;
+
+    liveSet.methods.duplicate_track = (...args: unknown[]) => {
+      calls++;
+
+      return calls === 1 ? copyTrack(...args) : null;
+    };
+
+    await expect(
+      duplicate({ type: "track", id: "track1", count: 2, name: "A,B" }),
+    ).rejects.toThrow("Live made no copy of t0");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "A");
   });
 });

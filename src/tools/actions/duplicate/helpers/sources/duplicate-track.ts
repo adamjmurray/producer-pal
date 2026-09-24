@@ -21,6 +21,15 @@ import {
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
 import { configureRouting } from "../duplicate-routing.ts";
+import { landTrackCopy } from "./landed-track-copy.ts";
+
+/** One track copy's entry in the result. */
+export interface TrackCopyEntry {
+  id: string;
+  path: string;
+  clips: MinimalClipInfo[];
+  reason?: string;
+}
 
 /**
  * Remove the Producer Pal device from a duplicated track if it was the host track
@@ -168,69 +177,168 @@ function collectArrangementClips(
   }
 }
 
+/** What every copy of a track leaves out, and whether it feeds the source. */
+export interface TrackCopyOptions {
+  withoutClips?: boolean;
+  withoutDevices?: boolean;
+  routeToSource?: boolean;
+}
+
+/** The name and color one copy gets. */
+export interface TrackCopyLabel {
+  name?: string;
+  color?: string;
+}
+
+/** A copy that exists but isn't labeled or routed yet. */
+interface MadeTrackCopy {
+  track: LiveAPI;
+  clips: MinimalClipInfo[];
+  notes: TargetNotes;
+}
+
 /**
- * Duplicate a track
- * @param trackIndex - Track index to duplicate
- * @param name - Optional name for the duplicated track
- * @param color - Optional color for the duplicated track
- * @param withoutClips - Whether to exclude clips when duplicating
- * @param withoutDevices - Whether to exclude devices when duplicating
- * @param routeToSource - Whether to route the new track to the source track
- * @param sourceTrackIndex - Source track index for routing
- * @returns Track info object with id, path, clips array, and anything the copy
- *   has to say beyond them
+ * Make up to `count` copies of a track, every one from the source itself.
+ * Labels and routing go on only once all copies exist: routing changes the
+ * source's input, and a copy made after that would inherit it.
+ * @param trackIndex - The source track
+ * @param count - How many copies to make
+ * @param labelFor - Name and color for the nth copy, in Set order
+ * @param options - What every copy leaves out, and whether it feeds the source
+ * @param shouldStop - Asked before each copy with how many exist; true stops
+ * @returns One entry per copy made, in Set order
  */
-export function duplicateTrack(
+export function duplicateTrackCopies(
   trackIndex: number,
-  name?: string,
-  color?: string,
-  withoutClips?: boolean,
-  withoutDevices?: boolean,
-  routeToSource?: boolean,
-  sourceTrackIndex?: number,
-): { id: string; path: string; clips: MinimalClipInfo[]; reason?: string } {
+  count: number,
+  labelFor: (index: number) => TrackCopyLabel,
+  options: TrackCopyOptions,
+  shouldStop: (made: number) => boolean = () => false,
+): TrackCopyEntry[] {
+  const made: MadeTrackCopy[] = [];
+  let entries: TrackCopyEntry[];
+
+  try {
+    for (let i = 0; i < count; i++) {
+      if (shouldStop(made.length)) {
+        break;
+      }
+
+      made.push(makeTrackCopy(trackIndex, options));
+    }
+  } finally {
+    // Runs on a failed copy too, so the ones made before it still get finished.
+    // Each copy lands ahead of the ones made before it, so the last one made
+    // comes first in the Set, and gets the first label.
+    entries = made
+      .toReversed()
+      .map((copy, index) =>
+        finishTrackCopy(
+          copy,
+          trackIndex,
+          labelFor(index),
+          options.routeToSource,
+        ),
+      );
+  }
+
+  settleTrackCopyPaths(entries);
+
+  return entries;
+}
+
+/**
+ * Duplicate the source and strip the copy down to what the call keeps. Nothing
+ * here touches the source, so the next copy starts from the same track.
+ * @param trackIndex - The source track
+ * @param options - What the copy leaves out
+ * @returns The copy, not yet labeled or routed
+ */
+function makeTrackCopy(
+  trackIndex: number,
+  options: TrackCopyOptions,
+): MadeTrackCopy {
   const notes = newTargetNotes();
-  const liveSet = LiveAPI.from(livePath.liveSet);
+  const track = LiveAPI.from(livePath.track(landTrackCopy(trackIndex).index));
 
-  liveSet.call("duplicate_track", trackIndex);
+  removeHostTrackDevice(trackIndex, options.withoutDevices, track, notes);
 
-  const newTrackIndex = trackIndex + 1;
-  const newTrack = LiveAPI.from(livePath.track(newTrackIndex));
-
-  if (name != null) {
-    newTrack.set("name", name);
+  if (options.withoutDevices === true) {
+    deleteAllDevices(track);
   }
 
-  if (color != null) {
-    newTrack.setColor(color);
+  const clips = processClipsForDuplication(track, options.withoutClips);
+
+  return { track, clips, notes };
+}
+
+/**
+ * Name, color and route one copy, and build its entry.
+ * @param copy - The copy, made along with all the others
+ * @param sourceTrackIndex - The source track, for routing
+ * @param label - The copy's name and color
+ * @param routeToSource - Whether the copy feeds the source
+ * @returns The copy's entry
+ */
+function finishTrackCopy(
+  copy: MadeTrackCopy,
+  sourceTrackIndex: number,
+  label: TrackCopyLabel,
+  routeToSource: boolean | undefined,
+): TrackCopyEntry {
+  const { track, notes } = copy;
+
+  if (label.name != null) {
+    track.set("name", label.name);
   }
 
-  removeHostTrackDevice(trackIndex, withoutDevices, newTrack, notes);
-
-  if (withoutDevices === true) {
-    deleteAllDevices(newTrack);
+  if (label.color != null) {
+    track.setColor(label.color);
   }
-
-  const duplicatedClips = processClipsForDuplication(newTrack, withoutClips);
 
   if (routeToSource) {
-    configureRouting(newTrack, sourceTrackIndex, notes);
+    configureRouting(track, sourceTrackIndex, notes);
   }
 
   const reason = joinReasons(notes.said);
 
   return {
-    id: newTrack.id,
-    path: formatObjectPath({ kind: "track", trackIndex: newTrackIndex }),
-    clips: duplicatedClips,
+    id: track.id,
+    // Set by settleTrackCopyPaths once every copy has landed.
+    path: "",
+    clips: copy.clips,
     ...(reason == null ? {} : { reason }),
   };
 }
 
 /**
+ * Re-read where each copy sits, and put its clips on that track. A copy made
+ * later lands ahead of earlier ones, and a later source's copies can push an
+ * earlier source's along, so paths read as each copy landed go stale.
+ * @param entries - The copies' entries, updated in place
+ */
+export function settleTrackCopyPaths(entries: TrackCopyEntry[]): void {
+  for (const entry of entries) {
+    const trackIndex = LiveAPI.from(entry.id).trackIndex;
+
+    if (trackIndex == null) {
+      continue;
+    }
+
+    entry.path = formatObjectPath({ kind: "track", trackIndex });
+
+    for (const clip of entry.clips) {
+      if (clip.path != null) {
+        clip.path = clip.path.replace(/^t\d+/, entry.path);
+      }
+    }
+  }
+}
+
+/**
  * Says on each track copy's entry that its toPath wasn't honored: Live only
- * duplicates a track to right after its source, and each entry's path says
- * where it went.
+ * puts a copy right after its source, or after a group's last member, and
+ * each entry's path says where it went.
  * @param entries - One entry per track copy
  * @param rawToPath - The toPath the call sent
  */
@@ -247,7 +355,7 @@ export function noteUnhonoredTrackToPath(
   for (const entry of entries) {
     appendReason(
       entry,
-      `toPath "${toPath}" not honored; a track copy lands right after its source`,
+      `toPath "${toPath}" not honored; a track copy lands right after its source, or after a group's last member`,
     );
   }
 }

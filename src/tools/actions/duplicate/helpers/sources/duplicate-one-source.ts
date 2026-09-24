@@ -34,7 +34,11 @@ import {
   refuseClipOverwrites,
   refusePadOverwrites,
 } from "./source-overwrites.ts";
-import { duplicateTrack } from "./duplicate-track.ts";
+import {
+  duplicateTrackCopies,
+  settleTrackCopyPaths,
+  type TrackCopyEntry,
+} from "./duplicate-track.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -100,6 +104,10 @@ export async function duplicateEverySource(
         params: { ...args.params, arrangementStart: source.arrangementStart },
       })),
     );
+  }
+
+  if (args.type === "track") {
+    settleTrackCopyPaths(created as TrackCopyEntry[]);
   }
 
   return created;
@@ -301,28 +309,28 @@ async function duplicateTrackOrSceneWithCount(
 
   claimLabels(labels, count);
 
+  if (type === "track") {
+    return duplicateTrackCopies(
+      regularTrackIndex(object),
+      count,
+      (i) => ({ name: labelName(labels, i), color: labelColor(labels, i) }),
+      { withoutClips, withoutDevices, routeToSource },
+      (made) => outOfTime(context, made, count, type),
+    );
+  }
+
   for (let i = 0; i < count; i++) {
-    if (
-      stopForDeadline(
-        context.deadline,
-        () =>
-          `Ran out of time after duplicating ${createdObjects.length} of ${count} ${type}s. ` +
-          `Re-run for the rest.`,
-      )
-    ) {
+    if (outOfTime(context, createdObjects.length, count, type)) {
       break;
     }
 
     createdObjects.push(
-      duplicateTrackOrSceneToSession(
-        type,
+      duplicateSceneToSession(
         object,
         i,
         labelName(labels, i),
         labelColor(labels, i),
         withoutClips,
-        withoutDevices,
-        routeToSource,
       ),
     );
   }
@@ -331,63 +339,68 @@ async function duplicateTrackOrSceneWithCount(
 }
 
 /**
- * Duplicates a track or scene to the session view
- * @param type - Type of object being duplicated (track or scene)
- * @param object - Live API object to duplicate
- * @param i - Current duplicate index
- * @param objectName - Name for the duplicated object
- * @param objectColor - Color for the duplicated object
- * @param withoutClips - Whether to exclude clips
- * @param withoutDevices - Whether to exclude devices
- * @param routeToSource - Whether to route to source track
- * @returns Metadata about the duplicated object
+ * Stop a count loop once the request runs out of time, saying how far it got.
+ * @param context - Per-request context
+ * @param made - Copies made so far
+ * @param count - Copies asked for
+ * @param type - What is being copied
+ * @returns True when the loop should stop
  */
-function duplicateTrackOrSceneToSession(
+function outOfTime(
+  context: Partial<ToolContext>,
+  made: number,
+  count: number,
   type: string,
+): boolean {
+  return stopForDeadline(
+    context.deadline,
+    () =>
+      `Ran out of time after duplicating ${made} of ${count} ${type}s. ` +
+      `Re-run for the rest.`,
+  );
+}
+
+/**
+ * The source's regular track index.
+ * @param object - The source track
+ * @returns Its index
+ * @throws Error for a return or main track, which Live can't duplicate
+ */
+function regularTrackIndex(object: LiveAPI): number {
+  const trackIndex = object.trackIndex;
+
+  if (trackIndex == null) {
+    throw new Error(
+      `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
+    );
+  }
+
+  return trackIndex;
+}
+
+/**
+ * Duplicates a scene in the session view
+ * @param object - The source scene
+ * @param i - Current duplicate index
+ * @param objectName - Name for the duplicated scene
+ * @param objectColor - Color for the duplicated scene
+ * @param withoutClips - Whether to exclude clips
+ * @returns Metadata about the duplicated scene
+ */
+function duplicateSceneToSession(
   object: LiveAPI,
   i: number,
   objectName: string | undefined,
   objectColor: string | undefined,
   withoutClips: boolean | undefined,
-  withoutDevices: boolean | undefined,
-  routeToSource: boolean | undefined,
 ): object {
-  if (type === "track") {
-    const trackIndex = object.trackIndex;
-
-    if (trackIndex == null) {
-      throw new Error(
-        `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
-      );
-    }
-
-    const actualTrackIndex = trackIndex + i;
-
-    return duplicateTrack(
-      actualTrackIndex,
-      objectName,
-      objectColor,
-      withoutClips,
-      withoutDevices,
-      routeToSource,
-      trackIndex,
-    );
-  }
-
-  // Only "track" and "scene" get here: clip, device and drum-pad all return
-  // from duplicate() before the count-based path.
+  // Only "track" and "scene" reach the count-based path, and tracks return
+  // before the loop.
   const sceneIndex = object.sceneIndex;
 
   if (sceneIndex == null) {
     throw new Error(`no scene index for ${targetLabel(object)}`);
   }
 
-  const actualSceneIndex = sceneIndex + i;
-
-  return duplicateScene(
-    actualSceneIndex,
-    objectName,
-    objectColor,
-    withoutClips,
-  );
+  return duplicateScene(sceneIndex + i, objectName, objectColor, withoutClips);
 }

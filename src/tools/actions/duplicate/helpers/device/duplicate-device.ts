@@ -120,7 +120,7 @@ function duplicateDevice(
   return withTempTrackCopy(
     device.path,
     "device",
-    ({ tempPath, sourceTrackIndex }) => {
+    ({ tempPath, ...landing }) => {
       const tempDevice = LiveAPI.from(tempPath);
 
       if (!tempDevice.exists()) {
@@ -136,7 +136,7 @@ function duplicateDevice(
       // track short.
       const adjustedDestination = adjustTrackIndicesForTempTrack(
         canonicalPath(destination),
-        sourceTrackIndex,
+        landing,
       );
 
       // Name the caller's toPath and the real source, not the adjusted path and

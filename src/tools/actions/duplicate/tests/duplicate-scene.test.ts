@@ -626,4 +626,19 @@ describe("duplicate - scene duplication", () => {
         "Not duplicated: 5|1, 9|1. Re-run for those positions.",
     );
   });
+
+  it("stops session scene copies at the request deadline", async () => {
+    const liveSet = setupSessionSceneMocks();
+
+    const result = await duplicate(
+      { type: "scene", id: "scene1", count: 2 },
+      { deadline: Date.now() - 1 },
+    );
+
+    expect(result).toStrictEqual([]);
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_scene", 0);
+    expect(capturedWarnings()).toContain(
+      "Ran out of time after duplicating 0 of 2 scenes. Re-run for the rest.",
+    );
+  });
 });

@@ -21,6 +21,7 @@ import {
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { updateClipMock } from "./setup.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { registerTrackCopySet } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
 const SLOT_ID = /tracks\/(\d+)\/clip_slots\/(\d+)/;
 
@@ -615,15 +616,13 @@ describe("duplicate - a list of sources", () => {
 
   describe("tracks", () => {
     it("makes count copies of every source", async () => {
-      registerMockObject("track1", { path: livePath.track(0) });
-      registerMockObject("track2", { path: livePath.track(4) });
-
-      for (const trackIndex of [1, 2, 5, 6]) {
-        registerMockObject(`live_set/tracks/${trackIndex}`, {
-          path: livePath.track(trackIndex),
-          properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-        });
-      }
+      const { tracks } = registerTrackCopySet([
+        "track1",
+        "x1",
+        "x2",
+        "x3",
+        "track2",
+      ]);
 
       const result = await duplicate({
         type: "track",
@@ -632,12 +631,14 @@ describe("duplicate - a list of sources", () => {
         name: "a,b,c,d",
       });
 
+      // track1's two copies push track2 from t4 to t6.
       expect(result).toStrictEqual([
-        expect.objectContaining({ path: "t1" }),
-        expect.objectContaining({ path: "t2" }),
-        expect.objectContaining({ path: "t5" }),
-        expect.objectContaining({ path: "t6" }),
+        expect.objectContaining({ id: "copy-2", path: "t1" }),
+        expect.objectContaining({ id: "copy-1", path: "t2" }),
+        expect.objectContaining({ id: "copy-4", path: "t7" }),
+        expect.objectContaining({ id: "copy-3", path: "t8" }),
       ]);
+      expect(tracks.get("copy-4")?.set).toHaveBeenCalledWith("name", "c");
     });
   });
 });

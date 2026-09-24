@@ -219,7 +219,7 @@ describe("duplicate take lane to a main lane", () => {
     });
 
     expect(result.reason).toBe(
-      'toPath "t1[5|1]" not honored; a track copy lands right after its source',
+      'toPath "t1[5|1]" not honored; a track copy lands right after its source, or after a group\'s last member',
     );
   });
 
@@ -235,7 +235,7 @@ describe("duplicate take lane to a main lane", () => {
     // A track source still makes a track, and says the destination went
     // unused; a promote would have answered with the "clips only" reason.
     expect(result.reason).toBe(
-      'toPath "t1" not honored; a track copy lands right after its source',
+      'toPath "t1" not honored; a track copy lands right after its source, or after a group\'s last member',
     );
   });
 });

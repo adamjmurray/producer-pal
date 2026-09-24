@@ -214,21 +214,6 @@ export function createTrackResult(trackIndex: number): {
 }
 
 /**
- * Create expected array of track duplication results.
- * @param startIndex - Starting track index
- * @param count - Number of tracks
- * @returns Expected results array
- */
-export function createTrackResultArray(
-  startIndex: number,
-  count: number,
-): Array<{ id: string; path: string; clips: unknown[] }> {
-  return Array.from({ length: count }, (_, i) =>
-    createTrackResult(startIndex + i),
-  );
-}
-
-/**
  * Verify that delete_device was called for each device in reverse order.
  * @param track - Mock object handle for the track
  * @param deviceCount - Number of devices that should have been deleted
@@ -483,4 +468,75 @@ export function registerLiveSetWithThreeTracks(
     path: livePath.liveSet,
     properties: { tracks: children("10", "11", "12"), ...properties },
   });
+}
+
+/** The Live Set {@link registerTrackCopySet} builds, and its tracks. */
+export interface TrackCopySet {
+  liveSet: RegisteredMockObject;
+  /** Every track so far, copies included, by id */
+  tracks: Map<string, RegisteredMockObject>;
+}
+
+/**
+ * Register tracks whose duplicate_track behaves the way Live's does: the copy
+ * lands right after its source, and a group's copy takes the members along and
+ * lands after the last of them. Optionally one track is a group with its
+ * members right after it. Copy N is `copy-N`, and its members `copy-N-m1`, `copy-N-m2`…
+ * @param ids - Track ids, in Set order
+ * @param group - Which track is a group, and how many members follow it;
+ *   none when omitted
+ * @param group.index - The group's index
+ * @param group.members - How many tracks after it are its members
+ * @returns The Live Set and its tracks
+ */
+export function registerTrackCopySet(
+  ids: string[],
+  group?: { index: number; members: number },
+): TrackCopySet {
+  const order = [...ids];
+  const tracks = new Map<string, RegisteredMockObject>();
+  let copies = 0;
+
+  const place = (): void => {
+    for (const [index, id] of order.entries()) {
+      tracks.set(
+        id,
+        // Keep what a test registered on the track; only its index moves.
+        registerMockObject(id, {
+          path: livePath.track(index),
+          properties: tracks.get(id)?.properties ?? {
+            devices: [],
+            clip_slots: [],
+            arrangement_clips: [],
+          },
+        }),
+      );
+    }
+
+    liveSet.properties.tracks = children(...order);
+  };
+
+  const liveSet = registerMockObject("live_set", {
+    path: livePath.liveSet,
+    methods: {
+      duplicate_track: (index: unknown) => {
+        const members =
+          group != null && index === group.index ? group.members : 0;
+
+        copies++;
+        const copy = Array.from({ length: members + 1 }, (_, m) =>
+          m === 0 ? `copy-${copies}` : `copy-${copies}-m${m}`,
+        );
+
+        order.splice(Number(index) + members + 1, 0, ...copy);
+        place();
+
+        return null;
+      },
+    },
+  });
+
+  place();
+
+  return { liveSet, tracks };
 }

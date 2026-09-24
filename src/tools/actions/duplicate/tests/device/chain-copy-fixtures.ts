@@ -27,7 +27,6 @@ export function registerCarryLiveSet(): RegisteredMockObject {
     path: livePath.liveSet,
     properties: { tracks: children("track-0") },
     methods: {
-      duplicate_track: () => null,
       delete_track: () => null,
       move_device: () => null,
     },

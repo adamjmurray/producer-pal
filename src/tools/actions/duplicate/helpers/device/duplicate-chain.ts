@@ -330,10 +330,10 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
     );
   }
 
-  withTempTrackCopy(chain.path, "chain", ({ tempPath, sourceTrackIndex }) => {
+  withTempTrackCopy(chain.path, "chain", ({ tempPath, ...landing }) => {
     const adjusted = adjustTrackIndicesForTempTrack(
       destinationChainPath,
-      sourceTrackIndex,
+      landing,
     );
 
     for (let index = 0; index < deviceCount; index++) {
