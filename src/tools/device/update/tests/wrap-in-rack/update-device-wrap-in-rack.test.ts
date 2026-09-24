@@ -448,15 +448,12 @@ describe("updateDevice - wrapInRack", () => {
   it.each([
     ["nonexistent id", { id: "nonexistent" }, 'no device at "nonexistent"'],
     ["missing container", { path: "t99/d0" }, 'no device at "t99/d0"'],
-    // Resolving a c+ as an insertion path would append the chain first,
-    // leaving an empty one behind on the way to "no device".
     [
       "c+ path",
       { path: "t0/d0/c+" },
-      'nothing at path "t0/d0/c+": "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      'invalid path "t0/d0/c+" - "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
     ],
-    // "pC1" under a device that is not a Drum Rack: resolveContainer yields
-    // null, which is a different miss from the device simply not existing.
+    // No rack at t0/d0, so the pad names nothing.
     [
       "unresolvable drum-pad container",
       { path: "t0/d0/pC1/d0" },
@@ -484,7 +481,9 @@ describe("updateDevice - wrapInRack", () => {
 
     expect(() =>
       updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true }),
-    ).toThrow("wrapInRack found no devices to wrap: Device at path");
+    ).toThrow(
+      'wrapInRack found no devices to wrap: no device at "t0/d0/c0/d0"',
+    );
   });
 
   // A wrap makes one rack, so a toPath naming nowhere to put it leaves nothing
@@ -612,10 +611,8 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should refuse a path that resolves to a container, not a device", () => {
-    // "t0" (no device index) resolves to the track container itself; a Track is
-    // not a device, so there is nothing to wrap.
     expect(() => updateDevice({ path: "t0", wrapInRack: true })).toThrow(
-      '"t0" is a track, not a device',
+      'invalid path "t0" - a track is not a device',
     );
   });
 

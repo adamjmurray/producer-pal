@@ -12,7 +12,11 @@ import {
 } from "#src/tools/constants.ts";
 import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import {
+  resolveDrumPadFromPath,
+  resolveInsertionPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
@@ -20,24 +24,10 @@ import {
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
-  NEW_CHAIN_ADVICE,
-  NEW_DEVICE_ADVICE,
-} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
-import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { liveObjectWords } from "./update-target-types.ts";
-import {
-  type ObjectPath,
-  parseObjectPath,
-} from "#src/tools/shared/validation/object-path.ts";
-
-/** Why a path that only names a place to put a device wraps nothing. */
-const APPEND_ADVICE: Partial<Record<ObjectPath["kind"], string>> = {
-  "new-chain": NEW_CHAIN_ADVICE,
-  "new-device": NEW_DEVICE_ADVICE,
-};
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -372,37 +362,28 @@ function rackDestination(toPath: string): RackDestination {
 }
 
 /**
- * Resolve a device from a simplified path
+ * Resolve a device from a simplified path, read-only: the insertion resolver
+ * would make missing chains before the wrap finds nothing to wrap.
  * @param path - Device path
- * @returns Device LiveAPI or null if not found
+ * @returns Whatever LiveAPI object the path names, or null if none
+ * @throws Error when the path can't name a device (`t0`, `c+`, `d+`)
  */
 function resolveDeviceFromPath(path: string): LiveAPI | null {
-  // wrapInRack wraps devices that are already there, so an append marker names
-  // nothing to wrap — and resolving a "c+" here would make the chain before
-  // finding no device in it.
-  const advice = APPEND_ADVICE[parseObjectPath(path).kind];
-
-  if (advice != null) {
-    throw new Error(nothingAtPath(path, advice));
-  }
-
-  const resolved = resolveInsertionPath(path);
+  const resolved = resolvePathToLiveApi(path);
 
   if (resolved.namesNothing != null) {
     throw new Error(nothingAtPath(path, resolved.namesNothing));
   }
 
-  if (!resolved.container) {
-    return null;
+  if (resolved.targetType !== "drum-pad") {
+    return LiveAPI.from(resolved.liveApiPath);
   }
 
-  if (resolved.position != null) {
-    const devicePath = `${resolved.container.path} devices ${resolved.position}`;
-
-    return LiveAPI.from(devicePath);
-  }
-
-  return resolved.container;
+  return resolveDrumPadFromPath(
+    resolved.liveApiPath,
+    resolved.drumPadNote as string,
+    resolved.remainingSegments,
+  ).target;
 }
 
 /**
