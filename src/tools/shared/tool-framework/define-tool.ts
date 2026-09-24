@@ -152,10 +152,11 @@ export function defineTool(
         }
 
         // The value was honored; this only steers the caller to the real name.
+        // Examples read the validated args, so an index sent as "3" reads as 3.
         for (const text of hiddenParamWarnings(
           usedHidden,
           hiddenParams,
-          args,
+          validated,
         )) {
           result.content.push({ type: "text", text });
         }

@@ -16,6 +16,7 @@ import {
 } from "../hidden-param.ts";
 import { getParamModes, param } from "../modal-config.ts";
 import { resolveToolSchema } from "../resolve-tool-schema.ts";
+import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 type MockServer = McpServer & { registerTool: Mock };
@@ -386,6 +387,22 @@ describe("defineTool with hidden params", () => {
         'WARNING: "toTrack" accepted as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
       );
     });
+  });
+
+  // Models often send numbers as strings, and the example is read off the
+  // args, so it has to see them after the schema coerces them.
+  it("reads the example off an index sent as a string", async () => {
+    const mockServer = { registerTool: vi.fn() } as unknown as MockServer;
+    const mockCallLiveApi = vi
+      .fn()
+      .mockResolvedValue({ content: [{ type: "text", text: "success" }] });
+
+    toolDefReadScene(mockServer, mockCallLiveApi);
+    const result = await handler(mockServer)({ sceneIndex: "3" });
+
+    expect(result.content.map((c) => c.text)).toContain(
+      'WARNING: param "sceneIndex" is deprecated and will be removed; use "path" instead (e.g. path: "s3")',
+    );
   });
 
   it("stays quiet when no hidden param is sent", () => {
