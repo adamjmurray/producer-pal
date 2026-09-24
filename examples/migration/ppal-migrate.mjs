@@ -39,6 +39,9 @@
 //     clip slot to hold both), ppal-duplicate's takeLane when the source track
 //     can't be read off `path`, and any value the tool itself refuses.
 
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 // ---------------------------------------------------------------------------
 // Paths
 // ---------------------------------------------------------------------------
@@ -807,6 +810,19 @@ function main(argv) {
   return 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isEntryPoint()) {
   process.exit(main(process.argv.slice(2)));
+}
+
+// Compare real paths: argv[1] may go through a symlink, and a file URL is
+// percent-encoded (and /C:/... on Windows).
+function isEntryPoint() {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
 }

@@ -1128,6 +1128,14 @@
         "unicorn/no-array-sort": "off"
       }
     },
+    // The example scripts promise Node 18, which has no Array#toSorted.
+    {
+      "files": ["examples/**/*.{js,mjs}"],
+      "plugins": ["unicorn"],
+      "rules": {
+        "unicorn/no-array-sort": "off"
+      }
+    },
     {
       "files": [
         "webui/**/*.{ts,tsx}",

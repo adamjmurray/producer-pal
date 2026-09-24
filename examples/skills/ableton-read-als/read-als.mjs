@@ -23,8 +23,9 @@
 // A folder is walked recursively; Backup/ folders are skipped. Output is one
 // JSON object per Set (an array when more than one). Live 12 only.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 
 const SECTIONS = [
@@ -242,8 +243,15 @@ function children(node, ...path) {
   return child(node, ...path)?.children ?? [];
 }
 
+// A name, path or display string, kept as written ("808" stays a string).
+function text(node, ...path) {
+  return child(node, ...path)?.attrs.Value;
+}
+
+// A numeric or boolean field. Never use it for names: it converts anything
+// number-like.
 function value(node, ...path) {
-  const v = child(node, ...path)?.attrs.Value;
+  const v = text(node, ...path);
   if (v == null) {
     return undefined;
   }
@@ -299,7 +307,7 @@ export function readAls(file, options = {}) {
   }
   if (include.has("locators")) {
     result.locators = children(liveSet, "Locators", "Locators").map((l) => ({
-      name: value(l, "Name"),
+      name: text(l, "Name"),
       time: value(l, "Time"),
     }));
   }
@@ -308,7 +316,7 @@ export function readAls(file, options = {}) {
   const groupNames = new Map(
     tracks
       .filter((t) => t.tag === "GroupTrack")
-      .map((t) => [t.attrs.Id, value(t, "Name", "EffectiveName")]),
+      .map((t) => [t.attrs.Id, text(t, "Name", "EffectiveName")]),
   );
   result.tracks = tracks.map((t) => readTrack(t, include, groupNames));
   result.mainTrack = readTrack(mainTrack, include, groupNames);
@@ -342,7 +350,7 @@ function initialValue(mainTrack, mainMixer, parameter) {
   );
   const first = children(envelope, "Automation", "Events")
     .map((e) => ({ time: Number(e.attrs.Time), value: Number(e.attrs.Value) }))
-    .toSorted((a, b) => a.time - b.time)[0];
+    .sort((a, b) => a.time - b.time)[0];
   return first?.value ?? value(mainMixer, parameter, "Manual");
 }
 
@@ -365,7 +373,7 @@ function color(index) {
 
 function readScene(scene) {
   return {
-    name: value(scene, "Name"),
+    name: text(scene, "Name"),
     color: color(value(scene, "Color")),
     ...(value(scene, "IsTempoEnabled") && { tempo: value(scene, "Tempo") }),
     ...(value(scene, "IsTimeSignatureEnabled") && {
@@ -391,7 +399,7 @@ function readTrack(track, include, groupNames) {
   const groupId = value(track, "TrackGroupId");
   const type = TRACK_TYPES[track.tag] ?? track.tag;
   const result = {
-    name: value(track, "Name", "EffectiveName"),
+    name: text(track, "Name", "EffectiveName"),
     type,
     color: color(value(track, "Color")),
     ...(groupId != null &&
@@ -443,7 +451,7 @@ function readMixer(mixer) {
 function readRouting(chain) {
   const display = (name) => {
     const r = child(chain, name);
-    return [value(r, "UpperDisplayString"), value(r, "LowerDisplayString")]
+    return [text(r, "UpperDisplayString"), text(r, "LowerDisplayString")]
       .filter((s) => s !== "" && s != null)
       .join(" / ");
   };
@@ -465,7 +473,7 @@ function readDevices(devicesNode, include) {
 function readDevice(device, include) {
   const result = {
     type: device.tag,
-    name: value(device, "UserName") || undefined,
+    name: text(device, "UserName") || undefined,
     on: value(device, "On", "Manual"),
   };
   // A user or factory preset (.adv/.adg) or a Max for Live device (.amxd). A
@@ -475,7 +483,7 @@ function readDevice(device, include) {
     : child(device, "LastPresetRef", "Value")?.children[0]?.children.find(
         (n) => n.tag === "FileRef",
       );
-  const presetPath = value(ref, "Path");
+  const presetPath = text(ref, "Path");
   if (/\.(adv|adg|amxd)$/i.test(presetPath ?? "")) {
     result.preset = presetPath;
   }
@@ -483,7 +491,7 @@ function readDevice(device, include) {
   if (device.tag === "PluginDevice") {
     const info = child(device, "PluginDesc")?.children[0];
     result.type = PLUGIN_TYPES[info?.tag] ?? "plugin";
-    result.name = value(info, "Name");
+    result.name = text(info, "Name");
     if (include.has("parameters")) {
       result.parameters = readPluginParameters(device);
     }
@@ -498,7 +506,7 @@ function readDevice(device, include) {
   }
   if (device.tag === "OriginalSimpler" || device.tag === "MultiSampler") {
     const sample = [...iterate(device)].find((n) => n.tag === "SampleRef");
-    const samplePath = value(sample, "FileRef", "Path");
+    const samplePath = text(sample, "FileRef", "Path");
     if (samplePath) {
       result.sample = samplePath;
     }
@@ -513,7 +521,7 @@ function readMacros(rack) {
   const count = value(rack, "NumVisibleMacroControls") ?? 0;
   const macros = {};
   for (let i = 0; i < count; i++) {
-    macros[value(rack, `MacroDisplayNames.${i}`)] = value(
+    macros[text(rack, `MacroDisplayNames.${i}`)] = value(
       rack,
       `MacroControls.${i}`,
       "Manual",
@@ -529,7 +537,7 @@ function readChain(branch, include) {
   const mixer = child(branch, "MixerDevice");
   const note = value(branch, "BranchInfo", "ReceivingNote");
   return {
-    name: value(branch, "Name", "EffectiveName"),
+    name: text(branch, "Name", "EffectiveName"),
     ...(note != null && { note }),
     color: color(value(branch, "Color")),
     ...(mixer && {
@@ -546,7 +554,7 @@ function readChain(branch, include) {
 function readPluginParameters(device) {
   const params = {};
   for (const p of children(device, "ParameterList")) {
-    const name = value(p, "ParameterName");
+    const name = text(p, "ParameterName");
     if (name) {
       params[name] = value(p, "ParameterValue", "Manual");
     }
@@ -600,7 +608,7 @@ function readClip(clip) {
   const loop = child(clip, "Loop");
   const sig = children(clip, "TimeSignature", "TimeSignatures")[0];
   const result = {
-    name: value(clip, "Name"),
+    name: text(clip, "Name"),
     type: clip.tag === "AudioClip" ? "audio" : "midi",
     color: color(value(clip, "Color")),
     length: value(clip, "CurrentEnd") - value(clip, "CurrentStart"),
@@ -611,7 +619,7 @@ function readClip(clip) {
     ...(value(clip, "Disabled") === true && { disabled: true }),
   };
   if (clip.tag === "AudioClip") {
-    result.sample = value(clip, "SampleRef", "FileRef", "Path");
+    result.sample = text(clip, "SampleRef", "FileRef", "Path");
     result.warping = value(clip, "IsWarped");
     result.warpMode = WARP_MODES[value(clip, "WarpMode")];
     result.pitch = value(clip, "PitchCoarse") + value(clip, "PitchFine") / 100;
@@ -636,7 +644,7 @@ function findSets(paths) {
       if (basename(p) === "Backup") {
         return;
       }
-      for (const entry of readdirSync(p).toSorted()) {
+      for (const entry of readdirSync(p).sort()) {
         walk(join(p, entry));
       }
     } else if (p.endsWith(".als")) {
@@ -699,9 +707,19 @@ function usage(code) {
   process.exit(code);
 }
 
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]) === new URL(import.meta.url).pathname
-) {
+if (isEntryPoint()) {
   main(process.argv.slice(2));
+}
+
+// Compare real paths: argv[1] may go through a symlink, and a file URL is
+// percent-encoded (and /C:/... on Windows).
+function isEntryPoint() {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
 }
