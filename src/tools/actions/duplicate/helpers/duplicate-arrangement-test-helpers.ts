@@ -84,7 +84,7 @@ export function registerSessionClipForArrangementDup(
  * Register a track whose arrangement duplicate behaves like Live's: the copy
  * lands at the beat it was handed and clears every copy already overlapping the
  * span it fills. A cleared clip keeps its id and loses its path, which is what
- * a fresh lookup of a dead clip reads (dev/LiveAPI-Object-Reuse.md) — so a test
+ * a fresh lookup of a dead clip reads (dev/live-api/Object-Reuse.md) — so a test
  * built on this catches code that trusts the id or `exists()`.
  *
  * Registers each copy itself, unlike `registerTrackWithArrangementDup`, because

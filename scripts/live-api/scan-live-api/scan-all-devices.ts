@@ -14,10 +14,11 @@
 // scan-live-api.ts (which surveys core LOM object types rather than devices).
 //
 // Usage: node scripts/live-api/scan-live-api/scan-all-devices.ts [output-file] [--url=http://...]
-//   output-file  Output path (default: dev/per-device-scan.txt)
+//   output-file  Output path (default: tmp/per-device-scan.txt)
 //   --url=URL    Server base URL (default: http://localhost:3350)
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import {
   getInfo,
   getPropertyValue,
@@ -46,7 +47,7 @@ interface DeviceRecord {
  * @returns Parsed arguments
  */
 function parseArgs(): { outputPath: string; baseUrl: string } {
-  let outputPath = "dev/per-device-scan.txt";
+  let outputPath = "tmp/per-device-scan.txt";
   let baseUrl = DEFAULT_URL;
 
   for (const arg of process.argv.slice(2)) {
@@ -66,7 +67,7 @@ function parseArgs(): { outputPath: string; baseUrl: string } {
       console.log("");
       console.log("Options:");
       console.log(
-        "  output-file    Output path (default: dev/per-device-scan.txt)",
+        "  output-file    Output path (default: tmp/per-device-scan.txt)",
       );
       console.log(
         "  --url=URL      Server base URL (default: http://localhost:3350)",
@@ -302,6 +303,7 @@ async function main(): Promise<void> {
   console.log(`\nTotal devices scanned: ${records.length}`);
   console.log(`Unique (type:class) shapes: ${groups.size}`);
 
+  mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, formatOutput(records, groups));
   console.log(`Output: ${outputPath}`);
 }

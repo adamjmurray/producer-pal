@@ -150,7 +150,7 @@ And `npm run check:build` additionally validates:
   `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
   (or getting approval to raise the limit). Write directives with the `eslint-`
   prefix even though the linter is oxlint — the rule that requires a `-- reason`
-  only recognizes that spelling (see `dev/Linting.md`).
+  only recognizes that spelling (see `dev/quality/Linting.md`).
 - **File size limits** force agents to split code into focused modules rather
   than growing monolithic files.
 - **Duplication limits** prevent copy-paste patterns that diverge over time.
@@ -185,7 +185,7 @@ Quick commands:
 - `npm run ui:dev` - Dev server at localhost:5173 with hot reload
 - `npm run ui:build` - Production build to `max-for-live-device/chat-ui.html`
 
-See [Chat-UI](dev/Chat-UI.md) for architecture, component structure, and
+See [Chat-UI](dev/clients/Chat-UI.md) for architecture, component structure, and
 detailed development workflows.
 
 ## Documentation Site
@@ -201,7 +201,7 @@ Quick commands:
 
 **Clean URLs**: Use `/installation/chat-ui` not `/installation/chat-ui.html`.
 
-See [Documentation-Site](dev/Documentation-Site.md) for deployment,
+See [Documentation-Site](dev/process/Documentation-Site.md) for deployment,
 configuration, and content guidelines.
 
 ## Testing and Debugging
@@ -222,7 +222,7 @@ Quick commands:
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Live API
+See [Development-Tools](dev/quality/Development-Tools.md) for the CLI tool, Live API
 tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ### Portal Script (Internal Testing)
@@ -263,6 +263,6 @@ it's about CI sequencing, and an unsigned commit is never what anyone meant.
 
 ## Releasing
 
-See [Releasing](dev/Releasing.md) for the complete release process, including
+See [Releasing](dev/process/Releasing.md) for the complete release process, including
 version bumping, building, creating GitHub releases, testing checklists, and
 publishing to npm.

@@ -70,7 +70,7 @@ collections that don't exist yet.
 
 The tool that reads and writes all three layers — scopes, action verbs, the
 project-context on-disk backup, and small-model mode — is documented in
-[memory-system/ppal-context-tool.md](memory-system/ppal-context-tool.md).
+[ppal-context-tool.md](ppal-context-tool.md).
 
 ## Memory entry format
 

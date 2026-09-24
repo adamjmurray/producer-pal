@@ -221,4 +221,4 @@ the `memory` enum value, `action` drops `delete` (leaving `read` / `write`), and
 `name` / `description` are hidden params. A small model therefore only ever sees
 `project` / `global` read-write — it cannot address the memory collection at
 all, and the memory-index injection is skipped for the same reason (see
-"Injection — index-only" in [../Memory-System.md](../Memory-System.md)).
+"Injection — index-only" in [README.md](README.md)).

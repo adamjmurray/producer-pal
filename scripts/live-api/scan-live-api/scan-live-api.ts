@@ -12,10 +12,11 @@
  *
  * Requires the `ppal-live-api` tool to be available, which means either a
  * `npm run build:debug` build (sets ENABLE_LIVE_API=true) or the Live API
- * toggle enabled on the device Setup tab. Output defaults to dev/live-api-scan.txt.
+ * toggle enabled on the device Setup tab. Output defaults to tmp/live-api-scan.txt.
  */
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import {
   formatOutput,
   getInfo,
@@ -49,7 +50,7 @@ const CORE_PATHS: [string, string][] = [
  */
 function parseArgs(): { outputPath: string; baseUrl: string } {
   const args = process.argv.slice(2);
-  let outputPath = "dev/live-api-scan.txt";
+  let outputPath = "tmp/live-api-scan.txt";
   let baseUrl = DEFAULT_URL;
 
   for (const arg of args) {
@@ -69,7 +70,7 @@ function parseArgs(): { outputPath: string; baseUrl: string } {
       console.log("");
       console.log("Options:");
       console.log(
-        "  output-file    Output path (default: dev/live-api-scan.txt)",
+        "  output-file    Output path (default: tmp/live-api-scan.txt)",
       );
       console.log(
         "  --url=URL      Server base URL (default: http://localhost:3350)",
@@ -242,6 +243,7 @@ async function main(): Promise<void> {
   await scanClips(ctx);
   await scanPath(ctx, "live_set groove_pool grooves 0", "Groove (pool)");
 
+  mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, formatOutput(ctx.results));
   console.log(`\nScan complete! ${ctx.results.length} types discovered.`);
   console.log(`Output: ${outputPath}`);

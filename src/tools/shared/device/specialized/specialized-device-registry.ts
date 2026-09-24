@@ -35,7 +35,7 @@ import {
 // Central registry of specialized-device specs and the dispatch entry points
 // used by the device read/update plumbing. Devices are matched by
 // `class_display_name` (consistent with the existing Simpler handling). See
-// dev/Specialized-Devices.md.
+// dev/live-api/specialized-devices/README.md.
 
 const SPECS: SpecializedDeviceSpec[] = [
   // Instruments

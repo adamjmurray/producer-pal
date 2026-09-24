@@ -9,7 +9,7 @@
  * bandwidth and a stereo width — so only real Live can show the write hitting
  * both.
  *
- * See dev/Device-Param-Labels.md.
+ * See dev/live-api/Device-Param-Labels.md.
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-device-duplicate-param-name
  */

@@ -6,7 +6,7 @@
 // The shared "loadable markdown collection" store: a dynamic set of frontmatter'd
 // entries under ~/.producer-pal/<subdir>/<slug>.md plus a DERIVED index the
 // backend regenerates on every mutation. The memory store and the custom-skills
-// store are thin bindings over this factory (see dev/Memory-System.md → "The
+// store are thin bindings over this factory (see dev/memory-system/README.md → "The
 // loadable-collection primitive"); the CRUD, the filesystem-safe slugging + path
 // traversal guard, and the reserved-index-slug protection all live here ONCE so a
 // fix reaches every collection. Callers supply only what genuinely differs: the

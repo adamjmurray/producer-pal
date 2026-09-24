@@ -2,7 +2,7 @@
 
 What full-suite eval runs have established about model behavior, and which fixes
 have already been tried and measured. `evals/README.md` covers how to run the
-tools; `dev/Testing.md` covers the unit and e2e suites.
+tools; `dev/quality/Testing.md` covers the unit and e2e suites.
 
 **Why this file exists.** `evals/results/` is gitignored, so a run's numbers and
 the reasoning drawn from them survive only if they are written down here. A

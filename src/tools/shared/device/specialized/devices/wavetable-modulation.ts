@@ -7,7 +7,7 @@ import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { coerceInt } from "../specialized-param-access.ts";
 import { type ActionOutcome } from "../specialized-device-types.ts";
 
-// Wavetable mod-matrix helpers. See dev/specialized-devices/instruments.md.
+// Wavetable mod-matrix helpers. See dev/live-api/specialized-devices/instruments.md.
 //
 // The matrix is imperative: targets are registered by DeviceParameter
 // reference, indexed by position, and cells go through

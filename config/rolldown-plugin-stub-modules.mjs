@@ -31,7 +31,7 @@ export const CODE_EXEC_STUBS = {
     "src/tools/clip/code-exec/code-exec-protocol-disabled.ts",
 };
 
-/** Same, for the LiveAPI object counter. See dev/Development-Tools.md. */
+/** Same, for the LiveAPI object counter. See dev/quality/Development-Tools.md. */
 export const BUILD_STATS_STUBS = {
   "src/live-api-adapter/live-api-build-stats.ts":
     "src/live-api-adapter/live-api-build-stats-disabled.ts",

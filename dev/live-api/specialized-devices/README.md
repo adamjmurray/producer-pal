@@ -125,9 +125,9 @@ Everything below documents **deltas** from this baseline.
 
 | Doc                                                                      | Contents                                                                                                                    |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| [interface-conventions.md](specialized-devices/interface-conventions.md) | Wire format, the `options` include, documentation strategy — cross-cutting decisions the per-device sections assume         |
-| [instruments.md](specialized-devices/instruments.md)                     | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
-| [audio-effects.md](specialized-devices/audio-effects.md)                 | Per-device catalog: Compressor, EQ Eight, Hybrid Reverb, Roar, Shifter, Spectral Resonator, plus the generic-Device effects |
+| [interface-conventions.md](interface-conventions.md) | Wire format, the `options` include, documentation strategy — cross-cutting decisions the per-device sections assume         |
+| [instruments.md](instruments.md)                     | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
+| [audio-effects.md](audio-effects.md)                 | Per-device catalog: Compressor, EQ Eight, Hybrid Reverb, Roar, Shifter, Spectral Resonator, plus the generic-Device effects |
 
 Read only the one you need — each catalog is long.
 
@@ -195,7 +195,7 @@ node scripts/live-api/scan-live-api/setup-all-devices.ts
 
 **2. Survey it** — `scripts/live-api/scan-live-api/scan-all-devices.ts` iterates
 every device on every track, groups by `(type, class_name)`, and writes a report
-(default `dev/per-device-scan.txt`) listing the unique device shapes — the
+(default `tmp/per-device-scan.txt`) listing the unique device shapes — the
 specialized classes are the ones that aren't plain `Device`.
 
 ```bash
@@ -220,8 +220,8 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 # Implementation status
 
 All specialized devices catalogued in
-[instruments.md](specialized-devices/instruments.md) and
-[audio-effects.md](specialized-devices/audio-effects.md) are implemented in
+[instruments.md](instruments.md) and
+[audio-effects.md](audio-effects.md) are implemented in
 `src/tools/shared/device/specialized/` (one file per device under `devices/`,
 registered in `specialized-device-registry.ts`) and e2e-validated against Live
 12.4 — **except Shifter**. The original value-ranked backlog that lived here (a

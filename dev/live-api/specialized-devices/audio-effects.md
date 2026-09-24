@@ -38,7 +38,7 @@ Two writable fields on `update-device`, also returned by `read-device`:
 
 The class-level `available_input_routing_types` and
 `available_input_routing_channels` are used internally for validation. See
-[`options` include](#the-options-include-opt-in-discoverability) — opt-in adds
+[`options` include](interface-conventions.md#the-options-include-opt-in-discoverability) — opt-in adds
 `sidechainSourceTrackIds` (list of trackIds that are valid sources — regular,
 return, and master tracks with audio-bearing devices). Channel options
 (`"Pre FX"` / `"Post FX"` / `"Post Mixer"`) are stable per Live version and
@@ -220,7 +220,7 @@ Six writable fields on `update-device`, also returned by `read-device`:
 - `irTimeShapingOn` (bool)
 
 Class-level `ir_category_list` and `ir_file_list` are used for validation. See
-[`options` include](#the-options-include-opt-in-discoverability) — opt-in adds
+[`options` include](interface-conventions.md#the-options-include-opt-in-discoverability) — opt-in adds
 `irCategoryList` (the fixed categories) and `irFileList` (files in the currently
 selected category, 11-29 strings depending on category — dynamic per Live
 install). To browse a different category, set `irCategory` first and re-read

@@ -39,7 +39,7 @@ The free list is capped, and the cap is sized above the largest single request
 rather than the ordinary one. It costs no peak memory either way — every object
 on the list was alive at once during the request that built it — so all it
 decides is whether that memory is handed back afterwards, at the price of
-rebuilding it on every later call. `dev/LiveAPI-Performance.md` has what the
+rebuilding it on every later call. `dev/live-api/Performance.md` has what the
 undersized cap cost.
 
 ## Alternatives rejected

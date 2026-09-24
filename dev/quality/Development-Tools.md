@@ -21,7 +21,7 @@ scripts/chat -m claude-sonnet-5       # start a chat
 ## Skills Snapshots
 
 `npm run skills:snapshot` writes the assembled skills blob for every (toolset
-profile × depth × notation) to `dev/skills-snapshots/` (gitignored) and prints a
+profile × depth × notation) to `tmp/skills-snapshots/` (gitignored) and prints a
 report: the size of every combination, and which tools keep each fragment.
 
 To see what a fragment reorganization actually did to each caller's
@@ -306,8 +306,8 @@ checked-in result is `src/test/fixtures/live-set-dump.json.gz`, loaded by
 `loadLiveSetDump()` beside it.
 
 ```bash
-node scripts/live-api/dump-live-set/dump-live-set.ts dev/scratch.json
-node scripts/live-api/dump-live-set/dump-live-set.ts dev/scratch.json --skip=parameters
+node scripts/live-api/dump-live-set/dump-live-set.ts tmp/scratch.json
+node scripts/live-api/dump-live-set/dump-live-set.ts tmp/scratch.json --skip=parameters
 
 # regenerate the committed fixture
 node scripts/live-api/dump-live-set/dump-live-set.ts \
@@ -411,7 +411,7 @@ calls mix their counts.
 `ENABLE_OBJECT_PROBE=true` adds an optional `path` to each `ppal-live-api`
 operation, so one call can mutate through one object while still holding another
 — the question of whether a held object goes stale after a mutation. The field
-is absent from every other build. See `dev/LiveAPI-Object-Reuse.md` for what is
+is absent from every other build. See `dev/live-api/Object-Reuse.md` for what is
 open and how to drive it.
 
 Do this whenever a budget test's fixture changes. A test that counts against the

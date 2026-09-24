@@ -1,7 +1,7 @@
 # LiveAPI Performance
 
 What object lifetime costs in time and in memory, what 2.2.0 changed, and how to
-re-measure it. `dev/LiveAPI-Object-Reuse.md` covers the correctness side — when
+re-measure it. `dev/live-api/Object-Reuse.md` covers the correctness side — when
 reusing an object is safe. ADR-0023 covers why objects are pooled rather than
 cached.
 
@@ -69,7 +69,7 @@ kit's drum map went 769 to 129 and `read-device drum-pads` 193 to 49.
 
 Measured with an instrumented build against the counter Set (20 tracks, 13
 scenes, four drum racks, a four-level instrument rack — see
-`dev/Development-Tools.md` -> Dumping a Live Set):
+`dev/quality/Development-Tools.md` -> Dumping a Live Set):
 
 | call                                       | resolved            | constructed, warm pool |
 | ------------------------------------------ | ------------------- | ---------------------- |
@@ -190,7 +190,7 @@ only — both break correctness by design.
 **Repeats inside one request.** `read-track` on the four-level instrument rack
 resolves 141 objects for 82 distinct targets. Fixing that means holding an
 object across a stretch of a request, which is the defect class in
-`dev/LiveAPI-Object-Reuse.md` — deferred until a probe can settle it. Those 59
+`dev/live-api/Object-Reuse.md` — deferred until a probe can settle it. Those 59
 extra resolutions cost memory as well as time, at the rate above.
 
 **Waste the counter can't see.** It finds the same target resolved twice. It is
@@ -217,7 +217,7 @@ memoized per request instead: every pad of the same rack now shares one scan.
 
 ## Re-measuring
 
-`dev/Development-Tools.md` has both procedures: **Counting LiveAPI Objects** for
+`dev/quality/Development-Tools.md` has both procedures: **Counting LiveAPI Objects** for
 what a call asks the Live API for, and **Timing Tool Calls** for what that
 costs. Two rules carry most of the risk:
 

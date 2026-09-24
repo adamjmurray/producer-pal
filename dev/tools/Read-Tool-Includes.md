@@ -42,7 +42,7 @@ debugging, but should be avoided in production for large Live Sets.
 ### Small-model trims
 
 Every read tool drops some include options in small-model mode, via
-`excludeEnumValues` on the `include` param (see `dev/Tool-Schemas.md`). The trim
+`excludeEnumValues` on the `include` param (see `dev/tools/Tool-Schemas.md`). The trim
 is enforced: the value is removed from the schema that validates, so sending it
 is an error rather than a no-op. `"*"` is dropped everywhere.
 
@@ -555,7 +555,7 @@ Adds dynamic per-state/per-install catalogs for specialized devices (IR files,
 sidechain sources, current-category wavetables, `modulatableParameters`) plus
 Wavetable's current mod-matrix routes (`modulations`). Opt-in because the scan
 can be expensive. Only devices that contribute add anything; others omit the
-field. See `dev/specialized-devices/` for per-device contents.
+field. See `dev/live-api/specialized-devices/` for per-device contents.
 
 | Field         | Type       | Description                                  |
 | ------------- | ---------- | -------------------------------------------- |

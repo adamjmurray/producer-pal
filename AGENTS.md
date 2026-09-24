@@ -65,7 +65,7 @@ Key entry points:
   Pal in it, use the `ableton-open-live-set` skill's `--add-producer-pal`
   (`examples/skills/ableton-open-live-set/`).
 
-See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
+See `dev/Architecture.md` for system design and `dev/clients/Chat-UI.md` for the web UI.
 
 ## Critical Coding Rules
 
@@ -137,7 +137,7 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 - **Tool schemas**: use `z.coerce.string()` for ID params and
   `z.coerce.number()` for numeric ones — models send both strings and numbers,
   and the MCP SDK validates before our handler runs. For choosing a param's
-  shape and writing per-mode descriptions, see `dev/Tool-Schemas.md`.
+  shape and writing per-mode descriptions, see `dev/tools/Tool-Schemas.md`.
 
 - **String length caps of 2000+**: never let them reach the JSON Schema as
   `maxLength` — llama.cpp-based clients compile it into a grammar repetition and
@@ -199,7 +199,7 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
 - **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
   work, but the rule requiring a `-- reason` on every directive only sees the
-  `eslint-` spelling. See `dev/Linting.md`.
+  `eslint-` spelling. See `dev/quality/Linting.md`.
 
 - **DRY**: no duplicate function bodies (oxlint catches them), keep shared
   constants in one place, and treat repeated patterns as a missing abstraction.
@@ -259,9 +259,9 @@ The practical consequences:
   ignoring or deleting a branch as unreachable, try to write the test — reading
   the code is not enough to prove it, and the attempt is what tells you whether
   the guard is dead or you just hadn't found the input.
-- See `dev/Testing.md` for what counts as a test file, webui test gotchas, and
+- See `dev/quality/Testing.md` for what counts as a test file, webui test gotchas, and
   the mock registry. CLI tools and test Live Sets are in
-  `dev/Development-Tools.md`.
+  `dev/quality/Development-Tools.md`.
 
 ### MCP E2E Testing
 
@@ -319,16 +319,16 @@ them without asking:**
 Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
 find one. The main ones: `dev/Principles.md` (first principles for tool design —
 read first), `dev/Architecture.md` (system design), `dev/Coding-Standards.md`
-(full style guide + Live API reference), `dev/Testing.md`,
-`dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/` (bar|beat and transform
-grammars), `dev/Development-Tools.md`, and `dev/decisions/` (ADRs — why settled
+(full style guide + Live API reference), `dev/quality/Testing.md`,
+`dev/tools/Tool-Schemas.md`, `dev/quality/Linting.md`, `dev/specs/` (bar|beat and transform
+grammars), `dev/quality/Development-Tools.md`, and `dev/decisions/` (ADRs — why settled
 choices went the way they did, especially the rejections).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
 
 **Keep a doc small enough to read whole.** Past ~20 KB, split it: an index with
 the concepts, plus one file per lookup-table chunk in a sibling directory
-(`dev/mutation-baselines/`, `dev/specialized-devices/`). Catalogs and per-scope
+(`dev/quality/mutation-testing/baselines/`, `dev/live-api/specialized-devices/`). Catalogs and per-scope
 results are the parts to move out; the reasoning stays in the index.
 
 ### For agents: reading without burning context

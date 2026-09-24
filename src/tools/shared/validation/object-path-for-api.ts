@@ -83,7 +83,7 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
  * Whether an id still names the object at the path a result gave it. Looked up
  * fresh every time, never off an object the caller kept: a dead one goes on
  * reporting its id, and `exists()` with it, so only a new lookup reads the
- * empty path that says it is gone (dev/LiveAPI-Object-Reuse.md).
+ * empty path that says it is gone (dev/live-api/Object-Reuse.md).
  * @param id - The id the result reported
  * @param path - The path the result reported
  * @returns True when the object is still there
@@ -111,7 +111,7 @@ export interface WrittenContainer {
  * `written` names the object's direct parent as the call spelled it, and that
  * spelling is used in place of the derived one. Only a pad spelling is
  * substituted — it is the one path with a second numbering. See
- * dev/Object-Paths.md.
+ * dev/tools/Object-Paths.md.
  * @param api - The object to name
  * @param written - The call's spelling of the object's parent, if any
  * @returns `{ path }`, or `{}` for an object the grammar can't spell

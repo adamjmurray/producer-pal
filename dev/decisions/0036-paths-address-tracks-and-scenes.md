@@ -26,8 +26,7 @@ the main track, where the path carries the role.
 Creating takes a path too, through three roots that name a place rather than a
 thing: `t+` appends a track, `rt+` adds a return track, `s+` appends a scene.
 
-Details in [dev/Object-Paths.md](../Object-Paths.md); the build order is in
-[dev/plans/Path-Standardization.md](../plans/Path-Standardization.md).
+Details in [dev/tools/Object-Paths.md](../tools/Object-Paths.md).
 
 ## What this reverses in ADR-0025
 

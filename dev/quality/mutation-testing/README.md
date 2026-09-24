@@ -87,23 +87,23 @@ up by name.
 
 ## Baselines
 
-Per-scope results live in [mutation-baselines/](mutation-baselines/) — one file
+Per-scope results live in [baselines/](baselines/) — one file
 each, with the score table, the lowest-scoring files, documented equivalents,
 and a "Gaps closed" log. Read only the one you're working on.
 
 | Scope                                      | Break             | Baseline                                                  |
 | ------------------------------------------ | ----------------- | --------------------------------------------------------- |
-| `notation`                                 | 86                | [notation.md](mutation-baselines/notation.md)             |
-| `track`                                    | 85                | [track.md](mutation-baselines/track.md)                   |
-| `session`                                  | 89                | [session.md](mutation-baselines/session.md)               |
-| `actions`                                  | 90                | [actions.md](mutation-baselines/actions.md)               |
-| `device`                                   | 90                | [device.md](mutation-baselines/device.md)                 |
-| `clip`                                     | 96                | [clip.md](mutation-baselines/clip.md)                     |
-| `advanced` / `core` / `scene` / `live-set` | 97 / 99 / 96 / 98 | [read-op-tier.md](mutation-baselines/read-op-tier.md)     |
-| `shared` (`src/tools/shared/`)             | 94                | [shared.md](mutation-baselines/shared.md)                 |
-| `sharedRuntime` (`src/shared/`)            | 94                | [shared-runtime.md](mutation-baselines/shared-runtime.md) |
-| `mcpServer`                                | 87                | [mcp-server.md](mutation-baselines/mcp-server.md)         |
-| `v8Adapter`                                | 97                | [v8-adapter.md](mutation-baselines/v8-adapter.md)         |
+| `notation`                                 | 86                | [notation.md](baselines/notation.md)             |
+| `track`                                    | 85                | [track.md](baselines/track.md)                   |
+| `session`                                  | 89                | [session.md](baselines/session.md)               |
+| `actions`                                  | 90                | [actions.md](baselines/actions.md)               |
+| `device`                                   | 90                | [device.md](baselines/device.md)                 |
+| `clip`                                     | 96                | [clip.md](baselines/clip.md)                     |
+| `advanced` / `core` / `scene` / `live-set` | 97 / 99 / 96 / 98 | [read-op-tier.md](baselines/read-op-tier.md)     |
+| `shared` (`src/tools/shared/`)             | 94                | [shared.md](baselines/shared.md)                 |
+| `sharedRuntime` (`src/shared/`)            | 94                | [shared-runtime.md](baselines/shared-runtime.md) |
+| `mcpServer`                                | 87                | [mcp-server.md](baselines/mcp-server.md)         |
+| `v8Adapter`                                | 97                | [v8-adapter.md](baselines/v8-adapter.md)         |
 
 The `break` gate is **ratcheted**: a run fails (exit 1) below the floor. Raise
 it as a score climbs; never lower it without triaging the regression. The floors

@@ -7,7 +7,7 @@
 // and so does one position on one arrangement lane — everything else an
 // arrangement path can spell names more than one, so a tool acting on a
 // specific clip refuses it and shows the complete form. Destinations take those
-// partials; see dev/Object-Paths.md, "Complete and partial".
+// partials; see dev/tools/Object-Paths.md, "Complete and partial".
 
 import {
   type ArrangementPosition,

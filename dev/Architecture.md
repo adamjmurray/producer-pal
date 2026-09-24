@@ -122,7 +122,7 @@ to local origins:
   flag).
 
 The webui hook graph that drives all of this is documented in
-[Chat-UI.md](./Chat-UI.md#voice-mode).
+[Chat-UI.md](clients/Chat-UI.md#voice-mode).
 
 ## Language Choices
 
@@ -229,7 +229,7 @@ rule's `except` clause rather than relocated, keeping the live-library feature
 cohesive.
 
 The boundary rules apply to production source only. Test infrastructure —
-everything the project classifies as a test file (see dev/Testing.md) —
+everything the project classifies as a test file (see dev/quality/Testing.md) —
 legitimately reaches across layers and is excluded. It governs the shipped
 dependency graph, which no test file is part of.
 
@@ -411,7 +411,7 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   - Real-time streaming chat interface with automatic MCP tool calling
   - Settings persistence via localStorage
 
-See `dev/Chat-UI.md` for detailed architecture and development workflow.
+See `dev/clients/Chat-UI.md` for detailed architecture and development workflow.
 
 ## Message Protocol
 

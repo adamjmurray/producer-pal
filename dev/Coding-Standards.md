@@ -55,7 +55,7 @@ Test files should follow this pattern:
    - Example: `audio-clip-warping.test.ts`
 
 5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities, fixtures,
-   and shared test setup. A test file (see dev/Testing.md), but not a suite, so
+   and shared test setup. A test file (see dev/quality/Testing.md), but not a suite, so
    it keeps the 375-line source budget.
    - Example: `duplicate-test-helpers.ts`
    - Example: `update-clip-test-helpers.ts`

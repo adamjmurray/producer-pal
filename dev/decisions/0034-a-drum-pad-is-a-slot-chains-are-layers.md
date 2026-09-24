@@ -82,5 +82,5 @@ and skips.
 
 Implemented across `src/tools/shared/device/helpers/drum-pads-from-chains.ts`,
 `src/tools/device/update/helpers/update-drum-pad-group.ts`, and the path rules
-in [dev/Object-Paths.md](../Object-Paths.md). The Live API quirks behind it are
+in [dev/tools/Object-Paths.md](../tools/Object-Paths.md). The Live API quirks behind it are
 in [dev/Coding-Standards.md](../Coding-Standards.md).

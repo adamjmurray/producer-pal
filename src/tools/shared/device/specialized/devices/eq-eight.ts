@@ -10,7 +10,7 @@ import {
 } from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
-// EQ Eight (Eq8Device). See dev/specialized-devices/audio-effects.md.
+// EQ Eight (Eq8Device). See dev/live-api/specialized-devices/audio-effects.md.
 //
 // Exposes two class-level properties not reachable as DeviceParameters:
 // - globalMode: processing mode (Stereo / L/R / M/S) → global_mode int 0/1/2

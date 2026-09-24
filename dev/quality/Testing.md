@@ -75,7 +75,7 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
   object graphs.
 
 What the mock does and doesn't model about a held object going stale is in
-`dev/LiveAPI-Object-Reuse.md`.
+`dev/live-api/Object-Reuse.md`.
 
 ## MCP server tests
 

@@ -1,7 +1,7 @@
 # Reusing LiveAPI Objects
 
 Building a LiveAPI object is expensive (ADR-0023, and
-`dev/LiveAPI-Performance.md` for what it costs), so it is tempting to resolve
+`dev/live-api/Performance.md` for what it costs), so it is tempting to resolve
 one once and pass it around. That is safe in some places and unsafe in others,
 and the line between them is not where most people would guess.
 
@@ -14,7 +14,7 @@ now sits there — create a clip in an empty slot, delete a device, insert a cha
 **Holding across requests was measured and rejected**, on memory as well as
 correctness: it cuts Live's memory growth to about a third but reinstates the
 armed path listeners that `live-api-release.ts` exists to clear, and a cached
-deleted object reports `exists()` true. See `dev/LiveAPI-Performance.md`.
+deleted object reports `exists()` true. See `dev/live-api/Performance.md`.
 
 **An id target is not exempt.** At mode 0 an id resolves to a path once and
 follows that path afterward, so an object built from `id N` is exposed the same

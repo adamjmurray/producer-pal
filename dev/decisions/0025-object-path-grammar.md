@@ -22,7 +22,7 @@ Models paid for the split: `create-clip` drew `trackIndex` + `sceneIndex`
 guesses on 8 of 10 first attempts in one eval, and a slot read out of a result
 would not go back into a `path` param.
 
-The grammar and its rules are in [dev/Object-Paths.md](../Object-Paths.md).
+The grammar and its rules are in [dev/tools/Object-Paths.md](../tools/Object-Paths.md).
 
 ## Decision
 

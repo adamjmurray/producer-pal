@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Input paths resolve either spelling of a drum chain; only the warning
-// depends on which one the caller used. See dev/Object-Paths.md.
+// depends on which one the caller used. See dev/tools/Object-Paths.md.
 
 import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
