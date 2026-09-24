@@ -217,9 +217,12 @@ def _as_bool(value):
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
-
 ROUTES = {
     "/ping": ping,
     "/list": list_items,
     "/load": load,
 }
+
+# Routes that change the Set. A browser can send a GET with no Origin (an
+# <img> tag), so these refuse GET.
+POST_ONLY = ("/load",)

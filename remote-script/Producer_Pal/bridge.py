@@ -11,7 +11,7 @@ import traceback
 import Live
 
 from .http_server import BridgeHTTPServer
-from .routes import ROUTES, RouteError
+from .routes import POST_ONLY, ROUTES, RouteError
 
 PORT = 3349
 
@@ -40,11 +40,13 @@ class ProducerPalBridge:
 
     # --- HTTP thread ---------------------------------------------------
 
-    def _dispatch(self, path, params):
+    def _dispatch(self, method, path, params):
         """Called on an HTTP worker thread. Hands the work to the main thread and waits."""
         handler = ROUTES.get(path)
         if handler is None:
             return 404, {"error": "unknown route: " + path, "routes": sorted(ROUTES)}
+        if path in POST_ONLY and method != "POST":
+            return 405, {"error": "%s needs POST" % path}
         job = _Job(handler, self, params)
         self._jobs.put(job)
         return job.wait(REQUEST_TIMEOUT)

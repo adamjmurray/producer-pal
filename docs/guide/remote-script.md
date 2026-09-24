@@ -72,7 +72,8 @@ There is no uninstall button yet, so remove it by hand:
 ## Notes
 
 - **Local only.** The script listens on `127.0.0.1`, so nothing outside your
-  computer can reach it.
+  computer can reach it. It also refuses requests from web pages in your
+  browser.
 - **The first plug-in listing is slow.** Live scans your plug-in folders the
   first time it is asked.
 - **Developers** can install from a checkout with

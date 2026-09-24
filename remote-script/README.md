@@ -83,6 +83,9 @@ Plugins aren't flagged as devices by Live, so `plugin` lists everything.
 
 ## Routes
 
+Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
+`127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
+
 ### `GET /ping`
 
 Liveness, Live's version, and this script's (`script_version`, from
@@ -99,7 +102,7 @@ Liveness, Live's version, and this script's (`script_version`, from
 
 A `path` that doesn't exist is a 404 listing what is there.
 
-### `GET|POST /load`
+### `POST /load`
 
 | Param         | Default   | Meaning                                        |
 | ------------- | --------- | ---------------------------------------------- |
@@ -109,7 +112,8 @@ A `path` that doesn't exist is a 404 listing what is there.
 | `track_index` | new track | 0-based index of an existing track             |
 | `track_type`  | by kind   | `midi` or `audio`; only applies to a new track |
 
-Params work as query string or JSON body; the body wins.
+POST only, so a link or `<img>` tag can't load anything. Params work as query
+string or JSON body; the body wins.
 
 **One Producer Pal per Set**: loading `Producer_Pal` into a Set that already has
 it is a 409 naming the track that has it. Only each track's top-level devices
