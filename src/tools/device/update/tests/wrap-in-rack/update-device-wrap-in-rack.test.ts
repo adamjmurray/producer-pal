@@ -453,8 +453,7 @@ describe("updateDevice - wrapInRack", () => {
       { path: "t0/d0/c+" },
       'invalid path "t0/d0/c+" - "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
     ],
-    // "pC1" under a device that is not a Drum Rack: resolveContainer yields
-    // null, which is a different miss from the device simply not existing.
+    // No rack at t0/d0, so the pad names nothing.
     [
       "unresolvable drum-pad container",
       { path: "t0/d0/pC1/d0" },
