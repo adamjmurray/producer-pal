@@ -239,6 +239,7 @@ export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
 
   if (tags.length > 0) {
     scenarios = scenarios.filter((s) => s.tags.some((t) => tags.includes(t)));
+    warnDroppedIds(testIds, tags, scenarios);
   }
 
   if (scenarios.length === 0) {
@@ -263,6 +264,30 @@ function warnUnknownIds(testIds: string[]): void {
 
   if (unknown.length > 0) {
     console.warn(`Warning: Test(s) not found: ${unknown.join(", ")}`);
+  }
+}
+
+/**
+ * Warn about requested ids the tag filter removed — both filters must match, so
+ * a scenario named with -t can silently fall out of the run.
+ *
+ * @param testIds - The requested scenario ids
+ * @param tags - The requested tags
+ * @param kept - The scenarios left after both filters
+ */
+function warnDroppedIds(
+  testIds: string[],
+  tags: string[],
+  kept: EvalScenario[],
+): void {
+  const known = new Set(allScenarios.map((s) => s.id));
+  const keptIds = new Set(kept.map((s) => s.id));
+  const dropped = testIds.filter((id) => known.has(id) && !keptIds.has(id));
+
+  if (dropped.length > 0) {
+    console.warn(
+      `Warning: Test(s) dropped by --tag ${tags.join(",")}: ${dropped.join(", ")}`,
+    );
   }
 }
 

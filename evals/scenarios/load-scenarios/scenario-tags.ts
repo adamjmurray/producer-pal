@@ -34,13 +34,24 @@ export type ScenarioTag = (typeof SCENARIO_TAGS)[number];
  *
  * @param values - Raw `--tag` values collected by the CLI
  * @returns Deduped tag names, in the order first seen
- * @throws When a value is not a declared tag
+ * @throws When a value names no tag, or a name is not a declared tag
  */
 export function parseTagArgs(values: string[]): string[] {
-  const names = values
-    .flatMap((value) => value.split(","))
-    .map((value) => value.trim())
-    .filter((value) => value !== "");
+  const perValue = values.map((value) =>
+    value
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name !== ""),
+  );
+
+  // An empty value would filter nothing and run the whole suite.
+  if (perValue.some((names) => names.length === 0)) {
+    throw new Error(
+      `--tag needs a tag name. Available: ${SCENARIO_TAGS.join(", ")}`,
+    );
+  }
+
+  const names = perValue.flat();
   const unknown = names.filter((name) => !isScenarioTag(name));
 
   if (unknown.length > 0) {

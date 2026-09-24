@@ -73,15 +73,30 @@ describe("loadScenarios", () => {
     ).toStrictEqual(idsCarrying(["results", "pairing"]));
   });
 
-  it("intersects ids with tags", () => {
+  it("intersects ids with tags, warning about the ids the tags drop", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
     expect(
       loadScenarios({ testIds: [clipsId, pathsId], tags: ["paths"] }).map(
         (s) => s.id,
       ),
     ).toStrictEqual([pathsId]);
+    expect(warn).toHaveBeenCalledWith(
+      `Warning: Test(s) dropped by --tag paths: ${clipsId}`,
+    );
+  });
+
+  it("doesn't warn when the tags keep every requested id", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    loadScenarios({ testIds: [pathsId], tags: ["paths"] });
+
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("throws when the ids and the tags share nothing", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
     expect(() =>
       loadScenarios({ testIds: [clipsId], tags: ["paths"] }),
     ).toThrow(/No scenarios match test\(s\) .* and tag\(s\) paths/);

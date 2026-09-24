@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -63,7 +63,7 @@ export {
   libraryTypeOneshot,
 } from "./workflow/library/library-filters.ts";
 export { librarySearchFanout } from "./workflow/library/library-search-fanout.ts";
-export { locatorNavigation } from "./workflow/locator-navigation.ts";
+export { locatorNavigation } from "./workflow/locator-navigation/locator-navigation.ts";
 export { liveApiEscapeHatch } from "./workflow/live-api-escape-hatch.ts";
 export { mixerLanguage } from "./workflow/mixer-language.ts";
 export { deviceDrumKit } from "./device/device-drum-kit.ts";

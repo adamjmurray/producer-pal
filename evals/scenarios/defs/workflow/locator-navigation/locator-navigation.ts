@@ -15,9 +15,9 @@
  * works out that Chorus is bar 17, and passes `startTime: "17|1"` lands the
  * playhead in exactly the right place — so an outcome-only check passes a model
  * that never found the feature. That is why each turn grades the ARGUMENT, and
- * the result where there is one: a call that sets the loop reports none of it
- * back, so the loop turn is graded on which locators it named. The e2e suite
- * already proves the values resolve names and ids against a real Set
+ * the outcome: a call that sets the loop reports none of it back, so a
+ * play-arrangement read after the run checks where the loop landed. The e2e
+ * suite already proves the values resolve names and ids against a real Set
  * (`control/ppal-playback`, `operations/ppal-duplicate`); what is unmeasured is
  * whether a model reaches for them.
  *
@@ -29,14 +29,14 @@
  * `evals/live-sets/`.
  */
 
-import { getToolCalls, parsedToolResult } from "../../assertions/index.ts";
+import { getToolCalls, parsedToolResult } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
-} from "../../types.ts";
-import { argText } from "../arg-text.ts";
-import { asArrangementTrack, clipStarts } from "../arrangement-readback.ts";
+} from "../../../types.ts";
+import { argText } from "../../arg-text.ts";
+import { asArrangementTrack, clipStarts } from "../../arrangement-readback.ts";
 
 const TOOL_PLAYBACK = "ppal-playback";
 const TOOL_DUPLICATE = "ppal-duplicate";
@@ -55,6 +55,10 @@ const OUTRO = "33|1";
 
 /** Bass clip starts after the copy: the three it ships with, plus the Bridge. */
 const BASS_STARTS_AFTER_COPY = ["9|1", CHORUS, BRIDGE, OUTRO];
+
+/** Reads the arrangement loop back: only play-arrangement reports it, so this
+ *  restarts the transport. */
+const LOOP_READ = { action: "play-arrangement" };
 
 /**
  * The playback call in a turn, with its args and parsed result.
@@ -86,22 +90,29 @@ const LOCATOR_VALUE = /^\s*loc(?:ator)?:/i;
  *
  * @param turn - Turn index to grade
  * @param positionParams - Song-position params the call should spell with loc:
- * @param expected - Human-readable description of the expected placement
- * @param check - Reads the playback call; returns true when the placement landed
+ * @param outcome - Where the placement should land, when the call's result shows it
+ * @param outcome.expected - Human-readable description of the expected placement
+ * @param outcome.check - Reads the playback call; true when the placement landed
  * @returns A custom assertion
  */
 function assertNavigatedByLocator(
   turn: number,
   positionParams: string[],
-  expected: string,
-  check: (call: {
-    args: Record<string, unknown>;
-    result: Record<string, unknown>;
-  }) => boolean,
+  outcome?: {
+    expected: string;
+    check: (call: {
+      args: Record<string, unknown>;
+      result: Record<string, unknown>;
+    }) => boolean;
+  },
 ): EvalAssertion {
+  const spelled = `spelled ${positionParams.join(" + ")} as loc:`;
+
   return {
     type: "custom",
-    description: `spelled ${positionParams.join(" + ")} as loc: and reached ${expected}`,
+    description: outcome
+      ? `${spelled} and reached ${outcome.expected}`
+      : spelled,
     assert: (turns) => {
       const call = playbackCall(turns, turn);
 
@@ -126,13 +137,13 @@ function assertNavigatedByLocator(
         );
       }
 
-      if (!check(call)) {
+      if (outcome != null && !outcome.check(call)) {
         const sent = positionParams
           .map((p) => `${p}=${argText(call.args[p]) || "(unset)"}`)
           .join(", ");
 
         issues.push(
-          `expected ${expected}, sent ${sent}, got ${JSON.stringify(call.result)}`,
+          `expected ${outcome.expected}, sent ${sent}, got ${JSON.stringify(call.result)}`,
         );
       }
 
@@ -211,21 +222,31 @@ export const locatorNavigation: EvalScenario = {
   assertions: [
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
-    assertNavigatedByLocator(
-      1,
-      ["startTime"],
-      `the chorus (${CHORUS})`,
-      ({ result }) => result.startTime === CHORUS,
-    ),
+    assertNavigatedByLocator(1, ["startTime"], {
+      expected: `the chorus (${CHORUS})`,
+      check: ({ result }) => result.startTime === CHORUS,
+    }),
 
-    assertNavigatedByLocator(
-      2,
-      ["loopStart", "loopEnd"],
-      `a Bridge (${BRIDGE}) to Outro (${OUTRO}) loop`,
-      ({ args }) =>
-        /bridge|loc:\d+/i.test(argText(args.loopStart)) &&
-        /outro|loc:\d+/i.test(argText(args.loopEnd)),
-    ),
+    // A locator id can't be checked from the args — ids are assigned when the
+    // Set opens — so the loop read below grades where the loop landed.
+    assertNavigatedByLocator(2, ["loopStart", "loopEnd"]),
+
+    {
+      type: "state",
+      tool: TOOL_PLAYBACK,
+      args: LOOP_READ,
+      expect: (result) => {
+        const loop = result as Record<string, unknown>;
+
+        return (
+          loop.loop === true &&
+          loop.loopStart === BRIDGE &&
+          loop.loopEnd === OUTRO
+        );
+      },
+      explain: (result) =>
+        `loop ${JSON.stringify(result)}, expected ${BRIDGE} to ${OUTRO}`,
+    },
 
     assertDuplicatedToLocator(3),
 
