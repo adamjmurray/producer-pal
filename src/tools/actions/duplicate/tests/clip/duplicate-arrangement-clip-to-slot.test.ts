@@ -131,9 +131,41 @@ describe("duplicate - arrangement clip to a clip slot", () => {
     });
   });
 
-  it("says when the copy replaced the slot's clip", async () => {
+  it("says when the copy replaced the slot's clip, built in a temp scene", async () => {
     registerSource();
-    registerSlot({ hasClip: 1 });
+
+    const dest = registerSlot({ hasClip: 1 });
+    const tempSlotPath = livePath.track(1).clipSlot(1);
+
+    // t1 has no other slot free, so the copy is built in an appended scene.
+    const liveSet = registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { scenes: children("s0") },
+    });
+
+    registerMockObject("temp_slot", {
+      path: tempSlotPath,
+      type: "ClipSlot",
+      properties: { has_clip: 0 },
+      methods: {
+        create_clip: () => {
+          registerMockObject("scratch", {
+            path: tempSlotPath.clip(),
+            type: "Clip",
+          });
+
+          return null;
+        },
+        duplicate_clip_to: () => {
+          registerMockObject(NEW_ID, {
+            path: livePath.track(1).clipSlot(0).clip(),
+            type: "Clip",
+          });
+
+          return null;
+        },
+      },
+    });
 
     const result = await duplicate({
       type: "clip",
@@ -147,6 +179,8 @@ describe("duplicate - arrangement clip to a clip slot", () => {
       reason:
         "overwrote the existing clip at t1/s0; re-created from the arrangement clip",
     });
+    expect(dest.call).not.toHaveBeenCalledWith("delete_clip");
+    expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
   });
 
   it("throws the reason when a lone copy fails", async () => {

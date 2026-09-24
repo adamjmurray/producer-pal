@@ -3,9 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import {
+  clipOverwriteNote,
+  copyClipToSlot,
+} from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
+import { withScratchSlot } from "#src/tools/shared/clip/scratch-slot.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
@@ -112,41 +117,88 @@ export interface SlotWork {
   overwrote: string | null;
 }
 
-/** A slot ready for a clip, and what clearing it for one took. */
-export interface PreparedClipSlot extends SlotWork {
-  clipSlot: LiveAPI;
+/** The clip a session create made, and what reaching its slot took. */
+export interface SessionSlotCreate extends SlotWork {
+  clip: LiveAPI;
 }
 
 /**
- * Prepare a session clip slot, creating the scenes up to it if needed. A slot
- * that already holds a clip is emptied: writing into a slot replaces what is
- * there, the way duplicating or moving a clip into one does.
+ * Create a clip in a session slot, creating the scenes up to it if needed. A
+ * clip already there is replaced, the way duplicating or moving a clip into
+ * the slot does, but never deleted first: the new clip is built in an empty
+ * slot and copied over, so a create Live refuses (a bad sampleFile) leaves it.
  * @param trackIndex - Track index (0-based)
  * @param sceneIndex - Target scene index (0-based)
  * @param liveSet - LiveAPI liveSet object
- * @returns The empty clip slot, the scenes created, and what it replaced
+ * @param create - Makes the clip in the empty slot it's given
+ * @returns The new clip, the scenes created, and what it replaced
  */
-export function prepareSessionClipSlot(
+export function createInSessionSlot(
   trackIndex: number,
   sceneIndex: number,
   liveSet: LiveAPI,
-): PreparedClipSlot {
+  create: (clipSlot: LiveAPI) => void,
+): SessionSlotCreate {
   const created = createMissingScenes(sceneIndex, liveSet);
+  const destPath = slotPath(trackIndex, sceneIndex);
   const clipSlot = LiveAPI.from(
     livePath.track(trackIndex).clipSlot(sceneIndex),
   );
 
   if (!clipSlot.getProperty("has_clip")) {
-    return { clipSlot, created, overwrote: null };
+    create(clipSlot);
+
+    return {
+      clip: requireCreatedSessionClip(clipSlot, destPath),
+      created,
+      overwrote: null,
+    };
   }
 
-  clipSlot.call("delete_clip");
+  const clip = withScratchSlot(trackIndex, sceneIndex, (scratch) =>
+    replaceFromScratch(scratch.slot, clipSlot, destPath, create),
+  );
 
-  return {
-    clipSlot,
-    created,
-    overwrote: clipOverwriteNote(slotPath(trackIndex, sceneIndex)),
-  };
+  return { clip, created, overwrote: clipOverwriteNote(destPath) };
+}
+
+/**
+ * Build the clip in the scratch slot and copy it onto the occupied one. The
+ * scratch slot is emptied afterwards whatever happened.
+ * @param scratchSlot - An empty slot on the destination's track
+ * @param destSlot - The occupied destination
+ * @param destPath - The destination, as a path
+ * @param create - Makes the clip in the slot it's given
+ * @returns The new clip at the destination
+ * @throws When no clip landed, saying the one there was not touched
+ */
+function replaceFromScratch(
+  scratchSlot: LiveAPI,
+  destSlot: LiveAPI,
+  destPath: string,
+  create: (clipSlot: LiveAPI) => void,
+): LiveAPI {
+  try {
+    create(scratchSlot);
+    requireCreatedSessionClip(scratchSlot, destPath);
+
+    const copy = copyClipToSlot(scratchSlot, destSlot);
+
+    if (copy == null) {
+      throw new Error(`Live didn't copy the new clip onto ${destPath}`);
+    }
+
+    return copy;
+  } catch (error) {
+    throw new Error(
+      `${errorMessage(error)}; the clip at ${destPath} was not touched`,
+      { cause: error },
+    );
+  } finally {
+    if (scratchSlot.getProperty("has_clip")) {
+      scratchSlot.call("delete_clip");
+    }
+  }
 }
 
 /**
