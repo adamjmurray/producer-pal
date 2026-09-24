@@ -3,8 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
+import { type ClipIdResult } from "#src/tools/clip/arrangement/helpers/arrangement-length-changes.ts";
 import {
   buildClipResultObject,
   type ClipResult,
@@ -275,13 +277,29 @@ export function handleArrangementOperations({
     // move its end.
     forgetLandedLength(movedClipGroups, clip.id);
 
-    const results = handleArrangementLengthOperation({
-      clip: currentClip,
-      isAudioClip,
-      arrangementLengthBeats,
-      context,
-      reasons,
-    });
+    let results: ClipIdResult[] = [];
+
+    try {
+      results = handleArrangementLengthOperation({
+        clip: currentClip,
+        isAudioClip,
+        arrangementLengthBeats,
+        context,
+        reasons,
+      });
+    } catch (error) {
+      // A landed move already deleted the source, so a throw would lose the
+      // new clip's id. Keep the moved clip's entry and say what didn't happen.
+      if (finalClipId === clip.id) {
+        throw error;
+      }
+
+      noteClipReason(
+        reasons,
+        currentClip.id,
+        `moved, but arrangementLength didn't finish: ${errorMessage(error)}`,
+      );
+    }
 
     // The resize runs on the clip the move left behind, which has a new id when
     // the move landed. What it says belongs to the clip the caller named.
