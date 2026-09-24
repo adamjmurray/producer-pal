@@ -24,14 +24,10 @@ import {
 } from "../clip/helpers/clip-tool-constants.ts";
 import {
   getToolCalls,
-  lastSuccessfulToolCall,
   parsedToolResult,
+  requireSuccessfulToolCall,
 } from "../../assertions/index.ts";
-import {
-  type EvalAssertion,
-  type EvalTurnResult,
-  type ToolCall,
-} from "../../types.ts";
+import { type EvalAssertion, type ToolCall } from "../../types.ts";
 
 /** Hidden location params across the toolset — never graded, only reported. */
 const HIDDEN_LOCATION_PARAMS = new Set([
@@ -70,27 +66,6 @@ function hiddenSpellings(call: ToolCall): string {
 }
 
 /**
- * Locate the graded call, failing with a readable message when it is absent.
- * @param turns - All turn results
- * @param turn - Turn index the call belongs to
- * @param tool - Tool name
- * @returns The last successful call to that tool in that turn
- */
-function requireCall(
-  turns: EvalTurnResult[],
-  turn: number,
-  tool: string,
-): ToolCall {
-  const call = lastSuccessfulToolCall(turns, turn, tool);
-
-  if (!call) {
-    throw new Error(`${tool} not called in turn ${turn}`);
-  }
-
-  return call;
-}
-
-/**
  * Assert a call carries the expected canonical path in `path` or `toPath`.
  *
  * @param options - What to grade
@@ -113,7 +88,7 @@ export function assertPathArg(options: {
     type: "custom",
     description: `${tool} turn ${turn}: ${param} is ${wanted}`,
     assert: (turns) => {
-      const call = requireCall(turns, turn, tool);
+      const call = requireSuccessfulToolCall(turns, turn, tool);
       const raw = call.args[param];
 
       if (raw == null) {
@@ -222,7 +197,7 @@ export function assertNamesTarget(options: {
     type: "custom",
     description: `${tool} turn ${turn}: ${prefix}names its target with a published param`,
     assert: (turns) => {
-      const call = requireCall(turns, turn, tool);
+      const call = requireSuccessfulToolCall(turns, turn, tool);
 
       if (action != null && call.args.action !== action) {
         throw new Error(
@@ -375,7 +350,7 @@ export function assertCallResult(options: {
     type: "custom",
     description: `${tool} turn ${turn}: ${what}`,
     assert: (turns) => {
-      const call = requireCall(turns, turn, tool);
+      const call = requireSuccessfulToolCall(turns, turn, tool);
       const result = parsedToolResult(call);
 
       if (result == null) {

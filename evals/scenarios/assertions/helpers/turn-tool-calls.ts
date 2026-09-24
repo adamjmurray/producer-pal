@@ -107,28 +107,58 @@ export function parsedToolResult(
 }
 
 /**
- * The LAST call to `toolName` that actually succeeded.
+ * The LAST call to `toolName` that actually succeeded, or undefined.
  *
  * Grading must not read the first call by name. A model that hits a tool error
  * is told to fix the arguments and call again, so the first call is often a
  * discarded failed attempt — reading it grades args that never took effect, or
  * an id that was never created, and fails a model for recovering correctly.
  *
- * Falls back to the last call by name when none succeeded, so a scenario that
- * never got a good call still fails on the payload it was grading rather than
- * on a "not found" message that hides why.
+ * Never falls back to a failed call: a grader reading its args would pass a
+ * turn where nothing took effect.
  *
  * @param turns - All turn results
  * @param turn - Turn filter (index, "any", or undefined for all)
  * @param toolName - Tool name to match
- * @returns The last successful call, the last call by name, or undefined
+ * @returns The last successful call, or undefined
  */
 export function lastSuccessfulToolCall(
   turns: EvalTurnResult[],
   turn: number | "any" | undefined,
   toolName: string,
 ): ToolCall | undefined {
-  const calls = getAllToolCalls(turns, turn).filter((c) => c.name === toolName);
+  return getToolCalls(turns, turn).findLast((c) => c.name === toolName);
+}
 
-  return calls.toReversed().find((c) => !toolCallFailed(c)) ?? calls.at(-1);
+/**
+ * The last successful call to `toolName` in a turn. Throws when there is none,
+ * saying whether the tool was never called or every call failed.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index to search
+ * @param toolName - Tool name to match
+ * @returns The last successful call
+ */
+export function requireSuccessfulToolCall(
+  turns: EvalTurnResult[],
+  turn: number,
+  toolName: string,
+): ToolCall {
+  const call = lastSuccessfulToolCall(turns, turn, toolName);
+
+  if (call) {
+    return call;
+  }
+
+  const failed = getAllToolCalls(turns, turn).findLast(
+    (c) => c.name === toolName,
+  );
+
+  if (!failed) {
+    throw new Error(`${toolName} not called in turn ${turn}`);
+  }
+
+  const error = (failed.result ?? "no result").slice(0, 160);
+
+  throw new Error(`every ${toolName} call in turn ${turn} failed: ${error}`);
 }
