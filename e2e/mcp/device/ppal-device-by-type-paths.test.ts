@@ -142,7 +142,6 @@ describe("device paths by type", () => {
 
     expect(data).toStrictEqual({
       path: "t2/afx2",
-      type: "device",
       reason: "nothing to delete",
     });
     expect(warnings).toStrictEqual([]);

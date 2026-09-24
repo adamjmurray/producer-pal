@@ -29,10 +29,10 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 30000, // Longer timeout for MCP connections
-    // A dropped MCP connection between tool calls (device restarted mid-test)
-    // fails a test the way an assertion would. One retry papers over that
-    // without hiding a device that's actually dead - log-e2e-retries.ts makes
-    // every retry print, so a real problem still surfaces.
+    // One retry covers a dropped MCP connection (device restarted mid-test).
+    // log-e2e-retries.ts prints every pass that needed it. Tests sharing one
+    // Live Set (setupMcpTestContext's `once`) fail the retry on purpose: it
+    // would start from the failed attempt's leftovers.
     retry: 1,
     // beforeAll opens Ableton and waits for the Set to serve MCP. Has to clear
     // open-live-set.ts's own stop+start budget so its error wins over a bare

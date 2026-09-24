@@ -236,6 +236,16 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
     }
   });
 
+  // A retry would rerun on the Set the failed attempt already changed, and
+  // could pass on its half-done work. So tests sharing one Set fail instead.
+  if (options?.once) {
+    beforeEach(({ task }) => {
+      if (task.result?.retryCount) {
+        throw new Error("no retry: this file shares one Live Set across tests");
+      }
+    });
+  }
+
   // Always reset config before each test (even when reusing connection)
   beforeEach(resetConfigAndSettle);
 
