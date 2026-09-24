@@ -9,6 +9,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
@@ -74,8 +75,8 @@ export async function duplicateSceneToArrangementAtPositions(
     throw new Error(`no scene index for ${targetLabel(object)}`);
   }
 
-  // When single position + count > 1, expand to sequential positions. A list
-  // of positions already names one copy per position, so count adds nothing.
+  // A lone position lays count copies end to end from it. A call naming a
+  // position list already had count settled to 1 by sceneCopyCount.
   const sceneLength = calculateSceneLength(sceneIndex);
   let allPositions = positions;
 
@@ -84,10 +85,6 @@ export async function duplicateSceneToArrangementAtPositions(
       { length: count },
       // bounded by count, index always valid
       (_, i) => (positions[0] as number) + i * sceneLength,
-    );
-  } else if (positions.length > 1 && count > 1) {
-    console.warn(
-      "count ignored for scenes: one copy per position — list more in toPath",
     );
   }
 
@@ -127,6 +124,38 @@ export async function duplicateSceneToArrangementAtPositions(
   }
 
   return createdObjects;
+}
+
+/**
+ * How many copies each scene source makes. A call naming several positions
+ * already names one copy per position, so count adds nothing there — even when
+ * those positions pair out one per scene — and is ignored with a warning.
+ * @param type - What is being duplicated
+ * @param dest - The call's settled destination
+ * @param dest.arrangementStart - Every position the call named, in bar|beat
+ * @param dest.onArrangement - Whether the copies land on the arrangement
+ * @param count - The count param
+ * @returns The count to copy each source at
+ */
+export function sceneCopyCount(
+  type: string,
+  dest: { arrangementStart?: string; onArrangement: boolean },
+  count: number,
+): number {
+  if (
+    type !== "scene" ||
+    !dest.onArrangement ||
+    count <= 1 ||
+    targetEntries(dest.arrangementStart, "arrangementStart").length <= 1
+  ) {
+    return count;
+  }
+
+  console.warn(
+    "count ignored for scenes: one copy per position — list more in toPath",
+  );
+
+  return 1;
 }
 
 /** One copy a deadline stop never reached. */

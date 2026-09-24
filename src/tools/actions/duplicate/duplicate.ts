@@ -24,6 +24,7 @@ import {
   copyLabels,
 } from "./helpers/sources/copy-labels.ts";
 import { noteUnhonoredTrackToPath } from "./helpers/sources/duplicate-track.ts";
+import { sceneCopyCount } from "./helpers/sources/scene-arrangement-positions.ts";
 import {
   duplicateChainSources,
   duplicateEverySource,
@@ -165,8 +166,8 @@ export async function duplicate(
 
   toPath = dest.toPath;
   arrangementStart = dest.arrangementStart;
+  count = sceneCopyCount(type, dest, count);
 
-  const hasArrangementParams = dest.onArrangement;
   // An arrangement destination pairs across the sources — one covers them all,
   // a list gives one per source — where a slot-shaped one is dealt out.
   const sources = planSources({
@@ -176,7 +177,8 @@ export async function duplicate(
     toPath,
     toSlot,
     arrangementStart,
-    onArrangement: type === "clip" && hasArrangementParams,
+    startParam: dest.startParam,
+    onArrangement: dest.onArrangement,
     // A lane copy takes a lane source, which the track lookup rejects.
     idPerPath: laneCopy ? laneSourceIds : undefined,
   });
@@ -187,7 +189,7 @@ export async function duplicate(
   // is created. Other types have no destination path.
   const clipDestinations =
     type === "clip"
-      ? resolveSourceClipDestinations(sources, hasArrangementParams)
+      ? resolveSourceClipDestinations(sources, dest.onArrangement)
       : null;
 
   const destination = resolveDestinationAndWarn({
@@ -250,7 +252,7 @@ export async function duplicate(
   await finishCopies(
     type,
     createdObjects,
-    { toPath, transforms, code },
+    { toPath, destination, transforms, code },
     context,
   );
 
@@ -266,6 +268,7 @@ export async function duplicate(
  * @param createdObjects - One entry per copy the call asked for
  * @param params - The call's params that apply after the copy
  * @param params.toPath - Destination path(s) as the caller wrote them
+ * @param params.destination - Where the copies went, e.g. "arrangement"
  * @param params.transforms - Transforms to apply to clip copies
  * @param params.code - Code to run on clip copies
  * @param context - Per-request context
@@ -273,11 +276,24 @@ export async function duplicate(
 async function finishCopies(
   type: string,
   createdObjects: object[],
-  params: { toPath?: string; transforms?: string; code?: string },
+  params: {
+    toPath?: string;
+    destination?: string;
+    transforms?: string;
+    code?: string;
+  },
   context: Partial<ToolContext>,
 ): Promise<void> {
   if (type === "track") {
     noteUnhonoredTrackToPath(createdObjects, params.toPath);
+
+    return;
+  }
+
+  // Scene copies can land on each other's clips too. Session copies are left
+  // out: an inserted scene shifts earlier copies, which would read as buried.
+  if (type === "scene" && params.destination === "arrangement") {
+    markOverwrittenCopies(createdObjects);
 
     return;
   }
@@ -413,14 +429,20 @@ function resolveArrangementStart(
  * @param rawToPath - Destination path(s) as the caller wrote them
  * @param rawStart - Position list as the caller wrote it
  * @param locator - Deprecated locator ref list, if sent
- * @returns The two params in one spelling, and whether they land on the song timeline
+ * @returns The two params in one spelling, whether they land on the song
+ * timeline, and which param the caller wrote the positions in
  */
 function settleDestination(
   type: string | undefined,
   rawToPath: string | undefined,
   rawStart: string | undefined,
   locator: string | undefined,
-): { toPath?: string; arrangementStart?: string; onArrangement: boolean } {
+): {
+  toPath?: string;
+  arrangementStart?: string;
+  onArrangement: boolean;
+  startParam: string;
+} {
   const scene = foldSceneDestination(type, rawToPath, rawStart);
   const toPath = scene.toPath;
   const arrangementStart = resolveArrangementStart(
@@ -433,6 +455,7 @@ function settleDestination(
     toPath,
     arrangementStart,
     onArrangement: namesArrangementPosition(type, toPath, arrangementStart),
+    startParam: scene.fromToPath ? "toPath" : "arrangementStart",
   };
 }
 
@@ -451,13 +474,14 @@ function settleDestination(
  * @param type - What is being duplicated
  * @param toPath - Destination path(s) as the caller wrote them
  * @param arrangementStart - Position list as the caller wrote it
- * @returns The two params, with a scene's coordinate moved across
+ * @returns The two params, with a scene's coordinate moved across, and
+ * whether the positions came from toPath
  */
 function foldSceneDestination(
   type: string | undefined,
   toPath: string | undefined,
   arrangementStart: string | undefined,
-): { toPath?: string; arrangementStart?: string } {
+): { toPath?: string; arrangementStart?: string; fromToPath?: true } {
   if (type !== "scene" || toPath == null || toPath.trim() === "") {
     return { toPath, arrangementStart };
   }
@@ -489,6 +513,7 @@ function foldSceneDestination(
 
   return {
     arrangementStart: entries.map((entry) => entry.position).join(","),
+    fromToPath: true,
   };
 }
 
@@ -511,8 +536,9 @@ function namesArrangementPosition(
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): boolean {
+  // No other type lands copies on the timeline.
   if (type !== "clip") {
-    return hasArrangementPosition(arrangementStart);
+    return type === "scene" && hasArrangementPosition(arrangementStart);
   }
 
   refuseDoubledPosition(toPath, arrangementStart, "toPath");

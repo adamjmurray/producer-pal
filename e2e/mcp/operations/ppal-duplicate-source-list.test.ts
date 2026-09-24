@@ -214,6 +214,32 @@ describe("ppal-duplicate with a source list", () => {
     }
   });
 
+  // Scenes pair the same way clips do: each scene takes its own position,
+  // rather than every scene landing on every position over the one before.
+  it("pairs a scene position list one position per scene", async () => {
+    await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
+    await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1");
+
+    await sleep(100);
+
+    const copies = parseToolResult<{ clips: DuplicateClipResult[] }[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "scene", path: "s5,s6", toPath: "[97|1],[101|1]" },
+      }),
+    );
+
+    expect(copies.map((copy) => copy.clips.map((c) => c.path))).toStrictEqual([
+      [`t${EMPTY_MIDI_TRACK}[97|1]`],
+      [`t${EMPTY_MIDI_TRACK}[101|1]`],
+    ]);
+
+    await sleep(100);
+
+    expect((await readClip(copies[0]!.clips[0]!.id)).notes).toContain("C3");
+    expect((await readClip(copies[1]!.clips[0]!.id)).notes).toContain("D3");
+  });
+
   // A copy is cleared by whatever lands across it, not only by one starting on
   // the same beat. Both entries name a different bar here, and one of them is
   // still a clip that no longer exists.

@@ -10,6 +10,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createStandardMidiClipMock,
   registerClipMocks,
+  children,
   registerClipSlot,
   registerMockObject,
   setupArrangementSceneMocks,
@@ -17,6 +18,7 @@ import {
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   registerArrangementClip,
+  registerTrackThatClearsOnDup,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { deleteMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -69,6 +71,22 @@ function setupSceneCopiedToBeats16And32(): ReturnType<
   registerArrangementClip(0, 1, 32);
 
   return track0;
+}
+
+/**
+ * Two session scenes, each holding an 8-beat clip on the one track, and a
+ * track whose arrangement copies clear whatever they land on.
+ * @returns The track the copies are made on
+ */
+function setupTwoScenesOnOneTrack(): ReturnType<
+  typeof registerTrackThatClearsOnDup
+> {
+  setupArrangementSceneMocks(1);
+  registerMockObject("scene2", { path: livePath.scene(1) });
+  registerClipSlot(0, 0, true, createStandardMidiClipMock());
+  registerClipSlot(0, 1, true, createStandardMidiClipMock());
+
+  return registerTrackThatClearsOnDup(0, undefined, 8);
 }
 
 describe("duplicate - scene duplication", () => {
@@ -640,5 +658,161 @@ describe("duplicate - scene duplication", () => {
     expect(capturedWarnings()).toContain(
       "Ran out of time after duplicating 0 of 2 scenes. Re-run for the rest.",
     );
+  });
+});
+
+describe("duplicate - several scenes to the arrangement", () => {
+  // A position list pairs with the scenes, like a clip's does, so each scene
+  // takes its own spot instead of every scene landing on every spot.
+  it("pairs a position list one per scene", async () => {
+    const track0 = setupTwoScenesOnOneTrack();
+
+    const result = await duplicate({
+      type: "scene",
+      id: "scene1,scene2",
+      toPath: "[1|1],[9|1]",
+    });
+
+    expect(track0.call.mock.calls).toStrictEqual([
+      [
+        "duplicate_clip_to_arrangement",
+        "id live_set/tracks/0/clip_slots/0/clip",
+        0,
+      ],
+      [
+        "duplicate_clip_to_arrangement",
+        "id live_set/tracks/0/clip_slots/1/clip",
+        32,
+      ],
+    ]);
+    expect(result).toStrictEqual([
+      {
+        clips: [{ id: livePath.track(0).arrangementClip(0), path: "t0[1|1]" }],
+      },
+      {
+        clips: [{ id: livePath.track(0).arrangementClip(1), path: "t0[9|1]" }],
+      },
+    ]);
+  });
+
+  it("refuses a position list that matches neither one scene nor all", async () => {
+    setupTwoScenesOnOneTrack();
+
+    await expect(
+      duplicate({
+        type: "scene",
+        id: "scene1,scene2",
+        toPath: "[1|1],[9|1],[17|1]",
+      }),
+    ).rejects.toThrow("toPath names 3 entries but id names 2");
+  });
+
+  // A lone position covers every scene, so scenes sharing a track land on each
+  // other there. The buried copy says so instead of reporting a dead id.
+  it("marks a scene copy a later one in the call landed on", async () => {
+    setupTwoScenesOnOneTrack();
+
+    const result = await duplicate({
+      type: "scene",
+      id: "scene1,scene2",
+      toPath: "[5|1]",
+    });
+
+    expect(result).toStrictEqual([
+      { clips: [{ path: "t0[5|1]", overwritten: true }] },
+      {
+        clips: [{ id: livePath.track(0).arrangementClip(1), path: "t0[5|1]" }],
+      },
+    ]);
+  });
+
+  // The other spelling pairs the same way, and its mismatch names the param
+  // the caller wrote.
+  it("pairs an arrangementStart list one per scene", async () => {
+    const track0 = setupTwoScenesOnOneTrack();
+
+    await duplicate({
+      type: "scene",
+      id: "scene1,scene2",
+      arrangementStart: "1|1,9|1",
+    });
+
+    expect(track0.call).toHaveBeenCalledTimes(2);
+    expectSceneDupAtBeat(track0, 0);
+    expect(track0.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id live_set/tracks/0/clip_slots/1/clip",
+      32,
+    );
+  });
+
+  it("refuses an arrangementStart list that matches neither one scene nor all", async () => {
+    setupTwoScenesOnOneTrack();
+
+    await expect(
+      duplicate({
+        type: "scene",
+        id: "scene1,scene2",
+        arrangementStart: "1|1,9|1,17|1",
+      }),
+    ).rejects.toThrow("arrangementStart names 3 entries but id names 2");
+  });
+
+  // A position list names one copy per position, however it pairs out, so
+  // count is ignored as it is for one scene — each scene laying count copies
+  // from its own position would bury the next scene's.
+  it("ignores count when the call names a position list", async () => {
+    const track0 = setupTwoScenesOnOneTrack();
+
+    const result = await duplicate({
+      type: "scene",
+      id: "scene1,scene2",
+      toPath: "[1|1],[9|1]",
+      count: 2,
+    });
+
+    expect(result).toHaveLength(2);
+    expect(track0.call).toHaveBeenCalledTimes(2);
+    expect(capturedWarnings()).toContain(
+      "count ignored for scenes: one copy per position — list more in toPath",
+    );
+  });
+
+  // An inserted session scene shifts the copies below it, which is not the
+  // same as burying them: every copy here is still there.
+  it("marks no session scene copy overwritten when a later one shifts it", async () => {
+    registerMockObject("sceneA", { path: livePath.scene(0) });
+    registerMockObject("sceneB", { path: livePath.scene(1) });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: children("track0") },
+      methods: {
+        // Copying scene 0 inserts at 1, pushing sceneB's copy from 2 to 3.
+        duplicate_scene: (index: unknown) => {
+          if (index === 0) {
+            registerMockObject("copyOfB", {
+              path: livePath.track(0).clipSlot(3).clip(),
+            });
+          }
+        },
+      },
+    });
+    registerClipSlot(0, 1, true);
+    registerClipSlot(0, 2, true);
+    registerMockObject("copyOfA", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
+    registerMockObject("copyOfB", {
+      path: livePath.track(0).clipSlot(2).clip(),
+    });
+
+    const result = (await duplicate({
+      type: "scene",
+      id: "sceneB,sceneA",
+    })) as DuplicateSceneResult[];
+
+    expect(
+      result.map((entry) => entry.clips.map((clip) => clip.id)),
+    ).toStrictEqual([["copyOfB"], ["copyOfA"]]);
   });
 });

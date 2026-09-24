@@ -50,6 +50,9 @@ interface SourcePlanArgs {
   toPath: string | undefined;
   toSlot: string | undefined;
   arrangementStart: string | undefined;
+  /** The param the caller wrote the positions in, for an error message: a
+   * scene's toPath folds onto arrangementStart. Defaults to arrangementStart. */
+  startParam?: string;
   /**
    * Whether the copies land on the arrangement, where a destination is a
    * position rather than a slot. Both spellings — a positioned `toPath`, and a
@@ -70,6 +73,7 @@ interface SourcePlanArgs {
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination clip slot(s)
  * @param args.arrangementStart - Position(s), already resolved to bar|beat
+ * @param args.startParam - The param the caller wrote the positions in
  * @param args.onArrangement - Whether the copies land on the arrangement
  * @param args.idPerPath - Path lookup to use instead of the type's own
  * @returns One share per source, ids first, then the paths in order
@@ -81,6 +85,7 @@ export function planSources({
   toPath,
   toSlot,
   arrangementStart,
+  startParam = "arrangementStart",
   onArrangement,
   idPerPath,
 }: SourcePlanArgs): SourceShare[] {
@@ -100,10 +105,16 @@ export function planSources({
     "/",
   );
 
-  // toSlot only ever named a clip slot, so a call using it lands in the session
-  // however the position params read — and shares its destinations out below.
-  if (onArrangement && !pathNamesSomething(toSlot)) {
-    return arrangementShares(sources, toPath, arrangementStart, named);
+  // toSlot only ever named a clip slot, so a clip call using it lands in the
+  // session however the position params read — and shares its destinations out
+  // below. Other types ignore it.
+  if (onArrangement && (type !== "clip" || !pathNamesSomething(toSlot))) {
+    return arrangementShares(
+      sources,
+      toPath,
+      { value: arrangementStart, param: startParam },
+      named,
+    );
   }
 
   // toPath and toSlot can't both name a destination (resolveClipDestinations
@@ -168,21 +179,24 @@ interface SourceTarget {
  * `toPath: "t0[1|1],t0[17|1]"` matches `toPath: "t0"` with `"1|1,17|1"`.
  * @param sources - The sources, in call order
  * @param toPath - Destination path(s)
- * @param arrangementStart - Position(s), already resolved to bar|beat
+ * @param start - Position(s), already resolved to bar|beat, and the param the
+ * caller wrote them in
+ * @param start.value - The positions
+ * @param start.param - The param's name, for an error message
  * @param named - The params that named the sources, for an error message
  * @returns One share per source
  */
 function arrangementShares(
   sources: SourceTarget[],
   toPath: string | undefined,
-  arrangementStart: string | undefined,
+  start: { value: string | undefined; param: string },
   named: string,
 ): SourceShare[] {
   const count = { param: named, count: sources.length };
   const paths = perSource(pathEntries(toPath, "toPath"), "toPath", count);
   const starts = perSource(
-    targetEntries(arrangementStart, "arrangementStart"),
-    "arrangementStart",
+    targetEntries(start.value, start.param),
+    start.param,
     count,
   );
 
