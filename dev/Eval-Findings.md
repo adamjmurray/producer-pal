@@ -430,7 +430,9 @@ read — costing more than the echo saved. Measured as a matched pair on one too
 `ppal-update-track` answers a `name` write with a bare `{id, path}` and a
 `gainDb` write with `{id, path, gainDb}`, so only the reporting differs. Luna
 3/3 and gemma small-model 1/1 on both arms — eight runs, zero follow-up reads
-either way. Scenarios: `evals/scenarios/defs/result/write-result-trust.ts`.
+either way. Scenario: `evals/scenarios/defs/result/write-result-trust.ts` (the
+echoing arm is retired: a `gainDb` write that lands as asked no longer echoes,
+so only the silent arm is left).
 
 Two limits on that. Both arms write ONE property, so the case that motivated the
 worry — a rack call writing a dozen params, all silent — is still unmeasured.

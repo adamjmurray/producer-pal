@@ -57,7 +57,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "evals/scenarios/defs/context/context-write-layers.ts": 27,
   "evals/scenarios/defs/context/helpers/context-scenario-setup.ts": 30,
   "evals/scenarios/defs/device/device-sound-design.ts": 28,
-  "evals/scenarios/defs/result/write-result-trust.ts": 27,
   "scripts/probes/live-api-context-probe.ts": 36,
   "scripts/probes/skill-recall-probe.ts": 27,
   "scripts/probes/tool-call-cost-probe.ts": 39,

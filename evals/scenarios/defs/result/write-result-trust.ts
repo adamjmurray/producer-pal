@@ -4,31 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenarios: does a model trust a write result that says nothing?
+ * Scenario: does a model trust a write result that says nothing?
  *
  * The observability principle says a write reports only what did NOT land as
- * asked — so a value that went in exactly as written comes back to silence.
- * The counter-argument is that a model won't believe it, and will follow every
- * write with a read, costing more than the echo saved.
+ * asked, so a value that went in exactly as written comes back to silence. The
+ * worry is that a model won't believe it, and will follow every write with a
+ * read, costing more than the echo saved.
  *
- * These measure it, as a matched pair on ONE tool. `ppal-update-track` answers
- * a `name` write with a bare `{id, path}` and a `gainDb` write with `{id, path,
- * gainDb}`. Same tool, same track, same schema prose — the only difference the
- * model sees is whether the result mentions the value. If the silent arm draws
- * follow-up reads and the echoing arm doesn't, the echo is load-bearing.
+ * A `name` write on `ppal-update-track` comes back as a bare `{id, path}`. The
+ * scenario passes when the model takes that at its word.
  *
- * Run BOTH arms before the reporting goes conditional. Once it does, the
- * echoing arm can't be measured again.
- *
- * The confound, stated so nobody over-reads the number: the arms differ in the
- * KIND of value too. A string is a string, while a gain is continuous and Live
- * may quantize it — so a model has an honest reason to check a gain that it
- * doesn't have for a name. That pushes reads toward the echoing arm, which is
- * the conservative direction: it can only understate the silent arm's problem.
- *
- * Cost isn't asserted. A follow-up read shows up in the run's own token
- * numbers, and a `token_usage` cap would just be a second way to fail for the
- * reason the read-back check already reports.
+ * Cost isn't asserted: a follow-up read shows in the run's token numbers, and a
+ * `token_usage` cap would be a second way to fail for the same reason.
  */
 
 import { getToolCalls } from "../../assertions/index.ts";
@@ -46,28 +33,15 @@ const READ_PREFIX = "ppal-read-";
 
 /** The turn carrying the write under test; turn 0 is always connect. */
 const ASK_TURN = 1;
-/** Both arms write to the same track of the basic-midi-4-track Live Set. */
+/** The Bass track of the basic-midi-4-track Live Set. */
 const BASS = 1;
 
-/** The name the silent arm writes. */
+/** The name the scenario writes. */
 const NEW_NAME = "Sub Bass";
-/** The gain the echoing arm writes, in dB. */
-const NEW_DB = -6;
-/** Live quantizes a dB write, so compare with slack rather than for equality. */
-const DB_TOLERANCE = 0.2;
 
-/** Shared by both arms: one write, no question that needs a read to answer. */
-const TRUST_SCENARIO = {
-  // Measures a rate rather than pinning behavior — a red arm is the finding.
-  kind: "capability",
-  liveSet: "basic-midi-4-track",
-  // Each arm writes to the Set, so neither can reuse the other's.
-} as const;
-
-/** The read-track fields these scenarios check. */
+/** The read-track field this scenario checks. */
 interface TrackRead {
   name?: string;
-  gainDb?: number;
 }
 
 /**
@@ -112,71 +86,36 @@ function assertNoReadBack(): EvalAssertion {
 }
 
 /**
- * Assemble one arm: connect, then the single write, graded by "no read-back"
- * plus a read proving the write landed (a model that wrote nothing reads
- * nothing and would pass vacuously).
- *
- * @param arm - Ids, the turn-1 ask, and the read-back's include/verdict/message
- * @returns The assembled eval scenario
+ * A `name` write comes back as a bare `{id, path}`: the result mentions neither
+ * the name asked for nor the one Live stored. Graded by "no read-back" plus a
+ * read proving the write landed (a model that wrote nothing reads nothing and
+ * would pass vacuously).
  */
-function trustArm(arm: {
-  id: string;
-  description: string;
-  ask: string;
-  include?: string[];
-  expect: (track: TrackRead) => boolean;
-  explain: (track: TrackRead) => string;
-}): EvalScenario {
-  return {
-    ...TRUST_SCENARIO,
-    id: arm.id,
-    tags: ["results"],
-    description: arm.description,
-
-    messages: ["Connect to Ableton Live", arm.ask],
-
-    assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
-      assertNoReadBack(),
-
-      {
-        type: "state",
-        tool: TOOL_READ_TRACK,
-        args: {
-          trackIndex: BASS,
-          ...(arm.include && { include: arm.include }),
-        },
-        expect: (result) => arm.expect(result as TrackRead),
-        explain: (result) => arm.explain(result as TrackRead),
-      },
-    ],
-  };
-}
-
-/**
- * The silent arm. A `name` write comes back as a bare `{id, path}` — the
- * result mentions neither the name asked for nor the one Live stored.
- * One instruction, nothing to report back, nothing to plan.
- */
-export const writeTrustSilentResult: EvalScenario = trustArm({
+export const writeTrustSilentResult: EvalScenario = {
   id: "write-trust-silent-result",
+  tags: ["results"],
   description: "Accept a rename whose result says nothing about the name",
-  ask: `Rename the Bass track to ${NEW_NAME}.`,
-  expect: (track) => track.name === NEW_NAME,
-  explain: (track) =>
-    `expected the track named ${NEW_NAME}, got ${track.name ?? "nothing"}`,
-});
+  // Measures a rate rather than pinning behavior: a red run is the finding.
+  kind: "capability",
+  liveSet: "basic-midi-4-track",
 
-/**
- * The echoing arm, and the one that stops being measurable once the reporting
- * goes conditional: a `gainDb` write reports the value read back off the track.
- */
-export const writeTrustEchoedResult: EvalScenario = trustArm({
-  id: "write-trust-echoed-result",
-  description: "Accept a gain change whose result echoes the gain",
-  ask: `Set the Bass track to ${NEW_DB} dB.`,
-  include: ["mixer"],
-  expect: (track) => Math.abs((track.gainDb ?? 0) - NEW_DB) <= DB_TOLERANCE,
-  explain: (track) => `expected ${NEW_DB} dB, got ${track.gainDb ?? 0}`,
-});
+  messages: [
+    "Connect to Ableton Live",
+    `Rename the Bass track to ${NEW_NAME}.`,
+  ],
+
+  assertions: [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
+    assertNoReadBack(),
+
+    {
+      type: "state",
+      tool: TOOL_READ_TRACK,
+      args: { trackIndex: BASS },
+      expect: (result) => (result as TrackRead).name === NEW_NAME,
+      explain: (result) =>
+        `expected the track named ${NEW_NAME}, got ${(result as TrackRead).name ?? "nothing"}`,
+    },
+  ],
+};
