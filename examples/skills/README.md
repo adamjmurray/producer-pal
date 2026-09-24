@@ -82,7 +82,7 @@ a draggable Session clip); only the final drop is manual.
   clips, mixer, routing, scenes, locators. Point it at one Set or a whole
   projects folder. The one skill here that needs neither Live nor the device, so
   it's the way to compare many projects at once ("what master chain do I usually
-  use?"). Live 12 files, any platform, read-only.
+  use?"). Live 11 and 12 files, any platform, read-only.
 
 ## Open Sets
 

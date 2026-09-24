@@ -21,7 +21,7 @@
 //   const set = readAls("/path/to/song.als", { include: ["devices", "clips"] });
 //
 // A folder is walked recursively; Backup/ folders are skipped. Output is one
-// JSON object per Set (an array when more than one). Live 12 only.
+// JSON object per Set (an array when more than one). Live 11 and 12.
 
 import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -281,7 +281,9 @@ export function readAls(file, options = {}) {
   const xml = gunzipSync(readFileSync(file)).toString("utf8");
   const doc = parseXml(xml);
   const liveSet = child(doc, "LiveSet");
-  const mainTrack = child(liveSet, "MainTrack");
+  // MasterTrack before Live 12.
+  const mainTrack =
+    child(liveSet, "MainTrack") ?? child(liveSet, "MasterTrack");
   const mainMixer = child(mainTrack, "DeviceChain", "Mixer");
   const scale = child(liveSet, "ScaleInformation");
 
@@ -293,7 +295,7 @@ export function readAls(file, options = {}) {
     timeSignature: decodeTimeSignature(
       initialValue(mainTrack, mainMixer, "TimeSignature"),
     ),
-    scale: `${PITCH_NAMES[value(scale, "Root")]} ${SCALE_NAMES[value(scale, "Name")] ?? value(scale, "Name")}`,
+    scale: readScale(scale),
     scaleEnabled: value(liveSet, "InKey"),
     arrangementLoop: {
       on: value(liveSet, "Transport", "LoopOn"),
@@ -321,6 +323,16 @@ export function readAls(file, options = {}) {
   result.tracks = tracks.map((t) => readTrack(t, include, groupNames));
   result.mainTrack = readTrack(mainTrack, include, groupNames);
   return result;
+}
+
+// Older Sets write RootNote and the scale's name; newer, Root and an index.
+// Sets from before Live 10 may have no scale, or an empty name.
+function readScale(scale) {
+  const root = PITCH_NAMES[value(scale, "Root") ?? value(scale, "RootNote")];
+  const name = SCALE_NAMES[value(scale, "Name")] ?? value(scale, "Name");
+  return root == null || name == null || name === ""
+    ? undefined
+    : `${root} ${name}`;
 }
 
 function resolveInclude(list) {
@@ -391,6 +403,7 @@ const TRACK_TYPES = {
   GroupTrack: "group",
   ReturnTrack: "return",
   MainTrack: "main",
+  MasterTrack: "main",
 };
 
 function readTrack(track, include, groupNames) {
@@ -636,25 +649,53 @@ function readClip(clip) {
 // ---------------------------------------------------------------------------
 // CLI
 
+// .als paths, plus a { file, error } for any path that can't be read (missing,
+// broken symlink, no permission), so one bad path doesn't stop the batch.
 function findSets(paths) {
-  const files = [];
-  const walk = (p) => {
-    const stat = statSync(p);
-    if (stat.isDirectory()) {
-      if (basename(p) === "Backup") {
+  const found = [];
+  const walked = new Set(); // real folder paths, so a symlink loop is walked once
+  const fail = (p, error) =>
+    found.push({ file: resolve(p), error: error.message });
+  const walk = (p, fromCommandLine) => {
+    let stat;
+    try {
+      stat = statSync(p);
+    } catch (error) {
+      // Inside a folder, only a broken .als is worth reporting.
+      if (fromCommandLine || p.endsWith(".als")) {
+        fail(p, error);
+      }
+      return;
+    }
+    if (!stat.isDirectory()) {
+      if (p.endsWith(".als")) {
+        found.push(p);
+      }
+      return;
+    }
+    if (basename(p) === "Backup") {
+      return;
+    }
+    let entries;
+    try {
+      const real = realpathSync(p);
+      if (walked.has(real)) {
         return;
       }
-      for (const entry of readdirSync(p).sort()) {
-        walk(join(p, entry));
-      }
-    } else if (p.endsWith(".als")) {
-      files.push(p);
+      walked.add(real);
+      entries = readdirSync(p).sort();
+    } catch (error) {
+      fail(p, error);
+      return;
+    }
+    for (const entry of entries) {
+      walk(join(p, entry), false);
     }
   };
   for (const p of paths) {
-    walk(p);
+    walk(p, true);
   }
-  return files;
+  return found;
 }
 
 function main(argv) {
@@ -679,12 +720,15 @@ function main(argv) {
     usage(1);
   }
 
-  const files = findSets(paths);
-  if (files.length === 0) {
+  const found = findSets(paths);
+  if (found.length === 0) {
     console.error("No .als files found");
     process.exit(1);
   }
-  const sets = files.map((f) => {
+  const sets = found.map((f) => {
+    if (typeof f !== "string") {
+      return f;
+    }
     try {
       return readAls(f, { include });
     } catch (error) {
@@ -696,7 +740,7 @@ function main(argv) {
       console.log(JSON.stringify(s));
     }
   } else {
-    console.log(JSON.stringify(files.length === 1 ? sets[0] : sets, null, 2));
+    console.log(JSON.stringify(sets.length === 1 ? sets[0] : sets, null, 2));
   }
 }
 

@@ -7,7 +7,7 @@ description: >-
   tempo, time signature, scale. Use when the user asks what's in a project, or
   wants to compare or analyze many projects at once — "what master chain do I
   usually use", "which projects have a Drift on the bass", "list my sample
-  paths". Live 12 files only. Any platform, Node 18+, no dependencies.
+  paths". Live 11 and 12 files. Any platform, Node 18+, no dependencies.
 ---
 
 # Ableton: Read .als Files
@@ -45,7 +45,8 @@ and the arrangement loop are always included.
 | `all`        | Everything above.                                                                                                                                                                             |
 
 A folder is walked recursively. `Backup/` folders are skipped. A file that fails
-to parse becomes `{ file, error }` so one bad Set doesn't stop the batch.
+to parse, or a path that can't be read (missing, broken link, locked folder),
+becomes `{ file, error }` so one bad Set doesn't stop the batch.
 
 ## Reading the output
 
@@ -81,6 +82,6 @@ want to compare in detail.
 
 ## Limits
 
-- Live 12 files. Older Sets may parse but the main track and some device layouts
-  differ.
+- Tested on Live 11 and 12 Sets. Older Sets parse but are untested; some fields
+  (like `scale`) can be missing.
 - Sets are 1–3 MB of XML each; a folder of hundreds takes a few seconds.
