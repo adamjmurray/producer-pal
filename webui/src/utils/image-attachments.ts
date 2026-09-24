@@ -103,13 +103,16 @@ export async function attachImages(
 }
 
 /**
- * Keep only the image files from a paste or drop. Anything else (text, a
- * non-image file) is left for the editor to handle.
+ * Keep only the non-empty image files from a paste; anything else is left for
+ * the editor. Numbers puts a 0-byte PNG next to copied text, and treating it
+ * as an image would swallow the text.
  * @param files - The event's file list
- * @returns The image files, in order
+ * @returns The non-empty image files, in order
  */
 export function imageFilesFrom(files: FileList | null | undefined): File[] {
-  return [...(files ?? [])].filter((file) => file.type.startsWith("image/"));
+  return [...(files ?? [])].filter(
+    (file) => file.type.startsWith("image/") && file.size > 0,
+  );
 }
 
 /**

@@ -374,7 +374,17 @@ describe("imageFilesFrom", () => {
     ]);
   });
 
-  it("tolerates a paste or drop carrying no files", () => {
+  it("drops an empty image, so a paste with no real image stays text", () => {
+    // Numbers puts a 0-byte PNG on the clipboard next to the copied text.
+    const empty = new File([], "image.png", { type: "image/png" });
+    const image = makeFile("a.png", "image/png");
+
+    expect(imageFilesFrom([empty, image] as unknown as FileList)).toStrictEqual(
+      [image],
+    );
+  });
+
+  it("tolerates a paste carrying no files", () => {
     expect(imageFilesFrom(null)).toStrictEqual([]);
   });
 });

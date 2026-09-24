@@ -37,6 +37,24 @@ function dragEvent(dataTransfer: unknown): DragEvent {
   } as unknown as DragEvent;
 }
 
+describe("useImageAttachments pastes that carry no real image", () => {
+  it("leaves a paste whose only image is empty to the editor", () => {
+    const { result } = renderHook(() => useImageAttachments());
+    const empty = new File([], "image.png", { type: "image/png" });
+    const event = {
+      clipboardData: { files: [empty] },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as ClipboardEvent;
+
+    result.current.zoneProps.onPasteCapture(event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(event.stopPropagation).not.toHaveBeenCalled();
+    expect(attachImages).not.toHaveBeenCalled();
+  });
+});
+
 describe("useImageAttachments drags that carry nothing to attach", () => {
   it("ignores a drop whose file list never materialized", async () => {
     const { result } = renderHook(() => useImageAttachments());
