@@ -113,12 +113,13 @@ lengths follow the same rule on both sides.
 
 ### 4. Multi-valued lists must agree
 
-Two or more args with commas in them must name the same number of entries;
-otherwise the call is refused. An item count the call worked out for itself
-counts as one of them — `count: 3` on create-track, the copies duplicate is
-about to make — so a value list has something to disagree with even on a tool
-with no target list. ADR-0031's other rules stand: a single value still
-broadcasts to every item, nothing cycles, and destinations still never
+When the call names more than one target, two or more args with commas in them
+must name the same number of entries; otherwise the call is refused. With one
+target, every value is read whole, commas and all. An item count the call worked
+out for itself counts as one of them — `count: 3` on create-track, the copies
+duplicate is about to make — so a value list has something to disagree with even
+on a tool with no target list. ADR-0031's other rules stand: a single value
+still broadcasts to every item, nothing cycles, and destinations still never
 broadcast, because a slot holds one clip — bar a bare arrangement position.
 
 ### 5. A blank string on a non-string param is an error

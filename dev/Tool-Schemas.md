@@ -61,13 +61,14 @@ list:
 
 ## Two lists in one call must agree
 
-`validateListLengths` in `src/tools/shared/validation/list-lengths.ts`, called
-once per tool before any param is split: two comma-separated params that both
-name more than one entry must name the same number, or the call is refused. One
-value still covers every item, and nothing cycles.
+`validateListLengths` in `src/tools/shared/validation/lists/list-lengths.ts`,
+called once per tool before any param is split: two comma-separated params that
+both name more than one entry must name the same number, or the call is refused.
+One value still covers every item, and nothing cycles. When the call names one
+target, the check is skipped: every value is read whole, commas and all.
 
-A param with a scalar item count (`count: 3`) is outside it — there's only one
-list in the call — and keeps ADR-0031's warning.
+An item count the call works out for itself (`count: 3` on a create tool) is one
+of the lists, so `count: 3` with `name: "A,B"` is refused too.
 
 Two tools can't check their raw args. update-clip's `id` and `path` name
 different clips and add up, so it passes the sum as a count and never compares

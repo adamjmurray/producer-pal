@@ -261,10 +261,22 @@ describe("updateTrack take lane targets", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
 
     expect(() => updateTrack({ path: "t0/l+,t0/l+" })).toThrow(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through ` +
-        `"l${MAX_TAKE_LANES - 1}"; "t0/l+" would add it. Nothing was created`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates ` +
+        `take lanes only up to "l${MAX_TAKE_LANES - 1}"; "t0/l+" would add it. ` +
+        `Nothing was created`,
     );
     // Nothing was created: a lane an earlier entry made could not be taken back.
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // Lanes past the cap can exist, so the message mustn't say otherwise.
+  it("refuses adding a lane to a track already past the cap", () => {
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+
+    expect(() => updateTrack({ path: "t0/l+" })).toThrow(
+      `take lane "l${MAX_TAKE_LANES + 2}" is out of range: Producer Pal ` +
+        `creates take lanes only up to "l${MAX_TAKE_LANES - 1}"; "t0/l+" would add it.`,
+    );
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 

@@ -296,7 +296,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     expect(result[1]).toStrictEqual({
       path: `t1/l${MAX_TAKE_LANES}`,
       ok: false,
-      reason: `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      reason: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     });
     // Only the lane that fit was made: the cap is checked before any of them.
     expect(destination.call).toHaveBeenCalledTimes(1);

@@ -179,6 +179,24 @@ export function duplicateChainSources(
   );
 }
 
+/**
+ * The source's regular track index.
+ * @param object - The source track
+ * @returns Its index
+ * @throws Error for a return or main track, which Live can't duplicate
+ */
+export function regularTrackIndex(object: LiveAPI): number {
+  const trackIndex = object.trackIndex;
+
+  if (trackIndex == null) {
+    throw new Error(
+      `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
+    );
+  }
+
+  return trackIndex;
+}
+
 // --- Helpers below main exports ---
 
 /**
@@ -358,24 +376,6 @@ function outOfTime(
       `Ran out of time after duplicating ${made} of ${count} ${type}s. ` +
       `Re-run for the rest.`,
   );
-}
-
-/**
- * The source's regular track index.
- * @param object - The source track
- * @returns Its index
- * @throws Error for a return or main track, which Live can't duplicate
- */
-export function regularTrackIndex(object: LiveAPI): number {
-  const trackIndex = object.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(
-      `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
-    );
-  }
-
-  return trackIndex;
 }
 
 /**
