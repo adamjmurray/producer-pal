@@ -347,12 +347,12 @@ Four tiers, in order of preference.
      `duplicate`, `update-clip`, `update-track`, `update-scene`,
      `update-device`, the four read tools, `playback`'s clip actions), `id` and
      `path` both name members of it, so the targets combine. `delete` and
-     `playback` also collapse duplicates, because firing or deleting an object
-     twice is a different Live call than doing it once. The update tools don't:
-     writing the same value twice lands the same way, and a slot per entry is
-     what keeps a paired `name` or `color` list aligned. Neither does
-     `duplicate` — a source named twice is two copies — nor the reads, whose
-     entry per target is what lines the results up with the call.
+     `playback` also collapse duplicates, keeping the last, because firing or
+     deleting an object twice is a different Live call than doing it once. The
+     update tools don't: writing the same value twice lands the same way, and a
+     slot per entry is what keeps a paired `name` or `color` list aligned.
+     Neither does `duplicate` — a source named twice is two copies — nor the
+     reads, whose entry per target is what lines the results up with the call.
 
 ## Results
 

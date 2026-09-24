@@ -486,12 +486,12 @@ describe("ppal-update-live-set", () => {
     );
 
     expect(deleted.locator).toStrictEqual([
-      { operation: "delete", id: soloId },
       {
         operation: "delete",
         id: soloId,
-        reason: `already named as id ${soloId} earlier in this call`,
+        reason: 'named again as "6|1" later in this call',
       },
+      { operation: "delete", id: soloId },
       { operation: "delete", id: expect.any(String) },
       { operation: "delete", count: 1, name: "E2E Comma, Two" },
     ]);

@@ -169,11 +169,11 @@ describe("deleteObject device deletion", () => {
     expect(parent?.call).toHaveBeenCalledTimes(1);
     expect(parent?.call).toHaveBeenCalledWith("delete_device", 1);
     expect(result).toStrictEqual([
-      { id: "dupe_device", deletedPath: "t0/d1" },
       {
         id: "dupe_device",
-        reason: "already named as id dupe_device earlier in this call",
+        reason: "named again as id dupe_device later in this call",
       },
+      { id: "dupe_device", deletedPath: "t0/d1" },
     ]);
   });
 

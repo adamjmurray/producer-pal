@@ -20,7 +20,7 @@ import {
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import {
-  namedEarlierReason,
+  namedLaterReason,
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -96,32 +96,38 @@ export function resolveDeleteTargets(
 
   const settled: IndexedDeleteResult[] = [];
   const deletable: DeleteTarget[] = [];
-  // The first target to name an object deletes it; deleting it again would
+  const resolved = targets.map((named, requestIndex) =>
+    resolveTarget(named, type, requestIndex),
+  );
+  // The last target to name an object deletes it; deleting it again would
   // shift another object into the slot and remove that instead. Keyed by what
   // each target resolved to, so an id and a path naming one object are caught.
-  const firstNamedBy = new Map<string, NamedTarget>();
+  const lastNamedBy = new Map<string, NamedTarget>();
 
-  for (const [requestIndex, named] of targets.entries()) {
-    const { target, entry } = resolveTarget(named, type, requestIndex);
+  for (const [requestIndex, { target }] of resolved.entries()) {
+    if (target != null) {
+      lastNamedBy.set(target.object.id, targets[requestIndex] as NamedTarget);
+    }
+  }
 
+  for (const [requestIndex, { target, entry }] of resolved.entries()) {
     if (entry != null) {
       settled.push(entry);
       continue;
     }
 
-    const earlier = firstNamedBy.get(target.object.id);
+    const later = lastNamedBy.get(target.object.id) as NamedTarget;
 
-    if (earlier != null) {
+    if (later !== targets[requestIndex]) {
       settled.push({
         id: target.id,
         ...requestAddress(target.requestPath),
-        reason: namedEarlierReason(earlier),
+        reason: namedLaterReason(later),
         requestIndex,
       });
       continue;
     }
 
-    firstNamedBy.set(target.object.id, named);
     deletable.push(target);
   }
 

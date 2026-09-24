@@ -4,18 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Live deletes a locator by toggling the cue at its time, and the same toggle
-// creates one where there is none. So every locator deleted here is recorded,
-// and a later target naming it gets a repeat entry instead of a second toggle.
-// A locator is recorded only once its toggle ran.
+// creates one where there is none. So a locator two targets name must be
+// toggled once: the caller works out up front which target acts on it.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { findLocatorsByName } from "#src/tools/shared/locator/locators.ts";
 import {
-  type ActedLocator,
-  earlierAct,
   locateTarget,
   type LocatorTarget,
-  repeatEntry,
   type SongMeter,
 } from "./locator-targets.ts";
 import { stopPlaybackIfNeeded, toggleCueAt } from "./locator-updates.ts";
@@ -26,14 +22,12 @@ import { stopPlaybackIfNeeded, toggleCueAt } from "./locator-updates.ts";
  * @param liveSet - The live_set LiveAPI object
  * @param target - The locator, as the caller named it
  * @param meter - The song meter a bar|beat is read in
- * @param acted - The locators this call already deleted; these are added
  * @returns Deletion result
  */
 export async function deleteLocator(
   liveSet: LiveAPI,
   target: LocatorTarget,
   meter: SongMeter,
-  acted: ActedLocator[],
 ): Promise<Record<string, unknown>> {
   if (target.param == null) {
     return {
@@ -44,15 +38,10 @@ export async function deleteLocator(
   }
 
   if (target.param === "locatorName") {
-    return await deleteByName(liveSet, target, meter, acted);
+    return await deleteByName(liveSet, target, meter);
   }
 
-  const { beats, found } = locateTarget(liveSet, target, meter);
-  const earlier = earlierAct(acted, target, beats);
-
-  if (earlier != null) {
-    return repeatEntry("delete", earlier);
-  }
+  const { found } = locateTarget(liveSet, target, meter);
 
   if (found == null) {
     return nothingToDelete(target);
@@ -60,11 +49,9 @@ export async function deleteLocator(
 
   const id = found.locator.id;
   const time = found.locator.getProperty("time") as number;
-  const name = found.locator.getName();
 
   stopPlaybackIfNeeded(liveSet);
   await toggleCueAt(liveSet, time, meter);
-  acted.push({ id, beats: time, name, target });
 
   return { operation: "delete", id };
 }
@@ -76,7 +63,6 @@ export async function deleteLocator(
  * @param liveSet - The live_set LiveAPI object
  * @param target - A name target
  * @param meter - The song meter, to name a time in an error
- * @param acted - The locators this call already deleted; these are added
  * @returns Deletion result
  * @throws Error when a delete stalls, saying how many went first
  */
@@ -84,17 +70,12 @@ async function deleteByName(
   liveSet: LiveAPI,
   target: LocatorTarget,
   meter: SongMeter,
-  acted: ActedLocator[],
 ): Promise<Record<string, unknown>> {
   const name = target.value as string;
   const matches = findLocatorsByName(liveSet, name);
 
   if (matches.length === 0) {
-    const earlier = acted.find((act) => act.name === name);
-
-    return earlier == null
-      ? nothingToDelete(target)
-      : repeatEntry("delete", earlier);
+    return nothingToDelete(target);
   }
 
   stopPlaybackIfNeeded(liveSet);
@@ -111,8 +92,6 @@ async function deleteByName(
         { cause: error },
       );
     }
-
-    acted.push({ id: match.locator.id, beats: match.time, name, target });
   }
 
   return { operation: "delete", count: matches.length, name };

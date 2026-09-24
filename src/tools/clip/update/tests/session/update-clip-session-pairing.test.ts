@@ -300,19 +300,19 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
-    // The second naming of the same clip keeps its slot, saying the update it
-    // asked for already happened.
+    // The first naming of the clip keeps its slot, pointing at the later one
+    // that did the update.
     expect(result).toStrictEqual([
+      {
+        id: "456",
+        path: "t1/s1",
+        reason: 'named again as "t1/s1" later in this call',
+      },
       {
         id: "456",
         path: "t1/s1",
         noteCount: 0,
         length: "2bar",
-      },
-      {
-        id: "456",
-        path: "t1/s1",
-        reason: "already named as id 456 earlier in this call",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -327,42 +327,43 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("updates a clip once when an id repeats", async () => {
+  it("updates a clip once, as the last naming asks, when an id repeats", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    const result = await updateClip({ id: "123,123", name: "Once" });
+    const result = await updateClip({ id: "123,123", name: "First,Last" });
 
     expect(callsNamed(mocks.clip123.set, "name")).toBe(1);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Last");
     expect(result).toStrictEqual([
-      { id: "123", path: "t0/s0" },
       {
         id: "123",
         path: "t0/s0",
-        reason: "already named as id 123 earlier in this call",
+        reason: "named again as id 123 later in this call",
       },
+      { id: "123", path: "t0/s0" },
     ]);
   });
 
-  it("gives a repeated clip the destination named the first time", async () => {
+  it("gives a repeated clip the destination named the last time", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
 
     const result = await updateClip({
       id: "456",
       path: "t1/s1",
-      toPath: "t5/s0,t5/s1",
+      toPath: "t5/s0,t6/s1",
     });
 
     expect(result).toStrictEqual([
       {
         id: "456",
-        ok: false,
-        reason: "not moved: track t5 does not exist",
+        path: "t1/s1",
+        reason: 'named again as "t1/s1" later in this call',
       },
       {
-        id: "456",
         path: "t1/s1",
-        reason: "already named as id 456 earlier in this call",
+        ok: false,
+        reason: "not moved: track t6 does not exist",
       },
     ]);
   });

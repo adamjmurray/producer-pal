@@ -9,11 +9,8 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { findLocator } from "#src/tools/shared/locator/locators.ts";
 import {
-  type ActedLocator,
-  earlierAct,
   locateTarget,
   type LocatorTarget,
-  repeatEntry,
   type SongMeter,
 } from "./locator-targets.ts";
 import { cleanupTempClip, extendSongIfNeeded } from "./song-extension.ts";
@@ -95,7 +92,6 @@ export async function toggleCueAt(
  * @param liveSet - The live_set LiveAPI object
  * @param target - The time to create at, and the name to give it
  * @param meter - The song meter a bar|beat is read in
- * @param acted - The locators this call already acted on; this one is added
  * @param context - Context object with silenceWavPath
  * @returns Created locator info
  */
@@ -103,7 +99,6 @@ export async function createLocator(
   liveSet: LiveAPI,
   target: LocatorTarget,
   meter: SongMeter,
-  acted: ActedLocator[],
   context: { silenceWavPath?: string },
 ): Promise<Record<string, unknown>> {
   if (target.param == null) {
@@ -116,11 +111,6 @@ export async function createLocator(
 
   const { beats, found: existing } = locateTarget(liveSet, target, meter);
   const targetBeats = beats as number;
-  const earlier = earlierAct(acted, target, targetBeats);
-
-  if (earlier != null) {
-    return repeatEntry("create", earlier);
-  }
 
   if (existing) {
     return {
@@ -158,13 +148,6 @@ export async function createLocator(
     found.locator.set("name", target.name);
   }
 
-  acted.push({
-    id: found.locator.id,
-    beats: targetBeats,
-    name: target.name ?? "",
-    target,
-  });
-
   return { operation: "create", id: found.locator.id };
 }
 
@@ -173,14 +156,12 @@ export async function createLocator(
  * @param liveSet - The live_set LiveAPI object
  * @param target - The locator, and its new name
  * @param meter - The song meter a bar|beat is read in
- * @param acted - The locators this call already acted on; this one is added
  * @returns Rename result
  */
 export function renameLocator(
   liveSet: LiveAPI,
   target: LocatorTarget,
   meter: SongMeter,
-  acted: ActedLocator[],
 ): Record<string, unknown> {
   if (target.name == null) {
     return {
@@ -198,12 +179,7 @@ export function renameLocator(
     };
   }
 
-  const { beats, found } = locateTarget(liveSet, target, meter);
-  const earlier = earlierAct(acted, target, beats);
-
-  if (earlier != null) {
-    return repeatEntry("rename", earlier);
-  }
+  const { found } = locateTarget(liveSet, target, meter);
 
   if (found == null) {
     return {
@@ -215,15 +191,7 @@ export function renameLocator(
     };
   }
 
-  const act = {
-    id: found.locator.id,
-    beats: found.locator.getProperty("time") as number,
-    name: found.locator.getName(),
-    target,
-  };
-
   found.locator.set("name", target.name);
-  acted.push(act);
 
   return { operation: "rename", id: found.locator.id };
 }

@@ -382,12 +382,12 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "delete", id: "26" },
         {
           operation: "delete",
           id: "26",
-          reason: "already named as id 26 earlier in this call",
+          reason: 'named again as "1|1" later in this call',
         },
+        { operation: "delete", id: "26" },
       ]);
       // A second toggle at 1|1 would have created a new locator there.
       expect(cueToggles()).toBe(1);
@@ -403,18 +403,18 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "delete", id: "26" },
         {
           operation: "delete",
           id: "26",
-          reason: 'already named as "1|1" earlier in this call',
+          reason: 'named again as "1|1" later in this call',
         },
+        { operation: "delete", id: "26" },
       ]);
       expect(cueToggles()).toBe(1);
       expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
     });
 
-    it("points a name at the id that already deleted it", async () => {
+    it("points an id at the name that deletes it", async () => {
       simulateLocators(liveSet, INTRO_VERSE_DROP);
 
       const result = await updateLiveSet({
@@ -424,17 +424,17 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "delete", id: "27" },
         {
           operation: "delete",
           id: "27",
-          reason: "already named as id 27 earlier in this call",
+          reason: 'named again as "Verse" later in this call',
         },
+        { operation: "delete", count: 1, name: "Verse" },
       ]);
       expect(cueToggles()).toBe(1);
     });
 
-    it("points a repeated name at the entry that deleted it", async () => {
+    it("points a repeated name at the entry that deletes it", async () => {
       const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
 
       const result = await updateLiveSet({
@@ -443,12 +443,12 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "delete", count: 1, name: "Verse" },
         {
           operation: "delete",
-          id: "27",
-          reason: 'already named as "Verse" earlier in this call',
+          name: "Verse",
+          reason: 'named again as "Verse" later in this call',
         },
+        { operation: "delete", count: 1, name: "Verse" },
       ]);
       expect(cueToggles()).toBe(1);
       expect(set.locators()).toStrictEqual([
@@ -457,7 +457,7 @@ describe("updateLiveSet - locator targets", () => {
       ]);
     });
 
-    it("deletes the rest of a name an id already took one of", async () => {
+    it("deletes every locator of a name, one of them named by id too", async () => {
       const set = simulateLocators(liveSet, [
         { time: 0, name: "Verse" },
         { time: 16, name: "Chorus" },
@@ -471,8 +471,12 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "delete", id: "26" },
-        { operation: "delete", count: 1, name: "Verse" },
+        {
+          operation: "delete",
+          id: "26",
+          reason: 'named again as "Verse" later in this call',
+        },
+        { operation: "delete", count: 2, name: "Verse" },
       ]);
       expect(cueToggles()).toBe(2);
       expect(set.locators()).toStrictEqual([{ time: 16, name: "Chorus" }]);
@@ -610,14 +614,14 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "rename", id: "26" },
         {
           operation: "rename",
           id: "26",
-          reason: "already named as id 26 earlier in this call",
+          reason: 'named again as "1|1" later in this call',
         },
+        { operation: "rename", id: "26" },
       ]);
-      expect(set.locators()[0]).toStrictEqual({ time: 0, name: "A" });
+      expect(set.locators()[0]).toStrictEqual({ time: 0, name: "B" });
     });
 
     it("says which target in a list found no locator", async () => {
@@ -653,15 +657,15 @@ describe("updateLiveSet - locator targets", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "create", id: "26" },
         {
           operation: "create",
-          id: "26",
-          reason: 'already named as "1|1" earlier in this call',
+          time: "1|1",
+          reason: 'named again as "1|1" later in this call',
         },
+        { operation: "create", id: "26" },
       ]);
       expect(cueToggles()).toBe(1);
-      expect(set.locators()).toStrictEqual([{ time: 0, name: "A" }]);
+      expect(set.locators()).toStrictEqual([{ time: 0, name: "B" }]);
     });
   });
 });

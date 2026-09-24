@@ -12,7 +12,6 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type LocatorMatch,
@@ -25,7 +24,6 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { namedEarlierReason } from "#src/tools/shared/validation/lists/named-targets.ts";
 
 export type LocatorOperation = "create" | "delete" | "rename";
 
@@ -53,14 +51,6 @@ export interface LocatorArgs {
 export interface SongMeter {
   timeSigNumerator: number;
   timeSigDenominator: number;
-}
-
-/** A locator this call already acted on, and the target that named it. */
-export interface ActedLocator {
-  id: string;
-  beats: number;
-  name: string;
-  target: LocatorTarget;
 }
 
 /**
@@ -163,46 +153,6 @@ export function locateTarget(
   const beats = toBeats(value, meter);
 
   return { beats, found: findLocator(liveSet, { timeInBeats: beats }) };
-}
-
-/**
- * The earlier act on the locator an id or time target names, if any. Checked
- * before acting on what the lookup found: a deleted locator is gone, so the
- * lookup can't see it, and toggling its time again would create a new one.
- * @param acted - The locators this call already acted on
- * @param target - An id or time target
- * @param beats - The target's time, when it named one
- * @returns The earlier act, or undefined
- */
-export function earlierAct(
-  acted: ActedLocator[],
-  target: LocatorTarget,
-  beats: number | undefined,
-): ActedLocator | undefined {
-  return acted.find((act) =>
-    target.param === "locatorId"
-      ? act.id === target.value
-      : beats != null && Math.abs(act.beats - beats) < SAME_TIME_EPSILON,
-  );
-}
-
-/**
- * The entry for a target naming a locator an earlier target already acted on.
- * @param operation - The call's operation
- * @param earlier - The earlier act
- * @returns The repeat entry, pointing at the entry that did the work
- */
-export function repeatEntry(
-  operation: LocatorOperation,
-  earlier: ActedLocator,
-): Record<string, unknown> {
-  // The shared wording quotes any spelling that isn't an id.
-  const reason = namedEarlierReason({
-    param: earlier.target.param === "locatorId" ? "id" : "path",
-    value: earlier.target.value as string,
-  });
-
-  return { operation, id: earlier.id, reason };
 }
 
 // --- Helpers below main exports ---

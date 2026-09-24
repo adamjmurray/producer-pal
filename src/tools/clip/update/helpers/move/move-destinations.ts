@@ -24,7 +24,7 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  namedEarlierReason,
+  namedLaterReason,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
@@ -177,27 +177,33 @@ export function resolveRequestedClips(
   const requestedIndexById = new Map<string, number>();
   const claims: Array<[string, ClipPath]> = [];
 
-  for (const [index, id] of targets.ids.entries()) {
+  const named = targets.ids.map((id, index) =>
     // A path that named no clip already holds its slot with the reason.
-    if (id == null) {
-      continue;
+    id == null ? null : namedClip(id, targets, index),
+  );
+  const lastIndexById = new Map<string, number>();
+
+  for (const [index, clip] of named.entries()) {
+    if (clip != null) {
+      lastIndexById.set(clip.id, index);
     }
+  }
 
-    const clip = namedClip(id, targets, index);
-
+  for (const [index, clip] of named.entries()) {
     if (clip == null) {
       continue;
     }
 
     // An id and a path can name the same clip, as can a repeated id. Updating
-    // it twice compounds every operation — duplicateLoop would double it again.
-    const earlier = requestedIndexById.get(clip.id);
+    // it twice compounds every operation — duplicateLoop would double it again
+    // — so only the last target to name it runs.
+    const last = lastIndexById.get(clip.id) as number;
 
-    if (earlier != null) {
+    if (last !== index) {
       targets.unused.set(index, {
         id: clip.id,
         path: objectPathForApi(clip),
-        reason: namedEarlierReason(targets.named[earlier] as NamedTarget),
+        reason: namedLaterReason(targets.named[last] as NamedTarget),
       });
 
       continue;

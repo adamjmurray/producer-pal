@@ -95,12 +95,12 @@ describe("playback clip entries", () => {
 
     expect(slot.call).toHaveBeenCalledExactlyOnceWith("fire");
     expect(result.clips).toStrictEqual([
-      { id: "clip1", path: "t0/s0" },
       {
         id: "clip1",
         path: "t0/s0",
-        reason: "already named as id clip1 earlier in this call",
+        reason: 'named again as "t0/s0" later in this call',
       },
+      { id: "clip1", path: "t0/s0" },
     ]);
   });
 

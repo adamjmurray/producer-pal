@@ -113,25 +113,26 @@ target, so no entry exists yet to carry them.
   no clip, or that the deadline never reached, holds its slot as a skip; so does
   one whose only requested work — a move, a position, a split — was refused
   outright, since where the clip still sits is nothing the caller asked about. A
-  clip named twice holds its second slot as a normal entry saying the update
-  already happened, and a clip that was written but not as asked keeps its entry
-  with a `reason`: a throw partway, a move refused beside a name or a length
-  that landed, a re-create and what it cost, a take-lane leftover, a move that
-  replaced the clip already in the destination slot. A param the clip can't take
-  — notes, preTransforms, duplicateLoop or quantize on an audio clip, warp
-  markers or the audio params (gainDb, pitchShift, warpMode, warping) on a MIDI
-  clip, firstStart on a clip that isn't looping or past its content end, warping
-  off while looping — is a reason on its entry too, and a skip when it was all
-  the call asked of the clip. The move and arrangement helpers report all of it
-  on the clip's entry instead of warning, through a per-call collector keyed by
-  the clip id the call found; a step that writes under a new id — a move
-  re-creates the clip — hands its reasons back to the id the caller named. One
-  target never answers with no entries: a split whose pieces the rescan can't
-  find says so too. A clip another clip in the same call was moved onto keeps a
-  normal entry rather than a skip — `deleted: true` and the address it had:
-  nothing the call asked of it landed, but that it is gone is news no skip can
-  carry. When several clips name one slot, the last one moves there and the
-  others stay put, each with a reason naming that clip.
+  clip named twice is updated as its last mention asks; the earlier mention
+  holds its slot as a normal entry pointing at the later one, and a clip that
+  was written but not as asked keeps its entry with a `reason`: a throw partway,
+  a move refused beside a name or a length that landed, a re-create and what it
+  cost, a take-lane leftover, a move that replaced the clip already in the
+  destination slot. A param the clip can't take — notes, preTransforms,
+  duplicateLoop or quantize on an audio clip, warp markers or the audio params
+  (gainDb, pitchShift, warpMode, warping) on a MIDI clip, firstStart on a clip
+  that isn't looping or past its content end, warping off while looping — is a
+  reason on its entry too, and a skip when it was all the call asked of the
+  clip. The move and arrangement helpers report all of it on the clip's entry
+  instead of warning, through a per-call collector keyed by the clip id the call
+  found; a step that writes under a new id — a move re-creates the clip — hands
+  its reasons back to the id the caller named. One target never answers with no
+  entries: a split whose pieces the rescan can't find says so too. A clip
+  another clip in the same call was moved onto keeps a normal entry rather than
+  a skip — `deleted: true` and the address it had: nothing the call asked of it
+  landed, but that it is gone is news no skip can carry. When several clips name
+  one slot, the last one moves there and the others stay put, each with a reason
+  naming that clip.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer

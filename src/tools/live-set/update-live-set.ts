@@ -10,7 +10,10 @@ import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts"
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { deleteLocator } from "./helpers/locator-deletes.ts";
 import {
-  type ActedLocator,
+  laterNamings,
+  namedLaterEntry,
+} from "./helpers/locator-later-namings.ts";
+import {
   attemptLocator,
   type LocatorOperation,
   type LocatorTarget,
@@ -169,20 +172,27 @@ async function handleLocatorOperations(
 ): Promise<unknown> {
   // Read again: the meter Live holds now, after any timeSignature write.
   const meter = readMeter(liveSet);
-  // What earlier targets did, so a locator named twice is acted on once.
-  const acted: ActedLocator[] = [];
+  const namings =
+    targets.length > 1 ? laterNamings(liveSet, targets, meter) : [];
   const entries: Array<Record<string, unknown>> = [];
 
   // Sequential: each operation moves the playhead, so they can't overlap.
-  for (const target of targets) {
+  for (const [index, target] of targets.entries()) {
+    const naming = namings[index];
+
+    if (naming != null) {
+      entries.push(namedLaterEntry(operation, target, naming));
+      continue;
+    }
+
     const run = async (): Promise<Record<string, unknown>> => {
       switch (operation) {
         case "create":
-          return await createLocator(liveSet, target, meter, acted, context);
+          return await createLocator(liveSet, target, meter, context);
         case "delete":
-          return await deleteLocator(liveSet, target, meter, acted);
+          return await deleteLocator(liveSet, target, meter);
         default:
-          return renameLocator(liveSet, target, meter, acted);
+          return renameLocator(liveSet, target, meter);
       }
     };
 

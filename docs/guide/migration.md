@@ -121,13 +121,14 @@ those used to be warnings. So does a param the clip could do nothing with
 or `warping` on a MIDI one, `firstStart` on a clip that isn't looping), and
 where that was everything you asked of the clip, its entry is `ok: false`. A
 refused move with nothing else asked for that clip landed nothing, so it is
-`ok: false`. A clip named twice gets one entry per mention, the second saying
-the update already happened. A `name` or `color` list pairs with the targets you
-named, so a skipped one keeps its place in the list instead of shifting the
-names after it onto the wrong clips, and every piece a split cuts a target into
-takes that target's name. `ppal-duplicate` likewise returns one entry per
-destination you named, with a destination no copy landed at holding its slot as
-`{path, ok: false, reason}` instead of dropping out of the array.
+`ok: false`. A clip named twice gets one entry per mention: the update runs as
+the last mention asks, and the earlier ones point to it. A `name` or `color`
+list pairs with the targets you named, so a skipped one keeps its place in the
+list instead of shifting the names after it onto the wrong clips, and every
+piece a split cuts a target into takes that target's name. `ppal-duplicate`
+likewise returns one entry per destination you named, with a destination no copy
+landed at holding its slot as `{path, ok: false, reason}` instead of dropping
+out of the array.
 
 That covers device, chain and drum-pad copies too. A destination that used to
 drop out of the array with a warning now keeps its slot as
@@ -246,10 +247,11 @@ an id they couldn't use. They now carry a `clips` array with one entry per `id`
 or `path` you named, in order: `{id, path}` for a slot they acted on, and
 `{id or path, ok: false, reason}`, spelled the way you wrote it, for one that
 named no session clip, or no clip slot. A slot you named twice (once by id, once
-by path) is still acted on once, and the repeat entry says so in a `reason`.
-Naming a single target that fails is now an error instead of a warning, and a
-call where every target failed reports `playing` as it found it rather than
-claiming a launch. The other actions are unchanged and have no `clips`.
+by path) is still acted on once, at its last mention, and the earlier entry says
+so in a `reason`. Naming a single target that fails is now an error instead of a
+warning, and a call where every target failed reports `playing` as it found it
+rather than claiming a launch. The other actions are unchanged and have no
+`clips`.
 
 **A call naming one target that can't be done now throws** instead of returning
 an empty array with a warning. `ppal-update-track path="t99"` is an error, as is

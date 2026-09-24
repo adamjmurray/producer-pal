@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The targets a call names, and the entries they leave in place of work not
-// done — a skip, or a repeat of an object named earlier. Each is addressed by
+// done — a skip, or an object a later target names again. Each is addressed by
 // the param and spelling the caller wrote, which is all they have to match on.
 
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -74,17 +74,17 @@ export function skipEntry(target: NamedTarget, reason: string): TargetSkip {
 }
 
 /**
- * How a repeat target says an earlier one named the same object, in that
- * target's own spelling — what the caller matches the working entry on. One
- * wording for every tool: the work happened at the entry this names, once.
- * @param earlier - The target that named the object first
+ * How a target says a later one named the same object, in that target's own
+ * spelling — what the caller matches the working entry on. One wording for
+ * every tool: the last target to name an object is the one acted on.
+ * @param later - The target that named the object last
  * @returns The reason, pointing at the entry that did the work
  */
-export function namedEarlierReason(earlier: NamedTarget): string {
+export function namedLaterReason(later: NamedTarget): string {
   const address =
-    earlier.param === "id" ? `id ${earlier.value}` : `"${earlier.value}"`;
+    later.param === "id" ? `id ${later.value}` : `"${later.value}"`;
 
-  return `already named as ${address} earlier in this call`;
+  return `named again as ${address} later in this call`;
 }
 
 /**
