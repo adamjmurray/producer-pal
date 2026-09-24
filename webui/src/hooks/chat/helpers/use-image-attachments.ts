@@ -5,7 +5,12 @@
 
 import { useCallback, useRef, useState } from "preact/hooks";
 import { type ChatImage } from "#webui/chat/sdk/types";
-import { attachImages, imageFilesFrom } from "#webui/utils/image-attachments";
+import {
+  attachImages,
+  imageFilesFrom,
+  MAX_IMAGES_PER_MESSAGE,
+  TOO_MANY_IMAGES_MESSAGE,
+} from "#webui/utils/image-attachments";
 import { dragHasFiles } from "#webui/utils/text-file-io";
 
 /** Handlers spread onto the element wrapping the composer's editor. */
@@ -42,9 +47,7 @@ export function useImageAttachments(): ImageAttachments {
   const [images, setImages] = useState<ChatImage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  // Reading state is async (FileReader), so the list lives in a ref too: two
-  // pastes in quick succession would otherwise both build on the same snapshot
-  // and the first one's images would vanish.
+  // The latest list, for merging adds that finish after it changed.
   const imagesRef = useRef<ChatImage[]>([]);
   // dragenter/leave fire per child element; a depth counter keeps the overlay
   // from flickering as the pointer crosses the editor's nested nodes.
@@ -61,9 +64,19 @@ export function useImageAttachments(): ImageAttachments {
         return;
       }
 
-      void attachImages(imagesRef.current, files).then((result) => {
-        publish(result.images);
-        setNotice(result.notice);
+      // Reading is async, and the list can change meanwhile (another paste, a
+      // remove, a send). Append only this call's images to the list as it is
+      // when reading finishes, or those changes would be undone.
+      const before = imagesRef.current;
+
+      void attachImages(before, files).then((result) => {
+        const added = result.images.slice(before.length);
+        const room = MAX_IMAGES_PER_MESSAGE - imagesRef.current.length;
+
+        publish([...imagesRef.current, ...added.slice(0, room)]);
+        setNotice(
+          added.length > room ? TOO_MANY_IMAGES_MESSAGE : result.notice,
+        );
       });
     },
     [publish],
