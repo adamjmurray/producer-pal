@@ -9,7 +9,7 @@
 // `p<note>` is the only exception, because Live indexes drum pads by MIDI note.
 //
 // Parsing only: nothing here touches the Live API, so a bad path fails before
-// anything is created or moved. See dev/tools/Object-Paths.md.
+// anything is created or moved. See dev/tools/object-paths/README.md.
 
 import {
   NEW_CHAIN,

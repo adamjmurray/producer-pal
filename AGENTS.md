@@ -65,7 +65,7 @@ Key entry points:
   Pal in it, use the `ableton-open-live-set` skill's `--add-producer-pal`
   (`examples/skills/ableton-open-live-set/`).
 
-See `dev/Architecture.md` for system design and `dev/clients/Chat-UI.md` for the web UI.
+See `dev/architecture/README.md` for system design and `dev/clients/chat-ui/README.md` for the web UI.
 
 ## Critical Coding Rules
 
@@ -148,7 +148,7 @@ See `dev/Architecture.md` for system design and `dev/clients/Chat-UI.md` for the
   has no filesystem, and shipped `src/**` can't shell out. All `node:fs` work
   lives in `src/mcp-server/`. User-content features (`~/.producer-pal`
   overrides, global context, custom system prompt) are MCP/REST concerns that
-  never touch the Live API. See `dev/Architecture.md` → Runtime Boundary.
+  never touch the Live API. See `dev/architecture/README.md` → Runtime Boundary.
 
 - **Generated parsers**: `generated-*-parser.js` files are gitignored and built
   from the `.peggy` grammars. Never commit them; regenerate
@@ -261,7 +261,7 @@ The practical consequences:
   the guard is dead or you just hadn't found the input.
 - See `dev/quality/Testing.md` for what counts as a test file, webui test gotchas, and
   the mock registry. CLI tools and test Live Sets are in
-  `dev/quality/Development-Tools.md`.
+  `dev/quality/development-tools/README.md`.
 
 ### MCP E2E Testing
 
@@ -318,10 +318,10 @@ them without asking:**
 
 Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
 find one. The main ones: `dev/Principles.md` (first principles for tool design —
-read first), `dev/Architecture.md` (system design), `dev/Coding-Standards.md`
+read first), `dev/architecture/README.md` (system design), `dev/coding-standards/README.md`
 (full style guide + Live API reference), `dev/quality/Testing.md`,
 `dev/tools/Tool-Schemas.md`, `dev/quality/Linting.md`, `dev/specs/` (bar|beat and transform
-grammars), `dev/quality/Development-Tools.md`, and `dev/decisions/` (ADRs — why settled
+grammars), `dev/quality/development-tools/README.md`, and `dev/decisions/` (ADRs — why settled
 choices went the way they did, especially the rejections).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.

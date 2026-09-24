@@ -45,7 +45,7 @@ export function applyAudioClipWarping(
  *
  * Restating it as the sample duration resets the region to the whole file. That
  * loses a shorter region requested in the same call — see the known limitation
- * under "Audio Clip Warping" in dev/Coding-Standards.md.
+ * under "Audio Clip Warping" in dev/coding-standards/README.md.
  *
  * @param clip - The audio clip to unwarp
  */

@@ -10,7 +10,7 @@ markers while it is off, the loop brace while it is on. Flipping the flag
 reveals whatever the other pair was last left with rather than carrying the
 region over, so `ppal-update-clip` with a bare `looping` used to resize the clip
 with no warning, in both directions. See the loop toggle section of
-`dev/Coding-Standards.md` for the mechanics.
+`dev/coding-standards/README.md` for the mechanics.
 
 ## Decision
 

@@ -56,7 +56,7 @@ export function readDrumPadByPath(
   // Two kinds of pad have no DrumPad object: the catch-all, which is a chain
   // group rather than a drum_pads entry, and every pad of a Drum Rack nested in
   // a drum pad, because such a rack has no pads at all (see
-  // dev/Coding-Standards.md). Both still route chains, and read-device prints
+  // dev/coding-standards/README.md). Both still route chains, and read-device prints
   // paths through them, so those paths have to read back.
   const pad = midiNote < 0 ? null : findDrumPadByNote(device, midiNote);
   const chains = pad ? chainsOnDrumPad(pad) : chainsForInNote(device, midiNote);

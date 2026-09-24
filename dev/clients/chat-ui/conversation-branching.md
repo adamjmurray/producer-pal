@@ -4,7 +4,7 @@ How the chat UI forks conversations (edit / retry), navigates sibling branches,
 and collapses branch families in the history panel. This is the authoritative
 reference for the branch model; for the broader chat-UI architecture and the
 conversation-persistence basics (IndexedDB store, auto-save, auto-title, locked
-settings) see [Chat-UI.md](Chat-UI.md).
+settings) see [the Chat UI README](README.md).
 
 ## Mental model: a parent-pointer branch tree
 

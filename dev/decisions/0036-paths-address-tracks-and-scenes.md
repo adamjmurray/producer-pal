@@ -26,7 +26,7 @@ the main track, where the path carries the role.
 Creating takes a path too, through three roots that name a place rather than a
 thing: `t+` appends a track, `rt+` adds a return track, `s+` appends a scene.
 
-Details in [dev/tools/Object-Paths.md](../tools/Object-Paths.md).
+Details in [dev/tools/object-paths/README.md](../tools/object-paths/README.md).
 
 ## What this reverses in ADR-0025
 

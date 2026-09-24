@@ -38,7 +38,7 @@ means step interval and bar copy in bar|beat.
 **A path may end with one bracketed coordinate naming a point on the song
 timeline**, and **a song-timeline position is either bar|beat or `loc:<name>`**.
 The grammar, the legal shapes, and the list rules are in
-[dev/tools/Object-Paths.md](../tools/Object-Paths.md).
+[dev/tools/object-paths/README.md](../tools/object-paths/README.md).
 
 This reverses Phase 5 and, with it, two of ADR-0025's rejections — arrangement
 clips as paths, and locators in the grammar. What stands from Phase 5's

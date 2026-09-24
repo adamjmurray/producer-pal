@@ -167,7 +167,7 @@ describe("ppal-live-api", () => {
 
   // The nonexistent-object contract, pinned so a Live upgrade that changes it
   // fails here rather than as wrong values deep inside a tool. See
-  // dev/Coding-Standards.md, "What Live Returns When There Is No Object".
+  // dev/coding-standards/README.md, "What Live Returns When There Is No Object".
   it("returns the documented sentinels on a nonexistent object", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-live-api",

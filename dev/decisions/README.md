@@ -5,7 +5,7 @@ from the code or git history — especially the things we deliberately chose not
 to do.
 
 The codebase already documents its rules (`AGENTS.md`,
-`dev/Coding-Standards.md`) and its intended work (`dev/plans/`, the
+`dev/coding-standards/README.md`) and its intended work (`dev/plans/`, the
 [roadmap](https://producer-pal.org/roadmap)). What neither captures is the
 reasoning behind a settled decision, particularly a rejection. That's the most
 expensive knowledge to reconstruct and the easiest to lose. If a future
@@ -17,7 +17,7 @@ answer belongs here.
 - **ADR** — a decision already made, with lasting consequences, that isn't
   self-evident from the code. Includes "won't fix" calls.
 - **Not an ADR** — proposals still being weighed (→ `dev/plans/`), coding rules
-  (→ `dev/Coding-Standards.md`), or anything the code and tests already make
+  (→ `dev/coding-standards/README.md`), or anything the code and tests already make
   obvious.
 
 ## Conventions

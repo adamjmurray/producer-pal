@@ -9,7 +9,7 @@
 // → audio effects, so this is a filter over that order.
 //
 // Runs on every device path, so the no-type-segment case must read nothing.
-// See dev/tools/Object-Paths.md.
+// See dev/tools/object-paths/README.md.
 
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,

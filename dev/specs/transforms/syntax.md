@@ -54,7 +54,7 @@
   - Note names follow the **same rules as bar|beat notes**: case-insensitive
     letters, ASCII (`#`/`b`) or Unicode (`♯`/`♭`) accidentals, and enharmonic
     spellings (`E#`→F, `B#`→C of the next octave, `Cb`→B of the previous octave)
-    — see [../BarBeat-Spec.md](../BarBeat-Spec.md). (`B` also reads as a flat,
+    — see [the bar|beat spec](../barbeat/README.md). (`B` also reads as a flat,
     so `GB3` = `Gb3`.) The transform grammar shares one `pitchClassFromParts`,
     locked in parity with the bar|beat note grammar by
     `pitch-class-grammar-parity.test.ts`.

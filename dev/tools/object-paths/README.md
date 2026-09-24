@@ -81,7 +81,7 @@ nowhere but here.
 needs a device-list read on the per-object hot path, where `d<n>` comes free
 from string manipulation. Making them canonical is a separate decision that
 needs a measurement
-([ADR-0041](../decisions/0041-device-type-segments-are-input-only.md)).
+([ADR-0041](../../decisions/0041-device-type-segments-are-input-only.md)).
 
 | Path           | Names                             | Live API                               |
 | -------------- | --------------------------------- | -------------------------------------- |
@@ -122,12 +122,12 @@ up to the index named, capped at `MAX_TAKE_LANES`.
 A `+` is accepted only by the tool that creates that kind of object: `t+`, `rt+`
 and `s+` by the create tools, `l+` by `ppal-update-track`, because a take lane
 is an aspect of its track rather than an object a tool makes on its own
-([ADR-0043](../decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
+([ADR-0043](../../decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
 `c+` is the chain's, taken by the tools that make chains: `ppal-create-device`,
 `ppal-duplicate` and `ppal-update-device`
-([ADR-0045](../decisions/0045-c-plus-appends-a-rack-chain.md)). `d+` is the
+([ADR-0045](../../decisions/0045-c-plus-appends-a-rack-chain.md)). `d+` is the
 device's, taken by those same three
-([ADR-0046](../decisions/0046-d-plus-appends-a-device.md)). Every other path must
+([ADR-0046](../../decisions/0046-d-plus-appends-a-device.md)). Every other path must
 name something that already exists, or an index a tool fills in up to. A tool
 that only reads or writes an existing object refuses a `+` and says which tool
 takes it.
@@ -320,7 +320,7 @@ Four tiers, in order of preference.
    and `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
    migration: models reach for them unprompted, and catching the guess beats a
    round trip. See
-   [hidden-param.ts](../../src/tools/shared/tool-framework/hidden-param.ts).
+   [hidden-param.ts](../../../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
    bare `"0"` is honored only where the tool has exactly one legal
@@ -366,7 +366,7 @@ names a different track, so it addresses nothing worth calling again. `path`
 means the target outlived the call — a drum pad, whose 128 slots are permanent,
 so a delete clears its chains and leaves the slot. The rack then reads exactly
 as it would for a pad that was never filled; see
-[ADR-0034](../decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md). There is
+[ADR-0034](../../decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md). There is
 no `deleted` flag: the key is the answer, and a target the call couldn't delete
 says so as a skip.
 
@@ -464,7 +464,7 @@ object that doesn't exist yet has only a path. When there is no path to spell,
 the id stands alone.
 
 One helper owns this —
-[`targetLabel`](../../src/tools/shared/validation/object-path-for-api.ts) and its
+[`targetLabel`](../../../src/tools/shared/validation/object-path-for-api.ts) and its
 variants, over `objectPathForApi`. A message that builds a path by hand is a
 bug: it drifts the first time the grammar changes. That's also the check on the
 coordinate work — once `objectPathForApi` spells `t0[5|1]` every warning gets it
@@ -490,7 +490,7 @@ alike. `ok` is on skips only, and a skip is never also a warning. One target is
 unwrapped and throws instead, having nothing to report. A target that needed no
 work (a `delete` of something already gone) is not a skip: its normal entry
 carries a `reason` and no `ok`. See
-[ADR-0042](../decisions/0042-a-skipped-target-keeps-its-slot.md).
+[ADR-0042](../../decisions/0042-a-skipped-target-keeps-its-slot.md).
 
 **Creating tracks and scenes reads the list in the caller's coordinates.** Every
 entry names a place in the Set as the caller read it, so `t+,t+,t+` appends

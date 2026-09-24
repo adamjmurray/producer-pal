@@ -21,7 +21,7 @@ Four CLI tools for testing LLM behavior with Producer Pal's MCP tools:
 All but `probe:skills` require Ableton Live running with the Producer Pal device
 loaded.
 
-`dev/quality/Eval-Findings.md` records what past runs established — including fixes that
+`dev/quality/eval-findings/README.md` records what past runs established — including fixes that
 were tried and measured as not working. Read it before attacking a scenario that
 has been failing for a while.
 

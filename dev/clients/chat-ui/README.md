@@ -227,7 +227,7 @@ Conversations are persisted to IndexedDB so they survive page reloads. Covers
 save, load, switch, rename, delete, and auto-titling. Forked conversations
 (edit/retry branches) add `forkParentId`/`forkedAtIndex` linkage and a
 sibling-navigation UI — see
-[Conversation-Branching.md](Conversation-Branching.md) for that model. The
+[conversation-branching.md](conversation-branching.md) for that model. The
 `ConversationRecord` definition in `lib/conversation-db.ts` is the source of
 truth for the full field list (the snippet below is illustrative, not
 exhaustive).
@@ -414,7 +414,7 @@ worker used to make, so `ppal-connect` and `ppal-context` are withheld from a
 briefed worker. If the briefing can't be fetched, `ppal-connect` comes back and
 the worker bootstraps itself as before; `ppal-context` stays withheld either
 way, since it's withheld to keep parallel workers off the user's context store
-rather than because the briefing replaced it — see Architecture.md → Subagent
+rather than because the briefing replaced it — see the Architecture doc → Subagent
 briefings for why the blob belongs in the system prompt.
 
 **Formatting:**
@@ -466,7 +466,7 @@ and `gemini-mcp-tools.ts` (Gemini).
 
 **Credentials** are minted/relayed by two server routes (`POST /voice-token`,
 `POST /gemini-voice-token`) so the long-lived key stays off the browser for the
-OpenAI path; see [Architecture.md](../Architecture.md#voice-mode) for the server
+OpenAI path; see [the Architecture doc](../../architecture/README.md#voice-mode) for the server
 side.
 
 ## Build and Development

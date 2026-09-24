@@ -111,18 +111,18 @@ Express routes on the MCP server mint/relay credentials server-side, both gated
 to local origins:
 
 - `POST /voice-token`
-  ([routes/voice/voice-token-route.ts](../src/mcp-server/routes/voice/voice-token-route.ts))
+  ([routes/voice/voice-token-route.ts](../../src/mcp-server/routes/voice/voice-token-route.ts))
   forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
   server-to-server and returns only the short-lived `ek_...` ephemeral token.
 - `POST /gemini-voice-token`
-  ([routes/voice/gemini-voice-token-route.ts](../src/mcp-server/routes/voice/gemini-voice-token-route.ts))
+  ([routes/voice/gemini-voice-token-route.ts](../../src/mcp-server/routes/voice/gemini-voice-token-route.ts))
   currently returns the Gemini key as-is (`ephemeral: false`) — Gemini Live
   accepts the API key directly from the browser — with a server-only upgrade
   path to v1alpha ephemeral tokens (the client already honors the `ephemeral`
   flag).
 
 The webui hook graph that drives all of this is documented in
-[Chat-UI.md](clients/Chat-UI.md#voice-mode).
+[the Chat UI doc](../clients/chat-ui/README.md#voice-mode).
 
 ## Language Choices
 
@@ -411,7 +411,7 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   - Real-time streaming chat interface with automatic MCP tool calling
   - Settings persistence via localStorage
 
-See `dev/clients/Chat-UI.md` for detailed architecture and development workflow.
+See `dev/clients/chat-ui/README.md` for detailed architecture and development workflow.
 
 ## Message Protocol
 

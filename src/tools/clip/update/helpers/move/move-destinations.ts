@@ -135,7 +135,7 @@ export function resolveMoveDestinations(
     shortfall: "have nowhere to go",
   };
   // A bare "[5|1]" keeps each clip's lane, so one covers every clip. A lane or
-  // slot holds one clip, so those pair 1:1 (see dev/tools/Object-Paths.md).
+  // slot holds one clip, so those pair 1:1 (see dev/tools/object-paths/README.md).
   const paired = namesNoLane(entries)
     ? pairValues(entries, clipCount, labels)
     : pairExact(entries, clipCount, labels);
