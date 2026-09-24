@@ -12,7 +12,7 @@ import {
   type ToolResultPart,
   type UserModelMessage,
 } from "ai";
-import { type ChatMessage } from "./types";
+import { type ChatImage, type ChatMessage } from "./types";
 
 /**
  * Placeholder result for a tool call the user stopped before it returned.
@@ -30,6 +30,18 @@ export const CANCELED_TOOL_RESULT_TEXT =
  */
 export const FAILED_TOOL_RESULT_TEXT =
   "The request failed before this tool finished; it may or may not have run.";
+
+/**
+ * Most base64 image data one request may carry. Every turn re-sends its images,
+ * so without a cap a chat soon passes a provider's limit and every later turn
+ * fails. Gemini's 20 MB per request is the tightest we support; this leaves
+ * room for the text and tools.
+ */
+export const MAX_REQUEST_IMAGE_BYTES = 15 * 1024 * 1024;
+
+/** Stands in for an older image left out to stay under the budget. */
+export const OMITTED_IMAGE_TEXT =
+  "[Image left out to keep the request under the size limit]";
 
 /** Why a tool-call was left without a result. */
 export type DanglingToolReason = "canceled" | "failed";
@@ -80,15 +92,17 @@ export function buildModelMessages(
 
   const modelHistory =
     lastSummaryIndex > 0 ? history.slice(lastSummaryIndex) : history;
+  const sentImages = imagesWithinBudget(modelHistory);
 
   for (const msg of modelHistory) {
     if (msg.role === "user") {
       const last = messages.at(-1);
+      const content = buildUserContent(msg, sentImages);
 
       if (last?.role === "user") {
-        last.content = mergeUserContent(last.content, buildUserContent(msg));
+        last.content = mergeUserContent(last.content, content);
       } else {
-        messages.push({ role: "user", content: buildUserContent(msg) });
+        messages.push({ role: "user", content });
       }
 
       continue;
@@ -109,24 +123,56 @@ export function buildModelMessages(
 type UserContent = UserModelMessage["content"];
 
 /**
+ * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES}, newest first. Once
+ * one doesn't fit, it and everything older are left out.
+ * @param history - The messages the request will carry
+ * @returns The images to send
+ */
+function imagesWithinBudget(history: ChatMessage[]): Set<ChatImage> {
+  const kept = new Set<ChatImage>();
+  let room = MAX_REQUEST_IMAGE_BYTES;
+
+  for (const msg of history.toReversed()) {
+    for (const image of msg.images ?? []) {
+      if (image.data.length > room) {
+        return kept;
+      }
+
+      kept.add(image);
+      room -= image.data.length;
+    }
+  }
+
+  return kept;
+}
+
+/**
  * Build one user turn's content. Attached images become image parts ahead of
  * the text; an images-only message emits no text part, because providers reject
  * an empty one. With no images the content stays a plain string, so a chat
  * without attachments sends exactly the shape it always did.
  * @param msg - The user chat message
+ * @param sentImages - Images within the request budget; the rest become a note
  * @returns Content for the user ModelMessage
  */
-function buildUserContent(msg: ChatMessage): UserContent {
+function buildUserContent(
+  msg: ChatMessage,
+  sentImages: Set<ChatImage>,
+): UserContent {
   if (!msg.images?.length) {
     return msg.content;
   }
 
   // A file part with an image media type, not the (deprecated) image part.
-  const parts: Array<FilePart | TextPart> = msg.images.map((image) => ({
-    type: "file",
-    mediaType: image.mediaType,
-    data: { type: "data", data: image.data },
-  }));
+  const parts: Array<FilePart | TextPart> = msg.images.map((image) =>
+    sentImages.has(image)
+      ? {
+          type: "file",
+          mediaType: image.mediaType,
+          data: { type: "data", data: image.data },
+        }
+      : { type: "text", text: OMITTED_IMAGE_TEXT },
+  );
 
   if (msg.content) {
     parts.push({ type: "text", text: msg.content });

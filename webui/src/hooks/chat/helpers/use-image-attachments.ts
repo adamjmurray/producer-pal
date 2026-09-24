@@ -29,6 +29,8 @@ export interface ImageAttachments {
   notice: string | null;
   /** True while a file drag is over the editor. */
   dragging: boolean;
+  /** True while an added image is still being read. */
+  loading: boolean;
   addFiles: (files: File[]) => void;
   removeImage: (index: number) => void;
   clear: () => void;
@@ -40,13 +42,15 @@ export interface ImageAttachments {
  * and the notice explaining anything rejected. Its drag and paste handlers run
  * in the CAPTURE phase and stop propagation, so the CodeMirror editor
  * underneath never sees the file and can't insert it; a drag or paste carrying
- * no file passes straight through as ordinary text editing.
+ * no file passes straight through as ordinary text editing. A paste with both
+ * images and text attaches the images and still lets the editor paste the text.
  * @returns The attachments and their handlers
  */
 export function useImageAttachments(): ImageAttachments {
   const [images, setImages] = useState<ChatImage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [reading, setReading] = useState(0);
   // The latest list, for merging adds that finish after it changed.
   const imagesRef = useRef<ChatImage[]>([]);
   // dragenter/leave fire per child element; a depth counter keeps the overlay
@@ -69,15 +73,18 @@ export function useImageAttachments(): ImageAttachments {
       // when reading finishes, or those changes would be undone.
       const before = imagesRef.current;
 
-      void attachImages(before, files).then((result) => {
-        const added = result.images.slice(before.length);
-        const room = MAX_IMAGES_PER_MESSAGE - imagesRef.current.length;
+      setReading((count) => count + 1);
+      void attachImages(before, files)
+        .then((result) => {
+          const added = result.images.slice(before.length);
+          const room = MAX_IMAGES_PER_MESSAGE - imagesRef.current.length;
 
-        publish([...imagesRef.current, ...added.slice(0, room)]);
-        setNotice(
-          added.length > room ? TOO_MANY_IMAGES_MESSAGE : result.notice,
-        );
-      });
+          publish([...imagesRef.current, ...added.slice(0, room)]);
+          setNotice(
+            added.length > room ? TOO_MANY_IMAGES_MESSAGE : result.notice,
+          );
+        })
+        .finally(() => setReading((count) => count - 1));
     },
     [publish],
   );
@@ -104,8 +111,13 @@ export function useImageAttachments(): ImageAttachments {
         return;
       }
 
-      event.preventDefault();
-      event.stopPropagation();
+      // Excel, Word and OneNote put a picture next to the copied text: attach
+      // it and let the editor paste the text, which is all CodeMirror inserts.
+      if (event.clipboardData?.getData("text/plain").trim() === "") {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
       addFiles(files);
     },
     [addFiles],
@@ -158,6 +170,7 @@ export function useImageAttachments(): ImageAttachments {
     images,
     notice,
     dragging,
+    loading: reading > 0,
     addFiles,
     removeImage,
     clear,

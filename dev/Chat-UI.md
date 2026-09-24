@@ -187,12 +187,20 @@ They ride on `ChatMessage.images` as base64, reach the model as AI SDK image
 parts ahead of the text (`buildModelMessages`), render as thumbnails in the user
 bubble (`UserImages`), and persist with the conversation like any other message
 field. A message may be images with no text at all, so both the send path and
-the composer treat attachments as content.
+the composer treat attachments as content. Excel, Word and OneNote put a picture
+of the copied content next to its text, so a paste with both attaches the
+picture and lets the editor paste the text too.
 
 Anything over 1568 px on its longest side is scaled down to that in the browser
 (canvas redraw, re-encoded as the same type) before it's read to base64. GIFs
 are left alone so animation survives, and the 5 MB cap applies to what scaling
-produced — a 12 MB screenshot attaches fine.
+produced — a 12 MB screenshot attaches fine. Send is disabled while an image is
+still being read, so it can't miss the message it was meant for.
+
+Every turn re-sends the images in its history, so one request carries at most
+`MAX_REQUEST_IMAGE_BYTES` (15 MB of base64, under Gemini's 20 MB request cap).
+The newest images fill it; older ones go out as a short text note instead, so a
+long chat with screenshots keeps working.
 
 ### Message Queue
 

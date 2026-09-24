@@ -31,6 +31,19 @@ function makeFile(name: string, type: string): File {
   return new File(["xy"], name, { type });
 }
 
+/**
+ * Clipboard data for a paste event.
+ * @param files - The clipboard's files
+ * @param text - Its `text/plain` content
+ * @returns The clipboard stand-in
+ */
+function clipboard(files: File[], text = "") {
+  return {
+    files,
+    getData: (type: string) => (type === "text/plain" ? text : ""),
+  };
+}
+
 /** The editable region of the chat input. */
 const editor = (): HTMLElement => screen.getByRole("textbox");
 
@@ -97,9 +110,24 @@ describe("ChatInput image attachments", () => {
     render(<ChatInput {...defaultProps} />);
 
     fireEvent.paste(editor(), {
-      clipboardData: { files: [makeFile("shot.png", "image/png")] },
+      clipboardData: clipboard([makeFile("shot.png", "image/png")]),
     });
 
+    expect(await screen.findByAltText("Attachment 1")).toBeDefined();
+  });
+
+  it("pastes both the text and the picture from an Office app", async () => {
+    render(<ChatInput {...defaultProps} />);
+
+    const reachedEditor = vi.fn();
+
+    editor().addEventListener("paste", reachedEditor);
+    fireEvent.paste(editor(), {
+      clipboardData: clipboard([makeFile("image.png", "image/png")], "C\tAm"),
+    });
+
+    // The editor still gets the paste, so it inserts the text.
+    expect(reachedEditor).toHaveBeenCalled();
     expect(await screen.findByAltText("Attachment 1")).toBeDefined();
   });
 
@@ -109,14 +137,14 @@ describe("ChatInput image attachments", () => {
     const reachedEditor = vi.fn();
 
     editor().addEventListener("paste", reachedEditor);
-    fireEvent.paste(editor(), { clipboardData: { files: [] } });
+    fireEvent.paste(editor(), { clipboardData: clipboard([], "hello") });
 
     expect(reachedEditor).toHaveBeenCalled();
     expect(screen.queryByTestId("image-attachments")).toBeNull();
 
     reachedEditor.mockClear();
     fireEvent.paste(editor(), {
-      clipboardData: { files: [makeFile("a.png", "image/png")] },
+      clipboardData: clipboard([makeFile("a.png", "image/png")]),
     });
 
     // Intercepted in the capture phase, so CodeMirror never inserts the file.
@@ -220,6 +248,44 @@ describe("ChatInput image attachments", () => {
       { thinking: "Default" },
     );
     expect(screen.queryByAltText("Attachment 1")).toBeNull();
+  });
+
+  it("holds Send until a pasted image finishes loading", async () => {
+    let finishDecode = (_bitmap: unknown) => {};
+
+    vi.mocked(createImageBitmap).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishDecode = (bitmap) => resolve(bitmap as ImageBitmap);
+      }),
+    );
+
+    const handleSend = vi.fn();
+
+    render(<ChatInput {...defaultProps} handleSend={handleSend} />);
+    typeInput("what's wrong here?");
+    fireEvent.paste(editor(), {
+      clipboardData: clipboard([makeFile("shot.png", "image/png")]),
+    });
+
+    const send = screen.getByRole("button", { name: "Send" });
+
+    expect(screen.getByRole("status").textContent).toBe("Adding image…");
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(send);
+    expect(handleSend).not.toHaveBeenCalled();
+
+    await act(() => finishDecode({ width: 8, height: 8, close: vi.fn() }));
+    await screen.findByAltText("Attachment 1");
+
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.click(send);
+    expect(handleSend).toHaveBeenCalledExactlyOnceWith(
+      {
+        text: "what's wrong here?",
+        images: [{ mediaType: "image/png", data: "eHk=" }],
+      },
+      { thinking: "Default" },
+    );
   });
 
   it("sends images alongside typed text", async () => {

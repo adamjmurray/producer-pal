@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildModelMessages,
   endsOnAssistantTurn,
+  MAX_REQUEST_IMAGE_BYTES,
+  OMITTED_IMAGE_TEXT,
 } from "#webui/chat/sdk/build-model-messages";
 import { toolStepHistory } from "#webui/chat/sdk/tests/client-test-helpers";
 import { type ChatMessage } from "#webui/chat/sdk/types";
@@ -382,14 +384,20 @@ describe("endsOnAssistantTurn", () => {
   });
 });
 
+/**
+ * The file part an attached image is sent as.
+ * @param image - The attached image
+ * @returns The expected file part
+ */
+const filePart = (image: { mediaType: string; data: string }) => ({
+  type: "file",
+  mediaType: image.mediaType,
+  data: { type: "data", data: image.data },
+});
+
 describe("buildModelMessages with attached images", () => {
   const png = { mediaType: "image/png", data: "AAA" };
   const jpeg = { mediaType: "image/jpeg", data: "BBB" };
-  const filePart = (image: { mediaType: string; data: string }) => ({
-    type: "file",
-    mediaType: image.mediaType,
-    data: { type: "data", data: image.data },
-  });
 
   it("sends images as image parts ahead of the text", () => {
     const result = buildModelMessages([
@@ -480,6 +488,44 @@ describe("buildModelMessages with attached images", () => {
 
     expect(result).toStrictEqual([
       { role: "user", content: [filePart(png), filePart(jpeg)] },
+    ]);
+  });
+});
+
+describe("buildModelMessages image budget", () => {
+  // Two of these fit the budget; a third doesn't.
+  const bigImage = (fill: string) => ({
+    mediaType: "image/png",
+    data: fill.repeat(Math.floor(MAX_REQUEST_IMAGE_BYTES / 3) + 1),
+  });
+  const [a, b, c] = [bigImage("A"), bigImage("B"), bigImage("C")];
+  const omitted = { type: "text", text: OMITTED_IMAGE_TEXT };
+
+  it("keeps the newest images and replaces older ones with a note", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "first", images: [a] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "second", images: [b] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "third", images: [c] },
+    ]);
+
+    expect(result.map((message) => message.content)).toStrictEqual([
+      [omitted, { type: "text", text: "first" }],
+      "ok",
+      [filePart(b), { type: "text", text: "second" }],
+      "ok",
+      [filePart(c), { type: "text", text: "third" }],
+    ]);
+  });
+
+  it("leaves out images in the newest message once it passes the budget", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [a, b, c] },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: [filePart(a), filePart(b), omitted] },
     ]);
   });
 });

@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { AttachedImage } from "#webui/components/chat/controls/composer/AttachedImage";
 import { type UIImagePart, type UIPart } from "#webui/types/messages";
-import { imageDataUrl } from "#webui/utils/image-attachments";
 
 interface UserImagesProps {
   parts: UIPart[];
@@ -44,8 +44,8 @@ export function UserImages(props: UserImagesProps): preact.JSX.Element | null {
             }
             className={isExpanded ? "w-full" : ""}
           >
-            <img
-              src={imageDataUrl(image)}
+            <AttachedImage
+              image={image}
               alt={`Attached image ${index + 1}`}
               className={`rounded ${isExpanded ? "w-full" : "max-h-40"}`}
             />

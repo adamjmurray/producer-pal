@@ -156,9 +156,13 @@ describe("useImageAttachments adds that finish after the list changed", () => {
     add(result.current, "A");
     add(result.current, "B");
     await finishNextRead();
+
+    // Still loading until the last read lands.
+    expect(result.current.loading).toBe(true);
     await finishNextRead();
 
     expect(attached(result.current)).toStrictEqual(["A", "B"]);
+    expect(result.current.loading).toBe(false);
   });
 
   it("doesn't bring back sent images when a paste finishes after clear", async () => {
