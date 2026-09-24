@@ -191,11 +191,16 @@ survives on a text param, where clearing a name is a real request.
   one entry, but it is still a list: an arg counts as one when it has a comma in
   it, not when it survives with two entries. Otherwise the short list would read
   as a single value covering both items.
-- **Two tools can't check their raw args.** update-clip's `id` and `path` name
+- **Three tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the
   sources before pairing, so the counts that have to agree are the per-source
   ones — its check runs where the copies are planned, still before any is made.
+  create-clip's `arrangementStart` pairs with the path's tracks, not its clip
+  slots, and one track takes every position — so its per-clip lists are checked
+  against the clips its destinations make, once those are resolved — still
+  before any clip is made. A call making one clip still compares the raw args,
+  since a count of 1 is never a list and a trailing comma must still count.
 - **Rule 1's third bullet is one tool wide today.** Only `duplicate` has both
   halves — checkable targets and unrepeatable work. `create-*` tools have no
   target list to pre-check, and `delete` fails safe in the other direction, so

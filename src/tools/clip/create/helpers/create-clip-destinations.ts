@@ -17,7 +17,7 @@
 
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneRequested,
@@ -29,7 +29,10 @@ import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpe
 import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
-import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import {
+  pathError,
+  splitPathEntries,
+} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   parseSlotList,
   type ClipSlotPosition,
@@ -54,6 +57,8 @@ export interface ClipDestinations {
   arrangementPositions: ArrangementPosition[];
   /** Every destination, in the order the call named it. */
   order: DestinationRef[];
+  /** What settled how many clips there are, for a list-length refusal. */
+  countedBy: { param: string; noun: string };
 }
 
 /** The destination params as the tool received them. */
@@ -118,6 +123,16 @@ export function resolveCreateClipDestinations(
   const paired = pairTracksWithStarts(
     applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length),
     arrangementStarts,
+    {
+      // A comma makes a list even when it names one entry ("t0,", "1|1,"),
+      // so a trailing comma can't hide a mismatch. A path that also names clip
+      // slots is not a track list: its one track takes every position.
+      tracks:
+        clipSlots.length === 0 &&
+        path != null &&
+        splitPathEntries(path).length > 1,
+      starts: arrangementStart?.includes(",") ?? false,
+    },
   );
 
   return {
@@ -129,10 +144,56 @@ export function resolveCreateClipDestinations(
       slotOrdinals,
       paired.map((position) => position.ordinal),
     ),
+    countedBy: clipCounter({
+      destinationParam:
+        path != null ? "path" : slot != null ? "slot" : "trackIndex",
+      withTrackIndex: path == null && slot != null && tracks.length > 0,
+      destinationCount: clipSlots.length + tracks.length,
+      fannedOut: paired.length > tracks.length,
+    }),
   };
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Which params settled how many clips the call makes. One track takes every
+ * arrangementStart position, so then the positions count too.
+ * @param args - How the destinations were named
+ * @param args.destinationParam - The param that named the destinations
+ * @param args.withTrackIndex - Whether trackIndex added a track to a slot list
+ * @param args.destinationCount - How many destinations were named
+ * @param args.fannedOut - Whether one track took several positions
+ * @returns The params to name, and what they count
+ */
+function clipCounter({
+  destinationParam,
+  withTrackIndex,
+  destinationCount,
+  fannedOut,
+}: {
+  destinationParam: string;
+  withTrackIndex: boolean;
+  destinationCount: number;
+  fannedOut: boolean;
+}): { param: string; noun: string } {
+  // The lone track may come from the trackIndex alias, so name only the list.
+  if (fannedOut && destinationCount === 1) {
+    return { param: "arrangementStart", noun: "entry" };
+  }
+
+  const others = [
+    ...(withTrackIndex ? ["trackIndex"] : []),
+    ...(fannedOut ? ["arrangementStart"] : []),
+  ];
+
+  return others.length === 0
+    ? { param: destinationParam, noun: "entry" }
+    : {
+        param: `${destinationParam} with ${others.join(" and ")}`,
+        noun: "clip",
+      };
+}
 
 /**
  * Splits a parsed `path` into its clip slots and arrangement tracks. A call
@@ -359,17 +420,21 @@ function sessionOnly(slots: ClipSlotPosition[]): SplitDestinations {
  *
  * A track whose path carried a `[...]` already has its own position, so nothing
  * pairs — the two spellings can't both be in play, since a coordinate beside
- * arrangementStart is refused before any of this runs. Otherwise either list
- * may hold the single value that covers the other; two lists pair 1:1, and a
- * mismatch warns and makes only the clips both lists name — see
- * `list-pairing.ts`.
+ * arrangementStart is refused before any of this runs. Otherwise one track
+ * takes every position, one position covers every track, and two lists pair
+ * 1:1. Positions pair with the tracks only, not the path's clip slots.
  * @param tracks - Arrangement destination tracks, in order
  * @param arrangementStarts - Parsed arrangement bar|beat positions
+ * @param listed - Whether each side was written as a list
+ * @param listed.tracks - Whether the path was a list of tracks alone
+ * @param listed.starts - Whether arrangementStart had a comma
  * @returns One entry per arrangement clip
+ * @throws Error when both are lists and the counts differ
  */
 function pairTracksWithStarts(
   tracks: ArrangementTrackTarget[],
   arrangementStarts: string[],
+  listed: { tracks: boolean; starts: boolean },
 ): OrderedArrangementPosition[] {
   if (tracks.length === 0) {
     if (arrangementStarts.length > 0) {
@@ -392,31 +457,40 @@ function pairTracksWithStarts(
     noPosition(tracks[0] as ArrangementTrack);
   }
 
+  if (
+    (tracks.length > 1 || listed.tracks) &&
+    (arrangementStarts.length > 1 || listed.starts) &&
+    tracks.length !== arrangementStarts.length
+  ) {
+    // A one-entry side is only a list because of its trailing comma.
+    const fix =
+      tracks.length === 1 || arrangementStarts.length === 1
+        ? "Drop the trailing comma."
+        : "Name one position per track, or one for them all.";
+
+    throw new Error(
+      `path names ${plural(tracks.length, "arrangement track")} but ` +
+        `arrangementStart names ${plural(arrangementStarts.length, "position")}. ${fix}`,
+    );
+  }
+
   const count = Math.max(tracks.length, arrangementStarts.length);
-  const pairedTracks = pairValues(tracks, count, {
-    param: "path",
-    noun: "track",
-    item: "position",
-    shortfall: "got no clip",
+
+  return Array.from({ length: count }, (_unused, i) => {
+    const { position: _position, ...track } = entryAt(tracks, i);
+
+    return { ...track, arrangementStart: entryAt(arrangementStarts, i) };
   });
-  const pairedStarts = pairValues(arrangementStarts, count, {
-    param: "arrangementStart",
-    noun: "position",
-    item: "track",
-    shortfall: "got no clip",
-  });
+}
 
-  return pairedTracks.flatMap((entry, i) => {
-    const arrangementStart = pairedStarts[i];
-
-    if (entry == null || arrangementStart == null) {
-      return [];
-    }
-
-    const { position: _position, ...track } = entry;
-
-    return [{ ...track, arrangementStart }];
-  });
+/**
+ * One list's entry for an item: a lone entry covers every item.
+ * @param list - A list with one entry, or one per item
+ * @param index - The item's place
+ * @returns The entry for that item
+ */
+function entryAt<T>(list: T[], index: number): T {
+  return list[list.length === 1 ? 0 : index] as T;
 }
 
 /**

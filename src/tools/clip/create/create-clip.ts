@@ -160,18 +160,9 @@ export async function createClip(
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
 
-  refuseUnreadableCall({
-    path,
-    slot,
-    arrangementStart,
-    name,
-    color,
-    sampleFile,
-    timeSignature,
-    start,
-    length,
-    firstStart,
-  });
+  // A "[...]" in path and arrangementStart are two spellings of one position,
+  // so there is no combined reading.
+  refuseDoubledPosition(path, arrangementStart, "path");
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -188,6 +179,19 @@ export async function createClip(
   const { clipSlots, arrangementPositions, order } = destinations;
 
   validatePositions(destinations);
+  refuseListsOffCount(
+    destinations,
+    { path, slot, arrangementStart },
+    {
+      name,
+      color,
+      sampleFile,
+      timeSignature,
+      start,
+      length,
+      firstStart,
+    },
+  );
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
@@ -268,66 +272,49 @@ export async function createClip(
 }
 
 /**
- * Refuse a call the tool can't read, before any clip is created: lists that
- * disagree on how many entries they name, and a position spelled twice.
+ * Refuse a per-clip list that doesn't name one entry per clip, before any clip
+ * is created.
  *
- * Every list is checked together, before any of them is split: once one is
- * split nothing knows whether the others are lists at all.
- * @param args - The call's list params
- * @param args.path - Where the clips go
- * @param args.slot - The clip-slot spelling of path
- * @param args.arrangementStart - Arrangement positions
- * @param args.name - Clip names
- * @param args.color - Clip colors
- * @param args.sampleFile - Audio files
- * @param args.timeSignature - Clip meters
- * @param args.start - Clip region starts
- * @param args.length - Clip lengths
- * @param args.firstStart - Playback starts
+ * Checked against the clips the destinations make, not the raw path: one track
+ * takes every arrangementStart position, so `"t0/s0,t1"` with two positions
+ * makes three clips. A single clip is checked against the raw destination
+ * params instead: a count of 1 is never a list, so a trailing comma
+ * (`path: "t0/s0,"`) would otherwise hide a mismatch.
+ * @param destinations - Where the clips go, already resolved
+ * @param raw - The destination params as sent
+ * @param lists - The call's per-clip list params
  */
-function refuseUnreadableCall({
-  path,
-  slot,
-  arrangementStart,
-  name,
-  color,
-  sampleFile,
-  timeSignature,
-  start,
-  length,
-  firstStart,
-}: Pick<
-  CreateClipArgs,
-  | "path"
-  | "slot"
-  | "arrangementStart"
-  | "name"
-  | "color"
-  | "sampleFile"
-  | "timeSignature"
-  | "start"
-  | "length"
-  | "firstStart"
->): void {
-  validateListLengths([
-    {
-      param: path != null ? "path" : "slot",
-      value: path ?? slot,
-      isPath: true,
-    },
-    { param: "arrangementStart", value: arrangementStart },
-    { param: "name", value: name },
-    { param: "color", value: color },
-    { param: "sampleFile", value: sampleFile },
-    { param: "timeSignature", value: timeSignature },
-    { param: "start", value: start },
-    { param: "length", value: length },
-    { param: "firstStart", value: firstStart },
-  ]);
+function refuseListsOffCount(
+  destinations: ClipDestinations,
+  raw: Pick<CreateClipArgs, "path" | "slot" | "arrangementStart">,
+  lists: Pick<
+    CreateClipArgs,
+    | "name"
+    | "color"
+    | "sampleFile"
+    | "timeSignature"
+    | "start"
+    | "length"
+    | "firstStart"
+  >,
+): void {
+  const { countedBy, order } = destinations;
+  const counted =
+    order.length > 1
+      ? [{ ...countedBy, count: order.length }]
+      : [
+          {
+            param: raw.path != null ? "path" : "slot",
+            value: raw.path ?? raw.slot,
+            isPath: true,
+          },
+          { param: "arrangementStart", value: raw.arrangementStart },
+        ];
 
-  // A "[...]" in path and arrangementStart are two spellings of one position,
-  // so there is no combined reading.
-  refuseDoubledPosition(path, arrangementStart, "path");
+  validateListLengths([
+    ...counted,
+    ...Object.entries(lists).map(([param, value]) => ({ param, value })),
+  ]);
 }
 
 /**

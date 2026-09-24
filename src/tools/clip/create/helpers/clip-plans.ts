@@ -12,10 +12,9 @@ import { tryParseTransform } from "#src/notation/transform/transform-evaluator.t
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ListEntries,
-  type PairLabels,
+  splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { parsePairedValues } from "#src/tools/shared/validation/lists/paired-values.ts";
 import { prepareClipData } from "./clip-data-preparation.ts";
 import {
   type ClipTimingContext,
@@ -61,39 +60,6 @@ interface ClipValues {
   firstStart: string | null;
 }
 
-const LABELS: Record<keyof ClipValues, PairLabels> = {
-  sampleFile: {
-    param: "sampleFile",
-    noun: "file",
-    item: "position",
-    shortfall: "got no clip",
-  },
-  timeSignature: {
-    param: "timeSignature",
-    noun: "time signature",
-    item: "position",
-    shortfall: "used the song's meter",
-  },
-  start: {
-    param: "start",
-    noun: "position",
-    item: "position",
-    shortfall: "started where the notes do",
-  },
-  length: {
-    param: "length",
-    noun: "length",
-    item: "position",
-    shortfall: "were sized from their notes",
-  },
-  firstStart: {
-    param: "firstStart",
-    noun: "position",
-    item: "position",
-    shortfall: "kept the playback start they had",
-  },
-};
-
 /**
  * Work out what to build at each position the call names.
  *
@@ -102,7 +68,7 @@ const LABELS: Record<keyof ClipValues, PairLabels> = {
  * warning is raised once, not once per clip.
  * @param inputs - The per-clip params as sent, and the call-wide ones
  * @returns One plan per position, in the order the call named them
- * @throws Error when a list disagrees with the positions, or a value won't parse
+ * @throws Error when a list has an empty entry, or a value won't parse
  */
 export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
   const { count } = inputs;
@@ -141,7 +107,8 @@ export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
 // --- Helpers below main exports ---
 
 /**
- * Split one per-clip param against the positions.
+ * Split one per-clip param against the positions. A list of the wrong length
+ * was refused before this runs.
  * @param value - The raw param, as the caller sent it
  * @param count - How many positions the call fills
  * @param param - Which param it is
@@ -152,7 +119,7 @@ function pairedList(
   count: number,
   param: keyof ClipValues,
 ): ListEntries | null {
-  return parsePairedValues(value, count, LABELS[param]);
+  return splitList(value ?? undefined, count, param);
 }
 
 /**
