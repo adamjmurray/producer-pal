@@ -170,6 +170,41 @@ describe("ppal-update-device wrapInRack", () => {
     ).toBe(devicePath);
   });
 
+  it("appends the rack when toPath names a track and no index", async () => {
+    const source = await createMidiTrack(ctx.client!);
+    const dest = await createMidiTrack(ctx.client!);
+    const comp = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${source}`,
+    );
+    // Ensure the destination holds a device, whatever the track preset adds.
+    const reverb = await createTestDeviceAt(ctx.client!, "Reverb", `t${dest}`);
+
+    const result = parseToolResult<WrapResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { path: comp, wrapInRack: true, toPath: `t${dest}` },
+      }),
+    );
+
+    const rackIndex = Number(result.path!.split("/d")[1]);
+
+    expect(result.path).toMatch(new RegExp(`^t${dest}/d\\d+$`));
+    expect(rackIndex).toBeGreaterThan(Number(reverb.split("/d")[1]));
+    expect((await readDevice(`${result.path}/c0/d0`)).type).toContain(
+      "Compressor",
+    );
+
+    // Nothing comes after the rack.
+    const next = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: `t${dest}/d${rackIndex + 1}` },
+    });
+
+    expect(isToolError(next)).toBe(true);
+  });
+
   it("refuses to wrap two instruments from different tracks into one rack", async () => {
     const trackA = await createMidiTrack(ctx.client!);
     const trackB = await createMidiTrack(ctx.client!);
