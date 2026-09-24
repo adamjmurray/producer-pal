@@ -172,11 +172,11 @@ stepInterval
   = "@" bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
       return { bars, fraction: frac ?? 0 };
     }
-  / "@" "n" count:$([0-9]+) "bar" "s"? {
+  / "@" "n" bars:oneOrMoreInt "bar" "s"? {
       // Untaught tolerance: @n1bar/@n4bar alias @<count>bar (ADR-0018), same as
       // the duration site. Placed before the fraction branch so it catches the
       // trailing `bar` first.
-      return { bars: parseInt(count, 10), fraction: 0 };
+      return { bars, fraction: 0 };
     }
   / "@" "n" num:$([0-9]*) "/" den:$([0-9]+) "bar" "s"? {
       // `n`-prefixed FRACTION bar step (`@n/1bar`, `@n3/4bar`): same category
@@ -243,10 +243,10 @@ velocity "velocity value"
   }
 
 duration "duration value"
-  = "n" count:$([0-9]+) "bar" "s"? {
+  = "n" bars:oneOrMoreInt "bar" "s"? {
     // Untaught tolerance: n1bar/n4bar reach for the n sigil out of habit; the
     // bare count is unambiguous, so it aliases <count>bar (ADR-0018).
-    return { bars: parseInt(count, 10), duration: 0 };
+    return { bars, duration: 0 };
   }
   / badBarDuration
   / bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {

@@ -299,6 +299,9 @@ describe("note-value grammar parity across all parse sites", () => {
         }
       });
     }
+
+    // The count is an integer ≥ 1 with no leading zero.
+    itRejectsDurations(["n0bar", "n0bars", "n04bar"]);
   });
 
   describe("an n-fraction bar duration is rejected with a helpful error", () => {

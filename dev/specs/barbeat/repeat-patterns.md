@@ -22,9 +22,10 @@ bar|{start}x{times}@{step}
   and raise a parser error — the `n` prefix marks a note value, bars use
   `<count>bar`. Like the other duration sites, a bare-count `n`-prefixed bar
   step (`@n1bar`, `@n4bar`) is an untaught input-tolerance alias of
-  `@<count>bar`; the FRACTION forms (`@n/1bar`, `@n3/4bar`) stay rejected with
-  the targeted "an n fraction and a bar count are different things" error. A
-  plural `@2bars` is accepted as a tolerance alias of `@<count>bar`
+  `@<count>bar` (count ≥ 1, no leading zero: `@n0bar`, `@n04bar` fail); the
+  FRACTION forms (`@n/1bar`, `@n3/4bar`) stay rejected with the targeted "an n
+  fraction and a bar count are different things" error. A plural `@2bars` is
+  accepted as a tolerance alias of `@<count>bar`
 
 The `@` symbol reads as "at intervals" and semantically connects to bar copy
 operations.

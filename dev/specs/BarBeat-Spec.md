@@ -137,7 +137,8 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     may add or subtract the note value; the `bar` term never wears an `n`, and
     the note-value tail keeps its own `n`. The bare-count `n`-prefixed form
     (`n1bar`, `n4bar`) is an untaught input-tolerance alias of `<count>bar` on
-    every duration site — unambiguous, so it parses to the same value; output
+    every duration site — unambiguous, so it parses to the same value (the count
+    is an integer ≥ 1 with no leading zero: `n0bar`, `n04bar` fail); output
     always serializes as the bare form (`1bar`). The `n`-prefixed FRACTION forms
     (`n/1bar`, `n3/4bar`) stay rejected — no bar count can be guessed from a
     fraction — with a targeted error ("an n fraction and a bar count are
