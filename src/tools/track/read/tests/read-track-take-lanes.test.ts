@@ -334,7 +334,7 @@ describe("readTrack on a take lane target", () => {
         path: "t2/l+",
         ok: false,
         reason:
-          'invalid path "t2/l+" - "l+" adds a take lane, which only ppal-update-track does; read an existing lane as "t<track>/l<lane>"',
+          'invalid path "t2/l+" - "l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do; read an existing lane as "t<track>/l<lane>"',
       },
     ]);
   });

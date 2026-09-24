@@ -81,11 +81,10 @@ describe("parseObjectPath", () => {
     });
   });
 
-  // Only the track's own tools append a lane, so a clip destination carrying
-  // one is refused with the tool that does it.
+  // A song position needs a lane that is already numbered.
   it("refuses l+ under a song position, and on a track that has no lanes", () => {
     expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
-      '"l+" adds a take lane, which only ppal-update-track does; name an existing lane as "t<track>/l<lane>"',
+      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
     );
     expect(() => parseObjectPath("rt0/l+")).toThrow(
       'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',

@@ -689,7 +689,7 @@ describe("duplicate take lane", () => {
     });
   });
 
-  // A copy goes on a lane that exists; ppal-update-track is what adds one. The
+  // A clip copy names its lane by index; only a track copy takes "l+". The
   // retired "l=" named the lane an "l+" before it appended, and never shipped.
   it("refuses l+ and the retired l= destinations", async () => {
     registerLiveSet();
@@ -702,12 +702,12 @@ describe("duplicate take lane", () => {
     await expect(
       duplicate({ type: "clip", id: "src_clip", toPath: "t0/l+[1|1]" }),
     ).rejects.toThrow(
-      '"l+" adds a take lane, which only ppal-update-track does',
+      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
     );
     await expect(
       duplicate({ type: "clip", id: "src_clip", toPath: "t0/l+" }),
     ).rejects.toThrow(
-      '"l+" adds a take lane, which only ppal-update-track does',
+      '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do',
     );
   });
 
