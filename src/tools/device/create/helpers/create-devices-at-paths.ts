@@ -22,7 +22,7 @@ import {
   writeFanOut,
 } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
-import { createBrowserDevice } from "./browser-devices.ts";
+import { type RequestTiming, createBrowserDevice } from "./browser-devices.ts";
 import {
   type CreateDeviceResult,
   insertNativeDevice,
@@ -45,8 +45,8 @@ interface CreateDevicesArgs {
   /** The call's name arg */
   name: string | undefined;
   params: ParamEntry[] | undefined;
-  /** The request deadline from ToolContext */
-  deadline?: number | null;
+  /** The request's time limits, which browser loads stay inside */
+  timing?: RequestTiming;
 }
 
 /** The call's display names and params, which every path shares. */
@@ -63,14 +63,14 @@ interface DeviceLabels {
  * @param args.plans - One plan per path, in the order the call named them
  * @param args.name - The call's name arg
  * @param args.params - {name, value} entries applied to each created device
- * @param args.deadline - The request deadline, which browser loads stay inside
+ * @param args.timing - The request's time limits, which browser loads stay inside
  * @returns The device when one path was named, otherwise one entry per path
  */
 export async function createDevicesAtPaths({
   plans,
   name,
   params,
-  deadline,
+  timing = {},
 }: CreateDevicesArgs): Promise<WriteResult<CreateDeviceResult>> {
   // Every path in the batch climbs the same prefix — sixteen `t0/d0/c<n>`
   // paths share track 0 and the rack. Resolve each one once for the whole call,
@@ -88,7 +88,7 @@ export async function createDevicesAtPaths({
 
   const parsedNames = withDevicePathCache(() => checkedNames(plans, name));
 
-  return await loadDevices(plans, { name, parsedNames, params }, deadline);
+  return await loadDevices(plans, { name, parsedNames, params }, timing);
 }
 
 // --- Helpers below main exports ---
@@ -124,20 +124,20 @@ function insertDevices(
 async function loadDevices(
   plans: DevicePlan[],
   labels: DeviceLabels,
-  deadline: number | null | undefined,
+  timing: RequestTiming,
 ): Promise<WriteResult<CreateDeviceResult>> {
   // A lone path throws, as a native insert does: nothing was created, so there
   // is no list for an entry to hold a place in. A blank `path` was already
   // refused, so there is always at least one plan.
   if (plans.length < 2) {
-    return await createOne(plans[0] as DevicePlan, 0, labels, deadline);
+    return await createOne(plans[0] as DevicePlan, 0, labels, timing);
   }
 
   const entries: Array<CreateDeviceResult | TargetSkip> = [];
 
   for (const [index, plan] of plans.entries()) {
     try {
-      entries.push(await createOne(plan, index, labels, deadline));
+      entries.push(await createOne(plan, index, labels, timing));
     } catch (error) {
       entries.push(
         skipEntry({ param: "path", value: plan.path }, errorMessage(error)),
@@ -153,12 +153,12 @@ async function createOne(
   plan: DevicePlan,
   index: number,
   labels: DeviceLabels,
-  deadline: number | null | undefined,
+  timing: RequestTiming,
 ): Promise<CreateDeviceResult> {
   const created =
     plan.item == null
       ? insertNativeDevice(plan.device, plan.path)
-      : await createBrowserDevice(plan.item, plan.device, plan.path, deadline);
+      : await createBrowserDevice(plan.item, plan.device, plan.path, timing);
 
   return labeled(created, index, labels);
 }

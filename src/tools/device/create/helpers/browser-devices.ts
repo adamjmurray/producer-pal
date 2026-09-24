@@ -10,6 +10,7 @@
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
+import { loopBudgetMs } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   type BrowserItem,
   type BrowserItemLoad,
@@ -34,27 +35,33 @@ const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 /** The longest the arrival poll runs. */
 const ARRIVAL_WAIT_MS = ARRIVAL_POLL.pollingInterval * ARRIVAL_POLL.maxRetries;
 
+/** The request's time limits, from ToolContext. */
+export type RequestTiming = Pick<
+  Partial<ToolContext>,
+  "deadline" | "timeoutMs"
+>;
+
 /**
  * Load one device and move it to a path. The path resolves first, so it fails
  * the way a native insert does, and a `c+` makes its chain once.
  * @param item - What to load
  * @param deviceName - The device as the call named it
  * @param path - Where it goes
- * @param deadline - The request deadline from ToolContext
+ * @param timing - The request's time limits
  * @returns The device and its result entry
  */
 export async function createBrowserDevice(
   item: BrowserItem,
   deviceName: string,
   path: string,
-  deadline?: number | null,
+  timing: RequestTiming = {},
 ): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
   const target = resolveCreationTarget(path);
-  const waitMs = remoteScriptWait(deadline, ARRIVAL_WAIT_MS);
+  const waitMs = remoteScriptWait(timing.deadline, ARRIVAL_WAIT_MS);
 
   if (waitMs == null) {
     throw new Error(
-      `could not load "${deviceName}": the request ran out of time; re-run for this path`,
+      `could not load "${deviceName}": ${outOfTime(timing.timeoutMs)}`,
     );
   }
 
@@ -114,8 +121,9 @@ export async function resolveBrowserDevice(
 
 /**
  * How long V8 waits on a remote-script route: its usual wait, cut to what is
- * left of the request's time. V8 must answer before Node's tool timeout: once
- * Node answers "timed out", V8 keeps creating devices a retry then duplicates.
+ * left of the request's time. V8 must answer before Node's tool timeout, or it
+ * goes on creating devices the caller was told timed out, and a retry
+ * duplicates them.
  * @param deadline - The request deadline, or null for none
  * @param reserveMs - Time to keep for work after the route answers
  * @returns The wait, or null when there's no time left to start
@@ -131,6 +139,18 @@ function remoteScriptWait(
   const left = deadline - Date.now() - reserveMs;
 
   return left > 0 ? Math.min(REMOTE_SCRIPT_REQUEST_TIMEOUT_MS, left) : null;
+}
+
+/**
+ * Why a load didn't start for lack of time. When the whole budget can't cover
+ * the arrival poll, a re-run fails the same way, so the Timeout must go up.
+ * @param timeoutMs - The request timeout, when known
+ * @returns The reason, worded for the model
+ */
+function outOfTime(timeoutMs: number | undefined): string {
+  return timeoutMs != null && loopBudgetMs(timeoutMs) <= ARRIVAL_WAIT_MS
+    ? `the Timeout setting (${timeoutMs / 1000}s) is too short to load it; ask the user to raise it`
+    : "the request ran out of time; re-run for this path";
 }
 
 /**
@@ -200,6 +220,7 @@ async function loadOnto(
 
   track.set("name", trackName);
 
+  const started = Date.now();
   const response = await requestNode<BrowserItemLoad>(
     REMOTE_SCRIPT_ROUTES.load,
     {
@@ -210,9 +231,11 @@ async function loadOnto(
     },
     waitMs,
   );
-  // No answer doesn't mean no load: the remote script may still run it.
+  // When V8 stops waiting, the temp track is deleted, and a load that runs
+  // later can't find it by name, so nothing reaches the path.
+  const gaveUp = Date.now() - started >= waitMs;
   const failure = !response.success
-    ? `${response.error ?? "no answer"}; Live may still add it, so check before retrying`
+    ? `${response.error ?? "no answer"}${gaveUp ? "; nothing was added at this path, re-run for it" : ""}`
     : response.result == null
       ? "the remote script returned nothing"
       : !response.result.available

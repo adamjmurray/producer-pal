@@ -52,7 +52,7 @@ interface RemoteScriptAnswers {
   arrives?: boolean;
   /** Whether the device that arrives reads as an instrument */
   instrument?: boolean;
-  /** Runs once the device has landed, for state that changes mid-request */
+  /** Runs as the load answers, for state that changes mid-request */
   afterLoad?: () => void;
 }
 
@@ -84,8 +84,9 @@ function answerRemoteScript({
           : undefined),
       });
       tempTrack.properties.devices = [...devices, "id", id];
-      afterLoad?.();
     }
+
+    afterLoad?.();
 
     return load;
   });
@@ -496,7 +497,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       expect(
         await createDevice(
           { device: "Pro-Q 4", path: "t0/d+,t0/d+" },
-          { deadline: START + 10_000 },
+          { timeoutMs: 14_000, deadline: START + 10_000 },
         ),
       ).toStrictEqual([
         { id: "loaded-1", path: "t0/d1" },
@@ -516,9 +517,42 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       expectCleanedUp(1);
     });
 
-    it("warns that a load it stopped waiting for may still land", async () => {
+    it("says to raise a Timeout setting too short for any load", async () => {
+      await expect(
+        createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { timeoutMs: 4000, deadline: START + 2000 },
+        ),
+      ).rejects.toThrow(
+        `could not load "Pro-Q 4": the Timeout setting (4s) is too short to ` +
+          `load it; ask the user to raise it`,
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
+    // The temp track is deleted, and a load that runs later can't find it by
+    // name, so nothing reaches the path.
+    it("says to re-run a load it stopped waiting for", async () => {
       answerRemoteScript({
         load: { success: false, error: "timed out after 8000ms" },
+        arrives: false,
+        afterLoad: () => (now = START + 8000),
+      });
+
+      await expect(
+        createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { deadline: START + 10_000 },
+        ),
+      ).rejects.toThrow(
+        /^could not load "Pro-Q 4": timed out after 8000ms; nothing was added at this path, re-run for it$/,
+      );
+      expectCleanedUp();
+    });
+
+    it("keeps a failure's own message when it didn't stop waiting", async () => {
+      answerRemoteScript({
+        load: { success: false, error: "trackName must be a string" },
         arrives: false,
       });
 
@@ -528,8 +562,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
           { deadline: START + 10_000 },
         ),
       ).rejects.toThrow(
-        `could not load "Pro-Q 4": timed out after 8000ms; Live may still ` +
-          `add it, so check before retrying`,
+        /^could not load "Pro-Q 4": trackName must be a string$/,
       );
       expectCleanedUp();
     });

@@ -84,7 +84,7 @@ export async function createDevice(
   context: Partial<ToolContext> = {},
 ): Promise<typeof VALID_DEVICES | WriteResult<CreateDeviceResult>> {
   const deviceArg = device ?? deprecatedDeviceName;
-  const { deadline } = context;
+  const { deadline, timeoutMs } = context;
 
   // List mode: return valid devices when no device is named
   if (deviceArg == null) {
@@ -118,7 +118,7 @@ export async function createDevice(
     plans,
     name,
     params: paramEntries,
-    deadline,
+    timing: { deadline, timeoutMs },
   });
 
   if (focus) {
