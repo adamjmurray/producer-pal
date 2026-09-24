@@ -9,6 +9,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   findLocator,
   isLocatorId,
+  readLocators,
   resolveLocatorListToBeats,
   resolveLocatorRefToBeats,
   resolveLocatorToBeats,
@@ -347,21 +348,54 @@ describe("locators", () => {
       expect(resolveLocatorRefToBeats(liveSet, "26")).toBe(8);
     });
 
-    it("refuses a ref that is one locator's id and another's name", () => {
+    it("resolves by id over another locator's name", () => {
       const liveSet = setupMockLocators(
         { id: "26", name: "Verse", time: 0 },
         { id: "31", name: "26", time: 64 },
       );
 
+      expect(resolveLocatorRefToBeats(liveSet, "26")).toBe(0);
+    });
+
+    it("names the param when an all-digit ref names nothing", () => {
+      const liveSet = setupMockLocators({ id: "26", name: "Verse", time: 0 });
+
       expect(() => {
-        resolveLocatorRefToBeats(liveSet, "26", "for startTime");
-      }).toThrow(
-        'locator "26" is ambiguous for startTime: it is the id of locator 26 ' +
-          "and the name of locator 31",
-      );
-      expect(() => resolveLocatorRefToBeats(liveSet, "26")).toThrow(
-        'locator "26" is ambiguous: it is the id',
-      );
+        resolveLocatorRefToBeats(liveSet, "99", "for startTime");
+      }).toThrow("locator not found: 99 for startTime");
+    });
+
+    it.each<[string, MockLocator[]]>([
+      [
+        "ids and all-digit names crossed",
+        [
+          { id: "24", name: "25", time: 0 },
+          { id: "25", name: "Verse", time: 8 },
+          { id: "26", name: "24", time: 16 },
+        ],
+      ],
+      [
+        "ids and names swapped",
+        [
+          { id: "27", name: "31", time: 4 },
+          { id: "31", name: "27", time: 12 },
+        ],
+      ],
+      [
+        "a blank name whose id is another's name",
+        [
+          { id: "40", name: "", time: 20 },
+          { id: "41", name: "40", time: 28 },
+        ],
+      ],
+    ])("round-trips every read position with %s", (_label, locators) => {
+      const liveSet = setupMockLocators(...locators);
+
+      for (const [i, { position }] of readLocators(liveSet, 4, 4).entries()) {
+        const ref = position.replace(/^loc:/, "");
+
+        expect(resolveLocatorRefToBeats(liveSet, ref)).toBe(locators[i]?.time);
+      }
     });
   });
 });

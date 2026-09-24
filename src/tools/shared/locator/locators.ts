@@ -241,8 +241,8 @@ export function isLocatorId(value: string): boolean {
 
 /**
  * Resolve a single locator reference (ID or name) to its time in beats.
- * An all-digit ref can be an id or a name, so it tries both, and refuses
- * when they name different locators rather than guess.
+ * An all-digit ref is an id first, then an exact name: read results send
+ * `loc:<id>` back for names that can't be tokens, so the id must win.
  * @param liveSet - The live_set LiveAPI object
  * @param locatorRef - Locator ID or name
  * @param context - Optional context for error messages
@@ -258,30 +258,20 @@ export function resolveLocatorRefToBeats(
   }
 
   const byId = findLocator(liveSet, { locatorId: locatorRef });
-  const byName = findLocatorsByName(liveSet, locatorRef);
-  const others = byName.filter(({ locator }) => locator.id !== locatorRef);
-
-  if (byId != null && others.length > 0) {
-    const otherIds = others.map(({ locator }) => locator.id).join(", ");
-    const contextSuffix = context ? ` ${context}` : "";
-
-    throw new Error(
-      `locator "${locatorRef}" is ambiguous${contextSuffix}: it is the id of ` +
-        `locator ${locatorRef} and the name of locator ${otherIds}`,
-    );
-  }
 
   if (byId != null) {
     return byId.locator.getProperty("time") as number;
   }
 
-  const [first] = byName;
+  const [byName] = findLocatorsByName(liveSet, locatorRef);
 
-  if (first == null) {
-    throw new Error(`locator not found: ${locatorRef}`);
+  if (byName == null) {
+    const contextSuffix = context ? ` ${context}` : "";
+
+    throw new Error(`locator not found: ${locatorRef}${contextSuffix}`);
   }
 
-  return first.time;
+  return byName.time;
 }
 
 /**
