@@ -104,16 +104,21 @@ A `path` that doesn't exist is a 404 listing what is there.
 
 ### `POST /load`
 
-| Param         | Default   | Meaning                                        |
-| ------------- | --------- | ---------------------------------------------- |
-| `type`        | required  | See [Types](#types)                            |
-| `name`        | —         | Name to search for (pass this or `path`)       |
-| `path`        | —         | Exact path from `/list` (pass this or `name`)  |
-| `track_index` | new track | 0-based index of an existing track             |
-| `track_type`  | by kind   | `midi` or `audio`; only applies to a new track |
+| Param         | Default   | Meaning                                                  |
+| ------------- | --------- | -------------------------------------------------------- |
+| `type`        | required  | See [Types](#types)                                      |
+| `name`        | —         | Name to search for (pass this or `path`)                 |
+| `path`        | —         | Exact path from `/list` (pass this or `name`)            |
+| `track_index` | new track | 0-based index of an existing track                       |
+| `track_name`  | —         | Exact name of an existing track; wins over `track_index` |
+| `track_type`  | by kind   | `midi` or `audio`; only applies to a new track           |
 
 POST only, so a link or `<img>` tag can't load anything. Params work as query
 string or JSON body; the body wins.
+
+**`track_name` must match exactly one track**, or it's a 409. Tracks can shift
+while a load waits in the queue, so a client that made its own track should pass
+its (unique) name rather than an index.
 
 **One Producer Pal per Set**: loading `Producer_Pal` into a Set that already has
 it is a 409 naming the track that has it. Only each track's top-level devices

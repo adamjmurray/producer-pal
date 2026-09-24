@@ -33,8 +33,9 @@ export function registerRemoteScriptRoutes(): void {
 }
 
 /**
- * Load a resolved browser item onto an existing track.
- * @param args - `{ type, path, trackIndex }`
+ * Load a resolved browser item onto an existing track. The remote script finds
+ * the track by `trackName`; an older one that ignores it falls back to the index.
+ * @param args - `{ type, path, trackIndex, trackName }`
  * @returns Whether it loaded, an error worded for the model, or `available: false`
  */
 async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
@@ -51,6 +52,7 @@ async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
       type: requireString(args, "type"),
       path: requireString(args, "path"),
       track_index: trackIndex,
+      track_name: requireString(args, "trackName"),
     },
   });
 

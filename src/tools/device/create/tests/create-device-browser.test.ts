@@ -138,7 +138,12 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     );
     expect(requestNode).toHaveBeenCalledWith(
       REMOTE_SCRIPT_ROUTES.load,
-      { type: "plugin", path: "VST3/FabFilter/Pro-Q 4", trackIndex: 1 },
+      {
+        type: "plugin",
+        path: "VST3/FabFilter/Pro-Q 4",
+        trackIndex: 1,
+        trackName: expect.stringMatching(/^Producer Pal temp \w+$/),
+      },
       REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
     );
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
@@ -146,6 +151,21 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       children("existing", "loaded-1"),
     );
     expectCleanedUp();
+  });
+
+  it("names the temp track uniquely, so the remote script finds it by name", async () => {
+    await createDevice({ device: "Pro-Q 4", path: "t0/d+" });
+    await createDevice({ device: "Pro-Q 4", path: "t0/d+" });
+
+    const sent = vi
+      .mocked(requestNode)
+      .mock.calls.filter(([route]) => route === REMOTE_SCRIPT_ROUTES.load)
+      .map(([, args]) => (args as { trackName: string }).trackName);
+
+    expect(tempTrack.set.mock.calls).toStrictEqual(
+      sent.map((name) => ["name", name]),
+    );
+    expect(new Set(sent).size).toBe(2);
   });
 
   it("inserts at the position the path names", async () => {
