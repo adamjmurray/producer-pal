@@ -23,7 +23,10 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** Installed is older than this build (or unreadable). */
   updateAvailable: boolean;
+  /** Installed is newer than this build, so installing downgrades it. */
+  installedNewer: boolean;
 }
 
 export interface UseRemoteScriptReturn {

@@ -38,6 +38,7 @@ describe("RemoteScriptTab", () => {
       runningVersion: null,
       liveVersion: "12.1",
       updateAvailable: false,
+      installedNewer: false,
       ...overrides,
     };
   }
@@ -192,6 +193,23 @@ describe("RemoteScriptTab", () => {
     );
     expect(screen.getByTestId("remote-script-install").textContent).toBe(
       "Update",
+    );
+  });
+
+  it("offers a downgrade, not an Update, when the installed version is newer", async () => {
+    const summary = await renderTab({
+      installed: true,
+      installedVersion: "1.3.0",
+      running: true,
+      runningVersion: "1.3.0",
+      installedNewer: true,
+    });
+
+    expect(summary).toBe(
+      "Installed v1.3.0 is newer than this device's v1.2.0 (running v1.3.0 in Live 12.1)",
+    );
+    expect(screen.getByTestId("remote-script-install").textContent).toBe(
+      "Downgrade to match",
     );
   });
 

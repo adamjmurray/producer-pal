@@ -73,6 +73,7 @@ describe("useRemoteScript install failures", () => {
         runningVersion: null,
         liveVersion: "12.1",
         updateAvailable: false,
+        installedNewer: false,
       }),
     );
 

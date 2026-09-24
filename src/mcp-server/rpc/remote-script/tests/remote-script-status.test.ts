@@ -73,6 +73,7 @@ describe("remoteScriptStatus", () => {
       runningVersion: null,
       liveVersion: null,
       updateAvailable: false,
+      installedNewer: false,
     });
   });
 
@@ -102,6 +103,17 @@ describe("remoteScriptStatus", () => {
 
     expect(status.installedVersion).toBe("0.0.1");
     expect(status.updateAvailable).toBe(true);
+    expect(status.installedNewer).toBe(false);
+  });
+
+  it("flags a newer installed version instead of offering an update", async () => {
+    installRemoteScript(scratchDir);
+    writeInstalledVersion('VERSION = "999.0.0"\n');
+
+    const status = await remoteScriptStatus();
+
+    expect(status.updateAvailable).toBe(false);
+    expect(status.installedNewer).toBe(true);
   });
 
   it("offers an update when the installed version can't be read", async () => {
@@ -112,6 +124,7 @@ describe("remoteScriptStatus", () => {
 
     expect(status.installedVersion).toBeNull();
     expect(status.updateAvailable).toBe(true);
+    expect(status.installedNewer).toBe(false);
   });
 
   it("offers an update when version.py can't be opened at all", async () => {

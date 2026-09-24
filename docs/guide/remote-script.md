@@ -61,6 +61,9 @@ When the installed script is older than the one in your Producer Pal build, the
 tab offers an **Update**. Click it, then restart Live. Your Control Surface
 setting is kept.
 
+If the installed script is newer than your Producer Pal device, the tab offers
+**Downgrade to match** instead.
+
 ## Uninstalling
 
 There is no uninstall button yet, so remove it by hand:

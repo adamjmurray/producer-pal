@@ -107,6 +107,10 @@ function summarize(status: RemoteScriptStatus): string {
     return `Update available: installed ${versionText(status.installedVersion)}, this build has v${status.bundledVersion} (${running})`;
   }
 
+  if (status.installedNewer) {
+    return `Installed ${versionText(status.installedVersion)} is newer than this device's v${status.bundledVersion} (${running})`;
+  }
+
   return `Installed ${versionText(status.installedVersion)} (${running})`;
 }
 
@@ -236,6 +240,10 @@ function installLabel(status: RemoteScriptStatus, installing: boolean): string {
 
   if (!status.installed) {
     return "Install";
+  }
+
+  if (status.installedNewer) {
+    return "Downgrade to match";
   }
 
   return status.updateAvailable ? "Update" : "Reinstall";

@@ -6,6 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { VERSION } from "#src/shared/config.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { setRunningLiveMajor } from "../../live-library/live-db-path.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
 import { remoteScriptPing } from "./remote-script-client.ts";
@@ -24,7 +25,10 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** Installed is older than this build (or unreadable): offer an Update. */
   updateAvailable: boolean;
+  /** Installed is newer than this build: installing would downgrade it. */
+  installedNewer: boolean;
 }
 
 /**
@@ -54,6 +58,8 @@ export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
   const installedVersion = installed
     ? readScriptVersion(join(folder, "version.py"))
     : null;
+  const installedNewer =
+    installedVersion != null && isNewerVersion(VERSION, installedVersion);
 
   return {
     userLibrary,
@@ -63,7 +69,9 @@ export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
     running: ping.running,
     runningVersion: ping.scriptVersion,
     liveVersion: ping.liveVersion,
-    updateAvailable: installed && installedVersion !== VERSION,
+    updateAvailable:
+      installed && installedVersion !== VERSION && !installedNewer,
+    installedNewer,
   };
 }
 

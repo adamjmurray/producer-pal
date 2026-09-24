@@ -81,6 +81,7 @@ describe("GET /remote-script", () => {
       runningVersion: null,
       liveVersion: null,
       updateAvailable: false,
+      installedNewer: false,
     });
   });
 });
