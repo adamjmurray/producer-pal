@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Reading select's `path` param. One grammar covers every shape select can act
@@ -121,7 +121,7 @@ function targetFromParams({
   const path = namedParam(rawPath, "path");
 
   // Without this the grammar only says the root isn't a track or scene.
-  assertOneSelectTarget("path", path);
+  assertOneSelectTarget("path", path, true);
 
   const slot = namedHiddenPath(rawSlot, "slot");
   const devicePath = namedHiddenPath(rawDevicePath, "devicePath");

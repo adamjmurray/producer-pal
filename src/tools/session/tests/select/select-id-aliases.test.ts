@@ -334,6 +334,10 @@ describe("select id aliases", () => {
       'invalid clipId "1,2" - select takes one target per call ' +
         "(Live holds one selection)",
     );
+    // Brackets don't shield a comma in an id; only a path has them.
+    expect(() => select({ id: "[1,2]" })).toThrow(
+      'invalid id "[1,2]" - select takes one target per call',
+    );
   });
 
   it("takes the same object under two spellings", () => {
