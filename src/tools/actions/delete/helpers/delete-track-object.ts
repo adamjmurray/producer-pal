@@ -6,7 +6,10 @@
 // Deleting a track, where the Live call depends on which kind of track it is.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import {
+  getHostTrackIndex,
+  groupsHostTrack,
+} from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
@@ -51,6 +54,10 @@ export function deleteTrackObject(
 
   if (trackIndex === hostTrackIndex) {
     return `cannot delete track ${targetLabel(object)}, which hosts the Producer Pal device`;
+  }
+
+  if (groupsHostTrack(object, hostTrackIndex)) {
+    return `cannot delete group track ${targetLabel(object)}, which contains the Producer Pal device`;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
