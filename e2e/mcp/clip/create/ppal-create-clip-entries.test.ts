@@ -148,6 +148,30 @@ describe("ppal-create-clip result entries", () => {
     expect(await readClipName(entries[1]!.id!)).toBe("Made");
   });
 
+  // A second create there would replace the first, whose entry would then name
+  // a clip that no longer exists.
+  it("skips a slot the call already named", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s0,t${EMPTY_MIDI_TRACK}/s0`,
+        name: "First,Second",
+      },
+    });
+    const entries = parseBatchResult<ClipEntry>(result, 2);
+
+    expect(entries[0]?.ok).toBeUndefined();
+    expect(entries[1]).toStrictEqual({
+      ok: false,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
+      reason: `not created: t${EMPTY_MIDI_TRACK}/s0 is named earlier in this call; name each slot once`,
+    });
+
+    await sleep(100);
+
+    expect(await readClipName(entries[0]!.id!)).toBe("First");
+  });
+
   // Writing into an occupied arrangement range is normal and goes ahead, but
   // Live reports nothing about the clip it destroys to make room.
   it("says on the new clip's entry what it displaced", async () => {
