@@ -347,7 +347,7 @@ describe("duplicate take lane", () => {
         arrangementStart: "1|1",
       }),
     ).rejects.toThrow(
-      "the take-lane copy failed: Live created no clip at t0/l0",
+      "the take-lane copy failed: Live created no clip at t0/l0[1|1]",
     );
   });
 
@@ -389,7 +389,7 @@ describe("duplicate take lane", () => {
     expect(created[1]).toStrictEqual({
       path: "t0/l0[2|1]",
       ok: false,
-      reason: "the take-lane copy failed: Live created no clip at t0/l0",
+      reason: "the take-lane copy failed: Live created no clip at t0/l0[2|1]",
     });
   });
 

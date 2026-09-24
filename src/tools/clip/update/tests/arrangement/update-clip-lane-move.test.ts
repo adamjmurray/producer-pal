@@ -365,7 +365,7 @@ describe("moving an arrangement clip to another lane", () => {
     });
 
     expect(movedReason()).toContain(
-      `not moved: Live created no clip at t${DEST_TRACK}/l0`,
+      `not moved: Live created no clip at t${DEST_TRACK}/l0[9|1]`,
     );
     expect(movedReason()).not.toContain("re-created on");
     expect(result).toBe(SOURCE_ID);
@@ -563,7 +563,7 @@ describe("moving a clip off a take lane", () => {
     });
 
     expect(movedReason()).toContain(
-      `not moved: Live created no clip at t${DEST_TRACK}`,
+      `not moved: Live created no clip at t${DEST_TRACK}[9|1]`,
     );
     expect(movedReason()).not.toContain("re-created on");
     expect(result).toBe(SOURCE_ID);

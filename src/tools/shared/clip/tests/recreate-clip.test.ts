@@ -380,3 +380,62 @@ describe("recreateClip when a later step fails after creating", () => {
     },
   );
 });
+
+describe("recreateClip when Live makes no clip", () => {
+  const audioSource = {
+    is_midi_clip: 0,
+    is_audio_clip: 1,
+    file_path: "/samples/loop.wav",
+  };
+
+  it("names the position and the sample file", () => {
+    registerMockObject("none_src", {
+      path: SOURCE_PATH,
+      type: "Clip",
+      properties: audioSource,
+    });
+    registerMockObject("none_lane", {
+      path: LANE_PATH,
+      type: "TakeLane",
+      methods: { create_audio_clip: () => ["id", "0"] },
+    });
+
+    expect(() =>
+      recreateClip(
+        LiveAPI.from(SOURCE_PATH),
+        LiveAPI.from(LANE_PATH),
+        16,
+        undefined,
+        undefined,
+        [],
+      ),
+    ).toThrow(
+      'Live created no clip at t0/l0[5|1] from sampleFile "/samples/loop.wav"',
+    );
+  });
+
+  it("names the destination by id when it has no path", () => {
+    registerMockObject("none_src", {
+      path: SOURCE_PATH,
+      type: "Clip",
+      properties: audioSource,
+    });
+    registerMockObject("bare_lane", {
+      type: "TakeLane",
+      methods: { create_audio_clip: () => ["id", "0"] },
+    });
+
+    expect(() =>
+      recreateClip(
+        LiveAPI.from(SOURCE_PATH),
+        LiveAPI.from("id bare_lane"),
+        16,
+        undefined,
+        undefined,
+        [],
+      ),
+    ).toThrow(
+      'Live created no clip at id bare_lane from sampleFile "/samples/loop.wav"',
+    );
+  });
+});
