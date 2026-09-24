@@ -65,6 +65,12 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
     registerGrowingChainRack(0);
     liveSet = registerTempTrackMocks();
     registerTrackingChain(liveSet);
+    followMoves(liveSet, track0, undefined, [
+      "device-0",
+      "device-1",
+      "device-2",
+      "device-3",
+    ]);
   });
 
   /**
@@ -118,6 +124,33 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
     );
     expectInChain("device-0", 0);
     expectInChain("device-1", 1);
+  });
+
+  it("appends the rack to a track the lone instrument left empty", () => {
+    followMoves(liveSet, track0, undefined, ["device-0"]);
+
+    updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    // Live refuses index 0 on an empty track, so no index at all
+    expect(track0.call).toHaveBeenCalledWith(
+      "insert_device",
+      "Instrument Rack",
+    );
+    expectInChain("device-0", 0);
+  });
+
+  it("appends the rack to an empty track a toPath names at d0", () => {
+    const emptyTrack = registerMockObject("track-2", {
+      path: livePath.track(2),
+      methods: { insert_device: () => ["id", "new-rack"] },
+    });
+
+    updateDevice({ path: "t0/d1", wrapInRack: true, toPath: "t2/d0" });
+
+    expect(emptyTrack.call).toHaveBeenCalledWith(
+      "insert_device",
+      "Audio Effect Rack",
+    );
   });
 
   it("puts a MIDI effect ahead of the instrument", () => {

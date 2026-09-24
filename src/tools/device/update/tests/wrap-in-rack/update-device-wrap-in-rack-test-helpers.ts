@@ -128,11 +128,13 @@ export type MoveFilter = (id: string, to: string) => boolean;
  * @param liveSet - The live_set mock the moves go through
  * @param container - The track or chain mock
  * @param ignores - Which moves Live silently ignores, by device and target id
+ * @param initial - Ids of the devices it holds before any move
  */
 export function followMoves(
   liveSet: RegisteredMockObject,
   container: RegisteredMockObject,
   ignores: MoveFilter = () => false,
+  initial: string[] = [],
 ): void {
   const target = `id ${container.id}`;
 
@@ -141,7 +143,7 @@ export function followMoves(
       return [0];
     }
 
-    const held: string[] = [];
+    const held = initial.map((id) => `id ${id}`);
 
     for (const [method, id, to, index] of liveSet.call.mock.calls) {
       if (method !== "move_device" || ignores(id, to)) {

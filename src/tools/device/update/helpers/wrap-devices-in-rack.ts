@@ -127,7 +127,7 @@ export function wrapDevicesInRack({
 /**
  * Insert an empty rack.
  * @param container - Where the rack goes
- * @param position - The slot in it, or null for the front
+ * @param position - The slot in it, or null to append
  * @param rackType - Which kind of rack
  * @returns The new rack
  * @throws Error when Live refuses the insert
@@ -138,10 +138,15 @@ function insertRack(
   rackType: RackType,
 ): LiveAPI {
   const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType];
-  const rackId = container.call(
-    "insert_device",
-    rackName,
-    position ?? 0,
+  // Append (no index) at the end: Live refuses index 0 on an empty track or
+  // chain. Count here, after a wrapped instrument has moved out. Never pass 0
+  // for "no index" — that puts the rack first.
+  const appends =
+    position == null || position === container.getChildCount("devices");
+  const rackId = (
+    appends
+      ? container.call("insert_device", rackName)
+      : container.call("insert_device", rackName, position)
   ) as string;
   const rack = LiveAPI.from(rackId);
 

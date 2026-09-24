@@ -377,7 +377,8 @@ clip starts.
 series in a single chain, the way Live's Group (Cmd/Ctrl+G) does it: MIDI
 effects, then the instrument, then audio effects, each kind in the order you
 named them. 2.3 gave each device its own chain, even when wrapping only effects.
-`deviceCount` is the number of devices in that chain.
+`deviceCount` is the number of devices in that chain. A `toPath` with no index
+(`t2`, `t2/d+`) appends the rack; 2.3 put it first.
 
 ### Results name what a call had to make first
 
