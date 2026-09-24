@@ -307,8 +307,13 @@ function refuseListsOffCount(
             param: raw.path != null ? "path" : "slot",
             value: raw.path ?? raw.slot,
             isPath: true,
+            target: true,
           },
-          { param: "arrangementStart", value: raw.arrangementStart },
+          {
+            param: "arrangementStart",
+            value: raw.arrangementStart,
+            target: true,
+          },
         ];
 
   validateListLengths([

@@ -140,6 +140,28 @@ describe("readAls", () => {
     expect(set.scale).toBe("A Minor");
   });
 
+  it("reads an audio track's arrangement clips, which sit under Sample", () => {
+    const file = path.join(dir, "audio.als");
+    const audioTrack = `<Tracks><AudioTrack Id="1">
+      <Name><EffectiveName Value="Perc" /></Name>
+      <DeviceChain><MainSequencer><ClipSlotList />
+        <Sample><ArrangerAutomation><Events>
+          <AudioClip Time="8"><Name Value="Loop" /></AudioClip>
+        </Events></ArrangerAutomation></Sample>
+      </MainSequencer></DeviceChain>
+    </AudioTrack></Tracks>`;
+
+    writeFileSync(file, gzipSync(setXml(12).replace("<Tracks />", audioTrack)));
+
+    const set = readAls(file, { include: ["clips"] }) as {
+      tracks: { arrangementClips: { start: number; name: string }[] }[];
+    };
+
+    expect(set.tracks[0]?.arrangementClips).toStrictEqual([
+      expect.objectContaining({ start: 8, name: "Loop", type: "audio" }),
+    ]);
+  });
+
   it.each([
     ["an empty scale name", '<RootNote Value="0"/><Name Value=""/>'],
     ["no scale", null],

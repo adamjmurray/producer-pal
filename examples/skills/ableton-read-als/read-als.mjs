@@ -440,9 +440,9 @@ function readTrack(track, include, groupNames) {
       return clip && { scene: i, ...readClip(clip) };
     });
     result.sessionClips = session.filter(Boolean);
+    // Audio tracks keep their arrangement clips under Sample, not ClipTimeable.
     result.arrangementClips = children(
-      sequencer,
-      "ClipTimeable",
+      child(sequencer, "ClipTimeable") ?? child(sequencer, "Sample"),
       "ArrangerAutomation",
       "Events",
     ).map((clip) => ({ start: Number(clip.attrs.Time), ...readClip(clip) }));

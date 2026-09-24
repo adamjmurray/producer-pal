@@ -202,7 +202,9 @@ function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
         ? before + 1
         : Math.max(before, spec.laneIndex + 1);
 
-    if (total > MAX_TAKE_LANES) {
+    // A lane that already exists creates nothing, so a track already over the
+    // cap can still have one renamed.
+    if (total > before && total > MAX_TAKE_LANES) {
       throw new Error(
         `${takeLaneCapacityMessage(total - 1)}; "${spec.entry}" would add it. ` +
           `Nothing was created — a take lane can't be deleted.`,

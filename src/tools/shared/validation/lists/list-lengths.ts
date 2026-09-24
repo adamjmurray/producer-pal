@@ -27,6 +27,12 @@ export interface ListArg {
    * other would refuse a call naming two of each.
    */
   count?: number;
+  /**
+   * Whether this arg names what the call acts on. An arg with a `count` always
+   * does. When no target arg is a list, the call has one target, so every other
+   * value is read whole, commas and all, and never conflicts.
+   */
+  target?: boolean;
   /** What this arg counts, when "entries" doesn't fit: "track", "copy". */
   noun?: string;
   /**
@@ -47,6 +53,14 @@ export interface ListArg {
  * @throws Error when two comma-bearing params name different counts
  */
 export function validateListLengths(args: ListArg[]): void {
+  const targets = args.filter(
+    (arg) => arg.target === true || arg.count != null,
+  );
+
+  if (targets.length > 0 && !targets.some(isList)) {
+    return;
+  }
+
   const lists = args
     .map((arg) => ({
       param: arg.param,

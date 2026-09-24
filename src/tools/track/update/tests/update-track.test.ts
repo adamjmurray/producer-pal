@@ -188,6 +188,17 @@ describe("updateTrack", () => {
     );
   });
 
+  // One target reads every value whole, so their comma counts can't disagree.
+  it("reads each value whole for one target, whatever its commas", () => {
+    updateTrack({
+      id: "123",
+      name: "Bass, Sub",
+      outputRoutingType: "Low, End, Bus",
+    });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "Bass, Sub");
+  });
+
   // A gap in a name list used to mean "leave this one alone", while the same
   // gap in an id list was refused. One rule now: no list takes a hole.
   it("refuses an empty entry in a name list", () => {

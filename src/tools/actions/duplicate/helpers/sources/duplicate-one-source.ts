@@ -366,7 +366,7 @@ function outOfTime(
  * @returns Its index
  * @throws Error for a return or main track, which Live can't duplicate
  */
-function regularTrackIndex(object: LiveAPI): number {
+export function regularTrackIndex(object: LiveAPI): number {
   const trackIndex = object.trackIndex;
 
   if (trackIndex == null) {

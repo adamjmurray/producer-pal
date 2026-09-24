@@ -233,6 +233,16 @@ describe("resolveTakeLane", () => {
     );
   });
 
+  it("resolves an existing lane past the cap without creating one", () => {
+    const track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+    const trackApi = LiveAPI.from(livePath.track(0));
+
+    const { laneIndex } = resolveTakeLane(trackApi, MAX_TAKE_LANES + 1);
+
+    expect(laneIndex).toBe(MAX_TAKE_LANES + 1);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
   it("calls an out-of-range lane out of range on an empty track", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 

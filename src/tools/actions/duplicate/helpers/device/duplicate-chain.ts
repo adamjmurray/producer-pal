@@ -13,6 +13,7 @@ import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.t
 import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -99,6 +100,14 @@ function duplicateChain(
       `${targetLabel(chain)} is a rack return chain, which cannot be ` +
         "copied — the Live API has no way to create one, so they can only be " +
         "added in Live",
+    );
+  }
+
+  // Its devices move into the copy, so this would leave a second Producer Pal
+  // device fighting the first for the same connection.
+  if (isProducerPalDevice(chain)) {
+    throw new Error(
+      `cannot duplicate ${targetLabel(chain)}: it holds the Producer Pal device`,
     );
   }
 

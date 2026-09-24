@@ -238,6 +238,25 @@ describe("updateTrack take lane targets", () => {
     });
   });
 
+  // Live lets the user make more lanes than the cap; renaming one creates none.
+  it("renames a lane past the cap on a track that already has it", () => {
+    track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+
+    const result = updateTrack({
+      path: `t0/l${MAX_TAKE_LANES + 1},t0/l2`,
+      name: "Keep,Also",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        path: `t0/l${MAX_TAKE_LANES + 1}`,
+        name: "Keep",
+      }),
+      expect.objectContaining({ path: "t0/l2", name: "Also" }),
+    ]);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
   it("refuses the whole call when the lanes would pass the cap", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
 

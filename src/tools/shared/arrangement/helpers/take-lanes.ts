@@ -296,7 +296,10 @@ export function resolveTakeLane(
   const currentCount = track.getChildIds("take_lanes").length;
   const laneIndex = target;
 
-  assertTakeLaneCapacity(laneIndex);
+  // An existing lane is fine wherever it sits: the user can make more in Live.
+  if (laneIndex >= currentCount) {
+    assertTakeLaneCapacity(laneIndex);
+  }
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
   for (let i = currentCount; i <= laneIndex; i++) {
