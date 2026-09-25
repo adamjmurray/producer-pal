@@ -354,18 +354,16 @@ function parseTail(
 
   const first = tail[0] as string;
 
-  // A scene or take lane anywhere but right after the track is a misplaced
-  // coordinate, not a device — say so instead of blaming a device segment.
-  const misplaced = tail.findIndex(
-    (segment, i) => i > 0 && isTrackChild(segment),
-  );
+  if (isTrackChild(first)) {
+    return parseTrackChild(root, tail, label, input);
+  }
+
+  // A scene or take lane inside a device chain is a misplaced coordinate, not
+  // a device — say so instead of blaming a device segment.
+  const misplaced = tail.findIndex(isTrackChild);
 
   if (misplaced !== -1) {
     throw trackChildError(label, input, tail[misplaced] as string);
-  }
-
-  if (isTrackChild(first)) {
-    return parseTrackChild(root, first, tail.length, label, input);
   }
 
   const { segments, appendsChain, appendsDevice } = parseDeviceTail(
@@ -408,21 +406,25 @@ function isTrackChild(segment: string): boolean {
 /**
  * Builds the clip slot or take lane a track child names.
  * @param root - The parsed root segment
- * @param segment - The child segment
- * @param tailLength - How many segments follow the root
+ * @param tail - Segments after the root; the first is the child
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @returns The slot or take lane
  */
 function parseTrackChild(
   root: TrackSegment,
-  segment: string,
-  tailLength: number,
+  tail: string[],
   label: string,
   input: string,
 ): ObjectPath {
-  if (root.kind !== "track" || tailLength !== 1) {
+  const segment = tail[0] as string;
+
+  if (root.kind !== "track") {
     throw trackChildError(label, input, segment);
+  }
+
+  if (tail.length > 1) {
+    throw trackChildTailError(label, input, segment, tail[1] as string);
   }
 
   if (segment === NEW_TAKE_LANE) {
@@ -467,6 +469,35 @@ function trackChildError(label: string, input: string, segment: string): Error {
         input,
         `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes`,
       );
+}
+
+/**
+ * Explains a segment after a clip slot or take lane, which have no parts.
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @param child - The slot or lane segment
+ * @param next - The segment after it
+ * @returns The error to throw
+ */
+function trackChildTailError(
+  label: string,
+  input: string,
+  child: string,
+  next: string,
+): Error {
+  if (child === NEW_TAKE_LANE) {
+    return pathError(
+      label,
+      input,
+      `"${child}" appends a take lane, so nothing can follow it`,
+    );
+  }
+
+  const problem = SCENE.test(child)
+    ? "can't follow a clip slot; a path ends at the slot"
+    : "can't follow a take lane; a path ends at the lane";
+
+  return pathError(label, input, `"${next}" ${problem}`);
 }
 
 /**

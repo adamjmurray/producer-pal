@@ -222,7 +222,7 @@ describe("parseObjectPath", () => {
   });
 
   it("rejects a scene segment anywhere a slot can't be", () => {
-    for (const path of ["rt0/s1", "mt/s1", "t0/d0/s1", "t0/s1/d0"]) {
+    for (const path of ["rt0/s1", "mt/s1", "t0/d0/s1"]) {
       expect(() => parseObjectPath(path)).toThrow(
         /a clip slot is "t<track>\/s<scene>"/,
       );
@@ -230,9 +230,34 @@ describe("parseObjectPath", () => {
   });
 
   it("rejects a take lane anywhere a track's lanes can't be", () => {
-    for (const path of ["rt0/l1", "mt/l1", "t0/d0/l1", "t0/l1/d0"]) {
+    for (const path of ["rt0/l1", "mt/l1", "t0/d0/l1"]) {
       expect(() => parseObjectPath(path)).toThrow(
         /a take lane is "t<track>\/l<lane>"/,
+      );
+    }
+  });
+
+  // The track is fine here; blaming it sends the caller to the wrong fix.
+  it("blames the segment after a take lane or clip slot, not the track", () => {
+    expect(() => parseObjectPath("t0/l0/d0")).toThrow(
+      'invalid path "t0/l0/d0" - "d0" can\'t follow a take lane; a path ends at the lane',
+    );
+    expect(() => parseObjectPath("t0/l0/l1")).toThrow(
+      '"l1" can\'t follow a take lane; a path ends at the lane',
+    );
+    expect(() => parseObjectPath("t0/s1/c0")).toThrow(
+      'invalid path "t0/s1/c0" - "c0" can\'t follow a clip slot; a path ends at the slot',
+    );
+    expect(() => parseObjectPath("t0/s0/s1")).toThrow(
+      '"s1" can\'t follow a clip slot; a path ends at the slot',
+    );
+    expect(() => parseObjectPath("t0/l+/d0")).toThrow(
+      'invalid path "t0/l+/d0" - "l+" appends a take lane, so nothing can follow it',
+    );
+
+    for (const path of ["rt0/l0/d0", "rt0/l0/l1"]) {
+      expect(() => parseObjectPath(path)).toThrow(
+        "only regular tracks have take lanes",
       );
     }
   });
