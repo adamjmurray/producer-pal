@@ -251,9 +251,15 @@ describe("ppal-update-clip arrangement multistart", () => {
       `t${EMPTY_MIDI_TRACK}[270|3]`,
       `t${EMPTY_MIDI_TRACK}[270|1]`,
     ]);
-    expect(clips[0]?.reason).toContain("trimmed:");
-    expect(clips[1]?.reason).toContain("trimmed:");
-    expect(clips[2]?.reason).toBeUndefined();
+    // B and C each cut the front off the clip they landed on, and say where
+    // what is left of it now starts.
+    const trimmed = "trimmed: another clip in this call landed on its start";
+
+    expect(clips.map((clip) => clip.reason)).toStrictEqual([
+      trimmed,
+      `shortened the clip at t${EMPTY_MIDI_TRACK}[271|1]; ${trimmed}`,
+      `shortened the clip at t${EMPTY_MIDI_TRACK}[270|3]`,
+    ]);
     // A trimmed entry says how much is left: A(8) minus B(4), B(4) minus C(2).
     expect(clips.map((clip) => clip.arrangementLength)).toStrictEqual([
       "1bar",
