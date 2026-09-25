@@ -10,7 +10,10 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
 import { librarySearch } from "../../query/library-search.ts";
-import { setupLibraryFixtureLifecycle } from "../fixtures/library-fixture.ts";
+import {
+  createLibraryFixture,
+  setupLibraryFixtureLifecycle,
+} from "../fixtures/library-fixture.ts";
 
 vi.mock(import("../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
@@ -243,6 +246,32 @@ describe("librarySearch", () => {
       const result = await librarySearch({ tags: "Kick,Snare Hit" });
 
       expect(result.items).toHaveLength(0);
+    });
+
+    it("reads \\, as a comma inside a tag name", async () => {
+      const fixture = createLibraryFixture();
+      const db = new DatabaseSync(fixture.dbPath);
+
+      try {
+        db.prepare(
+          "INSERT INTO files (file_id, parent_id, file_type, name) VALUES (9006, 1, ?, 'Kick, hard')",
+        ).run(fourCC("keyw"));
+        db.prepare(
+          "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, 9006, 0)",
+        ).run();
+        vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(
+          fixture.dbPath,
+        );
+
+        const result = await librarySearch({ tags: "Punchy,Kick\\, hard" });
+
+        expect(result.items.map((i) => i.name)).toStrictEqual([
+          "pack_kick.wav",
+        ]);
+      } finally {
+        db.close();
+        fixture.cleanup();
+      }
     });
 
     it("trims and dedupes tag tokens", async () => {

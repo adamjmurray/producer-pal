@@ -75,22 +75,22 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
 
     inputRoutingType: param(z.coerce.string().optional(), {
       default:
-        "name from availableInputRoutingTypes, set before channel; or comma-separated one per target (a name with a comma needs a single-target call)",
+        "name from availableInputRoutingTypes, set before channel; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
     inputRoutingChannel: param(z.coerce.string().optional(), {
       default:
-        "name from availableInputRoutingChannels; or comma-separated one per target (a name with a comma needs a single-target call)",
+        "name from availableInputRoutingChannels; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
     outputRoutingType: param(z.coerce.string().optional(), {
       default:
-        "name from availableOutputRoutingTypes, set before channel; or comma-separated one per target (a name with a comma needs a single-target call)",
+        "name from availableOutputRoutingTypes, set before channel; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
     outputRoutingChannel: param(z.coerce.string().optional(), {
       default:
-        "name from availableOutputRoutingChannels; or comma-separated one per target (a name with a comma needs a single-target call)",
+        "name from availableOutputRoutingChannels; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
 

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { splitPathEntries } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
-import { splitEntries } from "./list-pairing.ts";
+import { splitEntries } from "./split-entries.ts";
 import { plural } from "./plural.ts";
 
 /**

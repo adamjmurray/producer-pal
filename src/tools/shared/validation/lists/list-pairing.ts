@@ -22,6 +22,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { plural } from "./plural.ts";
+import { splitEntries, unescapeCommas } from "./split-entries.ts";
 
 /** How a mismatched list is described in the warning. */
 export interface PairLabels {
@@ -125,37 +126,6 @@ export function valueForIndex(
   // A list too short for the items is refused up front, so past the last entry
   // only happens where nothing checked — and there the item keeps what it had.
   return parsed == null ? unescapeCommas(value) : parsed[index];
-}
-
-/**
- * Split a value at each comma not written as `\,`. A `\,` becomes a plain
- * comma inside its entry.
- * @param value - The raw param
- * @returns The untrimmed entries, one when the value has no separator
- */
-export function splitEntries(value: string): string[] {
-  const entries: string[] = [];
-
-  for (const piece of value.split(",")) {
-    const last = entries.at(-1);
-
-    if (last?.endsWith("\\") === true) {
-      entries[entries.length - 1] = `${last.slice(0, -1)},${piece}`;
-    } else {
-      entries.push(piece);
-    }
-  }
-
-  return entries;
-}
-
-/**
- * Read each `\,` in a whole value as a plain comma.
- * @param value - The raw param
- * @returns The value with its escaped commas unescaped
- */
-function unescapeCommas(value: string): string {
-  return value.replaceAll("\\,", ",");
 }
 
 /**

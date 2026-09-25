@@ -18,6 +18,7 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
+import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
 import {
   ALC_FILE_TYPE,
   ALC_MIDI_SUBTYPE,
@@ -395,7 +396,8 @@ function buildLikePattern(query: string): string {
 }
 
 /**
- * Parse the comma-separated tags string into a trimmed, de-duped list.
+ * Parse the comma-separated tags string into a trimmed, de-duped list. `\,` is
+ * a comma inside a tag name.
  *
  * @param tags - Raw comma-separated string from the caller
  * @returns Array of unique non-empty tag names
@@ -405,8 +407,7 @@ function parseTags(tags: string | undefined): string[] {
     return [];
   }
 
-  const parts = tags
-    .split(",")
+  const parts = splitEntries(tags)
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
 

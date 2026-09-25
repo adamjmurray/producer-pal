@@ -18,12 +18,16 @@ import {
   findLocator,
   findLocatorsByName,
 } from "#src/tools/shared/locator/locators.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import {
+  nameEntries,
+  targetEntries,
+} from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { unescapeCommas } from "#src/tools/shared/validation/lists/split-entries.ts";
 
 export type LocatorOperation = "create" | "delete" | "rename";
 
@@ -249,7 +253,7 @@ function withNames(
 
 /**
  * The names a delete targets. A whole value that names a locator is one name,
- * commas and all; otherwise a comma splits it.
+ * commas and all; otherwise each comma not written `\,` splits it.
  * @param locatorName - The param as the caller sent it
  * @param liveSet - The live_set LiveAPI object
  * @returns One name per target
@@ -262,14 +266,13 @@ function deleteNames(
     return [];
   }
 
-  if (
-    !locatorName.includes(",") ||
-    findLocatorsByName(liveSet, locatorName).length > 0
-  ) {
-    return [locatorName];
+  const whole = unescapeCommas(locatorName);
+
+  if (!whole.includes(",") || findLocatorsByName(liveSet, whole).length > 0) {
+    return [whole];
   }
 
-  return targetEntries(locatorName, "locatorName");
+  return nameEntries(locatorName, "locatorName");
 }
 
 /**

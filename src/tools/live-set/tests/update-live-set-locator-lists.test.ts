@@ -334,6 +334,52 @@ describe("updateLiveSet - locator targets", () => {
       ]);
       expect(set.locators()).toStrictEqual([]);
     });
+
+    it("reads \\, as a comma in the name", async () => {
+      const set = simulateLocators(liveSet, [
+        { time: 0, name: "Verse, part 2" },
+        { time: 16, name: "Verse" },
+        { time: 32, name: "part 2" },
+      ]);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "Verse\\, part 2",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "delete",
+        count: 1,
+        name: "Verse, part 2",
+      });
+      expect(set.locators()).toStrictEqual([
+        { time: 16, name: "Verse" },
+        { time: 32, name: "part 2" },
+      ]);
+    });
+
+    it("splits a list only at the commas not written \\,", async () => {
+      const set = simulateLocators(liveSet, [
+        { time: 0, name: "A" },
+        { time: 16, name: "Verse, part 2" },
+        { time: 32, name: "Verse" },
+        { time: 48, name: "part 2" },
+      ]);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "A,Verse\\, part 2",
+      });
+
+      expect(result.locator).toStrictEqual([
+        { operation: "delete", count: 1, name: "A" },
+        { operation: "delete", count: 1, name: "Verse, part 2" },
+      ]);
+      expect(set.locators()).toStrictEqual([
+        { time: 32, name: "Verse" },
+        { time: 48, name: "part 2" },
+      ]);
+    });
   });
 
   describe("delete by ids, times and names together", () => {
