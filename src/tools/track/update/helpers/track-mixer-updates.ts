@@ -9,6 +9,10 @@ import {
   isParamEnabled,
 } from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
+  type TargetNotes,
+  refuseTargetWork,
+} from "#src/tools/shared/helpers/target-notes.ts";
+import {
   type PublishedValue,
   differsAtPublishedResolution,
   publishedReadBack,
@@ -44,7 +48,7 @@ export interface TrackMixerApplied extends MixerApplied {
    * read.
    */
   panningMode?: "split";
-  /** Why a value isn't the one asked for, or had no effect */
+  /** Which values Live kept differently from the ones asked for */
   detail?: string;
 }
 
@@ -66,25 +70,28 @@ interface MixerReport {
   applied: TrackMixerApplied;
   /** Params whose read-back isn't the number asked for */
   changed: string[];
-  /** Params that had no effect, and what to do instead */
-  refused: string[];
+  /** Where a param that had no effect is refused */
+  notes: TargetNotes;
 }
 
 /**
  * Apply mixer properties (gain and panning) to a track.
  *
  * Values are read back off the track, not echoed: Live clamps and snaps what it
- * is given. One that came back the same is left out of the result.
+ * is given. One that came back the same is left out of the result. A value
+ * the track can't take is refused on its entry.
  * @param track - Track object
  * @param params - Mixer properties
+ * @param notes - What the track's entry has to say, added to
  * @returns What didn't land as asked, read back
  */
 export function applyMixerProperties(
   track: LiveAPI,
   params: MixerParams,
+  notes: TargetNotes,
 ): TrackMixerApplied {
   const { gainDb, pan, panningMode, leftPan, rightPan } = params;
-  const report: MixerReport = { applied: {}, changed: [], refused: [] };
+  const report: MixerReport = { applied: {}, changed: [], notes };
 
   const mixer = track.child("mixer_device");
 
@@ -150,7 +157,9 @@ function applyStereoPan(
   });
 
   if (params.leftPan != null || params.rightPan != null) {
-    report.refused.push(
+    refuseTargetWork(
+      report.notes,
+      ["leftPan", "rightPan"],
       "leftPan/rightPan had no effect: they only apply in split panning " +
         "mode — set panningMode to 'split', or use pan",
     );
@@ -185,7 +194,9 @@ function applySplitPan(
   });
 
   if (params.pan != null) {
-    report.refused.push(
+    refuseTargetWork(
+      report.notes,
+      ["pan"],
       "pan had no effect: it only applies in stereo panning mode — set " +
         "panningMode to 'stereo', or use leftPan/rightPan",
     );
@@ -197,8 +208,8 @@ function applySplitPan(
  * Live kept a different value. The parameter is only looked up when there is
  * something to write — every update-track call would otherwise build all four.
  *
- * A parameter something else owns is reported on the track's entry rather than
- * warned about: silence here means the value landed.
+ * A parameter something else owns is refused on the track's entry: Live takes
+ * the write and ignores it, so silence here must mean the value landed.
  * @param mixer - Mixer device object
  * @param report - Collects what the write has to say
  * @param write - The parameter to write and how to name it
@@ -221,7 +232,11 @@ function writeMixerParam(
   }
 
   if (!isParamEnabled(param)) {
-    report.refused.push(`${field} ${PARAM_DISABLED_REASON}`);
+    refuseTargetWork(
+      report.notes,
+      [field],
+      `${field} ${PARAM_DISABLED_REASON}`,
+    );
 
     return;
   }
@@ -242,17 +257,15 @@ function writeMixerParam(
 }
 
 /**
- * Put everything the mixer write has to say into one detail on the entry
+ * Say on the entry which values Live kept differently
  * @param report - What the write collected
  * @returns The mixer fields for the track's result entry
  */
 function finishReport(report: MixerReport): TrackMixerApplied {
   const changed = readBackDetail(report.changed);
-  const details =
-    changed == null ? report.refused : [...report.refused, changed];
 
-  if (details.length > 0) {
-    report.applied.detail = details.join("; ");
+  if (changed != null) {
+    report.applied.detail = changed;
   }
 
   return report.applied;

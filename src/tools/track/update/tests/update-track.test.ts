@@ -448,7 +448,9 @@ describe("updateTrack", () => {
 
         expect(() =>
           updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN }),
-        ).toThrow("monitoringState is only available on armable tracks");
+        ).toThrow(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+        );
 
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "current_monitoring_state",
@@ -475,7 +477,8 @@ describe("updateTrack", () => {
           {
             id: "ret1",
             ok: false,
-            detail: "monitoringState is only available on armable tracks",
+            detail:
+              "monitoringState had no effect: return, main and group tracks have no monitoring",
           },
         ]);
         expect(capturedWarnings()).toStrictEqual([]);

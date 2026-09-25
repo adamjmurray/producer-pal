@@ -216,6 +216,31 @@ describe("return and master tracks", () => {
     );
   });
 
+  // Both are refused before anything is written, so nothing needs restoring.
+  it("refuses arm on a return track", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: "rt0", arm: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "arm had no effect: return, main and group tracks can't be armed",
+    );
+  });
+
+  it("refuses mute on the master track", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: "mt", mute: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "mute had no effect: the main track has no mute or solo",
+    );
+  });
+
   it("reads the master track's devices", async () => {
     const master = await readTrack({
       path: "mt",

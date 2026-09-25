@@ -441,6 +441,22 @@ describe("ppal-update-track", () => {
     }
   });
 
+  it("refuses a lone pan on a split-mode track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    try {
+      await updateTrack({ id: trackId, panningMode: "split" });
+
+      const result = await updateTrack({ id: trackId, pan: 0.5 });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain("pan had no effect");
+    } finally {
+      await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
+    }
+  });
+
   it("says nothing about a send that took the level asked for", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
@@ -644,7 +660,8 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       {
         path: "rt0",
         ok: false,
-        detail: "monitoringState is only available on armable tracks",
+        detail:
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
       },
     ]);
   });
@@ -664,7 +681,7 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       expect.objectContaining({
         path: "rt0",
         detail: expect.stringContaining(
-          "monitoringState is only available on armable tracks",
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
         ),
       }),
     );

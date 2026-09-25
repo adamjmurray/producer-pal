@@ -314,9 +314,13 @@ that governs what the call did.
 Two things moved rather than vanished. A `sends` array now holds only the sends
 Live didn't give the level you asked for, so no `sends` means every one landed;
 one nothing could be written to keeps its slot as
-`{return, returnId, ok: false, detail}`. And a refusal that used to warn is a
-`detail` on the track's own entry now: `pan` sent in split panning mode,
-`leftPan`/`rightPan` sent in stereo, or a mixer or send param a rack macro owns.
+`{return, returnId, ok: false, detail}`, as does a send a rack macro owns. And a
+write the track can't take is refused on the track's own entry now: `pan` sent
+in split panning mode, `leftPan`/`rightPan` sent in stereo, a gain or pan a rack
+macro owns, `mute`/`solo` on the main track, and `arm` on a track that can't be
+armed. The entry carries a `detail`, and is `ok: false` when that was everything
+you asked of the track, and then a call naming only that track errors. Setting
+one of those switches to off is a `detail` only, since it.s already off.
 
 **A locator id is Live's own id now.** `ppal-read-live-set` used to report
 `locator-0`, a position in the list that shifted whenever an earlier locator was

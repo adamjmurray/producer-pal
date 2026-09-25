@@ -29,6 +29,10 @@ import {
   routingValuesAt,
 } from "./helpers/track-routing-updates.ts";
 import {
+  applyTrackSwitches,
+  canBeArmed,
+} from "./helpers/track-switch-updates.ts";
+import {
   paramsTakeLanesIgnore,
   planTakeLaneTargets,
   updateTakeLane,
@@ -132,8 +136,7 @@ interface UpdateTrackResult extends TrackMixerApplied {
 
 /**
  * Apply monitoring state to a track. Monitoring exists only on armable tracks,
- * so it is refused on non-armable tracks (return/master) — mirroring the
- * read-side `canBeArmed` guard in track-routing.ts.
+ * so it is refused on the rest.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off)
  * @param notes - What the track's entry has to say, added to
@@ -147,13 +150,11 @@ function applyMonitoringState(
     return;
   }
 
-  const canBeArmed = (track.getProperty("can_be_armed") as number) > 0;
-
-  if (!canBeArmed) {
+  if (!canBeArmed(track)) {
     refuseTargetWork(
       notes,
       ["monitoringState"],
-      "monitoringState is only available on armable tracks",
+      "monitoringState had no effect: return, main and group tracks have no monitoring",
     );
 
     return;
@@ -273,24 +274,17 @@ export function updateTrack(
 
     const rename = returnTrackRename(track.path, trackName);
 
-    track.setAll({
-      name: rename.write,
-      color: trackColor,
-      mute,
-      solo,
-      arm,
-    });
+    track.setAll({ name: rename.write, color: trackColor });
+    applyTrackSwitches(track, { mute, solo, arm }, notes);
 
     const colorLanded =
       trackColor == null ? {} : landedColor(track, trackColor);
 
-    const mixer = trackMixer(track, {
-      gainDb,
-      pan,
-      panningMode,
-      leftPan,
-      rightPan,
-    });
+    const mixer = trackMixer(
+      track,
+      { gainDb, pan, panningMode, leftPan, rightPan },
+      notes,
+    );
 
     const routing = routingAt(i);
 
@@ -348,11 +342,16 @@ export function updateTrack(
  * Write a track's mixer, when the call asked for any of it.
  * @param track - Track object
  * @param params - The mixer values, as the call sent them
+ * @param notes - What the track's entry has to say, added to
  * @returns What the write landed, read back; empty when none was asked for
  */
-function trackMixer(track: LiveAPI, params: MixerParams): TrackMixerApplied {
+function trackMixer(
+  track: LiveAPI,
+  params: MixerParams,
+  notes: TargetNotes,
+): TrackMixerApplied {
   return Object.values(params).some((value) => value != null)
-    ? applyMixerProperties(track, params)
+    ? applyMixerProperties(track, params, notes)
     : {};
 }
 
