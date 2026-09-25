@@ -127,7 +127,9 @@ UI.
 - **Fix the class, not the instance.** When a review finds a tool breaking a
   rule in `dev/PRINCIPLES.md`, check every tool that applies that rule before
   fixing. Fix them together, in shared code where you can, with a test that
-  covers all of them.
+  covers all of them. Changing how a tool answers (refuse, skip or warn; which
+  of two entries wins) is a rule change, not a fix: ask before making it, record
+  the decision in an ADR, then apply it to every tool at once.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
