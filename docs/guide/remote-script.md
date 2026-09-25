@@ -42,9 +42,9 @@ it is installed and what it does may change.
 
 1. **Restart Live.** It only scans Remote Scripts at startup, so a freshly
    installed script is invisible until then.
-2. Go to **Settings → Link, Tempo & MIDI**, and set an unused **Control
-   Surface** slot to **Producer_Pal**. Leave **Input** and **Output** as
-   **None**. The script doesn't use MIDI.
+2. Go to **Settings → Tempo & MIDI**, and set an unused **Control Surface** slot
+   to **Producer_Pal**. Leave **Input** and **Output** as **None**. The script
+   doesn't use MIDI.
 
 ## Check it's working
 

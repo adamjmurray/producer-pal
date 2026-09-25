@@ -274,7 +274,7 @@ function EnableSteps({
       )}
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>Restart Live — it only scans Remote Scripts at startup.</li>
-        <li>In Live, open Settings → Link, Tempo &amp; MIDI.</li>
+        <li>In Live, open Settings → Tempo &amp; MIDI.</li>
         <li>
           Under Control Surface pick Producer_Pal. Leave Input and Output as
           None.

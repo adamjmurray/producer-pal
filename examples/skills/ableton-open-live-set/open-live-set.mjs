@@ -393,7 +393,7 @@ async function loadProducerPal() {
   );
   if (!reachable) {
     throw new Error(
-      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${REMOTE_SCRIPT_PORT}. Install it and select it as a Control Surface (Live Settings → Link, Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${REMOTE_SCRIPT_PORT}. Install it and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
     );
   }
 

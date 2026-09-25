@@ -51,7 +51,7 @@ Producer Pal in the Set. Without the flag nothing is added.
 - Node.js 18+, no npm packages.
 - For `--add-producer-pal` only: the
   [Producer Pal remote script](https://github.com/adamjmurray/producer-pal/tree/main/remote-script)
-  selected as a Control Surface (Live Settings → Link, Tempo & MIDI; port 3349,
+  selected as a Control Surface (Live Settings → Tempo & MIDI; port 3349,
   `PPAL_REMOTE_SCRIPT_PORT` to override), and the `Producer_Pal` device in
   Live's browser (e.g. the User Library).
 
