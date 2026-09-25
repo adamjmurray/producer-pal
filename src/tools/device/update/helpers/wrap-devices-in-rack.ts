@@ -492,11 +492,17 @@ function wrapInstrumentInRack(
   // 3. Create temp MIDI track (appended)
   const tempTrackId = liveSet.call("create_midi_track", -1) as string;
   const tempTrack = LiveAPI.from(tempTrackId);
-  const tempTrackIndex = tempTrack.trackIndex;
+
+  if (!tempTrack.exists()) {
+    throw new Error("wrapInRack: Live refused to create a temp track");
+  }
+
   let rack: LiveAPI | null = null;
 
   try {
-    // 4. Stage the instrument on the temp track
+    // 4. Stage the instrument on the temp track, cleared first: the user's
+    // default track preset may have put an instrument there already.
+    clearDevices(tempTrack);
     liveSet.call(
       "move_device",
       toLiveApiId(device.id),
@@ -519,7 +525,7 @@ function wrapInstrumentInRack(
     moveDevicesIntoChain(chain, devices, reasons);
 
     // 7. Delete the temp track, unless the instrument never left it
-    const kept = releaseTempTrack(liveSet, tempTrack, tempTrackIndex, device);
+    const kept = releaseTempTrack(liveSet, tempTrack, device);
 
     return rackResult(rack, RACK_TYPE_INSTRUMENT, chain, [...reasons, ...kept]);
   } catch (error) {
@@ -536,7 +542,7 @@ function wrapInstrumentInRack(
       );
     }
 
-    notes.push(...releaseTempTrack(liveSet, tempTrack, tempTrackIndex, device));
+    notes.push(...releaseTempTrack(liveSet, tempTrack, device));
 
     if (notes.length === 0) {
       throw error;
@@ -549,21 +555,31 @@ function wrapInstrumentInRack(
 }
 
 /**
+ * Delete every device on a track, last first.
+ * @param track - The track
+ */
+function clearDevices(track: LiveAPI): void {
+  for (let i = track.getChildCount("devices") - 1; i >= 0; i--) {
+    track.call("delete_device", i);
+  }
+}
+
+/**
  * Delete the temp track — but never while it holds the instrument, since that
  * would delete the instrument too. A failed delete is a note, not a failure:
  * the wrap itself is already done or already failing.
  * @param liveSet - The live_set LiveAPI object
  * @param tempTrack - The temp track
- * @param index - The temp track's index
  * @param instrument - The instrument that was staged on it
  * @returns What was left behind, if anything
  */
 function releaseTempTrack(
   liveSet: LiveAPI,
   tempTrack: LiveAPI,
-  index: number | null,
   instrument: LiveAPI,
 ): string[] {
+  const index = tempTrack.trackIndex;
+
   if (holdsDevice(tempTrack, instrument)) {
     return [`the instrument was left on new track t${index}`];
   }

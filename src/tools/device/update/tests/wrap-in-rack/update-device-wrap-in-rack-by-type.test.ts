@@ -244,6 +244,76 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
     });
   });
 
+  it("clears a preset instrument off the temp track before staging", () => {
+    // Live allows one instrument per track, so a preset synth blocks staging.
+    const tempTrack = registerMockObject("temp-track", {
+      path: livePath.track(1),
+    });
+    const preset = ["id preset-synth", "id channel-eq"];
+    const deletes = (): number =>
+      tempTrack.call.mock.calls.filter((c) => c[0] === "delete_device").length;
+    const presetLeft = (): string[] =>
+      preset.slice(0, preset.length - deletes());
+
+    followMoves(
+      liveSet,
+      tempTrack,
+      (_id, to) => to === "id temp-track" && presetLeft().length > 0,
+    );
+    const moves = tempTrack.get.getMockImplementation() as (p: string) => [];
+
+    tempTrack.get.mockImplementation((prop: string) =>
+      prop === "devices"
+        ? [...presetLeft().flatMap((id) => id.split(" ")), ...moves(prop)]
+        : moves(prop),
+    );
+
+    const result = updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    expect(tempTrack.call).toHaveBeenNthCalledWith(1, "delete_device", 1);
+    expect(tempTrack.call).toHaveBeenNthCalledWith(2, "delete_device", 0);
+    // Clearing after staging would delete the user's instrument.
+    const staged = liveSet.call.mock.calls.findIndex(
+      (c) => c[0] === "move_device" && c[2] === "id temp-track",
+    );
+
+    const lastDelete = Math.max(
+      ...tempTrack.call.mock.invocationCallOrder.filter(
+        (_, i) => tempTrack.call.mock.calls[i]?.[0] === "delete_device",
+      ),
+    );
+
+    expect(lastDelete).toBeLessThan(
+      liveSet.call.mock.invocationCallOrder[staged] as number,
+    );
+    expectInChain("device-0", 0);
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+    expect(result).toStrictEqual({
+      id: "new-rack",
+      type: "instrument-rack",
+      deviceCount: 1,
+    });
+  });
+
+  it("deletes no track when Live won't make the temp track", () => {
+    mockNonExistentObjects();
+    liveSet.methods.create_midi_track = () => ["id", 0];
+
+    expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
+      "wrapInRack: Live refused to create a temp track",
+    );
+    expect(liveSet.call).not.toHaveBeenCalledWith(
+      "move_device",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(liveSet.call).not.toHaveBeenCalledWith(
+      "delete_track",
+      expect.anything(),
+    );
+  });
+
   describe("when Live makes no chain", () => {
     beforeEach(() => {
       // A rack at a real slot, so it can be deleted; insert_chain answers 1.
