@@ -420,8 +420,13 @@ function finalizeCreatedClips({
     throw new Error(refusal);
   }
 
-  // Handle automatic playback (session clips only, guard inside handles no-op)
-  handleAutoPlayback(auto, "session", clipSlots);
+  // Launch only the slots that got a clip: firing an empty slot stops its
+  // track, and play-scene should fire a scene holding something new.
+  handleAutoPlayback(
+    auto,
+    "session",
+    slotsWithClips(entries, order, clipSlots),
+  );
 
   // Focus one clip: arrangement gets priority over the session whatever order
   // the call named them in (the arrangement is where the final song lives).
@@ -434,6 +439,27 @@ function finalizeCreatedClips({
   }
 
   return unwrapSingleResult(entries);
+}
+
+/**
+ * The clip slots that got a clip, in call order.
+ * @param entries - One entry per destination, in call order
+ * @param order - Every destination, in the order the call named it
+ * @param clipSlots - Parsed clip slot positions
+ * @returns The slots whose destination made a clip
+ */
+function slotsWithClips(
+  entries: CreatedClipEntry[],
+  order: DestinationRef[],
+  clipSlots: ClipSlotPosition[],
+): ClipSlotPosition[] {
+  return order.flatMap((ref, i) => {
+    const entry = entries[i] as CreatedClipEntry;
+
+    return ref.view === "session" && !("ok" in entry)
+      ? [clipSlots[ref.index] as ClipSlotPosition]
+      : [];
+  });
 }
 
 /**

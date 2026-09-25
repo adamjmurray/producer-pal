@@ -628,3 +628,59 @@ describe("createClip - session view - per-clip transforms", () => {
     });
   });
 });
+
+describe("createClip - session view - auto", () => {
+  const frozen = "track t1 (id track-1) is frozen; unfreeze it first";
+
+  it("play-clip fires only the slots that got a clip", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    setupTrack(1, { is_frozen: 1 });
+    const made = setupSessionClip(0, 0, { clipProperties: { length: 4 } });
+    const skipped = setupSessionClip(1, 0);
+
+    const result = await createClip({ path: "t0/s0,t1/s0", auto: "play-clip" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t0/s0" }),
+      { ok: false, path: "t1/s0", reason: frozen },
+    ]);
+    expect(made.clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(skipped.clipSlot.call).not.toHaveBeenCalledWith("fire");
+  });
+
+  it("play-scene fires the scene of the first slot that got a clip", async () => {
+    setupLiveSet({ scenes: children("scene0", "scene1") });
+    setupTrack(0);
+    setupTrack(1, { is_frozen: 1 });
+    setupSessionClip(1, 0);
+    setupSessionClip(0, 1, { clipProperties: { length: 4 } });
+    const scene0 = registerMockObject("scene0", { path: livePath.scene(0) });
+    const scene1 = registerMockObject("scene1", { path: livePath.scene(1) });
+
+    await createClip({ path: "t1/s0,t0/s1", auto: "play-scene" });
+
+    expect(scene0.call).not.toHaveBeenCalledWith("fire");
+    expect(scene1.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("launches nothing when no slot got a clip", async () => {
+    setupLiveSet();
+    setupTrack(0, { is_frozen: 1 });
+    setupTrack(1, { is_frozen: 1 });
+    setupSessionClip(0, 0);
+    setupSessionClip(1, 0);
+    const scene0 = registerMockObject("scene0", { path: livePath.scene(0) });
+
+    const result = await createClip({
+      path: "t0/s0,t1/s0",
+      auto: "play-scene",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ ok: false, path: "t0/s0" }),
+      { ok: false, path: "t1/s0", reason: frozen },
+    ]);
+    expect(scene0.call).not.toHaveBeenCalledWith("fire");
+  });
+});
