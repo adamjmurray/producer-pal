@@ -15,33 +15,13 @@ import {
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { RemoteScriptTab } from "#webui/components/settings/RemoteScriptTab";
 import { type RemoteScriptStatus } from "#webui/hooks/settings/use-remote-script";
-
-const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
+import {
+  statusBody,
+  USER_LIBRARY,
+} from "#webui/components/settings/tests/helpers/remote-script-status-test-helpers";
 
 describe("RemoteScriptTab", () => {
   const fetchMock = installFetchMock();
-
-  /**
-   * A `GET /remote-script` body: not installed, with a User Library detected.
-   * @param overrides - Fields to change
-   * @returns The status body
-   */
-  function statusBody(
-    overrides: Partial<RemoteScriptStatus> = {},
-  ): RemoteScriptStatus {
-    return {
-      userLibrary: USER_LIBRARY,
-      installed: false,
-      installedVersion: null,
-      bundledVersion: "1.2.0",
-      running: false,
-      runningVersion: null,
-      liveVersion: "12.1",
-      updateAvailable: false,
-      installedNewer: false,
-      ...overrides,
-    };
-  }
 
   /**
    * Render the tab past its mount read.
@@ -88,6 +68,29 @@ describe("RemoteScriptTab", () => {
     );
 
     expect(summary.textContent).toBe("Not installed");
+  });
+
+  it("keeps the last status and shows the error when a Refresh fails", async () => {
+    await renderTab();
+
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    fireEvent.click(screen.getByTestId("remote-script-refresh"));
+
+    const error = await waitForHookState(() =>
+      screen.getByTestId("remote-script-load-error"),
+    );
+
+    expect(error.textContent).toBe("Failed to fetch");
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Not installed",
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    fireEvent.click(screen.getByTestId("remote-script-refresh"));
+
+    await waitForHookState(() => {
+      expect(screen.queryByTestId("remote-script-load-error")).toBeNull();
+    });
   });
 
   it("prefills the detected User Library and offers Install", async () => {

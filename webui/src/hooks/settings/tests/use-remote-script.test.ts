@@ -15,8 +15,10 @@ import {
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { useRemoteScript } from "#webui/hooks/settings/use-remote-script";
-
-const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
+import {
+  statusBody,
+  USER_LIBRARY,
+} from "#webui/components/settings/tests/helpers/remote-script-status-test-helpers";
 
 describe("useRemoteScript status read", () => {
   const fetchMock = installFetchMock();
@@ -51,6 +53,85 @@ describe("useRemoteScript status read", () => {
     });
     expect(result.current.loading).toBe(false);
   });
+
+  it("ignores an older read that lands after a newer one", async () => {
+    const mountRead = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(mountRead.promise);
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(statusBody({ running: true })),
+    );
+
+    const { result } = renderHook(() => useRemoteScript());
+
+    await act(() => {
+      result.current.refresh();
+    });
+    await waitForHookState(() => {
+      expect(result.current.status?.running).toBe(true);
+    });
+
+    await act(async () => {
+      mountRead.resolve(jsonResponse(statusBody({ running: false })));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(fetchSignal(0)?.aborted).toBe(true);
+    expect(result.current.status?.running).toBe(true);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("stays loading when a superseded read rejects", async () => {
+    const mountRead = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(mountRead.promise);
+    fetchMock.mockReturnValueOnce(deferred<Response>().promise);
+
+    const { result } = renderHook(() => useRemoteScript());
+
+    await act(() => {
+      result.current.refresh();
+    });
+
+    await act(async () => {
+      mountRead.reject(new DOMException("Aborted", "AbortError"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // The refresh read is still out, so the spinner stays.
+    expect(result.current.loading).toBe(true);
+    expect(result.current.loadError).toBeNull();
+  });
+
+  it("keeps the last status when a refresh fails", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+
+    const { result } = renderHook(() => useRemoteScript());
+
+    await waitForHookState(() => {
+      expect(result.current.status).not.toBeNull();
+    });
+
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    await act(() => {
+      result.current.refresh();
+    });
+    await waitForHookState(() => {
+      expect(result.current.loadError).toBe("Failed to fetch");
+    });
+    expect(result.current.status?.userLibrary).toBe(USER_LIBRARY);
+  });
+
+  /**
+   * @param call - Which fetch call
+   * @returns The abort signal that call was given
+   */
+  function fetchSignal(call: number): AbortSignal | undefined {
+    const init = fetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
+
+    return init?.signal ?? undefined;
+  }
 });
 
 describe("useRemoteScript install failures", () => {
@@ -63,19 +144,7 @@ describe("useRemoteScript install failures", () => {
    * @returns The install error the hook surfaced
    */
   async function installRejectedWith(reason: unknown): Promise<string | null> {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        userLibrary: USER_LIBRARY,
-        installed: false,
-        installedVersion: null,
-        bundledVersion: "1.2.0",
-        running: false,
-        runningVersion: null,
-        liveVersion: "12.1",
-        updateAvailable: false,
-        installedNewer: false,
-      }),
-    );
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
 
     const { result } = renderHook(() => useRemoteScript());
 
@@ -104,5 +173,32 @@ describe("useRemoteScript install failures", () => {
 
   it("surfaces a non-Error rejection as its string form", async () => {
     expect(await installRejectedWith("EPIPE")).toBe("EPIPE");
+  });
+
+  it("skips the status re-read when the install lands after unmount", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+
+    const { result, unmount } = renderHook(() => useRemoteScript());
+
+    await waitForHookState(() => {
+      expect(result.current.status).not.toBeNull();
+    });
+
+    const post = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(post.promise);
+
+    await act(() => {
+      result.current.install(USER_LIBRARY);
+    });
+    unmount();
+
+    await act(async () => {
+      post.resolve(jsonResponse({ path: USER_LIBRARY }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Mount read and install POST only: no GET nobody would abort.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
