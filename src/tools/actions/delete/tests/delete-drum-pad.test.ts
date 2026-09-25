@@ -7,7 +7,10 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMockObject,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   setupDrumPadMocks,
   setupDrumPadPathMocks,
@@ -245,6 +248,58 @@ describe("deleteObject drum-pad refusals", () => {
       "drum pad id stuck-pad still has chains, so Live did not clear it",
     );
     expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  describe("a pad holding the Producer Pal device", () => {
+    const setupHostPad = (): RegisteredMockObject => {
+      registerMockObject("this_device", {
+        path: "live_set tracks 0 devices 0 chains 0 devices 1",
+      });
+      registerMockObject("host-chain", {
+        path: "live_set tracks 0 devices 0 chains 0",
+        type: "DrumChain",
+      });
+
+      return registerMockObject("host-pad", {
+        path: "live_set tracks 0 devices 0 drum_pads 36",
+        type: "DrumPad",
+        properties: { chains: children("host-chain"), note: 36 },
+      });
+    };
+
+    it("refuses to clear it", () => {
+      const hostPad = setupHostPad();
+
+      expect(() => deleteObject({ id: "host-pad", type: "drum-pad" })).toThrow(
+        "cannot delete drum pad t0/d0/pC1 (id host-pad): it holds the Producer Pal device",
+      );
+      expect(hostPad.call).not.toHaveBeenCalledWith("delete_all_chains");
+    });
+
+    it("reports it beside a pad it did clear", () => {
+      const hostPad = setupHostPad();
+      const { devices } = setupDrumPadMocks(
+        "pad_2",
+        "live_set tracks 0 devices 0 drum_pads 37",
+      );
+
+      expect(
+        deleteObject({ id: "host-pad, pad_2", type: "drum-pad" }),
+      ).toStrictEqual([
+        {
+          id: "host-pad",
+          ok: false,
+          path: "t0/d0/pC1",
+          reason:
+            "cannot delete drum pad t0/d0/pC1 (id host-pad): it holds the Producer Pal device",
+        },
+        { id: "pad_2" },
+      ]);
+      expect(hostPad.call).not.toHaveBeenCalledWith("delete_all_chains");
+      expect(devices.get("pad_2")?.call).toHaveBeenCalledWith(
+        "delete_all_chains",
+      );
+    });
   });
 
   it("refuses a chain path, which would clear the whole pad", () => {
