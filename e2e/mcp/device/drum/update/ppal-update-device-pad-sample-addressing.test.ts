@@ -135,7 +135,7 @@ describe("a pad holding several layers", () => {
       "pD1",
       DRUM_LOOP_FILE,
     );
-    const reason = params[0]?.reason ?? "";
+    const reason = params[0]?.detail ?? "";
 
     expect(params[0]?.name).toBe("pD1/sample");
     expect(params[0]?.ok).toBe(false);
@@ -161,7 +161,7 @@ describe("a pad holding several layers", () => {
     );
 
     expect(params[0]?.ok).toBe(false);
-    expect(params[0]?.reason).toContain("2 layers");
+    expect(params[0]?.detail).toContain("2 layers");
     expect(warnings).toStrictEqual([]);
   });
 
@@ -198,7 +198,7 @@ describe("a device index that is not the pad's instrument", () => {
       "pC1/d0",
       DRUM_LOOP_FILE,
     );
-    const reason = params[0]?.reason ?? "";
+    const reason = params[0]?.detail ?? "";
 
     expect(params[0]?.ok).toBe(false);
     expect(reason).toContain("d0 is not its instrument, which is at d1");
@@ -266,9 +266,9 @@ describe("a sample addressed by the pad's own path", () => {
 
     expect(params[0]?.name).toBe("sample");
     expect(params[0]?.ok).toBe(false);
-    expect(params[0]?.reason).toContain("2 layers");
-    expect(params[0]?.reason).toContain(`"${rackPath}/pD1/c0"`);
-    expect(params[0]?.reason).toContain(`"${rackPath}/pD1/c1"`);
+    expect(params[0]?.detail).toContain("2 layers");
+    expect(params[0]?.detail).toContain(`"${rackPath}/pD1/c0"`);
+    expect(params[0]?.detail).toContain(`"${rackPath}/pD1/c1"`);
     expect(warnings).toStrictEqual([]);
     expect(await layerSamples(rackPath)).toStrictEqual(before);
   });
@@ -329,7 +329,7 @@ describe("a sample addressed by the device's own path", () => {
       KICK_FILE,
       true,
     );
-    const reason = params[0]?.reason ?? "";
+    const reason = params[0]?.detail ?? "";
 
     expect(params[0]?.name).toBe("sample");
     expect(reason).toContain("whose sample the Live API can't set");
@@ -359,7 +359,7 @@ describe("a sample addressed by the device's own path", () => {
     );
 
     const reason =
-      (await writeSampleByPath(arp, KICK_FILE)).params[0]?.reason ?? "";
+      (await writeSampleByPath(arp, KICK_FILE)).params[0]?.detail ?? "";
 
     expect(reason).toContain("belongs to its instrument");
     expect(reason).toContain(`path:"${rackPath}"`);

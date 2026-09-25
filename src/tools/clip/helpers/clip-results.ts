@@ -55,7 +55,7 @@ export interface ClipResult {
    * Live turned down, a param this clip has no use for, a leftover on a take
    * lane. Anything about a clip the call named belongs here (ADR-0042).
    */
-  reason?: string;
+  detail?: string;
   /**
    * True when another clip in the same call left this one gone (`path` is the
    * address it last had). A placement that failed destroys it just the same —

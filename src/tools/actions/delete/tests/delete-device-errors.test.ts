@@ -40,7 +40,7 @@ describe("deleteObject device path error cases", () => {
 
     expect(result).toStrictEqual({
       path: "t0/d0/pC1/c0/d0",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
   });
@@ -63,14 +63,14 @@ describe("deleteObject device path error cases", () => {
 
     expect(deleteObject({ path: "t0/afx0", type: "device" })).toStrictEqual({
       path: "t0/afx0",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     // Listed beside another target, the same miss keeps its own slot.
     expect(
       deleteObject({ path: "t0/afx0,t0/mfx0", type: "device" }),
     ).toStrictEqual([
-      { path: "t0/afx0", reason: "nothing to delete" },
-      { path: "t0/mfx0", reason: "nothing to delete" },
+      { path: "t0/afx0", detail: "nothing to delete" },
+      { path: "t0/mfx0", detail: "nothing to delete" },
     ]);
     expect(consoleSpy).not.toHaveBeenCalled();
   });
@@ -133,7 +133,7 @@ describe("deleteObject device path error cases", () => {
 
     expect(result).toStrictEqual({
       path: "t0/d0",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
   });

@@ -50,12 +50,12 @@ interface ReadDeviceResult {
 }
 
 interface UpdateDeviceResult {
-  reason?: string;
+  detail?: string;
   params?: Array<{
     name: string;
     value?: unknown;
     ok?: boolean;
-    reason?: string;
+    detail?: string;
   }>;
 }
 
@@ -343,8 +343,8 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     expect(skippedEntry?.name).toBe("pE1/d0/sample");
     expect(skippedEntry?.ok).toBe(false);
-    expect(skippedEntry?.reason).toContain("sample write SKIPPED");
-    expect(skippedEntry?.reason).toContain("force:true");
+    expect(skippedEntry?.detail).toContain("sample write SKIPPED");
+    expect(skippedEntry?.detail).toContain("force:true");
     expect(skipped.warnings).toStrictEqual([]);
 
     await sleep(150);
@@ -370,7 +370,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     // The swap is destructive, so the target's own entry says what it cost.
-    expect(forced.data.reason).toContain("force:true");
+    expect(forced.data.detail).toContain("force:true");
     expect(forced.warnings).toStrictEqual([]);
 
     await sleep(150);
@@ -414,7 +414,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(data.params?.[0]?.ok).toBe(false);
-    expect(data.params?.[0]?.reason).toContain(
+    expect(data.params?.[0]?.detail).toContain(
       "could not resolve or create drum pad",
     );
     expect(warnings).toStrictEqual([]);

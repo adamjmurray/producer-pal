@@ -71,7 +71,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     // clip back, and the notes confirmed by count so the caller needn't
     // re-read the clip.
     expect(warnings).toStrictEqual([]);
-    expect(data.reason).toBeUndefined();
+    expect(data.detail).toBeUndefined();
     expect(data.id).toBe(id);
     expect(data.noteCount).toBe(4);
 
@@ -131,7 +131,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
     // The clip the call named is the first entry; the rest are its tiles.
     expect(data[0]?.id).toBe(id);
-    expect(data[0]?.reason).toBe(
+    expect(data[0]?.detail).toBe(
       `overwrote the clip at t${EMPTY_MIDI_TRACK}[163|1]`,
     );
     expect(warnings).toStrictEqual([]);
@@ -182,7 +182,7 @@ interface LengthenedClip {
   id: string;
   noteCount?: number;
   /** What the lengthening had to say about this clip. */
-  reason?: string;
+  detail?: string;
 }
 
 /**

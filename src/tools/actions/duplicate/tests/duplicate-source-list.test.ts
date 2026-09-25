@@ -477,7 +477,7 @@ describe("duplicate - a list of sources", () => {
           {
             path: "t3/s0",
             ok: false,
-            reason:
+            detail:
               "a clip slot can't take an arrangement copy; " +
               'name a track\'s arrangement instead, as "t3[5|1]"',
           },
@@ -819,7 +819,7 @@ describe("duplicate - a list of sources", () => {
 
       expect(result).toStrictEqual([
         { id: "copy-1", path: "t1", clips: [] },
-        { id: "track2", ok: false, reason: "Live made no copy of t2" },
+        { id: "track2", ok: false, detail: "Live made no copy of t2" },
       ]);
     });
   });

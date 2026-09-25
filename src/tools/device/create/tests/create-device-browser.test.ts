@@ -224,7 +224,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       {
         path: "t9/d+",
         ok: false,
-        reason: 'container at path "t9/d+" does not exist',
+        detail: 'container at path "t9/d+" does not exist',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -504,7 +504,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         {
           path: "t0/d+",
           ok: false,
-          reason:
+          detail:
             'could not load "Pro-Q 4": the request ran out of time; re-run ' +
             "for this path",
         },

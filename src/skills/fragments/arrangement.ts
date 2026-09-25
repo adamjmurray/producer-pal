@@ -40,7 +40,7 @@ export const arrangementWrite = `### Clip Destinations
 
 One grammar names where a clip goes, counting from 0 throughout: \`t2/s0\` is the third track in the first scene, \`t2[5|1]\` is bar 5 on that track's arrangement, and \`t2/l0[5|1]\` is bar 5 on its first take lane. The \`[...]\` is a song position: bar|beat in song meter, or \`loc:<locator name or id>\` (all digits: id first) — name the locator when the user names a section (\`t2[loc:Chorus]\`), so the clip still lands right if they move it. An arrangement destination needs both halves on create. create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
 
-create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time. One entry comes back per destination, in the order the list names them, and the other text params pair the same way (\`name\`, \`sampleFile\`, \`length\`, …) except \`notes\` and \`transforms\`; a destination that got no clip holds its place as \`ok: false\` with a reason.
+create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time. One entry comes back per destination, in the order the list names them, and the other text params pair the same way (\`name\`, \`sampleFile\`, \`length\`, …) except \`notes\` and \`transforms\`; a destination that got no clip holds its place as \`ok: false\` with a \`detail\`.
 
 \`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot (\`t0/s1\`) or an arrangement clip's own spot (\`t0[5|1]\`) instead of \`id\`, so knowing where a clip is saves reading it first just to learn its id. \`t0[5|1]\` resolves to the clip covering bar 5, even if it started earlier. Write results report the clip's \`path\` beside its \`id\`, so a follow-up call can use it without re-reading.
 
@@ -58,7 +58,7 @@ A clip moved into a slot or onto a take lane is re-created there, so it loses it
 \`arrangementLength\` sets arrangement playback region.
 \`arrangementSplit\` cuts clips at song positions — the same timeline a \`[...]\` coordinate names, not offsets into the clip. One list covers every clip, not one per clip: each is cut where a position falls inside it, so one call can cut several clips at the same bar. A cut makes new clips with new ids, so it can't be combined with \`toPath\` or \`arrangementLength\`: cut in one call, then move or resize the pieces in the next, using the ids the cut returned.
 A clip another clip in the same call was moved onto comes back with \`deleted: true\` and the address it had.
-Writing into an occupied range overwrites what is there — that's normal, and the written clip's \`reason\` says what it cost: \`overwrote\`, \`shortened\` or \`split the clip at <path>\`. Not an error; pass it on if the user might care.
+Writing into an occupied range overwrites what is there — that's normal, and the written clip's \`detail\` says what it cost: \`overwrote\`, \`shortened\` or \`split the clip at <path>\`. Not an error; pass it on if the user might care.
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 Duplicating a *scene* to the arrangement uses \`toPath: "[5|1]"\` — a scene copy lands a clip on every track, so it has no lane of its own to name.
 

@@ -171,7 +171,7 @@ describe("deleteObject device deletion", () => {
     expect(result).toStrictEqual([
       {
         id: "dupe_device",
-        reason: "named again as id dupe_device later in this call",
+        detail: "named again as id dupe_device later in this call",
       },
       { id: "dupe_device", deletedPath: "t0/d1" },
     ]);
@@ -199,7 +199,7 @@ describe("deleteObject device deletion", () => {
         {
           id: "bad_device",
           ok: false,
-          reason: "no device index for id bad_device",
+          detail: "no device index for id bad_device",
         },
       ]),
     );
@@ -472,7 +472,7 @@ describe("deleteObject device deletion", () => {
           id: "valid_dev",
           deletedPath: "t0/d0",
         },
-        { path: "t99/d99", reason: "nothing to delete" },
+        { path: "t99/d99", detail: "nothing to delete" },
       ]);
     });
 
@@ -482,7 +482,7 @@ describe("deleteObject device deletion", () => {
 
       expect(result).toStrictEqual({
         path: "t99/d99",
-        reason: "nothing to delete",
+        detail: "nothing to delete",
       });
     });
 

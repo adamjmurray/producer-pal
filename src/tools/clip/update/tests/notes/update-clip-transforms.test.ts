@@ -136,11 +136,11 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     const result = (await updateClip({
       id: "123, 456, 789",
       transforms: "!!!bad!!!",
-    })) as Array<{ id?: string; ok?: false; reason?: string }>;
+    })) as Array<{ id?: string; ok?: false; detail?: string }>;
 
     expect(result[0]?.id).toBe("123");
     expect(result[0]?.ok).toBe(false);
-    expect(result[0]?.reason).toContain("transform syntax error");
+    expect(result[0]?.detail).toContain("transform syntax error");
     expect(result).toHaveLength(3);
   });
 });

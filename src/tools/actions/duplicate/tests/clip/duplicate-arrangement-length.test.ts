@@ -197,7 +197,9 @@ describe("duplicate - arrangementLength functionality", () => {
       "arrangementLength unchanged: the audio file has no more content to show";
 
     updateClipMock.mockReturnValueOnce(
-      Promise.resolve([{ id: livePath.track(0).arrangementClip(0), reason }]),
+      Promise.resolve([
+        { id: livePath.track(0).arrangementClip(0), detail: reason },
+      ]),
     );
 
     const result = await duplicate({
@@ -210,7 +212,7 @@ describe("duplicate - arrangementLength functionality", () => {
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
       path: "t0[5|1]",
-      reason,
+      detail: reason,
     });
   });
 

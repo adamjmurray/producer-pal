@@ -174,7 +174,7 @@ describe("updateClip - code execution", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason: "update stopped partway: the code exec round trip died",
+      detail: "update stopped partway: the code exec round trip died",
     });
   });
 

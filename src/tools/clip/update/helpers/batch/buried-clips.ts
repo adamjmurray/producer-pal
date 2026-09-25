@@ -19,7 +19,7 @@ import {
   objectPathForApi,
   stillAtPath,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { remainderFinder, type TrimmedLanding } from "./trimmed-landings.ts";
 
 /** Where each clip sat before the call moved any of them, by id. */
@@ -88,7 +88,7 @@ export function markBuriedClips({
     }
 
     entry.deleted = true;
-    appendReason(entry, BURIED);
+    appendDetail(entry, BURIED);
   }
 }
 
@@ -121,7 +121,7 @@ function reportTrimmedSurvivor(
   entry.id = remainder.id;
   entry.path = path;
   entry.arrangementLength = arrangementLengthOf(remainder);
-  appendReason(entry, TRIMMED);
+  appendDetail(entry, TRIMMED);
 
   return true;
 }
@@ -183,7 +183,7 @@ export function buriedClipEntry(
   const entry = buildClipResultObject(clip.id, null, addresses.get(clip.id));
 
   entry.deleted = true;
-  appendReason(entry, `not updated: ${BURIED}`);
+  appendDetail(entry, `not updated: ${BURIED}`);
 
   return entry;
 }

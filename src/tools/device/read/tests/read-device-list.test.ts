@@ -97,7 +97,7 @@ describe("readDevice over a list of targets", () => {
       {
         path: "t9/d0",
         ok: false,
-        reason: 'nothing at path "t9/d0"',
+        detail: 'nothing at path "t9/d0"',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -114,7 +114,7 @@ describe("readDevice over a list of targets", () => {
       {
         path: "t1/afx0",
         ok: false,
-        reason: 'nothing at path "t1/afx0": t1 has no audio effects',
+        detail: 'nothing at path "t1/afx0": t1 has no audio effects',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -123,7 +123,7 @@ describe("readDevice over a list of targets", () => {
   it("reports a miss by id the way the caller wrote it", () => {
     expect(readDevice({ id: "device-1,nope" })).toStrictEqual([
       device1,
-      { id: "nope", ok: false, reason: 'id "nope" does not exist' },
+      { id: "nope", ok: false, detail: 'id "nope" does not exist' },
     ]);
   });
 

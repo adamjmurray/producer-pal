@@ -37,7 +37,7 @@ const ctx = setupMcpTestContext({ liveSetPath: RACKS_TEST_PATH });
  * Write a sample onto a pad through the rack's path-prefixed param form.
  * @param padNote - Pad note segment (e.g. "pAb1")
  * @param force - Whether to pass force:true
- * @returns The `params` and `reason` the result reports, and the warnings the
+ * @returns The `params` and `detail` the result reports, and the warnings the
  * write produced
  */
 async function writeSample(
@@ -45,7 +45,7 @@ async function writeSample(
   force = false,
 ): Promise<{
   params: ParamEntryResult[];
-  reason?: string;
+  detail?: string;
   warnings: string[];
 }> {
   const { data, warnings } = await callWithWarnings(
@@ -60,7 +60,7 @@ async function writeSample(
 
   return {
     params: (data.params as ParamEntryResult[]) ?? [],
-    reason: data.reason as string | undefined,
+    detail: data.detail as string | undefined,
     warnings,
   };
 }
@@ -101,20 +101,20 @@ function padSwapTests(
     expect(params).toHaveLength(1);
     expect(params[0]?.name).toBe(`${pad}/sample`);
     expect(params[0]?.ok).toBe(false);
-    expect(params[0]?.reason).toContain("sample write SKIPPED");
-    expect(params[0]?.reason).toContain(held);
-    expect(params[0]?.reason).toContain("force:true");
+    expect(params[0]?.detail).toContain("sample write SKIPPED");
+    expect(params[0]?.detail).toContain(held);
+    expect(params[0]?.detail).toContain("force:true");
     expect(warnings).toStrictEqual([]);
 
     expect((await padDevices(padName))[0]?.type).toContain(instrumentType);
   });
 
   it("replaces it with a Simpler under force, and says what was lost", async () => {
-    const { reason, warnings } = await writeSample(pad, true);
+    const { detail, warnings } = await writeSample(pad, true);
 
     // The swap is destructive, so the target's own entry says what it cost.
-    expect(reason).toContain("force:true");
-    expect(reason).toContain("settings are gone");
+    expect(detail).toContain("force:true");
+    expect(detail).toContain("settings are gone");
     expect(warnings).toStrictEqual([]);
 
     const devices = await padDevices(padName);

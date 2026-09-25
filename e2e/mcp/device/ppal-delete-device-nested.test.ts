@@ -34,7 +34,7 @@ interface DeleteResult {
   id: string;
   type: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 describe("ppal-delete nested rack device ordering", () => {

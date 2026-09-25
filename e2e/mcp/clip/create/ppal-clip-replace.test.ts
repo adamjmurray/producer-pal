@@ -91,13 +91,13 @@ function refusal(result: unknown): string {
     return getToolErrorMessage(result);
   }
 
-  const entry = parseToolResultWithWarnings<{ ok?: false; reason?: string }>(
+  const entry = parseToolResultWithWarnings<{ ok?: false; detail?: string }>(
     result,
   ).data;
 
   expect(entry.ok).toBe(false);
 
-  return entry.reason ?? "";
+  return entry.detail ?? "";
 }
 
 describe("replacing a clip on a track with no empty slot", () => {
@@ -114,7 +114,7 @@ describe("replacing a clip on a track with no empty slot", () => {
       }),
     );
 
-    expect(entry.reason).toBe(
+    expect(entry.detail).toBe(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s0`,
     );
     expect(await sceneCount()).toBe(scenes);
@@ -156,10 +156,10 @@ describe("replacing a clip on a track with no empty slot", () => {
 
       const { data: placed } = parseToolResultWithWarnings<{
         id: string;
-        reason?: string;
+        detail?: string;
       }>(result);
 
-      expect(placed.reason).toContain(
+      expect(placed.detail).toContain(
         `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
       );
       expect(await sceneCount()).toBe(scenes);

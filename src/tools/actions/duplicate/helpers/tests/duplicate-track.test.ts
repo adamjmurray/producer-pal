@@ -144,7 +144,7 @@ describe("duplicate-track", () => {
         const result = duplicateTrack(0);
 
         expect(result.path).toBe("t1");
-        expect(result.reason).toBe(
+        expect(result.detail).toBe(
           "could not check the new track for the Producer Pal device",
         );
         expect(newTrack.call).not.toHaveBeenCalledWith(
@@ -261,7 +261,7 @@ describe("duplicate-track", () => {
         true,
       );
 
-      expect(result).not.toHaveProperty("reason");
+      expect(result).not.toHaveProperty("detail");
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
@@ -298,7 +298,7 @@ describe("duplicate-track", () => {
         true,
       );
 
-      expect(result.reason).toBe(expectedReason);
+      expect(result.detail).toBe(expectedReason);
       // The copy's entry carries it, so nothing warns about it.
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -340,7 +340,7 @@ describe("duplicate-track", () => {
         true,
       );
 
-      expect(result.reason).toBe(expectedReason);
+      expect(result.detail).toBe(expectedReason);
       expect(capturedWarnings()).toStrictEqual([]);
     });
 

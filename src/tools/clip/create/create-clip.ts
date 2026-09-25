@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
@@ -518,7 +518,7 @@ function noteIgnoredFirstStart(
   for (const [index, clip] of createdClips.entries()) {
     // A destination that got no clip already says why in its own reason.
     if (plans[index]?.timing.firstStartIgnored && !("ok" in clip)) {
-      appendReason(clip, "firstStart ignored: set looping: true to use it");
+      appendDetail(clip, "firstStart ignored: set looping: true to use it");
     }
   }
 }

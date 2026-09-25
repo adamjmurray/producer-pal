@@ -126,7 +126,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
     expect(result).toStrictEqual({
       id: NEW_ID,
       path: "t1/s0",
-      reason:
+      detail:
         "re-created from the arrangement clip (automation envelopes aren't copied)",
     });
   });
@@ -176,7 +176,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
     expect(result).toStrictEqual({
       id: NEW_ID,
       path: "t1/s0",
-      reason:
+      detail:
         "overwrote the existing clip at t1/s0; re-created from the arrangement clip",
     });
     expect(dest.call).not.toHaveBeenCalledWith("delete_clip");
@@ -213,7 +213,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t2/s0", ok: false, reason: expect.any(String) },
+      { path: "t2/s0", ok: false, detail: expect.any(String) },
       expect.objectContaining({ id: NEW_ID, path: "t1/s0" }),
     ]);
   });
@@ -243,7 +243,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
       id: NEW_ID,
       path: "t1/s1",
       created: "s1",
-      reason: "re-created from the arrangement clip",
+      detail: "re-created from the arrangement clip",
     });
   });
 
@@ -284,7 +284,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
       {
         path: "t1/s9",
         ok: false,
-        reason: "no clip slot there; created s2-s9 to reach it",
+        detail: "no clip slot there; created s2-s9 to reach it",
       },
     ]);
   });

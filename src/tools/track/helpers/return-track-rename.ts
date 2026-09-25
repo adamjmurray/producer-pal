@@ -15,8 +15,8 @@ const SEPARATOR = "-";
 export interface TrackRename {
   /** The name to write, or undefined when the call renamed nothing */
   write: string | undefined;
-  /** The entry's `name` and `reason`, empty when the name lands as asked */
-  landed: { name?: string; reason?: string };
+  /** The entry's `name` and `detail`, empty when the name lands as asked */
+  landed: { name?: string; detail?: string };
 }
 
 /**
@@ -61,7 +61,7 @@ export function returnTrackRename(
     write,
     landed: {
       name: landed,
-      reason: "Live prefixes a return track's name with its send letter",
+      detail: "Live prefixes a return track's name with its send letter",
     },
   };
 }

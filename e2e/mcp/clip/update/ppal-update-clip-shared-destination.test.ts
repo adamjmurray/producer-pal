@@ -110,7 +110,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
     await sleep(200);
 
     const { data: entries } = parseToolResultWithWarnings<
-      Array<{ id?: string; path?: string; ok?: false; reason?: string }>
+      Array<{ id?: string; path?: string; ok?: false; detail?: string }>
     >(
       await ctx.client!.callTool({
         name: "ppal-update-clip",
@@ -123,7 +123,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     expect(entries[0]?.ok).toBe(false);
     expect(entries[0]?.id).toBe(id1);
-    expect(entries[0]?.reason).toContain(
+    expect(entries[0]?.detail).toContain(
       `moves to t${EMPTY_MIDI_TRACK}/s6 later in this call`,
     );
     expect(entries[1]?.ok).toBeUndefined();

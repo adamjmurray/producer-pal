@@ -90,8 +90,8 @@ describe("updateDevice - params addressed by id", () => {
       id: "dev1",
       path: "t0/d0",
       params: [
-        { id: "999", ok: false, reason: "not found on t0/d0 (id dev1)" },
-        { id: "N/A", ok: false, reason: "not found on t0/d0 (id dev1)" },
+        { id: "999", ok: false, detail: "not found on t0/d0 (id dev1)" },
+        { id: "N/A", ok: false, detail: "not found on t0/d0 (id dev1)" },
       ],
     });
     expect(capturedWarnings()).toHaveLength(0);
@@ -119,7 +119,7 @@ describe("updateDevice - params addressed by id", () => {
         {
           id: "55",
           ok: false,
-          reason:
+          detail:
             "id 55 is on another object, not t0/d0 (id dev1), so it was not written",
         },
       ],
@@ -136,7 +136,7 @@ describe("updateDevice - params addressed by id", () => {
     expect(result).toStrictEqual({
       id: "dev1",
       path: "t0/d0",
-      params: [{ id: "1", ok: false, reason: expect.stringContaining("loud") }],
+      params: [{ id: "1", ok: false, detail: expect.stringContaining("loud") }],
     });
   });
 
@@ -191,7 +191,7 @@ describe("updateDevice - params addressed by id", () => {
     expect(volume.set).toHaveBeenCalledTimes(1);
     expect(volume.set).toHaveBeenCalledWith("value", 0.25);
     expect(paramsOf(result)).toStrictEqual([
-      { id: "1", ok: false, reason: "set again by id 1 later in the list" },
+      { id: "1", ok: false, detail: "set again by id 1 later in the list" },
       { id: "1", name: "Volume" },
     ]);
   });
@@ -206,8 +206,8 @@ describe("updateDevice - params addressed by id", () => {
     });
 
     expect(paramsOf(result)).toStrictEqual([
-      { id: "999", ok: false, reason: "set again by id 999 later in the list" },
-      { id: "999", ok: false, reason: "not found on t0/d0 (id dev1)" },
+      { id: "999", ok: false, detail: "set again by id 999 later in the list" },
+      { id: "999", ok: false, detail: "not found on t0/d0 (id dev1)" },
     ]);
   });
 
@@ -222,7 +222,7 @@ describe("updateDevice - params addressed by id", () => {
     expect(volume.set).toHaveBeenCalledTimes(1);
     expect(volume.set).toHaveBeenCalledWith("value", 0.25);
     expect(paramsOf(result)).toStrictEqual([
-      { id: "1", ok: false, reason: 'set again by "Volume" later in the list' },
+      { id: "1", ok: false, detail: 'set again by "Volume" later in the list' },
       { id: "1", name: "Volume" },
     ]);
     expect(capturedWarnings()).toHaveLength(0);
@@ -267,7 +267,7 @@ describe("updateDevice - params addressed by id", () => {
     expect(paramsOf(result)[0]).toStrictEqual({
       id: "1",
       ok: false,
-      reason: 'set again by "Volume" later in the list',
+      detail: 'set again by "Volume" later in the list',
     });
   });
 

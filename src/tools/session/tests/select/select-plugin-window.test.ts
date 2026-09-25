@@ -81,7 +81,7 @@ describe("select - plugin editor window", () => {
     expect(result.selectedDevice).toStrictEqual({
       id: "device_0",
       path: "t0/d0",
-      reason: "openPluginWindow ignored: not a plug-in (VST/AU)",
+      detail: "openPluginWindow ignored: not a plug-in (VST/AU)",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });

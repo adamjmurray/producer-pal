@@ -88,7 +88,7 @@ describe("ppal-update-device params addressed by id", () => {
     );
 
     expect(entries).toStrictEqual([
-      { id: "N/A", ok: false, reason: expect.stringMatching(/^not found on /) },
+      { id: "N/A", ok: false, detail: expect.stringMatching(/^not found on /) },
       { id: expect.any(String), name: "Threshold" },
     ]);
     expect(warnings).toStrictEqual([]);

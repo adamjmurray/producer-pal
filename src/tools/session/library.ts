@@ -203,10 +203,10 @@ export async function runSearch(
   const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
   const items = merged.slice(0, limit);
-  const reason = folderScan.reason ?? dbResult?.reason;
+  const detail = folderScan.detail ?? dbResult?.detail;
 
   if (dbResult == null) {
-    return reason == null ? { items } : { items, reason };
+    return detail == null ? { items } : { items, detail };
   }
 
   const base: LibrarySearchResult = {
@@ -216,7 +216,7 @@ export async function runSearch(
     items,
   };
 
-  return reason == null ? base : { ...base, reason };
+  return detail == null ? base : { ...base, detail };
 }
 
 /**
@@ -242,18 +242,18 @@ function resolveAction(action: string | undefined): string {
 interface FolderScan {
   items: LibraryItem[];
   /** Set when items is empty due to a discoverable cause */
-  reason?: string;
+  detail?: string;
 }
 
 /**
  * Scan the configured sample folder when filters allow it and
- * convert results to LibraryItem shape. Returns a reason string when
+ * convert results to LibraryItem shape. Returns a detail string when
  * the scan is skipped or fails for a user-actionable cause so callers
  * can surface diagnostics rather than reporting silent empty results.
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
- * @returns Folder scan result with items and optional reason
+ * @returns Folder scan result with items and optional detail
  */
 function scanFolderItems(
   args: LibraryArgs,
@@ -265,7 +265,7 @@ function scanFolderItems(
     if (args.source === "sampleFolder") {
       return {
         items: [],
-        reason:
+        detail:
           "sample folder not configured (set one in the Producer Pal Setup tab)",
       };
     }
@@ -307,7 +307,7 @@ function scanFolderItems(
   } catch (err) {
     return {
       items: [],
-      reason: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
+      detail: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 

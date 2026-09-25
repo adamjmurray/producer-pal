@@ -138,7 +138,7 @@ export async function attemptLocator(
       operation: "skipped",
       ...locatorAddress(target),
       ok: false,
-      reason: errorMessage(error),
+      detail: errorMessage(error),
     };
   }
 }

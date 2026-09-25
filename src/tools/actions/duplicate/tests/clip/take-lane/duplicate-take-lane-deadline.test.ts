@@ -83,13 +83,13 @@ describe("duplicate to a take lane, cut short", () => {
       {
         id: "tl_clip_1",
         path: "t1/l0[1|1]",
-        reason:
+        detail:
           "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
       },
       {
         path: "t1/l0[5|1]",
         ok: false,
-        reason: "the request ran out of time; re-run for this destination",
+        detail: "the request ran out of time; re-run for this destination",
       },
     ]);
     expect(unreachedWarning()).toBe(
@@ -122,20 +122,20 @@ describe("duplicate to a take lane, cut short", () => {
       {
         path: `t1/l${MAX_TAKE_LANES}[1|1]`,
         ok: false,
-        reason: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
+        detail: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
       },
       // The mock's clip ids run off a counter every test shares, so the copy
       // is matched by shape rather than by a number that shifts.
       {
         id: expect.stringMatching(/^tl_clip_\d+$/),
         path: "t1/l0[5|1]",
-        reason:
+        detail:
           "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
       },
       {
         path: "t1/l1[9|1]",
         ok: false,
-        reason: "the request ran out of time; re-run for this destination",
+        detail: "the request ran out of time; re-run for this destination",
       },
     ]);
     expect(unreachedWarning()).toBe(
@@ -189,12 +189,12 @@ describe("duplicate to a take lane, cut short", () => {
       {
         path: "t1/l0[1|1]",
         ok: false,
-        reason: "the request ran out of time; re-run for this destination",
+        detail: "the request ran out of time; re-run for this destination",
       },
       {
         path: "t1/l1[1|1]",
         ok: false,
-        reason: "the request ran out of time; re-run for this destination",
+        detail: "the request ran out of time; re-run for this destination",
       },
     ]);
     expect(unreachedWarning()).toBe(

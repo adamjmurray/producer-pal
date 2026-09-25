@@ -287,7 +287,7 @@ export async function testLengthenClipTo4Bars(
 
   const { clips, warnings } = parseLengthenResult(result);
   const reasons = clips
-    .map((clip) => (clip as { reason?: string }).reason)
+    .map((clip) => (clip as { detail?: string }).detail)
     .filter((reason): reason is string => reason != null);
 
   return {

@@ -107,7 +107,7 @@ describe("locators when the playhead stalls", () => {
         operation: "skipped",
         time: "5|1",
         ok: false,
-        reason:
+        detail:
           "Live didn't move the playhead to 5|1, so nothing changed there",
       },
     ]);
@@ -128,7 +128,7 @@ describe("locators when the playhead stalls", () => {
         operation: "skipped",
         time: "5|1",
         ok: false,
-        reason:
+        detail:
           "Live didn't move the playhead to 5|1, so nothing changed there",
       },
     ]);
@@ -168,7 +168,7 @@ describe("locators when the playhead stalls", () => {
       time: "5|1",
       name: "B",
       ok: false,
-      reason: "Live made no locator at 5|1",
+      detail: "Live made no locator at 5|1",
     });
     expect(set.locators()).toStrictEqual([]);
   });

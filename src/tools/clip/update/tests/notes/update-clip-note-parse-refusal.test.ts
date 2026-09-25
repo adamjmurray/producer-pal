@@ -82,7 +82,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
     expect(result[1]).toStrictEqual({
       id: "456",
       ok: false,
-      reason: expect.stringContaining("Invalid time range"),
+      detail: expect.stringContaining("Invalid time range"),
     });
     expectUntouched(mocks.clip456);
   });
@@ -189,7 +189,7 @@ describe("updateClip - note edits the clip ignores", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason: "notes ignored: the clip is audio",
+      detail: "notes ignored: the clip is audio",
     });
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "X");
     expect(capturedWarnings()).toContainEqual(
@@ -209,7 +209,7 @@ describe("updateClip - note edits the clip ignores", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         id: "123",
-        reason: "transforms ignored: the clip has no notes",
+        detail: "transforms ignored: the clip has no notes",
       }),
     );
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "X");

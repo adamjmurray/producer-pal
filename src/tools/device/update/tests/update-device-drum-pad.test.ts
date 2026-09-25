@@ -165,7 +165,7 @@ describe("updateDevice - bare drum pad paths", () => {
       updateDevice({ path: "t0/d0/pC1", name: "Kick", mute: true }),
     ).toStrictEqual({
       id: "pad-36",
-      reason:
+      detail:
         "the pad has 2 layers, so per-layer settings (name) were skipped. " +
         "Set them on t0/d0/pC1/c0, t0/d0/pC1/c1.",
     });
@@ -187,7 +187,7 @@ describe("updateDevice - bare drum pad paths", () => {
       id: "pad-36",
       chainIds: ["chain-0"],
       gainDb: -6.02,
-      reason: "gainDb read back as shown, not as sent",
+      detail: "gainDb read back as shown, not as sent",
     });
   });
 
@@ -260,7 +260,7 @@ describe("updateDevice - bare drum pad paths", () => {
       {
         return: "Nope",
         ok: false,
-        reason:
+        detail:
           'no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
       },
     ]);

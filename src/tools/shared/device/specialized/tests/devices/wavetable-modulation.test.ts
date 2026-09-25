@@ -82,8 +82,16 @@ describe("modulation source resolution", () => {
     ]);
 
     expect(results).toStrictEqual([
-      { action: "setModulation('Osc 1 Pos', 'Nope', 0.5)", ok: false, reason },
-      { action: "clearModulation('Osc 1 Pos', 'Nope')", ok: false, reason },
+      {
+        action: "setModulation('Osc 1 Pos', 'Nope', 0.5)",
+        ok: false,
+        detail: reason,
+      },
+      {
+        action: "clearModulation('Osc 1 Pos', 'Nope')",
+        ok: false,
+        detail: reason,
+      },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -157,7 +165,7 @@ describe("modulation target resolution", () => {
     expect(results).toStrictEqual([
       {
         action: "clearModulation('Filter Freq', 'LFO 1')",
-        reason:
+        detail:
           'target "Filter Freq" is not in the modulation matrix — nothing to clear',
       },
     ]);
@@ -192,7 +200,7 @@ describe("setModulation amount contract", () => {
       {
         action: `setModulation('Osc 1 Pos', 'LFO 1', ${amount})`,
         ok: false,
-        reason: `amount must be in -1..1 (got ${amount})`,
+        detail: `amount must be in -1..1 (got ${amount})`,
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

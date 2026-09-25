@@ -99,7 +99,7 @@ describe("updateDevice - display-value search", () => {
         id: "db-param",
         name: "Drive",
         value: 36,
-        reason:
+        detail:
           "only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value",
       },
     ]);
@@ -115,7 +115,7 @@ describe("updateDevice - display-value search", () => {
     expect(displayFor(Math.fround(expectValueSet(param)))).toBe(-36);
     expect(paramsOf(result)).toStrictEqual([
       expect.objectContaining({
-        reason: expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
+        detail: expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
       }),
     ]);
   });
@@ -134,7 +134,7 @@ describe("updateDevice - display-value search", () => {
       {
         name: "Drive",
         ok: false,
-        reason:
+        detail:
           'was not changed — it still reads "0.0 dB". Live ignores a value ' +
           "outside the parameter's range. It only goes from -36.0 dB to " +
           "36.0 dB, so 99 was set to the nearest valid value",
@@ -310,7 +310,7 @@ describe("updateDevice - a request Live silently drops", () => {
       {
         name: "Vintage",
         ok: false,
-        reason:
+        detail:
           'was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
       },
     ]);
@@ -396,7 +396,7 @@ describe("updateDevice - a word at the max end of the range", () => {
 
     expect(paramsOf(result)).toStrictEqual([
       expect.objectContaining({
-        reason:
+        detail:
           'only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value',
       }),
     ]);
@@ -463,7 +463,7 @@ describe("updateDevice - display-value search on a descending range", () => {
     });
 
     expect(paramsOf(result)).toStrictEqual([
-      expect.objectContaining({ reason: expect.stringContaining("1 : 7.00") }),
+      expect.objectContaining({ detail: expect.stringContaining("1 : 7.00") }),
     ]);
   });
 });
@@ -484,7 +484,7 @@ describe("updateDevice - a display range collapsed to a point", () => {
       {
         name: "Above Ratio",
         ok: false,
-        reason:
+        detail:
           'reads "1 : 1.00" across its whole range, so there is no value to aim at and it was left alone',
       },
     ]);

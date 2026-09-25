@@ -227,7 +227,7 @@ describe("duplicate - clip duplication", () => {
         {
           id: "copy_2",
           path: "t1/s3",
-          reason: "overwrote the existing clip at t1/s3",
+          detail: "overwrote the existing clip at t1/s3",
         },
       ]);
     });
@@ -672,7 +672,7 @@ describe("duplicate - clip duplication", () => {
         ["3|1", "4|1", "5|1"].map((position) => ({
           path: `t0[${position}]`,
           ok: false,
-          reason: "the request ran out of time; re-run for this destination",
+          detail: "the request ran out of time; re-run for this destination",
         })),
       );
       expect(track0.call).not.toHaveBeenCalled();

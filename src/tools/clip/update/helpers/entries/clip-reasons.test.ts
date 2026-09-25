@@ -44,7 +44,7 @@ describe("clip-reasons", () => {
 
     noteClipColor(reasons, "new_id", {
       color: "#FF3636",
-      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
     });
     moveClipReasons(reasons, "new_id", "named_id");
 
@@ -55,7 +55,7 @@ describe("clip-reasons", () => {
     expect(entry).toStrictEqual({
       id: "named_id",
       color: "#FF3636",
-      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
     });
     expect(reasons.colors.has("new_id")).toBe(false);
   });
@@ -63,13 +63,13 @@ describe("clip-reasons", () => {
   it("puts a color it could not read back on the entry as a reason only", () => {
     const reasons = newClipReasons();
 
-    noteClipColor(reasons, "1", { reason: "could not be read back" });
+    noteClipColor(reasons, "1", { detail: "could not be read back" });
 
     const entry: ClipResult = { id: "1" };
 
     reportClipReasons(reasons, "1", [entry]);
 
-    expect(entry).toStrictEqual({ id: "1", reason: "could not be read back" });
+    expect(entry).toStrictEqual({ id: "1", detail: "could not be read back" });
   });
 
   it("collects what the shared arrangement steps report", () => {
@@ -83,7 +83,7 @@ describe("clip-reasons", () => {
 
     reportClipReasons(reasons, "1", [tiled]);
 
-    expect(tiled).toStrictEqual({ id: "1", reason: "placed 2 of 8 tiles" });
+    expect(tiled).toStrictEqual({ id: "1", detail: "placed 2 of 8 tiles" });
     // A note leaves the clip a real entry; a refusal with nothing else landing
     // makes it a skip.
     expect(clipLandedNothing(reasons, "1")).toBe(false);

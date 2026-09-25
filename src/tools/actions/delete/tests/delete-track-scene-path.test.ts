@@ -81,7 +81,7 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "s9", type: "scene" })).toStrictEqual({
       path: "s9",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -100,7 +100,7 @@ describe("deleteObject by track and scene path", () => {
       {
         path: "t0/s1",
         ok: false,
-        reason:
+        detail:
           'invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
       },
       { id: "track_1", deletedPath: "t0" },
@@ -133,14 +133,14 @@ describe("deleteObject by track and scene path", () => {
       {
         id: "lane_1",
         ok: false,
-        reason:
+        detail:
           "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
       },
       {
         id: "lane_1",
         path: "t0/l1",
         ok: false,
-        reason:
+        detail:
           "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
       },
     ]);
@@ -175,18 +175,18 @@ describe("deleteObject by track and scene path", () => {
           id: "lane_1",
           path: "t0/l1",
           ok: false,
-          reason:
+          detail:
             "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
         },
         {
           path: "t0/l9",
           ok: false,
-          reason: `invalid path "t0/l9" - ${wrongKind}`,
+          detail: `invalid path "t0/l9" - ${wrongKind}`,
         },
         {
           path: "t99/l0",
           ok: false,
-          reason: `invalid path "t99/l0" - ${wrongKind}`,
+          detail: `invalid path "t99/l0" - ${wrongKind}`,
         },
       ]);
       expect(liveSet.call).not.toHaveBeenCalled();

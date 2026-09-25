@@ -231,14 +231,14 @@ describe("updateClip - a toPath coordinate", () => {
       {
         id: "100",
         ok: false,
-        reason:
+        detail:
           'not moved: invalid toPath "t2/l=" - "l=" is not a device, chain, ' +
           'or drum pad; expected "d<index>", "c<index>", "rc<index>", or "p<note>"',
       },
       {
         id: "101",
         ok: false,
-        reason:
+        detail:
           'not moved: invalid toPath "t3/l+[5|1]" - "l+" takes no song ' +
           'position; name the lane by index, as "t<track>/l<lane>"',
       },
@@ -268,7 +268,7 @@ describe("updateClip - a toPath coordinate", () => {
       {
         id: "100",
         ok: false,
-        reason: 'not moved: no locator found with name "Nope" for toPath',
+        detail: 'not moved: no locator found with name "Nope" for toPath',
       },
       expect.objectContaining({ id: "moved-3" }),
     ]);

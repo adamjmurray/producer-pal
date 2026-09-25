@@ -144,7 +144,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     expect(result).toStrictEqual({
       id: "810",
       path: "t0[1|1]",
-      reason: CAPPED,
+      detail: CAPPED,
     });
   });
 
@@ -167,7 +167,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     expect(result).toStrictEqual({
       id: "820",
       path: "t0[1|1]",
-      reason: NOTHING_MORE,
+      detail: NOTHING_MORE,
     });
   });
 });

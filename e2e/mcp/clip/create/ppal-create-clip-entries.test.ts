@@ -29,7 +29,7 @@ const ctx = setupMcpTestContext();
 interface ClipEntry {
   path?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
   id?: string;
 }
 
@@ -81,7 +81,7 @@ async function reasonForClipAt(
   position: string,
   length: string,
 ): Promise<string | undefined> {
-  return (await makeClipAt(position, length)).reason;
+  return (await makeClipAt(position, length)).detail;
 }
 
 describe("ppal-create-clip result entries", () => {
@@ -135,7 +135,7 @@ describe("ppal-create-clip result entries", () => {
 
     expect(entries[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
     expect(entries[0]?.ok).toBeUndefined();
-    expect(entries[0]?.reason).toBe(
+    expect(entries[0]?.detail).toBe(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s0`,
     );
     expect(entries[1]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
@@ -163,7 +163,7 @@ describe("ppal-create-clip result entries", () => {
     expect(entries[0]).toStrictEqual({
       ok: false,
       path: `t${EMPTY_MIDI_TRACK}/s0`,
-      reason: `not created: t${EMPTY_MIDI_TRACK}/s0 is named again later in this call`,
+      detail: `not created: t${EMPTY_MIDI_TRACK}/s0 is named again later in this call`,
     });
     expect(entries[1]?.ok).toBeUndefined();
 
@@ -213,10 +213,10 @@ describe("ppal-create-clip result entries", () => {
       name: "ppal-create-clip",
       arguments: { path: `t${EMPTY_MIDI_TRACK}/s0`, notes: "E3 1|1" },
     });
-    const entry = parseToolResult<{ id: string; reason?: string }>(result);
+    const entry = parseToolResult<{ id: string; detail?: string }>(result);
 
     expect(entry.id).not.toBe(first.id);
-    expect(entry.reason).toBe(
+    expect(entry.detail).toBe(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s0`,
     );
 

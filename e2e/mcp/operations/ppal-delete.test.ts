@@ -161,7 +161,7 @@ describe("ppal-delete", () => {
     expect(data).toStrictEqual([
       {
         id: track.id,
-        reason: `named again as "${track.path}" later in this call`,
+        detail: `named again as "${track.path}" later in this call`,
       },
       { id: track.id, deletedPath: track.path },
     ]);
@@ -185,11 +185,11 @@ describe("ppal-delete", () => {
     ]);
     // The last mention did the delete, so it reads as a plain removal.
     expect(data[2]?.deletedPath).toBe(first.path);
-    expect(data[2]?.reason).toBeUndefined();
+    expect(data[2]?.detail).toBeUndefined();
     // The earlier mention needed no work, so it carries a reason and no `ok`.
     expect(data[0]).toStrictEqual({
       id: first.id,
-      reason: `named again as id ${first.id} later in this call`,
+      detail: `named again as id ${first.id} later in this call`,
     });
 
     await expectGone("ppal-read-track", { id: first.id });
@@ -237,7 +237,7 @@ describe("ppal-delete", () => {
   ): Promise<void> {
     expect(result?.id).toBe(hostId);
     expect(result?.ok).toBe(false);
-    expect(result?.reason?.toLowerCase()).toContain("producer pal");
+    expect(result?.detail?.toLowerCase()).toContain("producer pal");
     expect((await readTrack({ id: hostId })).id).toBe(hostId);
   }
 
@@ -410,7 +410,7 @@ describe("ppal-delete", () => {
 
     expect(data).toStrictEqual({
       path: "t99/d99",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
   });
 
@@ -434,7 +434,7 @@ describe("ppal-delete", () => {
           new RegExp(`^t${RACKS_TRACK}/d\\d+$`),
         ),
       },
-      { id: "99999", reason: "nothing to delete" },
+      { id: "99999", detail: "nothing to delete" },
     ]);
   });
 
@@ -460,7 +460,7 @@ describe("ppal-delete", () => {
     expect(data[1]).toStrictEqual({
       id: scene.id,
       ok: false,
-      reason: expect.stringContaining("is not a clip"),
+      detail: expect.stringContaining("is not a clip"),
     });
   });
 
@@ -528,7 +528,7 @@ interface DeleteResult {
   /** Only on a target this call could not delete. */
   ok?: false;
   /** Why it wasn't deleted, or why there was nothing to delete. */
-  reason?: string;
+  detail?: string;
 }
 
 interface DrumRackRead {

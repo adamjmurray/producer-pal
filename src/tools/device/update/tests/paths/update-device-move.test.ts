@@ -109,7 +109,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(result).toStrictEqual({
       id: "chain-0",
       path: "t0/d0/pD1/c0",
-      reason:
+      detail:
         "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move " +
         "layers on top of them rather than replacing them",
     });
@@ -182,7 +182,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain1.set).toHaveBeenCalledWith("in_note", 38);
     expect(result).toStrictEqual({
       ...unmovedPadC1,
-      reason:
+      detail:
         "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move " +
         "layers on top of them rather than replacing them",
     });
@@ -259,7 +259,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/d1",
-      reason: "the Producer Pal device cannot be moved",
+      detail: "the Producer Pal device cannot be moved",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -450,8 +450,8 @@ describe("updateDevice - a toPath that does not resolve", () => {
     expect(first.set).toHaveBeenCalledWith("name", "X");
     expect(second.set).toHaveBeenCalledWith("name", "X");
     expect(result).toStrictEqual([
-      { id: "123", reason: expect.stringContaining(reason) },
-      { id: "456", reason: expect.stringContaining(reason) },
+      { id: "123", detail: expect.stringContaining(reason) },
+      { id: "456", detail: expect.stringContaining(reason) },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });

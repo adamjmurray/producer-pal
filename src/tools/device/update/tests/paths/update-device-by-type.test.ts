@@ -91,7 +91,7 @@ describe("updateDevice by device type", () => {
       {
         path: "t0/inst",
         ok: false,
-        reason: 'nothing at path "t0/inst": t0 has no instrument',
+        detail: 'nothing at path "t0/inst": t0 has no instrument',
       },
       { id: "afx", path: "t0/d0" },
     ]);

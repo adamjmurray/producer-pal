@@ -156,11 +156,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     // Nothing else was asked of either clip, so both targets keep a skip.
     expect(result).toStrictEqual([
-      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },
       {
         path: "t1/s1",
         ok: false,
-        reason: "not moved: track t5 does not exist",
+        detail: "not moved: track t5 does not exist",
       },
     ]);
   });
@@ -184,7 +184,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(mocks.clip456.set).toHaveBeenCalledWith("color", 255);
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0" },
-      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },
       { id: "456", path: "t1/s1" },
     ]);
   });
@@ -283,7 +283,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason:
+      detail:
         "toPath ignored: a clip slot is off the arrangement timeline the other " +
         "position params name; arrangementStart ignored: this is a session clip",
     });
@@ -306,7 +306,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "456",
         path: "t1/s1",
-        reason: 'named again as "t1/s1" later in this call',
+        detail: 'named again as "t1/s1" later in this call',
       },
       {
         id: "456",
@@ -338,7 +338,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "123",
         path: "t0/s0",
-        reason: "named again as id 123 later in this call",
+        detail: "named again as id 123 later in this call",
       },
       { id: "123", path: "t0/s0" },
     ]);
@@ -358,12 +358,12 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "456",
         path: "t1/s1",
-        reason: 'named again as "t1/s1" later in this call',
+        detail: 'named again as "t1/s1" later in this call',
       },
       {
         path: "t1/s1",
         ok: false,
-        reason: "not moved: track t6 does not exist",
+        detail: "not moved: track t6 does not exist",
       },
     ]);
   });
@@ -376,7 +376,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result[0]).toStrictEqual({
       path: "t0/s0",
       ok: false,
-      reason:
+      detail:
         "not moved: t1/s1 holds clip t1/s1 (id 456), which this call also " +
         "updates; move that clip out in its own call first",
     });
@@ -399,12 +399,12 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = (await updateClip({
       path: "t0/s0,t1/s1",
       toPath: "t1/s1,t0/s0",
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
-    expect(result[0]?.reason).toContain(
+    expect(result[0]?.detail).toContain(
       "not moved: t1/s1 holds clip t1/s1 (id 456)",
     );
-    expect(result[1]?.reason).toContain(
+    expect(result[1]?.detail).toContain(
       "not moved: t0/s0 holds clip t0/s0 (id 123)",
     );
 
@@ -425,7 +425,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result[0]).toStrictEqual({
       path: "t0/s0",
       ok: false,
-      reason:
+      detail:
         "not moved: clip t1/s1 (id 456) moves to t1/s2 later in this call",
     });
     expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
@@ -444,11 +444,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = (await updateClip({
       path: "t0/s0,t1/s1",
       toPath: "t0/d0",
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
     // The one unreadable destination covers both clips, so both say so.
-    expect(result[0]?.reason).toContain("device paths hold no clips");
-    expect(result[1]?.reason).toContain("device paths hold no clips");
+    expect(result[0]?.detail).toContain("device paths hold no clips");
+    expect(result[1]?.detail).toContain("device paths hold no clips");
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("destination for"),
     );

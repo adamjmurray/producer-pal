@@ -129,7 +129,7 @@ describe("updateClip reports a clip the batch buried", () => {
       id: second,
       path: "t0/l0[5|1]",
       deleted: true,
-      reason: `not updated: ${BURIED}`,
+      detail: `not updated: ${BURIED}`,
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -151,13 +151,13 @@ describe("updateClip reports a clip the batch buried", () => {
         path: "t0[26|1]",
         // The long clip's own landing is what cleared the short one out of
         // the way, so its entry says so.
-        reason: "overwrote the clip at t0[26|1]",
+        detail: "overwrote the clip at t0[26|1]",
       },
       {
         id: "short",
         path: "t0[26|1]",
         deleted: true,
-        reason: `not updated: ${BURIED}`,
+        detail: `not updated: ${BURIED}`,
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -174,7 +174,7 @@ describe("updateClip reports a clip the batch buried", () => {
     // names an id that is gone by the time the call answers.
     expect(result[0]?.path).toBe("t0/l0[5|1]");
     expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.reason).toContain(BURIED);
+    expect(result[0]?.detail).toContain(BURIED);
     expect(result[1]?.deleted).toBeUndefined();
   });
 
@@ -227,7 +227,7 @@ describe("a clip the call holds back for an overwrite", () => {
     expect(result[2]).toStrictEqual({
       id: "waiter",
       ok: false,
-      reason:
+      detail:
         "not moved: it would land on clip t0[1|1] (id held), which this call " +
         "clears only after every move has run; use separate calls",
     });
@@ -291,7 +291,7 @@ describe("a survivor a shorter clip landed on", () => {
       id: expect.any(String),
       path: "t0[101|3]",
       arrangementLength: "1bar+n/2",
-      reason: "trimmed: another clip in this call landed on its start",
+      detail: "trimmed: another clip in this call landed on its start",
     });
     expect(result[2]?.path).toBe("t0[101|1]");
     expect(result[2]?.deleted).toBeUndefined();
@@ -316,7 +316,7 @@ describe("a survivor a shorter clip landed on", () => {
     const result = await moveAll([8, 2, 16], ["101|1", "101|1", "100|1"]);
 
     expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.reason).toContain(BURIED);
+    expect(result[0]?.detail).toContain(BURIED);
     expect(result[1]?.deleted).toBe(true);
     expect(result[2]?.path).toBe("t0[100|1]");
     expect(result[2]?.deleted).toBeUndefined();
@@ -329,7 +329,7 @@ describe("a survivor a shorter clip landed on", () => {
     const result = await moveAll([8, 2, 12], ["101|1", "101|1", "101|3"]);
 
     expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.reason).toContain(BURIED);
+    expect(result[0]?.detail).toContain(BURIED);
     expect(result[1]?.path).toBe("t0[101|1]");
     expect(result[2]?.path).toBe("t0[101|3]");
   });
@@ -341,7 +341,7 @@ describe("a survivor a shorter clip landed on", () => {
 
     expect(result[0]?.deleted).toBeUndefined();
     expect(result[0]?.path).toBe("t0[102|3]");
-    expect(result[0]?.reason).toContain("trimmed:");
+    expect(result[0]?.detail).toContain("trimmed:");
     expect(stackedLaneClips()).toContain(result[0]?.id);
     expect(result[2]?.path).toBe("t0[101|3]");
   });

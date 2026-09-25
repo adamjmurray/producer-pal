@@ -73,7 +73,7 @@ to catch after the fact. The discipline that prevents shipping a wrong mapping:
   names a file the V8 runtime can't see, so nothing refuses it before the write:
   Live loads nothing and keeps the sample it had. That param carries a
   `writeFailed`, which compares the read-back against the value it replaced and
-  reports a `reason` rather than echoing the old path as the value the call
+  reports a `detail` rather than echoing the old path as the value the call
   wrote. Only for a value a device takes whole or ignores — a numeric param
   reads back unchanged on a write that landed on the value it already held.
 

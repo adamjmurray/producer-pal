@@ -55,7 +55,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
-    expect(moved.reason).toContain(`re-created at t${EMPTY_MIDI_TRACK}/s1`);
+    expect(moved.detail).toContain(`re-created at t${EMPTY_MIDI_TRACK}/s1`);
 
     const clip = await readClipFully(ctx.client!, {
       path: `t${EMPTY_MIDI_TRACK}/s1`,
@@ -167,7 +167,7 @@ describe("arrangement clip moved into a session slot", () => {
       toPath: `t${EMPTY_MIDI_TRACK}/s4`,
     });
 
-    expect(moved.reason).toContain(
+    expect(moved.detail).toContain(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
     );
     expect(warnings).toStrictEqual([]);
@@ -250,11 +250,11 @@ describe("arrangement clip duplicated into a session slot", () => {
     const { data: copy } = parseToolResultWithWarnings<{
       id: string;
       path: string;
-      reason?: string;
+      detail?: string;
     }>(result);
 
     expect(copy.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
-    expect(copy.reason).toContain("re-created from the arrangement clip");
+    expect(copy.detail).toContain("re-created from the arrangement clip");
 
     await sleep(100);
 

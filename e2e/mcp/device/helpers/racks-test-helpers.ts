@@ -46,7 +46,7 @@ export interface ParamEntryResult {
   ok?: boolean;
   /** Why the write landed nowhere, or why the value that landed isn't the one
    * asked for */
-  reason?: string;
+  detail?: string;
 }
 
 export interface DrumPadInfo {

@@ -370,7 +370,7 @@ describe("duplicate - device duplication", () => {
       {
         path: "t3/d0",
         ok: false,
-        reason: 'the copy of t0/d1 (id device1) could not be moved to "t3/d0"',
+        detail: 'the copy of t0/d1 (id device1) could not be moved to "t3/d0"',
       },
       { id: "live_set/tracks/1/devices/1", path: "t1/d1" },
     ]);

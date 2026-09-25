@@ -325,7 +325,7 @@ export function expectParamRefused(
   reason: string,
 ): void {
   expect(paramsOf(result)).toStrictEqual([
-    { name, ok: false, reason: expect.stringContaining(reason) },
+    { name, ok: false, detail: expect.stringContaining(reason) },
   ]);
   expect(capturedWarnings()).toHaveLength(0);
 }

@@ -103,7 +103,7 @@ describe("deleteObject drum-pad deletion", () => {
 
     expect(result).toStrictEqual({
       path: "t0/d0/pD1",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
   });
@@ -154,7 +154,7 @@ describe("deleteObject drum-pad deletion", () => {
       { id: padId, path: "t0/d0/pC1" },
       {
         path: "t99/d99/pC1",
-        reason: "nothing to delete",
+        detail: "nothing to delete",
       },
     ]);
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
@@ -226,7 +226,7 @@ describe("deleteObject drum-pad refusals", () => {
       {
         id: "drum-chain-1",
         ok: false,
-        reason:
+        detail:
           't0/d0/c0 (id drum-chain-1) is a chain. Use type="chain" for ' +
           'this chain, or type="drum-pad" for the whole pad.',
       },
@@ -290,7 +290,7 @@ describe("deleteObject drum-pad refusals", () => {
           id: "host-pad",
           ok: false,
           path: "t0/d0/pC1",
-          reason:
+          detail:
             "cannot delete drum pad t0/d0/pC1 (id host-pad): it holds the Producer Pal device",
         },
         { id: "pad_2" },

@@ -254,7 +254,7 @@ describe("ppal-create-device", () => {
     expect(results).toHaveLength(2);
     expect(results[0]?.path).toBe("t99/d+");
     expect(results[0]?.ok).toBe(false);
-    expect(results[0]?.reason).toContain("t99");
+    expect(results[0]?.detail).toContain("t99");
     expect(results[1]?.id).toBeDefined();
     expect(results[1]?.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
     expect(warnings).toHaveLength(0);
@@ -666,7 +666,7 @@ interface ListDevicesResult {
 interface TargetSkip {
   path: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 interface CreateDeviceResult {
@@ -678,7 +678,7 @@ interface CreateDeviceResult {
     id?: string;
     name: string;
     value?: number | string;
-    reason?: string;
+    detail?: string;
   }>;
 }
 

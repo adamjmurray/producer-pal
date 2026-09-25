@@ -269,7 +269,7 @@ describe("updateDevice - param value conversion", () => {
         {
           name: "Mode",
           ok: false,
-          reason: expect.stringContaining('could not interpret "custom-value"'),
+          detail: expect.stringContaining('could not interpret "custom-value"'),
         },
       ]);
       expect(capturedWarnings()).toHaveLength(0);
@@ -343,7 +343,7 @@ describe("updateDevice - param value conversion", () => {
         id: "dev1",
         path: "t0/d0",
         params: [
-          { name: "1", ok: false, reason: "not found on t0/d0 (id dev1)" },
+          { name: "1", ok: false, detail: "not found on t0/d0 (id dev1)" },
         ],
       });
       expect(capturedWarnings()).toHaveLength(0);
@@ -369,7 +369,7 @@ describe("updateDevice - param value conversion", () => {
           {
             name: "143",
             ok: false,
-            reason:
+            detail:
               "id 143 is on t10/d0, not t0/d0 (id dev1), so it was not written",
           },
         ],
@@ -459,7 +459,7 @@ describe("updateDevice - param value conversion", () => {
       });
 
       expect(paramsOf(result)).toStrictEqual([
-        { name: "Pitch", ok: false, reason: 'invalid note name "C-3"' },
+        { name: "Pitch", ok: false, detail: 'invalid note name "C-3"' },
       ]);
       expect(capturedWarnings()).toHaveLength(0);
     });
@@ -594,7 +594,7 @@ describe("updateDevice - param value conversion", () => {
           {
             name: "NonExistentParam",
             ok: false,
-            reason: "not found on t0/d0 (id dev1)",
+            detail: "not found on t0/d0 (id dev1)",
           },
         ],
       });
@@ -625,7 +625,7 @@ describe("updateDevice - sample pseudo-param", () => {
         {
           name: "sample",
           ok: false,
-          reason: "written, but no value reads back",
+          detail: "written, but no value reads back",
         },
       ],
     });
@@ -694,12 +694,12 @@ describe("updateDevice - actions arg", () => {
         {
           action: "nope",
           ok: false,
-          reason: "unknown action for this device",
+          detail: "unknown action for this device",
         },
         {
           action: "warpAs(x)",
           ok: false,
-          reason: "requires a numeric beats argument",
+          detail: "requires a numeric beats argument",
         },
       ],
     });
@@ -752,7 +752,7 @@ describe("updateDevice - actions arg", () => {
     expect(paramsOf(result)).toHaveLength(1);
     expect(actionsOf(result)).toStrictEqual([
       { action: "reverse" },
-      { action: "crop", ok: false, reason: "Live refused the crop" },
+      { action: "crop", ok: false, detail: "Live refused the crop" },
       { action: "warpHalf" },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

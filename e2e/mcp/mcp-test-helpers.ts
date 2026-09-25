@@ -615,7 +615,7 @@ export interface SkippedTargetResult {
   id?: string;
   path?: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 /** Result from ppal-create-clip tool */
@@ -631,7 +631,7 @@ export interface CreateClipResult {
   /** The scenes the destination had to make ("s8-s9"), when it made any */
   created?: string;
   /** What the call asked for that the clip didn't get */
-  reason?: string;
+  detail?: string;
 }
 
 /** Result from ppal-update-clip tool (single clip) */
@@ -650,7 +650,7 @@ export interface CreateTrackResult {
   path?: string;
   /** The name Live landed on, only when it isn't the one asked for */
   name?: string;
-  reason?: string;
+  detail?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
@@ -672,7 +672,7 @@ export interface ReadClipResult {
   /** Only on a clip a move was set to overwrite: whether it was cleared */
   deleted?: boolean;
   /** Why the update didn't go as asked, when something landed anyway */
-  reason?: string;
+  detail?: string;
   noteCount?: number;
   notes?: string;
   // Audio clip properties

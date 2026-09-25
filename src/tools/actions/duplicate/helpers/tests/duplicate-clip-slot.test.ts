@@ -121,7 +121,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason:
+      detail:
         "track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -134,7 +134,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason:
+      detail:
         "track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
     });
   });
@@ -147,7 +147,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
+      detail: "track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
     });
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
@@ -168,7 +168,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "Live made no copy there",
+      detail: "Live made no copy there",
     });
   });
 
@@ -183,7 +183,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "Live made no copy there",
+      detail: "Live made no copy there",
     });
     // The clip that was already there is not the copy, so it keeps its name.
     expect(occupant?.set).not.toHaveBeenCalled();
@@ -197,14 +197,14 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       id: COPY_ID,
       path: "t1/s0",
-      reason: "overwrote the existing clip at t1/s0",
+      detail: "overwrote the existing clip at t1/s0",
     });
   });
 
   it("says nothing about overwriting when the slot was empty", () => {
     setupSlotDuplication({ destHasClip: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("reason");
+    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("detail");
   });
 });
 
@@ -252,7 +252,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
       {
         path: "t2/s0",
         ok: false,
-        reason: "track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
+        detail: "track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -336,7 +336,7 @@ describe("duplicateClipSlot past the last scene", () => {
     expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
       path: "t1/s3",
       ok: false,
-      reason: "Live made no copy there; created s2-s3 to reach it",
+      detail: "Live made no copy there; created s2-s3 to reach it",
     });
   });
 
@@ -346,7 +346,7 @@ describe("duplicateClipSlot past the last scene", () => {
     expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
       path: "t1/s3",
       ok: false,
-      reason: "no clip slot there; created s2-s3 to reach it",
+      detail: "no clip slot there; created s2-s3 to reach it",
     });
   });
 
@@ -356,7 +356,7 @@ describe("duplicateClipSlot past the last scene", () => {
     expect(duplicateClipSlot(0, 0, 1, MAX_AUTO_CREATED_SCENES)).toStrictEqual({
       path: `t1/s${MAX_AUTO_CREATED_SCENES}`,
       ok: false,
-      reason:
+      detail:
         `scene "s${MAX_AUTO_CREATED_SCENES}" is out of range: ` +
         `scenes auto-create only through "s${MAX_AUTO_CREATED_SCENES - 1}"`,
     });
@@ -402,7 +402,7 @@ describe("duplicateClipSlot with a missing slot or clip", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "no clip slot there",
+      detail: "no clip slot there",
     });
   });
 });

@@ -24,7 +24,7 @@ export interface TargetSkip {
   id?: string;
   path?: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 /**
@@ -66,11 +66,11 @@ export function attemptTarget<T>(
 /**
  * The entry for a target a call couldn't act on.
  * @param target - The target, as the caller named it
- * @param reason - Why it was skipped, in the words a single target would throw
+ * @param detail - Why it was skipped, in the words a single target would throw
  * @returns The skip entry
  */
-export function skipEntry(target: NamedTarget, reason: string): TargetSkip {
-  return { ...targetAddress(target), ok: false, reason };
+export function skipEntry(target: NamedTarget, detail: string): TargetSkip {
+  return { ...targetAddress(target), ok: false, detail };
 }
 
 /**
@@ -97,7 +97,7 @@ export function loneRefusal(entries: object[]): string | null {
   const [only] = entries;
 
   return entries.length === 1 && only != null && "ok" in only
-    ? (only as TargetSkip).reason
+    ? (only as TargetSkip).detail
     : null;
 }
 

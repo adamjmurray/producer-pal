@@ -221,7 +221,7 @@ describe("duplicate - chain", () => {
       {
         path: "t1/d0",
         ok: false,
-        reason: expect.stringContaining(
+        detail: expect.stringContaining(
           "a rack only holds chains of its own kind",
         ),
       },
@@ -413,10 +413,10 @@ describe("duplicate - chain", () => {
     setupRack({ hasMacroMappings: 1 });
 
     const result = (await duplicate({ type: "chain", id: "chain-0" })) as {
-      reason?: string;
+      detail?: string;
     };
 
-    expect(result.reason).toContain("macro mappings");
+    expect(result.detail).toContain("macro mappings");
     // The entry carries it, so nothing warns about it.
     expect(vi.mocked(consoleMock.warn)).not.toHaveBeenCalled();
   });
@@ -426,7 +426,7 @@ describe("duplicate - chain", () => {
 
     const result = await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(result).not.toHaveProperty("reason");
+    expect(result).not.toHaveProperty("detail");
   });
 
   it("warns that count is ignored, since only one copy is made", async () => {
@@ -554,7 +554,7 @@ describe("duplicate - chain", () => {
 
     expect(result).toStrictEqual({
       id: "chain-new",
-      reason: expect.stringContaining("no addressable path"),
+      detail: expect.stringContaining("no addressable path"),
     });
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
       "no addressable path",
@@ -578,7 +578,7 @@ describe("duplicate - chain", () => {
     expect(result).toStrictEqual({
       id: "chain-new",
       path: "t0/d0/c1",
-      reason:
+      detail:
         "t0/d0/c0/d0 could not be copied into the new chain: no chain there",
     });
   });
@@ -597,7 +597,7 @@ describe("duplicate - chain", () => {
     expect(result).toStrictEqual({
       id: "chain-new",
       path: "t0/d0/c1",
-      reason:
+      detail:
         "t0/d0/c0/d0 could not be copied into the new chain: it is not on the temp track",
     });
     expect(moveDeviceToPathMock).not.toHaveBeenCalled();

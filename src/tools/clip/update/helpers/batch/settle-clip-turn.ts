@@ -5,10 +5,10 @@
 
 // Whether a clip's turn keeps its entry or hands its target a skip. A clip
 // where nothing the call asked of it happened gets a skip (`ok: false`); one
-// where anything landed keeps its entry and the reason (ADR-0042).
+// where anything landed keeps its entry and the detail (ADR-0042).
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   type ClipReasons,
   clipLandedNothing,
@@ -63,7 +63,7 @@ export function settleClipTurn({
   const entry = results[0];
 
   if (failure != null && entry != null) {
-    appendReason(entry, `update stopped partway: ${failure}`);
+    appendDetail(entry, `update stopped partway: ${failure}`);
   }
 
   if (entry == null) {
@@ -73,7 +73,7 @@ export function settleClipTurn({
   }
 
   // Nothing the call asked of this clip happened, so where it still sits is not
-  // worth an entry: the target keeps the reason as a skip instead. A moved clip
+  // worth an entry: the target keeps the detail as a skip instead. A moved clip
   // reports a new id — every route that moves one re-creates it — so an entry
   // that kept the id it came in with is one that stayed put. A held-back clip's
   // fate isn't known yet, so it waits for the flush.
@@ -88,7 +88,7 @@ export function settleClipTurn({
       targets.unused,
       targets.named,
       slot,
-      entry.reason ?? "not updated",
+      entry.detail ?? "not updated",
     );
 
     return [];
@@ -147,7 +147,7 @@ export function skipUnmovedClips({
         targets.unused,
         targets.named,
         slots[i] as number,
-        entry.reason as string,
+        entry.detail as string,
       );
       resultsPerClip[i] = [];
     }

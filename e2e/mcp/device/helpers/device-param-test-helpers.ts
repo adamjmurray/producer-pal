@@ -57,7 +57,7 @@ export interface ParamResultEntry {
   value?: unknown;
   /** False only on a param nothing was written to */
   ok?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -98,7 +98,7 @@ export function expectSkipThenValue(
     {
       name: missing,
       ok: false,
-      reason: expect.stringContaining("not found on"),
+      detail: expect.stringContaining("not found on"),
     },
     { id: expect.any(String), ...landed },
   ]);

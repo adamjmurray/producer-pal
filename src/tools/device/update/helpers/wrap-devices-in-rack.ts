@@ -53,7 +53,7 @@ interface WrapResult {
   /** Devices in the rack's one chain */
   deviceCount: number;
   /** Which of the devices the call named didn't make it into the rack */
-  reason?: string;
+  detail?: string;
 }
 
 /** Where the new rack goes. */
@@ -179,7 +179,7 @@ function rackResult(
     ...pathField(rack),
     type,
     deviceCount: chain?.getChildCount("devices") ?? 0,
-    ...(reasons.length > 0 ? { reason: reasons.join("; ") } : {}),
+    ...(reasons.length > 0 ? { detail: reasons.join("; ") } : {}),
   };
 }
 

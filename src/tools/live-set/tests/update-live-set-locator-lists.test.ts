@@ -247,7 +247,7 @@ describe("updateLiveSet - locator lists", () => {
           id: "27",
           name: "Chorus",
           ok: false,
-          reason: "Live refused the write",
+          detail: "Live refused the write",
         },
       ]);
     });
@@ -266,7 +266,7 @@ describe("updateLiveSet - locator lists", () => {
         {
           operation: "skipped",
           ok: false,
-          reason: 'no locator with id "99"',
+          detail: 'no locator with id "99"',
           id: "99",
         },
       ]);
@@ -385,7 +385,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "delete",
           id: "26",
-          reason: 'named again as "1|1" later in this call',
+          detail: 'named again as "1|1" later in this call',
         },
         { operation: "delete", id: "26" },
       ]);
@@ -406,7 +406,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "delete",
           id: "26",
-          reason: 'named again as "1|1" later in this call',
+          detail: 'named again as "1|1" later in this call',
         },
         { operation: "delete", id: "26" },
       ]);
@@ -427,7 +427,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "delete",
           id: "27",
-          reason: 'named again as "Verse" later in this call',
+          detail: 'named again as "Verse" later in this call',
         },
         { operation: "delete", count: 1, name: "Verse" },
       ]);
@@ -446,7 +446,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "delete",
           name: "Verse",
-          reason: 'named again as "Verse" later in this call',
+          detail: 'named again as "Verse" later in this call',
         },
         { operation: "delete", count: 1, name: "Verse" },
       ]);
@@ -474,7 +474,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "delete",
           id: "26",
-          reason: 'named again as "Verse" later in this call',
+          detail: 'named again as "Verse" later in this call',
         },
         { operation: "delete", count: 2, name: "Verse" },
       ]);
@@ -516,17 +516,17 @@ describe("updateLiveSet - locator targets", () => {
         { operation: "delete", id: "26" },
         {
           operation: "skipped",
-          reason: 'nothing to delete: no locator with id "99"',
+          detail: 'nothing to delete: no locator with id "99"',
           id: "99",
         },
         {
           operation: "skipped",
-          reason: "nothing to delete: no locator at 20|1",
+          detail: "nothing to delete: no locator at 20|1",
           time: "20|1",
         },
         {
           operation: "skipped",
-          reason: 'nothing to delete: no locator named "Outro"',
+          detail: 'nothing to delete: no locator named "Outro"',
           name: "Outro",
         },
       ]);
@@ -617,7 +617,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "rename",
           id: "26",
-          reason: 'named again as "1|1" later in this call',
+          detail: 'named again as "1|1" later in this call',
         },
         { operation: "rename", id: "26" },
       ]);
@@ -639,7 +639,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "skipped",
           ok: false,
-          reason: "no locator at 20|1",
+          detail: "no locator at 20|1",
           time: "20|1",
         },
       ]);
@@ -660,7 +660,7 @@ describe("updateLiveSet - locator targets", () => {
         {
           operation: "create",
           time: "1|1",
-          reason: 'named again as "1|1" later in this call',
+          detail: 'named again as "1|1" later in this call',
         },
         { operation: "create", id: "26" },
       ]);

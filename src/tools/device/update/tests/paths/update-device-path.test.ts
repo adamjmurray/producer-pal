@@ -501,7 +501,7 @@ describe("updateDevice with path parameter", () => {
         {
           path: "zzz",
           ok: false,
-          reason: expect.stringContaining('invalid path "zzz"'),
+          detail: expect.stringContaining('invalid path "zzz"'),
         },
         { id: "device-456", path: "t1/d0" },
       ]);
@@ -565,7 +565,7 @@ describe("updateDevice with path parameter", () => {
 
       expect(result).toStrictEqual([
         { id: "device-100", path: "t0/d0" },
-        { path: "t1/d1", ok: false, reason: 'nothing at path "t1/d1"' },
+        { path: "t1/d1", ok: false, detail: 'nothing at path "t1/d1"' },
         { id: "device-200", path: "t1/d0" },
       ]);
     });
@@ -574,8 +574,8 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "t5/d0, t6/d0", name: "Updated" });
 
       expect(result).toStrictEqual([
-        { path: "t5/d0", ok: false, reason: 'nothing at path "t5/d0"' },
-        { path: "t6/d0", ok: false, reason: 'nothing at path "t6/d0"' },
+        { path: "t5/d0", ok: false, detail: 'nothing at path "t5/d0"' },
+        { path: "t6/d0", ok: false, detail: 'nothing at path "t6/d0"' },
       ]);
     });
 
@@ -593,8 +593,8 @@ describe("updateDevice with path parameter", () => {
 
       expect(result).toStrictEqual([
         { id: "device-100", path: "t0/d0" },
-        { path: "t5/d0", ok: false, reason: 'nothing at path "t5/d0"' },
-        { path: "t6/d0", ok: false, reason: 'nothing at path "t6/d0"' },
+        { path: "t5/d0", ok: false, detail: 'nothing at path "t5/d0"' },
+        { path: "t6/d0", ok: false, detail: 'nothing at path "t6/d0"' },
       ]);
     });
 
@@ -620,7 +620,7 @@ describe("updateDevice with path parameter", () => {
         {
           path: "t0",
           ok: false,
-          reason: expect.stringContaining('invalid path "t0" - a track is not'),
+          detail: expect.stringContaining('invalid path "t0" - a track is not'),
         },
         { id: "device-100", path: "t0/d0" },
         { id: "device-200", path: "t1/d0" },

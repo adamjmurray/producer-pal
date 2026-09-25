@@ -112,7 +112,7 @@ describe("updateDevice - wrapInRack chain", () => {
       id: "new-rack",
       type: "audio-effect-rack",
       deviceCount: 1,
-      reason: 'path "t0/d0" is not in the rack: Live didn\'t move it',
+      detail: 'path "t0/d0" is not in the rack: Live didn\'t move it',
     });
   });
 });

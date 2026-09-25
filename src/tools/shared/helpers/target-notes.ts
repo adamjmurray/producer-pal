@@ -10,10 +10,10 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  type EntryWithReason,
-  appendReason,
-  joinReasons,
-} from "#src/tools/shared/helpers/entry-reasons.ts";
+  type EntryWithDetail,
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
 
 /** What one target's update has to say beyond its own result. */
 export interface TargetNotes {
@@ -35,16 +35,16 @@ export function newTargetNotes(): TargetNotes {
 /**
  * Note something the target's entry should say, where the work landed anyway.
  * @param notes - What the target has to say, added to; undefined warns instead
- * @param reason - What happened, as the entry will read it
+ * @param detail - What happened, as the entry will read it
  */
 export function noteTarget(
   notes: TargetNotes | undefined,
-  reason: string,
+  detail: string,
 ): void {
   if (notes == null) {
-    console.warn(reason);
+    console.warn(detail);
   } else {
-    notes.said.push(reason);
+    notes.said.push(detail);
   }
 }
 
@@ -54,14 +54,14 @@ export function noteTarget(
  * target, so an ignored one has to stop counting or the target looks updated.
  * @param notes - What the target has to say, added to; undefined warns instead
  * @param params - The params that did nothing
- * @param reason - What happened instead, as the entry will read it
+ * @param detail - What happened instead, as the entry will read it
  */
 export function refuseTargetWork(
   notes: TargetNotes | undefined,
   params: readonly string[],
-  reason: string,
+  detail: string,
 ): void {
-  noteTarget(notes, reason);
+  noteTarget(notes, detail);
   notes?.refused.push(...params);
 }
 
@@ -74,22 +74,22 @@ export function refuseTargetWork(
  * @throws Error when the refusals were everything the call asked, so nothing
  *   landed and the entry is a skip (a lone target throws outright)
  */
-export function reportTargetNotes<T extends EntryWithReason>(
+export function reportTargetNotes<T extends EntryWithDetail>(
   entry: T,
   notes: TargetNotes,
   asked: object,
 ): T {
-  const reason = joinReasons(notes.said);
+  const detail = joinDetails(notes.said);
 
-  if (reason == null) {
+  if (detail == null) {
     return entry;
   }
 
   if (!askedAnythingElse(asked, notes.refused)) {
-    throw new Error(reason);
+    throw new Error(detail);
   }
 
-  appendReason(entry, reason);
+  appendDetail(entry, detail);
 
   return entry;
 }

@@ -172,7 +172,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason: "arrangementLength ignored: this is a session clip",
+      detail: "arrangementLength ignored: this is a session clip",
     });
   });
 

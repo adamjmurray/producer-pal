@@ -160,7 +160,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     inFolder: param(z.coerce.string().optional(), {
       default:
-        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `reason` explaining the path wasn't found.",
+        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `detail` explaining the path wasn't found.",
       smallModel: "absolute folder path; returns immediate children only",
     }),
 

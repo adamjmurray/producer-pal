@@ -17,7 +17,7 @@ export interface UpdateDeviceParamResult {
     name: string;
     value?: number | string;
     ok?: boolean;
-    reason?: string;
+    detail?: string;
   }[];
 }
 
@@ -69,7 +69,7 @@ export function expectParamRefused(
   reason: string,
 ): void {
   expect(result.data.params).toStrictEqual([
-    { name, ok: false, reason: expect.stringContaining(reason) },
+    { name, ok: false, detail: expect.stringContaining(reason) },
   ]);
   expect(result.warnings).toStrictEqual([]);
 }

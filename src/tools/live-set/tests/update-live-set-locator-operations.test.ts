@@ -83,7 +83,7 @@ describe("updateLiveSet - locator operations", () => {
       // the entry says why and carries no `ok`.
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "a locator is already at 5|1",
+        detail: "a locator is already at 5|1",
         time: "5|1",
         existingId: "26",
       });
@@ -180,7 +180,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: 'nothing to delete: no locator with id "99"',
+        detail: 'nothing to delete: no locator with id "99"',
         id: "99",
       });
       expect(capturedWarnings()).toStrictEqual([]);
@@ -195,7 +195,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "nothing to delete: no locator at 100|1",
+        detail: "nothing to delete: no locator at 100|1",
         time: "100|1",
       });
       expect(capturedWarnings()).toStrictEqual([]);
@@ -227,7 +227,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: 'nothing to delete: no locator named "NonExistent"',
+        detail: 'nothing to delete: no locator named "NonExistent"',
         name: "NonExistent",
       });
       expect(capturedWarnings()).toStrictEqual([]);
@@ -278,7 +278,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         ok: false,
-        reason: 'no locator with id "99"',
+        detail: 'no locator with id "99"',
         id: "99",
       });
       expect(capturedWarnings()).toStrictEqual([]);
@@ -294,7 +294,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         ok: false,
-        reason: "no locator at 100|1",
+        detail: "no locator at 100|1",
         time: "100|1",
       });
       expect(capturedWarnings()).toStrictEqual([]);

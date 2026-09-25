@@ -75,7 +75,7 @@ function parseUpdateResults(result: unknown): {
 interface UpdatedClip {
   id: string;
   path?: string;
-  reason?: string;
+  detail?: string;
   deleted?: boolean;
   arrangementLength?: string;
 }
@@ -255,7 +255,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     // what is left of it now starts.
     const trimmed = "trimmed: another clip in this call landed on its start";
 
-    expect(clips.map((clip) => clip.reason)).toStrictEqual([
+    expect(clips.map((clip) => clip.detail)).toStrictEqual([
       trimmed,
       `shortened the clip at t${EMPTY_MIDI_TRACK}[271|1]; ${trimmed}`,
       `shortened the clip at t${EMPTY_MIDI_TRACK}[270|3]`,
@@ -311,7 +311,7 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     expectDeleted(clips, [undefined, undefined, undefined]);
     expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[442|3]`);
-    expect(clips[0]?.reason).toContain("trimmed:");
+    expect(clips[0]?.detail).toContain("trimmed:");
     expect(clips[0]?.id).not.toBe(clips[2]?.id);
 
     expect(finalClips).toHaveLength(3);

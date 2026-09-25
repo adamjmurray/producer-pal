@@ -201,7 +201,7 @@ describe("ppal-read-scene over a list of targets", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ path: "s0", name: "Intro" }),
-      { path: "s999", ok: false, reason: 'nothing at path "s999"' },
+      { path: "s999", ok: false, detail: 'nothing at path "s999"' },
       expect.objectContaining({ path: "s1", name: "Verse 1" }),
     ]);
   });

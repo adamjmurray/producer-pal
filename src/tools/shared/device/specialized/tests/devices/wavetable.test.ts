@@ -468,7 +468,7 @@ describe("Wavetable actions — clearModulation", () => {
     expect(results).toStrictEqual([
       {
         action: "clearModulation('Missing', 0)",
-        reason:
+        detail:
           'target "Missing" is not in the modulation matrix — nothing to clear',
       },
     ]);
@@ -515,7 +515,7 @@ describe("Wavetable actions — addModulationTarget", () => {
       {
         action: "addModulationTarget('Osc 1 Pos')",
         ok: false,
-        reason: 'parameter "Osc 1 Pos" — could not add to matrix',
+        detail: 'parameter "Osc 1 Pos" — could not add to matrix',
       },
     ]);
   });
@@ -534,7 +534,7 @@ describe("Wavetable actions — addModulationTarget", () => {
     expect(results).toStrictEqual([
       {
         action: "addModulationTarget('Osc 1 Pos')",
-        reason: 'parameter "Osc 1 Pos" is already in the modulation matrix',
+        detail: 'parameter "Osc 1 Pos" is already in the modulation matrix',
       },
     ]);
   });
@@ -558,7 +558,7 @@ describe("Wavetable actions — addModulationTarget", () => {
       expect.objectContaining({
         action: `addModulationTarget('${name}')`,
         ok: false,
-        reason: expect.stringContaining(msg),
+        detail: expect.stringContaining(msg),
       }),
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -577,7 +577,7 @@ describe("Wavetable actions — argument validation", () => {
     const device = registerWavetable({}, buildModMethods(["Volume"]));
 
     expect(applySpecializedActions(device, [action])).toStrictEqual([
-      { action, ok: false, reason },
+      { action, ok: false, detail: reason },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });

@@ -49,6 +49,6 @@ and writing a silent clip over it fails too, because an arrangement clip's
 extent can't be stretched from the LOM (`end_marker` and `loop_end` accept the
 write, `end_time` doesn't follow). So an audio take is only muted. Everything
 else that needs the original gone still refuses it: `arrangementSplit` and
-`arrangementLength` report a `reason` on the clip's entry and change nothing,
+`arrangementLength` report a `detail` on the clip's entry and change nothing,
 and `ppal-delete` reports the clip `ok: false`. Deleting and comping stay in
 Live's UI.

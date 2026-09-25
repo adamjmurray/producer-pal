@@ -88,7 +88,7 @@ model.
 the model doing exactly that. The check read the call's `warnings` for the word
 "layer"; the duplicate tool had moved that fact onto the copy's own result entry
 as a `reason` in the range, so no trial could ever pass. The assertion now reads
-the `reason`.
+the `detail`.
 
 When a tool starts reporting a target's fact on the target's entry instead of in
 the `WARNING:` block, grep the scenarios for `.warnings` on that tool — a grader

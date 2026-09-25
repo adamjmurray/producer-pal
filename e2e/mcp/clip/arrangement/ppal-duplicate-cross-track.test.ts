@@ -162,7 +162,7 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(refused).toStrictEqual({
       path: `t${AUDIO_TRACK}[${position}]`,
       ok: false,
-      reason: expect.stringContaining(
+      detail: expect.stringContaining(
         "is audio; a MIDI clip needs a MIDI track",
       ),
     });

@@ -27,7 +27,7 @@ export type ClipSlotTarget = { named: NamedTarget } & (
 interface ActedSlot {
   id?: string;
   path: string;
-  reason?: string;
+  detail?: string;
 }
 
 /** What one target reports: the slot acted on, or why nothing happened. */
@@ -165,7 +165,7 @@ function slotEntry(
   const later = lastNamedBy.get(path) as NamedTarget;
 
   if (later !== target.named) {
-    return { ...entry, reason: namedLaterReason(later) };
+    return { ...entry, detail: namedLaterReason(later) };
   }
 
   act(slot, target.position);

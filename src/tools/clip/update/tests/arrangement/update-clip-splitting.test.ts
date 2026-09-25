@@ -244,7 +244,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     for (const entry of results) {
       expect("ok" in entry).toBe(false);
-      expect(entry.reason).toBe("firstStart ignored: the clip is not looping");
+      expect(entry.detail).toBe("firstStart ignored: the clip is not looping");
     }
   });
 
@@ -341,7 +341,7 @@ describe("updateClip - splitting smoke tests", () => {
       id: "dup_2",
       noteCount: 0,
       path: "t0[2|1]",
-      reason:
+      detail:
         "transforms ignored: the clip has no notes; Live refused the note read",
     });
   });
@@ -361,7 +361,7 @@ describe("updateClip - splitting smoke tests", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         id: clipId,
-        reason:
+        detail:
           "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
       }),
     );
@@ -386,7 +386,7 @@ describe("updateClip - splitting smoke tests", () => {
       {
         id: "session_clip",
         ok: false,
-        reason: "arrangementSplit ignored: this is a session clip",
+        detail: "arrangementSplit ignored: this is a session clip",
       },
       { id: "clip_1", path: "t0[1|1]" },
       { id: "dup_2", path: "t0[2|1]" },
@@ -445,7 +445,7 @@ describe("updateClip - splitting smoke tests", () => {
     expect(result).toStrictEqual({
       id: "session_clip",
       path: "t0/s0",
-      reason: "arrangementSplit ignored: this is a session clip",
+      detail: "arrangementSplit ignored: this is a session clip",
     });
   });
 

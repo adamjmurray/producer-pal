@@ -55,7 +55,7 @@ describe("promoting a take-lane clip", () => {
     expect(result).toStrictEqual({
       id: expect.not.stringMatching(/^tl_src_clip$/) as unknown as string,
       path: "t0[5|1]",
-      reason: "promoted to the main lane by re-creating it",
+      detail: "promoted to the main lane by re-creating it",
     });
 
     // It's a copy: nothing tries to clear the source off its lane.
@@ -96,9 +96,9 @@ describe("promoting a take-lane clip", () => {
       type: "clip",
       id: "tl_src_clip",
       arrangementStart: "1|1,2|1,3|1",
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
-    expect(result.map((entry) => entry.reason)).toStrictEqual(
+    expect(result.map((entry) => entry.detail)).toStrictEqual(
       Array.from({ length: 3 }).fill(
         "promoted to the main lane by re-creating it " +
           "(automation envelopes aren't copied)",
@@ -130,7 +130,7 @@ describe("promoting a take-lane clip", () => {
       ["1|1", "2|1", "3|1", "4|1"].map((position) => ({
         path: `t0[${position}]`,
         ok: false,
-        reason: "it's an audio clip with no sample file; drag it in Live's UI",
+        detail: "it's an audio clip with no sample file; drag it in Live's UI",
       })),
     );
   });

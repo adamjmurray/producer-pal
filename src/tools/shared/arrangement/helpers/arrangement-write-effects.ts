@@ -7,7 +7,7 @@
 // Live overwrites, trims and splits them to make room and reports none of it,
 // so the lane is photographed before the write and compared after.
 
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { clipsOnLane, laneObject } from "./arrangement-clip-at-position.ts";
@@ -77,7 +77,7 @@ export function arrangementWriteEffects(
     (clip) => !ours.has(clip.id) && !wasThere.has(clip.id),
   );
 
-  return joinReasons(
+  return joinDetails(
     before.clips
       .filter((was) => !ours.has(was.id))
       .map((was) =>

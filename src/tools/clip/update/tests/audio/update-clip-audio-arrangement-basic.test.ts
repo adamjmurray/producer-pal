@@ -168,7 +168,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
     expect(result).toStrictEqual({
       id: "661",
       path: "t0[1|1]",
-      reason: `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
+      detail: `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
     });
     mockCreate.mockRestore();
   });
@@ -205,7 +205,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       expect(result).toStrictEqual({
         id: cId,
         path: "t0[1|1]",
-        reason: `arrangementLength landed at 2bar: ${NO_MORE_CONTENT}`,
+        detail: `arrangementLength landed at 2bar: ${NO_MORE_CONTENT}`,
       });
       mockCreate.mockRestore();
     },
@@ -280,7 +280,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     expect(result).toStrictEqual({
       id: "710",
       path: "t0[1|1]",
-      reason: NO_AUDIO_SHOWN,
+      detail: NO_AUDIO_SHOWN,
     });
   });
 });

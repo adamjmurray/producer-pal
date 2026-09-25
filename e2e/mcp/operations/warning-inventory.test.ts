@@ -44,7 +44,7 @@ const CLIPS_ONLY =
 interface SendEntry {
   return?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 /** One entry of a multi-target write result. */
@@ -55,8 +55,8 @@ interface TargetEntry {
   ok?: false;
   /** Clips only: true when another clip in the call was moved on top of it. */
   deleted?: boolean;
-  reason?: string;
-  params?: Array<{ reason?: string }>;
+  detail?: string;
+  params?: Array<{ detail?: string }>;
   sends?: SendEntry[];
 }
 
@@ -188,7 +188,7 @@ describe("calls that report on the entry and warn about nothing", () => {
   it("says on each entry that a colour snapped to the palette", async () => {
     const snapped = {
       color: "#3C3C3C",
-      reason: expect.stringContaining(
+      detail: expect.stringContaining(
         `color ${OFF_PALETTE} is not in Live's palette; landed as #3C3C3C`,
       ),
     };
@@ -228,7 +228,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       name: "Moved",
     });
 
-    expect(refusedMove.reason).toBe(
+    expect(refusedMove.detail).toBe(
       `not moved: track ${await label("ppal-read-track", "t5")} is audio; a MIDI clip needs a MIDI track`,
     );
 
@@ -238,14 +238,14 @@ describe("calls that report on the entry and warn about nothing", () => {
       warpMode: "beats",
     });
 
-    expect(ignoredParam.reason).toBe("warpMode ignored: the clip is MIDI");
+    expect(ignoredParam.detail).toBe("warpMode ignored: the clip is MIDI");
 
     const unknownParam = await entryFrom("ppal-update-device", {
       path: "t0/d0",
       params: [{ name: "Nope", value: 1 }],
     });
 
-    expect(unknownParam.params![0]!.reason).toBe(
+    expect(unknownParam.params![0]!.detail).toBe(
       `not found on ${await label("ppal-read-device", "t0/d0")}`,
     );
   });
@@ -262,7 +262,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(ignoredArg[0]).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason: "gainDb not applicable to a device",
+      detail: "gainDb not applicable to a device",
     });
     // The chain it was sent alongside takes it, and keeps its own slot.
     expect(ignoredArg[1]?.path).toBe("t0/d0/pC1/c0");
@@ -278,7 +278,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       {
         return: "Nope",
         ok: false,
-        reason: 'no return chain matching "Nope" (returns: a Saturator)',
+        detail: 'no return chain matching "Nope" (returns: a Saturator)',
       },
     ]);
 
@@ -291,7 +291,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(refusedCopy[1]).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason:
+      detail:
         `the copy of ${rackLabel} could not be moved to "t0/d1": ` +
         "the destination already has an instrument, and only one is allowed",
     });
@@ -307,7 +307,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(onLane.path).toBe(`${SCRATCH}/l0[13|1]`);
-    expect(onLane.reason).toBe(
+    expect(onLane.detail).toBe(
       "expand the take-lanes arrow on the track header in Live to see it",
     );
 
@@ -317,7 +317,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       toPath: `${SCRATCH}/l0[17|1]`,
     });
 
-    expect(copied.reason).toBe(
+    expect(copied.detail).toBe(
       "re-created on the take lane; expand the take-lanes arrow on the track " +
         "header in Live to see it",
     );
@@ -336,7 +336,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     );
 
     expect(selected.warnings).toStrictEqual([]);
-    expect(selected.data.selectedDevice?.reason).toBe(
+    expect(selected.data.selectedDevice?.detail).toBe(
       "openPluginWindow ignored: not a plug-in (VST/AU)",
     );
   });
@@ -347,7 +347,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       toPath: "t1/s0",
     });
 
-    expect(moved.reason).toBe("overwrote the existing clip at t1/s0");
+    expect(moved.detail).toBe("overwrote the existing clip at t1/s0");
   });
 
   it("rounds a send, refuses one a track can't take, and skips an empty pad", async () => {
@@ -356,7 +356,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       sends: [{ return: "A", gainDb: -12.345 }],
     });
 
-    expect(sendsOf(send)[0]?.reason).toBe(
+    expect(sendsOf(send)[0]?.detail).toBe(
       "gainDb read back as shown, not as sent",
     );
 
@@ -369,7 +369,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(sendsOf(mainSend)).toStrictEqual([
-      expect.objectContaining({ ok: false, reason: "the track has no sends" }),
+      expect.objectContaining({ ok: false, detail: "the track has no sends" }),
     ]);
 
     // Which return tracks exist is a fact about the Set, so it is resolved once
@@ -384,7 +384,7 @@ describe("calls that report on the entry and warn about nothing", () => {
         {
           return: "Nope",
           ok: false,
-          reason:
+          detail:
             'no return track matching "Nope" (Available: A-Delay, B-Reverb)',
         },
       ]);
@@ -396,7 +396,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(pads[1]!.path).toBe("t0/d0/pC2");
-    expect(pads[1]!.reason).toContain("has no chains");
+    expect(pads[1]!.detail).toContain("has no chains");
 
     const nothingThere = await entryFrom("ppal-delete", {
       type: "device",
@@ -405,7 +405,7 @@ describe("calls that report on the entry and warn about nothing", () => {
 
     expect(nothingThere).toStrictEqual({
       path: `${SCRATCH}/inst`,
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
   });
 });

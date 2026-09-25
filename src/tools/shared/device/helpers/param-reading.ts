@@ -15,7 +15,7 @@ import { recordedUnitFor } from "../known-param-units.ts";
 import { readNumericRange } from "./param-numeric-range.ts";
 import {
   differsAtPublishedResolution,
-  readBackReason,
+  readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
@@ -340,14 +340,14 @@ export function readParameter(
 
 /**
  * A param a write landed on. Its value is read once, at the end of the call.
- * `reason` is there only when the value that landed isn't the one asked for — a
+ * `detail` is there only when the value that landed isn't the one asked for — a
  * clamp, or the nearest step of a coarse ladder. The value is still reported, so
  * there is no `ok`.
  */
 export interface WrittenParam {
   id: string;
   name: string;
-  reason?: string;
+  detail?: string;
   /** The bare number the call asked for, when there was one. Decides whether
    * the entry reports a value at all, and never reaches the result itself. */
   requested?: number;
@@ -355,7 +355,7 @@ export interface WrittenParam {
 
 /**
  * A param the call named that nothing was written to, named the way the call
- * spelled it. It has no id and no value, so `reason` says why. `ok` marks only
+ * spelled it. It has no id and no value, so `detail` says why. `ok` marks only
  * these, never a param that landed.
  */
 export interface UnresolvedParam {
@@ -364,7 +364,7 @@ export interface UnresolvedParam {
   /** The id the call sent, when it addressed the param by id. */
   id?: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 /**
@@ -393,21 +393,21 @@ export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
  * The entry for a param nothing was written to. Nothing warns as well: this is
  * where the caller reads what happened to that param.
  * @param name - The param name as the call spelled it
- * @param reason - Why nothing was written
+ * @param detail - Why nothing was written
  * @returns The skip entry
  */
-export function skippedParam(name: string, reason: string): UnresolvedParam {
-  return { name, ok: false, reason };
+export function skippedParam(name: string, detail: string): UnresolvedParam {
+  return { name, ok: false, detail };
 }
 
 /**
  * The entry for a param addressed by id that nothing was written to.
  * @param id - The param id as the call spelled it
- * @param reason - Why nothing was written
+ * @param detail - Why nothing was written
  * @returns The skip entry
  */
-export function skippedParamById(id: string, reason: string): UnresolvedParam {
-  return { id, ok: false, reason };
+export function skippedParamById(id: string, detail: string): UnresolvedParam {
+  return { id, ok: false, detail };
 }
 
 /** What create-device and update-device report for a param whose value isn't
@@ -416,7 +416,7 @@ export interface ParamValueResult {
   id: string;
   name: string;
   value: unknown;
-  reason?: string;
+  detail?: string;
 }
 
 /** What they report for a param that reads back the number asked for: the
@@ -499,7 +499,7 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
 /**
  * One written param's entry. A bare number that reads back as the one asked for
  * is left out: the caller wrote it, so repeating it says nothing. Everything
- * else reports what the param reads now, plus the reason it isn't the value
+ * else reports what the param reads now, plus why it isn't the value
  * asked for.
  *
  * The comparison is exact, because the read already publishes the value at the
@@ -517,15 +517,15 @@ function writtenResult(
   const changed =
     requested == null || differsAtPublishedResolution(requested, value);
 
-  if (!changed && entry.reason == null) {
+  if (!changed && entry.detail == null) {
     return { id, name };
   }
 
   // A value the write itself knew it changed says why; one only the read-back
   // reveals (a pan step, an A/B swap later in the call) says what it is.
-  const reason =
-    entry.reason ??
-    (changed && requested != null ? readBackReason(["value"]) : undefined);
+  const detail =
+    entry.detail ??
+    (changed && requested != null ? readBackDetail(["value"]) : undefined);
 
-  return reason == null ? { id, name, value } : { id, name, value, reason };
+  return detail == null ? { id, name, value } : { id, name, value, detail };
 }

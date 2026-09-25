@@ -208,7 +208,7 @@ describe("ppal-update-live-set", () => {
 
     expect(updated.scale).toBe("Gb Dorian");
     // Without this reason a model reads the changed spelling as a failed write.
-    expect(updated.reason).toBe(
+    expect(updated.detail).toBe(
       "scale roots are spelled with flats, so F# comes back as Gb — " +
         "same scale, set correctly",
     );
@@ -489,7 +489,7 @@ describe("ppal-update-live-set", () => {
       {
         operation: "delete",
         id: soloId,
-        reason: 'named again as "6|1" later in this call',
+        detail: 'named again as "6|1" later in this call',
       },
       { operation: "delete", id: soloId },
       { operation: "delete", id: expect.any(String) },
@@ -622,7 +622,7 @@ interface UpdateLocatorListResult {
     name?: string;
     time?: string;
     ok?: boolean;
-    reason?: string;
+    detail?: string;
   }>;
 }
 
@@ -632,7 +632,7 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string;
-  reason?: string;
+  detail?: string;
   $meta?: string[];
   locator?: {
     operation: string;

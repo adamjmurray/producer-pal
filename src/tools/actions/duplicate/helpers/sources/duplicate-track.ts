@@ -6,9 +6,9 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
-  appendReason,
-  joinReasons,
-} from "#src/tools/shared/helpers/entry-reasons.ts";
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   newTargetNotes,
@@ -35,7 +35,7 @@ export interface TrackCopyEntry {
   id: string;
   path: string;
   clips: MinimalClipInfo[];
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -326,14 +326,14 @@ function finishTrackCopy(
     configureRouting(track, sourceTrackIndex, notes);
   }
 
-  const reason = joinReasons(notes.said);
+  const detail = joinDetails(notes.said);
 
   return {
     id: track.id,
     // Where its clips were read; settleCopyPaths moves both along.
     path: formatObjectPath({ kind: "track", trackIndex: copy.index }),
     clips: copy.clips,
-    ...(reason == null ? {} : { reason }),
+    ...(detail == null ? {} : { detail }),
   };
 }
 
@@ -356,7 +356,7 @@ export function noteUnhonoredTrackToPath(
 
   // A failed copy landed nowhere.
   for (const entry of entries.filter((each) => !("ok" in each))) {
-    appendReason(
+    appendDetail(
       entry,
       `toPath "${toPath}" not honored; a track copy lands right after its source, or after a group's last member`,
     );

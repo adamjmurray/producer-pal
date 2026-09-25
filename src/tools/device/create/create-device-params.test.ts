@@ -143,7 +143,7 @@ describe("createDevice params", () => {
           {
             name: "nonexistent",
             ok: false,
-            reason: "not found on t0/d2 (id simpler-new)",
+            detail: "not found on t0/d2 (id simpler-new)",
           },
         ],
       });
@@ -172,13 +172,13 @@ describe("createDevice params", () => {
           {
             name: "nope",
             ok: false,
-            reason: "not found on t0/d2 (id comp-new)",
+            detail: "not found on t0/d2 (id comp-new)",
           },
           {
             id: "threshold",
             name: "Threshold",
             value: -60,
-            reason: expect.stringContaining(
+            detail: expect.stringContaining(
               "so -100 was set to the nearest valid value",
             ),
           },
@@ -220,7 +220,7 @@ describe("createDevice params", () => {
           {
             name: "Threshold",
             ok: false,
-            reason: 'set again by "threshold" later in the list',
+            detail: 'set again by "threshold" later in the list',
           },
           { id: "threshold", name: "Threshold", value: -30 },
         ],
@@ -251,7 +251,7 @@ describe("createDevice params", () => {
           {
             id: "threshold",
             ok: false,
-            reason: 'set again by "Threshold" later in the list',
+            detail: 'set again by "Threshold" later in the list',
           },
           { id: "threshold", name: "Threshold", value: -30 },
         ],

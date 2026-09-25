@@ -200,7 +200,7 @@ async function lengthenClipAndCollectInfo(
 
   const clipResults = (
     Array.isArray(updateResult) ? updateResult : [updateResult]
-  ) as { id: string; reason?: string }[];
+  ) as { id: string; detail?: string }[];
   const arrangementClipIds = track.getChildIds("arrangement_clips");
 
   for (const clipObj of clipResults) {
@@ -213,7 +213,7 @@ async function lengthenClipAndCollectInfo(
       // asked for; the copy's entry keeps that.
       duplicatedClips.push({
         ...getMinimalClipInfo(clipLiveAPI),
-        ...(clipObj.reason == null ? {} : { reason: clipObj.reason }),
+        ...(clipObj.detail == null ? {} : { detail: clipObj.detail }),
       });
     }
   }

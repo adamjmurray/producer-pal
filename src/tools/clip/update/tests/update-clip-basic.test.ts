@@ -168,7 +168,7 @@ describe("updateClip - Basic operations", () => {
     },
   );
 
-  // Same reason: "path names the clips" is false when it named none, and the
+  // Same detail: "path names the clips" is false when it named none, and the
   // no-clip warning already says what went wrong.
   // One target, nothing done: there is no list for an entry to hold a place in,
   // so the reason goes back as the error (ADR-0042).
@@ -326,7 +326,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
 
     expect(result).toStrictEqual([
-      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },
       { id: "456", path: "t1/s1" },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -721,12 +721,12 @@ describe("updateClip - Basic operations", () => {
         {
           id: "nonexistent",
           ok: false,
-          reason: 'id "nonexistent" does not exist',
+          detail: 'id "nonexistent" does not exist',
         },
         {
           id: "also-nonexistent",
           ok: false,
-          reason: 'id "also-nonexistent" does not exist',
+          detail: 'id "also-nonexistent" does not exist',
         },
       ]);
       expect(selectSpy).not.toHaveBeenCalled();

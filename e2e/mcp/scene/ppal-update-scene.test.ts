@@ -213,7 +213,7 @@ describe("ppal-update-scene over a list with a target it can't reach", () => {
       {
         path: "s999",
         ok: false,
-        reason: 'no scene at path "s999"; ppal-create-scene makes one',
+        detail: 'no scene at path "s999"; ppal-create-scene makes one',
       },
     ]);
 
@@ -246,7 +246,7 @@ interface UpdateSceneResult {
   id: string;
   path?: string;
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface ReadSceneResult {

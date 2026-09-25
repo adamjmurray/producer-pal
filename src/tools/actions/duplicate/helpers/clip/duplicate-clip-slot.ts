@@ -161,7 +161,7 @@ export function duplicateClipSlot(
   }
 
   if (destinationWasOccupied) {
-    copy.reason = clipOverwriteNote(destination);
+    copy.detail = clipOverwriteNote(destination);
   }
 
   return copy;
@@ -264,7 +264,7 @@ export function duplicateArrangementClipToSlots(
       copy.created = prepared.created;
     }
 
-    copy.reason = [
+    copy.detail = [
       ...(recreated.overwrote ? [clipOverwriteNote(destination)] : []),
       `re-created from the arrangement clip${recreateLossesNote(losses)}`,
     ].join("; ");

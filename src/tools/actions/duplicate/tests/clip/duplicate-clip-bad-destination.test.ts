@@ -62,7 +62,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       {
         path: "t0/s9",
         ok: false,
-        reason: "no clip slot there; created s2-s9 to reach it",
+        detail: "no clip slot there; created s2-s9 to reach it",
       },
     ]);
   });
@@ -91,7 +91,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
     // The missing track keeps its slot, so the entries pair against the toPath.
     expect(result).toStrictEqual([
       { id: livePath.track(2).arrangementClip(0), path: "t2[3|1]" },
-      { path: "t99[3|1]", ok: false, reason: 'no track at toPath "t99"' },
+      { path: "t99[3|1]", ok: false, detail: 'no track at toPath "t99"' },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -110,8 +110,8 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
 
     // Two destinations, two entries: neither copy was made, and each says why.
     expect(result).toStrictEqual([
-      { path: "t98[3|1]", ok: false, reason: 'no track at toPath "t98"' },
-      { path: "t99[3|1]", ok: false, reason: 'no track at toPath "t99"' },
+      { path: "t98[3|1]", ok: false, detail: 'no track at toPath "t98"' },
+      { path: "t99[3|1]", ok: false, detail: 'no track at toPath "t99"' },
     ]);
   });
 });
@@ -170,7 +170,7 @@ describe("duplicate clip - a copy Live refuses", () => {
     );
     expect(result).toStrictEqual([
       { id: livePath.track(1).arrangementClip(0), path: "t1[3|1]" },
-      { path: "t2[3|1]", ok: false, reason: "Live made no copy there" },
+      { path: "t2[3|1]", ok: false, detail: "Live made no copy there" },
     ]);
   });
 });

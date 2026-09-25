@@ -178,12 +178,12 @@ describe("createDevice insertion order", () => {
       {
         path: "t9/d0/pC1/d1",
         ok: false,
-        reason: 'container at path "t9/d0/pC1/d1" does not exist',
+        detail: 'container at path "t9/d0/pC1/d1" does not exist',
       },
       {
         path: "t9/d0/pD1/d1",
         ok: false,
-        reason: 'container at path "t9/d0/pD1/d1" does not exist',
+        detail: 'container at path "t9/d0/pD1/d1" does not exist',
       },
     ]);
   });
@@ -209,7 +209,7 @@ describe("createDevice insertion order", () => {
       {
         path: "s0",
         ok: false,
-        reason: expect.stringContaining("a scene holds no devices"),
+        detail: expect.stringContaining("a scene holds no devices"),
       },
       { id: "created-0", path: "t0/d1" },
     ]);

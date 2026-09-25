@@ -43,7 +43,7 @@ interface TargetEntry {
   id?: string;
   path?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
   [field: string]: unknown;
 }
 
@@ -74,7 +74,7 @@ describe("a write answers the same by path and by id", () => {
       id: returnTrackId,
       path: "rt0",
       name: "A-Foo",
-      reason: "Live prefixes a return track's name with its send letter",
+      detail: "Live prefixes a return track's name with its send letter",
     });
   });
 
@@ -93,7 +93,7 @@ describe("a write answers the same by path and by id", () => {
         return: "A-Delay",
         returnId: await idAt("ppal-read-track", "rt0"),
         gainDb: -12.35,
-        reason: "gainDb read back as shown, not as sent",
+        detail: "gainDb read back as shown, not as sent",
       },
     ]);
   });
@@ -122,7 +122,7 @@ describe("a write answers the same by path and by id", () => {
       path: lane.path,
       name: "Take A",
       ok: false,
-      reason: "a take lane takes only name; ignored color",
+      detail: "a take lane takes only name; ignored color",
     });
   });
 
@@ -136,7 +136,7 @@ describe("a write answers the same by path and by id", () => {
       ],
     );
 
-    expect(midiClip!.reason).toBe("warpMode ignored: the clip is MIDI");
+    expect(midiClip!.detail).toBe("warpMode ignored: the clip is MIDI");
   });
 
   it("update-scene: a target that names nothing keeps its slot", async () => {
@@ -152,7 +152,7 @@ describe("a write answers the same by path and by id", () => {
     expect(missing).toStrictEqual({
       path: "s99",
       ok: false,
-      reason: 'no scene at path "s99"; ppal-create-scene makes one',
+      detail: 'no scene at path "s99"; ppal-create-scene makes one',
     });
   });
 
@@ -168,7 +168,7 @@ describe("a write answers the same by path and by id", () => {
     );
 
     expect(rack!.params).toStrictEqual([
-      { name: "Nope", ok: false, reason: `not found on t0/d0 (id ${rackId})` },
+      { name: "Nope", ok: false, detail: `not found on t0/d0 (id ${rackId})` },
     ]);
   });
 
@@ -187,14 +187,14 @@ describe("a write answers the same by path and by id", () => {
       {
         name: "Volume",
         ok: false,
-        reason: `'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
+        detail: `'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
       },
     ]);
     expect(pad!.params).toStrictEqual([
       {
         name: "Volume",
         ok: false,
-        reason: `'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
+        detail: `'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
       },
     ]);
   });
@@ -213,7 +213,7 @@ describe("a write answers the same by path and by id", () => {
     expect(emptyPad).toStrictEqual({
       path: "t0/d0/pC2",
       ok: false,
-      reason: `drum pad t0/d0/pC2 (id ${emptyPadId}) has no chains, so there is nothing to update — Live ignores writes to an empty pad`,
+      detail: `drum pad t0/d0/pC2 (id ${emptyPadId}) has no chains, so there is nothing to update — Live ignores writes to an empty pad`,
     });
   });
 
@@ -232,7 +232,7 @@ describe("a write answers the same by path and by id", () => {
         return: "a Saturator",
         returnId: await idAt("ppal-read-device", "t0/d0/rc0"),
         gainDb: -12.35,
-        reason: "gainDb read back as shown, not as sent",
+        detail: "gainDb read back as shown, not as sent",
       },
     ]);
   });
@@ -252,11 +252,11 @@ describe("a write answers the same by path and by id", () => {
       id: hostTrackId,
       path: "t11",
       ok: false,
-      reason: `cannot delete track t11 (id ${hostTrackId}), which hosts the Producer Pal device`,
+      detail: `cannot delete track t11 (id ${hostTrackId}), which hosts the Producer Pal device`,
     });
     expect(missing).toStrictEqual({
       path: "t99",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
   });
 
@@ -275,12 +275,12 @@ describe("a write answers the same by path and by id", () => {
     expect(device).toStrictEqual({
       path: "t11/d0",
       ok: false,
-      reason: `cannot duplicate the Producer Pal device t11/d0 (id ${hostDeviceId})`,
+      detail: `cannot duplicate the Producer Pal device t11/d0 (id ${hostDeviceId})`,
     });
     expect(rack).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason:
+      detail:
         `the copy of t0/d0 (id ${rackId}) could not be moved to "t0/d1": ` +
         "the destination already has an instrument, and only one is allowed",
     });
@@ -369,8 +369,8 @@ function expectSameEntry(
   }
 
   if (target.namesNothing) {
-    expect(fromPath.reason).toContain(target.path);
-    expect(fromId.reason).toContain(target.id);
+    expect(fromPath.detail).toContain(target.path);
+    expect(fromId.detail).toContain(target.id);
   }
 
   expect(comparable(fromPath, target)).toStrictEqual(
@@ -390,7 +390,7 @@ function comparable(
 ): Record<string, unknown> {
   const { id: _id, path: _path, ...rest } = entry;
 
-  return target.namesNothing ? { ...rest, reason: "" } : rest;
+  return target.namesNothing ? { ...rest, detail: "" } : rest;
 }
 
 /**

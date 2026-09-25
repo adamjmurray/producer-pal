@@ -376,7 +376,7 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
       id: "new-rack",
       type: "instrument-rack",
       deviceCount: 1,
-      reason:
+      detail:
         'path "t0/d0" is not in the rack: Live didn\'t move it; ' +
         "the instrument was left on new track t1",
     });
@@ -401,7 +401,7 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
       id: "new-rack",
       type: "instrument-rack",
       deviceCount: 1,
-      reason: 'no device at "missing"',
+      detail: 'no device at "missing"',
     });
   });
 

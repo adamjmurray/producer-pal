@@ -76,9 +76,9 @@ export interface ParsedAction {
 }
 
 /** What an action handler answers with, like `PseudoParam.write`: `null` ran, a
- * string is the reason it refused (`ok: false` on its entry), `{ reason }` ran
+ * string is why it refused (`ok: false` on its entry), `{ detail }` ran
  * but found nothing to change. Handlers never warn. */
-export type ActionOutcome = string | { reason: string } | null;
+export type ActionOutcome = string | { detail: string } | null;
 
 /** Handler for a single named action. */
 export type ActionHandler = (
@@ -87,13 +87,13 @@ export type ActionHandler = (
 ) => ActionOutcome;
 
 /** One entry of the `actions` an update-device result reports, addressed by the
- * action string as written: the action alone when it ran, plus a `reason` when
+ * action string as written: the action alone when it ran, plus a `detail` when
  * it found nothing to change, and `ok: false` with one when nothing was done.
- * `ok` never appears without a reason. */
+ * `ok` never appears without a detail. */
 export type ActionResult =
   | { action: string }
-  | { action: string; reason: string }
-  | { action: string; ok: false; reason: string };
+  | { action: string; detail: string }
+  | { action: string; ok: false; detail: string };
 
 /**
  * A named action's full definition: the handler plus the discovery metadata

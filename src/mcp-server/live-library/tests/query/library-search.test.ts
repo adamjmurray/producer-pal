@@ -39,7 +39,7 @@ describe("librarySearch", () => {
 
     expect(result.dbAvailable).toBe(false);
     expect(result.items).toHaveLength(0);
-    expect(result.reason).toContain("Live database not found");
+    expect(result.detail).toContain("Live database not found");
   });
 
   describe("kind filter", () => {
@@ -582,7 +582,7 @@ describe("librarySearch", () => {
 
       expect(result.dbAvailable).toBe(true);
       expect(result.items).toHaveLength(0);
-      expect(result.reason).toBe(
+      expect(result.detail).toBe(
         "inFolder path not found: /Users/test/Music/Ableton/NonExistentFolder",
       );
     });
@@ -612,7 +612,7 @@ describe("librarySearch", () => {
       );
       // Crucially, results include items deeper than the root level.
       expect(empty.items.map((i) => i.name)).toContain("user_kick.aif");
-      expect(empty.reason).toBeUndefined();
+      expect(empty.detail).toBeUndefined();
     });
 
     it("resolves segments case-insensitively (COLLATE NOCASE)", async () => {
@@ -649,7 +649,7 @@ describe("librarySearch", () => {
 
         expect(result.dbAvailable).toBe(false);
         expect(result.items).toHaveLength(0);
-        expect(result.reason).toContain("Failed to read Live database");
+        expect(result.detail).toContain("Failed to read Live database");
       } finally {
         broken.cleanup();
       }

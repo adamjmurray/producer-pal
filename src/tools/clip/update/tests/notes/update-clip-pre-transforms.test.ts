@@ -208,7 +208,7 @@ describe("updateClip - preTransforms", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason: "preTransforms ignored: the clip is audio",
+      detail: "preTransforms ignored: the clip is audio",
     });
     expect(capturedWarnings()).toHaveLength(0);
   });

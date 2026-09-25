@@ -125,7 +125,7 @@ describe("updateDevice - written param values", () => {
       id: "dev1",
       path: "t0/d0",
       params: [
-        { name: "Nope", ok: false, reason: "not found on t0/d0 (id dev1)" },
+        { name: "Nope", ok: false, detail: "not found on t0/d0 (id dev1)" },
         { id: "attack", name: "Attack", value: 10 },
       ],
     });
@@ -153,7 +153,7 @@ describe("updateDevice - written param values", () => {
         {
           name: "pC1/d0/Cutoff",
           ok: false,
-          reason: "not found on t0/d0/c0/d0 (id pad-dev)",
+          detail: "not found on t0/d0/c0/d0 (id pad-dev)",
         },
       ],
     });
@@ -169,7 +169,7 @@ describe("updateDevice - written param values", () => {
       {
         name: "pC1/d0/ Cutoff",
         ok: false,
-        reason: "not found on t0/d0/c0/d0 (id pad-dev)",
+        detail: "not found on t0/d0/c0/d0 (id pad-dev)",
       },
     ]);
   });
@@ -189,11 +189,11 @@ describe("updateDevice - written param values", () => {
       id: "dev1",
       path: "t0/d0",
       params: [
-        { name: "Nope", ok: false, reason: "not found on t0/d0 (id dev1)" },
+        { name: "Nope", ok: false, detail: "not found on t0/d0 (id dev1)" },
         {
           name: "Also nope",
           ok: false,
-          reason: "not found on t0/d0 (id dev1)",
+          detail: "not found on t0/d0 (id dev1)",
         },
       ],
     });
@@ -217,7 +217,7 @@ describe("updateDevice - written param values", () => {
           id: "attack",
           name: "Attack",
           value: 30,
-          reason:
+          detail:
             "only goes from 0.01 ms to 30 ms, so 5000 was set to the nearest valid value",
         },
       ],
@@ -243,7 +243,7 @@ describe("updateDevice - written param values", () => {
         {
           name: "Attack",
           ok: false,
-          reason: expect.stringContaining("was not changed"),
+          detail: expect.stringContaining("was not changed"),
         },
       ],
     });
@@ -287,7 +287,7 @@ describe("updateDevice - written param values", () => {
           id: "macro-1",
           name: "Macro 1",
           value: 90,
-          reason: "value read back as shown, not as sent",
+          detail: "value read back as shown, not as sent",
         },
       ],
     });
@@ -368,7 +368,7 @@ describe("updateDevice - written param values", () => {
         {
           name: "retrigger",
           ok: false,
-          reason: '"sometimes" is not a valid retrigger (expected true/false)',
+          detail: '"sometimes" is not a valid retrigger (expected true/false)',
         },
       ],
     });
@@ -398,7 +398,7 @@ describe("updateDevice - written param values", () => {
         {
           name: "sample",
           ok: false,
-          reason: "written, but no value reads back",
+          detail: "written, but no value reads back",
         },
       ],
     });
@@ -423,7 +423,7 @@ describe("updateDevice - written param values", () => {
         {
           name: "sample",
           ok: false,
-          reason:
+          detail:
             'not loaded — check the path; "/Library/kick.aif" is still there',
         },
       ],
@@ -458,7 +458,7 @@ describe("updateDevice - written param values", () => {
     expect(result).toStrictEqual({
       id: "simpler-1",
       path: "t0/d0",
-      params: [{ name: "multiSampleMode", ok: false, reason: "read-only" }],
+      params: [{ name: "multiSampleMode", ok: false, detail: "read-only" }],
     });
   });
 });

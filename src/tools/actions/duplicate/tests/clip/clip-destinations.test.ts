@@ -60,7 +60,7 @@ function slotRefusal(trackIndex: number, sceneIndex: number) {
   return {
     path: `t${trackIndex}/s${sceneIndex}`,
     ok: false as const,
-    reason:
+    detail:
       "a clip slot can't take an arrangement copy; " +
       `name a track's arrangement instead, as "t${trackIndex}[5|1]"`,
   };

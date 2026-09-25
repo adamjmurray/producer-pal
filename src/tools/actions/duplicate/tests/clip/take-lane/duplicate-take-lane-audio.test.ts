@@ -144,7 +144,7 @@ describe("duplicate an audio clip to a take lane", () => {
    * @returns Its reason
    */
   function reasonOf(entry: unknown): string | undefined {
-    return (entry as { reason?: string }).reason;
+    return (entry as { detail?: string }).detail;
   }
 
   it("re-creates the clip from its sample", async () => {
@@ -165,7 +165,7 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
-      reason:
+      detail:
         "re-created on the take lane (warp markers reset to the sample's " +
         "defaults); expand the take-lanes arrow on the track header in Live " +
         "to see it",
@@ -275,7 +275,7 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(result).toStrictEqual({
       id: "tl_clip_37",
       path: "t0[5|1]",
-      reason:
+      detail:
         "promoted to the main lane by re-creating it (warp markers reset to " +
         "the sample's defaults)",
     });

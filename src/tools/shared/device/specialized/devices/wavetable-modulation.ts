@@ -162,7 +162,7 @@ export function clearModulationAction(
   // Not a refusal: an unrouted target is already the state asked for.
   if (targetIndex < 0) {
     return {
-      reason: `target "${target}" is not in the modulation matrix — nothing to clear`,
+      detail: `target "${target}" is not in the modulation matrix — nothing to clear`,
     };
   }
 
@@ -192,7 +192,7 @@ export function addModulationTargetAction(
   // Not a refusal: the parameter is already routable.
   if (resolveTargetIndex(device, name) >= 0) {
     return {
-      reason: `parameter "${name}" is already in the modulation matrix`,
+      detail: `parameter "${name}" is already in the modulation matrix`,
     };
   }
 

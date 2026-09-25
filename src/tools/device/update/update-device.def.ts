@@ -56,7 +56,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a reason) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
@@ -84,7 +84,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // a delimited string would be ambiguous. One action string per element.
     actions: param(z.array(z.string()).optional(), {
       default:
-        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a reason when there was nothing to do, or `ok:false` and why nothing happened',
+        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a `detail` when there was nothing to do, or `ok:false` and why nothing happened',
       smallModel: null,
     }),
     macroVariation: param(

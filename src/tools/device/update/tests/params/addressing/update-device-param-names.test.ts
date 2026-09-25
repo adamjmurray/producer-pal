@@ -143,7 +143,7 @@ describe("updateDevice - params by name", () => {
         {
           name: "Nonexistent",
           ok: false,
-          reason: "not found on t0/d0 (id 123)",
+          detail: "not found on t0/d0 (id 123)",
         },
       ],
     });
@@ -195,7 +195,7 @@ describe("updateDevice - a name that matches more than one param", () => {
       {
         name: "Width",
         ok: false,
-        reason:
+        detail:
           "names 2 params on t0/d0 (id 123) — " +
           "id 94 (0.5 to 9), id 95 (0 % to 100 %) — so " +
           "nothing was written. Send {id, value} to pick one.",
@@ -217,12 +217,12 @@ describe("updateDevice - a name that matches more than one param", () => {
       {
         name: "Width",
         ok: false,
-        reason: 'set again by "width" later in the list',
+        detail: 'set again by "width" later in the list',
       },
       {
         name: "width",
         ok: false,
-        reason: expect.stringContaining("names 2 params"),
+        detail: expect.stringContaining("names 2 params"),
       },
     ]);
     expect(bandwidth.set).not.toHaveBeenCalled();
@@ -325,7 +325,7 @@ describe("updateDevice - two rack macros renamed the same", () => {
       {
         name: "Drive",
         ok: false,
-        reason:
+        detail:
           "names 2 params on t0/d0 (id 123) — " +
           "id m1 (0 to 127), id m2 (0 to 127) — so nothing was written. " +
           "Send {id, value} to pick one.",
@@ -439,7 +439,7 @@ describe("updateDevice - enum values", () => {
         {
           name: "Device On",
           ok: false,
-          reason: '"peak" is not valid. Options: Off, On',
+          detail: '"peak" is not valid. Options: Off, On',
         },
       ],
     });
@@ -501,7 +501,7 @@ describe("updateDevice - one param named twice", () => {
       {
         name: "Threshold",
         ok: false,
-        reason: 'set again by "threshold" later in the list',
+        detail: 'set again by "threshold" later in the list',
       },
       { id: "789", name: "Threshold" },
     ]);
@@ -523,12 +523,12 @@ describe("updateDevice - one param named twice", () => {
       {
         name: "Threshold",
         ok: false,
-        reason: 'set again by "threshold" later in the list',
+        detail: 'set again by "threshold" later in the list',
       },
       {
         name: "789",
         ok: false,
-        reason: 'set again by "threshold" later in the list',
+        detail: 'set again by "threshold" later in the list',
       },
     ]);
   });
@@ -548,7 +548,7 @@ describe("updateDevice - one param named twice", () => {
     expect(paramsOf(result)[0]).toStrictEqual({
       name: "Reverb",
       ok: false,
-      reason: 'set again by "Reverb (Macro 1)" later in the list',
+      detail: 'set again by "Reverb (Macro 1)" later in the list',
     });
     expect(paramMacro1.set).toHaveBeenCalledTimes(1);
     expect(paramMacro1.set).toHaveBeenCalledWith("value", 0.8);
@@ -569,9 +569,9 @@ describe("updateDevice - one param named twice", () => {
       {
         name: "Nope",
         ok: false,
-        reason: 'set again by "nope" later in the list',
+        detail: 'set again by "nope" later in the list',
       },
-      { name: "nope", ok: false, reason: expect.stringContaining("not found") },
+      { name: "nope", ok: false, detail: expect.stringContaining("not found") },
     ]);
   });
 

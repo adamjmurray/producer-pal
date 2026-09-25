@@ -159,7 +159,7 @@ describe("deleteObject chain deletion", () => {
         id: "rack-chain",
         path: "t0/d0/c5",
         ok: false,
-        reason:
+        detail:
           "chain t0/d0/c5 (id rack-chain) is not on a drum pad. Live has no way to " +
           `delete a rack chain, and only a drum pad's chains can be removed.`,
       },
@@ -241,7 +241,7 @@ describe("deleteObject chain deletion", () => {
 
     expect(result).toStrictEqual({
       path: "t0/d0/c9",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
   });
@@ -255,7 +255,7 @@ describe("deleteObject chain deletion", () => {
 
     expect(result).toStrictEqual({
       path: "t0/d0/pC1/c9",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
   });

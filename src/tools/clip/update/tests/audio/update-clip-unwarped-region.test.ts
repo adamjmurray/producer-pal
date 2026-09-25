@@ -245,7 +245,7 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason: "warping ignored: looping forces warping on",
+      detail: "warping ignored: looping forces warping on",
     });
     expect(capturedWarnings()).toHaveLength(0);
   }

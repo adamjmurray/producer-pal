@@ -228,14 +228,14 @@ describe("createClip - audio clips", () => {
       const result = (await createClip({
         slot: "0/0",
         sampleFile: "/path/to/audio.wav",
-      })) as { reason?: string };
+      })) as { detail?: string };
 
       expect(scratch.call).toHaveBeenCalledWith(
         "create_audio_clip",
         "/path/to/audio.wav",
       );
       expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
-      expect(result.reason).toBe("overwrote the existing clip at t0/s0");
+      expect(result.detail).toBe("overwrote the existing clip at t0/s0");
     });
 
     it("keeps the slot's clip when the sample can't be loaded", async () => {
@@ -405,13 +405,13 @@ describe("createClip - audio clips", () => {
         {
           path: "t0[1|1]",
           ok: false,
-          reason:
+          detail:
             'Live created no clip at t0[1|1] from sampleFile "/path/to/invalid.wav"',
         },
         {
           path: "t0[3|1]",
           ok: false,
-          reason:
+          detail:
             'Live created no clip at t0[3|1] from sampleFile "/path/to/invalid.wav"',
         },
       ]);

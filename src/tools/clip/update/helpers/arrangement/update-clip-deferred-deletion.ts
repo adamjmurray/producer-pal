@@ -31,7 +31,7 @@ import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { clipIsGone } from "../batch/buried-clips.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-overwrite-plan.ts";
 import {
   deferClipDeletion,
@@ -122,9 +122,9 @@ export function flushDeferredDeletions(
         // Report what is true now, not what was planned.
         if (clipIsGone(clip)) {
           result.deleted = true;
-          appendReason(result, CLEARED);
+          appendDetail(result, CLEARED);
         } else {
-          appendReason(
+          appendDetail(
             result,
             `not moved: the clip due to land on top of it at ${groupSpot(group)} didn't, so the original was kept`,
           );
@@ -142,7 +142,7 @@ export function flushDeferredDeletions(
         const leftover = removeMovedSource(clip, sourceTrack);
 
         if (leftover != null) {
-          appendReason(result, leftover);
+          appendDetail(result, leftover);
         }
       }
     }

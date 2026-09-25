@@ -598,7 +598,7 @@ describe("updateDevice - wrapInRack", () => {
       updateDevice({ path: "t0/d0", id: "not-a-device", wrapInRack: true }),
     ).toStrictEqual(
       expect.objectContaining({
-        reason: '"not-a-device" is a chain, not a device',
+        detail: '"not-a-device" is a chain, not a device',
       }),
     );
   });
@@ -632,7 +632,7 @@ describe("updateDevice - wrapInRack", () => {
       deviceCount: 0,
       id: "new-rack",
       type: "audio-effect-rack",
-      reason:
+      detail:
         'path "t0/d0" stayed put: Live made no chain for it; the new rack was left empty',
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -654,7 +654,7 @@ describe("updateDevice - wrapInRack", () => {
       deviceCount: 0,
       id: "new-rack",
       type: "audio-effect-rack",
-      reason:
+      detail:
         'path "t0/d0" stayed put: Live made no chain for it; the new rack was left empty',
     });
     expect(capturedWarnings()).toStrictEqual([]);

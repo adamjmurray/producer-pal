@@ -77,7 +77,7 @@ describe("updateDevice - macroVariation", () => {
     expect(result).toStrictEqual({
       id: "456",
       path: "t0/d1",
-      reason: "macro variations are only available on rack devices",
+      detail: "macro variations are only available on rack devices",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });

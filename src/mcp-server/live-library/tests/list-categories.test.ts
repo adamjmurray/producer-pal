@@ -44,7 +44,7 @@ describe("listCategories", () => {
 
       expect(result.dbAvailable).toBe(false);
       expect(result.categories).toBeUndefined();
-      expect(result.reason).toContain("Failed to read Live database");
+      expect(result.detail).toContain("Failed to read Live database");
     } finally {
       broken.cleanup();
     }
@@ -89,7 +89,7 @@ describe("listCategories", () => {
 
       expect(result.category).toBe("Sounds");
       expect(result.tags).toStrictEqual([]);
-      expect(result.reason).toBeUndefined();
+      expect(result.detail).toBeUndefined();
     });
 
     it("flags an unknown category with a not-found reason", async () => {
@@ -97,7 +97,7 @@ describe("listCategories", () => {
 
       expect(result.category).toBe("Nope");
       expect(result.tags).toStrictEqual([]);
-      expect(result.reason).toBe("category not found: Nope");
+      expect(result.detail).toBe("category not found: Nope");
     });
 
     it("escapes LIKE metacharacters in the category name", async () => {

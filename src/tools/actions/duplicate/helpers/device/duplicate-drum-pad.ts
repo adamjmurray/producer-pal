@@ -26,7 +26,7 @@ export interface DuplicateDrumPadResult {
   id: string;
   path: string;
   /** What the copy did that wasn't asked for, when it did. */
-  reason?: string;
+  detail?: string;
 }
 
 export interface PadTarget {
@@ -234,7 +234,7 @@ function finishPadCopy(
     // Live layers rather than replaces, matching a device-based pad move onto
     // an occupied pad. Say so, because the pad now plays both.
     ...(chainsBefore > 0 && {
-      reason: `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
+      detail: `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
     }),
   };
 }

@@ -83,7 +83,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       id: "chain-0",
       path: "t0/d0/c0",
       gainDb: -15.02,
-      reason: "gainDb read back as shown, not as sent",
+      detail: "gainDb read back as shown, not as sent",
     });
   });
 
@@ -98,7 +98,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       path: "t0/d0/c0",
       gainDb: -15.02,
       pan: -0.26,
-      reason: "gainDb, pan read back as shown, not as sent",
+      detail: "gainDb, pan read back as shown, not as sent",
     });
   });
 
@@ -123,7 +123,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
           return: "a Reverb",
           returnId: "rc-0",
           gainDb: -11.98,
-          reason: SNAPPED_SEND,
+          detail: SNAPPED_SEND,
         },
       ],
     });
@@ -154,7 +154,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
           return: "a Reverb",
           returnId: "rc-0",
           gainDb: -6.02,
-          reason: SNAPPED_SEND,
+          detail: SNAPPED_SEND,
         },
       ],
     });
@@ -176,7 +176,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         {
           return: "nope",
           ok: false,
-          reason: 'no return chain matching "nope" (returns: a Reverb)',
+          detail: 'no return chain matching "nope" (returns: a Reverb)',
         },
       ],
     });
@@ -281,7 +281,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       id: "chain-0",
       path: "t0/d0/c0",
       gainDb: -15.02,
-      reason:
+      detail:
         "gainDb read back as shown, not as sent; macroCount not applicable to a drum pad chain",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -298,7 +298,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(result[0]).toStrictEqual({
       id: "target-1",
       ok: false,
-      reason: "gainDb not applicable to a device",
+      detail: "gainDb not applicable to a device",
     });
     expect(result[1].id).toBe("chain-0");
     expect(capturedWarnings()).toStrictEqual([]);
@@ -370,7 +370,7 @@ describe("updateDevice - return chain rename mid-request", () => {
       {
         return: "Echo",
         ok: false,
-        reason: 'no return chain matching "Echo" (returns: Delay)',
+        detail: 'no return chain matching "Echo" (returns: Delay)',
       },
     ]);
     expect(result[2]?.sends).toBeUndefined();

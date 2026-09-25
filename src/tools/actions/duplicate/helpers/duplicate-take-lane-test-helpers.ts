@@ -20,8 +20,8 @@ export interface LaneCopyEntry {
   path: string;
   created?: true;
   name?: string;
-  clips: Array<{ id?: string; path?: string; ok?: false; reason?: string }>;
-  reason: string;
+  clips: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
+  detail: string;
 }
 
 /**

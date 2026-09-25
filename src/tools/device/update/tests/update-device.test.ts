@@ -73,7 +73,7 @@ describe("updateDevice", () => {
 
     expect(result).toStrictEqual([
       { id: "123", path: "t0/d0" },
-      { id: "999", ok: false, reason: 'id "999" does not exist' },
+      { id: "999", ok: false, detail: 'id "999" does not exist' },
       { id: "456", path: "t0/d1" },
     ]);
     // The entries carry it, so nothing warns about a target twice.
@@ -89,8 +89,8 @@ describe("updateDevice", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: "998", ok: false, reason: 'id "998" does not exist' },
-      { id: "999", ok: false, reason: 'id "999" does not exist' },
+      { id: "998", ok: false, detail: 'id "998" does not exist' },
+      { id: "999", ok: false, detail: 'id "999" does not exist' },
     ]);
   });
 
@@ -179,7 +179,7 @@ describe("updateDevice", () => {
         id: "123",
         path: "t0/d0",
         params: [
-          { name: "999", ok: false, reason: "not found on t0/d0 (id 123)" },
+          { name: "999", ok: false, detail: "not found on t0/d0 (id 123)" },
         ],
       });
       expect(capturedWarnings()).toHaveLength(0);
@@ -252,7 +252,7 @@ describe("updateDevice", () => {
             {
               name: "791",
               ok: false,
-              reason: `"${value}" is not valid. Options: Repitch, Fade, Jump`,
+              detail: `"${value}" is not valid. Options: Repitch, Fade, Jump`,
             },
           ],
         });
@@ -359,7 +359,7 @@ describe("updateDevice", () => {
             id: "792",
             name: "Pan",
             value: 0,
-            reason: "value read back as shown, not as sent",
+            detail: "value read back as shown, not as sent",
           },
         ],
       });
@@ -424,7 +424,7 @@ describe("updateDevice", () => {
           {
             name: "792",
             ok: false,
-            reason:
+            detail:
               '"hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
           },
         ],
@@ -502,7 +502,7 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        reason: "macroCount rounded from 7 to 8 (macros come in pairs)",
+        detail: "macroCount rounded from 7 to 8 (macros come in pairs)",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -513,7 +513,7 @@ describe("updateDevice", () => {
       expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
-        reason:
+        detail:
           "macroCount landed at 8, not 4: Live keeps a mapped macro visible",
       });
       expect(capturedWarnings()).toStrictEqual([]);
@@ -525,7 +525,7 @@ describe("updateDevice", () => {
       expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
-        reason: "macroCount landed at 6, not 4",
+        detail: "macroCount landed at 6, not 4",
       });
     });
 
@@ -535,7 +535,7 @@ describe("updateDevice", () => {
       expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
         id: "rack",
         path: "t0/d0",
-        reason: "macros 5 to 8 hidden; any mappings on them are gone",
+        detail: "macros 5 to 8 hidden; any mappings on them are gone",
       });
     });
 
@@ -724,7 +724,7 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        reason: "a chain cannot be moved; move its devices instead",
+        detail: "a chain cannot be moved; move its devices instead",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -784,7 +784,7 @@ describe("updateDevice", () => {
         {
           id: "999",
           ok: false,
-          reason: "cannot update a track: t3 (id 999)",
+          detail: "cannot update a track: t3 (id 999)",
         },
         { id: "123", path: "t0/d0" },
       ]);

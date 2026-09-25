@@ -60,7 +60,7 @@ describe("readSendBack", () => {
       return: "Reverb",
       returnId: "return-1",
       gainDb: -70,
-      reason: "gainDb read back as shown, not as sent",
+      detail: "gainDb read back as shown, not as sent",
     });
   });
 });
@@ -73,7 +73,7 @@ describe("refusedSend", () => {
       return: "Reverb",
       returnId: "return-1",
       ok: false,
-      reason: "gainDb is disabled",
+      detail: "gainDb is disabled",
     });
   });
 
@@ -83,7 +83,7 @@ describe("refusedSend", () => {
     ).toStrictEqual({
       return: "Reverb",
       ok: false,
-      reason: "gainDb is disabled",
+      detail: "gainDb is disabled",
     });
   });
 });

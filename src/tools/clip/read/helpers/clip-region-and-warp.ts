@@ -75,7 +75,7 @@ interface WarpMarkerData {
 export interface WarpMarkerRead {
   markers?: WarpMarker[];
   /** Why there are none, when reading them failed */
-  reason?: string;
+  detail?: string;
 }
 
 /** Mapping of Live API warp modes to friendly names */
@@ -92,7 +92,7 @@ export const WARP_MODE_MAPPING: Record<number, string> = {
 /**
  * Process warp markers for an audio clip
  * @param clip - LiveAPI clip object
- * @returns The markers, or the reason the clip has none to give
+ * @returns The markers, or why the clip has none to give
  */
 export function processWarpMarkers(clip: LiveAPI): WarpMarkerRead {
   try {
@@ -119,7 +119,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarkerRead {
     return {};
   } catch (error) {
     // The clip might not support warp markers, or the format is unexpected.
-    return { reason: `warpMarkers unreadable: ${errorMessage(error)}` };
+    return { detail: `warpMarkers unreadable: ${errorMessage(error)}` };
   }
 }
 

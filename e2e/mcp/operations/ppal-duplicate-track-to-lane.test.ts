@@ -50,11 +50,11 @@ interface LaneCopyResult {
     id?: string;
     path?: string;
     ok?: false;
-    reason?: string;
+    detail?: string;
     /** A copy a later one in the same call landed on top of */
     overwritten?: true;
   }>;
-  reason: string;
+  detail: string;
   ok?: false;
 }
 
@@ -197,7 +197,7 @@ describe("ppal-duplicate track to a take lane", () => {
       await readNotes({ path: `${SOURCE}[1|1]` }),
     );
     // The entry says what a lane can't take, so nothing is dropped silently.
-    expect(result.reason).toContain("clips only");
+    expect(result.detail).toContain("clips only");
 
     // A lane copy is not a track copy: the Set has the same tracks it had.
     const after = parseToolResult<ReadLiveSetTracksResult>(
@@ -224,7 +224,7 @@ describe("ppal-duplicate track to a take lane", () => {
     expect(result[1]).toStrictEqual({
       path: `t${GROUP_TRACK}/l0`,
       ok: false,
-      reason: `only regular tracks have take lanes; "t${GROUP_TRACK}" is a group track`,
+      detail: `only regular tracks have take lanes; "t${GROUP_TRACK}" is a group track`,
     });
 
     await sleep(100);
@@ -329,7 +329,7 @@ describe("ppal-duplicate track to a take lane", () => {
     expect(result[1]).toStrictEqual({
       path: `${DESTINATION}/l${MAX_TAKE_LANES}`,
       ok: false,
-      reason: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
+      detail: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     });
 
     await sleep(100);
@@ -356,7 +356,7 @@ describe("ppal-duplicate take lane to a main lane", () => {
       `${SOURCE}[1|1]`,
       `${SOURCE}[5|1]`,
     ]);
-    expect(result.reason).toContain("clips only");
+    expect(result.detail).toContain("clips only");
 
     await sleep(100);
     const track = await readTrackClips(SOURCE);

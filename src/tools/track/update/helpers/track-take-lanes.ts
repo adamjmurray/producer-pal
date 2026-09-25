@@ -40,7 +40,7 @@ export interface UpdateTakeLaneResult {
    * the one named), when it made any */
   created?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 /** The params that name the targets, plus the one a lane can use. */
@@ -127,7 +127,7 @@ export function updateTakeLane(
       ? {}
       : {
           ...(wrote ? {} : { ok: false as const }),
-          reason: `a take lane takes only name; ignored ${ignored.join(", ")}`,
+          detail: `a take lane takes only name; ignored ${ignored.join(", ")}`,
         }),
   };
 }

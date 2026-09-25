@@ -107,7 +107,7 @@ export async function createLocator(
   if (existing) {
     return {
       operation: "skipped",
-      reason: `a locator is already at ${target.value}`,
+      detail: `a locator is already at ${target.value}`,
       time: target.value,
       existingId: existing.locator.id,
     };
@@ -132,7 +132,7 @@ export async function createLocator(
       time: target.value,
       ...(target.name != null && { name: target.name }),
       ok: false,
-      reason: `Live made no locator at ${target.value}`,
+      detail: `Live made no locator at ${target.value}`,
     };
   }
 
@@ -162,8 +162,8 @@ export function renameLocator(
       operation: "skipped",
       ok: false,
       ...(target.param === "locatorId"
-        ? { reason: `no locator with id "${target.value}"`, id: target.value }
-        : { reason: `no locator at ${target.value}`, time: target.value }),
+        ? { detail: `no locator with id "${target.value}"`, id: target.value }
+        : { detail: `no locator at ${target.value}`, time: target.value }),
     };
   }
 

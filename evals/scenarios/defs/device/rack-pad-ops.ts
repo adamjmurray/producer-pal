@@ -177,7 +177,7 @@ function assertCalledWithType(
 }
 
 /**
- * The layer landed: copying onto an occupied pad says so as a `reason` on the
+ * The layer landed: copying onto an occupied pad says so as a `detail` on the
  * copy's own result entry. Nothing in the end state can prove it — a copy that
  * never happened leaves the same one-chain pad as the layer that was removed
  * again.
@@ -190,23 +190,23 @@ function assertLayeredOntoPad(turn: number): EvalAssertion {
     type: "custom",
     description: `turn ${turn}: the copy layered onto the occupied pad`,
     assert: (turns: EvalTurnResult[]) => {
-      const reasons = getToolCalls(turns, turn)
+      const details = getToolCalls(turns, turn)
         .filter((c) => c.name === TOOL_DUPLICATE)
         .flatMap((c) => {
           if (c.result == null) {
             return [];
           }
 
-          const { reason } = parseToolResult(c.result) as { reason?: string };
+          const { detail } = parseToolResult(c.result) as { detail?: string };
 
-          return reason == null ? [] : [reason];
+          return detail == null ? [] : [detail];
         });
 
-      if (!reasons.some((r) => /layer/i.test(r))) {
+      if (!details.some((r) => /layer/i.test(r))) {
         throw new Error(
-          reasons.length === 0
-            ? "no layering reason — the copy never reached the occupied pad"
-            : `no layering reason — got: ${reasons.join("; ")}`,
+          details.length === 0
+            ? "no layering detail — the copy never reached the occupied pad"
+            : `no layering detail — got: ${details.join("; ")}`,
         );
       }
 

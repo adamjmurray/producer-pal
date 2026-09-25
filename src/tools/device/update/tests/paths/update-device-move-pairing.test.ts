@@ -141,7 +141,7 @@ describe("updateDevice — pairing toPath with the targets", () => {
       {
         id: "src-0",
         path: "t0/d1",
-        reason: 'not moved: nothing at toPath "t9/d0"',
+        detail: 'not moved: nothing at toPath "t9/d0"',
       },
       { id: "src-1", path: "t0/d0" },
     ]);
@@ -208,7 +208,7 @@ describe("updateDevice — pairing toPath with the targets", () => {
         id: "pad-36",
         path: "t0/d1/pC1",
         chainIds: ["chain-0"],
-        reason: expect.stringContaining("catch-all pad"),
+        detail: expect.stringContaining("catch-all pad"),
       },
       { id: "mover", path: "t0/d0" },
     ]);
@@ -225,7 +225,7 @@ describe("updateDevice — pairing toPath with the targets", () => {
 
     expect(result).toStrictEqual([
       { id: "src-0", path: "t2/d0" },
-      { path: "t0/d5", ok: false, reason: expect.stringContaining("t0/d5") },
+      { path: "t0/d5", ok: false, detail: expect.stringContaining("t0/d5") },
     ]);
   });
 

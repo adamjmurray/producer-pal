@@ -22,7 +22,7 @@ export interface MinimalClipInfo {
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
   /** Why the copy isn't quite what was asked for, when it isn't. */
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -57,9 +57,9 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
  * The entry a destination no copy landed at keeps in the result, so a call
  * naming N destinations still answers with N entries (ADR-0042).
  * @param path - The destination, as the path a copy there would report
- * @param reason - Why no copy landed, in the words a single one would throw
+ * @param detail - Why no copy landed, in the words a single one would throw
  * @returns The skip entry
  */
-export function skippedCopy(path: string, reason: string): TargetSkip {
-  return { path, ok: false, reason };
+export function skippedCopy(path: string, detail: string): TargetSkip {
+  return { path, ok: false, detail };
 }

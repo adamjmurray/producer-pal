@@ -457,7 +457,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       {
         id: "789",
         path: "t0[1|1]",
-        reason:
+        detail:
           "arrangementLength didn't finish: Live said no; " +
           "overwrote the clip at t0[2|1]",
       },

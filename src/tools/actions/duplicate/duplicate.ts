@@ -367,7 +367,7 @@ function validateSourceIds(
  * The copy when the call asked for one, otherwise one entry per copy asked for.
  *
  * A lone copy that wasn't made has no list for its entry to hold a place in, so
- * its reason goes back as the error it would have been (ADR-0042).
+ * its detail goes back as the error it would have been (ADR-0042).
  * @param createdObjects - One entry per copy the call asked for
  * @returns The single entry, or all of them
  * @throws Error when the call asked for one copy and it wasn't made
@@ -376,10 +376,10 @@ function oneOrAll(createdObjects: object[]): object | object[] {
   const [only] = createdObjects;
 
   if (createdObjects.length === 1 && only != null) {
-    const skip = only as { ok?: false; reason?: string };
+    const skip = only as { ok?: false; detail?: string };
 
     if (skip.ok === false) {
-      throw new Error(skip.reason);
+      throw new Error(skip.detail);
     }
 
     return only;

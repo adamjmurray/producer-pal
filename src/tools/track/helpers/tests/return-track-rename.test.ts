@@ -40,21 +40,21 @@ describe("returnTrackRename", () => {
   it("strips whatever case the letter was written in", () => {
     expect(returnTrackRename(returnPath(0), "a-Delay")).toStrictEqual({
       write: "Delay",
-      landed: { name: "A-Delay", reason: PREFIXED },
+      landed: { name: "A-Delay", detail: PREFIXED },
     });
   });
 
   it("keeps another slot's letter and reports the doubled name", () => {
     expect(returnTrackRename(returnPath(2), "B-Side")).toStrictEqual({
       write: "B-Side",
-      landed: { name: "C-B-Side", reason: PREFIXED },
+      landed: { name: "C-B-Side", detail: PREFIXED },
     });
   });
 
   it("reports the letter a bare name comes back with", () => {
     expect(returnTrackRename(returnPath(0), "Tape")).toStrictEqual({
       write: "Tape",
-      landed: { name: "A-Tape", reason: PREFIXED },
+      landed: { name: "A-Tape", detail: PREFIXED },
     });
   });
 

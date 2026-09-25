@@ -47,7 +47,7 @@ interface SceneResult {
   created?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface SceneProperties {

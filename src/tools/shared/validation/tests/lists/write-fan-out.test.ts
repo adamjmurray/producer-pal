@@ -40,7 +40,7 @@ describe("writeFanOut", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: "9", ok: false, reason: 'id "9" does not exist' },
+      { id: "9", ok: false, detail: 'id "9" does not exist' },
       { wrote: "t0" },
     ]);
   });

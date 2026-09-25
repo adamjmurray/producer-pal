@@ -60,7 +60,7 @@ describe("updateDevice - disabled params", () => {
         {
           name: "Volume",
           ok: false,
-          reason: expect.stringContaining("is disabled and was not changed"),
+          detail: expect.stringContaining("is disabled and was not changed"),
         },
       ],
     });

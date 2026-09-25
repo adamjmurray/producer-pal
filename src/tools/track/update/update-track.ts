@@ -39,7 +39,7 @@ import {
   applyTrackSends,
   trackSendsAt,
 } from "./helpers/track-send-updates.ts";
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import {
   type SendResult,
@@ -119,13 +119,13 @@ interface UpdateTrackResult extends TrackMixerApplied {
   id: string;
   path?: string;
   /**
-   * The name the track ended up with, when it isn't the one asked for. `reason`
+   * The name the track ended up with, when it isn't the one asked for. `detail`
    * says why, and there is no `ok` — the rename happened.
    */
   name?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
-  reason?: string;
+  detail?: string;
   /** Every send the call wrote, read back off the track */
   sends?: SendResult[];
 }
@@ -313,17 +313,17 @@ export function updateTrack(
     // named the return and knows the level — so only the rest report. The ones
     // that named no return track follow, in the order the call named them.
     const changedSends = [
-      ...[...landed.values()].filter((send) => send.reason != null),
+      ...[...landed.values()].filter((send) => send.detail != null),
       ...resolvedSends.unresolved,
     ];
 
     // Optimistic except for the color, mixer and sends, read back off the
-    // track. Each of those can have its own say, so the reasons are joined
+    // track. Each of those can have its own say, so the details are joined
     // rather than spread over one another.
-    const reason = joinReasons([
-      rename.landed.reason,
-      colorLanded.reason,
-      mixer.reason,
+    const detail = joinDetails([
+      rename.landed.detail,
+      colorLanded.detail,
+      mixer.detail,
     ]);
 
     const result: UpdateTrackResult = {
@@ -332,7 +332,7 @@ export function updateTrack(
       ...rename.landed,
       ...colorLanded,
       ...mixer,
-      ...(reason == null ? {} : { reason }),
+      ...(detail == null ? {} : { detail }),
       ...(changedSends.length > 0 ? { sends: changedSends } : {}),
     };
 

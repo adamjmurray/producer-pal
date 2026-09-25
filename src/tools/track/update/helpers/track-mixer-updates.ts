@@ -12,7 +12,7 @@ import {
   type PublishedValue,
   differsAtPublishedResolution,
   publishedReadBack,
-  readBackReason,
+  readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { roundGainDb, roundPan } from "#src/tools/shared/helpers/rounding.ts";
 
@@ -45,7 +45,7 @@ export interface TrackMixerApplied extends MixerApplied {
    */
   panningMode?: "split";
   /** Why a value isn't the one asked for, or had no effect */
-  reason?: string;
+  detail?: string;
 }
 
 /** One mixer parameter to write, and how the result would name it. */
@@ -242,17 +242,17 @@ function writeMixerParam(
 }
 
 /**
- * Put everything the mixer write has to say into one reason on the entry
+ * Put everything the mixer write has to say into one detail on the entry
  * @param report - What the write collected
  * @returns The mixer fields for the track's result entry
  */
 function finishReport(report: MixerReport): TrackMixerApplied {
-  const changed = readBackReason(report.changed);
-  const reasons =
+  const changed = readBackDetail(report.changed);
+  const details =
     changed == null ? report.refused : [...report.refused, changed];
 
-  if (reasons.length > 0) {
-    report.applied.reason = reasons.join("; ");
+  if (details.length > 0) {
+    report.applied.detail = details.join("; ");
   }
 
   return report.applied;

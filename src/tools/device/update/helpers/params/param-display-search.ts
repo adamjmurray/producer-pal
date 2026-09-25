@@ -48,7 +48,7 @@ export function findRawValueForDisplay(
   const clamped =
     targetDisplay < Math.min(minValue, maxValue) ||
     targetDisplay > Math.max(minValue, maxValue)
-      ? { reason: outOfRangeReason(range, targetDisplay) }
+      ? { detail: outOfRangeDetail(range, targetDisplay) }
       : null;
 
   // Linear mapping: display values match raw values — set directly
@@ -83,9 +83,9 @@ export function findRawValueForDisplay(
  * Say a target fell outside the range, in the parameter's own units.
  * @param range - The parameter's numeric display range
  * @param targetDisplay - Target value in display units
- * @returns The reason the value that landed isn't the one asked for
+ * @returns Why the value that landed isn't the one asked for
  */
-function outOfRangeReason(
+function outOfRangeDetail(
   range: ParamNumericRange,
   targetDisplay: number,
 ): string {

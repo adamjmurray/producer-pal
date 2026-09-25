@@ -278,7 +278,7 @@ describe("ppal-read-device over a list of targets", () => {
       {
         path: "t8/d0",
         ok: false,
-        reason: 'nothing at path "t8/d0"',
+        detail: 'nothing at path "t8/d0"',
       },
       expect.objectContaining({ path: "t1/d0" }),
     ]);

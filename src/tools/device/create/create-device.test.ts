@@ -686,7 +686,7 @@ describe("createDevice", () => {
         {
           path: "t99",
           ok: false,
-          reason: 'container at path "t99" does not exist',
+          detail: 'container at path "t99" does not exist',
         },
       ]);
       expect(mockConsole.warn).not.toHaveBeenCalled();
@@ -701,12 +701,12 @@ describe("createDevice", () => {
         {
           path: "t98",
           ok: false,
-          reason: 'container at path "t98" does not exist',
+          detail: 'container at path "t98" does not exist',
         },
         {
           path: "t99",
           ok: false,
-          reason: 'container at path "t99" does not exist',
+          detail: 'container at path "t99" does not exist',
         },
       ]);
     });

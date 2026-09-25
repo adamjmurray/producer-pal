@@ -259,7 +259,7 @@ describe("createClip - session view", () => {
       id: "clip_0_0",
       path: "t0/s0",
       color: "#FF3636",
-      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
     });
   });
 
@@ -468,7 +468,7 @@ describe("createClip - session view", () => {
     expect(result).toStrictEqual({
       id: "new_clip",
       path: "t0/s0",
-      reason: "overwrote the existing clip at t0/s0",
+      detail: "overwrote the existing clip at t0/s0",
     });
   });
 
@@ -506,7 +506,7 @@ describe("createClip - session view", () => {
       {
         id: "new_clip",
         path: "t0/s0",
-        reason: "overwrote the existing clip at t0/s0",
+        detail: "overwrote the existing clip at t0/s0",
       },
     ]);
   });
@@ -528,7 +528,7 @@ describe("createClip - session view", () => {
       {
         ok: false,
         path: "t0/s0",
-        reason: "not created: t0/s0 is named again later in this call",
+        detail: "not created: t0/s0 is named again later in this call",
       },
       { id: "clip_0_0", path: "t0/s0" },
     ]);
@@ -657,7 +657,7 @@ describe("createClip - session view - auto", () => {
 
     expect(result).toStrictEqual([
       expect.objectContaining({ path: "t0/s0" }),
-      { ok: false, path: "t1/s0", reason: frozen },
+      { ok: false, path: "t1/s0", detail: frozen },
     ]);
     expect(made.clipSlot.call).toHaveBeenCalledWith("fire");
     expect(skipped.clipSlot.call).not.toHaveBeenCalledWith("fire");
@@ -693,7 +693,7 @@ describe("createClip - session view - auto", () => {
 
     expect(result).toStrictEqual([
       expect.objectContaining({ ok: false, path: "t0/s0" }),
-      { ok: false, path: "t1/s0", reason: frozen },
+      { ok: false, path: "t1/s0", detail: frozen },
     ]);
     expect(scene0.call).not.toHaveBeenCalledWith("fire");
   });

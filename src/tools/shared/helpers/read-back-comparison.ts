@@ -50,13 +50,13 @@ export function differsAtPublishedResolution(
 }
 
 /**
- * The reason an entry carries for the values it reports. Observational on
+ * The detail an entry carries for the values it reports. Observational on
  * purpose: it holds whether Live clamped the value, snapped it to a step, or
  * ignored the write and left what was already there.
  * @param fields - The entry's own fields whose values aren't the ones sent
- * @returns The reason, or undefined when every value landed
+ * @returns The detail, or undefined when every value landed
  */
-export function readBackReason(fields: string[]): string | undefined {
+export function readBackDetail(fields: string[]): string | undefined {
   return fields.length === 0
     ? undefined
     : `${fields.join(", ")} read back as shown, not as sent`;

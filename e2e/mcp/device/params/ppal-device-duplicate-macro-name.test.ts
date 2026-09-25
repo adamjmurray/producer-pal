@@ -69,10 +69,10 @@ describe("a rack with two macros renamed the same", () => {
 
     expect(entry?.name).toBe("Drive");
     expect(entry?.ok).toBe(false);
-    expect(entry?.reason).toContain("names 2 params");
+    expect(entry?.detail).toContain("names 2 params");
 
     for (const param of before) {
-      expect(entry?.reason).toContain(`id ${param.id}`);
+      expect(entry?.detail).toContain(`id ${param.id}`);
     }
 
     expect(warnings).toStrictEqual([]);

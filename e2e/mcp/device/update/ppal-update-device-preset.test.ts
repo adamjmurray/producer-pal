@@ -119,7 +119,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     const device = await readDevice(drift.path);
 
     expect(updated.id).not.toBe(drift.id);
-    expect(updated.reason).toContain("replaced the device");
+    expect(updated.detail).toContain("replaced the device");
     expect(device.id).toBe(updated.id);
     expect(device.type).toBe("instrument-rack");
   });
@@ -163,7 +163,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
 interface UpdateResult {
   id: string;
   path: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface DeviceRead {

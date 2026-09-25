@@ -18,10 +18,10 @@ export interface MixerApplied {
 
 /**
  * What one step of a param write produced, or why it produced nothing. A step
- * that produced a value can still carry a reason: the value is there, but it is
+ * that produced a value can still carry a detail: the value is there, but it is
  * not the one asked for (a clamp, the nearest step of a coarse ladder).
  */
-export type ParamStep<T> = { value: T; reason?: string } | { reason: string };
+export type ParamStep<T> = { value: T; detail?: string } | { reason: string };
 
 /**
  * Whether a parameter accepts writes. Live disables a parameter when something

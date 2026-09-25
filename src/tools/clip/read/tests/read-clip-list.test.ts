@@ -81,7 +81,7 @@ describe("readClip over a list of targets", () => {
   it("turns an empty slot into a miss, without warning", () => {
     expect(readClip({ path: "t0/s0,t0/s1" })).toStrictEqual([
       clip0,
-      { path: "t0/s1", ok: false, reason: "no clip at t0/s1" },
+      { path: "t0/s1", ok: false, detail: "no clip at t0/s1" },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -89,7 +89,7 @@ describe("readClip over a list of targets", () => {
   it("reports a miss by id the way the caller wrote it", () => {
     expect(readClip({ id: "clip0,nope" })).toStrictEqual([
       clip0,
-      { id: "nope", ok: false, reason: 'id "nope" does not exist' },
+      { id: "nope", ok: false, detail: 'id "nope" does not exist' },
     ]);
   });
 

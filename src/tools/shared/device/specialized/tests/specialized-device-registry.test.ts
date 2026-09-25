@@ -130,7 +130,7 @@ describe("applySpecializedParamWrite", () => {
     const outcome = applySpecializedParamWrite(device, "multiSampleMode", 0);
 
     expect(outcome).toStrictEqual([
-      { name: "multiSampleMode", ok: false, reason: "read-only" },
+      { name: "multiSampleMode", ok: false, detail: "read-only" },
     ]);
     expect(capturedWarnings()).toHaveLength(0);
   });
@@ -143,7 +143,7 @@ describe("applySpecializedParamWrite", () => {
     expect(
       applySpecializedParamWrite(device, "multisamplemode", 0),
     ).toStrictEqual([
-      { name: "multisamplemode", ok: false, reason: "read-only" },
+      { name: "multisamplemode", ok: false, detail: "read-only" },
     ]);
   });
 });
@@ -217,7 +217,7 @@ describe("applySpecializedActions", () => {
       {
         action: "1bad(",
         ok: false,
-        reason: "could not parse: expected name or name(args)",
+        detail: "could not parse: expected name or name(args)",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -230,7 +230,7 @@ describe("applySpecializedActions", () => {
       {
         action: "doesNotExist",
         ok: false,
-        reason: "unknown action for this device",
+        detail: "unknown action for this device",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -243,7 +243,7 @@ describe("applySpecializedActions", () => {
       {
         action: "reverse",
         ok: false,
-        reason: "unknown action for this device",
+        detail: "unknown action for this device",
       },
     ]);
   });
@@ -258,7 +258,7 @@ describe("applySpecializedActions", () => {
       {
         action: "reverse",
         ok: false,
-        reason: "unknown action for this device",
+        detail: "unknown action for this device",
       },
     ]);
   });

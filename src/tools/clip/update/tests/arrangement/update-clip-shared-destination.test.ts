@@ -44,7 +44,7 @@ describe("updateClip - refuses one toPath place for several clips", () => {
   const notAClip = (id: string) => ({
     id,
     ok: false,
-    reason: `id ${id} is not a clip (found device)`,
+    detail: `id ${id} is not a clip (found device)`,
   });
 
   // A bare coordinate names no lane, so each clip keeps its own - it broadcasts

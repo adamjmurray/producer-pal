@@ -90,13 +90,13 @@ export function applyTimeSignature(
  * @param requested - The scale as the caller wrote it
  * @param result - Result object to update
  * @param result.scale - The scale Live stores, when it isn't the one asked for
- * @param result.reason - Why the spelling isn't the one asked for
+ * @param result.detail - Why the spelling isn't the one asked for
  */
 export function applyScale(
   liveSet: LiveAPI,
   parsed: ParsedScale | null,
   requested: string,
-  result: { scale?: string; reason?: string },
+  result: { scale?: string; detail?: string },
 ): void {
   if (parsed == null) {
     liveSet.set("scale_mode", 0);
@@ -121,9 +121,9 @@ export function applyScale(
   }
 
   result.scale = landed;
-  // Without the reason, a model that asked for F# sees Gb come back and
+  // Without the detail, a model that asked for F# sees Gb come back and
   // retries, thinking the write failed.
-  result.reason =
+  result.detail =
     storedRoot === scaleRoot
       ? `scale ${requested.trim()} is spelled ${landed} — same scale, set correctly`
       : `scale roots are spelled with flats, so ${scaleRoot} comes back as ${storedRoot} — same scale, set correctly`;

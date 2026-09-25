@@ -54,7 +54,7 @@ describe("focus-if-requested", () => {
     it("selects the last copy, not a destination that got none", () => {
       focusIfRequested(true, "arrangement", "clip", [
         { id: "clip1" },
-        { path: "t2[5|1]", ok: false, reason: "Live made no copy there" },
+        { path: "t2[5|1]", ok: false, detail: "Live made no copy there" },
       ]);
 
       expect(selectMock.get()).toHaveBeenCalledWith({
@@ -67,7 +67,7 @@ describe("focus-if-requested", () => {
     it("selects the last scene copy, not the source of one that failed", () => {
       focusIfRequested(true, undefined, "scene", [
         { id: "copy1" },
-        { id: "scene1", ok: false, reason: "Live refused the copy" },
+        { id: "scene1", ok: false, detail: "Live refused the copy" },
       ]);
 
       expect(selectMock.get()).toHaveBeenCalledWith({

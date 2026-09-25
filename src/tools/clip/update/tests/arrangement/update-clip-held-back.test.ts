@@ -53,11 +53,11 @@ describe("a clip held back for an overwrite", () => {
     expect(deletedIds(track)).toStrictEqual([]);
     // The move was all it was asked, and it didn't happen.
     expect(result).toStrictEqual([
-      { id: FIRST, ok: false, reason: HELD_BACK },
+      { id: FIRST, ok: false, detail: HELD_BACK },
       {
         id: SECOND,
         ok: false,
-        reason:
+        detail:
           "not moved: Live made no copy at the destination, so the original was kept",
       },
     ]);
@@ -79,7 +79,7 @@ describe("a clip held back for an overwrite", () => {
     expect((result as ClipResult[])[0]).toStrictEqual({
       id: FIRST,
       path: "t0[1|1]",
-      reason: HELD_BACK,
+      detail: HELD_BACK,
     });
   });
 
@@ -99,7 +99,7 @@ describe("a clip held back for an overwrite", () => {
       id: FIRST,
       path: "t0[1|1]",
       deleted: true,
-      reason: "warping ignored: the clip is MIDI",
+      detail: "warping ignored: the clip is MIDI",
     });
   });
 
@@ -115,7 +115,7 @@ describe("a clip held back for an overwrite", () => {
     expect((result as ClipResult[])[0]).toStrictEqual({
       id: FIRST,
       ok: false,
-      reason: `warping ignored: the clip is MIDI; ${HELD_BACK}`,
+      detail: `warping ignored: the clip is MIDI; ${HELD_BACK}`,
     });
   });
 
@@ -145,12 +145,12 @@ describe("a clip held back for an overwrite", () => {
       "not moved: it would land on clip t0[17|1] (id 102), which Live wouldn't move; move that clip first, or use separate calls";
 
     expect(result).toStrictEqual([
-      { id: FIRST, ok: false, reason: blocked },
-      { id: SECOND, ok: false, reason: blocked },
+      { id: FIRST, ok: false, detail: blocked },
+      { id: SECOND, ok: false, detail: blocked },
       {
         id: "102",
         ok: false,
-        reason:
+        detail:
           "not moved: Live made no copy at the destination, so the original was kept",
       },
     ]);
@@ -202,7 +202,7 @@ describe("a clip held back for an overwrite", () => {
     expect(result).toStrictEqual({
       id: FIRST,
       deleted: true,
-      reason: "deleted: a move onto it failed after clearing its place",
+      detail: "deleted: a move onto it failed after clearing its place",
     });
     expect(sourceTrack.call).not.toHaveBeenCalled();
   });
@@ -210,7 +210,7 @@ describe("a clip held back for an overwrite", () => {
   it("clears nothing when the call planned no overwrite at all", () => {
     const { result, sourceTrack } = flushHeldBack(SECOND, undefined);
 
-    expect(result).toStrictEqual({ id: FIRST, reason: HELD_BACK });
+    expect(result).toStrictEqual({ id: FIRST, detail: HELD_BACK });
     expect(sourceTrack.call).not.toHaveBeenCalled();
   });
 });
@@ -339,7 +339,7 @@ function planBurying(
  * @param flushed - What the flush left behind
  */
 function expectHeldClipKept(flushed: ReturnType<typeof flushHeldBack>): void {
-  expect(flushed.result).toStrictEqual({ id: FIRST, reason: HELD_BACK });
+  expect(flushed.result).toStrictEqual({ id: FIRST, detail: HELD_BACK });
   expect(flushed.sourceTrack.call).not.toHaveBeenCalled();
 }
 

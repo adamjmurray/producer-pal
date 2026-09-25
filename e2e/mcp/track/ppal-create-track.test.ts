@@ -176,7 +176,7 @@ describe("ppal-create-track", () => {
     );
 
     expect(prefixed.name).toBe(`${letter}-Delay`);
-    expect(prefixed.reason).toBe(
+    expect(prefixed.detail).toBe(
       "Live prefixes a return track's name with its send letter",
     );
 
@@ -194,7 +194,7 @@ describe("ppal-create-track", () => {
     );
 
     expect(asAsked.name).toBeUndefined();
-    expect(asAsked.reason).toBeUndefined();
+    expect(asAsked.detail).toBeUndefined();
 
     await sleep(100);
     expect(await nameAt(asAsked.path!)).toBe(`${ownLetter}-Tape`);

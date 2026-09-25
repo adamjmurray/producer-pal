@@ -343,7 +343,7 @@ describe("ppal-read-clip over a list of targets", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ path: "t0/s0", name: "Beat" }),
-      { path: "t8/s0", ok: false, reason: "no clip at t8/s0" },
+      { path: "t8/s0", ok: false, detail: "no clip at t8/s0" },
       expect.objectContaining({ path: "t1/s0", name: "Bassline" }),
     ]);
   });

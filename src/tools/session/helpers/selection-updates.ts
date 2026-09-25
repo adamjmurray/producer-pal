@@ -228,7 +228,7 @@ function resolveDeviceFromPath(
 export function applyPluginEditorWindow(
   device: LiveAPI | undefined,
   open: boolean,
-): { applied: boolean; reason?: string } {
+): { applied: boolean; detail?: string } {
   if (device == null) {
     console.warn(
       "openPluginWindow requires a plug-in device — specify id or path",
@@ -240,7 +240,7 @@ export function applyPluginEditorWindow(
   if (device.type !== "PluginDevice") {
     return {
       applied: false,
-      reason: "openPluginWindow ignored: not a plug-in (VST/AU)",
+      detail: "openPluginWindow ignored: not a plug-in (VST/AU)",
     };
   }
 

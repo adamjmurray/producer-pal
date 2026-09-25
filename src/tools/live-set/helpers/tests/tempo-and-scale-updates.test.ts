@@ -35,7 +35,7 @@ function mockLiveSetWithScaleState(): LiveAPI {
 }
 
 /** What applyScale writes onto the tool's result. */
-type ScaleResult = { scale?: string; reason?: string };
+type ScaleResult = { scale?: string; detail?: string };
 
 /** A live_set mock that answers with `held`, whatever is written to it. */
 function mockLiveSetHolding(held: Record<string, unknown>): LiveAPI {
@@ -236,7 +236,7 @@ describe("tempo-and-scale-updates", () => {
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
       expect(result.scale).toBe("Gb Minor");
-      expect(result.reason).toBe(
+      expect(result.detail).toBe(
         "scale roots are spelled with flats, so F# comes back as Gb — " +
           "same scale, set correctly",
       );
@@ -249,7 +249,7 @@ describe("tempo-and-scale-updates", () => {
       applyScale(mockLiveSet, parseScale("bB DoRiAn"), "bB DoRiAn", result);
 
       expect(result.scale).toBe("Bb Dorian");
-      expect(result.reason).toBe(
+      expect(result.detail).toBe(
         "scale bB DoRiAn is spelled Bb Dorian — same scale, set correctly",
       );
     });

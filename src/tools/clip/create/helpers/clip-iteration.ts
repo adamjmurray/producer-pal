@@ -18,7 +18,7 @@ import {
   type LaneSnapshot,
   snapshotLane,
 } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
@@ -215,7 +215,7 @@ function noteSlotWork(clipResult: ClipResultObject, slotWork: SlotWork): void {
   }
 
   if (slotWork.overwrote != null) {
-    appendReason(clipResult, slotWork.overwrote);
+    appendDetail(clipResult, slotWork.overwrote);
   }
 }
 
@@ -268,7 +268,7 @@ function noteDisplaced(
       : arrangementWriteEffects(laneBefore, [clipId]);
 
   if (displaced != null) {
-    appendReason(clipResult, displaced);
+    appendDetail(clipResult, displaced);
   }
 
   return clipResult;

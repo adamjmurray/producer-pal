@@ -225,7 +225,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       panningMode: "split",
-      reason: STEREO_ONLY,
+      detail: STEREO_ONLY,
     });
     expect(errorSpy).not.toHaveBeenCalled();
 
@@ -242,7 +242,7 @@ describe("updateTrack - mixer properties", () => {
     ).toStrictEqual({
       id: "123",
       path: "t0",
-      reason: SPLIT_ONLY,
+      detail: SPLIT_ONLY,
     });
     expect(errorSpy).not.toHaveBeenCalled();
 
@@ -327,7 +327,7 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       gainDb: -6.02,
       pan: 0.26,
-      reason: "gainDb, pan read back as shown, not as sent",
+      detail: "gainDb, pan read back as shown, not as sent",
     });
   });
 
@@ -373,7 +373,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       gainDb: "-inf",
-      reason: CHANGED_GAIN,
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -382,8 +382,8 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam2, -5.98);
 
     expect(updateTrack({ id: "123,456", gainDb: -6 })).toStrictEqual([
-      { id: "123", path: "t0", gainDb: -6.02, reason: CHANGED_GAIN },
-      { id: "456", path: "t1", gainDb: -5.98, reason: CHANGED_GAIN },
+      { id: "123", path: "t0", gainDb: -6.02, detail: CHANGED_GAIN },
+      { id: "456", path: "t1", gainDb: -5.98, detail: CHANGED_GAIN },
     ]);
   });
 
@@ -395,7 +395,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       gainDb: -6.02,
-      reason: CHANGED_GAIN,
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -414,7 +414,7 @@ describe("updateTrack - mixer properties", () => {
       leftPan: -0.74,
       rightPan: 0.51,
       panningMode: "split",
-      reason: "leftPan, rightPan read back as shown, not as sent",
+      detail: "leftPan, rightPan read back as shown, not as sent",
     });
   });
 
@@ -460,7 +460,7 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       gainDb: -6.02,
       panningMode: "split",
-      reason: CHANGED_GAIN,
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -500,7 +500,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       pan: 0.51,
-      reason: "pan read back as shown, not as sent",
+      detail: "pan read back as shown, not as sent",
     });
 
     expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 0);
@@ -519,7 +519,7 @@ describe("updateTrack - mixer properties", () => {
     expect(updateTrack({ id: "123", leftPan: -1, rightPan: 1 })).toStrictEqual({
       id: "123",
       path: "t0",
-      reason: SPLIT_ONLY,
+      detail: SPLIT_ONLY,
     });
   });
 
@@ -539,7 +539,7 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       rightPan: 0.98,
       panningMode: "split",
-      reason: "rightPan read back as shown, not as sent",
+      detail: "rightPan read back as shown, not as sent",
     });
   });
 
@@ -552,7 +552,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       panningMode: "split",
-      reason: STEREO_ONLY,
+      detail: STEREO_ONLY,
     });
   });
 
@@ -571,7 +571,7 @@ describe("updateTrack - mixer properties", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0",
-      reason: expect.stringContaining("gainDb is disabled and was not changed"),
+      detail: expect.stringContaining("gainDb is disabled and was not changed"),
     });
   });
 });

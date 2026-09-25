@@ -227,7 +227,7 @@ describe("duplicate - drum pad", () => {
     expect(result).toStrictEqual({
       id: "pad38",
       path: "t0/d0/pD1",
-      reason: expect.stringContaining("layers on top of them"),
+      detail: expect.stringContaining("layers on top of them"),
     });
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
@@ -275,7 +275,7 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pC1",
         ok: false,
-        reason: expect.stringContaining("can't be copied onto itself"),
+        detail: expect.stringContaining("can't be copied onto itself"),
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
@@ -301,7 +301,7 @@ describe("duplicate - drum pad", () => {
       {
         path: "nonsense",
         ok: false,
-        reason: expect.stringContaining("nonsense"),
+        detail: expect.stringContaining("nonsense"),
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
@@ -366,12 +366,12 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pD1",
         ok: false,
-        reason: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining("drum pad C1 is empty"),
       },
       {
         path: "t0/d0/pE1",
         ok: false,
-        reason: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining("drum pad C1 is empty"),
       },
     ]);
   });

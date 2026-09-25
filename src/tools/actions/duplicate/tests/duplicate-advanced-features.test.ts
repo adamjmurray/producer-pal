@@ -103,9 +103,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       type: "track",
       id: "track1",
       routeToSource: true,
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toContain(
+    expect(result.detail).toContain(
       'not routed to the source: no output option named "NonExistentTrack"',
     );
     // The copy's entry carries it, so nothing warns about it.
@@ -338,13 +338,13 @@ function registerNewTrack(
 /**
  * Assert the result matches the expected track duplication shape.
  * @param result - The duplicate() return value
- * @param reason - What the copy's entry should say beyond its own fields
+ * @param detail - What the copy's entry should say beyond its own fields
  */
-function expectTrackResult(result: unknown, reason: string): void {
+function expectTrackResult(result: unknown, detail: string): void {
   expect(result).toStrictEqual({
     path: expect.any(String),
     id: expect.any(String),
     clips: expect.any(Array),
-    reason,
+    detail,
   });
 }

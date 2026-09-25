@@ -97,7 +97,7 @@ describe("findDuplicates", () => {
     const result = await findDuplicates({ inFolder: "/no/such/folder" });
 
     expect(result.groups).toStrictEqual([]);
-    expect(result.reason).toContain("inFolder path not found");
+    expect(result.detail).toContain("inFolder path not found");
   });
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {

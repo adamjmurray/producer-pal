@@ -352,11 +352,11 @@ function findParam(
 /**
  * The entry for an action nothing was done for.
  * @param action - The action as the call wrote it
- * @param reason - Why nothing was done
+ * @param detail - Why nothing was done
  * @returns The skip entry
  */
-function refusedAction(action: string, reason: string): ActionResult {
-  return { action, ok: false, reason };
+function refusedAction(action: string, detail: string): ActionResult {
+  return { action, ok: false, detail };
 }
 
 /**

@@ -71,7 +71,7 @@ interface LiveSetTracksResult {
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -321,7 +321,7 @@ describe("take lanes", () => {
     // Past the cap: that lane is skipped, not fatal, so the destination
     // alongside it in the same call still lands.
     const outOfRange = parseToolResultWithWarnings<
-      Array<{ path: string; ok?: false; reason?: string }>
+      Array<{ path: string; ok?: false; detail?: string }>
     >(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
@@ -335,7 +335,7 @@ describe("take lanes", () => {
     expect(outOfRange.data[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[9|1]`);
     expect(outOfRange.data[0]!.ok).toBeUndefined();
     expect(outOfRange.data[1]!.ok).toBe(false);
-    expect(outOfRange.data[1]!.reason).toContain(
+    expect(outOfRange.data[1]!.detail).toContain(
       `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
   });
@@ -498,7 +498,7 @@ describe("take lanes", () => {
     );
 
     expect(audioDup.data.path).toBe(`t${audioTrackIndex}/l0[5|1]`);
-    expect(audioDup.data.reason).toContain(
+    expect(audioDup.data.detail).toContain(
       "warp markers reset to the sample's defaults",
     );
 
@@ -545,7 +545,7 @@ describe("take lanes", () => {
     expect(promoted.data.path).toBe(`t${EMPTY_MIDI_TRACK}[5|1]`);
     // Re-creating carries notes, and the copy's entry says so. This clip has no
     // envelopes, so nothing was lost and the entry names no cost.
-    expect(promoted.data.reason).toBe(
+    expect(promoted.data.detail).toBe(
       "promoted to the main lane by re-creating it",
     );
 

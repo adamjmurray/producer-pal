@@ -67,7 +67,7 @@ describe("update-device sendReturn by id", () => {
       expect.objectContaining({
         return: kit.id,
         ok: false,
-        reason: expect.stringContaining(`no return chain matching "${kit.id}"`),
+        detail: expect.stringContaining(`no return chain matching "${kit.id}"`),
       }),
     ]);
     expect(warnings).toStrictEqual([]);
@@ -144,7 +144,7 @@ describe("update-device sendReturn by id", () => {
       expect.objectContaining({
         return: "ZZZ",
         ok: false,
-        reason: expect.stringContaining('no return chain matching "ZZZ"'),
+        detail: expect.stringContaining('no return chain matching "ZZZ"'),
       }),
     ]);
     expect(warnings).toStrictEqual([]);

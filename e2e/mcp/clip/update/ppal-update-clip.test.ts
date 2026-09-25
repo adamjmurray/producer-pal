@@ -483,11 +483,11 @@ describe("ppal-update-clip", () => {
     const { data, warnings } = parseToolResultWithWarnings<{
       id: string;
       slot?: string;
-      reason?: string;
+      detail?: string;
     }>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(data.reason).toContain(
+    expect(data.detail).toContain(
       'not moved: toPath "t7" names an arrangement lane and this is a session clip',
     );
     expect(warnings.join(" ")).not.toContain("not moved");
@@ -546,7 +546,7 @@ describe("ppal-update-clip", () => {
     expect(missed).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}/s21`,
       ok: false,
-      reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
+      detail: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
     });
     expect(warnings.join(" ")).not.toContain("no clip at path");
   });
@@ -577,7 +577,7 @@ describe("ppal-update-clip", () => {
     expect(data[1]).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}/s24`,
       ok: false,
-      reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s24"`,
+      detail: `no clip at path "t${EMPTY_MIDI_TRACK}/s24"`,
     });
 
     await sleep(100);
@@ -597,7 +597,7 @@ describe("ppal-update-clip", () => {
       arguments: { id: clipId, path, name: "First,Last" },
     });
     const { data, warnings } =
-      parseToolResultWithWarnings<Array<ReadClipResult & { reason?: string }>>(
+      parseToolResultWithWarnings<Array<ReadClipResult & { detail?: string }>>(
         result,
       );
 
@@ -606,10 +606,10 @@ describe("ppal-update-clip", () => {
     expect(data[0]).toStrictEqual({
       id: clipId,
       path,
-      reason: `named again as "${path}" later in this call`,
+      detail: `named again as "${path}" later in this call`,
     });
     expect(data[1]?.id).toBe(clipId);
-    expect(data[1]?.reason).toBeUndefined();
+    expect(data[1]?.detail).toBeUndefined();
     expect(warnings.join(" ")).not.toContain("later in this call");
 
     await sleep(100);

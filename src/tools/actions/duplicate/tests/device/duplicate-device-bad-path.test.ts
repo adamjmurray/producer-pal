@@ -65,7 +65,7 @@ describe("duplicate device - a toPath entry that names nowhere", () => {
       {
         path: "t99/d0/c0",
         ok: false,
-        reason:
+        detail:
           't0/d0 (id device1) not copied — Track in path "t99/d0/c0" does not exist',
       },
     ]);

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Notation } from "#src/shared/notation.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { CHAIN_TYPE } from "#src/tools/constants.ts";
 import {
   DEFAULT_MAX_DEPTH,
@@ -130,7 +130,7 @@ function sayNoDrumMap(
 
   const kind = result.type == null ? "drum pad" : "drum chain";
 
-  appendReason(
+  appendDetail(
     result,
     `this is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
   );

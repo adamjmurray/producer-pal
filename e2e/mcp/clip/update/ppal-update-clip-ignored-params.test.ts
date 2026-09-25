@@ -47,7 +47,7 @@ describe("ppal-update-clip ignored params", () => {
       parseToolResultWithWarnings<ReadClipResult>(result);
 
     // looping landed, so the ignored firstStart is a reason on a real entry.
-    expect(data.reason).toContain(
+    expect(data.detail).toContain(
       "firstStart ignored: the clip is not looping",
     );
     expect(warnings.join(" ")).not.toContain("firstStart");
@@ -66,7 +66,7 @@ describe("ppal-update-clip ignored params", () => {
       pitchShift: -2,
     });
 
-    expect(entry.reason).toContain(
+    expect(entry.detail).toContain(
       "gainDb/pitchShift ignored: the clip is MIDI",
     );
     expect(entry).not.toHaveProperty("ok");
@@ -149,7 +149,7 @@ describe("ppal-update-clip ignored params", () => {
 
     for (const entry of data) {
       expect(entry).not.toHaveProperty("ok");
-      expect(entry.reason).toContain("quantize ignored: the clip is audio");
+      expect(entry.detail).toContain("quantize ignored: the clip is audio");
     }
 
     expect(warnings.join(" ")).not.toContain("quantize");

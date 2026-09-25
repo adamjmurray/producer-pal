@@ -89,7 +89,7 @@ export function namedLaterEntry(
       ? { [key[target.param as keyof typeof key]]: target.value }
       : { id: naming.id }),
     // The shared wording quotes any spelling that isn't an id.
-    reason: namedLaterReason({
+    detail: namedLaterReason({
       param: naming.later.param === "locatorId" ? "id" : "path",
       value: naming.later.value as string,
     }),

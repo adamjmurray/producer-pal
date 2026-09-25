@@ -414,7 +414,7 @@ describe("library tool — searches fan-out", () => {
       result: {
         dbAvailable: false,
         items: [],
-        reason: "Live database not found",
+        detail: "Live database not found",
       },
     });
 
@@ -423,7 +423,7 @@ describe("library tool — searches fan-out", () => {
     expect(result).toStrictEqual({
       dbAvailable: false,
       items: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     });
   });
 
@@ -438,7 +438,7 @@ describe("library tool — searches fan-out", () => {
         result: {
           dbAvailable: false,
           items: [],
-          reason: "Live database not found",
+          detail: "Live database not found",
         },
       });
 
@@ -545,7 +545,7 @@ describe("library tool — searches fan-out", () => {
 
   it("omits the reason key on an entry whose query returned no reason", async () => {
     // A matched query with no diagnostic must yield { label, items } exactly —
-    // no reason: undefined leaking into the entry.
+    // no detail: undefined leaking into the entry.
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 
     const result = await runSearchBatch([
@@ -555,7 +555,7 @@ describe("library tool — searches fan-out", () => {
     const entry = result.results[0];
 
     expect(entry).toBeDefined();
-    expect(entry && "reason" in entry).toBe(false);
+    expect(entry && "detail" in entry).toBe(false);
   });
 
   it("preserves entries from other queries when a single query throws (per-query graceful degrade)", async () => {
@@ -585,7 +585,7 @@ describe("library tool — searches fan-out", () => {
       "kick.wav",
     ]);
     expect(result.results[1]?.items).toStrictEqual([]);
-    expect(result.results[1]?.reason).toBe("boom");
+    expect(result.results[1]?.detail).toBe("boom");
     expect(result.results[2]?.items.map((i) => i.name)).toStrictEqual([
       "hat.wav",
     ]);

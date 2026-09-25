@@ -148,7 +148,7 @@ describe("ppal-create-clip with a param the new clip can't use", () => {
     });
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(created.data.reason).toBe(
+    expect(created.data.detail).toBe(
       "firstStart ignored: set looping: true to use it",
     );
     expect(created.warnings.join("\n")).not.toContain("firstStart");

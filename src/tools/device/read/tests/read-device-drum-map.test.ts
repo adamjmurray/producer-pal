@@ -126,7 +126,7 @@ describe("readOneDevice drum-map by target kind", () => {
       chains: expect.any(Array),
     });
     expect(result.chains).toHaveLength(1);
-    expect(result.reason).toBeUndefined();
+    expect(result.detail).toBeUndefined();
   });
 
   it("says on the pad's own entry that it has no drum map", () => {
@@ -135,7 +135,7 @@ describe("readOneDevice drum-map by target kind", () => {
     const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(result.reason).toBe(PAD_REASON);
+    expect(result.detail).toBe(PAD_REASON);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -154,7 +154,7 @@ describe("readOneDevice drum-map by target kind", () => {
     const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(result.reason).toBe(PAD_REASON);
+    expect(result.detail).toBe(PAD_REASON);
   });
 
   it("says on a drum chain's own entry that it has no drum map", () => {
@@ -166,7 +166,7 @@ describe("readOneDevice drum-map by target kind", () => {
     });
 
     expect(result.drumMap).toBeUndefined();
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "this is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
     );
   });

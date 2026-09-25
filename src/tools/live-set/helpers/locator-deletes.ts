@@ -101,19 +101,19 @@ function nothingToDelete(target: LocatorTarget): Record<string, unknown> {
     case "locatorId":
       return {
         operation: "skipped",
-        reason: `nothing to delete: no locator with id "${value}"`,
+        detail: `nothing to delete: no locator with id "${value}"`,
         id: value,
       };
     case "locatorTime":
       return {
         operation: "skipped",
-        reason: `nothing to delete: no locator at ${value}`,
+        detail: `nothing to delete: no locator at ${value}`,
         time: value,
       };
     default:
       return {
         operation: "skipped",
-        reason: `nothing to delete: no locator named "${value}"`,
+        detail: `nothing to delete: no locator named "${value}"`,
         name: value,
       };
   }

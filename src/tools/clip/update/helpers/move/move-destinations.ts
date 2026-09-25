@@ -203,7 +203,7 @@ export function resolveRequestedClips(
       targets.unused.set(index, {
         id: clip.id,
         path: objectPathForApi(clip),
-        reason: namedLaterReason(targets.named[last] as NamedTarget),
+        detail: namedLaterReason(targets.named[last] as NamedTarget),
       });
 
       continue;

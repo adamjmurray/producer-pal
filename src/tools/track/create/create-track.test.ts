@@ -411,7 +411,7 @@ describe("createTrack", () => {
         id: "return_track_0",
         path: "rt2",
         name: "C-Delay",
-        reason: "Live prefixes a return track's name with its send letter",
+        detail: "Live prefixes a return track's name with its send letter",
       });
     });
 
@@ -427,7 +427,7 @@ describe("createTrack", () => {
         id: "return_track_0",
         path: "rt2",
         name: "C-B-Side",
-        reason: "Live prefixes a return track's name with its send letter",
+        detail: "Live prefixes a return track's name with its send letter",
       });
     });
 
@@ -525,7 +525,7 @@ describe("createTrack", () => {
         id: "midi_track_1",
         path: "t1",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 

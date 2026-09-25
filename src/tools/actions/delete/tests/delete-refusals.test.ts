@@ -142,9 +142,9 @@ describe("deleteObject when Live refuses the delete", () => {
         id: "scene_0",
         path: "s0",
         ok: false,
-        reason: "scene s0 (id scene_0) still exists, so Live did not delete it",
+        detail: "scene s0 (id scene_0) still exists, so Live did not delete it",
       },
-      { id: "already_gone", reason: "nothing to delete" },
+      { id: "already_gone", detail: "nothing to delete" },
     ]);
     expect(warnSpy).not.toHaveBeenCalled();
   });

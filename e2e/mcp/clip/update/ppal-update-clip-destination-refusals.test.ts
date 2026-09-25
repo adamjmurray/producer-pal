@@ -41,7 +41,7 @@ interface ClipEntry {
   id?: string;
   path?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 describe("ppal-update-clip destinations it can make nothing of", () => {
@@ -64,7 +64,7 @@ describe("ppal-update-clip destinations it can make nothing of", () => {
     expect(data[0]).toStrictEqual({
       id: missed,
       ok: false,
-      reason: `not moved: no locator found with name "${MISSING_LOCATOR}" for toPath`,
+      detail: `not moved: no locator found with name "${MISSING_LOCATOR}" for toPath`,
     });
     expect(warnings).toStrictEqual([]);
     // The good half of the list still moved, and the missed clip stayed put.

@@ -42,7 +42,7 @@ type BatchQuery = Record<string, string | number | boolean>;
 interface BatchEntry {
   label: string;
   items: Array<{ name: string; source: string | null }>;
-  reason?: string;
+  detail?: string;
 }
 
 /** The fan-out response envelope. */

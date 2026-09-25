@@ -101,7 +101,7 @@ function deleteOne(
   return {
     id,
     ...addressField(address, refusal == null && type !== "drum-pad"),
-    ...(refusal == null ? {} : { ok: false as const, reason: refusal }),
+    ...(refusal == null ? {} : { ok: false as const, detail: refusal }),
     requestIndex,
   };
 }
@@ -132,7 +132,7 @@ function refuseLoneSkip(results: DeleteResult[]): DeleteResult[] {
   const [only] = results;
 
   if (results.length === 1 && only?.ok === false) {
-    throw new Error(only.reason);
+    throw new Error(only.detail);
   }
 
   return results;

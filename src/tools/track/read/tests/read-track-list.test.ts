@@ -77,7 +77,7 @@ describe("readTrack over a list of targets", () => {
       {
         path: "t9",
         ok: false,
-        reason: 'nothing at path "t9"; ppal-create-track adds tracks',
+        detail: 'nothing at path "t9"; ppal-create-track adds tracks',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

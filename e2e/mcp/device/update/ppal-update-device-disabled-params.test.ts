@@ -169,7 +169,7 @@ describe("update-device on macro-mapped parameters", () => {
         {
           name: "Volume",
           ok: false,
-          reason: expect.stringContaining("is disabled and was not changed"),
+          detail: expect.stringContaining("is disabled and was not changed"),
         },
       ]);
       expect(warnings).toStrictEqual([]);

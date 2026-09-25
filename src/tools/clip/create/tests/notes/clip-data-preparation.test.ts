@@ -111,8 +111,8 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
 
     // No bar|beat position: a clip slot doesn't have one.
     expect(result).toStrictEqual([
-      { path: "t0/s0", ok: false, reason: "boom" },
-      { path: "t0/s1", ok: false, reason: "boom" },
+      { path: "t0/s0", ok: false, detail: "boom" },
+      { path: "t0/s1", ok: false, detail: "boom" },
     ]);
   });
 
@@ -137,8 +137,8 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t0[1|1]", ok: false, reason: "boom" },
-      { path: "t0[3|1]", ok: false, reason: "boom" },
+      { path: "t0[1|1]", ok: false, detail: "boom" },
+      { path: "t0[3|1]", ok: false, detail: "boom" },
     ]);
   });
 

@@ -196,7 +196,7 @@ describe("duplicate - track duplication", () => {
 
     expect(result).toStrictEqual({
       ...createTrackResult(1),
-      reason: "the Producer Pal device was not copied",
+      detail: "the Producer Pal device was not copied",
     });
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
 
@@ -250,7 +250,7 @@ describe("duplicate - track duplication", () => {
 
       expect(result).toStrictEqual({
         ...createTrackResult(1),
-        reason:
+        detail:
           'source track t0 (id live_set/tracks/0): set its input to "No Input"',
       });
 
@@ -325,13 +325,13 @@ describe("duplicate - track duplication", () => {
         type: "track",
         id: "track1",
         routeToSource: true,
-      })) as { reason?: string };
+      })) as { detail?: string };
 
       expect(newTrack.set).not.toHaveBeenCalledWith(
         "output_routing_type",
         expect.anything(),
       );
-      expect(result.reason).toBe(
+      expect(result.detail).toBe(
         'not routed to the source: no output option named "Source Track"',
       );
       // The copy's entry carries it, so nothing warns about it.
@@ -414,13 +414,13 @@ describe("duplicate - track duplication", () => {
         type: "track",
         id: "track1",
         routeToSource: true,
-      })) as { reason?: string };
+      })) as { detail?: string };
 
       // Verify the source track was armed
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
 
       // It wasn't already armed, so the arm action is reported.
-      expect(result.reason).toContain("armed it");
+      expect(result.detail).toContain("armed it");
     });
 
     it("does not report arming a source track that was already armed", async () => {
@@ -433,11 +433,11 @@ describe("duplicate - track duplication", () => {
         type: "track",
         id: "track1",
         routeToSource: true,
-      })) as { reason?: string };
+      })) as { detail?: string };
 
       // Verify the source track was still set to armed (even though it already was)
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
-      expect(result.reason).not.toContain("armed it");
+      expect(result.detail).not.toContain("armed it");
     });
   });
 
@@ -599,7 +599,7 @@ describe("duplicate - group track", () => {
       id: "copy-1",
       path: "t2",
       clips: [],
-      reason: "the Producer Pal device was not copied",
+      detail: "the Producer Pal device was not copied",
     });
     expect(tracks.get("copy-1-m1")?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -740,7 +740,7 @@ describe("duplicate - a track copy that fails", () => {
     expect(result).toStrictEqual([
       { id: "copy-2", path: "t1", clips: [] },
       { id: "copy-1", path: "t2", clips: [] },
-      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+      { id: "track1", ok: false, detail: "Live made no copy of t0" },
     ]);
     expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "A");
     expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "B");
@@ -753,7 +753,7 @@ describe("duplicate - a track copy that fails", () => {
 
     expect(result).toStrictEqual([
       { id: "copy-1", path: "t1", clips: [] },
-      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+      { id: "track1", ok: false, detail: "Live made no copy of t0" },
     ]);
   });
 
@@ -769,7 +769,7 @@ describe("duplicate - a track copy that fails", () => {
 
     expect(result).toStrictEqual([
       expect.objectContaining({ id: "copy-1", path: "t1" }),
-      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+      { id: "track1", ok: false, detail: "Live made no copy of t0" },
     ]);
   });
 
@@ -779,8 +779,8 @@ describe("duplicate - a track copy that fails", () => {
     const result = await duplicate({ type: "track", id: "track1", count: 2 });
 
     expect(result).toStrictEqual([
-      { id: "track1", ok: false, reason: "Live made no copy of t0" },
-      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+      { id: "track1", ok: false, detail: "Live made no copy of t0" },
+      { id: "track1", ok: false, detail: "Live made no copy of t0" },
     ]);
   });
 

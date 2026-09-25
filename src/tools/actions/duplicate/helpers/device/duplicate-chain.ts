@@ -28,7 +28,7 @@ import {
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   newTargetNotes,
   noteTarget,
@@ -48,7 +48,7 @@ interface ChainCopy {
   id: string;
   path?: string;
   /** What the copy is missing, when the chain exists but isn't a full copy. */
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -149,7 +149,7 @@ function duplicateChain(
     noteTarget(notes, errorMessage(error));
   }
 
-  const reason = joinReasons(notes.said);
+  const detail = joinDetails(notes.said);
 
   return {
     id: created.id,
@@ -159,7 +159,7 @@ function duplicateChain(
         ? undefined
         : { container: () => destinationRack, path: canonicalPath(toPath) },
     ),
-    ...(reason == null ? {} : { reason }),
+    ...(detail == null ? {} : { detail }),
   };
 }
 

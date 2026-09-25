@@ -59,7 +59,7 @@ describe("duplicate track to take lane", () => {
     ]);
     // Copying a track onto a lane leaves everything but the clips behind, and
     // this source loses nothing else.
-    expect(result.reason).toBe(CLIPS_ONLY);
+    expect(result.detail).toBe(CLIPS_ONLY);
   });
 
   it("names the copies and reports what re-creating them lost", async () => {
@@ -71,7 +71,7 @@ describe("duplicate track to take lane", () => {
       name: "Take B",
     });
 
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       `${CLIPS_ONLY}; automation envelopes aren't copied`,
     );
 
@@ -195,10 +195,10 @@ describe("duplicate track to take lane", () => {
     expect(result.clips[1]).toStrictEqual({
       path: "t1/l0[5|1]",
       ok: false,
-      reason:
+      detail:
         "a lane copy is re-created from the sample, and this audio clip has none",
     });
-    expect(result.reason).toContain("warp markers reset");
+    expect(result.detail).toContain("warp markers reset");
   });
 
   it("copies onto an existing lane past the cap", async () => {
@@ -239,7 +239,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     expect(result[1]).toStrictEqual({
       path: "t2/l0",
       ok: false,
-      reason:
+      detail:
         "track t2 (id tl_track_2) is audio; a MIDI clip needs a MIDI track",
     });
   });
@@ -268,12 +268,12 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     expect(result[0]).toStrictEqual({
       path: "t1/l0",
       ok: false,
-      reason: 'only regular tracks have take lanes; "t1" is a group track',
+      detail: 'only regular tracks have take lanes; "t1" is a group track',
     });
     expect(result[1]).toStrictEqual({
       path: "t9/l0",
       ok: false,
-      reason: "track t9 does not exist",
+      detail: "track t9 does not exist",
     });
   });
 
@@ -290,13 +290,13 @@ describe("duplicate track to take lane - destinations it can't use", () => {
       {
         path: "t2",
         ok: false,
-        reason:
+        detail:
           'toPath "t2" names no take lane; a track\'s clips copy onto one, as "t2/l0" or "t2/l+"',
       },
       {
         path: "zz9",
         ok: false,
-        reason:
+        detail:
           'toPath "zz9" names no take lane; a track\'s clips copy onto one, as "t2/l0" or "t2/l+"',
       },
     ]);
@@ -315,7 +315,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     expect(result[1]).toStrictEqual({
       path: `t1/l${MAX_TAKE_LANES}`,
       ok: false,
-      reason: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
+      detail: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     });
     // Only the lane that fit was made: the cap is checked before any of them.
     expect(destination.call).toHaveBeenCalledTimes(1);
@@ -379,7 +379,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     });
 
     expect(result.clips[0]?.path).toBe("t1/l0[1|1]");
-    expect(result.clips[0]?.reason).toBe(
+    expect(result.clips[0]?.detail).toBe(
       "the take-lane copy is incomplete (notes failed)",
     );
   });
@@ -393,6 +393,6 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     });
 
     expect(result.clips[0]?.ok).toBe(false);
-    expect(result.clips[0]?.reason).toContain("the take-lane copy failed");
+    expect(result.clips[0]?.detail).toContain("the take-lane copy failed");
   });
 });

@@ -33,7 +33,7 @@ describe("deleteObject with a target named twice", () => {
     ).toStrictEqual([
       {
         id: "track_1",
-        reason: 'named again as "t0" later in this call',
+        detail: 'named again as "t0" later in this call',
       },
       { id: "track_1", deletedPath: "t0" },
     ]);
@@ -49,7 +49,7 @@ describe("deleteObject with a target named twice", () => {
       {
         id: "track_1",
         path: "t0",
-        reason: 'named again as "t0" later in this call',
+        detail: 'named again as "t0" later in this call',
       },
       { id: "track_1", deletedPath: "t0" },
     ]);
@@ -68,7 +68,7 @@ describe("deleteObject with a target named twice", () => {
     ).toStrictEqual([
       {
         id: "track_0",
-        reason: "named again as id track_0 later in this call",
+        detail: "named again as id track_0 later in this call",
       },
       { id: "track_1", deletedPath: "t1" },
       { id: "track_0", deletedPath: "t0" },

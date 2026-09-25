@@ -146,7 +146,7 @@ describe("updateTrack take lane targets", () => {
       path: "t0/l0",
       name: "Take A",
       created: "l0",
-      reason: "a take lane takes only name; ignored color, mute",
+      detail: "a take lane takes only name; ignored color, mute",
     });
   });
 
@@ -161,14 +161,14 @@ describe("updateTrack take lane targets", () => {
         path: "t0/l0",
         name: "Lane",
         ok: false,
-        reason: "a take lane takes only name; ignored color",
+        detail: "a take lane takes only name; ignored color",
       },
       {
         id: lane(0)!.id,
         path: "t0/l0",
         name: "Lane",
         ok: false,
-        reason: "a take lane takes only name; ignored color",
+        detail: "a take lane takes only name; ignored color",
       },
     ]);
   });
@@ -219,7 +219,7 @@ describe("updateTrack take lane targets", () => {
       path: "t0/l0",
       name: "Lane",
       ok: false,
-      reason: "a take lane takes only name; ignored color",
+      detail: "a take lane takes only name; ignored color",
     });
   });
 
@@ -316,24 +316,24 @@ describe("updateTrack take lane targets", () => {
       {
         path: "rt0/l0",
         ok: false,
-        reason:
+        detail:
           'invalid path "rt0/l0" - a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
       },
       {
         path: "mt/l0",
         ok: false,
-        reason:
+        detail:
           'invalid path "mt/l0" - a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
       },
       {
         path: "t1/l0",
         ok: false,
-        reason: 'only regular tracks have take lanes; "t1" is a group track',
+        detail: 'only regular tracks have take lanes; "t1" is a group track',
       },
       {
         path: "t9/l0",
         ok: false,
-        reason: 'no track at path "t9/l0"; ppal-create-track adds tracks',
+        detail: 'no track at path "t9/l0"; ppal-create-track adds tracks',
       },
       { id: lane(0)!.id, path: "t0/l0", name: "E", created: "l0" },
     ]);

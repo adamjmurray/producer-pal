@@ -371,7 +371,7 @@ describe("createScene", () => {
         id: "live_set/scenes/1",
         path: "s1",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 
@@ -461,7 +461,7 @@ describe("createScene", () => {
         path: "s2",
         clips: [],
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 

@@ -49,7 +49,7 @@ describe("duplicate take lane to take lane", () => {
       "t1/l0[7|1]",
     ]);
     // A lane copy leaves behind what a lane can't hold, same as a track's.
-    expect(result.reason).toBe(CLIPS_ONLY);
+    expect(result.detail).toBe(CLIPS_ONLY);
   });
 
   it("copies the lane an id names", async () => {
@@ -101,7 +101,7 @@ describe("duplicate take lane to take lane", () => {
     expect(result[0]).toStrictEqual({
       path: "t0/l0",
       ok: false,
-      reason: `toPath "t0/l0" is the source lane; a lane can't copy onto itself`,
+      detail: `toPath "t0/l0" is the source lane; a lane can't copy onto itself`,
     });
     expect(result[1]?.path).toBe("t1/l0");
   });

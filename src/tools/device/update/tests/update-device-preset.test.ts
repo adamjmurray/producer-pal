@@ -167,7 +167,7 @@ describe("updateDeviceWithPreset", () => {
     ).toStrictEqual({
       id: "rack",
       path: "t3/d0",
-      reason:
+      detail:
         "the preset replaced the device with a new one (new id); any automation on the old device is gone",
     });
   });
@@ -212,7 +212,7 @@ describe("updateDeviceWithPreset", () => {
     ).toStrictEqual({
       id: "drift",
       path: "t3/d0",
-      reason: "preset not loaded: kinds differ",
+      detail: "preset not loaded: kinds differ",
     });
     expect(drift.set).toHaveBeenCalledWith("name", "Lead");
   });

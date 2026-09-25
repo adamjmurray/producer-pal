@@ -147,7 +147,7 @@ describe("updateTrack routing by name", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0",
-      reason:
+      detail:
         '2 output_routing_type options are named "Bass"; used the first — ' +
         "send the identifier (30, 31) to pick another",
     });

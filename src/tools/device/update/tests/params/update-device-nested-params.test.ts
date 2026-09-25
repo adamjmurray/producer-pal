@@ -180,7 +180,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       {
         name: "pC1/c20/sample",
         ok: false,
-        reason: "Cannot auto-create 21 drum pad chains (max: 16)",
+        detail: "Cannot auto-create 21 drum pad chains (max: 16)",
       },
       { id: "macro-param", name: "Macro 1" },
     ]);
@@ -246,7 +246,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       {
         name: "c0/d0/Dry/Wet",
         ok: false,
-        reason: expect.stringContaining('no device at "t0/d0/c0/d0/Dry"'),
+        detail: expect.stringContaining('no device at "t0/d0/c0/d0/Dry"'),
       },
     ]);
 
@@ -274,7 +274,7 @@ describe("updateDevice - pad instrument guard", () => {
       {
         name: "pC1/sample",
         ok: false,
-        reason: expect.stringContaining(
+        detail: expect.stringContaining(
           "sample write SKIPPED on pad t0/d0/pC1",
         ),
       },
@@ -301,7 +301,7 @@ describe("updateDevice - pad instrument guard", () => {
         {
           name: "pC1/sample",
           ok: false,
-          reason: expect.stringContaining(
+          detail: expect.stringContaining(
             "sample write SKIPPED on pad t0/d0/pC1",
           ) as unknown as string,
         },
@@ -508,7 +508,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
       {
         name: "sample",
         ok: false,
-        reason: 'set again by "Sample" later in the list',
+        detail: 'set again by "Sample" later in the list',
       },
       { name: "sample", value: KICK },
     ]);
@@ -527,7 +527,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     expect(result).toStrictEqual({
       id: "pad-36",
       path: "t0/d0/pC1",
-      params: [{ name: "sample", ok: false, reason: SWAP_REASON }],
+      params: [{ name: "sample", ok: false, detail: SWAP_REASON }],
     });
     expect(capturedWarnings()).toHaveLength(0);
     expect(chain?.call).not.toHaveBeenCalledWith("delete_device", 0);
@@ -551,7 +551,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
       id: "pad-36",
       path: "t0/d0/pC1",
       params: [{ name: "sample", value: KICK }],
-      reason:
+      detail:
         "force:true — replaced a Drum Sampler on pad t0/d0/pC1/c0 with a " +
         "Simpler to load the sample. Its settings are gone.",
     });
@@ -575,7 +575,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     expect(result).toStrictEqual({
       id: "pad-36",
       path: "t0/d0/pC1",
-      params: [{ name: "sample", ok: false, reason }],
+      params: [{ name: "sample", ok: false, detail: reason }],
     });
     expect(capturedWarnings()).toHaveLength(0);
 
@@ -654,9 +654,9 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     const notApplicable = expect.stringContaining("'params' not applicable");
 
     expect(paramsOf(result)).toStrictEqual([
-      { name: "Volume", ok: false, reason: notApplicable },
-      { name: "volume", ok: false, reason: notApplicable },
-      { id: "7", ok: false, reason: notApplicable },
+      { name: "Volume", ok: false, detail: notApplicable },
+      { name: "volume", ok: false, detail: notApplicable },
+      { id: "7", ok: false, detail: notApplicable },
     ]);
   });
 
@@ -672,7 +672,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
       {
         name: "Volume",
         ok: false,
-        reason: expect.stringContaining(
+        detail: expect.stringContaining(
           "'params' not applicable to a drum pad chain t0/d0/pC1/c0",
         ),
       },
@@ -703,7 +703,7 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
     expect(result).toStrictEqual({
       id: "ds-1",
       path: "t0/d0/pC1/d0",
-      params: [{ name: "sample", ok: false, reason }],
+      params: [{ name: "sample", ok: false, detail: reason }],
     });
     expect(capturedWarnings()).toHaveLength(0);
   });
@@ -750,7 +750,7 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
     });
 
     expect(paramsOf(result)).toStrictEqual([
-      { name: "sample", ok: false, reason },
+      { name: "sample", ok: false, detail: reason },
     ]);
   });
 
@@ -771,7 +771,7 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
     ).toStrictEqual({
       id: "op-1",
       path: "t0/d0",
-      params: [{ name: "sample", ok: false, reason }],
+      params: [{ name: "sample", ok: false, detail: reason }],
     });
     expect(capturedWarnings()).toHaveLength(0);
   });

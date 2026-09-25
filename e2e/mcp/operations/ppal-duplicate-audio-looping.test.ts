@@ -38,7 +38,7 @@ const TARGET_BAR = 49;
 /** What a duplicate says about one copy. */
 interface ClipEntry {
   path?: string;
-  reason?: string;
+  detail?: string;
 }
 
 /** t4/s0's loop, as read-clip spells a duration. */
@@ -139,12 +139,12 @@ describe("ppal-duplicate with a looping audio source", () => {
 
     expectWholeLoopTiles(copies, 10, "n0.1125/4");
 
-    const withReasons = entries.filter((entry) => entry.reason != null);
+    const withReasons = entries.filter((entry) => entry.detail != null);
 
     expect(withReasons).toStrictEqual([
       expect.objectContaining({
         path: `t5[${TARGET_BAR}|1]`,
-        reason: expect.stringContaining("no more content"),
+        detail: expect.stringContaining("no more content"),
       }),
     ]);
   });

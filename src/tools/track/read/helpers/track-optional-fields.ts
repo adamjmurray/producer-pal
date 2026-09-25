@@ -40,7 +40,7 @@ interface MixerResult {
   rightPan?: unknown;
   sends?: SendInfo[];
   /** What the mixer read couldn't line up; goes on the track's own entry */
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -221,7 +221,7 @@ export function readMixerProperties(
     const returns = returnTracks ?? readReturnTrackInfo();
 
     if (sends.length !== returns.length) {
-      result.reason = `send count (${sends.length}) doesn't match return track count (${returns.length})`;
+      result.detail = `send count (${sends.length}) doesn't match return track count (${returns.length})`;
     }
 
     result.sends = sends.map((send, i) => {

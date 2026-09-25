@@ -383,7 +383,7 @@ describe("ppal-update-track", () => {
 
     expect(data.gainDb).toBeUndefined();
     expect(data.pan).toBeUndefined();
-    expect(data.reason).toBeUndefined();
+    expect(data.detail).toBeUndefined();
     // Stereo is the mode every caller assumes, so it goes unsaid.
     expect(data.panningMode).toBeUndefined();
 
@@ -416,7 +416,7 @@ describe("ppal-update-track", () => {
       expect(data.leftPan).toBeUndefined();
       expect(data.rightPan).toBeUndefined();
       expect(data.pan).toBeUndefined();
-      expect(data.reason).toContain("pan had no effect");
+      expect(data.detail).toContain("pan had no effect");
       // The call set the mode itself, so it isn't reported back.
       expect(data.panningMode).toBeUndefined();
 
@@ -498,7 +498,7 @@ describe("ppal-update-track", () => {
     expect(data.sends).toContainEqual({
       return: "ZZZ",
       ok: false,
-      reason: expect.stringContaining('no return track matching "ZZZ"'),
+      detail: expect.stringContaining('no return track matching "ZZZ"'),
     });
   });
 
@@ -570,7 +570,7 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       {
         path: "t999",
         ok: false,
-        reason: 'no track at path "t999"; ppal-create-track adds tracks',
+        detail: 'no track at path "t999"; ppal-create-track adds tracks',
       },
     ]);
 
@@ -592,8 +592,8 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
     );
 
     expect(entries).toStrictEqual([
-      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
-      { id: "99998", ok: false, reason: 'id "99998" does not exist' },
+      { id: "99999", ok: false, detail: 'id "99999" does not exist' },
+      { id: "99998", ok: false, detail: 'id "99998" does not exist' },
     ]);
   });
 
@@ -644,7 +644,7 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       {
         path: "rt0",
         ok: false,
-        reason: "monitoringState is only available on armable tracks",
+        detail: "monitoringState is only available on armable tracks",
       },
     ]);
   });
@@ -663,7 +663,7 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
     expect(entries[1]).toStrictEqual(
       expect.objectContaining({
         path: "rt0",
-        reason: expect.stringContaining(
+        detail: expect.stringContaining(
           "monitoringState is only available on armable tracks",
         ),
       }),
@@ -689,12 +689,12 @@ interface UpdateTrackResult {
   leftPan?: number;
   rightPan?: number;
   panningMode?: "stereo" | "split";
-  reason?: string;
+  detail?: string;
   sends?: Array<{
     return: string;
     returnId?: string;
     gainDb: number;
-    reason?: string;
+    detail?: string;
   }>;
 }
 

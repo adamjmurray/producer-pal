@@ -233,7 +233,7 @@ describe("ppal-update-device", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ id: deviceId }),
-      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
+      { id: "99999", ok: false, detail: 'id "99999" does not exist' },
     ]);
 
     await sleep(100);
@@ -258,7 +258,7 @@ describe("ppal-update-device", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ id: deviceId }),
-      { path: "t99/d99", ok: false, reason: 'nothing at path "t99/d99"' },
+      { path: "t99/d99", ok: false, detail: 'nothing at path "t99/d99"' },
     ]);
   });
 
@@ -365,7 +365,7 @@ describe("ppal-update-device", () => {
     });
 
     // The count landed, just not the one asked for, so there is no `ok`.
-    expect(parseToolResult<UpdateDeviceResult>(result).reason).toBe(
+    expect(parseToolResult<UpdateDeviceResult>(result).detail).toBe(
       "macroCount rounded from 1 to 2 (macros come in pairs)",
     );
 
@@ -415,7 +415,7 @@ describe("ppal-update-device", () => {
         }),
       );
 
-      expect(written.data.reason).toBeUndefined();
+      expect(written.data.detail).toBeUndefined();
       expect(written.warnings).toStrictEqual([]);
       expect((await readRackParams(rackId)).macros?.count).toBe(macroCount);
     }
@@ -432,7 +432,7 @@ describe("ppal-update-device", () => {
     );
 
     // The name landed, so the refused param rides along as a reason.
-    expect(written.data.reason).toBe("macroCount not applicable to a chain");
+    expect(written.data.detail).toBe("macroCount not applicable to a chain");
     expect(written.warnings).toStrictEqual([]);
   });
 
@@ -469,12 +469,12 @@ interface ReadDeviceResult {
 
 interface UpdateDeviceResult {
   id: string;
-  reason?: string;
+  detail?: string;
   params?: Array<{
     id?: string;
     name: string;
     value?: number | string;
-    reason?: string;
+    detail?: string;
   }>;
 }
 

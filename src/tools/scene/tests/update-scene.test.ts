@@ -177,7 +177,7 @@ describe("updateScene", () => {
       {
         id: "nonexistent",
         ok: false,
-        reason: 'id "nonexistent" does not exist',
+        detail: 'id "nonexistent" does not exist',
       },
     ]);
     // The entry carries it, so the response doesn't say it twice.
@@ -201,7 +201,7 @@ describe("updateScene", () => {
       {
         id: "nonexistent",
         ok: false,
-        reason: 'id "nonexistent" does not exist',
+        detail: 'id "nonexistent" does not exist',
       },
       { id: "123", path: "s0" },
       { id: "456", path: "s1" },
@@ -289,7 +289,7 @@ describe("updateScene", () => {
         id: "123",
         path: "s0",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -324,7 +324,7 @@ describe("updateScene", () => {
       expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
         id: "123",
         path: "s0",
-        reason: "color #FF0000 was set but could not be read back: gone",
+        detail: "color #FF0000 was set but could not be read back: gone",
       });
     });
   });
@@ -371,12 +371,12 @@ describe("updateScene", () => {
         {
           id: "nonexistent",
           ok: false,
-          reason: 'id "nonexistent" does not exist',
+          detail: 'id "nonexistent" does not exist',
         },
         {
           id: "also-gone",
           ok: false,
-          reason: 'id "also-gone" does not exist',
+          detail: 'id "also-gone" does not exist',
         },
       ]);
       expect(selectMockRef.get()).not.toHaveBeenCalled();

@@ -35,7 +35,7 @@ interface PseudoParam {
   name: string;
   value?: unknown;
   ok?: boolean;
-  reason?: string;
+  detail?: string;
   unit?: string;
   state?: string;
 }
@@ -250,7 +250,7 @@ describe("specialized devices: Drift", () => {
       {
         name: "pitchBendRange",
         ok: false,
-        reason: 'pitchBendRange must be an integer 0-12 (got "13")',
+        detail: 'pitchBendRange must be an integer 0-12 (got "13")',
       },
     ]);
     expect(warnings).toStrictEqual([]);
@@ -652,7 +652,7 @@ describe("specialized devices: Simpler", () => {
     // read-device omits an empty Simpler's sample too, so this entry is the
     // only thing anywhere that says the write never landed.
     expect(params).toStrictEqual([
-      { name: "sample", ok: false, reason: "written, but no value reads back" },
+      { name: "sample", ok: false, detail: "written, but no value reads back" },
     ]);
     expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
   });
@@ -675,8 +675,8 @@ describe("specialized devices: Simpler", () => {
 
     expect(entry?.name).toBe("sample");
     expect(entry).not.toHaveProperty("value");
-    expect(entry?.reason).toContain("not loaded");
-    expect(entry?.reason).toContain("sample.aiff");
+    expect(entry?.detail).toContain("not loaded");
+    expect(entry?.detail).toContain("sample.aiff");
     // The sample it could not replace is still loaded.
     expect(String((await readDevice(id, ["sample"])).sample)).toContain(
       "sample.aiff",

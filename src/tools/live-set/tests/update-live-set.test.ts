@@ -259,22 +259,22 @@ describe("updateLiveSet", () => {
     // respelled case has to say the write succeeded.
     const sharp = await updateLiveSet({ scale: "F# Dorian" });
 
-    expect(sharp.reason).toBe(scaleRespellReason);
+    expect(sharp.detail).toBe(scaleRespellReason);
     expect(sharp.$meta).toStrictEqual([scaleChangeNote]);
 
     const flat = await updateLiveSet({ scale: "Db Major" });
 
-    expect(flat.reason).toBeUndefined();
+    expect(flat.detail).toBeUndefined();
     expect(flat.$meta).toStrictEqual([scaleChangeNote]);
 
     const natural = await updateLiveSet({ scale: "C Major" });
 
-    expect(natural.reason).toBeUndefined();
+    expect(natural.detail).toBeUndefined();
     expect(natural.$meta).toStrictEqual([scaleChangeNote]);
 
     const disabled = await updateLiveSet({ scale: "" });
 
-    expect(disabled.reason).toBeUndefined();
+    expect(disabled.detail).toBeUndefined();
     expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
   });
 
@@ -282,7 +282,7 @@ describe("updateLiveSet", () => {
     const result = await updateLiveSet({ scale: "c major" });
 
     expect(result.scale).toBe("C Major");
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "scale c major is spelled C Major — same scale, set correctly",
     );
   });

@@ -25,7 +25,7 @@ interface ParamInfo {
 
 interface ParamEntry {
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 interface DeviceRead {
@@ -101,7 +101,7 @@ describe("ppal-update-device with the same param named twice", () => {
     expect(params[0]).toStrictEqual(
       expect.objectContaining({
         ok: false,
-        reason: 'set again by "Threshold" later in the list',
+        detail: 'set again by "Threshold" later in the list',
       }),
     );
     expect(params[1]).not.toHaveProperty("ok");

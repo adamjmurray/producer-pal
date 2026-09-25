@@ -48,7 +48,7 @@ export function writeParam(
 
   return {
     ...readParameterBasic(param),
-    ...(changed == null ? {} : { reason: changed }),
+    ...(changed == null ? {} : { detail: changed }),
     ...(requested == null ? {} : { requested }),
   };
 }

@@ -301,7 +301,7 @@ describe("duplicate - a session scene copy that fails", () => {
 
     expect(result).toStrictEqual([
       { id: "copyA", path: "s1", clips: [] },
-      { id: "scene1", ok: false, reason: "Live refused the copy" },
+      { id: "scene1", ok: false, detail: "Live refused the copy" },
       { id: "copyB", path: "s2", clips: [] },
     ]);
     // The next copy follows the last one that landed, not the one that didn't.
@@ -314,8 +314,8 @@ describe("duplicate - a session scene copy that fails", () => {
     const result = await duplicate({ type: "scene", id: "scene1", count: 2 });
 
     expect(result).toStrictEqual([
-      { id: "scene1", ok: false, reason: "Live refused the copy" },
-      { id: "scene1", ok: false, reason: "Live refused the copy" },
+      { id: "scene1", ok: false, detail: "Live refused the copy" },
+      { id: "scene1", ok: false, detail: "Live refused the copy" },
     ]);
   });
 });

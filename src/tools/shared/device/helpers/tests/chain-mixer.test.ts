@@ -36,7 +36,7 @@ const mixerPath = `${chainPath} mixer_device`;
  * @returns The expected send entry
  */
 function snappedSend(gainDb: number, name = "a Delay", returnId = "rc-0") {
-  return { return: name, returnId, gainDb, reason: SNAPPED };
+  return { return: name, returnId, gainDb, detail: SNAPPED };
 }
 
 interface MixerMocks {
@@ -415,7 +415,7 @@ describe("applyChainMixer", () => {
         {
           return: "Chorus",
           ok: false,
-          reason:
+          detail:
             'no return chain matching "Chorus" (returns: a Delay, b Reverb)',
         },
       ]);
@@ -434,7 +434,7 @@ describe("applyChainMixer", () => {
         {
           return: "a",
           ok: false,
-          reason:
+          detail:
             'no return chain matching "a" (rack has no return chains; they can only be added in Live)',
         },
       ]);
@@ -468,7 +468,7 @@ describe("applyChainMixer", () => {
           return: "c",
           returnId: "rc-2",
           ok: false,
-          reason: "the chain has no send for this return",
+          detail: "the chain has no send for this return",
         },
       ]);
       expect(capturedWarnings()).toStrictEqual([]);
@@ -516,7 +516,7 @@ describe("applyChainMixer", () => {
           {
             return: "nope",
             ok: false,
-            reason:
+            detail:
               'no return chain matching "nope" (returns: a Delay, b Reverb)',
           },
         ]);

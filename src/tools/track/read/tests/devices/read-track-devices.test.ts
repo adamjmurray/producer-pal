@@ -85,7 +85,7 @@ describe("readOneTrack", () => {
 
       const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
-      expect(result.reason).toBe(
+      expect(result.detail).toBe(
         "track has 2 instruments (t0/d0 (id device1), t0/d1 (id device2)), " +
           "which is unusual — expected 0 or 1",
       );

@@ -527,7 +527,7 @@ interface CreateSceneResult {
   id: string;
   path: string;
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface CaptureSceneResult {

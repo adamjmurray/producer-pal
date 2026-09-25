@@ -95,7 +95,7 @@ describe("updateDevice - division params", () => {
         {
           name: "793",
           ok: false,
-          reason: '"1/128" is not a valid division option',
+          detail: '"1/128" is not a valid division option',
         },
       ],
     });

@@ -518,7 +518,7 @@ function runLaneCopy(
       ? { name: takeLaneName }
       : {}),
     clips,
-    reason: [onLane ? LANE_COPY_NOTE : MAIN_LANE_COPY_NOTE, ...losses].join(
+    detail: [onLane ? LANE_COPY_NOTE : MAIN_LANE_COPY_NOTE, ...losses].join(
       "; ",
     ),
   };
@@ -586,7 +586,7 @@ function copyClipToLane(
     if (error instanceof PartialRecreateError) {
       return {
         ...getMinimalClipInfo(error.partialClip),
-        reason: `the ${kind} copy is incomplete (${errorMessage(error)})`,
+        detail: `the ${kind} copy is incomplete (${errorMessage(error)})`,
       };
     }
 

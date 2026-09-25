@@ -230,7 +230,7 @@ describe("updateTrack - send properties", () => {
       {
         return: "ZZZ",
         ok: false,
-        reason: 'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
+        detail: 'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
       },
     ]);
   });
@@ -252,7 +252,7 @@ describe("updateTrack - send properties", () => {
       {
         return: "A",
         ok: false,
-        reason:
+        detail:
           'no return track matching "A" (the Live Set has no return tracks)',
       },
     ]);
@@ -276,7 +276,7 @@ describe("updateTrack - send properties", () => {
           {
             return: "ZZZ",
             ok: false,
-            reason:
+            detail:
               'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
           },
         ],
@@ -358,12 +358,12 @@ describe("updateTrack - send properties", () => {
             return: "B-Delay",
             returnId: "return_B",
             gainDb: -11.98,
-            reason: SNAPPED_SEND,
+            detail: SNAPPED_SEND,
           },
           {
             return: "ZZZ",
             ok: false,
-            reason:
+            detail:
               'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
           },
         ],
@@ -458,7 +458,7 @@ describe("updateTrack - send properties", () => {
         return: "A-Reverb",
         returnId: "return_A",
         ok: false,
-        reason: expect.stringContaining(
+        detail: expect.stringContaining(
           "gainDb is disabled and was not changed",
         ),
       });
@@ -523,7 +523,7 @@ describe("updateTrack - send properties", () => {
             return: "A-Reverb",
             returnId: "return_A",
             gainDb: -11.98,
-            reason: SNAPPED_SEND,
+            detail: SNAPPED_SEND,
           },
         ],
       });
@@ -547,7 +547,7 @@ describe("updateTrack - send properties", () => {
             return: "A-Reverb",
             returnId: "return_A",
             gainDb: -6.02,
-            reason: SNAPPED_SEND,
+            detail: SNAPPED_SEND,
           },
         ],
       });
@@ -566,7 +566,7 @@ describe("updateTrack - send properties", () => {
             return: "A-Reverb",
             returnId: "return_A",
             gainDb: "-inf",
-            reason: SNAPPED_SEND,
+            detail: SNAPPED_SEND,
           },
         ],
       });
@@ -588,7 +588,7 @@ describe("updateTrack - send properties", () => {
             return: "A-Reverb",
             returnId: "return_A",
             gainDb: -70,
-            reason: SNAPPED_SEND,
+            detail: SNAPPED_SEND,
           },
         ],
       });
@@ -612,7 +612,7 @@ describe("updateTrack - send properties", () => {
             return: "A-Reverb",
             returnId: "return_A",
             gainDb: -6.33,
-            reason: SNAPPED_SEND,
+            detail: SNAPPED_SEND,
           },
         ],
       });
@@ -724,12 +724,12 @@ describe("updateTrack - send properties", () => {
  * entry says why, and nothing was warned about (ADR-0042).
  * @param result - What updateTrack returned
  * @param sends - The send params that must have stayed untouched
- * @param reason - What the send's entry says
+ * @param detail - What the send's entry says
  */
 function expectSendRefused(
   result: ReturnType<typeof updateTrack>,
   sends: RegisteredMockObject[],
-  reason: string,
+  detail: string,
 ): void {
   for (const send of sends) {
     expect(send.set).not.toHaveBeenCalled();
@@ -737,7 +737,7 @@ function expectSendRefused(
 
   expect(capturedWarnings()).toStrictEqual([]);
   expect(sendsOf(result)).toStrictEqual([
-    expect.objectContaining({ ok: false, reason }),
+    expect.objectContaining({ ok: false, detail }),
   ]);
 }
 
@@ -774,7 +774,7 @@ function expectSendUnresolved(
       {
         return: named,
         ok: false,
-        reason: expect.stringContaining(`no return track matching "${named}"`),
+        detail: expect.stringContaining(`no return track matching "${named}"`),
       },
     ],
   });

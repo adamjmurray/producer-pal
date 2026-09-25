@@ -116,7 +116,7 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
-      reason:
+      detail:
         "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
     });
   });
@@ -249,7 +249,7 @@ describe("duplicate take lane", () => {
       {
         path: "t1/l0[5|1]",
         ok: false,
-        reason: "it's an audio clip with no sample file; drag it in Live's UI",
+        detail: "it's an audio clip with no sample file; drag it in Live's UI",
       },
     ]);
   });
@@ -389,7 +389,7 @@ describe("duplicate take lane", () => {
     expect(created[1]).toStrictEqual({
       path: "t0/l0[2|1]",
       ok: false,
-      reason: "the take-lane copy failed: Live created no clip at t0/l0[2|1]",
+      detail: "the take-lane copy failed: Live created no clip at t0/l0[2|1]",
     });
   });
 
@@ -567,11 +567,11 @@ describe("duplicate take lane", () => {
       id: "src_clip",
       toPath: `t1/l0, t2/l${MAX_TAKE_LANES}`,
       arrangementStart: "5|1",
-    })) as Array<{ ok?: false; reason?: string }>;
+    })) as Array<{ ok?: false; detail?: string }>;
 
     expect(ok.call).toHaveBeenCalledWith("create_take_lane");
     // The lane past the cap says so on its own entry, not in a warning.
-    expect(result[1]?.reason).toBe(
+    expect(result[1]?.detail).toBe(
       `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
     expect(consoleMock.warn).not.toHaveBeenCalledWith(
@@ -591,7 +591,7 @@ describe("duplicate take lane", () => {
       id: "src_clip",
       toPath: `t1/l${MAX_TAKE_LANES - 1},t1/l${MAX_TAKE_LANES}`,
       arrangementStart: "1|1,5|1",
-    })) as Array<{ ok?: false; reason?: string }>;
+    })) as Array<{ ok?: false; detail?: string }>;
 
     expect(
       lookupMockObject(
@@ -599,7 +599,7 @@ describe("duplicate take lane", () => {
         livePath.track(1).takeLane(MAX_TAKE_LANES - 1),
       )?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(result[1]?.reason).toContain(
+    expect(result[1]?.detail).toContain(
       `take lane "l${MAX_TAKE_LANES}" is out of range`,
     );
   });
@@ -648,13 +648,13 @@ describe("duplicate take lane", () => {
       {
         id: expect.any(String),
         path: "t0/l0[1|1]",
-        reason:
+        detail:
           "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
       },
       {
         id: expect.any(String),
         path: "t0/l0[5|1]",
-        reason:
+        detail:
           "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
       },
     ]);
@@ -697,7 +697,7 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual({
       id: expect.stringMatching(/^tl_clip_\d+$/),
       path: "t0/l1[5|1]",
-      reason:
+      detail:
         "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
     });
 
@@ -750,10 +750,10 @@ describe("duplicate take lane", () => {
       id: "src_clip",
       toPath: "t0/l0",
       arrangementStart: "1|1",
-    })) as { id?: string; reason?: string };
+    })) as { id?: string; detail?: string };
 
     expect(created.id).toBeDefined();
-    expect(created.reason).toBe(
+    expect(created.detail).toBe(
       "the take-lane copy is incomplete (notes failed)",
     );
   });

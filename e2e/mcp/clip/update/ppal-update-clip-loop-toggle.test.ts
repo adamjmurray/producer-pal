@@ -281,7 +281,7 @@ describe("ppal-update-clip loop toggle", () => {
       warping: false,
     });
 
-    expect(entry.reason).toContain(
+    expect(entry.detail).toContain(
       "warping ignored: looping forces warping on",
     );
     expect(clip.looping).toBe(true);

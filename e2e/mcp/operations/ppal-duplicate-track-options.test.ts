@@ -31,7 +31,7 @@ interface LiveSetTracks {
 interface DuplicateTrackResult {
   id: string;
   clips?: unknown[];
-  reason?: string;
+  detail?: string;
 }
 
 interface ReadTrackResult {
@@ -127,8 +127,8 @@ describe("ppal-duplicate track options", () => {
     expect(source.inputRoutingType?.name).toBe("No Input");
 
     // What the call did to the source belongs to the copy it did it for.
-    expect(copy.reason).toContain("armed it");
-    expect(copy.reason).toContain('set its input to "No Input"');
+    expect(copy.detail).toContain("armed it");
+    expect(copy.detail).toContain('set its input to "No Input"');
     expect(warnings).toStrictEqual([]);
   });
 

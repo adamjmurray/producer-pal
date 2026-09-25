@@ -59,7 +59,7 @@ describe("processWarpMarkers", () => {
     const result = processWarpMarkers(warpClip("invalid json{"));
 
     expect(result.markers).toBeUndefined();
-    expect(result.reason).toContain("warpMarkers unreadable:");
+    expect(result.detail).toContain("warpMarkers unreadable:");
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 });

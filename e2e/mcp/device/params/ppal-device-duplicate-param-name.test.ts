@@ -63,11 +63,11 @@ describe("a device with two params of the same name", () => {
 
     expect(entry?.name).toBe("Width");
     expect(entry?.ok).toBe(false);
-    expect(entry?.reason).toContain("names 2 params");
-    expect(entry?.reason).toContain("Send {id, value} to pick one");
+    expect(entry?.detail).toContain("names 2 params");
+    expect(entry?.detail).toContain("Send {id, value} to pick one");
 
     for (const param of before) {
-      expect(entry?.reason).toContain(`id ${param.id}`);
+      expect(entry?.detail).toContain(`id ${param.id}`);
     }
 
     expect(warnings).toStrictEqual([]);
