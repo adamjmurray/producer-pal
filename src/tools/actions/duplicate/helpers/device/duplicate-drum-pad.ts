@@ -19,6 +19,7 @@ import {
   extractDevicePath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DuplicateDrumPadResult {
@@ -100,6 +101,14 @@ export function duplicateDrumPad(
   if (sourcePad == null || sourcePad.getChildCount("chains") === 0) {
     throw new Error(
       `drum pad ${midiToNoteName(source.midi)} is empty, nothing to copy`,
+    );
+  }
+
+  // copy_pad copies the pad's devices too. A pad's path isn't a prefix of its
+  // devices' paths, so its chains are checked instead.
+  if (sourcePad.someChild("chains", isProducerPalDevice)) {
+    throw new Error(
+      `cannot duplicate drum pad ${midiToNoteName(source.midi)}: it holds the Producer Pal device`,
     );
   }
 

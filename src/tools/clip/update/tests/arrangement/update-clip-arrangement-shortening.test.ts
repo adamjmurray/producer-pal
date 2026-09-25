@@ -45,6 +45,48 @@ function setupFourBarArrangementClip() {
   return { sourceClip, track };
 }
 
+/**
+ * A 4-bar clip 789 on track 0 whose move to bar 9 lands as clip 999.
+ * @param tempClipId - What create_midi_clip answers for the shortening temp clip
+ * @returns The track mock and the moved clip's id
+ */
+function setupMoveThenResize(tempClipId: string) {
+  const trackIndex = 0;
+  const movedClipId = "999";
+  const clips = setupArrangementClipPath(trackIndex, ["789", movedClipId]);
+  const track = requireMockTrack(trackIndex);
+  const sourceClip = clips.get("789");
+  const movedClip = clips.get(movedClipId);
+
+  if (sourceClip == null || movedClip == null) {
+    throw new Error("Expected source and moved clip mocks");
+  }
+
+  setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
+  setupMockProperties(movedClip, {
+    ...FOUR_BAR_CLIP_PROPS,
+    start_time: 32.0, // Moved to bar 9
+    end_time: 48.0,
+    trackIndex,
+  });
+
+  registerMockObject("temp-midi", { type: "Clip" });
+
+  overrideCall(track, function (method: string) {
+    if (method === "duplicate_clip_to_arrangement") {
+      return `id ${movedClipId}`;
+    }
+
+    if (method === "create_midi_clip") {
+      return tempClipId;
+    }
+
+    return USE_CALL_FALLBACK;
+  });
+
+  return { track, movedClipId };
+}
+
 describe("updateClip - arrangementLength (shortening only)", () => {
   let defaultMocks: UpdateClipMocks;
 
@@ -168,45 +210,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   it("should allow both arrangementLength and arrangementStart (move then resize)", async () => {
     // Order of operations: move FIRST, then resize
     // This ensures lengthening operations use the new position for tile placement
-    const trackIndex = 0;
-    const movedClipId = "999";
-    const clips = setupArrangementClipPath(trackIndex, ["789", movedClipId]);
-    const track = requireMockTrack(trackIndex);
-    const sourceClip = clips.get("789");
-    const movedClip = clips.get(movedClipId);
-
-    expect(sourceClip).toBeDefined();
-    expect(movedClip).toBeDefined();
-
-    if (sourceClip == null || movedClip == null) {
-      throw new Error("Expected source and moved clip mocks");
-    }
-
-    setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
-    setupMockProperties(movedClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 32.0, // Moved to bar 9
-      end_time: 48.0, // Still 4 bars long (16 beats)
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
-
-    registerMockObject("temp-midi", { type: "Clip" });
-
-    // Mock duplicate_clip_to_arrangement to return moved clip
-    overrideCall(track, function (method: string) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return `id ${movedClipId}`;
-      }
-
-      if (method === "create_midi_clip") {
-        return "id temp-midi";
-      }
-
-      return USE_CALL_FALLBACK;
-    });
+    const { track, movedClipId } = setupMoveThenResize("id temp-midi");
 
     const result = await updateClip({
       id: "789",
@@ -234,6 +238,37 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     // The move landed it at beat 32, which 4/4 spells as bar 9.
     expect(result).toStrictEqual({ id: movedClipId, path: "t0[9|1]" });
+  });
+
+  // The source is already deleted, so the moved clip must keep its entry.
+  it("reports the moved clip when the resize after a landed move throws", async () => {
+    const { track } = setupMoveThenResize("id 0");
+
+    const result = await updateClip({
+      id: "789",
+      arrangementLength: "2bar",
+      arrangementStart: "9|1",
+    });
+
+    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
+    expect(result).toStrictEqual({
+      id: "999",
+      path: "t0[9|1]",
+      reason:
+        "moved, but arrangementLength didn't finish: Live created no clip at t0",
+    });
+  });
+
+  it("still refuses a resize that throws when no move landed", async () => {
+    const { track } = setupFourBarArrangementClip();
+
+    overrideCall(track, (method: string) =>
+      method === "create_midi_clip" ? "id 0" : USE_CALL_FALLBACK,
+    );
+
+    await expect(
+      updateClip({ id: "789", arrangementLength: "2bar" }),
+    ).rejects.toThrow("Live created no clip at t0");
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", async () => {

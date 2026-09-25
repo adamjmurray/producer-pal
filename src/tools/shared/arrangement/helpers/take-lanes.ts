@@ -273,8 +273,8 @@ export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
 /**
  * Resolve (auto-creating as needed) the target take lane on a track.
  * The target auto-creates lanes up to that index (mirroring scene
- * auto-create). The MAX_TAKE_LANES cap is enforced. takeLaneName names only the
- * target lane, and only when this call created it — existing lanes and any
+ * auto-create). MAX_TAKE_LANES caps only lanes this call creates. takeLaneName
+ * names only the target lane, and only when this call created it — existing lanes and any
  * intermediate lanes auto-created to fill a gap are left unnamed.
  *
  * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
@@ -296,7 +296,11 @@ export function resolveTakeLane(
   const currentCount = track.getChildIds("take_lanes").length;
   const laneIndex = target;
 
-  assertTakeLaneCapacity(laneIndex);
+  // Only a lane this call creates is capped here: the user can make more in
+  // Live. (takeLaneTargetsThatFit still caps its callers by index.)
+  if (laneIndex >= currentCount) {
+    assertTakeLaneCapacity(laneIndex);
+  }
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
   for (let i = currentCount; i <= laneIndex; i++) {
@@ -394,5 +398,5 @@ function assertTakeLaneCapacity(laneIndex: number): void {
  * @returns The explanation
  */
 export function takeLaneCapacityMessage(laneIndex: number): string {
-  return `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`;
+  return `take lane "l${laneIndex}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`;
 }

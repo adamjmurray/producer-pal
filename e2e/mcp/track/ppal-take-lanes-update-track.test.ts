@@ -215,7 +215,7 @@ describe("take lanes as track-tool targets", () => {
 
     expect(isToolError(refused)).toBe(true);
     expect(getToolErrorMessage(refused)).toContain(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
     expect(getToolErrorMessage(refused)).toContain("Nothing was created");
 

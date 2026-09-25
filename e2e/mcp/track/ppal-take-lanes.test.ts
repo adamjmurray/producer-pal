@@ -336,7 +336,7 @@ describe("take lanes", () => {
     expect(outOfRange.data[0]!.ok).toBeUndefined();
     expect(outOfRange.data[1]!.ok).toBe(false);
     expect(outOfRange.data[1]!.reason).toContain(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
   });
 

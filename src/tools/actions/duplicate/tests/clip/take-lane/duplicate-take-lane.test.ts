@@ -572,7 +572,7 @@ describe("duplicate take lane", () => {
     expect(ok.call).toHaveBeenCalledWith("create_take_lane");
     // The lane past the cap says so on its own entry, not in a warning.
     expect(result[1]?.reason).toBe(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
     expect(consoleMock.warn).not.toHaveBeenCalledWith(
       expect.stringContaining(`skipping "t2/l${MAX_TAKE_LANES}"`),

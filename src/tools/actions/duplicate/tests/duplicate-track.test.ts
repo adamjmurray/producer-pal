@@ -12,8 +12,10 @@ import {
   createTrackResult,
   expectDeleteDeviceCalls,
   registerBareTrackDuplication,
+  registerClipSlot,
   registerDuplicatedTrackSlots,
   registerMockObject,
+  type RegisteredMockObject,
   registerTrackCopySet,
   setupProducerPalDeviceMocks,
   setupRouteToSourceMock,
@@ -484,6 +486,34 @@ function groupWithOneMember(): TrackCopySet {
   });
 }
 
+/**
+ * Give the first copy's member (landing at t3) two devices, a session clip
+ * and an arrangement clip.
+ * @param tracks - The Set's tracks, from groupWithOneMember()
+ * @returns The member copy's clip slot
+ */
+function fillFirstMemberCopy(
+  tracks: Map<string, RegisteredMockObject>,
+): RegisteredMockObject {
+  const slot = registerClipSlot(3, 0, true);
+
+  registerClipSlot(3, 0, true, { is_arrangement_clip: 0 });
+  tracks.set(
+    "copy-1-m1",
+    registerMockObject("copy-1-m1", {
+      path: livePath.track(3),
+      properties: {
+        devices: children("d0", "d1"),
+        clip_slots: children("live_set/tracks/3/clip_slots/0"),
+        arrangement_clips: children("arr0"),
+      },
+    }),
+  );
+  registerMockObject("arr0", { properties: { is_arrangement_clip: 1 } });
+
+  return slot;
+}
+
 describe("duplicate - group track", () => {
   it("copies the group itself every time, never a member", async () => {
     const { liveSet, tracks } = groupWithOneMember();
@@ -518,6 +548,84 @@ describe("duplicate - group track", () => {
     await expect(duplicate({ type: "track", id: "group" })).rejects.toThrow(
       "Live made no copy of t0",
     );
+  });
+
+  it("strips the members' copies too", async () => {
+    const { tracks } = groupWithOneMember();
+    const slot = fillFirstMemberCopy(tracks);
+
+    const result = await duplicate({
+      type: "track",
+      id: "group",
+      withoutClips: true,
+      withoutDevices: true,
+    });
+
+    expect(result).toStrictEqual({ id: "copy-1", path: "t2", clips: [] });
+    const memberCopy = tracks.get("copy-1-m1") as RegisteredMockObject;
+
+    expectDeleteDeviceCalls(memberCopy, 2);
+    expect(slot.call).toHaveBeenCalledWith("delete_clip");
+    expect(memberCopy.call).toHaveBeenCalledWith("delete_clip", "id arr0");
+  });
+
+  it("lists the members' clips where they end up", async () => {
+    const { tracks } = groupWithOneMember();
+
+    fillFirstMemberCopy(tracks);
+    tracks.get("copy-1-m1")!.properties.arrangement_clips = [];
+
+    const result = await duplicate({ type: "track", id: "group", count: 2 });
+
+    // The first copy's member was read at t3, then pushed to t5 by the second.
+    expect(result).toStrictEqual([
+      { id: "copy-2", path: "t2", clips: [] },
+      {
+        id: "copy-1",
+        path: "t4",
+        clips: [{ id: "live_set/tracks/3/clip_slots/0/clip", path: "t5/s0" }],
+      },
+    ]);
+  });
+
+  it("removes the Producer Pal device from its host member's copy", async () => {
+    const { tracks } = groupWithOneMember();
+
+    registerMockObject("this_device", { path: livePath.track(1).device(0) });
+
+    const result = await duplicate({ type: "track", id: "group" });
+
+    expect(result).toStrictEqual({
+      id: "copy-1",
+      path: "t2",
+      clips: [],
+      reason: "the Producer Pal device was not copied",
+    });
+    expect(tracks.get("copy-1-m1")?.call).toHaveBeenCalledWith(
+      "delete_device",
+      0,
+    );
+    expect(tracks.get("copy-1")?.call).not.toHaveBeenCalledWith(
+      "delete_device",
+      expect.anything(),
+    );
+  });
+
+  it("leaves the copies' devices alone when the host is outside the group", async () => {
+    const { tracks } = groupWithOneMember();
+
+    registerMockObject("this_device", { path: livePath.track(2).device(0) });
+
+    const result = await duplicate({ type: "track", id: "group" });
+
+    expect(result).toStrictEqual({ id: "copy-1", path: "t2", clips: [] });
+
+    for (const id of ["copy-1", "copy-1-m1"]) {
+      expect(tracks.get(id)?.call).not.toHaveBeenCalledWith(
+        "delete_device",
+        expect.anything(),
+      );
+    }
   });
 });
 

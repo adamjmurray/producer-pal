@@ -55,6 +55,63 @@ describe("useImageAttachments pastes that carry no real image", () => {
   });
 });
 
+describe("useImageAttachments pastes that carry text too", () => {
+  /**
+   * A paste of one PNG plus the given text and HTML.
+   * @param text - The `text/plain` content
+   * @param html - The `text/html` content
+   * @returns A paste event stand-in
+   */
+  function pasteEvent(text: string, html: string): ClipboardEvent {
+    const types: Record<string, string> = {
+      "text/plain": text,
+      "text/html": html,
+    };
+
+    return {
+      clipboardData: {
+        files: [new File(["xy"], "image.png", { type: "image/png" })],
+        getData: (type: string) => types[type] ?? "",
+      },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as ClipboardEvent;
+  }
+
+  it("pastes only the text from an Office app, not its picture of it", () => {
+    const { result } = renderHook(() => useImageAttachments());
+    const event = pasteEvent(
+      "C\tAm\n",
+      "<html><head><style>td {}</style></head><body><!--StartFragment-->" +
+        "<table><tr><td>C</td><td>Am</td></tr></table>" +
+        "<!--EndFragment--></body></html>",
+    );
+
+    result.current.zoneProps.onPasteCapture(event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(event.stopPropagation).not.toHaveBeenCalled();
+    expect(attachImages).not.toHaveBeenCalled();
+  });
+
+  it("attaches the image when the HTML is only that image", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = pasteEvent(
+      "https://example.com/shot.png",
+      "<meta charset='utf-8'><!--StartFragment-->" +
+        '<img src="https://example.com/shot.png" alt="shot"/>' +
+        "<!--EndFragment-->",
+    );
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    // The editor still pastes the text.
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(attachImages).toHaveBeenCalled();
+  });
+});
+
 describe("useImageAttachments drags that carry nothing to attach", () => {
   it("ignores a drop whose file list never materialized", async () => {
     const { result } = renderHook(() => useImageAttachments());
@@ -156,9 +213,13 @@ describe("useImageAttachments adds that finish after the list changed", () => {
     add(result.current, "A");
     add(result.current, "B");
     await finishNextRead();
+
+    // Still loading until the last read lands.
+    expect(result.current.loading).toBe(true);
     await finishNextRead();
 
     expect(attached(result.current)).toStrictEqual(["A", "B"]);
+    expect(result.current.loading).toBe(false);
   });
 
   it("doesn't bring back sent images when a paste finishes after clear", async () => {

@@ -179,6 +179,10 @@ def _find_loadable(root, devices_only, params):
 
 
 def _target_track(song, params, default_track_type):
+    name = params.get("track_name")
+    if name:
+        return _track_named(song, str(name))
+
     index = _parse_track_index(params.get("track_index"))
     if index is not None:
         tracks = song.tracks
@@ -194,6 +198,17 @@ def _target_track(song, params, default_track_type):
     if track_type == "audio":
         return song.create_audio_track(-1) or song.tracks[-1]
     raise RouteError(400, "track_type must be 'midi' or 'audio', got %r" % track_type)
+
+
+def _track_named(song, name):
+    """The one track with this exact name. Unlike an index, it can't point at
+    another track after tracks shift or this one is deleted."""
+    matches = [track for track in song.tracks if track.name == name]
+    if len(matches) != 1:
+        raise RouteError(
+            409, "expected 1 track named %r, found %s" % (name, len(matches))
+        )
+    return matches[0]
 
 
 def _parse_track_index(value):

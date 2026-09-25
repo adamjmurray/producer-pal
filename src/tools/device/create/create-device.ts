@@ -69,7 +69,7 @@ function validateListModeArgs(args: {
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object, for the request deadline
  * @returns Device list, or object(s) naming each created device
  */
 export async function createDevice(
@@ -81,9 +81,10 @@ export async function createDevice(
     params,
     focus,
   }: CreateDeviceArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): Promise<typeof VALID_DEVICES | WriteResult<CreateDeviceResult>> {
   const deviceArg = device ?? deprecatedDeviceName;
+  const { deadline, timeoutMs } = context;
 
   // List mode: return valid devices when no device is named
   if (deviceArg == null) {
@@ -95,7 +96,7 @@ export async function createDevice(
   if (path == null || path.trim() === "") {
     // A name Live doesn't have is the mistake to report first, as it always
     // was; with no path there is nothing to pair a list against.
-    await findBrowserItem(deviceArg);
+    await findBrowserItem(deviceArg, deadline);
 
     throw new Error("path is required when creating a device");
   }
@@ -103,16 +104,21 @@ export async function createDevice(
   const paramEntries = validateParamEntries(params);
 
   validateListLengths([
-    { param: "path", value: path },
+    { param: "path", value: path, target: true },
     { param: "device", value: deviceArg },
     { param: "name", value: name },
   ]);
 
-  const plans = await devicePlans(deviceArg, targetEntries(path, "path"));
+  const plans = await devicePlans(
+    deviceArg,
+    targetEntries(path, "path"),
+    deadline,
+  );
   const result = await createDevicesAtPaths({
     plans,
     name,
     params: paramEntries,
+    timing: { deadline, timeoutMs },
   });
 
   if (focus) {
@@ -133,6 +139,7 @@ export async function createDevice(
 async function devicePlans(
   value: string,
   paths: string[],
+  deadline: number | null | undefined,
 ): Promise<DevicePlan[]> {
   // The lists agreed before anything ran, so a split names one device per path.
   const devices =
@@ -145,7 +152,7 @@ async function devicePlans(
     let item = found.get(deviceName);
 
     if (item === undefined) {
-      item = await findBrowserItem(deviceName);
+      item = await findBrowserItem(deviceName, deadline);
       found.set(deviceName, item);
     }
 
@@ -173,6 +180,7 @@ function createdEntries(
 /**
  * Look up a device that isn't native in Live's browser.
  * @param deviceName - Device name
+ * @param deadline - The request deadline
  * @returns The browser item, or null for a native device
  * @throws Error listing the native devices when the remote script isn't
  *   answering, since without it they are all there is
@@ -180,12 +188,13 @@ function createdEntries(
  */
 async function findBrowserItem(
   deviceName: string,
+  deadline: number | null | undefined,
 ): Promise<BrowserItem | null> {
   if (ALL_VALID_DEVICES.includes(deviceName)) {
     return null;
   }
 
-  const item = await resolveBrowserDevice(deviceName);
+  const item = await resolveBrowserDevice(deviceName, deadline);
 
   if (item != null && isProducerPalBrowserItem(item)) {
     throw new Error(

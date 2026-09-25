@@ -195,6 +195,19 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
+  it("refuses a pad whose chain holds the Producer Pal device", async () => {
+    const rack = registerCopyReadyRack();
+
+    registerMockObject("this_device", {
+      path: `${RACK_PATH} chains kick devices 0`,
+    });
+
+    await expect(copyC1ToD1()).rejects.toThrow(
+      "cannot duplicate drum pad C1: it holds the Producer Pal device",
+    );
+    expectNoCopy(rack);
+  });
+
   it("refuses an empty source pad", async () => {
     const rack = registerDrumRack([
       { note: 36, chainIds: [] },

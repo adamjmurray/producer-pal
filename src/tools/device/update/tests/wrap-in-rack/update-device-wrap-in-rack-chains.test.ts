@@ -4,8 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   type RegisteredMockObject,
+  children,
+  livePath,
+  mockNonExistentObjects,
+  registerDrumRackPadChain,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -110,4 +115,52 @@ describe("updateDevice - wrapInRack chain", () => {
       reason: 'path "t0/d0" is not in the rack: Live didn\'t move it',
     });
   });
+});
+
+// Looking up what to wrap is read-only: a path past a rack's last chain, or to
+// an empty pad, names nothing to wrap and must not make chains on the way.
+describe("updateDevice - wrapInRack source lookup", () => {
+  beforeEach(() => {
+    mockNonExistentObjects();
+    registerMockObject("live-set", { path: "live_set" });
+  });
+
+  it("makes no rack chain for a source past the rack's last chain", () => {
+    const rack = registerMockObject("rack-0", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        type: 2,
+        chains: children("chain-0"),
+        can_have_chains: 1,
+        can_have_drum_pads: 0,
+      },
+    });
+
+    registerMockObject("chain-0", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "Chain",
+    });
+
+    expect(() =>
+      updateDevice({ path: "t0/d0/c3/d0", wrapInRack: true }),
+    ).toThrow(
+      'wrapInRack found no devices to wrap: no device at "t0/d0/c3/d0"',
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it.each(["t0/d0/pD1/d0", "t0/d0/pD1"])(
+    "makes no pad chain for the empty-pad source %s",
+    (path) => {
+      registerDrumRackPadChain();
+
+      expect(() => updateDevice({ path, wrapInRack: true })).toThrow(
+        `wrapInRack found no devices to wrap: no device at "${path}"`,
+      );
+      expect(lookupMockObject("drum-rack")?.call).not.toHaveBeenCalledWith(
+        "insert_chain",
+      );
+    },
+  );
 });

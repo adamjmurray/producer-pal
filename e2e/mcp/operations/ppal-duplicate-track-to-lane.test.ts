@@ -329,7 +329,7 @@ describe("ppal-duplicate track to a take lane", () => {
     expect(result[1]).toStrictEqual({
       path: `${DESTINATION}/l${MAX_TAKE_LANES}`,
       ok: false,
-      reason: `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      reason: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     });
 
     await sleep(100);

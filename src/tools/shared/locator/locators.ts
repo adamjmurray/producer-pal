@@ -241,7 +241,8 @@ export function isLocatorId(value: string): boolean {
 
 /**
  * Resolve a single locator reference (ID or name) to its time in beats.
- * Auto-detects whether the value is a locator ID (all digits) or a name.
+ * An all-digit ref is an id first, then an exact name: read results send
+ * `loc:<id>` back for names that can't be tokens, so the id must win.
  * @param liveSet - The live_set LiveAPI object
  * @param locatorRef - Locator ID or name
  * @param context - Optional context for error messages
@@ -252,9 +253,25 @@ export function resolveLocatorRefToBeats(
   locatorRef: string,
   context?: string,
 ): number {
-  return isLocatorId(locatorRef)
-    ? resolveLocatorToBeats(liveSet, { locatorId: locatorRef }, context)
-    : resolveLocatorToBeats(liveSet, { locatorName: locatorRef }, context);
+  if (!isLocatorId(locatorRef)) {
+    return resolveLocatorToBeats(liveSet, { locatorName: locatorRef }, context);
+  }
+
+  const byId = findLocator(liveSet, { locatorId: locatorRef });
+
+  if (byId != null) {
+    return byId.locator.getProperty("time") as number;
+  }
+
+  const [byName] = findLocatorsByName(liveSet, locatorRef);
+
+  if (byName == null) {
+    const contextSuffix = context ? ` ${context}` : "";
+
+    throw new Error(`locator not found: ${locatorRef}${contextSuffix}`);
+  }
+
+  return byName.time;
 }
 
 /**
@@ -264,8 +281,8 @@ export function resolveLocatorRefToBeats(
  *
  * Falls back to the id whenever the name wouldn't resolve to this exact
  * locator: a blank or repeated name matches the wrong one, a bracket or comma
- * is read by the path grammar before the name is, and an all-digit name is read
- * as some other locator's id.
+ * is read by the path grammar before the name is, and an all-digit name can
+ * clash with another locator's id.
  * @param name - This locator's name
  * @param id - This locator's Live id
  * @param names - Every locator's name, to spot a repeat

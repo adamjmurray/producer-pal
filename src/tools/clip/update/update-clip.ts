@@ -17,6 +17,7 @@ import {
   resolveClipTargets,
 } from "./helpers/entries/clip-targets.ts";
 import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { planClipUpdate, warnBlankArgs } from "./helpers/plan-clip-update.ts";
 import {
   refuseRegionWithDuplicateLoop,
@@ -91,6 +92,17 @@ export async function updateClip(
   refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 
+  // Paired with the targets named, not the clips found, so name[k] lands on
+  // target k and every piece of a split takes its target's name. Done before
+  // the plan, which may split: a bad color or a gap in the names must be
+  // refused before anything is cut.
+  const labels = pairLabels({
+    noun: "clip",
+    count: targets.named.length,
+    name: args.name,
+    color: args.color,
+  });
+
   // What the clips the call did reach have to say beyond their own results.
   const reasons = newClipReasons();
   const plan = planClipUpdate({
@@ -115,6 +127,7 @@ export async function updateClip(
     args,
     plan,
     targets,
+    labels,
     reasons,
     context,
     deadline,

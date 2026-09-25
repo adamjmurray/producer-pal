@@ -243,7 +243,7 @@ describe("duplicate - locators as arrangement positions", () => {
     // The message names arrangementStart, the param the caller sent — the
     // locator that resolves it is not a param of its own any more.
     it.each<[string, string, string]>([
-      ["id", "loc:99", "locator not found: 99"],
+      ["id", "loc:99", "locator not found: 99 for arrangementStart"],
       [
         "name",
         "loc:NonExistent",

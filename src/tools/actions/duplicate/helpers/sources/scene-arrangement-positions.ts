@@ -24,6 +24,7 @@ import {
   duplicateSceneToArrangement,
 } from "./duplicate-scene.ts";
 import { resolveArrangementPositions } from "../duplicate-destinations.ts";
+import { parseArrangementLength } from "../clip/arrangement-length.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The arrangement params a scene duplication reads. */
@@ -77,20 +78,31 @@ export async function duplicateSceneToArrangementAtPositions(
 
   // A lone position lays count copies end to end from it. A call naming a
   // position list already had count settled to 1 by sceneCopyCount.
-  const sceneLength = calculateSceneLength(sceneIndex);
-  let allPositions = positions;
+  const endToEnd = positions.length === 1 && count > 1;
+  let sceneLength: number | undefined;
 
-  if (positions.length === 1 && count > 1) {
-    allPositions = Array.from(
-      { length: count },
-      // bounded by count, index always valid
-      (_, i) => (positions[0] as number) + i * sceneLength,
-    );
-  }
+  claimLabels(labels, endToEnd ? count : positions.length);
+
+  const allPositions = endToEnd
+    ? endToEndPositions(positions[0] as number, count, (i) => {
+        // Each copy is as long as its own arrangementLength, or the scene.
+        const length = labelLength(labels, i);
+
+        if (length != null) {
+          return parseArrangementLength(
+            length,
+            songTimeSigNumerator,
+            songTimeSigDenominator,
+          );
+        }
+
+        sceneLength ??= calculateSceneLength(sceneIndex);
+
+        return sceneLength;
+      })
+    : positions;
 
   const createdObjects: object[] = [];
-
-  claimLabels(labels, allPositions.length);
 
   for (let i = 0; i < allPositions.length; i++) {
     // A scene copy places a clip per track, so a few can eat the whole budget.
@@ -124,6 +136,27 @@ export async function duplicateSceneToArrangementAtPositions(
   }
 
   return createdObjects;
+}
+
+/**
+ * Where each of count copies starts when laid end to end.
+ * @param start - The first copy's start, in beats
+ * @param count - How many copies
+ * @param lengthAt - One copy's length, in beats
+ * @returns Each copy's start, in beats
+ */
+function endToEndPositions(
+  start: number,
+  count: number,
+  lengthAt: (index: number) => number,
+): number[] {
+  const starts = [start];
+
+  for (let i = 1; i < count; i++) {
+    starts.push((starts[i - 1] as number) + lengthAt(i - 1));
+  }
+
+  return starts;
 }
 
 /**
