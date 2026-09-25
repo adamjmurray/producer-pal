@@ -43,10 +43,12 @@ afterEach(() => {
 });
 
 describe("readRemoteScriptSource", () => {
-  it("reads files at any depth and leaves bytecode out", () => {
+  it("reads .py files at any depth and leaves everything else out", () => {
     mkdirSync(join(scratchDir, "__pycache__"));
     mkdirSync(join(scratchDir, "nested"));
     writeFileSync(join(scratchDir, "__init__.py"), "top", "utf8");
+    writeFileSync(join(scratchDir, ".DS_Store"), "finder", "utf8");
+    writeFileSync(join(scratchDir, "nested/notes.txt"), "scratch", "utf8");
     writeFileSync(join(scratchDir, "stale.pyc"), "bytecode", "utf8");
     writeFileSync(join(scratchDir, "__pycache__/a.pyc"), "bytecode", "utf8");
     writeFileSync(join(scratchDir, "nested/deep.py"), "deep", "utf8");

@@ -10,16 +10,17 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** Python bytecode never belongs in an install. */
+// Only Python sources ship; anything else in the folder is local junk.
+// Dot-names (AppleDouble `._x.py`, editor locks `.#x.py`) are junk too.
 const SKIP_DIR = "__pycache__";
-const SKIP_EXTENSION = ".pyc";
+const SOURCE_EXTENSION = ".py";
 
 /**
  * Read a remote script folder into a map of forward-slash relative paths to
  * file contents.
  *
  * @param dir - The folder holding the script's Python sources
- * @returns Relative path to contents, bytecode left out
+ * @returns Relative path to contents, .py files only
  */
 export function readRemoteScriptSource(dir: string): Record<string, string> {
   const files: Record<string, string> = {};
@@ -42,15 +43,17 @@ function collectInto(
   prefix: string,
 ): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === SKIP_DIR || entry.name.endsWith(SKIP_EXTENSION)) {
+    if (entry.name.startsWith(".")) {
       continue;
     }
 
     const relative = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
 
     if (entry.isDirectory()) {
-      collectInto(files, join(dir, entry.name), relative);
-    } else {
+      if (entry.name !== SKIP_DIR) {
+        collectInto(files, join(dir, entry.name), relative);
+      }
+    } else if (entry.name.endsWith(SOURCE_EXTENSION)) {
       files[relative] = readFileSync(join(dir, entry.name), "utf8");
     }
   }
