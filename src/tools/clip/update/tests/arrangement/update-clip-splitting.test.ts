@@ -64,6 +64,18 @@ describe("updateClip - splitting smoke tests", () => {
     expectDuplicateCalled(callState.trackMock);
   });
 
+  it.each([
+    [{ color: "red" }, 'invalid color "red"'],
+    [{ id: "clip_1,clip_1,clip_1", name: "A,,B" }, "empty"],
+  ])("refuses bad labels %o before splitting", async (extra, message) => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    await expect(
+      updateClip({ id: "clip_1", arrangementSplit: "2|1", ...extra }, {}),
+    ).rejects.toThrow(message);
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+  });
+
   it("splits nothing when both split params are given", async () => {
     const clipId = "clip_1";
     const consoleSpy = vi.spyOn(console, "warn");

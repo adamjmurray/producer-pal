@@ -229,8 +229,18 @@ describe("resolveTakeLane", () => {
     const trackApi = LiveAPI.from(livePath.track(0));
 
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
-      `take lane "l${MAX_TAKE_LANES + 1}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      `take lane "l${MAX_TAKE_LANES + 1}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
+  });
+
+  it("resolves an existing lane past the cap without creating one", () => {
+    const track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+    const trackApi = LiveAPI.from(livePath.track(0));
+
+    const { laneIndex } = resolveTakeLane(trackApi, MAX_TAKE_LANES + 1);
+
+    expect(laneIndex).toBe(MAX_TAKE_LANES + 1);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
   it("calls an out-of-range lane out of range on an empty track", () => {
@@ -284,7 +294,7 @@ describe("takeLaneTargetsThatFit", () => {
     // Handed back rather than warned: a caller with an entry per destination
     // puts it there.
     expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toBe(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
@@ -299,7 +309,7 @@ describe("takeLaneTargetsThatFit", () => {
     expect([...dropped]).toStrictEqual([
       [
         `t0/l${MAX_TAKE_LANES}`,
-        `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+        `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
       ],
     ]);
   });

@@ -28,6 +28,7 @@ import { sceneCopyCount } from "./helpers/sources/scene-arrangement-positions.ts
 import {
   duplicateChainSources,
   duplicateEverySource,
+  regularTrackIndex,
 } from "./helpers/sources/duplicate-one-source.ts";
 import {
   planSources,
@@ -353,7 +354,12 @@ function validateSourceIds(
   }
 
   for (const source of sources) {
-    validateIdType(source.id, type);
+    const object = validateIdType(source.id, type);
+
+    // A return track passes the type check, but Live can't copy it.
+    if (type === "track") {
+      regularTrackIndex(object);
+    }
   }
 }
 

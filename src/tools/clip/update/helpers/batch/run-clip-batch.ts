@@ -12,7 +12,7 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { type PairedLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { trackMoveSkips } from "../arrangement/update-clip-move-skip.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
@@ -71,6 +71,8 @@ export interface RunClipBatchArgs {
   args: ClipUpdateArgs;
   plan: ClipUpdatePlan;
   targets: ClipTargets;
+  /** The name and color lists, paired with the targets named */
+  labels: PairedLabels;
   reasons: ClipReasons;
   context: Partial<ToolContext>;
   deadline: number | null;
@@ -84,6 +86,7 @@ export interface RunClipBatchArgs {
  * @param batch.args - The tool arguments as received
  * @param batch.plan - What the call does to which clips
  * @param batch.targets - The targets the call named
+ * @param batch.labels - The name and color lists, paired with the targets named
  * @param batch.reasons - What each clip has to say beyond its result
  * @param batch.context - Per-request context
  * @param batch.deadline - The request deadline
@@ -94,22 +97,15 @@ export async function runClipBatch({
   args,
   plan,
   targets,
+  labels,
   reasons,
   context,
   deadline,
   movedClipGroups,
 }: RunClipBatchArgs): Promise<Map<number, ClipResult[]>> {
   const { clips, moveOrder, destinationById } = plan;
+  const { parsedNames, parsedColors } = labels;
   const { name, color } = args;
-  // Paired against the targets named, not the clips that resolved: name[k] has
-  // to land on target k even when an earlier target found no clip, and the
-  // pieces of a split all take the name of the target they were cut from.
-  const { parsedNames, parsedColors } = pairLabels({
-    noun: "clip",
-    count: targets.named.length,
-    name,
-    color,
-  });
   // The other per-clip strings pair with the targets the same way.
   const valuesAt = clipValuesAt(args, targets.named.length);
   const updatedClips: ClipResult[] = [];

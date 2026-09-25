@@ -268,6 +268,18 @@ describe("duplicate - track/scene index validation", () => {
     );
   });
 
+  it("refuses a return track in a source list before copying anything", async () => {
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("return1", { path: livePath.returnTrack(0) });
+
+    await expect(
+      duplicate({ type: "track", id: "track1,return1" }),
+    ).rejects.toThrow("is not a regular track");
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
   describe("scene index validation", () => {
     beforeEach(() => {
       registerMockObject("scene1", {

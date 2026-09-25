@@ -103,7 +103,7 @@ export async function createDevice(
   const paramEntries = validateParamEntries(params);
 
   validateListLengths([
-    { param: "path", value: path },
+    { param: "path", value: path, target: true },
     { param: "device", value: deviceArg },
     { param: "name", value: name },
   ]);

@@ -103,6 +103,29 @@ describe("validateListLengths", () => {
       ]),
     ).toThrow("id and path names 4 entries but name names 3 entries.");
   });
+
+  // One target reads every value whole, commas and all.
+  it.each([
+    ["a counted target", { param: "id", count: 1 }],
+    ["a target value", { param: "path", value: "t0", target: true }],
+  ])("compares nothing with %s naming one entry", (_, target) => {
+    expect(() =>
+      validateListLengths([
+        target,
+        { param: "name", value: "Bass, Sub" },
+        { param: "outputRoutingType", value: "Low, End, Bus" },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("still compares when a one-entry target is a list", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "path", value: "t0,", target: true },
+        { param: "name", value: "A,B" },
+      ]),
+    ).toThrow("path names 1 entry but name names 2 entries.");
+  });
 });
 
 describe("requireSameLength", () => {

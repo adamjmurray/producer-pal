@@ -122,7 +122,7 @@ describe("duplicate to a take lane, cut short", () => {
       {
         path: `t1/l${MAX_TAKE_LANES}[1|1]`,
         ok: false,
-        reason: `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+        reason: `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
       },
       // The mock's clip ids run off a counter every test shares, so the copy
       // is matched by shape rather than by a number that shifts.

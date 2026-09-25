@@ -180,6 +180,21 @@ describe("createClip - per-position sampleFile", () => {
     );
   });
 
+  it("reads each value whole beside another with a different comma count", async () => {
+    const { clipSlot } = setupSessionAudioClipMocks();
+
+    await createClip({
+      path: "t0/s0",
+      name: "Kick, Snare",
+      sampleFile: "/samples/kick, snare, hat.wav",
+    });
+
+    expect(clipSlot.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/samples/kick, snare, hat.wav",
+    );
+  });
+
   it("refuses a sample list that names a different number of positions", async () => {
     setupMultiSessionAudioClipMocks([0, 1]);
 

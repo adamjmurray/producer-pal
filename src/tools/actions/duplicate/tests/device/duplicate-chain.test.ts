@@ -142,6 +142,17 @@ describe("duplicate - chain", () => {
     ).rejects.toThrow("is a rack return chain, which cannot be copied");
   });
 
+  it("refuses a chain holding the Producer Pal device, creating nothing", async () => {
+    const { rack } = setupRack();
+
+    registerMockObject("this_device", { path: `${RACK} chains 0 devices 0` });
+
+    await expect(duplicate({ type: "chain", id: "chain-0" })).rejects.toThrow(
+      "it holds the Producer Pal device",
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
   // Live's class names ("AudioEffectGroupDevice") mean nothing to a caller, so
   // the refusal names both racks the way Live's own browser does.
   it("refuses a destination rack of a different kind, in rack-kind words", async () => {
