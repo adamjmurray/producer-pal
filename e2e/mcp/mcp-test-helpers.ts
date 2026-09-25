@@ -48,14 +48,7 @@ export function parseToolResult<T>(result: unknown): T {
     );
   }
 
-  const text = extractToolResultText(result);
-
-  try {
-    return JSON.parse(text) as T;
-  } catch (error) {
-    console.error("Failed to parse JSON response. Raw text:", text);
-    throw error;
-  }
+  return parseResultJson<T>(extractToolResultText(result));
 }
 
 /**
@@ -142,17 +135,38 @@ export interface ToolResultWithWarnings<T> {
 export function parseToolResultWithWarnings<T>(
   result: unknown,
 ): ToolResultWithWarnings<T> {
-  const text = extractToolResultText(result);
+  return {
+    data: parseResultJson<T>(extractToolResultText(result)),
+    warnings: getToolWarnings(result),
+  };
+}
+
+/**
+ * Parse a tool result's JSON text, failing on a `reason` key at any depth:
+ * every explanation on a result entry is `detail` (ADR-0050).
+ * @param text - The result's JSON text
+ * @returns The parsed result
+ */
+function parseResultJson<T>(text: string): T {
+  let hasReason = false;
   let data: T;
 
   try {
-    data = JSON.parse(text) as T;
+    data = JSON.parse(text, (key, value: unknown) => {
+      hasReason ||= key === "reason";
+
+      return value;
+    }) as T;
   } catch (error) {
     console.error("Failed to parse JSON response. Raw text:", text);
     throw error;
   }
 
-  return { data, warnings: getToolWarnings(result) };
+  if (hasReason) {
+    throw new Error(`Tool result has a "reason" key, not "detail": ${text}`);
+  }
+
+  return data;
 }
 
 /**
