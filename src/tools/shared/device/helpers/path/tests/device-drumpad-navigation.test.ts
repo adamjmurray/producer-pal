@@ -593,3 +593,53 @@ describe("invalidateRackChains", () => {
     }
   });
 });
+
+describe("rack chain memo", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("does not hand a moved rack's chains to the rack now at its old path", () => {
+    const movedRack = registerMockObject("rack-a", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-a"] },
+    });
+
+    registerMockObject("chain-a", {
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    // Built while rack A still sits at RACK_PATH.
+    const rackA = LiveAPI.from(RACK_PATH);
+
+    // Rack B is what slides into RACK_PATH once A moves away.
+    registerMockObject("rack-b", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-b"] },
+    });
+    registerMockObject("chain-b", {
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    beginLiveApiScope();
+
+    try {
+      expect(chainsForInNote(rackA, 36).map((c) => c.id)).toStrictEqual([
+        "chain-a",
+      ]);
+
+      // Move rack A in place, as move_device does, without clearing the memo.
+      movedRack.path = "live_set tracks 1 devices 0";
+
+      const { target } = resolveDrumPadFromPath(RACK_PATH, "C1", []);
+
+      expect(target?.id).toBe("chain-b");
+    } finally {
+      endLiveApiScope();
+    }
+  });
+});

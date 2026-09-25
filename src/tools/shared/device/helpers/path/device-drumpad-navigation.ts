@@ -201,12 +201,14 @@ function padNoteToInNote(drumPadNote: string): number | null {
 }
 
 /**
- * The {@link requestMemo} key for a rack's chain list.
+ * The {@link requestMemo} key for a rack's chain list. Keyed by id, not path: a
+ * device moved or deleted mid-request puts a different rack at the old path,
+ * and a path key would hand it the old rack's chains.
  * @param rack - The drum rack device
  * @returns The memo key
  */
 function rackChainsMemoKey(rack: LiveAPI): string {
-  return `drum-rack-chains ${rack.path}`;
+  return `drum-rack-chains ${rack.id}`;
 }
 
 /**
