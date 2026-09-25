@@ -14,14 +14,15 @@ import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { type PairedLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { flushDeferredDeletions } from "../arrangement/update-clip-deferred-deletion.ts";
 import { trackMoveSkips } from "../arrangement/update-clip-move-skip.ts";
-import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import {
+  isHeldBackEntry,
+  type MoveGroup,
+} from "../arrangement/update-clip-move-groups.ts";
 import {
   type ClipReasons,
   clipIgnoredParams,
-  clipLandedNothing,
-  reportClipReasons,
 } from "../entries/clip-reasons.ts";
 import { type ClipTargets, refuseTarget } from "../entries/clip-targets.ts";
 import { type ClipUpdatePlan } from "../plan-clip-update.ts";
@@ -37,6 +38,7 @@ import {
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./process-single-clip-update.ts";
+import { settleClipTurn, skipUnmovedClips } from "./settle-clip-turn.ts";
 import { trimmedLandings } from "./trimmed-landings.ts";
 
 /** Every param one update-clip call carries, as the tool received them. */
@@ -77,7 +79,6 @@ export interface RunClipBatchArgs {
   reasons: ClipReasons;
   context: Partial<ToolContext>;
   deadline: number | null;
-  movedClipGroups: Map<string, MoveGroup>;
 }
 
 /**
@@ -91,7 +92,6 @@ export interface RunClipBatchArgs {
  * @param batch.reasons - What each clip has to say beyond its result
  * @param batch.context - Per-request context
  * @param batch.deadline - The request deadline
- * @param batch.movedClipGroups - Tally of clips landing on each lane and position
  * @returns The results each target produced, by its place in the call
  */
 export async function runClipBatch({
@@ -102,7 +102,6 @@ export async function runClipBatch({
   reasons,
   context,
   deadline,
-  movedClipGroups,
 }: RunClipBatchArgs): Promise<Map<number, ClipResult[]>> {
   const { clips, moveOrder, destinationById } = plan;
   const { parsedNames, parsedColors } = labels;
@@ -115,6 +114,8 @@ export async function runClipBatch({
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
   const resultsPerClip: ClipResult[][] = clips.map(() => []);
+  // Clips landing on each lane and position, and the ones held back there.
+  const movedClipGroups = new Map<string, MoveGroup>();
   // The tracks the moves resolve, so a batch moving into one track resolves it
   // once; what makes reusing one safe is spelled out at destinationTrack() in
   // the slot-move helpers. Lives and dies with this call.
@@ -135,6 +136,8 @@ export async function runClipBatch({
   // one of them has none left to report itself by.
   const clears = clearsSpans(clips, plan);
   const addresses = clipAddresses(clips, clears);
+  const askedAnythingElse = (clip: LiveAPI): boolean =>
+    askedBeyondPosition(args, clipIgnoredParams(reasons, clip.id));
 
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
@@ -192,17 +195,17 @@ export async function runClipBatch({
       code: args.code,
     });
 
+    const results = updatedClips.slice(written);
+
     resultsPerClip[i] = settleClipTurn({
       clip,
-      results: updatedClips.slice(written),
+      results,
       failure,
       reasons,
       targets,
       slot,
-      askedAnythingElse: askedBeyondPosition(
-        args,
-        clipIgnoredParams(reasons, clip.id),
-      ),
+      askedAnythingElse: askedAnythingElse(clip),
+      heldBack: isHeldBackEntry(movedClipGroups, results[0]),
     });
 
     skips.settle(i, resultsPerClip[i]);
@@ -213,6 +216,16 @@ export async function runClipBatch({
     clearsSpans: clears,
     heldBack: plan.overwrites?.nonSurvivorIds,
     trims: trimmedLandings(movedClipGroups),
+  });
+
+  skipUnmovedClips({
+    clips,
+    resultsPerClip,
+    unmoved: flushDeferredDeletions(movedClipGroups, plan.overwrites),
+    askedAnythingElse,
+    reasons,
+    targets,
+    slots: plan.slots,
   });
 
   return groupResultsBySlot(resultsPerClip, plan.slots);
@@ -232,81 +245,6 @@ function clearsSpans(clips: LiveAPI[], plan: ClipUpdatePlan): boolean {
       plan.startBeatsFor(clip) != null ||
       plan.lengthBeatsFor(clip) != null,
   );
-}
-
-interface SettleClipTurnArgs {
-  clip: LiveAPI;
-  results: ClipResult[];
-  /** Why the clip's update threw, or null when it ran to the end. */
-  failure: string | null;
-  reasons: ClipReasons;
-  targets: ClipTargets;
-  /** The target this clip belongs to, by its place in the call. */
-  slot: number;
-  /** Whether the call asked this clip for anything besides its position. */
-  askedAnythingElse: boolean;
-}
-
-/**
- * Settle what one clip's turn reports: its reasons go on the entry it wrote, and
- * a turn with nothing to report hands its target a skip instead.
- *
- * A throw partway leaves whatever landed before it in place, so it is reported on
- * the entry rather than as a refusal.
- * @param turn - The clip, what it wrote, and what went wrong
- * @param turn.clip - The clip whose turn just finished
- * @param turn.results - The entries its turn wrote
- * @param turn.failure - Why its update threw, or null
- * @param turn.reasons - What each clip has to say beyond its result
- * @param turn.targets - The targets the call named
- * @param turn.slot - The target this clip belongs to
- * @param turn.askedAnythingElse - Whether the call asked for more than a position
- * @returns The entries to keep for this clip, empty when its target took a skip
- */
-function settleClipTurn({
-  clip,
-  results,
-  failure,
-  reasons,
-  targets,
-  slot,
-  askedAnythingElse,
-}: SettleClipTurnArgs): ClipResult[] {
-  reportClipReasons(reasons, clip.id, results);
-
-  const entry = results[0];
-
-  if (failure != null && entry != null) {
-    appendReason(entry, `update stopped partway: ${failure}`);
-  }
-
-  if (entry == null) {
-    refuseTarget(targets.unused, targets.named, slot, failure ?? "not updated");
-
-    return [];
-  }
-
-  // Nothing the call asked of this clip happened, so where it still sits is not
-  // worth an entry: the target keeps the reason as a skip instead. A moved clip
-  // reports a new id — every route that moves one re-creates it — so an entry
-  // that kept the id it came in with is one that stayed put.
-  if (
-    results.length === 1 &&
-    !askedAnythingElse &&
-    entry.id === clip.id &&
-    clipLandedNothing(reasons, clip.id)
-  ) {
-    refuseTarget(
-      targets.unused,
-      targets.named,
-      slot,
-      entry.reason ?? "not updated",
-    );
-
-    return [];
-  }
-
-  return results;
 }
 
 /**

@@ -117,6 +117,25 @@ export function deferClipDeletion(
 }
 
 /**
+ * Whether this entry belongs to a clip the call held back. Read off the groups,
+ * not the plan: a planned hold-back whose move was called off never got here.
+ * @param groups - Counts per group
+ * @param entry - The entry a clip's turn wrote first, if any
+ * @returns True when a group is holding that clip back
+ */
+export function isHeldBackEntry(
+  groups: Map<string, MoveGroup>,
+  entry: ClipResult | undefined,
+): boolean {
+  return (
+    entry != null &&
+    [...groups.values()].some((group) =>
+      group.deferred.some((held) => held.result === entry),
+    )
+  );
+}
+
+/**
  * The group for a lane and position, created empty the first time.
  * @param groups - Counts per group
  * @param landing - The track and lane the clip lands on

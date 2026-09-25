@@ -98,11 +98,14 @@ export function deferNonSurvivorDeletion({
  * on its group. A clip nothing landed on top of stays.
  * @param movedClipGroups - Tally of clips landing on each lane and position
  * @param plan - What the call was set to overwrite; absent when it planned none
+ * @returns The entries of the clips left where they were, not moved
  */
 export function flushDeferredDeletions(
   movedClipGroups: Map<string, MoveGroup>,
   plan: OverwritePlan | null | undefined,
-): void {
+): Set<ClipResult> {
+  const unmoved = new Set<ClipResult>();
+
   for (const [key, group] of movedClipGroups) {
     if (group.deferred.length === 0) {
       continue;
@@ -125,6 +128,7 @@ export function flushDeferredDeletions(
             result,
             `not moved: the clip due to land on top of it at ${groupSpot(group)} didn't, so the original was kept`,
           );
+          unmoved.add(result);
         }
 
         continue;
@@ -143,6 +147,8 @@ export function flushDeferredDeletions(
       }
     }
   }
+
+  return unmoved;
 }
 
 /**

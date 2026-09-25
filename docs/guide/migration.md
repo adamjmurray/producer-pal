@@ -122,15 +122,16 @@ or `warping` on a MIDI one, `firstStart` on a clip that isn't looping), and
 where that was everything you asked of the clip, its entry is `ok: false`. A
 refused move with nothing else asked for that clip landed nothing, so it is
 `ok: false`. A clip another clip in the call was headed onto no longer reports
-`deleted: false` when it survives; it carries a `reason` instead, and `deleted`
-appears only as `true`. A clip named twice gets one entry per mention: the
-update runs as the last mention asks, and the earlier ones point to it. A `name`
-or `color` list pairs with the targets you named, so a skipped one keeps its
-place in the list instead of shifting the names after it onto the wrong clips,
-and every piece a split cuts a target into takes that target's name.
-`ppal-duplicate` likewise returns one entry per destination you named, with a
-destination no copy landed at holding its slot as `{path, ok: false, reason}`
-instead of dropping out of the array.
+`deleted: false` when it survives; it carries a `reason` instead (and is
+`ok: false` when that move was all you asked of it), and `deleted` appears only
+as `true`. A clip named twice gets one entry per mention: the update runs as the
+last mention asks, and the earlier ones point to it. A `name` or `color` list
+pairs with the targets you named, so a skipped one keeps its place in the list
+instead of shifting the names after it onto the wrong clips, and every piece a
+split cuts a target into takes that target's name. `ppal-duplicate` likewise
+returns one entry per destination you named, with a destination no copy landed
+at holding its slot as `{path, ok: false, reason}` instead of dropping out of
+the array.
 
 That covers device, chain and drum-pad copies too. A destination that used to
 drop out of the array with a warning now keeps its slot as

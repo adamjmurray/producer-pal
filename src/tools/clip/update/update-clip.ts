@@ -6,9 +6,6 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
-import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
-import { type MoveGroup } from "./helpers/arrangement/update-clip-move-groups.ts";
 import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
   type ClipEntry,
@@ -122,7 +119,6 @@ export async function updateClip(
   warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
   warnBlankArgs(args);
 
-  const movedClipGroups = new Map<string, MoveGroup>();
   const resultsPerSlot = await runClipBatch({
     args,
     plan,
@@ -131,12 +127,9 @@ export async function updateClip(
     reasons,
     context,
     deadline,
-    movedClipGroups,
   });
 
   return finishUpdate({
-    movedClipGroups,
-    overwrites: plan.overwrites,
     targets,
     resultsPerSlot,
     focus: args.focus,
@@ -206,20 +199,14 @@ function focusLastUpdatedClip(
 }
 
 interface FinishUpdateArgs {
-  movedClipGroups: Map<string, MoveGroup>;
-  /** Which clips the moves were set to land on top of. */
-  overwrites: OverwritePlan | null;
   targets: ClipTargets;
   resultsPerSlot: Map<number, ClipResult[]>;
   focus: boolean | undefined;
 }
 
 /**
- * Settles the clips the moves held back, says what the batch's moves collided
- * over, focuses the last clip written, and shapes the result.
- * @param finish - The call's collectors and what it wrote
- * @param finish.movedClipGroups - Tally of clips landing on each lane and position
- * @param finish.overwrites - Which clips the moves were set to land on top of
+ * Focuses the last clip written and shapes the result.
+ * @param finish - The call's targets and what it wrote
  * @param finish.targets - The targets the call named
  * @param finish.resultsPerSlot - Each target's results, by its place in the call
  * @param finish.focus - Whether to select the last one in Live
@@ -227,14 +214,10 @@ interface FinishUpdateArgs {
  * @throws Error when the call named one target and it got nothing done
  */
 function finishUpdate({
-  movedClipGroups,
-  overwrites,
   targets,
   resultsPerSlot,
   focus,
 }: FinishUpdateArgs): ClipEntry | ClipEntry[] {
-  flushDeferredDeletions(movedClipGroups, overwrites);
-
   const entries = clipEntriesInCallOrder(
     targets.named,
     targets.unused,
