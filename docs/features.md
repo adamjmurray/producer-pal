@@ -173,7 +173,8 @@ cluttering the timeline.
   its notes, an audio clip from its sample. Envelope automation isn't preserved,
   and a warped audio clip comes back with the sample's default warp markers. The
   response says which applied.
-- Limits: 10 take lanes per track. A take-lane clip can't be split, resized, or
+- Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
+  Live past that still work. A take-lane clip can't be split, resized, or
   deleted through tools, and Producer Pal can't pick the active take or comp
   lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
   header to see them.

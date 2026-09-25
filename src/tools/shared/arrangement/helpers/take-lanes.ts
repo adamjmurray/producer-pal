@@ -30,6 +30,7 @@
  *   silence (see take-lane-placeholder.ts).
  */
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
@@ -296,8 +297,7 @@ export function resolveTakeLane(
   const currentCount = track.getChildIds("take_lanes").length;
   const laneIndex = target;
 
-  // Only a lane this call creates is capped here: the user can make more in
-  // Live. (takeLaneTargetsThatFit still caps its callers by index.)
+  // Only a lane this call creates is capped: the user can make more in Live.
   if (laneIndex >= currentCount) {
     assertTakeLaneCapacity(laneIndex);
   }
@@ -339,10 +339,10 @@ export interface FittingTakeLanes<T extends ArrangementTrack> {
  * Picks the take-lane destinations that fit, and says why the rest don't.
  *
  * A destination that doesn't fit is dropped rather than failing the call, so
- * the destinations alongside it — main lane included — still land. Resolving
- * auto-creates lanes up to the index, so only that index has to fit. The reason
- * is handed back rather than warned: a caller with an entry per destination puts
- * it there instead.
+ * the destinations alongside it — main lane included — still land. The cap
+ * limits only the lanes a call would create: a lane the track already has fits
+ * at any index. The reason is handed back rather than warned: a caller with an
+ * entry per destination puts it there instead.
  * @param targets - Every destination in the call, in resolve order
  * @returns The destinations that fit, and the reason each dropped lane didn't
  */
@@ -351,6 +351,18 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
 ): FittingTakeLanes<T> {
   const dropped = new Map<string, string>();
   const fitting: FittingTakeLaneTarget<T>[] = [];
+  // Read before any lane is made, so every destination sees the same count.
+  const laneCounts = new Map<number, number>();
+
+  const laneCountOf = (trackIndex: number): number => {
+    const count =
+      laneCounts.get(trackIndex) ??
+      LiveAPI.from(livePath.track(trackIndex)).getChildCount("take_lanes");
+
+    laneCounts.set(trackIndex, count);
+
+    return count;
+  };
 
   for (const target of targets) {
     const { takeLane } = target;
@@ -365,7 +377,10 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
       continue;
     }
 
-    if (takeLane + 1 > MAX_TAKE_LANES) {
+    if (
+      takeLane + 1 > MAX_TAKE_LANES &&
+      takeLane >= laneCountOf(target.trackIndex)
+    ) {
       dropped.set(key, takeLaneCapacityMessage(takeLane));
       continue;
     }

@@ -299,6 +299,21 @@ describe("takeLaneTargetsThatFit", () => {
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
+  // The cap limits the lanes a call makes; the user can make more in Live.
+  it("keeps an existing lane past the cap, and drops one it would create", () => {
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+
+    const { fitting, dropped } = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES + 1 },
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES + 2 },
+    ]);
+
+    expect(fitting).toStrictEqual([
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES + 1 },
+    ]);
+    expect([...dropped.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES + 2}`]);
+  });
+
   it("reports a repeated destination that does not fit once", () => {
     const { fitting, dropped } = takeLaneTargetsThatFit([
       { trackIndex: 0, takeLane: MAX_TAKE_LANES },

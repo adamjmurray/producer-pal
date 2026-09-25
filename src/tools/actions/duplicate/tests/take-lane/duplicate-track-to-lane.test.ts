@@ -200,6 +200,25 @@ describe("duplicate track to take lane", () => {
     });
     expect(result.reason).toContain("warp markers reset");
   });
+
+  it("copies onto an existing lane past the cap", async () => {
+    registerMainLaneSource([0]);
+
+    const destination = registerTakeLaneTrack({
+      trackIndex: 1,
+      initialLanes: MAX_TAKE_LANES + 1,
+    });
+
+    const result = await copyToLanes<LaneCopyEntry>({
+      toPath: `t1/l${MAX_TAKE_LANES}`,
+    });
+
+    expect(result.path).toBe(`t1/l${MAX_TAKE_LANES}`);
+    expect(result.clips.map((clip) => clip.path)).toStrictEqual([
+      `t1/l${MAX_TAKE_LANES}[1|1]`,
+    ]);
+    expect(destination.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
 });
 
 describe("duplicate track to take lane - destinations it can't use", () => {

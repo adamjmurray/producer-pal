@@ -604,6 +604,28 @@ describe("duplicate take lane", () => {
     );
   });
 
+  it("copies onto an existing lane past the cap", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const track = registerTakeLaneTrack({
+      trackIndex: 1,
+      initialLanes: MAX_TAKE_LANES + 1,
+    });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: `t1/l${MAX_TAKE_LANES}[1|1]`,
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(1).takeLane(MAX_TAKE_LANES))
+        ?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
   // A stack of takes at chosen bars: one lane, several positions.
   it("stacks every position toPath names on one lane", async () => {
     registerLiveSet();

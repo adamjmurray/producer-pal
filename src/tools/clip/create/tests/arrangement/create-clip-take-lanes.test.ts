@@ -433,6 +433,19 @@ describe("createClip take lane paths", () => {
     );
   });
 
+  it("creates a clip on an existing lane past the cap", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 1 });
+
+    await createClip({
+      path: `t0/l${MAX_TAKE_LANES}[1|1]`,
+      notes: "C3",
+    });
+
+    expectTakeLaneMidiClip(MAX_TAKE_LANES, 0);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
   // Live can't delete a lane, so one made for a clip the track then refuses
   // would be left behind for good.
   it("creates no lane on a track that can't take the clip", async () => {
