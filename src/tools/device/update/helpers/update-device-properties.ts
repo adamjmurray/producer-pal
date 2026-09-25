@@ -55,6 +55,8 @@ export interface UpdatePropertyOptions {
   chokeGroup?: number;
   mappedPitch?: string;
   force?: boolean;
+  /** Loaded before anything else; see updateDeviceWithPreset */
+  preset?: string;
 }
 
 export interface UpdateTargetOptions extends UpdatePropertyOptions {
@@ -175,6 +177,7 @@ export function updateNonDeviceProperties(
   const params = applyChainSampleParams(target, type, options, notes);
   const ignored: string[] = [];
 
+  noteIfSet(ignored, "preset", options.preset);
   noteIfSet(ignored, "actions", options.actions);
   noteIfSet(ignored, "macroVariation", options.macroVariation);
   noteIfSet(ignored, "macroVariationIndex", options.macroVariationIndex);

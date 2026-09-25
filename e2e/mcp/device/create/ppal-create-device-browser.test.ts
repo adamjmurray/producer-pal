@@ -15,31 +15,24 @@
  *
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
-  remoteScriptAnswers,
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
+import {
+  REMOTE_SCRIPT_E2E,
+  requireRemoteScript,
+} from "../helpers/remote-script-test-helpers";
 
-describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
+describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
   () => {
-    // Ahead of the per-test hooks, so a missing remote script fails before any
-    // Live Set opens.
-    beforeAll(async () => {
-      if (!(await remoteScriptAnswers())) {
-        const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
-
-        throw new Error(
-          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${port}. Install it and select it as a control surface (see remote-script/README.md).`,
-        );
-      }
-    });
+    requireRemoteScript();
 
     const ctx = setupMcpTestContext();
 

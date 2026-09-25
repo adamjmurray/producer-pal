@@ -13,12 +13,19 @@ import {
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type NamedTarget,
+  namedTargets,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
-import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
+import {
+  type PresetOutcome,
+  type TargetLists,
+  updateMultipleTargets,
+} from "./helpers/update-multiple-targets.ts";
 import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
 import {
   requireDestinationPerSource,
@@ -34,7 +41,7 @@ import {
   targetParamLabel,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 
-interface UpdateDeviceArgs extends UpdateTargetOptions {
+export interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
@@ -49,7 +56,9 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
 const WRAP_ALLOWED_ARGS = new Set(["name", "force"]);
 
 /** The other string params that pair per target, beside name and color. */
-const DEVICE_VALUE_LABELS: PairedParamLabels<"sendReturn" | "mappedPitch"> = {
+const DEVICE_VALUE_LABELS: PairedParamLabels<
+  "sendReturn" | "mappedPitch" | "preset"
+> = {
   sendReturn: {
     param: "sendReturn",
     noun: "return",
@@ -62,10 +71,41 @@ const DEVICE_VALUE_LABELS: PairedParamLabels<"sendReturn" | "mappedPitch"> = {
     item: "target",
     shortfall: "kept their pitch",
   },
+  preset: {
+    param: "preset",
+    noun: "preset",
+    item: "target",
+    shortfall: "kept their devices",
+  },
 };
 
+/** A device update, checked and ready to run: a wrap, or per-target updates. */
+export type DeviceUpdatePlan = { focus?: boolean } & (
+  | { wrap: Parameters<typeof wrapDevicesInRack>[0] }
+  | {
+      /** The targets, tagged with the param that named each */
+      items: NamedTarget[];
+      updateOptions: UpdateTargetOptions;
+      lists: TargetLists;
+    }
+);
+
 /**
- * Update device(s), chain(s), or drum pad(s) by ID or path
+ * Update device(s), chain(s), or drum pad(s) by ID or path. A `preset` is
+ * loaded by updateDeviceWithPreset before this runs.
+ * @param args - The update-device args
+ * @param _context - Internal context object (unused)
+ * @returns Updated object info(s)
+ */
+export function updateDevice(
+  args: UpdateDeviceArgs,
+  _context: Partial<ToolContext> = {},
+): WriteResult<Record<string, unknown>> {
+  return runDeviceUpdate(planDeviceUpdate(args));
+}
+
+/**
+ * Check a device update, refusing a bad call before anything is written.
  * @param args - The parameters
  * @param args.id - Comma-separated ID(s)
  * @param args.ids - Hidden alias for id
@@ -92,40 +132,38 @@ const DEVICE_VALUE_LABELS: PairedParamLabels<"sendReturn" | "mappedPitch"> = {
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
  * @param args.force - Allow a destructive pad-device swap a `sample` write needs
+ * @param args.preset - Preset to load first (updateDeviceWithPreset loads it)
  * @param args.focus - Select the device and show device detail view
- * @param _context - Internal context object (unused)
- * @returns Updated object info(s)
+ * @returns The checked update
  */
-export function updateDevice(
-  {
-    id,
-    ids,
-    path,
-    paths,
-    toPath,
-    name,
-    params,
-    actions,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    gainDb,
-    pan,
-    sendGainDb,
-    sendReturn,
-    sends,
-    chokeGroup,
-    mappedPitch,
-    wrapInRack,
-    force,
-    focus,
-  }: UpdateDeviceArgs,
-  _context: Partial<ToolContext> = {},
-): WriteResult<Record<string, unknown>> {
+export function planDeviceUpdate({
+  id,
+  ids,
+  path,
+  paths,
+  toPath,
+  name,
+  params,
+  actions,
+  macroVariation,
+  macroVariationIndex,
+  macroCount,
+  abCompare,
+  mute,
+  solo,
+  color,
+  gainDb,
+  pan,
+  sendGainDb,
+  sendReturn,
+  sends,
+  chokeGroup,
+  mappedPitch,
+  wrapInRack,
+  force,
+  preset,
+  focus,
+}: UpdateDeviceArgs): DeviceUpdatePlan {
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
   ids = namedIdParam(id, ids, "ids");
@@ -155,6 +193,7 @@ export function updateDevice(
     chokeGroup,
     mappedPitch,
     force,
+    preset,
   };
 
   // First, so a wrap names every arg it would ignore before any of them is
@@ -185,48 +224,73 @@ export function updateDevice(
     throw new Error(badVariation);
   }
 
-  let result: WriteResult<Record<string, unknown>>;
-
   if (wrapInRack) {
-    result = { ...wrapDevicesInRack({ ids, path, toPath, name }) };
-  } else {
-    // Every list in the call is checked together, before any of them is split:
-    // once one is split nothing knows whether the others are lists at all.
-    // toPath is left out — moveDestinations owns it, so a lone destination
-    // against several targets is refused rather than broadcast.
-    validateListLengths([
-      {
-        param: targetParamLabel({ ids, path }),
-        count: targetCount({ ids, path }),
-      },
-      { param: "name", value: name },
-      { param: "color", value: color },
-      { param: "sendReturn", value: sendReturn },
-      { param: "mappedPitch", value: mappedPitch },
-    ]);
+    return { wrap: { ids, path, toPath, name }, focus };
+  }
 
-    const items = namedTargets({ id: ids, path });
-    const { parsedNames, parsedColors } = pairLabels({
-      noun: "device",
-      count: items.length,
-      name,
-      color,
-    });
-    const destinations = moveDestinations(toPath, items.length);
+  // Every list in the call is checked together, before any of them is split:
+  // once one is split nothing knows whether the others are lists at all.
+  // toPath is left out — moveDestinations owns it, so a lone destination
+  // against several targets is refused rather than broadcast.
+  validateListLengths([
+    {
+      param: targetParamLabel({ ids, path }),
+      count: targetCount({ ids, path }),
+    },
+    { param: "name", value: name },
+    { param: "color", value: color },
+    { param: "sendReturn", value: sendReturn },
+    { param: "mappedPitch", value: mappedPitch },
+    { param: "preset", value: preset },
+  ]);
 
-    result = updateMultipleTargets(items, updateOptions, {
+  const items = namedTargets({ id: ids, path });
+  const { parsedNames, parsedColors } = pairLabels({
+    noun: "device",
+    count: items.length,
+    name,
+    color,
+  });
+  const destinations = moveDestinations(toPath, items.length);
+
+  return {
+    items,
+    updateOptions,
+    lists: {
       names: parsedNames,
       colors: parsedColors,
       destinations,
       valuesAt: pairParams(
-        { sendReturn, mappedPitch },
+        { sendReturn, mappedPitch, preset },
         DEVICE_VALUE_LABELS,
         items.length,
       ),
-    });
-  }
+    },
+    focus,
+  };
+}
 
-  if (focus) {
+/**
+ * Run a checked device update.
+ * @param plan - What planDeviceUpdate checked
+ * @param presetOutcomes - What loading each target's preset did, by index
+ * @returns Updated object info(s)
+ */
+export function runDeviceUpdate(
+  plan: DeviceUpdatePlan,
+  presetOutcomes: Array<PresetOutcome | undefined> = [],
+): WriteResult<Record<string, unknown>> {
+  const result =
+    "wrap" in plan
+      ? { ...wrapDevicesInRack(plan.wrap) }
+      : updateMultipleTargets(
+          plan.items,
+          plan.updateOptions,
+          plan.lists,
+          presetOutcomes,
+        );
+
+  if (plan.focus) {
     const lastId = lastWrittenId(result);
 
     if (lastId) {

@@ -117,8 +117,6 @@ export async function resolveBrowserDevice(
   return resolution.item;
 }
 
-// --- Helpers below main exports ---
-
 /**
  * How long V8 waits on a remote-script route: its usual wait, cut to what is
  * left of the request's time. V8 must answer before Node's tool timeout, or it
@@ -128,7 +126,7 @@ export async function resolveBrowserDevice(
  * @param reserveMs - Time to keep for work after the route answers
  * @returns The wait, or null when there's no time left to start
  */
-function remoteScriptWait(
+export function remoteScriptWait(
   deadline: number | null | undefined,
   reserveMs = 0,
 ): number | null {
@@ -140,6 +138,8 @@ function remoteScriptWait(
 
   return left > 0 ? Math.min(REMOTE_SCRIPT_REQUEST_TIMEOUT_MS, left) : null;
 }
+
+// --- Helpers below main exports ---
 
 /**
  * Why a load didn't start for lack of time. When the whole budget can't cover

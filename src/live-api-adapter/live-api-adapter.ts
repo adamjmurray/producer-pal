@@ -41,7 +41,7 @@ import { connect } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
-import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import { updateDeviceWithPreset } from "#src/tools/device/update/update-device-with-preset.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
@@ -147,7 +147,7 @@ const toolDispatch: Record<
   "ppal-update-clip": (args, ctx) => updateClip(args as any, ctx),
   "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
   "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
-  "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
+  "ppal-update-device": (args, ctx) => updateDeviceWithPreset(args as any, ctx),
   "ppal-playback": (args, ctx) => playback(args as any, ctx),
   "ppal-select": (args, ctx) => select(args as any, ctx),
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),

@@ -209,7 +209,7 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   devices: DEVICE_PATH_TOOLS,
   // Only create-device loads one, and only through the remote script (see
   // remoteScriptGatedFragments). A subset of the `devices` gate it requires.
-  "plugins-and-max-devices": [CREATE_DEVICE],
+  "plugins-and-max-devices": DEVICE_WRITE_TOOLS,
   // The build recipes: only create-device and update-device can run any of them.
   "devices-write": DEVICE_WRITE_TOOLS,
   // Reading a Drift or an EQ Eight benefits from the pseudo-param names as much

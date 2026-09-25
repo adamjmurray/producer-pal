@@ -1,9 +1,9 @@
 ---
 title: Remote Script
 description:
-  Install the optional Producer Pal remote script so AI can load VST/AU plug-ins
-  and Max for Live devices by name in Ableton Live. Install from the Chat UI,
-  enable it in Live, update, and uninstall.
+  Install the optional Producer Pal remote script so AI can load VST/AU
+  plug-ins, Max for Live devices, and presets in Ableton Live. Install from the
+  Chat UI, enable it in Live, update, and uninstall.
 ---
 
 # Remote Script
@@ -17,6 +17,11 @@ Install it if you want AI to:
 - **Load VST/AU plug-ins and Max for Live devices by name.** Without it,
   [Create Device](/features/tools#ppal-create-device) can only add Live's
   built-in devices.
+- **Load presets**: create a device or rack straight from a preset (`.adv` or
+  `.adg`), including drum kits from your Packs, or swap a preset onto a device
+  that's already in the Set with
+  [Update Device](/features/tools#ppal-update-device). A preset for a different
+  device, or a rack, replaces the device, and its automation is lost.
 - **Open or create a Live Set with Producer Pal already in it**, from the
   `ableton-open-live-set` [Agent Skill](/guide/skills).
 

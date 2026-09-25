@@ -21,7 +21,7 @@ import {
   createGlueCompressor,
   expectParamRefused,
   writeParam,
-} from "./update-device-param-test-helpers";
+} from "../helpers/update-device-param-test-helpers";
 import {
   createMidiTrack,
   createTestDevice,

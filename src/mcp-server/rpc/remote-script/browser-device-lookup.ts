@@ -16,7 +16,7 @@ import {
 } from "./remote-script-client.ts";
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
-const SECTIONS = [
+export const SECTIONS = [
   { type: "plugin", label: "Plug-Ins" },
   { type: "mfl-device", label: "Max for Live" },
   { type: "instrument", label: "Instruments" },
@@ -24,7 +24,7 @@ const SECTIONS = [
   { type: "midi-effect", label: "MIDI Effects" },
 ] as const;
 
-type Section = (typeof SECTIONS)[number];
+export type Section = (typeof SECTIONS)[number];
 
 /** Browser names that are really filenames. */
 const FILE_SUFFIX = /\.(?:amxd|adg|adv)$/;
@@ -32,14 +32,14 @@ const FILE_SUFFIX = /\.(?:amxd|adg|adv)$/;
 /** How many candidates an ambiguity error names. */
 const MAX_LISTED = 10;
 
-interface ListedItem {
+export interface ListedItem {
   name: string;
   path: string;
   /** Only a one-level listing says */
   loadable?: boolean;
 }
 
-interface Candidate extends ListedItem {
+export interface Candidate extends ListedItem {
   section: Section;
 }
 
@@ -54,17 +54,186 @@ export async function lookUpBrowserDevice(
   deviceName: string,
 ): Promise<BrowserItemResolution> {
   const wanted = deviceName.trim();
+  const prefixed = sectionPrefixed(wanted);
+
+  return prefixed == null
+    ? await searchSections(deviceName, wanted)
+    : await findAtPath(deviceName, prefixed, () => nothingNamed(deviceName));
+}
+
+/**
+ * Split off a leading section label, e.g. `Plug-Ins/VST3/FabFilter/Pro-Q 4`.
+ * @param wanted - The name the call used, trimmed
+ * @returns The section and the path under it, or null when there's no label
+ */
+export function sectionPrefixed(
+  wanted: string,
+): { section: Section; rest: string } | null {
   const section = SECTIONS.find((candidate) =>
     wanted.toLowerCase().startsWith(`${candidate.label.toLowerCase()}/`),
   );
 
   return section == null
-    ? await searchSections(deviceName, wanted)
-    : await findAtPath(
-        deviceName,
-        section,
-        wanted.slice(section.label.length + 1),
-      );
+    ? null
+    : { section, rest: wanted.slice(section.label.length + 1) };
+}
+
+/**
+ * Find the item a section-prefixed name spells out, one level listing its folder.
+ * @param name - The name the call used
+ * @param prefixed - Its section, and everything after the section
+ * @param prefixed.section - The section it starts with
+ * @param prefixed.rest - Everything after the section
+ * @param missing - The resolution when nothing is there
+ * @returns The resolution
+ */
+export async function findAtPath(
+  name: string,
+  { section, rest }: { section: Section; rest: string },
+  missing: () => BrowserItemResolution,
+): Promise<BrowserItemResolution> {
+  const segments = rest
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== "");
+  const leaf = segments.pop();
+
+  if (leaf == null) {
+    return missing();
+  }
+
+  const reply = await remoteScriptRequest({
+    route: "/list",
+    query: {
+      type: section.type,
+      recursive: "false",
+      ...(segments.length > 0 ? { path: segments.join("/") } : {}),
+    },
+  });
+
+  if (!reply.available) {
+    return { available: false };
+  }
+
+  // A folder that isn't there is a 404, which means the same as no such item.
+  if (reply.status !== 200 && reply.status !== 404) {
+    return searchFailed(name, reply);
+  }
+
+  const key = normalizedName(leaf);
+  const item =
+    reply.status === 200
+      ? listedItems(reply).find(
+          (child) =>
+            child.loadable !== false && normalizedName(child.name) === key,
+        )
+      : undefined;
+
+  return item == null ? missing() : found({ ...item, section });
+}
+
+/**
+ * The matches for a name: exact names, else names containing it.
+ * @param candidates - Everything a search listed
+ * @param key - The name, normalized
+ * @returns The matches
+ */
+function nameMatches(candidates: Candidate[], key: string): Candidate[] {
+  const exact = candidates.filter((item) => normalizedName(item.name) === key);
+
+  return exact.length > 0
+    ? exact
+    : candidates.filter((item) => normalizedName(item.name).includes(key));
+}
+
+/**
+ * The items a listing reply holds.
+ * @param reply - A 200 from /list
+ * @returns Its items that carry a name and a path
+ */
+export function listedItems(reply: RemoteScriptAnswer): ListedItem[] {
+  const items = reply.body.items;
+
+  return Array.isArray(items)
+    ? items.filter(
+        (item): item is ListedItem =>
+          typeof item?.name === "string" && typeof item?.path === "string",
+      )
+    : [];
+}
+
+/**
+ * A name compared the way the remote script compares it: trimmed, any case,
+ * and without a filename suffix.
+ * @param name - A browser name or the name the call used
+ * @returns The comparable name
+ */
+export function normalizedName(name: string): string {
+  return name.trim().toLowerCase().replace(FILE_SUFFIX, "");
+}
+
+/**
+ * The resolution for a match.
+ * @param match - The matched item
+ * @returns The item, as the load route takes it
+ */
+export function found(match: Candidate): BrowserItemResolution {
+  return {
+    available: true,
+    item: { type: match.section.type, path: match.path, name: match.name },
+  };
+}
+
+/**
+ * The resolution for a search the remote script answered with an error.
+ * @param name - The name the call used
+ * @param reply - The failed reply
+ * @returns The error
+ */
+export function searchFailed(
+  name: string,
+  reply: RemoteScriptAnswer,
+): BrowserItemResolution {
+  return {
+    available: true,
+    error: `could not search Live's browser for "${name}": ${replyError(reply)}`,
+  };
+}
+
+/**
+ * The error for a name more than one thing has, each spelled so it can be sent
+ * straight back as the arg.
+ * @param param - The arg the name came in, and what it names
+ * @param param.name - The arg, e.g. "device"
+ * @param param.noun - What it names, plural
+ * @param value - The name the call used
+ * @param matches - What it matched
+ * @returns The message
+ */
+export function ambiguity(
+  { name, noun }: { name: string; noun: string },
+  value: string,
+  matches: Candidate[],
+): string {
+  return `${name} "${value}" matches ${matches.length} ${noun}; pass one of these as ${name}: ${candidateList(matches)}`;
+}
+
+/**
+ * Candidates, each spelled so it can be sent straight back, capped at a few.
+ * @param matches - The candidates
+ * @returns The list, saying how many more there are past the cap
+ */
+export function candidateList(matches: Candidate[]): string {
+  const listed = matches
+    .slice(0, MAX_LISTED)
+    .map((match) => `"${match.section.label}/${match.path}"`)
+    .join(", ");
+  const more =
+    matches.length > MAX_LISTED
+      ? `, and ${matches.length - MAX_LISTED} more`
+      : "";
+
+  return `${listed}${more}`;
 }
 
 // --- Helpers below main export ---
@@ -111,11 +280,7 @@ async function searchSections(
     );
   }
 
-  const exact = candidates.filter((item) => normalizedName(item.name) === key);
-  const matches =
-    exact.length > 0
-      ? exact
-      : candidates.filter((item) => normalizedName(item.name).includes(key));
+  const matches = nameMatches(candidates, key);
   const chosen = matches.length === 1 ? matches[0] : preferredFormat(matches);
 
   if (chosen != null) {
@@ -124,59 +289,14 @@ async function searchSections(
 
   return matches.length === 0
     ? nothingNamed(deviceName)
-    : { available: true, error: ambiguity(deviceName, matches) };
-}
-
-/**
- * Find the item a section-prefixed name spells out, one level listing its folder.
- * @param deviceName - The name the call used
- * @param section - The section it starts with
- * @param rest - Everything after the section
- * @returns The resolution
- */
-async function findAtPath(
-  deviceName: string,
-  section: Section,
-  rest: string,
-): Promise<BrowserItemResolution> {
-  const segments = rest
-    .split("/")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment !== "");
-  const leaf = segments.pop();
-
-  if (leaf == null) {
-    return nothingNamed(deviceName);
-  }
-
-  const reply = await remoteScriptRequest({
-    route: "/list",
-    query: {
-      type: section.type,
-      recursive: "false",
-      ...(segments.length > 0 ? { path: segments.join("/") } : {}),
-    },
-  });
-
-  if (!reply.available) {
-    return { available: false };
-  }
-
-  // A folder that isn't there is a 404, which means the same as no such item.
-  if (reply.status !== 200 && reply.status !== 404) {
-    return searchFailed(deviceName, reply);
-  }
-
-  const key = normalizedName(leaf);
-  const item =
-    reply.status === 200
-      ? listedItems(reply).find(
-          (child) =>
-            child.loadable !== false && normalizedName(child.name) === key,
-        )
-      : undefined;
-
-  return item == null ? nothingNamed(deviceName) : found({ ...item, section });
+    : {
+        available: true,
+        error: ambiguity(
+          { name: "device", noun: "devices" },
+          deviceName,
+          matches,
+        ),
+      };
 }
 
 /**
@@ -233,44 +353,6 @@ function formatRank(path: string): number | null {
 }
 
 /**
- * The items a listing reply holds.
- * @param reply - A 200 from /list
- * @returns Its items that carry a name and a path
- */
-function listedItems(reply: RemoteScriptAnswer): ListedItem[] {
-  const items = reply.body.items;
-
-  return Array.isArray(items)
-    ? items.filter(
-        (item): item is ListedItem =>
-          typeof item?.name === "string" && typeof item?.path === "string",
-      )
-    : [];
-}
-
-/**
- * A name compared the way the remote script compares it: trimmed, any case,
- * and without a filename suffix.
- * @param name - A browser name or the name the call used
- * @returns The comparable name
- */
-function normalizedName(name: string): string {
-  return name.trim().toLowerCase().replace(FILE_SUFFIX, "");
-}
-
-/**
- * The resolution for a match.
- * @param match - The matched item
- * @returns The item, as the load route takes it
- */
-function found(match: Candidate): BrowserItemResolution {
-  return {
-    available: true,
-    item: { type: match.section.type, path: match.path, name: match.name },
-  };
-}
-
-/**
  * The resolution for a name nothing has.
  * @param deviceName - The name the call used
  * @returns The error
@@ -280,40 +362,4 @@ function nothingNamed(deviceName: string): BrowserItemResolution {
     available: true,
     error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
   };
-}
-
-/**
- * The resolution for a search the remote script answered with an error.
- * @param deviceName - The name the call used
- * @param reply - The failed reply
- * @returns The error
- */
-function searchFailed(
-  deviceName: string,
-  reply: RemoteScriptAnswer,
-): BrowserItemResolution {
-  return {
-    available: true,
-    error: `could not search Live's browser for "${deviceName}": ${replyError(reply)}`,
-  };
-}
-
-/**
- * The error for a name more than one thing has, each spelled so it can be sent
- * straight back as the `device` arg.
- * @param deviceName - The name the call used
- * @param matches - What it matched
- * @returns The message
- */
-function ambiguity(deviceName: string, matches: Candidate[]): string {
-  const listed = matches
-    .slice(0, MAX_LISTED)
-    .map((match) => `"${match.section.label}/${match.path}"`)
-    .join(", ");
-  const more =
-    matches.length > MAX_LISTED
-      ? `, and ${matches.length - MAX_LISTED} more`
-      : "";
-
-  return `device "${deviceName}" matches ${matches.length} devices; pass one of these as device: ${listed}${more}`;
 }

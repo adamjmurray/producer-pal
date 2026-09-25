@@ -17,6 +17,10 @@ import {
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { resolveBrowserDevice } from "./helpers/browser-devices.ts";
 import {
+  presetScopeForDevice,
+  resolveBrowserPreset,
+} from "./helpers/browser-presets.ts";
+import {
   type DevicePlan,
   createDevicesAtPaths,
 } from "./helpers/create-devices-at-paths.ts";
@@ -26,6 +30,7 @@ interface CreateDeviceArgs {
   device?: string;
   /** Deprecated spelling of `device`. */
   deviceName?: string;
+  preset?: string;
   path?: string;
   name?: string;
   params?: ParamEntry[];
@@ -62,12 +67,15 @@ function validateListModeArgs(args: {
 
 /**
  * Creates a Live device on a track or chain, or lists the native devices. A
- * device that isn't native is looked up in Live's browser (plug-ins, Max for
- * Live devices) when the Producer Pal remote script is running.
+ * device that isn't native (plug-ins, Max for Live devices), and any preset, is
+ * loaded from Live's browser when the Producer Pal remote script is running.
  * @param args - The device parameters
  * @param args.device - Device for all, or comma-separated one per path, in
- *   order; omit to list available devices
+ *   order; omit this and preset to list available devices
  * @param args.deviceName - Deprecated spelling of `device`
+ * @param args.preset - Preset for all, or comma-separated one per path: a name
+ *   looked up among the device's presets (all presets with no device), or a
+ *   file path
  * @param args.path - Device path(s), comma-separated for multiple (required when device provided)
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
@@ -79,6 +87,7 @@ export async function createDevice(
   {
     device,
     deviceName: deprecatedDeviceName,
+    preset,
     path,
     name,
     params,
@@ -90,7 +99,7 @@ export async function createDevice(
   const { deadline, timeoutMs } = context;
 
   // List mode: return valid devices when no device is named
-  if (deviceArg == null) {
+  if (deviceArg == null && preset == null) {
     validateListModeArgs({ path, name, params });
 
     return VALID_DEVICES;
@@ -99,7 +108,9 @@ export async function createDevice(
   if (path == null || path.trim() === "") {
     // A name Live doesn't have is the mistake to report first, as it always
     // was; with no path there is nothing to pair a list against.
-    await findBrowserItem(deviceArg, deadline);
+    if (deviceArg != null && preset == null) {
+      await findBrowserItem(deviceArg, deadline);
+    }
 
     throw new Error("path is required when creating a device");
   }
@@ -109,11 +120,12 @@ export async function createDevice(
   validateListLengths([
     { param: "path", value: path, target: true },
     { param: "device", value: deviceArg },
+    { param: "preset", value: preset },
     { param: "name", value: name },
   ]);
 
   const plans = await devicePlans(
-    deviceArg,
+    { device: deviceArg, preset },
     targetEntries(path, "path"),
     deadline,
   );
@@ -138,31 +150,72 @@ export async function createDevice(
 }
 
 // What each path creates: its device, and the browser item to load when that
-// device isn't native. A name is looked up once however many paths want it.
+// device isn't native or comes from a preset. A name is looked up once however
+// many paths want it.
 async function devicePlans(
-  value: string,
+  args: { device: string | undefined; preset: string | undefined },
   paths: string[],
   deadline: number | null | undefined,
 ): Promise<DevicePlan[]> {
-  // The lists agreed before anything ran, so a split names one device per path.
-  const parsed = splitList(value, paths.length, "device");
-  const devices = paths.map((_path, i) => valueForIndex(value, i, parsed));
+  const devices = perPath(args.device, paths, "device");
+  const presets = perPath(args.preset, paths, "preset");
   const found = new Map<string, BrowserItem | null>();
   const plans: DevicePlan[] = [];
 
-  for (const [index, path] of paths.entries()) {
-    const deviceName = devices[index] as string;
-    let item = found.get(deviceName);
-
-    if (item === undefined) {
-      item = await findBrowserItem(deviceName, deadline);
-      found.set(deviceName, item);
+  const cached = async (
+    key: string,
+    look: () => Promise<BrowserItem | null>,
+  ): Promise<BrowserItem | null> => {
+    if (!found.has(key)) {
+      found.set(key, await look());
     }
 
-    plans.push({ path, device: deviceName, item });
+    return found.get(key) as BrowserItem | null;
+  };
+
+  for (const [index, path] of paths.entries()) {
+    const deviceName = devices[index];
+    const presetName = presets[index];
+    const deviceItem =
+      deviceName == null
+        ? null
+        : await cached(deviceName, () => findBrowserItem(deviceName, deadline));
+
+    if (presetName == null) {
+      plans.push({ path, device: deviceName as string, item: deviceItem });
+      continue;
+    }
+
+    const scope =
+      deviceName == null
+        ? undefined
+        : presetScopeForDevice(deviceName, deviceItem);
+    const item = await cached(`${deviceName ?? ""}\n${presetName}`, () =>
+      resolveBrowserPreset(presetName, scope, deadline),
+    );
+
+    plans.push({ path, device: presetName, item });
   }
 
   return plans;
+}
+
+/**
+ * One value per path from a list arg. The lists agreed before anything ran, so
+ * a split names one per path.
+ * @param value - The arg, or undefined when the call didn't send it
+ * @param paths - The paths
+ * @param param - The arg's name, for errors
+ * @returns Each path's value
+ */
+function perPath(
+  value: string | undefined,
+  paths: string[],
+  param: string,
+): Array<string | undefined> {
+  const parsed = splitList(value, paths.length, param);
+
+  return paths.map((_path, i) => valueForIndex(value, i, parsed));
 }
 
 /**

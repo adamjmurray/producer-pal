@@ -5,6 +5,8 @@
 
 """Finding things in Live's browser. Main thread only."""
 
+import os
+
 MAX_DEPTH = 8
 
 # The `type` param: the app.browser attribute holding that tree, and whether to
@@ -20,6 +22,14 @@ TYPES = {
 
 # Browser names that are really filenames.
 _SUFFIXES = (".amxd", ".adg", ".adv")
+
+# The install puts this file in <User Library>/Remote Scripts/Producer_Pal.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_USER_LIBRARY = (
+    os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+    if os.path.basename(os.path.dirname(_SCRIPT_DIR)) == "Remote Scripts"
+    else None
+)
 
 
 class PathNotFound(LookupError):
@@ -82,6 +92,57 @@ def list_loadable(item, path, devices_only, query=None):
     ]
 
 
+def list_presets(item, path, query=None):
+    """Every preset at any depth below `item`."""
+    return [
+        {"name": child.name, "path": child_path}
+        for child, child_path in iter_presets(item, path)
+        if _matches(child, query)
+    ]
+
+
+def iter_presets(item, path, depth=0):
+    """(item, path) pairs for every preset below `item`: anything loadable that
+    isn't a device. Descends into devices, since their children are presets."""
+    if depth > MAX_DEPTH:
+        return
+    for child in item.children:
+        child_path = _join(path, child.name)
+        if child.is_loadable and not child.is_device:
+            yield child, child_path
+        else:
+            yield from iter_presets(child, child_path, depth + 1)
+
+
+def find_file(browser, file_path):
+    """The browser item for a file on disk, plus a path naming it.
+
+    The browser has no lookup by file, but its User Library, Packs and Places
+    trees mirror folders on disk, so walk the file's path down whichever holds
+    it. A pack or Places folder is matched by name. Raises LookupError.
+    """
+    segments = _file_segments(file_path)
+    library = _file_segments(_USER_LIBRARY) if _USER_LIBRARY else None
+    if library and _lower(segments[: len(library)]) == _lower(library):
+        found = _walk(browser.user_library, segments[len(library) :])
+        if found is not None:
+            return found, _join("User Library", "/".join(segments[len(library) :]))
+
+    for label, roots in (("Packs", browser.packs.children), ("Places", browser.user_folders)):
+        for root in roots:
+            wanted = root.name.lower()
+            for i, segment in enumerate(segments[:-1]):
+                if segment.lower() == wanted:
+                    rest = segments[i + 1 :]
+                    found = _walk(root, rest)
+                    if found is not None:
+                        return found, "/".join([label, root.name] + rest)
+    raise LookupError(
+        "no folder in Live's browser (User Library, Packs, Places) holds %r"
+        % file_path
+    )
+
+
 def iter_loadable(item, path, devices_only, depth=0):
     """(item, path) pairs for every loadable item below `item`.
 
@@ -116,6 +177,24 @@ def match_items(root, name, devices_only):
         elif wanted in normalized:
             partial.append((item, path))
     return exact or partial
+
+
+def _walk(root, segments):
+    """The item at `segments` below `root`, or None."""
+    try:
+        item, _ = resolve_path(root, "/".join(segments))
+    except PathNotFound:
+        return None
+    return item
+
+
+def _file_segments(path):
+    """A file path's folders and name, with either separator."""
+    return [part for part in str(path).replace("\\", "/").split("/") if part]
+
+
+def _lower(segments):
+    return [segment.lower() for segment in segments]
 
 
 def _matches(item, query):

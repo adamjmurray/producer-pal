@@ -45,6 +45,13 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       default: "name, or comma-separated one per target (not drum pads)",
       smallModel: "display name (not drum pads)",
     }),
+
+    // Needs the remote script, which small-model mode never uses.
+    preset: param(z.string().optional(), {
+      default:
+        "preset to load onto the device before the rest of the update (needs the Producer Pal remote script): a preset name, or a path from ppal-library; comma-separated one per target. A preset for another device, or a rack, replaces the device: its id changes and its automation is lost",
+      smallModel: null,
+    }),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {

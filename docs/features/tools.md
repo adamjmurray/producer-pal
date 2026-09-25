@@ -391,6 +391,8 @@ sounding.
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
+- Create a device or rack from a preset (needs the
+  [remote script](/guide/remote-script))
 - Load a sample into a Simpler instrument via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
   `{name: "gainDb", value: <dB>}` (new in Live 12.4)
@@ -427,6 +429,7 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
+- Swap a preset onto a device (needs the [remote script](/guide/remote-script))
 
 <!--@include: ../_generated/ppal-update-device-schema.md-->
 

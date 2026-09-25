@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { stripReturnChainLetter } from "../helpers/strip-return-chain-letter.ts";
+import { stripReturnChainLetter } from "../../helpers/strip-return-chain-letter.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("stripReturnChainLetter", () => {

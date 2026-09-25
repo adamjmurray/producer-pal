@@ -43,6 +43,7 @@ import {
 import {
   type TargetNotes,
   newTargetNotes,
+  noteTarget,
   refuseTargetWork,
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -78,12 +79,15 @@ interface TargetUpdate {
 
 /** A bare pad path names the whole pad, so it resolves to a group of objects
  * rather than to one. Everything else resolves to a single object. */
-type ResolvedTarget =
+export type ResolvedTarget =
   | { kind: "object"; target: LiveAPI }
   | { kind: "drum-pad"; group: DrumPadGroup; padPath: string };
 
 /** An object's own last path segment, so the rest of the path is its container. */
 const OWN_SEGMENT = /\/[^/]+$/;
+
+/** What loading a target's preset did: replaced the device or kept it, or why not. */
+export type PresetOutcome = { replaced: boolean } | { error: string };
 
 /** One entry per target, except where null means one value covers them all. */
 export interface TargetLists {
@@ -94,7 +98,7 @@ export interface TargetLists {
   /** The other per-target strings for the target at an index */
   valuesAt: (
     index: number,
-  ) => Pick<UpdateTargetOptions, "sendReturn" | "mappedPitch">;
+  ) => Pick<UpdateTargetOptions, "sendReturn" | "mappedPitch" | "preset">;
 }
 
 /**
@@ -102,12 +106,14 @@ export interface TargetLists {
  * @param items - The targets, each tagged with the param it came from
  * @param updateOptions - Options to pass to updateTarget, minus the per-target lists
  * @param lists - The name, color and destination lists, paired with the targets
+ * @param presetOutcomes - What loading each target's preset did, by index
  * @returns The result when one target was named, otherwise one entry per target
  */
 export function updateMultipleTargets(
   items: NamedTarget[],
   updateOptions: UpdateTargetOptions,
   lists: TargetLists,
+  presetOutcomes: Array<PresetOutcome | undefined> = [],
 ): WriteResult<Record<string, unknown>> {
   // Resolve every target before the first write: a move re-indexes what it
   // leaves, so a later path would name whatever slid into the slot.
@@ -144,6 +150,7 @@ export function updateMultipleTargets(
       resolved.target,
       options,
       param === "path" ? value : undefined,
+      presetOutcomes[i],
     );
 
     updated.push(update);
@@ -158,6 +165,30 @@ export function updateMultipleTargets(
   }
 
   return results as WriteResult<Record<string, unknown>>;
+}
+
+/**
+ * Resolve a target by the param that named it.
+ * @param item - The target, tagged with the param that named it
+ * @param item.param - Which param named it
+ * @param item.value - The id or path
+ * @returns The resolved target
+ * @throws Error when it names nothing a target can be
+ */
+export function resolveNamedTarget({
+  param,
+  value,
+}: NamedTarget): ResolvedTarget {
+  const resolved =
+    param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
+
+  if (!resolved) {
+    throw new Error(
+      param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
+    );
+  }
+
+  return resolved;
 }
 
 // --- Helpers below main exports ---
@@ -177,27 +208,6 @@ function resolveUpFront(item: NamedTarget): () => ResolvedTarget {
       throw error;
     };
   }
-}
-
-/**
- * Resolve a target by the param that named it.
- * @param item - The target, tagged with the param that named it
- * @param item.param - Which param named it
- * @param item.value - The id or path
- * @returns The resolved target
- * @throws Error when it names nothing a target can be
- */
-function resolveNamedTarget({ param, value }: NamedTarget): ResolvedTarget {
-  const resolved =
-    param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
-
-  if (!resolved) {
-    throw new Error(
-      param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
-    );
-  }
-
-  return resolved;
 }
 
 /**
@@ -325,6 +335,7 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
  * @param target - Live API object to update
  * @param options - Update options
  * @param writtenPath - The path the call named the target by, if it named one
+ * @param presetOutcome - What loading its preset did, when the call sent one
  * @returns Result with ID and any params written, and the container spelling
  *   it was named by
  * @throws Error when this kind of object can't be written to
@@ -333,6 +344,7 @@ function updateTarget(
   target: LiveAPI,
   options: UpdateTargetOptions,
   writtenPath?: string,
+  presetOutcome?: PresetOutcome,
 ): TargetUpdate {
   const type = target.type;
 
@@ -344,6 +356,8 @@ function updateTarget(
   }
 
   const notes = newTargetNotes();
+
+  notePresetOutcome(notes, presetOutcome);
 
   // Handle move operation first (before other updates)
   const moved: TargetMove =
@@ -409,6 +423,30 @@ function updateTarget(
     result: reportTargetNotes(result, notes, options),
     written,
   };
+}
+
+/**
+ * Say what loading a preset did, when there's anything to say: why it didn't
+ * load, or that a new device took the old one's place.
+ * @param notes - What the target's entry has to say, added to
+ * @param outcome - What loading the preset did, if the call sent one
+ */
+function notePresetOutcome(
+  notes: TargetNotes,
+  outcome: PresetOutcome | undefined,
+): void {
+  if (outcome == null) {
+    return;
+  }
+
+  if ("error" in outcome) {
+    refuseTargetWork(notes, ["preset"], `preset not loaded: ${outcome.error}`);
+  } else if (outcome.replaced) {
+    noteTarget(
+      notes,
+      "the preset replaced the device with a new one (new id); any automation on the old device is gone",
+    );
+  }
 }
 
 /**

@@ -18,15 +18,22 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     destructiveHint: true,
   },
   inputSchema: {
-    device: z
-      .string()
-      .optional()
-      .describe(
+    device: param(z.string().optional(), {
+      default:
+        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit this and preset to list available devices',
+      smallModel:
         'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit to list available devices',
-      ),
+    }),
 
     deviceName: deprecatedParam(z.string().optional(), {
       replacedBy: "device",
+    }),
+
+    // Needs the remote script, which small-model mode never uses.
+    preset: param(z.string().optional(), {
+      default:
+        "create from a preset (needs the Producer Pal remote script): a preset name, looked up among device's presets when device is given, else among all; or a path from ppal-library. Comma-separated one per path",
+      smallModel: null,
     }),
 
     path: param(z.coerce.string().optional(), {

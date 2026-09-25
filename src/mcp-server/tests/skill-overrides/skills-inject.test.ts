@@ -150,7 +150,7 @@ describe("withSkills", () => {
 });
 
 describe("withRemoteScriptAnswer", () => {
-  const HEADING = "### Plug-Ins & Max for Live Devices";
+  const HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
   it("teaches loading plug-ins while the remote script answers its ping", async () => {
     const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));

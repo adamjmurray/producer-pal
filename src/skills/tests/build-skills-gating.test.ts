@@ -459,7 +459,7 @@ describe("assembleSkills - dropped fragments", () => {
 
 describe("buildSkills - remote script gating", () => {
   const ALL_TOOLS = [...TOOL_NAMES];
-  const HEADING = "### Plug-Ins & Max for Live Devices";
+  const HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
   it("teaches loading plug-ins only while the remote script answers", () => {
     expect(buildSkills({ tools: ALL_TOOLS })).not.toContain(HEADING);
@@ -488,10 +488,18 @@ describe("buildSkills - remote script gating", () => {
     ).not.toContain(HEADING);
   });
 
-  it("still needs create-device", () => {
-    const tools = ALL_TOOLS.filter((name) => name !== "ppal-create-device");
+  it("still needs create-device or update-device", () => {
+    const tools = ALL_TOOLS.filter(
+      (name) => name !== "ppal-create-device" && name !== "ppal-update-device",
+    );
 
     expect(buildSkills({ tools, remoteScript: true })).not.toContain(HEADING);
+  });
+
+  it("ships with update-device alone, which loads presets", () => {
+    const tools = ALL_TOOLS.filter((name) => name !== "ppal-create-device");
+
+    expect(buildSkills({ tools, remoteScript: true })).toContain(HEADING);
   });
 
   it("doesn't list it as dropped, since no tool setting explains it", () => {
