@@ -8,8 +8,11 @@
 // entry may be empty. A length mismatch is refused before any work runs, and a
 // hole is refused here. Nothing cycles — a caller can't predict where a cycled
 // value lands. A comma splits only when the call names more than one item:
-// with one item the whole value is literal, which is the only way to set a
-// name that contains a comma (dev/Principles.md, Multi-target).
+// with one item every comma is part of the value (dev/Principles.md,
+// Multi-target). With any count, `\,` is a comma inside a value, so a file
+// path or routing name can hold one in a list. No other backslash is touched
+// (Windows paths come through as-is), so a value can't end in a backslash
+// right before a separating comma.
 //
 // Destinations are the exception: a lane or slot holds one object, so a lone
 // one sent to three clips would bury two of them. Those pair exactly
@@ -39,7 +42,7 @@ export type ListEntries = string[];
  * Split a comma-separated param into one entry per item.
  *
  * Returns null when there's nothing to pair — a single item, or a value with
- * no comma in it — which the index lookups read as "this value covers
+ * no separating comma — which the index lookups read as "this value covers
  * everything".
  * @param value - The raw param, as the caller sent it
  * @param count - How many items the call acts on
@@ -52,11 +55,15 @@ export function splitList(
   count: number,
   param: string,
 ): ListEntries | null {
-  if (count <= 1 || !value?.includes(",")) {
+  if (count <= 1 || value == null) {
     return null;
   }
 
-  const entries = value.split(",").map((v) => v.trim());
+  const entries = splitEntries(value).map((v) => v.trim());
+
+  if (entries.length === 1) {
+    return null;
+  }
 
   // One trailing comma isn't an entry, the way most languages read a list
   // literal. Without this, "A,B," over three items clears the third name.
@@ -95,7 +102,7 @@ export function everyEntry(
     return [];
   }
 
-  return splitList(value, count, param) ?? [value];
+  return splitList(value, count, param) ?? [unescapeCommas(value)];
 }
 
 /**
@@ -117,7 +124,38 @@ export function valueForIndex(
 
   // A list too short for the items is refused up front, so past the last entry
   // only happens where nothing checked — and there the item keeps what it had.
-  return parsed == null ? value : parsed[index];
+  return parsed == null ? unescapeCommas(value) : parsed[index];
+}
+
+/**
+ * Split a value at each comma not written as `\,`. A `\,` becomes a plain
+ * comma inside its entry.
+ * @param value - The raw param
+ * @returns The untrimmed entries, one when the value has no separator
+ */
+export function splitEntries(value: string): string[] {
+  const entries: string[] = [];
+
+  for (const piece of value.split(",")) {
+    const last = entries.at(-1);
+
+    if (last?.endsWith("\\") === true) {
+      entries[entries.length - 1] = `${last.slice(0, -1)},${piece}`;
+    } else {
+      entries.push(piece);
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Read each `\,` in a whole value as a plain comma.
+ * @param value - The raw param
+ * @returns The value with its escaped commas unescaped
+ */
+function unescapeCommas(value: string): string {
+  return value.replaceAll("\\,", ",");
 }
 
 /**

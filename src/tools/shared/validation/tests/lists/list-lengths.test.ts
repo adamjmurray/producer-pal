@@ -218,6 +218,26 @@ describe("countListEntries", () => {
     expect(countListEntries("a")).toBe(1);
   });
 
+  it("doesn't split a value list at an escaped comma", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "path", value: "t0/s0,t0/s1", target: true },
+        { param: "sampleFile", value: "/kick\\, hard.wav" },
+      ]),
+    ).not.toThrow();
+  });
+
+  // Target lists split at every comma, so the count must too.
+  it("counts every comma in a target list", () => {
+    expect(countListEntries("123\\,456")).toBe(2);
+    expect(() =>
+      validateListLengths([
+        { param: "arrangementStart", value: "1|1\\,2|1", target: true },
+        { param: "name", value: "A,B,C" },
+      ]),
+    ).toThrow("arrangementStart names 2 entries but name names 3 entries");
+  });
+
   it("counts an unset or blank value as none", () => {
     expect(countListEntries(null)).toBe(0);
     expect(countListEntries(undefined)).toBe(0);

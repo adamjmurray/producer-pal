@@ -30,9 +30,10 @@ should follow from them unambiguously, without being spelled out here.
    values makes separate calls in one turn, which costs less than giving up the
    schema's type checking. An empty entry is refused rather than guessed at. A
    comma splits a value only when the call names more than one target; with one
-   target the whole value is literal, which is how a name containing a comma is
-   set. A call that named N targets returns N entries in the order they were
-   named. When entries write the same place or value, the last wins: each
+   target a comma is part of the value, which is how a name containing a comma
+   is set. Either way `\,` is a literal comma, so such a value can go to several
+   targets too. A call that named N targets returns N entries in the order they
+   were named. When entries write the same place or value, the last wins: each
    earlier one is skipped unwritten, and its entry says a later one replaced it.
    A single target returns its entry unwrapped: an array where they asked for
    one object confuses small models.

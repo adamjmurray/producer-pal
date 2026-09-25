@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type PairLabels,
+  everyEntry,
   pairExact,
   pairValues,
   splitList,
@@ -72,6 +73,31 @@ describe("list-pairing", () => {
         'invalid color ",B" - it has an empty entry',
       );
       expect(() => splitList("A, ,C", 3, "name")).toThrow("empty entry");
+    });
+
+    it("reads \\, as a comma inside an entry", () => {
+      expect(splitList("A\\, B,C", 2, "name")).toStrictEqual(["A, B", "C"]);
+      expect(splitList("A\\, B", 2, "name")).toBeNull();
+      expect(valueForIndex("A\\, B", 1, null)).toBe("A, B");
+      expect(everyEntry("A\\, B", 2, "name")).toStrictEqual(["A, B"]);
+    });
+
+    it("reads \\, the same way with one item", () => {
+      expect(valueForIndex("Verse\\, take 2", 0, null)).toBe("Verse, take 2");
+      expect(everyEntry("Verse\\, take 2", 1, "name")).toStrictEqual([
+        "Verse, take 2",
+      ]);
+    });
+
+    it("leaves a backslash that isn't before a comma alone", () => {
+      const kick = "C:\\samples\\kick.wav";
+      const snare = "C:\\samples\\snare.wav";
+
+      expect(splitList(`${kick},${snare}`, 2, "sampleFile")).toStrictEqual([
+        kick,
+        snare,
+      ]);
+      expect(valueForIndex(kick, 0, null)).toBe(kick);
     });
   });
 

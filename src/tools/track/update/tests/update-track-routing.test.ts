@@ -21,7 +21,7 @@ const routingProperties = {
     '{"available_input_routing_channels": [{"display_name": "1", "identifier": 1}, {"display_name": "2", "identifier": 2}]}',
   ],
   available_output_routing_types: [
-    '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Bass", "identifier": 30}, {"display_name": "Bass", "identifier": 31}]}',
+    '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Bass", "identifier": 30}, {"display_name": "Bass", "identifier": 31}, {"display_name": "Bus A, B", "identifier": 32}]}',
   ],
   available_output_routing_channels: [
     '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
@@ -88,6 +88,24 @@ describe("updateTrack routing by name", () => {
     expect(other.set).toHaveBeenCalledWith(
       "input_routing_type",
       '{"input_routing_type":{"identifier":17}}',
+    );
+  });
+
+  it("reads \\, as a comma in a routing name", () => {
+    const other = registerMockObject("456", {
+      path: livePath.track(1),
+      properties: routingProperties,
+    });
+
+    updateTrack({ id: "123,456", outputRoutingType: "Bus A\\, B,Track Out" });
+
+    expect(track.set).toHaveBeenCalledWith(
+      "output_routing_type",
+      '{"output_routing_type":{"identifier":32}}',
+    );
+    expect(other.set).toHaveBeenCalledWith(
+      "output_routing_type",
+      '{"output_routing_type":{"identifier":25}}',
     );
   });
 

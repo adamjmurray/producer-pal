@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { splitPathEntries } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { splitEntries } from "./list-pairing.ts";
 import { plural } from "./plural.ts";
 
 /**
@@ -161,11 +162,32 @@ function isList(arg: ListArg): boolean {
   }
 
   // A comma makes it a list even when it names one entry — "A," is a malformed
-  // list, and dropping it here would let it pass unchallenged. A path's comma
-  // has to be at bracket depth 0 to count.
-  return arg.isPath
-    ? splitPathEntries(arg.value).length > 1
-    : arg.value.includes(",");
+  // list, and dropping it here would let it pass unchallenged.
+  return splitterFor(arg)(arg.value).length > 1;
+}
+
+/**
+ * How an arg's entries split, the same way its own splitter does: a path at
+ * bracket depth 0, any other target list at every comma, and a value list at
+ * every comma not written `\,`.
+ * @param arg - The list param
+ * @returns The split function
+ */
+function splitterFor(arg: ListArg): (value: string) => string[] {
+  if (arg.isPath === true) {
+    return splitPathEntries;
+  }
+
+  return arg.target === true ? splitTargetEntries : splitEntries;
+}
+
+/**
+ * Split a target list at every comma, as `targetEntries` does.
+ * @param value - The raw param value
+ * @returns The untrimmed entries
+ */
+function splitTargetEntries(value: string): string[] {
+  return value.split(",");
 }
 
 /**
@@ -179,18 +201,20 @@ function entryCount(arg: ListArg): number {
     return arg.count;
   }
 
-  return arg.value == null ? 1 : countEntries(arg.value, arg.isPath);
+  return arg.value == null ? 1 : countEntries(arg.value, splitterFor(arg));
 }
 
 /**
- * How many entries a comma-separated value names, reading one trailing comma
- * as a typo rather than an entry — the same way both splitters do. An unset
- * value names none.
+ * How many entries a comma-separated target list (`id`) names, reading one
+ * trailing comma as a typo rather than an entry — the same way both splitters
+ * do. An unset value names none.
  * @param value - The raw param value
  * @returns The entry count
  */
 export function countListEntries(value: string | null | undefined): number {
-  return value == null || value.trim() === "" ? 0 : countEntries(value);
+  return value == null || value.trim() === ""
+    ? 0
+    : countEntries(value, splitTargetEntries);
 }
 
 /**
@@ -200,18 +224,23 @@ export function countListEntries(value: string | null | undefined): number {
  * @returns The entry count
  */
 export function countPathEntries(value: string | null | undefined): number {
-  return value == null || value.trim() === "" ? 0 : countEntries(value, true);
+  return value == null || value.trim() === ""
+    ? 0
+    : countEntries(value, splitPathEntries);
 }
 
 /**
  * How many entries a comma-separated value names, reading one trailing comma
  * as a typo rather than an entry — the same way both splitters do.
  * @param value - The raw param value
- * @param isPath - Split at bracket depth 0, for a path param
+ * @param split - How the param splits into entries
  * @returns The entry count
  */
-function countEntries(value: string, isPath = false): number {
-  const entries = isPath ? splitPathEntries(value) : value.split(",");
+function countEntries(
+  value: string,
+  split: (value: string) => string[],
+): number {
+  const entries = split(value);
 
   if ((entries.at(-1) ?? "").trim() === "") {
     entries.pop();

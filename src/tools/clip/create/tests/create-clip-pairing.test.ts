@@ -195,6 +195,40 @@ describe("createClip - per-position sampleFile", () => {
     );
   });
 
+  it("reads \\, as a comma in the path, across several positions", async () => {
+    const { clipSlots } = setupMultiSessionAudioClipMocks([0, 1]);
+
+    await createClip({
+      path: "t0/s0,t0/s1",
+      sampleFile: "/samples/kick\\, hard.wav",
+    });
+
+    for (const clipSlot of clipSlots) {
+      expect(clipSlot.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/samples/kick, hard.wav",
+      );
+    }
+  });
+
+  it("pairs a list whose entries hold escaped commas and backslashes", async () => {
+    const { clipSlots } = setupMultiSessionAudioClipMocks([0, 1]);
+
+    await createClip({
+      path: "t0/s0,t0/s1",
+      sampleFile: "/samples/kick\\, hard.wav,C:\\samples\\snare.wav",
+    });
+
+    expect(clipSlots[0]?.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/samples/kick, hard.wav",
+    );
+    expect(clipSlots[1]?.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "C:\\samples\\snare.wav",
+    );
+  });
+
   it("refuses a sample list that names a different number of positions", async () => {
     setupMultiSessionAudioClipMocks([0, 1]);
 

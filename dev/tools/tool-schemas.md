@@ -43,6 +43,10 @@ empty. Anything else is refused before any work runs. Nothing cycles — includi
 holds one item — broadcasting a lone clip slot to three clips would destroy two
 of them.
 
+In a value list, `\,` is a comma inside an entry (`/kick\, hard.wav`), with one
+target or many. No other backslash is touched, so Windows paths pass unchanged;
+a value can't end in a backslash right before a separating comma.
+
 ## An empty entry is a hole in either kind of list
 
 One trailing comma is not an entry in either kind, the way most languages read a

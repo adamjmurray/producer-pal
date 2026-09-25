@@ -10,7 +10,10 @@ import { validateParamEntries } from "#src/tools/device/update/helpers/params/pa
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { splitList } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  splitList,
+  valueForIndex,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { resolveBrowserDevice } from "./helpers/browser-devices.ts";
 import {
@@ -142,8 +145,8 @@ async function devicePlans(
   deadline: number | null | undefined,
 ): Promise<DevicePlan[]> {
   // The lists agreed before anything ran, so a split names one device per path.
-  const devices =
-    splitList(value, paths.length, "device") ?? paths.map(() => value);
+  const parsed = splitList(value, paths.length, "device");
+  const devices = paths.map((_path, i) => valueForIndex(value, i, parsed));
   const found = new Map<string, BrowserItem | null>();
   const plans: DevicePlan[] = [];
 

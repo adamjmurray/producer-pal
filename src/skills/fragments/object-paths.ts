@@ -28,7 +28,7 @@ A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a re
 
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
-Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. Text params (\`name\`, \`color\`, a scene's \`timeSignature\`) also take a list that pairs with it 1:1; numbers, true/false and fixed choices apply to every object. With one target a comma is part of the value, not a separator: it's how a name like \`Verse, take 2\` is set.
+Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. Text params (\`name\`, \`color\`, a scene's \`timeSignature\`) also take a list that pairs with it 1:1; numbers, true/false and fixed choices apply to every object. With one target a comma is part of the value; with several, write it as \`\\,\` (\`Verse\\, take 2\`).
 
 A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
 

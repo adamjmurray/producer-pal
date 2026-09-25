@@ -101,11 +101,16 @@ describe("createDevice — a device per path", () => {
     );
   });
 
-  // One path has nothing to pair against, which is the only way to name a
-  // device whose own name holds a comma.
+  // One path has nothing to pair against, so its commas are all the name's.
   it("reads the whole value as one device name for a single path", async () => {
     await expect(
       createDevice({ path: "t0", device: "Compressor,Reverb" }),
+    ).rejects.toThrow('invalid device "Compressor,Reverb"');
+  });
+
+  it("reads \\, as a comma in one device name for every path", async () => {
+    await expect(
+      createDevice({ path: "t0,t1", device: "Compressor\\,Reverb" }),
     ).rejects.toThrow('invalid device "Compressor,Reverb"');
   });
 
