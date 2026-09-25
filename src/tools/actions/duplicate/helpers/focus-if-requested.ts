@@ -47,10 +47,10 @@ export function focusIfRequested(
     return;
   }
 
-  // A destination that got no copy has an entry but no id, so the last thing
-  // worth selecting is the last entry that names an object.
+  // A copy that failed has an entry with no id, or the source's id, so the
+  // last thing worth selecting is the last copy that landed.
   const lastObject = createdObjects.findLast(
-    (created) => (created as { id?: string }).id != null,
+    (created) => !("ok" in created) && (created as { id?: string }).id != null,
   ) as { id?: string } | undefined;
   const lastId = lastObject?.id;
 

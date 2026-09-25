@@ -63,6 +63,19 @@ describe("focus-if-requested", () => {
       });
     });
 
+    // A failed scene copy's entry carries the source's id.
+    it("selects the last scene copy, not the source of one that failed", () => {
+      focusIfRequested(true, undefined, "scene", [
+        { id: "copy1" },
+        { id: "scene1", ok: false, reason: "Live refused the copy" },
+      ]);
+
+      expect(selectMock.get()).toHaveBeenCalledWith({
+        view: "session",
+        id: "copy1",
+      });
+    });
+
     it("selects scene in session view when type is scene", () => {
       focusIfRequested(true, undefined, "scene", [{ id: "scene1" }]);
 

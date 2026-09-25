@@ -722,5 +722,16 @@ describe("duplicate - a list of sources", () => {
       ]);
       expect(tracks.get("copy-4")?.set).toHaveBeenCalledWith("name", "c");
     });
+
+    it("keeps an earlier source's copies when a later one's fails", async () => {
+      registerTrackCopySet(["track1", "track2"], undefined, [2]);
+
+      const result = await duplicate({ type: "track", id: "track1,track2" });
+
+      expect(result).toStrictEqual([
+        { id: "copy-1", path: "t1", clips: [] },
+        { id: "track2", ok: false, reason: "Live made no copy of t2" },
+      ]);
+    });
   });
 });

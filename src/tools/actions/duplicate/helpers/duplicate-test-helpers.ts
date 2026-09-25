@@ -487,15 +487,18 @@ export interface TrackCopySet {
  *   none when omitted
  * @param group.index - The group's index
  * @param group.members - How many tracks after it are its members
+ * @param failing - Which duplicate_track calls make no copy, counting from 1
  * @returns The Live Set and its tracks
  */
 export function registerTrackCopySet(
   ids: string[],
   group?: { index: number; members: number },
+  failing: number[] = [],
 ): TrackCopySet {
   const order = [...ids];
   const tracks = new Map<string, RegisteredMockObject>();
   let copies = 0;
+  let calls = 0;
 
   const place = (): void => {
     for (const [index, id] of order.entries()) {
@@ -516,20 +519,27 @@ export function registerTrackCopySet(
     liveSet.properties.tracks = children(...order);
   };
 
+  const landCopy = (index: unknown): void => {
+    const members = group != null && index === group.index ? group.members : 0;
+
+    copies++;
+    const copy = Array.from({ length: members + 1 }, (_, m) =>
+      m === 0 ? `copy-${copies}` : `copy-${copies}-m${m}`,
+    );
+
+    order.splice(Number(index) + members + 1, 0, ...copy);
+    place();
+  };
+
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
     methods: {
       duplicate_track: (index: unknown) => {
-        const members =
-          group != null && index === group.index ? group.members : 0;
+        calls++;
 
-        copies++;
-        const copy = Array.from({ length: members + 1 }, (_, m) =>
-          m === 0 ? `copy-${copies}` : `copy-${copies}-m${m}`,
-        );
-
-        order.splice(Number(index) + members + 1, 0, ...copy);
-        place();
+        if (!failing.includes(calls)) {
+          landCopy(index);
+        }
 
         return null;
       },

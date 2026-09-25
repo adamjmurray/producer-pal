@@ -45,11 +45,13 @@ function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
 ): TrackCopyEntry {
-  const [entry] = duplicateTrackCopies(trackIndex, 1, () => ({ name, color }), {
-    withoutClips,
-    withoutDevices,
-    routeToSource,
-  });
+  const [entry] = duplicateTrackCopies(
+    trackIndex,
+    { param: "id", value: "track" },
+    1,
+    () => ({ name, color }),
+    { withoutClips, withoutDevices, routeToSource },
+  );
 
   return entry as TrackCopyEntry;
 }

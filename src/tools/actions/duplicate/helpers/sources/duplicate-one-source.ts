@@ -9,7 +9,11 @@
 
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import {
+  skipEntry,
+  type TargetSkip,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
@@ -111,9 +115,9 @@ export async function duplicateEverySource(
   // A later source's copies can push an earlier source's along. A scene's
   // arrangement copies are clips, which nothing here moves.
   if (args.type === "track") {
-    settleCopyPaths(created as CopyEntry[], "track");
+    settleCopyPaths(landedCopies(created), "track");
   } else if (args.type === "scene" && args.destination !== "arrangement") {
-    settleCopyPaths(created as CopyEntry[], "scene");
+    settleCopyPaths(landedCopies(created), "scene");
   }
 
   return created;
@@ -150,7 +154,7 @@ export async function duplicateOneSource(
     type,
     args.destination,
     object,
-    id,
+    source,
     args.count,
     labels,
     args.params,
@@ -305,7 +309,7 @@ function duplicateDrumPadSource(
  * @param type - Type of object (track or scene)
  * @param destination - Destination for duplication
  * @param object - Live API object to duplicate
- * @param id - ID of the object
+ * @param source - The source's turn
  * @param count - Number of duplicates to create
  * @param labels - The call's names and colors
  * @param params - Additional parameters
@@ -316,7 +320,7 @@ async function duplicateTrackOrSceneWithCount(
   type: string,
   destination: string | undefined,
   object: LiveAPI,
-  id: string,
+  source: SourceShare,
   count: number,
   labels: CopyLabels,
   params: DuplicateParams,
@@ -326,7 +330,7 @@ async function duplicateTrackOrSceneWithCount(
   if (type === "scene" && destination === "arrangement") {
     return await duplicateSceneToArrangementAtPositions(
       object,
-      id,
+      source.id,
       count,
       labels,
       params,
@@ -343,6 +347,7 @@ async function duplicateTrackOrSceneWithCount(
   if (type === "track") {
     return duplicateTrackCopies(
       regularTrackIndex(object),
+      source.named,
       count,
       (i) => ({ name: labelName(labels, i), color: labelColor(labels, i) }),
       { withoutClips, withoutDevices, routeToSource },
@@ -350,20 +355,29 @@ async function duplicateTrackOrSceneWithCount(
     );
   }
 
+  let landed = 0;
+
   for (let i = 0; i < count; i++) {
-    if (outOfTime(context, createdObjects.length, count, type)) {
+    if (outOfTime(context, landed, count, type)) {
       break;
     }
 
-    createdObjects.push(
-      duplicateSceneToSession(
-        object,
-        i,
-        labelName(labels, i),
-        labelColor(labels, i),
-        withoutClips,
-      ),
-    );
+    // Each copy is made from the last one that landed, so a failed one is
+    // skipped over rather than copied from.
+    try {
+      createdObjects.push(
+        duplicateSceneToSession(
+          object,
+          landed,
+          labelName(labels, i),
+          labelColor(labels, i),
+          withoutClips,
+        ),
+      );
+      landed++;
+    } catch (error) {
+      createdObjects.push(skipEntry(source.named, errorMessage(error)));
+    }
   }
 
   return createdObjects;
@@ -394,7 +408,7 @@ function outOfTime(
 /**
  * Duplicates a scene in the session view
  * @param object - The source scene
- * @param i - Current duplicate index
+ * @param landed - Copies already made; the newest sits that far below the source
  * @param objectName - Name for the duplicated scene
  * @param objectColor - Color for the duplicated scene
  * @param withoutClips - Whether to exclude clips
@@ -402,7 +416,7 @@ function outOfTime(
  */
 function duplicateSceneToSession(
   object: LiveAPI,
-  i: number,
+  landed: number,
   objectName: string | undefined,
   objectColor: string | undefined,
   withoutClips: boolean | undefined,
@@ -415,5 +429,19 @@ function duplicateSceneToSession(
     throw new Error(`no scene index for ${targetLabel(object)}`);
   }
 
-  return duplicateScene(sceneIndex + i, objectName, objectColor, withoutClips);
+  return duplicateScene(
+    sceneIndex + landed,
+    objectName,
+    objectColor,
+    withoutClips,
+  );
+}
+
+/**
+ * The entries of copies that landed.
+ * @param entries - Every copy's entry
+ * @returns Those that aren't skips
+ */
+function landedCopies(entries: object[]): CopyEntry[] {
+  return entries.filter((entry) => !("ok" in entry)) as CopyEntry[];
 }

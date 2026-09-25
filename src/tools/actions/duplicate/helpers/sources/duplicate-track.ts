@@ -17,6 +17,12 @@ import {
 } from "#src/tools/shared/helpers/target-notes.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
+  skipEntry,
+  type NamedTarget,
+  type TargetSkip,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
@@ -215,49 +221,48 @@ interface MadeTrackCopy {
  * Labels and routing go on only once all copies exist: routing changes the
  * source's input, and a copy made after that would inherit it.
  * @param trackIndex - The source track
+ * @param named - The source as the caller named it, for a failed copy's entry
  * @param count - How many copies to make
  * @param labelFor - Name and color for the nth copy, in Set order
  * @param options - What every copy leaves out, and whether it feeds the source
  * @param shouldStop - Asked before each copy with how many exist; true stops
- * @returns One entry per copy made, in Set order
+ * @returns One entry per copy made, in Set order, then one per copy that failed
  */
 export function duplicateTrackCopies(
   trackIndex: number,
+  named: NamedTarget,
   count: number,
   labelFor: (index: number) => TrackCopyLabel,
   options: TrackCopyOptions,
   shouldStop: (made: number) => boolean = () => false,
-): TrackCopyEntry[] {
+): Array<TrackCopyEntry | TargetSkip> {
   const made: MadeTrackCopy[] = [];
-  let entries: TrackCopyEntry[];
+  const failed: TargetSkip[] = [];
 
-  try {
-    for (let i = 0; i < count; i++) {
-      if (shouldStop(made.length)) {
-        break;
-      }
-
-      made.push(makeTrackCopy(trackIndex, options));
+  for (let i = 0; i < count; i++) {
+    if (shouldStop(made.length)) {
+      break;
     }
-  } finally {
-    // Runs on a failed copy too, so the ones made before it still get finished.
-    // Each copy lands ahead of the ones made before it, so the last one made
-    // comes first in the Set, and gets the first label.
-    entries = made
-      .toReversed()
-      .map((copy, index) =>
-        finishTrackCopy(
-          copy,
-          trackIndex,
-          labelFor(index),
-          options.routeToSource,
-        ),
-      );
+
+    // Every copy is made from the source, so one failing doesn't stop the rest.
+    try {
+      made.push(makeTrackCopy(trackIndex, options));
+    } catch (error) {
+      failed.push(skipEntry(named, errorMessage(error)));
+    }
   }
+
+  // Each copy lands ahead of the ones made before it, so the last one made
+  // comes first in the Set, and gets the first label.
+  const entries = made
+    .toReversed()
+    .map((copy, index) =>
+      finishTrackCopy(copy, trackIndex, labelFor(index), options.routeToSource),
+    );
 
   settleCopyPaths(entries, "track");
 
-  return entries;
+  return [...entries, ...failed];
 }
 
 /**
@@ -349,7 +354,8 @@ export function noteUnhonoredTrackToPath(
     return;
   }
 
-  for (const entry of entries) {
+  // A failed copy landed nowhere.
+  for (const entry of entries.filter((each) => !("ok" in each))) {
     appendReason(
       entry,
       `toPath "${toPath}" not honored; a track copy lands right after its source, or after a group's last member`,

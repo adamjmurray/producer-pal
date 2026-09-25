@@ -724,21 +724,71 @@ describe("duplicate - several copies of one track", () => {
       { id: "copy-1", path: "t2", clips: [{ id: "clip-1", path: "t2/s0" }] },
     ]);
   });
+});
 
-  it("still names the copies made before one fails", async () => {
-    const { liveSet, tracks } = registerTrackCopySet(["track1"]);
-    const copyTrack = liveSet.methods.duplicate_track!;
-    let calls = 0;
+describe("duplicate - a track copy that fails", () => {
+  it("keeps the copies made before it", async () => {
+    const { tracks } = registerTrackCopySet(["track1"], undefined, [3]);
 
-    liveSet.methods.duplicate_track = (...args: unknown[]) => {
-      calls++;
+    const result = await duplicate({
+      type: "track",
+      id: "track1",
+      count: 3,
+      name: "A,B,C",
+    });
 
-      return calls === 1 ? copyTrack(...args) : null;
-    };
+    expect(result).toStrictEqual([
+      { id: "copy-2", path: "t1", clips: [] },
+      { id: "copy-1", path: "t2", clips: [] },
+      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+    ]);
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "A");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "B");
+  });
 
-    await expect(
-      duplicate({ type: "track", id: "track1", count: 2, name: "A,B" }),
-    ).rejects.toThrow("Live made no copy of t0");
-    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "A");
+  it("still tries the copies after it", async () => {
+    registerTrackCopySet(["track1"], undefined, [1]);
+
+    const result = await duplicate({ type: "track", id: "track1", count: 2 });
+
+    expect(result).toStrictEqual([
+      { id: "copy-1", path: "t1", clips: [] },
+      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+    ]);
+  });
+
+  it("adds no toPath note to it", async () => {
+    registerTrackCopySet(["track1"], undefined, [2]);
+
+    const result = await duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      toPath: "t5",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ id: "copy-1", path: "t1" }),
+      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+    ]);
+  });
+
+  it("reports every copy when none landed", async () => {
+    registerTrackCopySet(["track1"], undefined, [1, 2]);
+
+    const result = await duplicate({ type: "track", id: "track1", count: 2 });
+
+    expect(result).toStrictEqual([
+      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+      { id: "track1", ok: false, reason: "Live made no copy of t0" },
+    ]);
+  });
+
+  it("fails a lone copy with its reason", async () => {
+    registerTrackCopySet(["track1"], undefined, [1]);
+
+    await expect(duplicate({ type: "track", id: "track1" })).rejects.toThrow(
+      "Live made no copy of t0",
+    );
   });
 });
