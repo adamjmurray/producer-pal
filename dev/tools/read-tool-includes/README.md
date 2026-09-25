@@ -42,7 +42,7 @@ debugging, but should be avoided in production for large Live Sets.
 ### Small-model trims
 
 Every read tool drops some include options in small-model mode, via
-`excludeEnumValues` on the `include` param (see `dev/tools/Tool-Schemas.md`).
+`excludeEnumValues` on the `include` param (see `dev/tools/tool-schemas.md`).
 The trim is enforced: the value is removed from the schema that validates, so
 sending it is an error rather than a no-op. `"*"` is dropped everywhere.
 

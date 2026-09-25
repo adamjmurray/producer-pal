@@ -22,14 +22,14 @@ import {
 
 // The source/test line is drawn in a dozen places that cannot import one
 // another: .oxlintrc.json, the jscpd configs, vitest.config.ts, the meta-test
-// file finders, and dev/quality/Testing.md. They drifted apart once already, leaving
+// file finders, and dev/quality/testing.md. They drifted apart once already, leaving
 // files that were tests for one budget and source for another. These tests hold
 // every one of them in step with src/test/helpers/test-file-classification.ts.
 
 const OXLINT_CONFIG = ".oxlintrc.json";
 const JSCPD_TESTS_CONFIG = "config/.jscpd-tests.json";
 const VITEST_CONFIG = "vitest.config.ts";
-const CLASSIFICATION_DOC = "dev/quality/Testing.md";
+const CLASSIFICATION_DOC = "dev/quality/testing.md";
 
 /** Every jscpd scan that measures source code, so must ignore every test file. */
 const JSCPD_SOURCE_CONFIGS = [
@@ -243,7 +243,7 @@ describe("test file classification", () => {
     ).toStrictEqual([]);
   });
 
-  it("should be the classification dev/quality/Testing.md documents", () => {
+  it("should be the classification dev/quality/testing.md documents", () => {
     const doc = readText(CLASSIFICATION_DOC);
     const tokens = [
       ...TEST_FILE_SUFFIXES.map((suffix) => `\`*${suffix}\``),

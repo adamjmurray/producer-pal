@@ -115,7 +115,7 @@ calls mix their counts.
 `ENABLE_OBJECT_PROBE=true` adds an optional `path` to each `ppal-live-api`
 operation, so one call can mutate through one object while still holding another
 — the question of whether a held object goes stale after a mutation. The field
-is absent from every other build. See `dev/live-api/Object-Reuse.md` for what is
+is absent from every other build. See `dev/live-api/object-reuse.md` for what is
 open and how to drive it.
 
 Do this whenever a budget test's fixture changes. A test that counts against the

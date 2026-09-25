@@ -9,7 +9,7 @@ whole tree.
   ([src/notation/barbeat/](../../src/notation/barbeat/))
 - [transforms/](transforms/README.md) — transform DSL
   ([src/notation/transform/](../../src/notation/transform/))
-- [Stark-Spec.md](Stark-Spec.md) — Stark notation
+- [stark-spec.md](stark-spec.md) — Stark notation
   ([src/notation/stark/](../../src/notation/stark/))
 
 These have no test guarding them — update them by hand when you change grammar

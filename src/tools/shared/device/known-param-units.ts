@@ -32,7 +32,7 @@ export interface KnownParamUnit {
 // them, and they are not Erosion's `Filter Width`, which is octaves over
 // 0.1-2.5 — Beat Repeat, Delay, Filter Delay and Overdrive `Filter Width`,
 // Corpus `Width`, Reverb `Input Width`, Roar `FB Width` and `Env Width`.
-// See dev/live-api/Device-Param-Labels.md.
+// See dev/live-api/device-param-labels.md.
 const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
   Corpus: {
     "LFO Rate": { unit: "Hz", min: 0.01, max: 10 },

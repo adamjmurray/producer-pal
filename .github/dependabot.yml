@@ -38,7 +38,7 @@ updates:
       # oxlint pins an exact tsgolint build, so those two must move together or
       # `npm ci` resolves a mismatched pair. The eslint plugins are here too:
       # oxlint runs them through its jsPlugins bridge, natively implementing
-      # none of their rules (unicorn is the partial case — see dev/quality/Linting.md).
+      # none of their rules (unicorn is the partial case — see dev/quality/linting.md).
       static-analysis:
         patterns:
           - "oxlint"

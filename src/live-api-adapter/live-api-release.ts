@@ -62,7 +62,7 @@
  * per full read from 0.39 — and buys it back as armed listeners, the cost this
  * file exists to remove. Taking the leak is the deliberate trade: it needs tens
  * of thousands of requests to matter, where the listeners slow Live down while
- * you work. See dev/live-api/Performance.md.
+ * you work. See dev/live-api/performance.md.
  *
  * Pooling does not make the cost vanish, and measuring it as though it should
  * will read as failure. Visiting a path registers something too, so latency

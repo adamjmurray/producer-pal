@@ -10,7 +10,7 @@ them — this list is so you don't discover that one at a time.
 
 1. **Write the tool.** `src/tools/<area>/<name>.def.ts` (schema + description)
    and `<name>.ts` (the handler) beside it, plus `tests/`. See
-   [Tool-Schemas.md](Tool-Schemas.md) for param shapes and per-mode
+   [tool-schemas.md](tool-schemas.md) for param shapes and per-mode
    descriptions. Set `annotations.readOnlyHint: true` if it changes nothing in
    Live's undo history.
 

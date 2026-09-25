@@ -28,7 +28,7 @@ const LINEAR_REF = /AJM-\d+/;
 //
 // Refs the guard can't undo. Rewriting a commit already published on origin
 // means force-pushing shared history — a worse trade than leaving one stale
-// reference. Scrub these from the squash body at merge time (dev/process/Releasing.md
+// reference. Scrub these from the squash body at merge time (dev/process/releasing.md
 // Step 5) rather than growing this list; new commits must not need an entry.
 const GRANDFATHERED_COMMITS = new Set([
   // Body of "feat(mcp): per-request smallModelMode via header", which points at

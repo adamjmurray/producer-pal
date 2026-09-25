@@ -23,7 +23,7 @@ teaching one canonical way; the parser tolerates the rest.
 
 The first instance: absolute octaves on Stark note tokens (`C3`, `Gb-1`), which
 the digit slot after letter+accidental left free. Documented in
-`dev/specs/Stark-Spec.md`, absent from `src/skills/notation/stark.ts`.
+`dev/specs/stark-spec.md`, absent from `src/skills/notation/stark.ts`.
 
 ## Alternatives rejected
 

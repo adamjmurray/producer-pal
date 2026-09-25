@@ -7,7 +7,7 @@
 // entries under ~/.producer-pal/<subdir>/<slug>.md plus a DERIVED index the
 // backend regenerates on every mutation. The memory store and the custom-skills
 // store are thin bindings over this factory (see
-// dev/memory-system/loadable-collections.md); the CRUD, the filesystem-safe
+// dev/tools/memory-system/loadable-collections.md); the CRUD, the filesystem-safe
 // slugging + path traversal guard, and the reserved-index-slug protection all
 // live here ONCE so a fix reaches every collection. Callers supply only what
 // genuinely differs: the subdir/index names, how a file parses into an entry

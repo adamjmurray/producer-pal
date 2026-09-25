@@ -218,7 +218,7 @@ Every rule here reported zero at migration time, so nothing broke.
 - `import-x/no-useless-path-segments`, `import-x/no-relative-packages`,
   `import-x/order` — no oxlint counterpart. Import ordering stays unenforced:
   oxfmt's `sortImports` would cover it, but it breaks `vi.mock` hoisting in the
-  webui suites. See `dev/quality/Testing.md`.
+  webui suites. See `dev/quality/testing.md`.
 
 ## Why the bridge pins TypeScript 6
 

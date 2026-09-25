@@ -145,7 +145,7 @@ reach for to fake it are walled off:
   overlaps the _middle_ of an existing one, Live truncates at the overlap and
   **throws away everything after it**. It does not split into a "before" and an
   "after." (These constraints are documented in the project's
-  [Arrangement-Operations](https://github.com/adamjmurray/producer-pal/blob/main/dev/live-api/Arrangement-Operations.md)
+  [Arrangement-Operations](https://github.com/adamjmurray/producer-pal/blob/main/dev/live-api/arrangement-operations.md)
   notes, hard-won by probing real Ableton behavior.)
 
 So Producer Pal builds split out of the one primitive that _does_ work reliably,

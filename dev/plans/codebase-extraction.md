@@ -7,7 +7,7 @@ projects:
    developers
 2. **Chat UI** — standalone general-purpose MCP-native chat app in its own repo
 
-Related: [Ecosystem plan](Ecosystem.md) — the Live API package is one of the
+Related: [Ecosystem plan](ecosystem.md) — the Live API package is one of the
 "shared libraries" referenced there.
 
 ---

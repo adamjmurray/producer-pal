@@ -236,7 +236,7 @@ rule's `except` clause rather than relocated, keeping the live-library feature
 cohesive.
 
 The boundary rules apply to production source only. Test infrastructure —
-everything the project classifies as a test file (see dev/quality/Testing.md) —
+everything the project classifies as a test file (see dev/quality/testing.md) —
 legitimately reaches across layers and is excluded. It governs the shipped
 dependency graph, which no test file is part of.
 

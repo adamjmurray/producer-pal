@@ -1,7 +1,7 @@
 # LiveAPI Performance
 
 What object lifetime costs in time and in memory, what 2.2.0 changed, and how to
-re-measure it. `dev/live-api/Object-Reuse.md` covers the correctness side — when
+re-measure it. `dev/live-api/object-reuse.md` covers the correctness side — when
 reusing an object is safe. ADR-0023 covers why objects are pooled rather than
 cached.
 
@@ -190,7 +190,7 @@ only — both break correctness by design.
 **Repeats inside one request.** `read-track` on the four-level instrument rack
 resolves 141 objects for 82 distinct targets. Fixing that means holding an
 object across a stretch of a request, which is the defect class in
-`dev/live-api/Object-Reuse.md` — deferred until a probe can settle it. Those 59
+`dev/live-api/object-reuse.md` — deferred until a probe can settle it. Those 59
 extra resolutions cost memory as well as time, at the rate above.
 
 **Waste the counter can't see.** It finds the same target resolved twice. It is

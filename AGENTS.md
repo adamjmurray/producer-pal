@@ -138,7 +138,7 @@ UI.
 - **Tool schemas**: use `z.coerce.string()` for ID params and
   `z.coerce.number()` for numeric ones — models send both strings and numbers,
   and the MCP SDK validates before our handler runs. For choosing a param's
-  shape and writing per-mode descriptions, see `dev/tools/Tool-Schemas.md`.
+  shape and writing per-mode descriptions, see `dev/tools/tool-schemas.md`.
 
 - **String length caps of 2000+**: never let them reach the JSON Schema as
   `maxLength` — llama.cpp-based clients compile it into a grammar repetition and
@@ -200,7 +200,7 @@ UI.
 
 - **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
   work, but the rule requiring a `-- reason` on every directive only sees the
-  `eslint-` spelling. See `dev/quality/Linting.md`.
+  `eslint-` spelling. See `dev/quality/linting.md`.
 
 - **DRY**: no duplicate function bodies (oxlint catches them), keep shared
   constants in one place, and treat repeated patterns as a missing abstraction.
@@ -260,7 +260,7 @@ The practical consequences:
   ignoring or deleting a branch as unreachable, try to write the test — reading
   the code is not enough to prove it, and the attempt is what tells you whether
   the guard is dead or you just hadn't found the input.
-- See `dev/quality/Testing.md` for what counts as a test file, webui test
+- See `dev/quality/testing.md` for what counts as a test file, webui test
   gotchas, and the mock registry. CLI tools and test Live Sets are in
   `dev/quality/development-tools/README.md`.
 
@@ -321,8 +321,8 @@ Internal docs live in `dev/`, grouped by topic (`tools/`, `live-api/`,
 `clients/`, `quality/`, `process/`, …). `dev/README.md` indexes them all. The
 main ones: `dev/Principles.md` (first principles for tool design — read first),
 `dev/architecture/` (system design), `dev/coding-standards/` (full style guide +
-Live API reference), `dev/quality/Testing.md`, `dev/tools/Tool-Schemas.md`,
-`dev/quality/Linting.md`, `dev/specs/` (bar|beat and transform grammars),
+Live API reference), `dev/quality/testing.md`, `dev/tools/tool-schemas.md`,
+`dev/quality/linting.md`, `dev/specs/` (bar|beat and transform grammars),
 `dev/quality/development-tools/`, and `dev/decisions/` (ADRs — why settled
 choices went the way they did, especially the rejections).
 
@@ -330,9 +330,9 @@ choices went the way they did, especially the rejections).
 
 **Keep a doc small enough to read whole.** Past ~20 KB, split it into a folder
 named for the doc: `README.md` is the index with the concepts, and each part is
-a file beside it (`dev/memory-system/`, `dev/live-api/specialized-devices/`).
-Catalogs and per-scope results are the parts to move out; the reasoning stays in
-the index.
+a file beside it (`dev/tools/memory-system/`,
+`dev/live-api/specialized-devices/`). Catalogs and per-scope results are the
+parts to move out; the reasoning stays in the index.
 
 ### For agents: reading without burning context
 

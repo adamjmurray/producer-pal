@@ -83,7 +83,7 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
  * Whether an id still names the object at the path a result gave it. Looked up
  * fresh every time, never off an object the caller kept: a dead one goes on
  * reporting its id, and `exists()` with it, so only a new lookup reads the
- * empty path that says it is gone (dev/live-api/Object-Reuse.md).
+ * empty path that says it is gone (dev/live-api/object-reuse.md).
  * @param id - The id the result reported
  * @param path - The path the result reported
  * @returns True when the object is still there

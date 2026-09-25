@@ -18,7 +18,7 @@ import { liveApi } from "#src/tools/advanced/live-api.ts";
 // LiveAPI.from builds a fresh instance every time, with no memo and no pool, so
 // it cannot show whether clearing the memo really separates two handles onto a
 // STABLE_TARGET — or whether a held object goes stale at all. That is the whole
-// reason the probe has to run against real Live. See dev/live-api/Object-Reuse.md.
+// reason the probe has to run against real Live. See dev/live-api/object-reuse.md.
 describe("liveApi per-operation path", () => {
   let defaultMock: RegisteredMockObject;
   let trackMock: RegisteredMockObject;
