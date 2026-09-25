@@ -648,3 +648,86 @@ describe("duplicate - device duplication", () => {
     ).toStrictEqual(["t4/d0", "t5/d0"]);
   });
 });
+
+// A later copy inserted ahead of an earlier one pushes it along, so each copy's
+// path is read once every copy has landed.
+describe("duplicate - device copies pushed by later copies", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    registerMockObject("live_set", { path: livePath.liveSet });
+  });
+
+  /**
+   * The mocked moves stand in for Live: the first lands copyA and puts the next
+   * temp copy where the second turn looks for it; the second lands copyB and
+   * pushes copyA along.
+   * @param nextTemp - Where the second turn's temp copy sits
+   * @param landings - Where each move leaves copyA and copyB
+   */
+  function mockTwoMoves(
+    nextTemp: string,
+    landings: [first: string, second: string, pushedFirst: string],
+  ): void {
+    vi.mocked(moveDeviceToPathMock)
+      .mockImplementationOnce(() => {
+        registerMockObject("copyA", { path: landings[0] });
+        registerMockObject("copyB", { path: nextTemp });
+
+        return { outcome: "moved" };
+      })
+      .mockImplementationOnce(() => {
+        registerMockObject("copyB", { path: landings[1] });
+        registerMockObject("copyA", { path: landings[2] });
+
+        return { outcome: "moved" };
+      });
+  }
+
+  it("reports a copy where a later destination pushed it", async () => {
+    registerMockObject("src", {
+      path: livePath.track(0).device(3),
+      type: "PluginDevice",
+    });
+    registerMockObject("copyA", { path: livePath.track(1).device(3) });
+    mockTwoMoves(String(livePath.track(1).device(3)), [
+      String(livePath.track(1).device(2)),
+      String(livePath.track(1).device(0)),
+      String(livePath.track(1).device(3)),
+    ]);
+
+    expect(
+      await duplicate({ type: "device", id: "src", toPath: "t1/d2,t1/d0" }),
+    ).toStrictEqual([
+      { id: "copyA", path: "t1/d3" },
+      { id: "copyB", path: "t1/d0" },
+    ]);
+  });
+
+  it("reports a copy where a later source's copy pushed it", async () => {
+    registerMockObject("device1", {
+      path: livePath.track(0).device(0),
+      type: "PluginDevice",
+    });
+    registerMockObject("device2", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+    });
+    registerMockObject("copyA", { path: livePath.track(1).device(0) });
+    mockTwoMoves(String(livePath.track(1).device(1)), [
+      String(livePath.track(1).device(0)),
+      String(livePath.track(1).device(0)),
+      String(livePath.track(1).device(1)),
+    ]);
+
+    expect(
+      await duplicate({
+        type: "device",
+        id: "device1,device2",
+        toPath: "t1/d0,t1/d0",
+      }),
+    ).toStrictEqual([
+      { id: "copyA", path: "t1/d1" },
+      { id: "copyB", path: "t1/d0" },
+    ]);
+  });
+});

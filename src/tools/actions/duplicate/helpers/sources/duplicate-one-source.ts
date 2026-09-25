@@ -9,11 +9,16 @@
 
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
 import { duplicateChainWithPaths } from "../device/duplicate-chain.ts";
-import { duplicateDeviceWithPaths } from "../device/duplicate-device.ts";
+import {
+  type DeviceCopy,
+  duplicateDeviceWithPaths,
+  settleDevicePaths,
+} from "../device/duplicate-device.ts";
 import {
   copyPerDestination,
   warnCountIgnored,
@@ -173,11 +178,18 @@ export function duplicateChainSources(
     refusePadOverwrites(sources);
   }
 
-  return sources.flatMap((source, i) =>
+  const entries = sources.flatMap((source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.
     runOneChainSource(type, source, labels, i === 0 ? count : 1),
   );
+
+  // A later copy, from this source or another, can push an earlier one along.
+  if (type === "device") {
+    settleDevicePaths(entries as Array<DeviceCopy | TargetSkip>);
+  }
+
+  return entries;
 }
 
 /**

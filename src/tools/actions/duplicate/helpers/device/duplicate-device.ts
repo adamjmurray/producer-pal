@@ -5,10 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
-import {
-  extractDevicePath,
-  insertionContainerPath,
-} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { extractDevicePath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
@@ -20,15 +17,16 @@ import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type NamedTarget,
+  type TargetSkip,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { copyToDestinations } from "./copy-per-destination.ts";
 
-/** A finished device copy: what it is, where it was sent, and what it landed in. */
-interface DeviceCopy {
+/** A device copy's entry. Its path is added by settleDevicePaths. */
+export interface DeviceCopy {
   id: string;
-  destination: string;
-  /** The container the move reported; absent when Live never confirmed one. */
-  containerId?: string;
+  path?: string;
 }
 
 /**
@@ -39,7 +37,8 @@ interface DeviceCopy {
  * @param source - The source device, as the caller named it
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
- * @returns One entry per destination, in the order toPath named them
+ * @returns One entry per destination, in the order toPath named them, with no
+ * paths yet
  */
 export function duplicateDeviceWithPaths(
   object: LiveAPI,
@@ -47,7 +46,7 @@ export function duplicateDeviceWithPaths(
   source: NamedTarget,
   labels: CopyLabels,
   count: number,
-): object[] {
+): Array<DeviceCopy | TargetSkip> {
   return copyToDestinations(
     object,
     toPath,
@@ -55,35 +54,24 @@ export function duplicateDeviceWithPaths(
     labels,
     count,
     "device",
-    (device, destination, name) =>
-      withDevicePath(duplicateDevice(device, destination, name)),
+    duplicateDevice,
   );
 }
 
 /**
- * Name the copy by where it ended up. Read after duplicateDevice returns, not
- * inside it: the temp track it works through shifts every later track index,
- * so a path or a container read before the cleanup is one track off — which is
- * why the container is rebuilt here from the id the move reported, and lazily,
- * since nothing but a drum-pad spelling looks at it.
- * @param result - The copy's id, destination and landing container
- * @returns The result with its path
+ * Name each copy by where it sits once every copy is made: a later copy
+ * inserted ahead of an earlier one pushes it along, and the temp track a copy
+ * works through shifts every later track index until it is deleted.
+ * @param entries - The call's device entries, copies updated in place
  */
-function withDevicePath(result: DeviceCopy): { id: string; path?: string } {
-  const { destination, containerId } = result;
-
-  return {
-    id: result.id,
-    ...pathField(
-      LiveAPI.from(result.id),
-      containerId == null
-        ? undefined
-        : {
-            container: () => LiveAPI.from(`id ${containerId}`),
-            path: insertionContainerPath(destination, "toPath"),
-          },
-    ),
-  };
+export function settleDevicePaths(
+  entries: Array<DeviceCopy | TargetSkip>,
+): void {
+  for (const entry of entries) {
+    if (!("ok" in entry)) {
+      Object.assign(entry, pathField(LiveAPI.from(entry.id)));
+    }
+  }
 }
 
 /**
@@ -96,7 +84,7 @@ function withDevicePath(result: DeviceCopy): { id: string; path?: string } {
  * @param device - LiveAPI device object to duplicate
  * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param name - Optional name for the duplicated device
- * @returns The new device and where it was sent
+ * @returns The new device's id
  * @throws Error when no copy was made
  */
 function duplicateDevice(
@@ -143,9 +131,7 @@ function duplicateDevice(
       // the temp copy — the temp track shifted its track index, and the cleanup
       // deletes it. Nothing survives a failure either way: the copy is still on
       // the temp track.
-      // Live confirms the device is in this container before the move reports
-      // "moved", which is what makes the destination safe to name it by.
-      const { outcome, container, reason } = moveDeviceToPath(
+      const { outcome, reason } = moveDeviceToPath(
         tempDevice,
         adjustedDestination,
         device,
@@ -173,7 +159,7 @@ function duplicateDevice(
       }
 
       // Read the device's id before the temp track goes away.
-      return { id: tempDevice.id, destination, containerId: container?.id };
+      return { id: tempDevice.id };
     },
   );
 }

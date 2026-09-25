@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  createTestDeviceAt,
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
@@ -521,5 +522,41 @@ describe("ppal-duplicate with a source list", () => {
     }
 
     expect(lengths).toStrictEqual(["1bar", "1bar", "2bar"]);
+  });
+
+  // An insert ahead of an earlier copy pushes it along, so each entry is read
+  // back where the copy ends up.
+  it("reports each device copy where a later copy pushed it", async () => {
+    const source = await createTestDeviceAt(
+      ctx.client!,
+      "Saturator",
+      `t${EMPTY_MIDI_TRACK}`,
+    );
+
+    const copies = parseToolResult<Array<{ id: string; path: string }>>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "device",
+          path: source,
+          toPath: `t${EMPTY_MIDI_TRACK}/d+,t${EMPTY_MIDI_TRACK}/d0`,
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(copies).toHaveLength(2);
+
+    for (const copy of copies) {
+      const read = parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-device",
+          arguments: { path: copy.path },
+        }),
+      );
+
+      expect(read.id).toBe(copy.id);
+    }
   });
 });
