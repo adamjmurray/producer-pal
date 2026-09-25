@@ -267,9 +267,16 @@ describe("duplicateClipSlot past the last scene", () => {
   /**
    * A Set with two scenes whose t1/s3 slot only appears once create_scene has
    * made the scenes up to it.
+   * @param opts - Test options
+   * @param opts.copyLands - Whether duplicate_clip_to makes the copy
+   * @param opts.slotAppears - Whether the new scenes bring the slot with them
    * @returns The Live Set mock
    */
-  function setupShortSet(): RegisteredMockObject {
+  function setupShortSet(
+    opts: { copyLands?: boolean; slotAppears?: boolean } = {},
+  ): RegisteredMockObject {
+    const { copyLands = true, slotAppears = true } = opts;
+
     mockNonExistentObjects();
 
     const destClipPath = livePath.track(1).clipSlot(3).clip();
@@ -283,7 +290,9 @@ describe("duplicateClipSlot past the last scene", () => {
       properties: { has_clip: 1 },
       methods: {
         duplicate_clip_to: () => {
-          registerMockObject(COPY_ID, { path: destClipPath });
+          if (copyLands) {
+            registerMockObject(COPY_ID, { path: destClipPath });
+          }
 
           return null;
         },
@@ -299,10 +308,12 @@ describe("duplicateClipSlot past the last scene", () => {
       properties: { scenes: ["id", 1, "id", 2] },
       methods: {
         create_scene: () =>
-          registerMockObject("live_set/tracks/1/clip_slots/3", {
-            path: livePath.track(1).clipSlot(3),
-            properties: { has_clip: 0 },
-          }),
+          slotAppears
+            ? registerMockObject("live_set/tracks/1/clip_slots/3", {
+                path: livePath.track(1).clipSlot(3),
+                properties: { has_clip: 0 },
+              })
+            : null,
       },
     }) as RegisteredMockObject;
   }
@@ -316,6 +327,27 @@ describe("duplicateClipSlot past the last scene", () => {
       created: "s2-s3",
     });
     expect(liveSet.call).toHaveBeenCalledTimes(2);
+  });
+
+  // The scenes stay when the copy doesn't land, so the skip has to name them.
+  it("names the scenes it made when Live declines the copy", () => {
+    setupShortSet({ copyLands: false });
+
+    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+      path: "t1/s3",
+      ok: false,
+      reason: "Live made no copy there; created s2-s3 to reach it",
+    });
+  });
+
+  it("names the scenes it made when the slot still isn't there", () => {
+    setupShortSet({ slotAppears: false });
+
+    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+      path: "t1/s3",
+      ok: false,
+      reason: "no clip slot there; created s2-s3 to reach it",
+    });
   });
 
   it("refuses a destination past the scene cap, making nothing", () => {

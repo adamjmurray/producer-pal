@@ -143,7 +143,10 @@ export function duplicateClipSlot(
   const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
 
   if (newClip == null) {
-    return skippedCopy(destination, "Live made no copy there");
+    return skippedCopy(
+      destination,
+      withCreatedScenes("Live made no copy there", created),
+    );
   }
 
   newClip.setAll({ name, color });
@@ -246,7 +249,10 @@ export function duplicateArrangementClipToSlots(
     );
 
     if (!recreated.ok) {
-      return skippedCopy(destination, recreated.reason);
+      return skippedCopy(
+        destination,
+        withCreatedScenes(recreated.reason, prepared.created),
+      );
     }
 
     const copy = getMinimalClipInfo(recreated.clip);
@@ -302,5 +308,22 @@ function prepareDestinationSlot(
 
   return madeSlot.exists()
     ? { clipSlot: madeSlot, created }
-    : "no clip slot there";
+    : withCreatedScenes("no clip slot there", created);
+}
+
+/**
+ * A skipped copy's reason, naming the scenes made for it: they stay in the
+ * Set even though the copy didn't land.
+ * @param reason - Why the copy didn't land
+ * @param created - The scenes created, or null when none were
+ * @returns The reason, with the scenes appended when there are any
+ */
+function withCreatedScenes(reason: string, created: string | null): string {
+  if (created == null) {
+    return reason;
+  }
+
+  return reason.endsWith(".")
+    ? `${reason} Created ${created} to reach it.`
+    : `${reason}; created ${created} to reach it`;
 }

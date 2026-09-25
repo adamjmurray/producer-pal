@@ -59,7 +59,11 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
     // the toPath it sent.
     expect(result).toStrictEqual([
       { id: "live_set/tracks/0/clip_slots/1/clip", path: "t0/s1" },
-      { path: "t0/s9", ok: false, reason: "no clip slot there" },
+      {
+        path: "t0/s9",
+        ok: false,
+        reason: "no clip slot there; created s2-s9 to reach it",
+      },
     ]);
   });
 

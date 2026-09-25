@@ -358,8 +358,9 @@ matching on any of that warning text needs to read the entries instead.
 `ppal-create-clip` always did; `ppal-update-clip`'s `toPath` and
 `ppal-duplicate`'s `toPath` used to refuse one ("destination t1/s20 does not
 exist", "no clip slot there") and now create the same way. Whichever tool made
-them, that entry carries a `created` field naming them (`created: "s8-s9"`), and
-a destination past the auto-create cap is still refused. `ppal-update-scene` is
+them, that entry carries a `created` field naming them (`created: "s8-s9"`); a
+`ppal-duplicate` copy that then failed names them in its `reason` instead. And a
+destination past the auto-create cap is still refused. `ppal-update-scene` is
 unchanged: its `path` names a scene to update, not a place to make one, and a
 path past the last scene is refused with `ppal-create-scene` named in the
 reason.

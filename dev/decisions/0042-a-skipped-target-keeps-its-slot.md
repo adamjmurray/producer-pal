@@ -146,9 +146,10 @@ target, so no entry exists yet to carry them.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry
-  reports them as `created: "s8-s9"` — the path alone says what to make, and a
-  caller can't pair its own request against scenes it was never told about. Past
-  the auto-create cap, and on a track that isn't there, the destination is still
+  reports them as `created: "s8-s9"` (a duplicate copy that then failed names
+  them in its `reason`) — the path alone says what to make, and a caller can't
+  pair its own request against scenes it was never told about. Past the
+  auto-create cap, and on a track that isn't there, the destination is still
   refused. update-scene's `path` names a target rather than a destination, so it
   stays a refusal, with create-scene named in the reason.
 - **A take lane reports the params it has no use for.** `ppal-update-track`

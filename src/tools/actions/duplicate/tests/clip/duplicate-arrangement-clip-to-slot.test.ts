@@ -247,6 +247,28 @@ describe("duplicate - arrangement clip to a clip slot", () => {
     });
   });
 
+  it("names the scenes it made when a lone copy fails", async () => {
+    registerSource();
+    registerSlot({ trackIndex: 1, sceneIndex: 0 });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { scenes: children("scene_0") },
+      methods: {
+        create_scene: () => {
+          registerSlot({ trackIndex: 1, sceneIndex: 1, createFails: true });
+
+          return null;
+        },
+      },
+    });
+
+    await expect(
+      duplicate({ type: "clip", id: SOURCE_ID, toPath: "t1/s1" }),
+    ).rejects.toThrow(
+      /^create failed at t1\/s1 .*\. Created s1 to reach it\.$/,
+    );
+  });
+
   it("skips a slot that still isn't there", async () => {
     registerSource();
     registerSlot({ trackIndex: 1, sceneIndex: 0 });
@@ -259,7 +281,11 @@ describe("duplicate - arrangement clip to a clip slot", () => {
 
     expect(result).toStrictEqual([
       expect.objectContaining({ id: NEW_ID, path: "t1/s0" }),
-      { path: "t1/s9", ok: false, reason: "no clip slot there" },
+      {
+        path: "t1/s9",
+        ok: false,
+        reason: "no clip slot there; created s2-s9 to reach it",
+      },
     ]);
   });
 });
