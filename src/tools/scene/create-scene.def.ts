@@ -7,7 +7,10 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+import {
+  newScenePathFromCount,
+  newScenePathFromIndex,
+} from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
@@ -34,12 +37,12 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
 
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
-      example: scenePathFromIndex,
+      example: newScenePathFromIndex,
     }),
 
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
-      example: "s+,s+",
+      example: newScenePathFromCount,
       note: "path names every scene, so repeat it once per scene instead of counting",
     }),
 

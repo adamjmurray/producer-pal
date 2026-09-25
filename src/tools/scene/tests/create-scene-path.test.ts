@@ -10,6 +10,11 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  collectHiddenParams,
+  hiddenParamWarnings,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { toolDefCreateScene } from "../create-scene.def.ts";
 import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -274,5 +279,44 @@ describe("createScene by path", () => {
       expect(liveSet.call).not.toHaveBeenCalled();
       expect(appView.set).not.toHaveBeenCalled();
     });
+  });
+});
+
+// Read through the tool's own schema, so the example can't drift from the
+// param names create-scene actually uses.
+describe("createScene sceneIndex and count deprecation examples", () => {
+  const hidden = collectHiddenParams(
+    toolDefCreateScene.toolOptions.inputSchema,
+  );
+
+  // Both warnings name the path that makes the same three scenes at 2.
+  it("names every scene a count made", () => {
+    const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
+      sceneIndex: 2,
+      count: 3,
+    });
+
+    expect(warnings).toHaveLength(2);
+
+    for (const warning of warnings) {
+      expect(warning).toContain('(e.g. path: "s2,s2,s2")');
+    }
+  });
+
+  it("repeats s+ once per scene when nothing names a place", () => {
+    expect(hiddenParamWarnings(["count"], hidden, { count: 3 })[0]).toContain(
+      '(e.g. path: "s+,s+,s+")',
+    );
+  });
+
+  it("gives capture's one place, since capture ignores count", () => {
+    const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
+      sceneIndex: 2,
+      count: 3,
+      capture: true,
+    });
+
+    expect(warnings[0]).toContain('(e.g. path: "s2")');
+    expect(warnings[1]).not.toContain("e.g.");
   });
 });
