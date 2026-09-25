@@ -37,7 +37,7 @@ is strictly thinner than the Live API we already use:
 ## Consequences
 
 - The M4L device stays the integration point, and its constraints (see
-  `dev/Arrangement-Operations.md`) are the accepted cost.
+  `dev/live-api/Arrangement-Operations.md`) are the accepted cost.
 - Revisit if the SDK gains either MIDI-instrument/post-FX render (or
   freeze/flatten) or a move-stable identity primitive.
 - Public write-up: `docs/how-it-works/why-not-an-extension.md`.

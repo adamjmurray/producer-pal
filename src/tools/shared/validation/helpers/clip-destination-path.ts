@@ -6,7 +6,7 @@
 // Where a clip lands. An arrangement address has two halves, the lane and the
 // time, and a destination may name either or both: `t0[5|1]` is both, `t0`
 // keeps the clip's position, and `[5|1]` keeps its lane. Sources take neither
-// partial; see dev/Object-Paths.md, "Complete and partial".
+// partial; see dev/tools/object-paths/README.md, "Complete and partial".
 
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { parseObjectPath, type ObjectPath } from "../object-path.ts";

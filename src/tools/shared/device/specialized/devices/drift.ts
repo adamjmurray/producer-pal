@@ -19,7 +19,7 @@ import {
 } from "../specialized-device-types.ts";
 
 // Drift (DriftDevice, class_name "Drift"). See
-// dev/specialized-devices/instruments.md.
+// dev/live-api/specialized-devices/instruments.md.
 // Declarative mod matrix: each slot is an int `_index` property; the value
 // lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
 // and are NOT duplicated here.

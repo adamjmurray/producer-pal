@@ -7,7 +7,7 @@
 // on top of: the move ordering avoids that where it can, but a take-lane
 // destination never enters its graph and two clips sent to one spot must stack.
 // Read the path, never `exists()` — a held object keeps reporting its id after
-// its target dies, and only the path clears (dev/LiveAPI-Object-Reuse.md).
+// its target dies, and only the path clears (dev/live-api/Object-Reuse.md).
 
 import {
   buildClipResultObject,

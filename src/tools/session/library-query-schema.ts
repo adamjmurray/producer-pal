@@ -110,7 +110,7 @@ export const batchQuerySchema = z.object(
  *
  * Advertised as a clean array of query objects — never a `string | array`
  * union alongside `query`, which is the one shape models fill wrong (Claude
- * collapses it to the scalar and drops the rest; see dev/Tool-Schemas.md).
+ * collapses it to the scalar and drops the rest; see dev/tools/Tool-Schemas.md).
  * The `preprocess` step also accepts a JSON-stringified array, absorbing the
  * habit of stringifying structured args without exposing that fragility in
  * the schema.

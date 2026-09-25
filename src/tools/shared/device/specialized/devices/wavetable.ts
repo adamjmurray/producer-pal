@@ -25,7 +25,7 @@ import {
 } from "./wavetable-modulation.ts";
 
 // Wavetable (WavetableDevice, class_name "InstrumentVector"). See
-// dev/specialized-devices/instruments.md.
+// dev/live-api/specialized-devices/instruments.md.
 //
 // Imperative mod-matrix API (contrast with Drift's declarative _index/_list
 // approach). Matrix keyed by DeviceParameter name (not display label). Source

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The device-chain half of the path grammar: everything after a track root
-// that isn't one of the track's own children. See dev/Object-Paths.md.
+// that isn't one of the track's own children. See dev/tools/object-paths/README.md.
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type DeviceSegment, type DeviceTypeName } from "../object-path.ts";
@@ -32,7 +32,7 @@ export interface DeviceTypeForm {
 /**
  * How each device type is spelled and named, plus the long form also accepted.
  * Long forms parse but are never rendered and never documented outside
- * dev/Object-Paths.md. An instrument takes no index: a container holds one.
+ * dev/tools/object-paths/README.md. An instrument takes no index: a container holds one.
  */
 export const DEVICE_TYPE_FORMS: Record<DeviceTypeName, DeviceTypeForm> = {
   instrument: {

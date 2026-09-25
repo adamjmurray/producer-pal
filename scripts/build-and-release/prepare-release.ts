@@ -32,7 +32,7 @@ if (flagRefusal != null) {
 }
 
 // Deliberately does NOT expect a tag yet. Building comes first, tagging comes
-// after the artifacts have been looked at (`npm run tag`) — see dev/Releasing.md.
+// after the artifacts have been looked at (`npm run tag`) — see dev/process/Releasing.md.
 
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
@@ -112,7 +112,7 @@ console.log("3. Save as: release/Producer_Pal.amxd");
 console.log("4. Test both files work correctly");
 console.log("5. Tag the release: npm run tag");
 console.log(
-  "6. Create the GitHub release, test, and proceed per dev/Releasing.md",
+  "6. Create the GitHub release, test, and proceed per dev/process/Releasing.md",
 );
 console.log(
   `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 4 turns up\n` +

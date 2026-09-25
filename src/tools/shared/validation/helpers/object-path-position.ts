@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The `[song position]` coordinate: which lanes may carry one, and building the
-// path it makes. See dev/Object-Paths.md.
+// path it makes. See dev/tools/object-paths/README.md.
 
 import { type ObjectPath } from "../object-path.ts";
 import { pathError } from "./object-path-lexer.ts";
@@ -31,7 +31,7 @@ export interface ArrangementPosition {
 
 /**
  * Both halves of an arrangement location, on a lane that exists — the one
- * shape that names a single clip. See dev/Object-Paths.md, "Complete and
+ * shape that names a single clip. See dev/tools/object-paths/README.md, "Complete and
  * partial".
  */
 export interface CompleteArrangementPosition extends ArrangementPosition {

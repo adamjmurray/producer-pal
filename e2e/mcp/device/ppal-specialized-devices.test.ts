@@ -821,7 +821,7 @@ describe("specialized devices: modulation-rate effects (inactiveWhen)", () => {
   // against real Live and asserts exactly one rate param stays active; a Live
   // enum reorder or a renamed param would break it (the unit tests can't, since
   // they run the same hardcoded mappings against mocks). See
-  // dev/Specialized-Devices.md.
+  // dev/live-api/specialized-devices/README.md.
 
   /**
    * Assert that, of the mutually-exclusive `group`, only `active` has no `state`

@@ -1,0 +1,210 @@
+# Reusing LiveAPI Objects
+
+Building a LiveAPI object is expensive (ADR-0023, and
+`dev/live-api/Performance.md` for what it costs), so it is tempting to resolve
+one once and pass it around. That is safe in some places and unsafe in others,
+and the line between them is not where most people would guess.
+
+## The hazard
+
+A LiveAPI object is pointed at a path. Mutate the Live Set so a different object
+now sits there — create a clip in an empty slot, delete a device, insert a chain
+— and what you are still holding may not be what you think.
+
+**Holding across requests was measured and rejected**, on memory as well as
+correctness: it cuts Live's memory growth to about a third but reinstates the
+armed path listeners that `live-api-release.ts` exists to clear, and a cached
+deleted object reports `exists()` true. See `dev/live-api/Performance.md`.
+
+**An id target is not exempt.** At mode 0 an id resolves to a path once and
+follows that path afterward, so an object built from `id N` is exposed the same
+way one built from `live_set tracks 2 clip_slots 3 clip` is. See the comment at
+the top of `live-api-adapter/live-api-build.ts`. "It came from an id" is not a
+reason to skip the check below.
+
+### What is measured
+
+All of the below on Live 12.4.3, with the probe in "Settling it". The short
+version: **a held object tracks its object, not its index — and when that object
+dies the handle half-notices.**
+
+| What happened to the target                                  | The held object afterwards                                                                                          |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| **An earlier sibling was deleted**, shifting indices         | Follows the object. Its `path` is rewritten to the new index and every property still reads the same object.        |
+| **It was deleted**                                           | `path` clears to `""`, but `id` and `exists()` stay stale. Property reads return nothing.                           |
+| **It never existed** (empty slot, then a clip created there) | Never bound. `path` `""` and id `"0"` from the start, and it stays that way — it does not pick up the new occupant. |
+
+Two consequences worth keeping straight.
+
+**Index shift is safe.** Deleting `scenes 8` while holding `scenes 9` leaves the
+held object reading the same scene, with its path rewritten to `scenes 8`. It
+does not slide onto whatever now occupies the old index. Measured on both scenes
+and arrangement clips. This is the opposite of the obvious fear, and it is why
+`delete` sorting highest-index-first matters for the _arguments_ it passes, not
+for objects it holds.
+
+**A dead target disagrees with itself.** `path` tells the truth and `id` lies,
+so `exists()` — which is derived from the id — reports `true` for a clip that is
+gone. `confirmDeleted` in `tools/actions/delete/delete.ts` depends on a fresh
+lookup of the dead id reading `"0"`, which still holds. Do not substitute
+`exists()` on a held object for it.
+
+**An id-built object is not different.** Built from `id N`, an object resolves
+to a path immediately and then behaves exactly like a path-built one in every
+case above — including clearing its path on delete while keeping the stale id.
+
+### Devices, `this_device`, and rack chains
+
+Measured the same way, because the memo needed it: `this_device` was kept off
+`STABLE_TARGETS` on the theory that a remembered device would keep reporting the
+host track it was resolved against. It doesn't. A held device object follows its
+device through every index shift the tools can cause, at any depth:
+
+| What moved                                                    | The held `this_device` afterwards                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| A track inserted, then deleted, ahead of the host             | `tracks 11 -> 12 -> 11`, same id, `trackIndex` matching a fresh lookup         |
+| A device moved in front of it on the host track, then deleted | `devices 0 -> 1 -> 0`, same id                                                 |
+| The same, with Producer Pal wrapped in a rack                 | `tracks 11 devices 0 chains 0 devices 0` rewrites the track index the same way |
+| A drum rack chain removed ahead of a held nested device       | `chains 3 -> chains 2`, same id as a fresh lookup of the new path              |
+| **The device itself** moved to another track and back         | Path follows it to `tracks 0 devices 0` and back, same id                      |
+
+Live has no `delete_chain`, so a chain index under an instrument or MIDI effect
+rack cannot shift through the API at all; the drum rack row above uses the
+park-on-a-free-pad technique from `delete-drum-chain.ts`.
+
+Still not measured: the user editing the Set from the UI mid-request. Nothing
+suggests it differs, but it is inference.
+
+### What the mock models
+
+`src/test/mocks/mock-registry.ts` models two of the three rows. A held mock
+object binds to the registration rather than to a snapshot of it, so
+re-registering the same id changes what the holder reads; a deleted target
+clears its holders' paths while their ids go on lying; and an object built at an
+unregistered path never picks up a registration made later.
+`describe("mock staleness")` in `mock-registry.test.ts` pins them.
+
+**Index shift is deliberately not modeled.** A `delete_*` removes its target and
+leaves every later sibling's path where it was. Modeling the renumbering was
+tried and taken back out: nothing in the suite needed it, and nothing plausibly
+would. Shifting can only reach a test that calls `simulateMockDeletes()`, which
+is ppal-delete's tests alone — and `delete` sorts highest-index-first precisely
+so it never holds an object across a shift. If a tool ever does hold one, model
+it then, with that tool's tests as the consumer.
+
+Three more gaps, so a green suite is still not proof:
+
+- Deletes only take effect in a test that calls `simulateMockDeletes()`. Without
+  it a `delete_*` is inert.
+- `LiveAPI.from` builds a fresh instance every time — no memo, no pool. Two
+  handles onto one target are always two objects.
+- The user editing the Set mid-request still isn't modeled at all.
+
+The memo's own design — only the stable targets, nothing indexed — was argued
+from the mock as it was before this ("memoizing any path breaks 8 test files").
+That decision is safe either way, but the evidence for it was never proof of how
+Live behaves. The header comment of `live-api-adapter/live-api-build.ts` carries
+the reasoning.
+
+## The rule
+
+Reuse is safe when nothing can change what the target names between the two
+uses. In practice:
+
+- **Safe:** building _fewer_ objects. Not constructing something you never read
+  extends no lifetime and cannot go stale. `getChildCount` / `getChildAt` /
+  `someChild` instead of `getChildren(...)`, or skipping a walk whose result is
+  discarded, are always safe.
+- **Safe:** the six `STABLE_TARGETS` in `live-api-adapter/live-api-build.ts`.
+  Each names one object for the life of the Live Set.
+- **Needs review:** holding an object across a read-only stretch. Sound unless
+  the user edits the Set mid-request, which no request can rule out.
+- **Safe:** holding an object across a mutation that only shifts indices —
+  inserting or deleting a sibling. The object follows its target and rewrites
+  its own path. Measured; see above.
+- **Unsafe:** holding an object across a mutation that can **destroy or fill**
+  its target, then trusting `id` or `exists()`. Both go stale. Re-look-up the
+  target instead, and compare — which is what the tools that get this right
+  already do.
+- **Unsafe:** resolving a path that is empty and expecting the object to notice
+  when something lands there. It never binds. Build it after the write.
+
+Nothing may outlive the request either way; see `live-api-release.ts`.
+
+## Reviewing for it
+
+Look for a `LiveAPI` reference that is **live across a mutation**, not for reuse
+in general:
+
+1. Find where a `LiveAPI` variable is assigned, then used again later in the
+   same function or passed down. Id-built counts; see above.
+2. Ask what happens in between. A `.call()` with a writing method, a `.set()` or
+   `setProperty`, or a loop iteration that writes another target all count.
+3. Ask whether the second use reads something the mutation could have changed —
+   `id`, `path`, `exists()`, a child list, or a property at that path.
+
+Deleting or inserting siblings is the sharpest case, because it moves every
+later index. `delete` handles this by sorting tracks, scenes, and devices
+highest-index-first before the loop; anything that mutates a collection while
+holding objects from it needs an equivalent, or an argument for why it doesn't.
+
+All three true is a finding. Batch write tools are the highest-yield place to
+look: they resolve shared context once and then write N targets through it.
+
+A read tool that never writes is low risk. A tool that reads, writes, then reads
+the same path again to check what happened is the exact shape that breaks.
+
+## Settling it
+
+What is left open needs a probe that holds one object while mutating through
+another inside a single V8 request. `ppal-live-api` can do that in a build made
+with `ENABLE_OBJECT_PROBE=true`: each operation takes an optional `path` that
+runs it against its own object, leaving the object built from the call's
+top-level `path` where it is.
+
+```bash
+ENABLE_OBJECT_PROBE=true npm run build:debug
+```
+
+```jsonc
+{
+  "path": "live_set tracks 0 clip_slots 0 clip", // held throughout
+  "operations": [
+    { "type": "exists" }, // read it
+    {
+      "path": "live_set tracks 0 clip_slots 0",
+      "type": "call",
+      "method": "create_clip",
+      "args": [4],
+    }, // mutate elsewhere
+    { "type": "exists" }, // read it again
+    { "type": "get_property", "property": "id" },
+  ],
+}
+```
+
+`goto` cannot substitute: it moves the only object there is, so the original
+target becomes unreachable. Naming the path again builds a _fresh_ object, which
+is the control to compare against, not the held handle under test.
+
+`this_device` works as the top-level `path`, which is how the device rows above
+were measured — hold it, then shift things through `live_set`
+(`create_midi_track`, `delete_track`, `move_device`) and read `path`, `id` and
+`trackIndex` back off the held object. A drum chain needs the park-on-a-free-pad
+move: `set` the chain's `in_note` to an unused note, then `delete_all_chains` on
+that pad.
+
+Two things to keep in mind while measuring. A path-less operation always means
+the default object, wherever it sits in the list. And each operation carrying a
+path gets its own object — two operations naming the same path are two objects,
+which is what makes the fresh-lookup control available.
+
+The field is absent from every other build, so nothing here changes what users
+see. Unit tests cannot stand in for the probe: the mock's `LiveAPI.from` builds
+a fresh instance with no memo and no pool, so it cannot show whether two handles
+onto one target really come apart.
+
+e2e (`e2e/mcp/`) remains the way to settle a _specific site_ without settling
+the general question. A test that deletes three clips in one call and checks the
+right three died answers that site for good, whatever the underlying mechanism
+turns out to be.

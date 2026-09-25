@@ -20,7 +20,7 @@ time across meters (see Absolute Durations below).
 > in **Ableton (quarter-note) beats**, where `n/4` = `1.0` in any meter. So the
 > same `n/4` reads as `1.0` in parsed-note output but as "1 in 4/4, 2 in 6/8"
 > here. Same physical duration; different unit (see
-> [../BarBeat-Spec.md](../BarBeat-Spec.md)).
+> [the bar|beat spec](../barbeat/README.md)).
 
 ### Examples by Time Signature
 

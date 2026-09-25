@@ -28,8 +28,8 @@ for the rules the codebase doesn't yet satisfy, each with its violation count
 and reason.
 
 **Deleting an entry is the unit of work**: fix the violations, drop the line,
-and the rule is on for good. The list is the backlog. `dev/Linting.md` explains
-how the opt-out section has to be structured.
+and the rule is on for good. The list is the backlog. `dev/quality/Linting.md`
+explains how the opt-out section has to be structured.
 
 Three groups came out of the triage:
 

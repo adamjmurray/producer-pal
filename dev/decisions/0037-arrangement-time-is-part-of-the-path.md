@@ -27,19 +27,18 @@ written as bar|beat or named by a locator, and every param that took one took
 two: `startTime`/`startLocator`, `loopStart`/`loopStartLocator`,
 `loopEnd`/`loopEndLocator`, `arrangementStart`/`locator`.
 
-[Path-Standardization.md](../plans/Path-Standardization.md) Phase 5 considered
-folding time into the path as `t0@5|1` and rejected it, on three grounds: the
-two params are independently usable and `t0@5|1` always names both halves; a
-bar|beat position can contain `/`, which `split("/")` would eat; and `@` already
-means step interval and bar copy in bar|beat.
+The path-standardization plan considered folding time into the path as `t0@5|1`
+and rejected it, on three grounds: the two params are independently usable and
+`t0@5|1` always names both halves; a bar|beat position can contain `/`, which
+`split("/")` would eat; and `@` already means step interval and bar copy in
+bar|beat.
 
 ## Decision
 
 **A path may end with one bracketed coordinate naming a point on the song
 timeline**, and **a song-timeline position is either bar|beat or `loc:<name>`**.
 The grammar, the legal shapes, and the list rules are in
-[dev/Object-Paths.md](../Object-Paths.md); the build order is in
-[Path-Standardization.md](../plans/Path-Standardization.md).
+[dev/tools/object-paths/README.md](../tools/object-paths/README.md).
 
 This reverses Phase 5 and, with it, two of ADR-0025's rejections — arrangement
 clips as paths, and locators in the grammar. What stands from Phase 5's

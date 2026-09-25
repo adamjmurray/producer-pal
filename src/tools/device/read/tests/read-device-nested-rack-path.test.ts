@@ -173,8 +173,8 @@ describe("readOneDevice - paths through a nested drum rack", () => {
   });
 
   // Live gives a Drum Rack nested in a drum pad an empty `drum_pads` collection
-  // (dev/Coding-Standards.md — "A Drum Rack Inside a Drum Pad Has No Pads"),
-  // which is what setupNestedDrumRack's `drum_pads` misses.
+  // (dev/coding-standards/live-api-behavior.md — "A Drum Rack Inside a Drum Pad
+  // Has No Pads"), which is what setupNestedDrumRack's `drum_pads` misses.
   function dropNestedRackPads(): void {
     registerMockObject("sub-rack", {
       path: SUB_RACK,
