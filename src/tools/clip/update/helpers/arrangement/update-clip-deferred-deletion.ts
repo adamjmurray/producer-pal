@@ -30,7 +30,7 @@ import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-la
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { clipIsGone } from "../batch/buried-clips.ts";
+import { BURIED, clipIsGone } from "../batch/buried-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-overwrite-plan.ts";
 import {
@@ -135,6 +135,7 @@ export function flushDeferredDeletions(
       }
 
       result.deleted = true;
+      appendDetail(result, BURIED);
 
       // The landing may already have cleared the range this clip sat in, in
       // which case there is nothing left to delete.

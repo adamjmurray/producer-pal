@@ -425,8 +425,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result[0]).toStrictEqual({
       path: "t0/s0",
       ok: false,
-      detail:
-        "not moved: clip t1/s1 (id 456) moves to t1/s2 later in this call",
+      detail: "not moved: t1/s2 is named again later in this call",
     });
     expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
     expect(slots.get("t0/s0")?.call).not.toHaveBeenCalledWith(

@@ -180,7 +180,10 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(entries[0]).toStrictEqual(
-      expect.objectContaining({ deleted: true }),
+      expect.objectContaining({
+        deleted: true,
+        detail: "another clip in this call was moved onto it",
+      }),
     );
     expect(entries[1]?.path).toBe(`${SCRATCH}[21|1]`);
   });

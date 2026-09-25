@@ -210,10 +210,7 @@ async function lengthenClipAndCollectInfo(
     if (clipLiveAPI) {
       // The copy's entry keeps update-clip's detail but never its `ok: false`:
       // the copy was made.
-      duplicatedClips.push({
-        ...getMinimalClipInfo(clipLiveAPI),
-        ...(clipObj.detail == null ? {} : { detail: clipObj.detail }),
-      });
+      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI, clipObj.detail));
     }
   }
 }

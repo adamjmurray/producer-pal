@@ -27,6 +27,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import {
+  destinationNamedLaterReason,
   skipEntry,
   type TargetSkip,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -217,7 +218,7 @@ function repeatedSlotSkip(
     : destinationSkip(
         params,
         ref,
-        `not created: ${slot} is named again later in this call`,
+        `not created: ${destinationNamedLaterReason(slot)}`,
       );
 }
 

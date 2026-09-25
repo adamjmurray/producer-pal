@@ -52,7 +52,7 @@ interface LaneCopyResult {
     ok?: false;
     detail?: string;
     /** A copy a later one in the same call landed on top of */
-    overwritten?: true;
+    deleted?: true;
   }>;
   detail: string;
   ok?: false;
@@ -435,8 +435,16 @@ describe("ppal-duplicate take lane to a main lane", () => {
     // Both entries name the same main lane, so the second create cleared what
     // the first put there — and the first entry says so, id gone.
     expect(result[0]!.clips).toStrictEqual([
-      { path: `${DESTINATION}[1|1]`, overwritten: true },
-      { path: `${DESTINATION}[5|1]`, overwritten: true },
+      {
+        path: `${DESTINATION}[1|1]`,
+        deleted: true,
+        detail: "a later copy in this call landed on it",
+      },
+      {
+        path: `${DESTINATION}[5|1]`,
+        deleted: true,
+        detail: "a later copy in this call landed on it",
+      },
     ]);
     expect(result[1]!.clips.map((clip) => clip.path)).toStrictEqual([
       `${DESTINATION}[1|1]`,

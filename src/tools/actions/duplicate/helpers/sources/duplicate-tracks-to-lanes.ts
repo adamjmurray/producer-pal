@@ -584,10 +584,10 @@ function copyClipToLane(
     return getMinimalClipInfo(copy);
   } catch (error) {
     if (error instanceof PartialRecreateError) {
-      return {
-        ...getMinimalClipInfo(error.partialClip),
-        detail: `the ${kind} copy is incomplete (${errorMessage(error)})`,
-      };
+      return getMinimalClipInfo(
+        error.partialClip,
+        `the ${kind} copy is incomplete (${errorMessage(error)})`,
+      );
     }
 
     return missed(`the ${kind} copy failed: ${errorMessage(error)}`);

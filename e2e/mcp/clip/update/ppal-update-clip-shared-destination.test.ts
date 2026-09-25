@@ -124,7 +124,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
     expect(entries[0]?.ok).toBe(false);
     expect(entries[0]?.id).toBe(id1);
     expect(entries[0]?.detail).toContain(
-      `moves to t${EMPTY_MIDI_TRACK}/s6 later in this call`,
+      `not moved: t${EMPTY_MIDI_TRACK}/s6 is named again later in this call`,
     );
     expect(entries[1]?.ok).toBeUndefined();
     expect(entries[1]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);

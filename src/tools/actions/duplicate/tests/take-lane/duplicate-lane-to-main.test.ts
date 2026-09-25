@@ -151,7 +151,11 @@ describe("duplicate take lane to a main lane", () => {
 
     // Both entries name t1, so the second create cleared the first's clip.
     expect(result[0]?.clips).toStrictEqual([
-      { path: "t1[1|1]", overwritten: true },
+      {
+        path: "t1[1|1]",
+        deleted: true,
+        detail: "a later copy in this call landed on it",
+      },
     ]);
     expect(result[1]?.clips[0]).toHaveProperty("id");
   });

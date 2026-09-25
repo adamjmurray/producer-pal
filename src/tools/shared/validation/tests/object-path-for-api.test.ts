@@ -11,10 +11,7 @@ import {
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import {
-  mockNonExistentObjects,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   objectPathForApi,
   pathField,
@@ -22,7 +19,6 @@ import {
   pathTargetLabel,
   resultLabel,
   targetLabel,
-  targetLabelForId,
   type WrittenContainer,
 } from "../object-path-for-api.ts";
 
@@ -393,21 +389,5 @@ describe("pathPrefix", () => {
 
   it("falls back to the id when the grammar spells no path", () => {
     expect(pathPrefix(api(livePath.liveSet))).toBe("id 7");
-  });
-});
-
-describe("targetLabelForId", () => {
-  it("names an object by both spellings after looking it up", () => {
-    registerMockObject("7", { path: livePath.track(0).device(2) });
-
-    expect(targetLabelForId("7")).toBe("t0/d2 (id 7)");
-  });
-
-  // A dead id reports itself as 0, so the lookup lands nowhere. Keep the
-  // caller's id rather than spelling the wrong object.
-  it("keeps the id alone when the lookup lands nowhere", () => {
-    mockNonExistentObjects();
-
-    expect(targetLabelForId("9")).toBe("id 9");
   });
 });

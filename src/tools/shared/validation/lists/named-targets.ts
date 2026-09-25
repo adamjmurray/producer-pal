@@ -84,7 +84,28 @@ export function namedLaterReason(later: NamedTarget): string {
   const address =
     later.param === "id" ? `id ${later.value}` : `"${later.value}"`;
 
-  return `named again as ${address} later in this call`;
+  return namedAgain(address);
+}
+
+/**
+ * How a destination says a later one names the same place, in the words
+ * {@link namedLaterReason} uses: the last to name it gets the clip.
+ * @param destination - The place, as a path
+ * @returns The reason, e.g. "t0/s1 is named again later in this call"
+ */
+export function destinationNamedLaterReason(destination: string): string {
+  return `${destination} is ${namedAgain()}`;
+}
+
+/**
+ * The stem every named-twice reason shares.
+ * @param address - How the later mention spelled it, when that differs
+ * @returns The stem
+ */
+function namedAgain(address?: string): string {
+  return address == null
+    ? "named again later in this call"
+    : `named again as ${address} later in this call`;
 }
 
 /**

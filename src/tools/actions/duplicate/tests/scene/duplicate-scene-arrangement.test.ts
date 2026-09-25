@@ -551,7 +551,15 @@ describe("duplicate - several scenes to the arrangement", () => {
     });
 
     expect(result).toStrictEqual([
-      { clips: [{ path: "t0[5|1]", overwritten: true }] },
+      {
+        clips: [
+          {
+            path: "t0[5|1]",
+            deleted: true,
+            detail: "a later copy in this call landed on it",
+          },
+        ],
+      },
       {
         clips: [{ id: livePath.track(0).arrangementClip(1), path: "t0[5|1]" }],
       },

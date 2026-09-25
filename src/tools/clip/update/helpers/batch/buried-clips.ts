@@ -20,13 +20,16 @@ import {
   stillAtPath,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
-import { remainderFinder, type TrimmedLanding } from "./trimmed-landings.ts";
+import {
+  remainderFinder,
+  type TrimmedLanding,
+} from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 
 /** Where each clip sat before the call moved any of them, by id. */
 export type ClipAddresses = ReadonlyMap<string, string | undefined>;
 
 /** What became of a clip another clip in the call was moved onto. */
-const BURIED = "another clip in this call was moved onto it";
+export const BURIED = "another clip in this call was moved onto it";
 
 /** What became of a clip a shorter landing only covered the front of. */
 const TRIMMED = "trimmed: another clip in this call landed on its start";

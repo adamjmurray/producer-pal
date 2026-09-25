@@ -26,13 +26,17 @@ const ctx = setupMcpTestContext();
 interface DuplicateClipResult {
   id: string;
   path?: string;
+  detail?: string;
 }
 
-/** The entry for a copy a later copy in the same call landed on. */
-interface OverwrittenClipResult {
+/** The entry for a copy a later copy in the same call deleted. */
+interface DeletedClipResult {
   path: string;
-  overwritten: true;
+  deleted: true;
+  detail: string;
 }
+
+const LANDED_ON = "a later copy in this call landed on it";
 
 describe("ppal-duplicate with a source list", () => {
   /**
@@ -166,7 +170,7 @@ describe("ppal-duplicate with a source list", () => {
     );
 
     expect(copies).toHaveLength(2);
-    expect(copies.some((copy) => "overwritten" in copy)).toBe(false);
+    expect(copies.some((copy) => "deleted" in copy)).toBe(false);
     expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}[109|1]`);
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[113|1]`);
 
@@ -186,9 +190,7 @@ describe("ppal-duplicate with a source list", () => {
 
     await sleep(100);
 
-    const copies = parseToolResult<
-      (DuplicateClipResult | OverwrittenClipResult)[]
-    >(
+    const copies = parseToolResult<(DuplicateClipResult | DeletedClipResult)[]>(
       await duplicateClips({
         id: [first, second].join(","),
         toPath: "[97|1]",
@@ -199,7 +201,8 @@ describe("ppal-duplicate with a source list", () => {
     // The first copy is gone, so its entry says where it went and stops there.
     expect(copies[0]).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}[97|1]`,
-      overwritten: true,
+      deleted: true,
+      detail: LANDED_ON,
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[97|1]`);
 
@@ -289,10 +292,10 @@ describe("ppal-duplicate with a source list", () => {
     }
   });
 
-  // A copy is cleared by whatever lands across it, not only by one starting on
-  // the same beat. Both entries name a different bar here, and one of them is
-  // still a clip that no longer exists.
-  it("hands back no id for a copy the next one cleared", async () => {
+  // A copy is cut by whatever lands across it, not only by one starting on the
+  // same beat. Losing its front re-creates the rest under a new id, so the
+  // entry has to name that clip, not the one that is gone.
+  it("points a copy the next one cut short at what is left of it", async () => {
     const session = await createSource(
       `t${EMPTY_MIDI_TRACK}/s5`,
       "C3 1|1",
@@ -314,10 +317,8 @@ describe("ppal-duplicate with a source list", () => {
     await sleep(100);
 
     // The copy at 101 spans four bars, so it clears the front of the one at
-    // 102 - which leaves that one deleted and its tail re-created at 105.
-    const copies = parseToolResult<
-      (DuplicateClipResult | OverwrittenClipResult)[]
-    >(
+    // 102, whose tail is re-created at 105.
+    const copies = parseToolResult<DuplicateClipResult[]>(
       await duplicateClips({
         id: source.id,
         toPath: `t${EMPTY_MIDI_TRACK}[102|1],t${EMPTY_MIDI_TRACK}[101|1]`,
@@ -325,19 +326,17 @@ describe("ppal-duplicate with a source list", () => {
     );
 
     expect(copies[0]).toStrictEqual({
-      path: `t${EMPTY_MIDI_TRACK}[102|1]`,
-      overwritten: true,
+      id: expect.any(String),
+      path: `t${EMPTY_MIDI_TRACK}[105|1]`,
+      detail: "trimmed: a later copy in this call landed on its start",
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[101|1]`);
 
     await sleep(100);
 
+    // Both ids name a clip that is really there, where the entry says.
     for (const copy of copies) {
-      if (!("id" in copy)) {
-        continue;
-      }
-
-      expect((await readClip(copy.id)).notes).toContain("C3");
+      expect((await readClip(copy.id)).path).toBe(copy.path);
     }
   });
 

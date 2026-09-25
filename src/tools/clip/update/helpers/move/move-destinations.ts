@@ -24,6 +24,7 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  destinationNamedLaterReason,
   namedLaterReason,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -34,7 +35,6 @@ import {
 import {
   objectPathForApi,
   targetLabel,
-  targetLabelForId,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
 import { refuseTarget, type ClipTargets } from "../entries/clip-targets.ts";
@@ -318,7 +318,7 @@ function namesNoLane(entries: Array<DestinationEntry | null>): boolean {
  *
  * Only slots are exclusive. An arrangement lane holds as many clips as fit on
  * it, so several clips can share one — and when they do land on top of each
- * other, the "moved to the same position" warning already says so.
+ * other, the entry of the clip underneath says so.
  * @param claims - Each clip and the destination named for it, in call order
  * @param destinationById - Destinations by clip id, added to
  * @param reasons - What each clip has to say beyond its result, added to
@@ -339,16 +339,15 @@ function assignDestinations(
   for (const [clipId, destination] of claims) {
     const slot =
       destination.kind === "slot" ? destinationSlot(destination) : null;
-    const winner = slot == null ? clipId : (lastClaimant.get(slot) as string);
 
-    if (winner === clipId) {
-      destinationById.set(clipId, destination);
-    } else {
+    if (slot != null && lastClaimant.get(slot) !== clipId) {
       refuseClipWork(
         reasons,
         clipId,
-        `not moved: clip ${targetLabelForId(winner)} moves to ${slot} later in this call`,
+        `not moved: ${destinationNamedLaterReason(slot)}`,
       );
+    } else {
+      destinationById.set(clipId, destination);
     }
   }
 }

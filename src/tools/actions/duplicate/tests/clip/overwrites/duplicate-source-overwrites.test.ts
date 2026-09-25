@@ -8,7 +8,7 @@
 // A copy onto an earlier source lands after that source's turn, so it goes.
 
 import { describe, expect, it } from "vitest";
-import "../duplicate-mocks-test-helpers.ts";
+import "../../duplicate-mocks-test-helpers.ts";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -24,7 +24,7 @@ import {
   registerLaneSource,
   registerLiveSet,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
-import { updateClipMock } from "../setup.ts";
+import { updateClipMock } from "../../setup.ts";
 
 /**
  * The refusal for a copy landing on another source.

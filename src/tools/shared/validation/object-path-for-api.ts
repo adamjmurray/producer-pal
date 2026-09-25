@@ -185,21 +185,6 @@ export function pathTargetLabel(
 }
 
 /**
- * {@link targetLabel} for an object a caller has only the id of. The lookup
- * costs a Live API call, so don't reach for it where the object is at hand.
- *
- * A dead id reports itself as 0, so the caller's own id is kept when the lookup
- * lands nowhere — better a stale id than a wrong one.
- * @param id - The object's Live API id
- * @returns `t1/d0 (id 7)`, or `id 7` alone when it has no path to spell
- */
-export function targetLabelForId(id: string): string {
-  const api = LiveAPI.from(id);
-
-  return api.exists() ? targetLabel(api) : `id ${id}`;
-}
-
-/**
  * The parent half of a path a warning spells out for a child that has no id of
  * its own — a drum pad, a device slot a copy failed to fill. Not
  * {@link targetLabel}: another segment can't be appended past its id.

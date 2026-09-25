@@ -223,7 +223,12 @@ describe("duplicate - clip duplication", () => {
       });
 
       expect(result).toStrictEqual([
-        { path: "t1/s3", created: "s2-s3", overwritten: true },
+        {
+          path: "t1/s3",
+          created: "s2-s3",
+          deleted: true,
+          detail: "a later copy in this call landed on it",
+        },
         {
           id: "copy_2",
           path: "t1/s3",

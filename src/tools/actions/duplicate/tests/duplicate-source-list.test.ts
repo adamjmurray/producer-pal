@@ -708,7 +708,11 @@ describe("duplicate - a list of sources", () => {
       });
 
       expect(result).toStrictEqual([
-        { path: "t2[5|1]", overwritten: true },
+        {
+          path: "t2[5|1]",
+          deleted: true,
+          detail: "a later copy in this call landed on it",
+        },
         {
           id: "live_set tracks 2 arrangement_clips 1",
           path: "t2[5|1]",
@@ -724,33 +728,6 @@ describe("duplicate - a list of sources", () => {
         },
         expect.anything(),
       );
-    });
-
-    // A copy is cleared by whatever lands across it, not only by one that
-    // starts on the same beat — so the two entries here name different spots
-    // and are still one clip and one corpse.
-    it("marks a copy the next one cleared from a different start", async () => {
-      registerMockObject("clipA", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
-      // Four-bar copies, so the one at 5|1 reaches across the one at 6|1.
-      registerTrackThatClearsOnDup(1, { has_midi_input: 1 }, 16);
-
-      const result = await duplicate({
-        type: "clip",
-        id: "clipA",
-        toPath: "t1",
-        arrangementStart: "6|1,5|1",
-      });
-
-      expect(result).toStrictEqual([
-        { path: "t1[6|1]", overwritten: true },
-        {
-          id: "live_set tracks 1 arrangement_clips 1",
-          path: "t1[5|1]",
-        },
-      ]);
     });
 
     // The case a named toPath never covers: two sources on one track default to
@@ -775,7 +752,11 @@ describe("duplicate - a list of sources", () => {
       });
 
       expect(result).toStrictEqual([
-        { path: "t0[5|1]", overwritten: true },
+        {
+          path: "t0[5|1]",
+          deleted: true,
+          detail: "a later copy in this call landed on it",
+        },
         {
           id: "live_set tracks 0 arrangement_clips 1",
           path: "t0[5|1]",

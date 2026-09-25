@@ -33,7 +33,7 @@ describe("a clip held back for an overwrite", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: FIRST, path: "t0[1|1]", deleted: true },
+      { id: FIRST, path: "t0[1|1]", deleted: true, detail: BURIED },
       { id: MOVED, path: "t0[17|1]" },
     ]);
     expect(deletedIds(track)).toStrictEqual([`id ${SECOND}`, `id ${FIRST}`]);
@@ -99,7 +99,7 @@ describe("a clip held back for an overwrite", () => {
       id: FIRST,
       path: "t0[1|1]",
       deleted: true,
-      detail: "warping ignored: the clip is MIDI",
+      detail: `warping ignored: the clip is MIDI; ${BURIED}`,
     });
   });
 
@@ -169,7 +169,11 @@ describe("a clip held back for an overwrite", () => {
       false,
     );
 
-    expect(result).toStrictEqual({ id: FIRST, deleted: true });
+    expect(result).toStrictEqual({
+      id: FIRST,
+      deleted: true,
+      detail: BURIED,
+    });
     expect(sourceTrack.call).not.toHaveBeenCalled();
   });
 
@@ -183,7 +187,11 @@ describe("a clip held back for an overwrite", () => {
   it("clears it for a landing exactly as long as it is", () => {
     const { result, sourceTrack } = flushHeldBack(SECOND, planBurying(20, 20));
 
-    expect(result).toStrictEqual({ id: FIRST, deleted: true });
+    expect(result).toStrictEqual({
+      id: FIRST,
+      deleted: true,
+      detail: BURIED,
+    });
     expect(sourceTrack.call).toHaveBeenCalledWith(
       "delete_clip",
       expect.anything(),
@@ -216,6 +224,8 @@ describe("a clip held back for an overwrite", () => {
 });
 
 /** What a held-back clip nothing landed on says. */
+const BURIED = "another clip in this call was moved onto it";
+
 const HELD_BACK =
   "not moved: the clip due to land on top of it at t0[17|1] didn't, so the original was kept";
 

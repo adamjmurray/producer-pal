@@ -153,27 +153,25 @@ function recreateCopy(
   const losses = recreatedClipLosses(options.object);
 
   try {
-    const copy = getMinimalClipInfo(
-      recreateClip(
-        options.object,
-        destination,
-        options.startBeats,
-        options.name,
-        options.color,
-        losses,
-      ),
+    const clip = recreateClip(
+      options.object,
+      destination,
+      options.startBeats,
+      options.name,
+      options.color,
+      losses,
     );
 
-    return { copy: { ...copy, detail: landedNote(kind, losses) } };
+    return { copy: getMinimalClipInfo(clip, landedNote(kind, losses)) };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
     // refusal would lose a clip the caller has to know about.
     if (error instanceof PartialRecreateError) {
       return {
-        copy: {
-          ...getMinimalClipInfo(error.partialClip),
-          detail: `the ${kind} copy is incomplete (${error.message})`,
-        },
+        copy: getMinimalClipInfo(
+          error.partialClip,
+          `the ${kind} copy is incomplete (${error.message})`,
+        ),
       };
     }
 

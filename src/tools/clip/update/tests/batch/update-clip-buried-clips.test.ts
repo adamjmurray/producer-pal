@@ -223,6 +223,7 @@ describe("a clip the call holds back for an overwrite", () => {
       id: "held",
       path: "t0[1|1]",
       deleted: true,
+      detail: BURIED,
     });
     expect(result[2]).toStrictEqual({
       id: "waiter",
@@ -233,9 +234,8 @@ describe("a clip the call holds back for an overwrite", () => {
     });
   });
 
-  // The read-back would find it gone and say a sibling was moved onto it, which
-  // is what the call planned all along. Its own settling says it plainly.
-  it("leaves the plain deleted entry alone when the landing cleared it", async () => {
+  // The read-back would find it gone too; the detail must not be said twice.
+  it("says once that it was moved onto when the landing cleared it", async () => {
     registerLiveSet();
     // "held" is already sitting on the spot both clips are sent to, and it is
     // shorter, so the landing clears it before the call settles it.
@@ -252,6 +252,7 @@ describe("a clip the call holds back for an overwrite", () => {
       id: "held",
       path: "t0[17|1]",
       deleted: true,
+      detail: BURIED,
     });
     expect(result[1]?.id).toBe(LANDED);
     expect(capturedWarnings()).toStrictEqual([]);

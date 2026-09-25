@@ -5,12 +5,28 @@
 
 // The clip shape every duplicate result reports a copy with.
 
+import { type TrimmedLanding } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   objectPathForApi,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+
+// Where each arrangement copy sat when it landed, read while its id still
+// lives. A later copy covering only its front re-creates the rest under a new
+// id, and the span is what finds that rest. Keyed by the entry, so it lives as
+// long as the call's result.
+const copySpans = new WeakMap<object, CopySpan>();
+
+/** Counts copies as they land; only the order matters, never the value. */
+let landings = 0;
+
+/** Where a copy landed, and when relative to the call's other copies. */
+export interface CopySpan extends TrimmedLanding {
+  /** Higher landed later. Result order is not landing order. */
+  order: number;
+}
 
 export interface MinimalClipInfo {
   id: string;
@@ -26,11 +42,17 @@ export interface MinimalClipInfo {
 }
 
 /**
- * Get minimal clip information for result objects
+ * Get minimal clip information for result objects. Pass the detail here
+ * rather than copying the entry to add one: a copy loses the span recorded
+ * for it.
  * @param clip - The clip to get info from
+ * @param detail - Why the copy isn't quite what was asked for, if it isn't
  * @returns Minimal clip info object
  */
-export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
+export function getMinimalClipInfo(
+  clip: LiveAPI,
+  detail?: string,
+): MinimalClipInfo {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
@@ -40,7 +62,15 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
     }
 
     // The path spells the lane and the start, so nothing else reports either.
-    return { id: clip.id, path: objectPathForApi(clip) };
+    const entry = {
+      id: clip.id,
+      path: objectPathForApi(clip),
+      ...(detail != null && { detail }),
+    };
+
+    recordCopySpan(entry, clip, clip.trackIndex);
+
+    return entry;
   }
 
   const trackIndex = clip.trackIndex;
@@ -50,7 +80,20 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
     throw new Error(`no clip slot for clip ${targetLabel(clip)}`);
   }
 
-  return { id: clip.id, path: slotPath(trackIndex, sceneIndex) };
+  return {
+    id: clip.id,
+    path: slotPath(trackIndex, sceneIndex),
+    ...(detail != null && { detail }),
+  };
+}
+
+/**
+ * Where an arrangement copy sat when it landed.
+ * @param entry - The copy's result entry
+ * @returns Its lane, span and landing order, or undefined for a session copy
+ */
+export function copySpan(entry: object): CopySpan | undefined {
+  return copySpans.get(entry);
 }
 
 /**
@@ -62,4 +105,35 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
  */
 export function skippedCopy(path: string, detail: string): TargetSkip {
   return { path, ok: false, detail };
+}
+
+/**
+ * Remember where an arrangement copy sits, for its entry.
+ * @param entry - The copy's result entry
+ * @param clip - The copy
+ * @param trackIndex - The track it landed on
+ */
+function recordCopySpan(
+  entry: object,
+  clip: LiveAPI,
+  trackIndex: number,
+): void {
+  const start = clip.getProperty("start_time");
+  const end = clip.getProperty("end_time");
+
+  if (typeof start !== "number" || typeof end !== "number" || end <= start) {
+    return;
+  }
+
+  const laneIndex = clip.takeLaneIndex;
+
+  copySpans.set(entry, {
+    lane:
+      laneIndex == null
+        ? { kind: "track", trackIndex }
+        : { kind: "take-lane", trackIndex, laneIndex },
+    beats: start,
+    end,
+    order: landings++,
+  });
 }

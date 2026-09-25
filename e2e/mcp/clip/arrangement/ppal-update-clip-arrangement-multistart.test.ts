@@ -131,6 +131,8 @@ function expectDeleted(
   expect(clips.map((clip) => clip.deleted)).toStrictEqual(deleted);
 }
 
+const MOVED_ONTO = "another clip in this call was moved onto it";
+
 describe("ppal-update-clip arrangement multistart", () => {
   it("moves clip to position with existing clip without crashing", async () => {
     // Existing clip at target position
@@ -224,6 +226,8 @@ describe("ppal-update-clip arrangement multistart", () => {
     expect(clips[0]?.deleted).toBe(true);
     expect(clips[1]?.deleted).toBe(true);
     expect(clips[2]?.deleted).toBeUndefined();
+    expect(clips[0]?.detail).toBe(MOVED_ONTO);
+    expect(clips[1]?.detail).toBe(MOVED_ONTO);
 
     expect(finalClips).toHaveLength(1);
     expect(arrangementStartOf(finalClips[0]!)).toBe("220|1");
