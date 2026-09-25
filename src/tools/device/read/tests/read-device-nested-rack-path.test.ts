@@ -220,7 +220,6 @@ describe("readOneDevice - paths through a nested drum rack", () => {
     expect(result).toStrictEqual({
       path: "t1/d0/c0/d0/pC3",
       name: "Hat",
-      note: 60,
       pitch: "C3",
       chainCount: 1,
     });

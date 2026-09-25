@@ -346,7 +346,7 @@ describe("device-reader", () => {
       const devices = [
         {
           type: "drum-rack",
-          _processedDrumPads: [{ note: 0, pitch: "C-2", name: "Sub" }],
+          _processedDrumPads: [{ _note: 0, pitch: "C-2", name: "Sub" }],
         },
       ];
 
@@ -453,9 +453,9 @@ describe("device-reader", () => {
         {
           type: "drum-rack",
           _processedDrumPads: [
-            { note: 36, pitch: "C1", name: "Kick" },
-            { note: 38, pitch: "D1", name: "Snare" },
-            { note: 42, pitch: "F#1", name: "Hi-Hat" },
+            { _note: 36, pitch: "C1", name: "Kick" },
+            { _note: 38, pitch: "D1", name: "Snare" },
+            { _note: 42, pitch: "F#1", name: "Hi-Hat" },
           ],
         },
       ];
@@ -472,9 +472,9 @@ describe("device-reader", () => {
         {
           type: "drum-rack",
           _processedDrumPads: [
-            { note: 36, pitch: "C1", name: "Kick" },
-            { note: 60, pitch: "C3", name: "Bell" },
-            { note: -1, pitch: "*", name: "Catch-all" },
+            { _note: 36, pitch: "C1", name: "Kick" },
+            { _note: 60, pitch: "C3", name: "Bell" },
+            { _note: -1, pitch: "*", name: "Catch-all" },
           ],
         },
       ];
@@ -493,8 +493,8 @@ describe("device-reader", () => {
           {
             type: "drum-rack",
             _processedDrumPads: [
-              { note: 36, pitch: "C1", name: "Kick" },
-              { note: 38, pitch: "D1", name: "Snare" },
+              { _note: 36, pitch: "C1", name: "Kick" },
+              { _note: 38, pitch: "D1", name: "Snare" },
             ],
           },
         ];
@@ -511,9 +511,9 @@ describe("device-reader", () => {
         {
           type: "drum-rack",
           _processedDrumPads: [
-            { note: 36, pitch: "C1", name: "Kick" },
-            { note: 38, pitch: "D1", name: "Snare" },
-            { note: -1, pitch: "*", name: "Catch-all" },
+            { _note: 36, pitch: "C1", name: "Kick" },
+            { _note: 38, pitch: "D1", name: "Snare" },
+            { _note: -1, pitch: "*", name: "Catch-all" },
           ],
         },
       ];

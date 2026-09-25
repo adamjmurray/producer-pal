@@ -362,6 +362,10 @@ deleted and a `detail` saying why it stopped.
 `{id, path}` for the scene it fired; the name it never changed is a read, so
 `ppal-read-scene` is where it comes from now.
 
+**`ppal-read-device` drum pads drop `note`.** A pad reports its `pitch` (`C1`,
+or `*` for the catch-all) and no longer the MIDI number beside it. Pads are
+addressed by pitch (`pC1`); if you need the number, convert the pitch (C1 = 36).
+
 **`ppal-library` with one `searches` entry answers like a plain search.** One
 entry needs no grouping, so the result is `{items, ...}` rather than
 `{results: [{label, items}]}`. An empty `searches: []` is refused up front

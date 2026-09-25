@@ -42,9 +42,9 @@ Same as `chains` but for rack return chains. Same depth behavior.
 
 Adds drum pad list for drum rack devices. Same depth behavior as `chains`.
 
-| Field      | Type        | Description                                    |
-| ---------- | ----------- | ---------------------------------------------- |
-| `drumPads` | `DrumPad[]` | Drum pads with path, note, pitch, name, chains |
+| Field      | Type        | Description                              |
+| ---------- | ----------- | ---------------------------------------- |
+| `drumPads` | `DrumPad[]` | Drum pads with path, pitch, name, chains |
 
 ## Include: `"drum-map"`
 

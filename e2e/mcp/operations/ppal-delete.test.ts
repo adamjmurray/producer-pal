@@ -540,7 +540,6 @@ interface DrumPadRead {
   id: string;
   path: string;
   name: string;
-  note: number;
   pitch: string;
   chains: unknown[];
 }

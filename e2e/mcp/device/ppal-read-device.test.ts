@@ -163,6 +163,11 @@ describe("ppal-read-device", () => {
     expect(drumRack.drumPads).toBeDefined();
     expect(drumRack.drumPads!.length).toBeGreaterThanOrEqual(4); // C1, D1, Eb1, Gb1
 
+    // `pitch` names the pad; the MIDI number would only repeat it.
+    for (const drumPad of drumRack.drumPads!) {
+      expect(drumPad).not.toHaveProperty("note");
+    }
+
     // Test 2: Read drum pad by path (t0/d0/pC1 - Kick)
     const padResult = await ctx.client!.callTool({
       name: "ppal-read-device",
@@ -317,6 +322,5 @@ interface ReadDeviceResult {
   drumPads?: Array<{
     id: string;
     name: string;
-    note: string;
   }>;
 }
