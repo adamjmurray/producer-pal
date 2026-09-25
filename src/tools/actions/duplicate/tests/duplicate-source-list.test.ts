@@ -453,6 +453,95 @@ describe("duplicate - a list of sources", () => {
       ]);
     });
 
+    // Same rule as one source with the same toPath: the slot entry is refused
+    // on its own entry, not copied into the session with a warning.
+    it.each([
+      ["toPath", { toPath: "t3/s0,t2[5|1]" }],
+      ["arrangementStart", { toPath: "t3/s0,t2", arrangementStart: "5|1" }],
+    ])(
+      "refuses a clip slot entry beside an arrangement one (%s)",
+      async (_label, destination) => {
+        registerTwoSlotSources([[3, 0]]);
+        registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+        const copy = registerArrangementClip(2, 0, 16);
+
+        const result = await duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          ...destination,
+          name: "A,B",
+        });
+
+        expect(result).toStrictEqual([
+          {
+            path: "t3/s0",
+            ok: false,
+            reason:
+              "a clip slot can't take an arrangement copy; " +
+              'name a track\'s arrangement instead, as "t3[5|1]"',
+          },
+          { id: "live_set tracks 2 arrangement_clips 0", path: "t2[5|1]" },
+        ]);
+        // The refused entry still takes its name, so the copy gets the second.
+        expect(copy.set).toHaveBeenCalledWith("name", "B");
+        expect(capturedWarnings()).not.toContainEqual(
+          expect.stringContaining("arrangementStart ignored"),
+        );
+      },
+    );
+
+    // With no arrangement entry at all, toPath wins: every copy goes to its
+    // slot and arrangementStart is dropped with a warning.
+    it("lands slot-only destinations in the session beside arrangementStart", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0,t3/s0",
+        arrangementStart: "5|1",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "clipA-in-t2s0", path: "t2/s0" },
+        { id: "clipB-in-t3s0", path: "t3/s0" },
+      ]);
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("arrangementStart ignored"),
+      );
+    });
+
+    // Same rule as one source with the same toPath: once any entry carries a
+    // position, every arrangement entry needs its own, and nothing is copied.
+    it.each([["t3[5|1],t2"], ["t2,t3[5|1]"]])(
+      "refuses a track with no position beside a positioned one (%s)",
+      async (toPath) => {
+        registerArrangementSources("clipA", "clipB");
+
+        const tracks = [2, 3].map((trackIndex) =>
+          registerTrackWithArrangementDup(trackIndex, { has_midi_input: 1 }),
+        );
+
+        await expect(
+          duplicate({ type: "clip", id: "clipA,clipB", toPath }),
+        ).rejects.toThrow(
+          'toPath "t2" names no position; add one, as "t2[5|1]"',
+        );
+
+        for (const track of tracks) {
+          expect(track.call).not.toHaveBeenCalledWith(
+            "duplicate_clip_to_arrangement",
+            expect.anything(),
+            expect.anything(),
+          );
+        }
+      },
+    );
+
     // Neither list cycles, so a count matching neither one source nor all of
     // them has no reading. Nothing has run, so the call is refused whole.
     it("refuses a toPath too short for the sources", async () => {

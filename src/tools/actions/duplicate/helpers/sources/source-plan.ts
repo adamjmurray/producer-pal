@@ -173,8 +173,23 @@ export function resolveSourceClipDestinations(
     return sources.map(() => shared);
   }
 
+  // Each share resolves as part of the whole list, as one source's would: a
+  // slot beside an arrangement entry is refused, and a track beside a
+  // positioned entry needs its own position.
+  const beside = {
+    arrangement:
+      hasArrangementParams &&
+      sources.some((source) => namesArrangementEntry(source.toPath)),
+    position: sources.some((source) => pathCarriesPosition(source.toPath)),
+  };
+
   return sources.map((source) =>
-    resolveClipDestinations(source.toPath, source.toSlot, hasArrangementParams),
+    resolveClipDestinations(
+      source.toPath,
+      source.toSlot,
+      hasArrangementParams,
+      beside,
+    ),
   );
 }
 
@@ -238,6 +253,18 @@ function arrangementShares(
     toSlot: undefined,
     arrangementStart: starts[i],
   }));
+}
+
+/**
+ * Whether a toPath names a spot on the arrangement: any entry that isn't a clip
+ * slot, a bare `[5|1]` included.
+ * @param toPath - One source's destination path(s)
+ * @returns True when some entry isn't a clip slot
+ */
+function namesArrangementEntry(toPath: string | undefined): boolean {
+  return pathEntries(toPath, "toPath").some(
+    (entry) => destinationLane(entry, "toPath")?.kind !== "slot",
+  );
 }
 
 /**

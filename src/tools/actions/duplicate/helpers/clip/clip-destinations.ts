@@ -46,6 +46,17 @@ export interface DuplicateArrangementTarget extends Omit<
   trackIndex: number | null;
 }
 
+/** What the entries other sources took name, when sources split a toPath. */
+export interface BesideEntries {
+  /** Some entry lands on the arrangement, so a slot here is refused. */
+  arrangement: boolean;
+  /** Some entry carries a position, so a track here needs its own. */
+  position: boolean;
+}
+
+/** A source alone in its call: nothing beside it. */
+const ALONE: BesideEntries = { arrangement: false, position: false };
+
 export interface ClipDestinations {
   destination: "session" | "arrangement";
   /** Clip slots, in order. Empty for arrangement destinations. */
@@ -72,12 +83,14 @@ export interface ClipDestinations {
  * @param rawToPath - Destination path(s), comma-separated for multiple
  * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
  * @param hasArrangementParams - Whether arrangementStart was given
+ * @param beside - What other sources' toPath entries name
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
   hasArrangementParams: boolean,
+  beside: BesideEntries = ALONE,
 ): ClipDestinations {
   const { value: toPath, aliasValue: toSlot } = refuseDoubledSpelling({
     param: "toPath",
@@ -97,7 +110,7 @@ export function resolveClipDestinations(
   );
 
   if (hasArrangementParams) {
-    return arrangementDestinations(entries);
+    return arrangementDestinations(entries, beside);
   }
 
   if (entries.length === 0) {
@@ -237,15 +250,19 @@ function legacySlotDestinations(
  * comma-separated values from splitting at all — Live is then handed the whole
  * string, which fails the call after a copy has already landed.
  * @param entries - Parsed clip destinations, lane and position apart
+ * @param beside - What other sources' entries name: these slots are part of a
+ *   mixed list, or these tracks need positions of their own
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(
   entries: ClipDestinationPath[],
+  beside: BesideEntries,
 ): ClipDestinations {
-  // A coordinate is its own entry's position, so when any entry carries one
-  // every arrangement entry needs one of its own: arrangementStart was refused
-  // alongside them, and there is nothing else to fall back on.
-  const fromPath = entries.some((entry) => entry.position != null);
+  // A coordinate is its own entry's position, so when any entry — this
+  // source's or another's — carries one, every arrangement entry needs one of
+  // its own: arrangementStart was refused alongside them.
+  const fromPath =
+    beside.position || entries.some((entry) => entry.position != null);
   const slots: ClipSlotPosition[] = [];
   const arrangementTargets: (DuplicateArrangementTarget | null)[] = [];
   const arrangementRefusals: (TargetSkip | null)[] = [];
@@ -293,10 +310,13 @@ function arrangementDestinations(
     .join(", ");
 
   // toPath names where the copy goes; arrangementStart only says where on a
-  // track. With nothing but clip slots, the position has no track to apply
-  // to, so toPath is the one that survives. A coordinate can't reach here: a
-  // clip slot has no room for one, so a slot-only toPath names no position.
-  if (arrangementTargets.every((target) => target == null)) {
+  // track. With nothing but clip slots, across every source, the position has
+  // no track to apply to, so toPath is the one that survives. A coordinate
+  // can't reach here: a clip slot has no room for one.
+  if (
+    !beside.arrangement &&
+    arrangementTargets.every((target) => target == null)
+  ) {
     console.warn(
       `arrangementStart ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',

@@ -120,7 +120,7 @@ async function duplicateClipToArrangementPositions(
   const requested = applyTakeLaneAlias(resolved.destinations, takeLane);
 
   const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
-    resolveSongPositions(arrangementStart, destinations.arrangementPositions);
+    resolveSongPositions(arrangementStart, destinations);
 
   const {
     copies,
@@ -332,12 +332,13 @@ async function makeCopies({
  * otherwise. Only one of the two is ever in play: a call sending both is
  * refused before it starts.
  * @param arrangementStart - Comma-separated bar|beat positions
- * @param pathPositions - The position each destination's own `[...]` named
+ * @param destinations - The destinations, with the position each one's own
+ *   `[...]` named
  * @returns The song time signature and one position per entry, in Ableton beats
  */
 function resolveSongPositions(
   arrangementStart: string | undefined,
-  pathPositions: (string | null)[],
+  destinations: ClipDestinations,
 ): {
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
@@ -350,7 +351,13 @@ function resolveSongPositions(
   const songTimeSigDenominator = liveSet.getProperty(
     "signature_denominator",
   ) as number;
-  const fromPath = pathPositions.some((position) => position != null);
+  const pathPositions = destinations.arrangementPositions;
+  const targets = destinations.arrangementTargets;
+  // A source whose every entry is a refused clip slot lands nothing, so it
+  // needs no position — and may have none, when the others came from toPath.
+  const fromPath =
+    pathPositions.some((position) => position != null) ||
+    (targets.length > 0 && targets.every((target) => target == null));
 
   return {
     songTimeSigNumerator,

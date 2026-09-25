@@ -150,9 +150,9 @@ describe("duplicate - arrangementLength refused before any write", () => {
   });
 
   it.each([["bogus"], ["2bar,bogus"]])(
-    "refuses %s before a first source bound for a slot is copied",
+    "refuses %s before the arrangement copy beside a refused slot",
     async (length) => {
-      const { slot } = registerMixedSources();
+      const { slot, track1 } = registerMixedSources();
 
       await expect(
         duplicate({
@@ -163,6 +163,7 @@ describe("duplicate - arrangementLength refused before any write", () => {
         }),
       ).rejects.toThrow(BAD_FORMAT);
 
+      expectNoCopies(track1);
       expect(slot.call).not.toHaveBeenCalledWith(
         "duplicate_clip_to",
         expect.anything(),
@@ -173,7 +174,7 @@ describe("duplicate - arrangementLength refused before any write", () => {
     },
   );
 
-  it("refuses a later slot source's bad entry before the first is copied", async () => {
+  it("refuses a bad length on a refused slot entry before the first copy", async () => {
     const { slot, track1 } = registerMixedSources();
 
     await expect(

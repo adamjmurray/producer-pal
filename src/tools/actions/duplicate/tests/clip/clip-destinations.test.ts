@@ -185,6 +185,30 @@ describe("resolveClipDestinations", () => {
       );
     });
 
+    // Another source's share holds the arrangement entry, so this slot-only
+    // share is refused on its own entry, just as in one source's mixed list.
+    it("refuses a slot-only share when the call names the arrangement", () => {
+      const warnSpy = vi.spyOn(console, "warn");
+
+      expect(
+        resolveClipDestinations("t2/s1", undefined, true, {
+          arrangement: true,
+          position: true,
+        }),
+      ).toStrictEqual(arrangementResult([null], [null], [slotRefusal(2, 1)]));
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    // Another source's share carries a position, so this track needs its own.
+    it("refuses a track share with no position beside a positioned one", () => {
+      expect(() =>
+        resolveClipDestinations("t2", undefined, true, {
+          arrangement: true,
+          position: true,
+        }),
+      ).toThrow('toPath "t2" names no position; add one, as "t2[5|1]"');
+    });
+
     // The dropped slot keeps its place as a null, so the two lane entries stay
     // where the caller wrote them.
     it("keeps both lane entries when a dropped slot shares the list", () => {
