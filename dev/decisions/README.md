@@ -115,3 +115,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target  |
 | [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |
 | [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                  |
+| [0051](0051-a-write-that-did-nothing-says-so.md)                   | A write that did nothing says so                                      |

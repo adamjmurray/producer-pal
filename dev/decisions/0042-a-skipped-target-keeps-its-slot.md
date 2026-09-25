@@ -5,6 +5,9 @@
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md)
 - **Amended by:** [ADR-0050](0050-an-entry-explains-itself-in-detail.md) — the
   entry's `reason` was renamed `detail`, on a skip too.
+- **Amended by:** [ADR-0051](0051-a-write-that-did-nothing-says-so.md) — a write
+  that did nothing is refused on its entry; locators and named-twice entries
+  match the rest.
 
 ## Context
 
