@@ -124,6 +124,11 @@ UI.
   outside that file — numbering shifts as principles merge and split; state the
   idea instead.
 
+- **Fix the class, not the instance.** When a review finds a tool breaking a
+  rule in `dev/PRINCIPLES.md`, check every tool that applies that rule before
+  fixing. Fix them together, in shared code where you can, with a test that
+  covers all of them.
+
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
   async context to do that automatically. So: adding an `await` to
