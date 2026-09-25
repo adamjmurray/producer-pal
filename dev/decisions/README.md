@@ -114,4 +114,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0047](0047-an-arrangement-write-overwrites-and-says-so.md)        | An arrangement write overwrites, and says so on the entry             |
 | [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target  |
 | [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |
-| [0050](0050-reason-explains-a-skip.md)                             | `reason` explains a skip; everything else is a `note`                 |
+| [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                  |

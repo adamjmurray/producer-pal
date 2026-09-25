@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Date logged:** 2026-09-12
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md)
-- **Amended by:** [ADR-0050](0050-reason-explains-a-skip.md) — a `reason` on an
-  entry that worked was renamed `note`.
+- **Amended by:** [ADR-0050](0050-an-entry-explains-itself-in-detail.md) — the
+  entry's `reason` was renamed `detail`, on a skip too.
 
 ## Context
 
@@ -22,7 +22,7 @@ that did what it asked.
 The read tools had already settled the shape
 ([0543a591](https://github.com/adamjmurray/producer-pal/commit/0543a591)): one
 entry per target, and a target that couldn't be read holding its slot as
-`{ id | path, ok: false, reason }`.
+`{ id | path, ok: false, detail }`.
 
 ## Decision
 
@@ -34,25 +34,25 @@ couldn't carry out keeps its slot as a skip entry:
 - `ok` appears **only on a skip**. A target that worked says so by having a
   result, and a key per hit is paid for again and again in the caller's context
   window.
-- `reason` is prose — the same words a single target would have thrown. No
+- `detail` is prose — the same words a single target would have thrown. No
   snake_case slugs.
 - **A skip is never also a warning.** Anything about a target belongs in that
   target's entry; warnings are for what no entry can hold.
 
 **One target that can't be done throws.** Nothing was written and there is no
-list for an entry to hold a place in, so the reason goes back as the error it
+list for an entry to hold a place in, so the detail goes back as the error it
 would have been all along. `update-track path="t99"` used to return `[]` and a
 warning.
 
 **A target that needed no work is not a skip.** It gets its normal entry plus a
-`note` saying why there was nothing to do, and no `ok`: `delete` of a missing
-`t99` is `{ path: "t99", type: "track", note: "nothing to delete" }`. The delete
-it asked for has already happened, so a lone one is satisfied rather than
+`detail` saying why there was nothing to do, and no `ok`: `delete` of a missing
+`t99` is `{ path: "t99", type: "track", detail: "nothing to delete" }`. The
+delete it asked for has already happened, so a lone one is satisfied rather than
 refused — only a lone `ok: false` throws.
 
 **A target the call could only half serve keeps its normal entry too.** Some
 params landed and some did not, so the entry is the one a full hit would have
-plus a `note` naming what did not land. `ok: false` is for the other case:
+plus a `detail` naming what did not land. `ok: false` is for the other case:
 nothing the call asked of that target landed.
 
 **A read miss stays `ok: false` even so.** A read can't be satisfied by an
@@ -78,20 +78,19 @@ target, so no entry exists yet to carry them.
 - **"nothing to delete" as `ok: false`.** Simpler to implement and wrong: it
   would make `delete t99` an error for a Set that is already in the state the
   caller asked for, and a model retrying it can never succeed.
-- **A skip entry for a target that needed no work, with no note.** Silent no-ops
-  read as hits. The note is what stops a model from believing a clip it never
-  had was deleted.
+- **A skip entry for a target that needed no work, with no detail.** Silent
+  no-ops read as hits. The detail is what stops a model from believing a clip it
+  never had was deleted.
 
 ## Consequences
 
 - **`deleted` is gone from `ppal-delete`.** A removed object reports
   `deletedPath`, a pad that was cleared reports `path`, and a failure reports
-  `ok: false` with a reason. Documented for callers in
+  `ok: false` with a detail. Documented for callers in
   [migration](../../docs/guide/migration.md).
 - **Per-target warnings moved into entries.** The Producer Pal device, the host
   track, the main track, a take-lane clip, a rack chain, a delete Live refused —
-  each is on its own entry now (a `reason` on a skip, else a `note`), and warns
-  nowhere.
+  each is its own entry's `detail` now, and warns nowhere.
 - **One helper owns the fan-out.**
   [`writeFanOut`](../../src/tools/shared/validation/lists/write-fan-out.ts) runs
   each target's body in a try/catch and turns a throw into that target's skip
@@ -118,23 +117,23 @@ target, so no entry exists yet to carry them.
   outright, since where the clip still sits is nothing the caller asked about. A
   clip named twice is updated as its last mention asks; the earlier mention
   holds its slot as a normal entry pointing at the later one, and a clip that
-  was written but not as asked keeps its entry with a `note`: a throw partway, a
-  move refused beside a name or a length that landed, a re-create and what it
+  was written but not as asked keeps its entry with a `detail`: a throw partway,
+  a move refused beside a name or a length that landed, a re-create and what it
   cost, a take-lane leftover, a move that replaced the clip already in the
   destination slot. A param the clip can't take — notes, preTransforms,
   duplicateLoop or quantize on an audio clip, warp markers or the audio params
   (gainDb, pitchShift, warpMode, warping) on a MIDI clip, firstStart on a clip
   that isn't looping or past its content end, warping off while looping — is a
-  note on its entry too, and a skip when it was all the call asked of the clip.
-  The move and arrangement helpers report all of it on the clip's entry instead
-  of warning, through a per-call collector keyed by the clip id the call found;
-  a step that writes under a new id — a move re-creates the clip — hands what it
-  reports back to the id the caller named. One target never answers with no
-  entries: a split whose pieces the rescan can't find says so too. A clip
+  detail on its entry too, and a skip when it was all the call asked of the
+  clip. The move and arrangement helpers report all of it on the clip's entry
+  instead of warning, through a per-call collector keyed by the clip id the call
+  found; a step that writes under a new id — a move re-creates the clip — hands
+  what it reports back to the id the caller named. One target never answers with
+  no entries: a split whose pieces the rescan can't find says so too. A clip
   another clip in the same call was moved onto keeps a normal entry rather than
   a skip — `deleted: true` and the address it had: nothing the call asked of it
   landed, but that it is gone is news no skip can carry. When several clips name
-  one slot, the last one moves there and the others stay put, each with a note
+  one slot, the last one moves there and the others stay put, each with a detail
   naming that clip, or a skip when the move was all it was asked.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
@@ -144,34 +143,34 @@ target, so no entry exists yet to carry them.
   (the last one wins), a track that won't take the clip, a create Live declined,
   a take lane past the cap, one the deadline never reached. The deadline warning
   only says how far the call got. A `firstStart` the call can't use — it only
-  lands alongside `looping: true` — is a `note` on that clip's entry rather than
-  a warning, and no `ok`: the clip exists.
+  lands alongside `looping: true` — is a `detail` on that clip's entry rather
+  than a warning, and no `ok`: the clip exists.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry
   reports them as `created: "s8-s9"` (a target that then failed names them in
-  its `reason`) — the path alone says what to make, and a caller can't pair its
+  its `detail`) — the path alone says what to make, and a caller can't pair its
   own request against scenes it was never told about. Past the auto-create cap,
   and on a track that isn't there, the destination is still refused.
   update-scene's `path` names a target rather than a destination, so it stays a
-  refusal, with create-scene named in the reason.
+  refusal, with create-scene named in its `detail`.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
-  `note` on the lane's own entry, which otherwise reads like any other hit.
+  `detail` on the lane's own entry, which otherwise reads like any other hit.
   `ok: false` only when the lane was neither created nor named, so nothing the
   call asked of it landed.
 - **duplicate answers per destination named.** A destination no copy landed at
-  keeps its slot as `{path, ok: false, reason}` — a track that won't take the
+  keeps its slot as `{path, ok: false, detail}` — a track that won't take the
   clip, a copy Live declined, a take lane past the cap, a re-create that failed,
   a destination the deadline never reached, one the plan dropped because a clip
   slot can't take an arrangement copy. A copy that landed incomplete is a clip
-  entry with a `note`, not a skip: it exists, so losing it from the result would
-  cost the caller a clip. The path is spelled the way a copy that landed there
-  would report it, so it pastes back into `toPath`. The deadline warning still
-  names what it never reached, and counts only copies that exist.
+  entry with a `detail`, not a skip: it exists, so losing it from the result
+  would cost the caller a clip. The path is spelled the way a copy that landed
+  there would report it, so it pastes back into `toPath`. The deadline warning
+  still names what it never reached, and counts only copies that exist.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
-  hands back why rather than warning it, so the destination's reason says what
+  hands back why rather than warning it, so the destination's `detail` says what
   the caller can act on
   (`the destination already has an instrument, and only one is allowed`) instead
   of only that the copy didn't move. It names a rack or a pad rather than a
@@ -180,10 +179,10 @@ target, so no entry exists yet to carry them.
   is addressed by the source's `id` or `path` instead. A destination that used
   to drop out with a warning (no rack there, a rack of the wrong kind, a path
   naming something that isn't a pad, a pad copied onto itself, a destination
-  Live wouldn't take the copy at) is that entry's `reason` now. So is a source
+  Live wouldn't take the copy at) is that entry's `detail` now. So is a source
   no destination could be copied from, such as a return chain: it is reported on
   every destination it was given, and a lone one throws. A copy that landed
-  incomplete keeps its entry with a `note` rather than being rolled back — a
+  incomplete keeps its entry with a `detail` rather than being rolled back — a
   chain whose devices didn't all cross, a pad copy that layered onto chains
   already there. `count`, which none of these types uses, is still a warning: it
   is about the call, not a destination.
@@ -191,10 +190,10 @@ target, so no entry exists yet to carry them.
   answers with one entry per param sent: a disabled param, an ambiguous name, an
   unreadable value, a unit that can't be checked, a write Live ignored, a nested
   path that resolved to nothing, a resolution that threw, a param a chain or pad
-  has no use for — each is `ok: false` with a reason on that param's own entry
+  has no use for — each is `ok: false` with a detail on that param's own entry
   now, and warns nowhere. A param whose value Live changed on the way in (a
   clamp, the nearest step of a coarse ladder) reports the value it reads as plus
-  a note, and no `ok`. A specialized pseudo-param answers the same way: a
+  a detail, and no `ok`. A specialized pseudo-param answers the same way: a
   `PseudoParam.write` returns the reason it refused a value rather than a
   boolean, so the refusal reaches the caller as that param's own entry.
 - **The params that never go through `params` report on the target.** `gainDb`,
@@ -207,17 +206,17 @@ target, so no entry exists yet to carry them.
 - **A rack's return chains are the rack's, so a send that names none is the
   chain's.** `sends` (and the `sendGainDb`/`sendReturn` pair) on a chain or pad
   naming no return chain of its rack is that send's own
-  `{return, ok: false, reason}` on the chain's entry, the return spelled the way
+  `{return, ok: false, detail}` on the chain's entry, the return spelled the way
   the caller wrote it. update-track's own three — no mixer, no sends, no send
   for that return — are facts about the track rather than about the Live Set,
   and answer the same way. Which return _tracks_ exist is a fact about the Set,
   so it is resolved once for the call, but a send naming none is still that
-  send's own `{return, ok: false, reason}` on every track the call named.
+  send's own `{return, ok: false, detail}` on every track the call named.
 - **A type-addressed device path that names nothing reports once.** `t0/inst` on
   a track with no instrument substitutes a fallback index, and what the
   container does hold rides back on the resolution instead of a warning: the
   target's own report carries it
   (`nothing at path "t0/inst": t0 has no instrument`), whether that is an
-  entry's reason or a single-target error. The fallback index lands one past the
-  last device, so `delete` reads it as the empty place an out-of-range `d<n>`
-  names: `nothing to delete`, and no `ok`.
+  entry's `detail` or a single-target error. The fallback index lands one past
+  the last device, so `delete` reads it as the empty place an out-of-range
+  `d<n>` names: `nothing to delete`, and no `ok`.
