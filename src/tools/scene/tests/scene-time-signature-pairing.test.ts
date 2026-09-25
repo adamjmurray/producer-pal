@@ -77,6 +77,30 @@ describe("createScene timeSignature pairing", () => {
     ).toThrow("Time signature must be in format");
     expect(scenes[2]?.set).not.toHaveBeenCalled();
   });
+
+  it.each(["4-4", "4/0"])(
+    "refuses a malformed %s before capturing anything",
+    (timeSignature) => {
+      const liveSet = registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: [] },
+      });
+      const appView = registerMockObject("live_set/view", {
+        path: livePath.view.song,
+      });
+
+      registerMockObject("live_set/view/selected_scene", {
+        path: livePath.scene(1),
+      });
+
+      expect(() => createScene({ capture: true, timeSignature })).toThrow(
+        /Time signature/,
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+      expect(appView.set).not.toHaveBeenCalled();
+      expect(scenes[2]?.set).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("updateScene timeSignature pairing", () => {

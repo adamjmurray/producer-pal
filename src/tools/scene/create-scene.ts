@@ -180,9 +180,9 @@ function runCapture(
   name: string | undefined,
   focus: boolean | undefined,
 ): CaptureSceneResult & LandedColor {
-  // A malformed color would otherwise only surface inside setColor, after
-  // captureScene has already captured the playing clips into a real scene.
+  // Check these before capturing: they're only applied after the scene exists.
   pairLabels({ noun: "scene", count: 1, color: props.color });
+  validateTimeSignatures(props.timeSignature, null);
 
   // The index is Live's answer to where the capture landed; it stays out of
   // the result, where `path` already says it.
