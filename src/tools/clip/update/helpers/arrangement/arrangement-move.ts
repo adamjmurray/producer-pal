@@ -415,6 +415,11 @@ function shortenThenMove(
   try {
     // Never null: a non-survivor doesn't shorten first.
     finalClipId = moveArrangementClip(args) as string;
+
+    // A refused move already said why, but not that the clip is now shorter.
+    if (finalClipId === clip.id) {
+      noteClipReason(reasons, clip.id, "shortened in place");
+    }
   } catch (error) {
     noteClipReason(
       reasons,

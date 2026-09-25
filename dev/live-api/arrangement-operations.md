@@ -387,7 +387,8 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
 
 If the second step throws, the clip's entry says what landed:
 `shortened, but the move didn't finish` or
-`moved, but arrangementLength didn't finish`.
+`moved, but arrangementLength didn't finish`. A move refused after the
+shortening adds `shortened in place` to the refusal.
 
 **The duplicate clears its destination range first**, so it destroys whatever
 sat there — including another clip the same call names. A take-lane create does

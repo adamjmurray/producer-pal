@@ -199,6 +199,7 @@ describe("handleArrangementOperations - move and resize order", () => {
 
     expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
     expect(reasons.landed.has(SOURCE)).toBe(true);
+    expect(joinedClipReason(reasons, SOURCE)).toBe("shortened in place");
   });
 
   it("keeps a moved clip's entry when the resize after it throws", () => {

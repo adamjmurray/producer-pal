@@ -24,6 +24,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
+  DRUM_LOOP_8BAR_FILE,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -476,6 +477,37 @@ describe("arrangement clip moved and shortened in one call", () => {
     ).toBe(neighbor.id);
     expect(
       await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "661|1"),
+    ).toBeUndefined();
+  });
+
+  // Audio shortening takes its own route, through the session holding area.
+  it("leaves an audio clip just past the new end alone", async () => {
+    const source = await createAudioClipAt(
+      `t${AUDIO_TRACK}[101|1]`,
+      "Shrinking Audio",
+      DRUM_LOOP_8BAR_FILE,
+    );
+    const neighbor = await createAudioClipAt(
+      `t${AUDIO_TRACK}[112|1]`,
+      "Audio Past The End",
+      SAMPLE_FILE,
+    );
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      arrangementStart: "111|1",
+      arrangementLength: "1bar",
+    });
+
+    expect(moved.path).toBe(`t${AUDIO_TRACK}[111|1]`);
+    expect(
+      (await arrangementClipAt(ctx.client!, AUDIO_TRACK, "111|1"))
+        ?.arrangementLength,
+    ).toBe("1bar");
+    expect(
+      (await arrangementClipAt(ctx.client!, AUDIO_TRACK, "112|1"))?.id,
+    ).toBe(neighbor.id);
+    expect(
+      await arrangementClipAt(ctx.client!, AUDIO_TRACK, "101|1"),
     ).toBeUndefined();
   });
 });
