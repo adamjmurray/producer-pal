@@ -42,7 +42,7 @@ interface HandleUnloopedLengtheningArgs {
  * @param options.clipStartMarker - Clip start marker position
  * @param options.track - The LiveAPI track object
  * @param options.reasons - What each clip has to say beyond its result
- * @returns Array of updated clip info
+ * @returns The clip when it was resized, or empty when it couldn't grow
  */
 export function handleUnloopedLengthening({
   clip,
@@ -54,8 +54,6 @@ export function handleUnloopedLengthening({
   track,
   reasons,
 }: HandleUnloopedLengtheningArgs): ClipIdResult[] {
-  const updatedClips: ClipIdResult[] = [];
-
   // MIDI clip handling — set loop_end to extend arrangement length directly
   if (!isAudioClip) {
     const currentEndMarker = clip.getProperty("end_marker") as number;
@@ -71,9 +69,7 @@ export function handleUnloopedLengthening({
 
     clip.set("loop_end", loopStart + arrangementLengthBeats);
 
-    updatedClips.push({ id: clip.id });
-
-    return updatedClips;
+    return [{ id: clip.id }];
   }
 
   // Audio clip handling - tile with chunks matching the current arrangement length
@@ -85,33 +81,34 @@ export function handleUnloopedLengthening({
 
   // Zero-content clips have nothing to tile
   if (contentLength <= EPSILON) {
-    updatedClips.push({ id: clip.id });
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "arrangementLength unchanged: the clip shows no audio to lengthen",
+    );
 
-    return updatedClips;
+    return [];
   }
 
-  updatedClips.push({ id: clip.id });
+  const grew = isWarped
+    ? lengthenWarpedUnloopedAudio(
+        clip,
+        track,
+        arrangementLengthBeats,
+        currentArrangementLength,
+        clipStartMarker,
+        reasons,
+      )
+    : lengthenUnwarpedAudio(
+        clip,
+        arrangementLengthBeats,
+        currentArrangementLength,
+        currentEndTime,
+        reasons,
+      );
 
-  if (isWarped) {
-    lengthenWarpedUnloopedAudio(
-      clip,
-      track,
-      arrangementLengthBeats,
-      currentArrangementLength,
-      clipStartMarker,
-      reasons,
-    );
-  } else {
-    lengthenUnwarpedAudio(
-      clip,
-      arrangementLengthBeats,
-      currentArrangementLength,
-      currentEndTime,
-      reasons,
-    );
-  }
-
-  return updatedClips;
+  // A clip that didn't grow isn't reported as resized, so the refusal stands.
+  return grew ? [{ id: clip.id }] : [];
 }
 
 // --- Helpers below main exports ---
@@ -126,6 +123,7 @@ export function handleUnloopedLengthening({
  * @param currentArrangementLength - Current arrangement length in beats
  * @param clipStartMarker - Clip's start_marker position
  * @param reasons - What each clip has to say beyond its result
+ * @returns Whether the clip grew
  */
 function lengthenWarpedUnloopedAudio(
   clip: LiveAPI,
@@ -134,7 +132,7 @@ function lengthenWarpedUnloopedAudio(
   currentArrangementLength: number,
   clipStartMarker: number,
   reasons: ClipReasons,
-): void {
+): boolean {
   const filePath = clip.getProperty("file_path") as string;
 
   // Create session clip with minimal loop_end (1) to detect file content boundary
@@ -157,7 +155,7 @@ function lengthenWarpedUnloopedAudio(
   if (totalContentFromStart <= currentArrangementLength + EPSILON) {
     noteNothingToShow(reasons, clip.id);
 
-    return;
+    return false;
   }
 
   // Cap effective target to available file content
@@ -183,6 +181,8 @@ function lengthenWarpedUnloopedAudio(
   if (targetEndMarker > currentEndMarker) {
     clip.set("end_marker", targetEndMarker);
   }
+
+  return true;
 }
 
 /**
@@ -193,6 +193,7 @@ function lengthenWarpedUnloopedAudio(
  * @param currentArrangementLength - Current arrangement length in beats
  * @param currentEndTime - Current end time in beats
  * @param reasons - What each clip has to say beyond its result
+ * @returns Whether the clip grew
  */
 function lengthenUnwarpedAudio(
   clip: LiveAPI,
@@ -200,7 +201,7 @@ function lengthenUnwarpedAudio(
   currentArrangementLength: number,
   currentEndTime: number,
   reasons: ClipReasons,
-): void {
+): boolean {
   const loopStart = clip.getProperty("loop_start") as number;
   const loopEnd = clip.getProperty("loop_end") as number;
   const currentDurationSec = loopEnd - loopStart;
@@ -219,9 +220,15 @@ function lengthenUnwarpedAudio(
 
   if (actualArrangementLength <= currentArrangementLength + EPSILON) {
     noteNothingToShow(reasons, clip.id);
-  } else if (actualArrangementLength < arrangementLengthBeats - EPSILON) {
+
+    return false;
+  }
+
+  if (actualArrangementLength < arrangementLengthBeats - EPSILON) {
     noteCappedAt(reasons, clip.id, actualArrangementLength);
   }
+
+  return true;
 }
 
 /**

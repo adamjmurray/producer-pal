@@ -10,6 +10,8 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type CreateClipResult,
@@ -189,6 +191,8 @@ export type LengthenResult = {
   /** What the update's own entries said, in the order they came back. */
   reasons: string[];
   warnings: string[];
+  /** Whether the call failed: nothing landed on its one clip. */
+  failed: boolean;
 };
 
 /**
@@ -268,6 +272,19 @@ export async function testLengthenClipTo4Bars(
     client,
     trackIndex,
   );
+
+  // A lone clip where nothing landed fails the call, and says why there.
+  if (isToolError(result)) {
+    return {
+      trackType,
+      initialClips: initial.clips,
+      resultClips,
+      reasons: [getToolErrorMessage(result).replace(/^Error: /, "")],
+      warnings: [],
+      failed: true,
+    };
+  }
+
   const { clips, warnings } = parseLengthenResult(result);
   const reasons = clips
     .map((clip) => (clip as { reason?: string }).reason)
@@ -279,5 +296,6 @@ export async function testLengthenClipTo4Bars(
     resultClips,
     reasons,
     warnings,
+    failed: false,
   };
 }

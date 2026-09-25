@@ -351,8 +351,10 @@ The whole-call warning `N clips on t0 moved to the same position` is gone, and
 so are the four warnings about an unlooped audio clip that couldn't reach the
 `arrangementLength` you asked for. That clip's entry now says
 `arrangementLength unchanged: the audio file has no more content to show`, or
-`arrangementLength landed at 2bar: ...` when it grew part of the way. A script
-matching on any of that warning text needs to read the entries instead.
+`arrangementLength landed at 2bar: ...` when it grew part of the way. Where the
+unchanged length was everything you asked of the clip, its entry is `ok: false`,
+and a lone target throws. A script matching on any of that warning text needs to
+read the entries instead.
 
 `ppal-select` is unchanged: what it reports is the selection it made.
 

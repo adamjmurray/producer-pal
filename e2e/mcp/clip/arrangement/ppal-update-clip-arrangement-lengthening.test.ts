@@ -57,27 +57,31 @@ async function expectLengthenedTo4Bars(
   assert(result, expectedLengtheningClips[track]!);
 }
 
-/** A clip that couldn't grow at all says so, and no length with it. */
+/** A clip that couldn't grow at all fails the call, and says why. */
 const assertInPlaceUnchanged = (
   result: LengthenResult,
   expected: ExpectedClip[],
-): void =>
+): void => {
+  expect(result.failed).toBe(true);
   assertLengthenedInPlace(
     result,
     expected,
     `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
   );
+};
 
 /** A clip that grew but not all the way says where it landed. */
 const assertInPlaceCapped = (
   result: LengthenResult,
   expected: ExpectedClip[],
-): void =>
+): void => {
+  expect(result.failed).toBe(false);
   assertLengthenedInPlace(
     result,
     expected,
     new RegExp(`^arrangementLength landed at .+: ${NO_MORE_CONTENT}$`),
   );
+};
 
 /** Unwarped clips are a mix of the two, so only the shared half is pinned. */
 const assertInPlaceRanOut = (

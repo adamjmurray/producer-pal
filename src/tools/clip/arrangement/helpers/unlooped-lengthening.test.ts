@@ -15,6 +15,8 @@ import { joinedClipReason } from "#src/tools/clip/update/helpers/update-clip-tes
 
 const EPSILON = 0.001;
 const NO_MORE_CONTENT = "the audio file has no more content to show";
+const NO_AUDIO_SHOWN =
+  "arrangementLength unchanged: the clip shows no audio to lengthen";
 
 /** What the last run's clip said on its entry. */
 let reasons: ClipReasons = newClipReasons();
@@ -167,7 +169,7 @@ describe("handleUnloopedLengthening", () => {
   });
 
   describe("audio clip content-length gate", () => {
-    it("returns early without lengthening when content length is zero", () => {
+    it("refuses without lengthening when content length is zero", () => {
       // contentLength = end_marker(4) - clipStartMarker(4) = 0 <= EPSILON
       const { result, set, spy } = run({
         props: { warping: 1, end_marker: 4, loop_start: 0, file_path: "x.wav" },
@@ -180,10 +182,11 @@ describe("handleUnloopedLengthening", () => {
 
       expect(spy).not.toHaveBeenCalled();
       expect(set).not.toHaveBeenCalledWith("loop_end", expect.anything());
-      expect(result).toStrictEqual([{ id: "clip-1" }]);
+      expect(result).toStrictEqual([]);
+      expect(clipReason()).toBe(NO_AUDIO_SHOWN);
     });
 
-    it("returns early when content length exactly equals EPSILON", () => {
+    it("refuses when content length exactly equals EPSILON", () => {
       // contentLength = EPSILON; `<= EPSILON` is true, `< EPSILON` would be false
       const { result, spy } = run({
         props: {
@@ -200,14 +203,15 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(spy).not.toHaveBeenCalled();
-      expect(result).toStrictEqual([{ id: "clip-1" }]);
+      expect(result).toStrictEqual([]);
+      expect(clipReason()).toBe(NO_AUDIO_SHOWN);
     });
   });
 
   describe("warped unlooped audio", () => {
     it("caps loop_end at the file content boundary and says where it landed", () => {
       // totalContentFromStart = 20 - 4 = 16, capped below requested 100
-      const { set } = warped({
+      const { result, set } = warped({
         end_marker: 20,
         clipStartMarker: 4,
         fileContentBoundary: 20,
@@ -216,6 +220,7 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16); // loop_start(0) + 16
+      expect(result).toStrictEqual([{ id: "clip-1" }]);
       expect(clipReason()).toBe(
         `arrangementLength landed at 4bar: ${NO_MORE_CONTENT}`,
       );
@@ -225,7 +230,7 @@ describe("handleUnloopedLengthening", () => {
 
     it("says nothing changed when no additional content is available", () => {
       // totalContentFromStart(8) == currentArrangementLength(8)
-      const { set } = warped({
+      const { result, set } = warped({
         end_marker: 12,
         clipStartMarker: 4,
         fileContentBoundary: 12,
@@ -237,6 +242,8 @@ describe("handleUnloopedLengthening", () => {
         `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
       );
       expect(set).not.toHaveBeenCalledWith("loop_end", expect.anything());
+      // Nothing grew, so no clip counts as resized.
+      expect(result).toStrictEqual([]);
     });
 
     it("skips at the exact no-content boundary (content == current + EPSILON)", () => {
@@ -309,11 +316,12 @@ describe("handleUnloopedLengthening", () => {
 
     it("says nothing changed at the file boundary", () => {
       // actualArrangementLength == currentArrangementLength(8)
-      unwarped({ end_time: 8 });
+      const { result } = unwarped({ end_time: 8 });
 
       expect(clipReason()).toBe(
         `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
       );
+      expect(result).toStrictEqual([]);
     });
 
     it("says nothing changed at the exact boundary (actual == current + EPSILON)", () => {
@@ -327,8 +335,9 @@ describe("handleUnloopedLengthening", () => {
 
     it("says where it landed when it falls short of the request", () => {
       // actual(12) is between current(8) and requested(16)
-      unwarped({ end_time: 12 });
+      const { result } = unwarped({ end_time: 12 });
 
+      expect(result).toStrictEqual([{ id: "clip-1" }]);
       expect(clipReason()).toBe(
         `arrangementLength landed at 3bar: ${NO_MORE_CONTENT}`,
       );

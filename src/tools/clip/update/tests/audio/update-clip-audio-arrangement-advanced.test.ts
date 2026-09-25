@@ -79,6 +79,8 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
 
 const NOTHING_MORE =
   "arrangementLength unchanged: the audio file has no more content to show";
+const CAPPED =
+  "arrangementLength landed at 2bar+n/2: the audio file has no more content to show";
 
 describe("Unlooped unwarped audio clips - arrangementLength extension via loop_end", () => {
   /**
@@ -114,11 +116,12 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     return clip!;
   }
 
+  // end_time is read twice: before the resize and after it.
   it("should extend unwarped clip by setting loop_end (hidden content)", async () => {
     const clip = setupUnwarpedClip(
       "800",
       "Unwarped Audio",
-      new MockSequence(6.0, 6.0, 12.0),
+      new MockSequence(6.0, 12.0),
     );
 
     const result = await updateClip(
@@ -127,36 +130,42 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     );
 
     expect(clip.set).toHaveBeenCalledWith("loop_end", 6.0);
-    expect(result).toStrictEqual({
-      id: "800",
-      path: "t0[1|1]",
-      reason: NOTHING_MORE,
-    });
+    expect(result).toStrictEqual({ id: "800", path: "t0[1|1]" });
   });
 
-  it.each([
-    {
-      clipId: "810",
-      name: "Unwarped Capped",
-      endTimeSequence: new MockSequence(6.0, 6.0, 9.6),
-      description: "says on the entry that the file boundary capped it",
-    },
-    {
-      clipId: "820",
-      name: "Unwarped No Hidden",
-      endTimeSequence: 6.0 as number | MockSequence,
-      description: "says on the entry that there was no more content",
-    },
-  ])("$description", async ({ clipId, name, endTimeSequence }) => {
-    setupUnwarpedClip(clipId, name, endTimeSequence);
+  it("says on the entry that the file boundary capped it", async () => {
+    setupUnwarpedClip("810", "Unwarped Capped", new MockSequence(6.0, 10.0));
 
     const result = await updateClip(
-      { id: clipId, arrangementLength: "3bar" },
+      { id: "810", arrangementLength: "3bar" },
       mockContext,
     );
 
     expect(result).toStrictEqual({
-      id: clipId,
+      id: "810",
+      path: "t0[1|1]",
+      reason: CAPPED,
+    });
+  });
+
+  it("refuses a lone arrangementLength when there was no more content", async () => {
+    setupUnwarpedClip("820", "Unwarped No Hidden", 6.0);
+
+    await expect(
+      updateClip({ id: "820", arrangementLength: "3bar" }, mockContext),
+    ).rejects.toThrow(NOTHING_MORE);
+  });
+
+  it("keeps the entry, with the reason, when a rename lands beside it", async () => {
+    setupUnwarpedClip("820", "Unwarped No Hidden", 6.0);
+
+    const result = await updateClip(
+      { id: "820", arrangementLength: "3bar", name: "Renamed" },
+      mockContext,
+    );
+
+    expect(result).toStrictEqual({
+      id: "820",
       path: "t0[1|1]",
       reason: NOTHING_MORE,
     });
