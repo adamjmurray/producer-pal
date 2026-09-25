@@ -239,7 +239,7 @@ function warnUnusedTrackParams(count: number, params: DuplicateParams): void {
 /**
  * Plans every destination in the call before any lane exists, so a refusal
  * costs nothing: the labels are claimed, the tracks are checked, a copy over
- * another source is refused, and each `l+` lands after the lanes the entries
+ * a later source is refused, and each `l+` lands after the lanes the entries
  * before it named.
  * @param sources - The sources, in call order
  * @param labels - The call's names and colors

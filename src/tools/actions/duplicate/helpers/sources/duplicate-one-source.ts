@@ -75,7 +75,7 @@ export interface EverySourceArgs extends Omit<
 /**
  * Makes every source's copies, in the order the call named them. Each source
  * takes its own share of the destinations and positions. A copy that would
- * land on another source refuses the call first: it would wreck that source's
+ * land on a later source refuses the call first: it would wreck that source's
  * own turn.
  * @param args - The sources, and what they share
  * @returns Every copy, source by source

@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Sources run in call order, so a copy landing on another source of the same
+// Sources run in call order, so a copy landing on a later source of the same
 // call either destroys it before its turn or changes what its turn copies. The
-// call is refused before anything is made (ADR-0035). Only clips, drum pads and
-// lane copies can land on something: every other copy is inserted.
+// call is refused before anything is made (ADR-0035). A copy onto an earlier
+// source lands after its turn, so it goes ahead. Only clips, drum pads and lane
+// copies can land on something: every other copy is inserted.
 
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import {
@@ -51,7 +52,7 @@ export interface LaneCopySource {
 }
 
 /**
- * Refuses a clip call when a copy would land on another source.
+ * Refuses a clip call when a copy would land on a later source.
  * @param sources - The call's sources, in order
  * @param clipDestinations - One destination set per source
  * @param params - The call's params that move or size a copy
@@ -91,7 +92,7 @@ export function refuseClipOverwrites(
       splitList(arrangementLength, total, "arrangementLength"),
     );
   let offset = 0;
-  const copies = perSource.flatMap(({ share, clip, planned }) => {
+  const copies = perSource.flatMap(({ share, clip, planned }, turn) => {
     const first = offset;
 
     offset += planned.length;
@@ -102,6 +103,7 @@ export function refuseClipOverwrites(
         : [
             {
               sourceId: share.id,
+              turn,
               destination: copy.destination,
               place: copy.place,
               spans: () => copySpans(clip, copy, length(first + j)),
@@ -111,13 +113,15 @@ export function refuseClipOverwrites(
   });
 
   refuseOverlaps(
-    perSource.flatMap(({ share, clip }) => clipSourcePlace(share, clip)),
+    perSource.flatMap(({ share, clip }, turn) =>
+      clipSourcePlace(share, clip, turn),
+    ),
     copies,
   );
 }
 
 /**
- * Refuses a drum-pad call when a copy would land on another source pad.
+ * Refuses a drum-pad call when a copy would land on a later source pad.
  * copy_pad layers, so that pad's own turn would copy both.
  * @param sources - The call's sources, in order
  * @throws Error naming the first copy that would
@@ -128,13 +132,13 @@ export function refusePadOverwrites(sources: SourceShare[]): void {
   }
 
   refuseOverlaps(
-    sources.flatMap(padSourcePlace),
-    sources.flatMap(padCopyPlaces),
+    sources.flatMap((share, turn) => padSourcePlace(share, turn)),
+    sources.flatMap((share, turn) => padCopyPlaces(share, turn)),
   );
 }
 
 /**
- * Refuses a lane copy when a source's clips would land over another source's.
+ * Refuses a lane copy when a source's clips would land over a later source's.
  * @param sources - Every source, with its planned destinations
  * @throws Error naming the first destination that would
  */
@@ -147,16 +151,17 @@ export function refuseLaneOverwrites(sources: LaneCopySource[]): void {
   const spansOf = (clips: LiveAPI[]) => (): Span[] => clips.map(clipSpan);
 
   refuseOverlaps(
-    sources.flatMap(({ id, named, place, clips }) =>
-      place == null ? [] : [{ id, named, place, spans: spansOf(clips) }],
+    sources.flatMap(({ id, named, place, clips }, turn) =>
+      place == null ? [] : [{ id, named, turn, place, spans: spansOf(clips) }],
     ),
-    sources.flatMap(({ id, clips, copies }) =>
+    sources.flatMap(({ id, clips, copies }, turn) =>
       copies.flatMap(({ entry, target }) =>
         target == null
           ? []
           : [
               {
                 sourceId: id,
+                turn,
                 destination: entry,
                 place: target.label,
                 spans: spansOf(clips),
@@ -179,6 +184,8 @@ interface Span {
 interface SourcePlace {
   id: string;
   named: NamedTarget;
+  /** Its turn in the call, from 0. */
+  turn: number;
   place: string;
   /** Its stretch of the lane, or null when it fills the place. Read only when
    * a copy lands on the same place: it costs Live reads. */
@@ -188,6 +195,8 @@ interface SourcePlace {
 /** Where one copy lands. */
 interface CopyPlace {
   sourceId: string;
+  /** Its source's turn in the call. */
+  turn: number;
   /** Where it goes, for the error. */
   destination: string;
   place: string;
@@ -203,8 +212,9 @@ interface PlannedCopy {
 }
 
 /**
- * Throws for the first copy that lands on another source. A source's copy onto
- * its own place is not this: each copier handles that one.
+ * Throws for the first copy that lands on a source whose turn is still to come.
+ * A source's copy onto its own place is not this: each copier handles that
+ * one.
  * @param sources - Where each source sits
  * @param copies - Where each copy lands
  */
@@ -213,6 +223,7 @@ function refuseOverlaps(sources: SourcePlace[], copies: CopyPlace[]): void {
     const hit = sources.find(
       (source) =>
         source.id !== copy.sourceId &&
+        source.turn > copy.turn &&
         source.place === copy.place &&
         overlaps(source.spans(), copy.spans()),
     );
@@ -220,8 +231,8 @@ function refuseOverlaps(sources: SourcePlace[], copies: CopyPlace[]): void {
     if (hit != null) {
       throw new Error(
         `a copy to "${copy.destination}" would overwrite ${hit.named.param} ` +
-          `"${hit.named.value}", another source of this call; duplicate ` +
-          `that one in its own call first`,
+          `"${hit.named.value}", another source of this call; list it ` +
+          `before this one, or duplicate it in its own call first`,
       );
     }
   }
@@ -246,9 +257,14 @@ function overlaps(a: Span[] | null, b: Span[] | null): boolean {
  * Where a source clip sits: its slot, or its stretch of an arrangement lane.
  * @param share - The source's turn
  * @param clip - The source clip
+ * @param turn - Its turn in the call
  * @returns Its place, or none when it has no track
  */
-function clipSourcePlace(share: SourceShare, clip: LiveAPI): SourcePlace[] {
+function clipSourcePlace(
+  share: SourceShare,
+  clip: LiveAPI,
+  turn: number,
+): SourcePlace[] {
   const { id, named } = share;
   const trackIndex = clip.trackIndex;
   const sceneIndex = clip.sceneIndex;
@@ -260,12 +276,12 @@ function clipSourcePlace(share: SourceShare, clip: LiveAPI): SourcePlace[] {
   if (sceneIndex != null) {
     const place = slotPath(trackIndex, sceneIndex);
 
-    return [{ id, named, place, spans: () => null }];
+    return [{ id, named, turn, place, spans: () => null }];
   }
 
   const place = takeLaneLabel({ trackIndex, takeLane: clip.takeLaneIndex });
 
-  return [{ id, named, place, spans: () => [clipSpan(clip)] }];
+  return [{ id, named, turn, place, spans: () => [clipSpan(clip)] }];
 }
 
 /**
@@ -450,9 +466,10 @@ function clipSpan(clip: LiveAPI): Span {
 /**
  * Where a source pad sits.
  * @param share - The source's turn
+ * @param turn - Its turn in the call
  * @returns Its place, or none for a chain, which its own entries refuse
  */
-function padSourcePlace(share: SourceShare): SourcePlace[] {
+function padSourcePlace(share: SourceShare, turn: number): SourcePlace[] {
   const pad = LiveAPI.from(share.id);
 
   if (pad.type !== "DrumPad") {
@@ -463,6 +480,7 @@ function padSourcePlace(share: SourceShare): SourcePlace[] {
     {
       id: share.id,
       named: share.named,
+      turn,
       place: padPlace(resolveSourcePad(pad)),
       spans: () => null,
     },
@@ -472,9 +490,10 @@ function padSourcePlace(share: SourceShare): SourcePlace[] {
 /**
  * Where one source's pad copies land.
  * @param share - The source's turn
+ * @param turn - Its turn in the call
  * @returns One place per destination that names a pad
  */
-function padCopyPlaces(share: SourceShare): CopyPlace[] {
+function padCopyPlaces(share: SourceShare, turn: number): CopyPlace[] {
   return pathEntries(share.toPath, "toPath").flatMap((entry) => {
     const pad = padAt(entry);
 
@@ -483,6 +502,7 @@ function padCopyPlaces(share: SourceShare): CopyPlace[] {
       : [
           {
             sourceId: share.id,
+            turn,
             destination: entry,
             place: padPlace(pad),
             spans: () => null,

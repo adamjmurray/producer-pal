@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Sources run in call order, so a copy landing on another source of the same
+// Sources run in call order, so a copy landing on a later source of the same
 // call would destroy it before its turn. The call is refused before any copy.
+// A copy onto an earlier source lands after that source's turn, so it goes.
 
 import { describe, expect, it } from "vitest";
 import "../duplicate-mocks-test-helpers.ts";
@@ -34,7 +35,8 @@ import { updateClipMock } from "../setup.ts";
 function overwrite(destination: string, victim: string): string {
   return (
     `a copy to "${destination}" would overwrite ${victim}, another source ` +
-    "of this call; duplicate that one in its own call first"
+    "of this call; list it before this one, or duplicate it in its own " +
+    "call first"
   );
 }
 
@@ -133,29 +135,42 @@ function expectNoArrangementCopy(track: RegisteredMockObject): void {
 
 describe("duplicate - a copy onto another source", () => {
   describe("clip slots", () => {
-    it.each([
-      ["a later source", "t1/s0,t2/s0", "t1/s0", 'id "clipB"'],
-      ["an earlier source", "t2/s0,t0/s0", "t0/s0", 'id "clipA"'],
-    ])(
-      "refuses a copy onto %s before any copy",
-      async (_label, toPath, destination, victim) => {
-        const slots = [
-          registerSlotClip("clipA", 0),
-          registerSlotClip("clipB", 1),
-        ];
+    it("refuses a copy onto a later source before any copy", async () => {
+      const slots = [
+        registerSlotClip("clipA", 0),
+        registerSlotClip("clipB", 1),
+      ];
 
-        await expect(
-          duplicate({ type: "clip", id: "clipA,clipB", toPath }),
-        ).rejects.toThrow(overwrite(destination, victim));
+      await expect(
+        duplicate({ type: "clip", id: "clipA,clipB", toPath: "t1/s0,t2/s0" }),
+      ).rejects.toThrow(overwrite("t1/s0", 'id "clipB"'));
 
-        for (const slot of slots) {
-          expect(slot.call).not.toHaveBeenCalledWith(
-            "duplicate_clip_to",
-            expect.anything(),
-          );
-        }
-      },
-    );
+      for (const slot of slots) {
+        expect(slot.call).not.toHaveBeenCalledWith(
+          "duplicate_clip_to",
+          expect.anything(),
+        );
+      }
+    });
+
+    it("copies onto an earlier source once its turn has run", async () => {
+      const [slotA, slotB] = [
+        registerSlotClip("clipA", 0),
+        registerSlotClip("clipB", 1),
+      ];
+
+      await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0,t0/s0",
+      });
+
+      expect(slotA.call).toHaveBeenCalledWith(
+        "duplicate_clip_to",
+        "id live_set/tracks/2/clip_slots/0",
+      );
+      expect(slotB.call).toHaveBeenCalledWith("duplicate_clip_to", "id slot-0");
+    });
   });
 
   describe("arrangement", () => {
@@ -185,6 +200,40 @@ describe("duplicate - a copy onto another source", () => {
       ).rejects.toThrow(overwrite("t0[5|1]", 'id "clipB"'));
 
       expectNoArrangementCopy(track);
+    });
+
+    it("copies over an earlier source's span once its turn has run", async () => {
+      registerArrangementClip(
+        "clipA",
+        livePath.track(0).arrangementClip(0),
+        0,
+        16,
+      );
+      registerArrangementClip(
+        "clipB",
+        livePath.track(0).arrangementClip(1),
+        16,
+        32,
+      );
+
+      const track = registerTrack0();
+
+      await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t0[9|1],t0[1|1]",
+      });
+
+      expect(track.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clipA",
+        32,
+      );
+      expect(track.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clipB",
+        0,
+      );
     });
 
     it("copies when a copy only touches another source's start", async () => {
@@ -383,6 +432,26 @@ describe("duplicate - a copy onto another source", () => {
       ).rejects.toThrow(overwrite("t1", 'path "t1"'));
 
       expect(track2.call).not.toHaveBeenCalledWith("create_take_lane");
+    });
+
+    it("copies a lane over an earlier source lane once its turn has run", async () => {
+      registerLiveSet();
+      registerTakeLaneTrack({
+        trackIndex: 0,
+        initialLanes: 2,
+        initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
+      });
+      registerTakeLaneTrack({ trackIndex: 1 });
+
+      const result = await duplicateToLanes<LaneCopyEntry[]>({
+        path: "t0/l0,t0/l1",
+        toPath: "t1/l0,t0/l0",
+      });
+
+      expect(result.map((entry) => entry.path)).toStrictEqual([
+        "t1/l0",
+        "t0/l0",
+      ]);
     });
 
     it("copies onto another source's lane where its clips miss", async () => {

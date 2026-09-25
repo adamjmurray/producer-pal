@@ -411,10 +411,28 @@ describe("duplicate - drum pad", () => {
       }),
     ).rejects.toThrow(
       'a copy to "t0/d0/pD1" would overwrite id "pad38", another source of ' +
-        "this call; duplicate that one in its own call first",
+        "this call; list it before this one, or duplicate it in its own " +
+        "call first",
     );
 
     expectNoCopy(rack);
+  });
+
+  it("copies onto an earlier source pad once its turn has run", async () => {
+    const rack = registerDrumRack([
+      { note: 36, chainIds: ["kick"] },
+      { note: 38, chainIds: ["snare"] },
+      { note: 40, chainIds: [] },
+    ]);
+
+    await duplicate({
+      type: "drum-pad",
+      id: "pad36,pad38",
+      toPath: "t0/d0/pE1,t0/d0/pC1",
+    });
+
+    expect(rack.call).toHaveBeenNthCalledWith(1, "copy_pad", 36, 40);
+    expect(rack.call).toHaveBeenNthCalledWith(2, "copy_pad", 38, 36);
   });
 
   // Each is refused on its own entry, so the check for a copy onto another
