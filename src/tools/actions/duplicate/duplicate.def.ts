@@ -89,7 +89,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per copy; song meter. " +
+        "clip/scene copies to the arrangement only. duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per copy; song meter. " +
           "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
       ),
     toSlot: deprecatedParam(z.coerce.string().optional(), {

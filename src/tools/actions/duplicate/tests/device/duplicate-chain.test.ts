@@ -129,6 +129,22 @@ describe("duplicate - chain", () => {
     expect(created.set).toHaveBeenCalledWith("name", "Layer B");
   });
 
+  it("warns once that arrangement params do not apply to a chain", async () => {
+    setupRack();
+
+    await duplicate({
+      type: "chain",
+      id: "chain-0",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'arrangementStart/arrangementLength ignored: a chain has no arrangement position (type "chain")',
+    );
+  });
+
   it("refuses a rack return chain, saying why", async () => {
     setupRack();
     registerMockObject("return-chain-0", {

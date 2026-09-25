@@ -143,8 +143,8 @@ export function warnInapplicableClipParams(
 
 /**
  * Warns for arrangement position params on a type that lands nowhere on the
- * timeline. A device or drum pad is copied inside its own chain, so these are
- * dropped — and every other inapplicable param on this tool warns.
+ * timeline. A device, drum pad or chain is copied inside a rack or track, so
+ * these are dropped — and every other inapplicable param on this tool warns.
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
  * @param arrangementLength - Requested arrangement length
@@ -154,7 +154,7 @@ export function warnUnusedArrangementParams(
   arrangementStart: string | undefined,
   arrangementLength: string | undefined,
 ): void {
-  if (type !== "device" && type !== "drum-pad") {
+  if (type !== "device" && type !== "drum-pad" && type !== "chain") {
     return;
   }
 

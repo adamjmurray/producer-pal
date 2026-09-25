@@ -21,6 +21,7 @@ import {
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { parseArrangementLength } from "../clip/arrangement-length.ts";
+import { readsArrangementLength } from "../duplicate-destinations.ts";
 
 /** The per-copy values a call hands out, and where the current source is. */
 export interface CopyLabels {
@@ -47,7 +48,8 @@ export interface CopyLabels {
  * @param values.color - The raw color param
  * @param values.arrangementLength - The raw arrangementLength param
  * @param sources - How many sources the call copies
- * @param lengthMeter - The song meter, when some copy reads arrangementLength
+ * @param lengthMeter - The song meter, when some copy reads arrangementLength.
+ *   Without it the length is dropped, so its list can't refuse the call.
  * @returns The pool
  */
 export function copyLabels(
@@ -62,7 +64,7 @@ export function copyLabels(
   return {
     name,
     color,
-    arrangementLength,
+    arrangementLength: lengthMeter == null ? undefined : arrangementLength,
     sources,
     total: null,
     names: null,
@@ -127,11 +129,7 @@ export function arrangementLengthMeter(
   destination: string | undefined,
   arrangementLength: string | undefined,
 ): SongMeter | null {
-  if (
-    (type !== "clip" && type !== "scene") ||
-    destination !== "arrangement" ||
-    arrangementLength == null
-  ) {
+  if (!readsArrangementLength(type, destination) || arrangementLength == null) {
     return null;
   }
 

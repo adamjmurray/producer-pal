@@ -252,6 +252,7 @@ export function resolveDestinationAndWarn(
     clipDestinations?.destination ?? inferDestination(type, arrangementStart);
 
   validateDestinationParameter(type, destination, params.laneCopy);
+  warnUnusedArrangementLength(type, destination, arrangementLength);
 
   if (type !== "clip" && (params.transforms != null || params.code != null)) {
     console.warn(
@@ -274,4 +275,43 @@ export function resolveDestinationAndWarn(
   );
 
   return destination;
+}
+
+/**
+ * Whether any copy reads arrangementLength. Only clip and scene copies that
+ * land on the arrangement do.
+ * @param type - Type of object being duplicated
+ * @param destination - Where the call's copies go
+ * @returns True when some copy uses it
+ */
+export function readsArrangementLength(
+  type: string,
+  destination: string | undefined,
+): boolean {
+  return destination === "arrangement" && (type === "clip" || type === "scene");
+}
+
+/**
+ * Warns once when a track or scene call sends an arrangementLength no copy
+ * reads. Every other type warns for it elsewhere.
+ * @param type - Type of object being duplicated
+ * @param destination - Where the call's copies go
+ * @param arrangementLength - Requested arrangement length
+ */
+function warnUnusedArrangementLength(
+  type: string,
+  destination: string | undefined,
+  arrangementLength: string | undefined,
+): void {
+  if (
+    arrangementLength == null ||
+    (type !== "track" && type !== "scene") ||
+    readsArrangementLength(type, destination)
+  ) {
+    return;
+  }
+
+  console.warn(
+    `arrangementLength ignored: only clip and scene copies to the arrangement use it (type "${type}")`,
+  );
 }

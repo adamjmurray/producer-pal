@@ -4,18 +4,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // A bad arrangementLength, or a per-copy list that doesn't match the copies,
-// refuses the whole call before any copy or take lane is made.
+// refuses the whole call before any copy or take lane is made. Only clip and
+// scene copies to the arrangement read it: elsewhere it warns and can't refuse.
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   createStandardMidiClipMock,
   registerClipSlot,
   registerMockObject,
+  registerTrackCopySet,
   setupArrangementSceneMocks,
+  setupSessionSceneMocks,
   type RegisteredMockObject,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
@@ -23,8 +29,10 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import {
+  duplicateToLanes,
   registerArrangementSource,
   registerLiveSet,
+  registerMainLaneSource,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { createShortenedClipInHoldingMock, updateClipMock } from "./setup.ts";
@@ -241,6 +249,85 @@ describe("duplicate - arrangementLength refused before any write", () => {
       expectNoLaneWrites(track);
     },
   );
+});
+
+const IGNORED =
+  "arrangementLength ignored: only clip and scene copies to the arrangement use it";
+
+/**
+ * The arrangementLength warnings the call raised.
+ * @returns Every warning that names arrangementLength
+ */
+function lengthWarnings(): string[] {
+  return capturedWarnings().filter((warning) =>
+    warning.includes("arrangementLength"),
+  );
+}
+
+describe("duplicate - arrangementLength where no copy reads it", () => {
+  beforeEach(() => {
+    clearCapturedWarnings();
+  });
+
+  it("warns once for track copies, whatever the list length", async () => {
+    const { liveSet } = registerTrackCopySet(["track1"]);
+
+    await duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      arrangementLength: "1bar,2bar,3bar",
+    });
+
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "track")`]);
+  });
+
+  it("warns for session scene copies, whatever the list length", async () => {
+    const liveSet = setupSessionSceneMocks();
+
+    await duplicate({
+      type: "scene",
+      id: "scene1",
+      count: 2,
+      arrangementLength: "1bar,2bar,3bar",
+    });
+
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "scene")`]);
+  });
+
+  it("warns for a track copied onto a take lane", async () => {
+    registerMainLaneSource([0]);
+    registerTakeLaneTrack({ trackIndex: 1 });
+
+    await duplicateToLanes({
+      id: "src_track",
+      toPath: "t1/l+,t1/l+",
+      arrangementLength: "1bar,2bar,3bar",
+    });
+
+    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "track")`]);
+  });
+
+  it("doesn't refuse a clip copy to a slot over the list length", async () => {
+    const { slot } = registerMixedSources();
+
+    registerMockObject("live_set/tracks/2/clip_slots/1", {
+      path: livePath.track(2).clipSlot(1),
+      properties: { has_clip: 0 },
+    });
+
+    await duplicate({
+      type: "clip",
+      id: "clipA",
+      toPath: "t2/s0,t2/s1",
+      arrangementLength: "1bar,2bar,3bar",
+    });
+
+    expect(slot.call).toHaveBeenCalledTimes(2);
+    expect(lengthWarnings()).toHaveLength(1);
+  });
 });
 
 /**
