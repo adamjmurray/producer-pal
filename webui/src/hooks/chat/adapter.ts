@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
+import {
+  MAX_REQUEST_IMAGES,
+  MISTRAL_MAX_REQUEST_IMAGES,
+} from "#webui/chat/sdk/build-model-messages";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
@@ -315,6 +319,10 @@ export const chatAdapter: ChatAdapter<
       providerOptions,
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(provider, overrideThinking, model),
+      maxRequestImages:
+        provider === "mistral"
+          ? MISTRAL_MAX_REQUEST_IMAGES
+          : MAX_REQUEST_IMAGES,
       chatHistory,
       subagentConfig,
       // The user's per-turn step budget, pinned for the life of this client:

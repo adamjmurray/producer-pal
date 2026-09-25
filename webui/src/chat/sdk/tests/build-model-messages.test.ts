@@ -9,6 +9,7 @@ import {
   endsOnAssistantTurn,
   MAX_REQUEST_IMAGE_BYTES,
   MAX_REQUEST_IMAGES,
+  MISTRAL_MAX_REQUEST_IMAGES,
   OMITTED_IMAGE_TEXT,
 } from "#webui/chat/sdk/build-model-messages";
 import { toolStepHistory } from "#webui/chat/sdk/tests/client-test-helpers";
@@ -547,6 +548,30 @@ describe("buildModelMessages image budget", () => {
       [filePart(x), omitted],
       "ok",
       newer.map(filePart),
+    ]);
+  });
+
+  it("words the note to fit either limit, size or count", () => {
+    expect(OMITTED_IMAGE_TEXT).toBe(
+      "[Image left out to keep the request within its limits]",
+    );
+  });
+
+  it("stops at a lower image count limit when one is given", () => {
+    const images = Array.from(
+      { length: MISTRAL_MAX_REQUEST_IMAGES + 1 },
+      (_, i) => ({ mediaType: "image/png", data: `m${i}` }),
+    );
+
+    const result = buildModelMessages(
+      [{ role: "user", content: "", images }],
+      false,
+      MISTRAL_MAX_REQUEST_IMAGES,
+    );
+
+    expect(result[0]?.content).toStrictEqual([
+      ...images.slice(0, -1).map(filePart),
+      omitted,
     ]);
   });
 });

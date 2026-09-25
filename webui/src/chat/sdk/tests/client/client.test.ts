@@ -32,7 +32,10 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { generateText, streamText } from "ai";
-import { FAILED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
+import {
+  FAILED_TOOL_RESULT_TEXT,
+  OMITTED_IMAGE_TEXT,
+} from "#webui/chat/sdk/build-model-messages";
 import {
   ChatSdkClient,
   MAX_TOOL_STEPS,
@@ -310,6 +313,35 @@ describe("ChatSdkClient", () => {
 
       expect(last).toStrictEqual([
         { role: "user", content: "match this", images },
+      ]);
+    });
+
+    it("sends no more images than the config's request cap", async () => {
+      const a = { mediaType: "image/png", data: "AAA" };
+      const b = { mediaType: "image/png", data: "BBB" };
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        stream: (async function* () {})(),
+      });
+
+      const client = new ChatSdkClient(
+        "key",
+        createConfig({ maxRequestImages: 1 }),
+      );
+
+      for await (const _ of client.sendMessage({ text: "", images: [a, b] })) {
+        /* consume */
+      }
+
+      const { messages } = vi.mocked(streamText).mock.calls[0]![0];
+
+      expect(messages?.[0]?.content).toStrictEqual([
+        {
+          type: "file",
+          mediaType: "image/png",
+          data: { type: "data", data: "AAA" },
+        },
+        { type: "text", text: OMITTED_IMAGE_TEXT },
       ]);
     });
 

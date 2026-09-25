@@ -41,13 +41,16 @@ export const MAX_REQUEST_IMAGE_BYTES = 15 * 1024 * 1024;
 
 /**
  * Most images one request may carry, whatever their size. Anthropic, OpenAI and
- * Gemini allow 100+; Mistral's limit of 8 is lower and not covered.
+ * Gemini allow 100+.
  */
 export const MAX_REQUEST_IMAGES = 20;
 
-/** Stands in for an image left out to stay under the budget. */
+/** Mistral's API rejects a request with more than 8 images. */
+export const MISTRAL_MAX_REQUEST_IMAGES = 8;
+
+/** Stands in for an image left out by the byte or count cap. */
 export const OMITTED_IMAGE_TEXT =
-  "[Image left out to keep the request under the size limit]";
+  "[Image left out to keep the request within its limits]";
 
 /** Why a tool-call was left without a result. */
 export type DanglingToolReason = "canceled" | "failed";
@@ -67,21 +70,22 @@ export type DanglingToolReason = "canceled" | "failed";
  * Consecutive user turns are merged into one. A compaction summary is a
  * synthetic user message, so the next real user message would otherwise sit
  * directly after it — Gemini and Mistral reject two user turns in a row (only
- * Anthropic/OpenAI tolerate it). Folding them into a single user turn keeps the
- * wire format valid for every provider while the UI still renders them
- * separately (the divider plus the user bubble). Merging also has to survive
- * attached images, whose turn carries a content ARRAY rather than a string —
- * see {@link mergeUserContent}.
+ * Anthropic/OpenAI tolerate it). The UI still renders them separately (the
+ * divider plus the user bubble). Merging also has to survive attached images,
+ * whose turn carries a content ARRAY rather than a string — see
+ * {@link mergeUserContent}.
  * @param history - Chat history to convert
  * @param includeReasoning - When true, re-emit captured signed reasoning blocks
  *   on assistant messages (only valid when the request enables thinking — see
  *   isAnthropicThinkingEnabled). Keeps the Anthropic cache prefix byte-stable
  *   across turns. Defaults to false so non-thinking requests are unchanged.
+ * @param maxImages - Most images the request may carry
  * @returns Array of ModelMessage for streamText
  */
 export function buildModelMessages(
   history: ChatMessage[],
   includeReasoning = false,
+  maxImages = MAX_REQUEST_IMAGES,
 ): ModelMessage[] {
   const messages: ModelMessage[] = [];
 
@@ -98,7 +102,7 @@ export function buildModelMessages(
 
   const modelHistory =
     lastSummaryIndex > 0 ? history.slice(lastSummaryIndex) : history;
-  const sentImages = imagesWithinBudget(modelHistory);
+  const sentImages = imagesWithinBudget(modelHistory, maxImages);
 
   for (const msg of modelHistory) {
     if (msg.role === "user") {
@@ -129,19 +133,23 @@ export function buildModelMessages(
 type UserContent = UserModelMessage["content"];
 
 /**
- * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES} and
- * {@link MAX_REQUEST_IMAGES}, newest message first. Once one doesn't fit, it
- * and everything after it are left out.
+ * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES} and `maxImages`,
+ * newest message first. Once one doesn't fit, it and everything after it are
+ * left out.
  * @param history - The messages the request will carry
+ * @param maxImages - Most images the request may carry
  * @returns The images to send
  */
-function imagesWithinBudget(history: ChatMessage[]): Set<ChatImage> {
+function imagesWithinBudget(
+  history: ChatMessage[],
+  maxImages: number,
+): Set<ChatImage> {
   const kept = new Set<ChatImage>();
   let room = MAX_REQUEST_IMAGE_BYTES;
 
   for (const msg of history.toReversed()) {
     for (const image of msg.images ?? []) {
-      if (image.data.length > room || kept.size === MAX_REQUEST_IMAGES) {
+      if (image.data.length > room || kept.size === maxImages) {
         return kept;
       }
 

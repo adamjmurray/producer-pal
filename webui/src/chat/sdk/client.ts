@@ -442,6 +442,7 @@ export class ChatSdkClient {
       messages: buildModelMessages(
         this.chatHistory,
         isAnthropicThinkingEnabled(providerOptions),
+        this.config.maxRequestImages,
       ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(this.maxSteps),
