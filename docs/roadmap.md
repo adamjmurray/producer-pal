@@ -2,12 +2,16 @@
 
 ## Next
 
+Automation, through the remote script: read and draw automation envelopes, so
+the AI can shape filter sweeps, volume rides, and other changes over time.
+
 The params deprecated in 2.2, 2.3 and 2.4 still work, with a warning, and will
 be removed in a later release. If you drive Producer Pal from a script, the
 [migration guide](/guide/migration) covers what to change.
 
 In consideration:
 
+- Directly support Vercel's AI Gateway in the built-in chat UI
 - Fetch model options from Ollama and LM Studio/Bionic servers instead of
   hard-coding
 
@@ -29,6 +33,14 @@ and keeps going with the rest.
 - `t0[5|1]` finds the clip playing at bar 5, even if it started earlier
 - Attach images in the built-in chat, so a sketch of a song can become MIDI
   clips
+
+The new Producer Pal remote script (experimental) does what the Live API alone
+can't:
+
+- Put Producer Pal into a freshly opened Live Set
+- Add plug-ins and Max for Live devices
+- Add a device from a preset, including racks
+- Swap a preset onto a device already in the Set
 
 ### 2.3 - Consistency (September 2026)
 
