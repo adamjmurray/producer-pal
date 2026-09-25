@@ -436,6 +436,20 @@ describe("createClip - session view", () => {
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
   });
 
+  it("names the scenes it made when Live then created no clip", async () => {
+    mockNonExistentObjects();
+    setupLiveSet();
+    setupTrack(0);
+    registerMockObject("clip-slot-0-2", {
+      path: livePath.track(0).clipSlot(2),
+      properties: { has_clip: 0 },
+    });
+
+    await expect(createClip({ path: "t0/s2" })).rejects.toThrow(
+      "Live created no clip at t0/s2; created s1-s2 to reach it",
+    );
+  });
+
   it("replaces the clip an occupied slot already holds", async () => {
     setupLiveSet();
     setupTrack(0);

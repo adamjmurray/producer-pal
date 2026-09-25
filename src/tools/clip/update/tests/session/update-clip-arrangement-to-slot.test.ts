@@ -61,7 +61,8 @@ interface MoveOptions {
   hasEnvelopes?: number;
   warping?: number;
   destIsMidi?: number;
-  destSlotExists?: boolean;
+  /** "after-scenes": the Set stops short of the slot until create_scene runs. */
+  destSlot?: "exists" | "missing" | "after-scenes";
   destHasClip?: number;
   /** Simulates an offline audio sample: Live's create call lands no clip. */
   destCreateFails?: boolean;
@@ -100,7 +101,7 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
     hasEnvelopes = 0,
     warping = 0,
     destIsMidi = 1,
-    destSlotExists = true,
+    destSlot = "exists",
     destHasClip = 0,
     destCreateFails = false,
     otherScenes,
@@ -181,10 +182,24 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
         ...Array.from({ length: sceneCount }, (_, i) => `s${i}`),
       ),
     },
+    methods: {
+      create_scene: () => {
+        if (destSlot === "after-scenes") {
+          registerDestSlot();
+        }
+
+        return null;
+      },
+    },
   });
   registerScratchSlot(sceneCount, 0);
 
-  if (destSlotExists) {
+  if (destSlot === "exists") {
+    registerDestSlot();
+  }
+
+  /** Registers the destination slot, whose create lands the new clip. */
+  function registerDestSlot(): void {
     registerMockObject("dest_slot", {
       path: destSlotPath,
       type: "ClipSlot",
@@ -478,6 +493,30 @@ describe("handleArrangementToSlotMove", () => {
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 
+  it("names the scenes made for a create that failed", () => {
+    const updatedClips = runMove({
+      destSlot: "after-scenes",
+      destCreateFails: true,
+    });
+
+    expect(movedReason()).toBe(
+      `not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip at t${DEST_TRACK}/s${DEST_SCENE}). The source clip in the arrangement is untouched. Created s0-s${DEST_SCENE} to reach it.`,
+    );
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
+  });
+
+  it("reports the scenes made for a move that landed", () => {
+    const updatedClips = runMove({ destSlot: "after-scenes" });
+
+    expect(updatedClips).toStrictEqual([
+      {
+        id: NEW_ID,
+        path: `t${DEST_TRACK}/s${DEST_SCENE}`,
+        created: `s0-s${DEST_SCENE}`,
+      },
+    ]);
+  });
+
   // The create is tried in the scratch slot first, so a failure there never
   // touches the occupant at all — the strongest outcome the safe path buys.
   it("keeps the occupant untouched when the scratch slot's own create fails", () => {
@@ -642,11 +681,12 @@ describe("handleArrangementToSlotMove", () => {
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 
-  it("refuses a destination slot that does not exist", () => {
-    const updatedClips = runMove({ destSlotExists: false });
+  // The Set has no scenes here, so the move made s0-s2 before finding no slot.
+  it("refuses a destination slot that does not exist, naming the scenes made", () => {
+    const updatedClips = runMove({ destSlot: "missing" });
 
     expect(movedReason()).toBe(
-      `not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
+      `not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist; created s0-s${DEST_SCENE} to reach it`,
     );
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,

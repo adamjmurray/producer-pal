@@ -9,7 +9,10 @@ import {
   clipOverwriteNote,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
+import {
+  createMissingScenes,
+  withCreatedScenes,
+} from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { withScratchSlot } from "#src/tools/shared/clip/scratch-slot.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
@@ -146,6 +149,39 @@ export function createInSessionSlot(
   sampleFile?: string,
 ): SessionSlotCreate {
   const created = createMissingScenes(sceneIndex, liveSet);
+
+  try {
+    return {
+      ...fillSessionSlot(trackIndex, sceneIndex, create, sampleFile),
+      created,
+    };
+  } catch (error) {
+    // The scenes stay in the Set, so the failure has to name them.
+    if (created == null) {
+      throw error;
+    }
+
+    throw new Error(withCreatedScenes(errorMessage(error), created), {
+      cause: error,
+    });
+  }
+}
+
+/**
+ * Create a clip in a slot that exists, replacing the clip already there.
+ * @param trackIndex - Track index (0-based)
+ * @param sceneIndex - Target scene index (0-based)
+ * @param create - Makes the clip in the empty slot it's given
+ * @param sampleFile - The file an audio create loads, to name if Live refuses
+ * @returns The new clip, and what it replaced
+ * @throws When Live created no clip
+ */
+function fillSessionSlot(
+  trackIndex: number,
+  sceneIndex: number,
+  create: (clipSlot: LiveAPI) => void,
+  sampleFile: string | undefined,
+): Omit<SessionSlotCreate, "created"> {
   const destPath = slotPath(trackIndex, sceneIndex);
   const clipSlot = LiveAPI.from(
     livePath.track(trackIndex).clipSlot(sceneIndex),
@@ -156,7 +192,6 @@ export function createInSessionSlot(
 
     return {
       clip: requireCreatedSessionClip(clipSlot, destPath, sampleFile),
-      created,
       overwrote: null,
     };
   }
@@ -165,7 +200,7 @@ export function createInSessionSlot(
     replaceFromScratch(scratch.slot, clipSlot, destPath, create, sampleFile),
   );
 
-  return { clip, created, overwrote: clipOverwriteNote(destPath) };
+  return { clip, overwrote: clipOverwriteNote(destPath) };
 }
 
 /**

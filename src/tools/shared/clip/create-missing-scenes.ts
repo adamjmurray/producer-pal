@@ -39,3 +39,23 @@ export function createMissingScenes(
 
   return createdRange("s", sceneCount, sceneIndex);
 }
+
+/**
+ * A failed target's reason, naming the scenes made for it: they stay in the
+ * Set even though nothing landed.
+ * @param reason - Why the target failed
+ * @param created - The scenes created, or null when none were
+ * @returns The reason, with the scenes appended when there are any
+ */
+export function withCreatedScenes(
+  reason: string,
+  created: string | null,
+): string {
+  if (created == null) {
+    return reason;
+  }
+
+  return reason.endsWith(".")
+    ? `${reason} Created ${created} to reach it.`
+    : `${reason}; created ${created} to reach it`;
+}

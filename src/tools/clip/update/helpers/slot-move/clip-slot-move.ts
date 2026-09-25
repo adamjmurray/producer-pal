@@ -17,7 +17,10 @@ import {
   clipCopyBlocker,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
+import {
+  createMissingScenes,
+  withCreatedScenes,
+} from "#src/tools/shared/clip/create-missing-scenes.ts";
 import {
   canRecreateClip,
   recreatedClipLosses,
@@ -143,7 +146,10 @@ export function handleClipSlotMove({
     refuseClipWork(
       reasons,
       clip.id,
-      `not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+      withCreatedScenes(
+        `not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+        created,
+      ),
     );
     keepClip(clip, updatedClips, noteResult);
 
@@ -223,7 +229,10 @@ export function handleArrangementToSlotMove({
     refuseClipWork(
       reasons,
       clip.id,
-      `not moved: ${recreated.reason} The source clip in the arrangement is untouched.`,
+      withCreatedScenes(
+        `not moved: ${recreated.reason} The source clip in the arrangement is untouched.`,
+        created,
+      ),
     );
     keepClip(clip, updatedClips, noteResult);
 
@@ -420,7 +429,10 @@ function destinationSlot(
 
   return refuseSlotMove(
     args,
-    `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
+    withCreatedScenes(
+      `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
+      created,
+    ),
   );
 }
 

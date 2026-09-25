@@ -5,7 +5,10 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
+import {
+  createMissingScenes,
+  withCreatedScenes,
+} from "#src/tools/shared/clip/create-missing-scenes.ts";
 import {
   clipCopyBlocker,
   clipOverwriteNote,
@@ -309,21 +312,4 @@ function prepareDestinationSlot(
   return madeSlot.exists()
     ? { clipSlot: madeSlot, created }
     : withCreatedScenes("no clip slot there", created);
-}
-
-/**
- * A skipped copy's reason, naming the scenes made for it: they stay in the
- * Set even though the copy didn't land.
- * @param reason - Why the copy didn't land
- * @param created - The scenes created, or null when none were
- * @returns The reason, with the scenes appended when there are any
- */
-function withCreatedScenes(reason: string, created: string | null): string {
-  if (created == null) {
-    return reason;
-  }
-
-  return reason.endsWith(".")
-    ? `${reason} Created ${created} to reach it.`
-    : `${reason}; created ${created} to reach it`;
 }
