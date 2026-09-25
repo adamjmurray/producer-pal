@@ -55,8 +55,8 @@ export async function deleteLocator(
  * @param liveSet - The live_set LiveAPI object
  * @param target - A name target
  * @param meter - The song meter, to name a time in an error
- * @returns Deletion result
- * @throws Error when a delete stalls, saying how many went first
+ * @returns Deletion result, with a detail when it stalled partway
+ * @throws Error when the first delete stalls, so nothing changed
  */
 async function deleteByName(
   liveSet: LiveAPI,
@@ -79,10 +79,17 @@ async function deleteByName(
     try {
       await toggleCueAt(liveSet, match.time, meter);
     } catch (error) {
-      throw new Error(
-        `${errorMessage(error)}; deleted ${deleted} of ${matches.length} named "${name}"`,
-        { cause: error },
-      );
+      if (deleted === 0) {
+        throw error;
+      }
+
+      // Some are gone already, so this is a result, not a refusal.
+      return {
+        operation: "delete",
+        count: deleted,
+        name,
+        detail: `deleted ${deleted} of ${matches.length} named "${name}": ${errorMessage(error)}`,
+      };
     }
   }
 

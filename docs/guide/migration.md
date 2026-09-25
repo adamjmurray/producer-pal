@@ -354,7 +354,9 @@ A create that sends a different `locatorName` doesn't rename that locator: its
 entry is `ok: false` and points to `rename`. A lone locator refusal
 (`ok: false`) is the call's error when locators were all it asked for. Sent
 beside `tempo`, `timeSignature` or `scale`, it's an `ok: false` entry instead,
-where it used to be an error for a stalled playhead.
+where it used to be an error for a stalled playhead. A delete by name that
+stalls after deleting some isn't a refusal: it answers `count` for those it
+deleted and a `detail` saying why it stopped.
 
 **`ppal-playback` stops reporting the scene's name.** A `play-scene` answers
 `{id, path}` for the scene it fired; the name it never changed is a read, so

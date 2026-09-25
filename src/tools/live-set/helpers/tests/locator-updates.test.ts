@@ -135,23 +135,55 @@ describe("locators when the playhead stalls", () => {
     expect(set.locators()).toStrictEqual([{ time: 16, name: "B" }]);
   });
 
-  it("says how many of a name it deleted before stalling", async () => {
-    const set = simulateLocators(
-      liveSet,
-      [
-        { time: 0, name: "A" },
-        { time: 16, name: "A" },
-      ],
-      { stallAt: 0 },
-    );
+  describe("a delete by name that stalls", () => {
+    const TWO_AS = [
+      { time: 0, name: "A" },
+      { time: 16, name: "A" },
+    ];
+    const PARTIAL = {
+      operation: "delete",
+      count: 1,
+      name: "A",
+      detail:
+        'deleted 1 of 2 named "A": ' +
+        "Live didn't move the playhead to 1|1, so nothing changed there",
+    };
 
-    await expect(
-      updateLiveSet({ locatorOperation: "delete", locatorName: "A" }),
-    ).rejects.toThrow(
-      "Live didn't move the playhead to 1|1, so nothing changed there; " +
-        'deleted 1 of 2 named "A"',
-    );
-    expect(set.locators()).toStrictEqual([{ time: 0, name: "A" }]);
+    it("reports what it deleted before stalling, without throwing", async () => {
+      const set = simulateLocators(liveSet, TWO_AS, { stallAt: 0 });
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "A",
+      });
+
+      expect(result.locator).toStrictEqual(PARTIAL);
+      expect(set.locators()).toStrictEqual([{ time: 0, name: "A" }]);
+    });
+
+    it("reports a partial delete beside a tempo change", async () => {
+      simulateLocators(liveSet, TWO_AS, { stallAt: 0 });
+
+      const result = await updateLiveSet({
+        tempo: 140,
+        locatorOperation: "delete",
+        locatorName: "A",
+      });
+
+      expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
+      expect(result.locator).toStrictEqual(PARTIAL);
+    });
+
+    it("refuses a lone delete that stalled before deleting any", async () => {
+      const set = simulateLocators(liveSet, TWO_AS, { stallAt: 16 });
+
+      await expect(
+        updateLiveSet({ locatorOperation: "delete", locatorName: "A" }),
+      ).rejects.toThrow(
+        /^Live didn't move the playhead to 5\|1, so nothing changed there$/,
+      );
+      expect(set.locators()).toStrictEqual(TWO_AS);
+    });
   });
 
   it("refuses a lone create the playhead never reached", async () => {
