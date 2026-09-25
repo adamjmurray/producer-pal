@@ -8,6 +8,7 @@ import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
+import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { deleteLocator } from "./helpers/locator-deletes.ts";
 import {
   laterNamings,
@@ -150,6 +151,7 @@ export async function updateLiveSet(
       locatorOperation as LocatorOperation,
       targets,
       context,
+      tempo == null && timeSignature == null && scale == null,
     );
   }
 
@@ -162,13 +164,16 @@ export async function updateLiveSet(
  * @param operation - "create", "delete", or "rename"
  * @param targets - One target per locator named
  * @param context - Context object with silenceWavPath
+ * @param locatorsOnly - Whether the locators are all the call asked for
  * @returns The locator's result when one was named, otherwise one entry each
+ * @throws Error when a lone locator got nothing done and nothing else was asked
  */
 async function handleLocatorOperations(
   liveSet: LiveAPI,
   operation: LocatorOperation,
   targets: LocatorTarget[],
   context: UpdateLiveSetContext,
+  locatorsOnly: boolean,
 ): Promise<unknown> {
   // Read again: the meter Live holds now, after any timeSignature write.
   const meter = readMeter(liveSet);
@@ -196,9 +201,15 @@ async function handleLocatorOperations(
       }
     };
 
-    entries.push(
-      targets.length > 1 ? await attemptLocator(target, run) : await run(),
-    );
+    entries.push(await attemptLocator(target, run));
+  }
+
+  // A lone refusal throws, unless tempo or other song state landed: an error
+  // would hide that.
+  const refusal = locatorsOnly ? loneRefusal(entries) : null;
+
+  if (refusal != null) {
+    throw new Error(refusal);
   }
 
   return unwrapSingleResult(entries);

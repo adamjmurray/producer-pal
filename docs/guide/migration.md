@@ -335,7 +335,17 @@ name it matched. The `time` and `name` you sent don't come back.
 
 `operation` also answers in the words the schema publishes: `create`, `delete`
 and `rename`, not `created`, `deleted` and `renamed`. A skip still reads
-`skipped`.
+`skipped`, with `ok: false`.
+
+A locator call that needed no work isn't a skip any more. A delete of a locator
+that isn't there answers `operation: "delete"` with
+`detail: "nothing to delete: ..."`. A create where a locator already is answers
+`{operation: "create", id, detail}` for the one there, and `existingId` is gone.
+A create that sends a different `locatorName` doesn't rename that locator: its
+entry is `ok: false` and points to `rename`. A lone locator refusal
+(`ok: false`) is the call's error when locators were all it asked for. Sent
+beside `tempo`, `timeSignature` or `scale`, it's an `ok: false` entry instead,
+where it used to be an error for a stalled playhead.
 
 **`ppal-playback` stops reporting the scene's name.** A `play-scene` answers
 `{id, path}` for the scene it fired; the name it never changed is a read, so

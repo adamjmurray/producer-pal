@@ -154,10 +154,74 @@ describe("locators when the playhead stalls", () => {
     expect(set.locators()).toStrictEqual([{ time: 0, name: "A" }]);
   });
 
-  it("reports a create that made no locator as failed", async () => {
+  it("refuses a lone create the playhead never reached", async () => {
+    const set = simulateLocators(liveSet, [], { stallAt: 16 });
+
+    await expect(
+      updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" }),
+    ).rejects.toThrow(
+      "Live didn't move the playhead to 5|1, so nothing changed there",
+    );
+    expect(set.locators()).toStrictEqual([]);
+  });
+
+  it("refuses a listed create where a locator already has another name", async () => {
+    const set = simulateLocators(liveSet, [{ time: 16, name: "B" }]);
+
+    const result = await updateLiveSet({
+      locatorOperation: "create",
+      locatorTime: "1|1,5|1",
+      locatorName: "A,C",
+    });
+
+    expect(result.locator).toStrictEqual([
+      { operation: "create", id: "27" },
+      {
+        operation: "skipped",
+        time: "5|1",
+        name: "C",
+        ok: false,
+        detail: "not created: a locator is already at 5|1; rename it instead",
+      },
+    ]);
+    expect(set.locators()).toStrictEqual([
+      { time: 0, name: "A" },
+      { time: 16, name: "B" },
+    ]);
+  });
+
+  it("refuses a lone create that made no locator", async () => {
+    const set = simulateLocators(liveSet, [], { noCueAt: 16 });
+
+    await expect(
+      updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" }),
+    ).rejects.toThrow("Live made no locator at 5|1");
+    expect(set.locators()).toStrictEqual([]);
+  });
+
+  it("reports a stalled lone create on its entry beside a tempo change", async () => {
+    simulateLocators(liveSet, [], { stallAt: 16 });
+
+    const result = await updateLiveSet({
+      tempo: 140,
+      locatorOperation: "create",
+      locatorTime: "5|1",
+    });
+
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
+    expect(result.locator).toStrictEqual({
+      operation: "skipped",
+      time: "5|1",
+      ok: false,
+      detail: "Live didn't move the playhead to 5|1, so nothing changed there",
+    });
+  });
+
+  it("reports a create that made no locator beside a tempo change", async () => {
     const set = simulateLocators(liveSet, [], { noCueAt: 16 });
 
     const result = await updateLiveSet({
+      tempo: 140,
       locatorOperation: "create",
       locatorTime: "5|1",
       locatorName: "B",

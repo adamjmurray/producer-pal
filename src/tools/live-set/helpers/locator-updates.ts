@@ -105,12 +105,7 @@ export async function createLocator(
   const targetBeats = beats as number;
 
   if (existing) {
-    return {
-      operation: "skipped",
-      detail: `a locator is already at ${target.value}`,
-      time: target.value,
-      existingId: existing.locator.id,
-    };
+    return createWhereOneIs(target, existing.locator);
   }
 
   stopPlaybackIfNeeded(liveSet);
@@ -199,4 +194,32 @@ export function validateLocatorOperation(
       `${sent.join(", ")} require locatorOperation ("create", "delete", or "rename")`,
     );
   }
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The entry for a create where a locator already is. Nothing is written: a
+ * toggle there would delete it, and renaming it is rename's job.
+ * @param target - The time, and the name the caller asked for
+ * @param existing - The locator already there
+ * @returns A no-op entry, or a refusal when the name asked for didn't land
+ */
+function createWhereOneIs(
+  target: LocatorTarget,
+  existing: LiveAPI,
+): Record<string, unknown> {
+  const already = `a locator is already at ${target.value}`;
+
+  if (target.name == null || target.name === existing.getName()) {
+    return { operation: "create", id: existing.id, detail: already };
+  }
+
+  return {
+    operation: "skipped",
+    time: target.value,
+    name: target.name,
+    ok: false,
+    detail: `not created: ${already}; rename it instead`,
+  };
 }

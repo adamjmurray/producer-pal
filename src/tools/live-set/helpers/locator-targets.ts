@@ -120,9 +120,8 @@ export function locatorTargets(
 }
 
 /**
- * Runs one locator of a list, turning a throw into that locator's skip entry so
- * the rest of the list still runs. A lone locator throws instead: nothing ran,
- * and there is no list for an entry to hold a place in.
+ * Runs one locator, turning a throw into that locator's skip entry so the rest
+ * of the call still runs.
  * @param target - The locator, as the caller named it
  * @param run - The operation on that locator
  * @returns The operation's result, or the skip entry standing in for it

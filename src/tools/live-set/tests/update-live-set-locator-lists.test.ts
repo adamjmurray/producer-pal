@@ -515,17 +515,17 @@ describe("updateLiveSet - locator targets", () => {
       expect(result.locator).toStrictEqual([
         { operation: "delete", id: "26" },
         {
-          operation: "skipped",
+          operation: "delete",
           detail: 'nothing to delete: no locator with id "99"',
           id: "99",
         },
         {
-          operation: "skipped",
+          operation: "delete",
           detail: "nothing to delete: no locator at 20|1",
           time: "20|1",
         },
         {
-          operation: "skipped",
+          operation: "delete",
           detail: 'nothing to delete: no locator named "Outro"',
           name: "Outro",
         },

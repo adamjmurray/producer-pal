@@ -501,6 +501,89 @@ describe("ppal-update-live-set", () => {
     expect(await readLocatorList()).toStrictEqual(initialLocators);
   });
 
+  it("answers a create where a locator is and a delete where none is", async () => {
+    // A create toggles the cue at its time, so only real Live proves one aimed
+    // at an existing locator leaves it alone rather than deleting it.
+    const initialLocators = await readLocatorList();
+    const { originalTempo } = await readLiveSetOriginals();
+    const updateLocator = async (
+      args: Record<string, unknown>,
+    ): Promise<UpdateResult["locator"]> =>
+      parseToolResult<UpdateResult>(
+        await ctx.client!.callTool({
+          name: "ppal-update-live-set",
+          arguments: args,
+        }),
+      ).locator;
+
+    const created = await updateLocator({
+      locatorOperation: "create",
+      locatorTime: "5|1",
+      locatorName: "E2E Here",
+    });
+
+    await sleep(100);
+
+    // No name: nothing to do, and no failure.
+    expect(
+      await updateLocator({ locatorOperation: "create", locatorTime: "5|1" }),
+    ).toStrictEqual({
+      operation: "create",
+      id: created?.id,
+      detail: "a locator is already at 5|1",
+    });
+
+    // A different name didn't land. Alone, that's the call's error.
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "5|1",
+        locatorName: "E2E Other",
+      },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "not created: a locator is already at 5|1; rename it instead",
+    );
+
+    // Beside a tempo write, the refusal stays on the locator's entry.
+    expect(
+      await updateLocator({
+        tempo: originalTempo,
+        locatorOperation: "create",
+        locatorTime: "5|1",
+        locatorName: "E2E Other",
+      }),
+    ).toStrictEqual({
+      operation: "skipped",
+      time: "5|1",
+      name: "E2E Other",
+      ok: false,
+      detail: "not created: a locator is already at 5|1; rename it instead",
+    });
+
+    await sleep(100);
+    const here = (await readLocatorList()).find((l) => l.id === created?.id);
+
+    expect(here?.name).toBe("E2E Here");
+
+    await updateLocator({ locatorOperation: "delete", locatorTime: "5|1" });
+    await sleep(100);
+
+    // Already gone: the delete's goal holds, so it's not a failure.
+    expect(
+      await updateLocator({ locatorOperation: "delete", locatorTime: "5|1" }),
+    ).toStrictEqual({
+      operation: "delete",
+      detail: "nothing to delete: no locator at 5|1",
+      time: "5|1",
+    });
+
+    expect(await readLocatorList()).toStrictEqual(initialLocators);
+  });
+
   it("refuses locator lists that name different numbers of locators", async () => {
     // Nothing is written: the lists are split before the first locator runs.
     const before = await readLocatorList();
@@ -640,5 +723,7 @@ interface UpdateResult {
     name?: string;
     time?: string;
     count?: number;
+    ok?: boolean;
+    detail?: string;
   };
 }
