@@ -89,19 +89,6 @@ describe("updateLiveSet - locator operations", () => {
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
-
-    it("should skip if locatorTime is missing for create", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "create",
-      });
-
-      expect(result.locator).toStrictEqual({
-        operation: "skipped",
-        ok: false,
-        reason: "create needs locatorTime",
-      });
-      expect(capturedWarnings()).toStrictEqual([]);
-    });
   });
 
   describe("delete locator", () => {
@@ -184,19 +171,6 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
-    it("should skip if no identifier provided for delete", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "delete",
-      });
-
-      expect(result.locator).toStrictEqual({
-        operation: "skipped",
-        ok: false,
-        reason: "delete needs locatorId, locatorTime, or locatorName",
-      });
-      expect(capturedWarnings()).toStrictEqual([]);
-    });
-
     it("should skip if locator ID not found", async () => {
       const result = await updateLiveSet({
         locatorOperation: "delete",
@@ -238,18 +212,10 @@ describe("updateLiveSet - locator operations", () => {
         ],
       });
 
-      const result = await updateLiveSet({
-        locatorOperation: "delete",
-        locatorName: "",
-      });
-
-      // A blank param is an unsent one, so the call names no locator.
+      await expect(
+        updateLiveSet({ locatorOperation: "delete", locatorName: "" }),
+      ).rejects.toThrow("locatorName must not be empty");
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toStrictEqual({
-        operation: "skipped",
-        ok: false,
-        reason: "delete needs locatorId, locatorTime, or locatorName",
-      });
     });
 
     it("should skip if no locators match name", async () => {
@@ -302,34 +268,6 @@ describe("updateLiveSet - locator operations", () => {
       expect(result.locator).toStrictEqual({ operation: "rename", id: "27" });
     });
 
-    it("should skip if locatorName is missing for rename", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorId: "26",
-      });
-
-      expect(result.locator).toStrictEqual({
-        operation: "skipped",
-        ok: false,
-        reason: "rename needs locatorName",
-      });
-      expect(capturedWarnings()).toStrictEqual([]);
-    });
-
-    it("should skip if no identifier provided for rename", async () => {
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorName: "New Name",
-      });
-
-      expect(result.locator).toStrictEqual({
-        operation: "skipped",
-        ok: false,
-        reason: "rename needs locatorId or locatorTime",
-      });
-      expect(capturedWarnings()).toStrictEqual([]);
-    });
-
     it("should skip if locator ID not found for rename", async () => {
       const result = await updateLiveSet({
         locatorOperation: "rename",
@@ -377,6 +315,59 @@ describe("updateLiveSet - locator operations", () => {
       expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
     });
   });
+  describe("locator operation missing what it needs", () => {
+    it.each([
+      [{ locatorOperation: "create" }, "locatorTime is required for create"],
+      [
+        { locatorOperation: "create", locatorName: "A" },
+        "locatorTime is required for create",
+      ],
+      [
+        { locatorOperation: "rename", locatorId: "26" },
+        "locatorName is required for rename",
+      ],
+      [
+        { locatorOperation: "rename", locatorId: "26,27" },
+        "locatorName is required for rename",
+      ],
+      [
+        { locatorOperation: "rename", locatorName: "New Name" },
+        "locatorId or locatorTime is required for rename",
+      ],
+      [
+        { locatorOperation: "delete" },
+        "locatorId, locatorTime, or locatorName is required for delete",
+      ],
+      [
+        { locatorOperation: "delete", locatorName: "  " },
+        "locatorName must not be empty",
+      ],
+      [
+        { locatorOperation: "create", locatorTime: "" },
+        "locatorTime must not be empty",
+      ],
+    ])("refuses %o before writing anything", async (args, message) => {
+      setupLocatorMocks(liveSet, {
+        cuePoints: [
+          { id: "26", time: 0 },
+          { id: "27", time: 16 },
+        ],
+      });
+
+      await expect(
+        updateLiveSet({
+          tempo: 140,
+          timeSignature: "3/4",
+          scale: "C Major",
+          ...args,
+        }),
+      ).rejects.toThrow(message);
+
+      expect(liveSet.set).not.toHaveBeenCalled();
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+  });
+
   describe("locator args without an operation", () => {
     it.each([
       ["locatorTime", { locatorTime: "45|1" }],

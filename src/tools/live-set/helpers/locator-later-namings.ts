@@ -103,7 +103,7 @@ export function namedLaterEntry(
  * @param liveSet - The live_set LiveAPI object
  * @param target - One target
  * @param meter - The song meter a bar|beat is read in
- * @returns The claim; no units when it names no locator
+ * @returns The claim
  */
 function claimOf(
   liveSet: LiveAPI,
@@ -113,9 +113,6 @@ function claimOf(
   const value = target.value as string;
 
   switch (target.param) {
-    case undefined:
-      return { units: [] };
-
     case "locatorName": {
       const matches = findLocatorsByName(liveSet, value);
 

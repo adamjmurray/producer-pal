@@ -32,8 +32,8 @@ export type LocatorParam = "locatorId" | "locatorTime" | "locatorName";
 
 /** One locator a call names, in the caller's own spelling. */
 export interface LocatorTarget {
-  /** The param that named it; unset when the call named no locator. */
-  param?: LocatorParam;
+  /** The param that named it. */
+  param: LocatorParam;
   /** The entry as the caller wrote it. */
   value?: string;
   /** The name to write, on create and rename. */
@@ -55,18 +55,18 @@ export interface SongMeter {
 
 /**
  * The locators a call names, one target each: ids, then times, then (on
- * delete) names. With no locator named, one empty target, so the operation
- * reports what it needs.
+ * delete) names.
  *
- * Runs before anything is written: a hole in a list, an unreadable time, or a
- * name list that doesn't match the targets is refused while the Set is
- * untouched.
+ * Runs before anything is written: a missing locator or rename name, a hole in
+ * a list, an unreadable time, or a name list that doesn't match the targets is
+ * refused while the Set is untouched.
  * @param operation - "create", "delete", or "rename"
  * @param args - The locator params as the caller sent them
  * @param liveSet - The live_set, read to tell a name with a comma in it from a list
  * @param meter - The song meter the call's times are read in
  * @returns One target per locator, always at least one
- * @throws Error on an unknown operation or an unreadable list or time
+ * @throws Error on an unknown operation, a missing param, or an unreadable
+ *   list or time
  */
 export function locatorTargets(
   operation: string,
@@ -77,27 +77,43 @@ export function locatorTargets(
   switch (operation) {
     case "create":
       return withNames(
-        timeTargets(args.locatorTime, meter),
+        required(timeTargets(args.locatorTime, meter), "create", args, [
+          "locatorTime",
+        ]),
         args,
         "locatorTime",
       );
     case "rename":
+      if (args.locatorName == null) {
+        throw new Error("locatorName is required for rename");
+      }
+
       return withNames(
-        [
-          ...named("locatorId", args.locatorId),
-          ...timeTargets(args.locatorTime, meter),
-        ],
+        required(
+          [
+            ...named("locatorId", args.locatorId),
+            ...timeTargets(args.locatorTime, meter),
+          ],
+          "rename",
+          args,
+          ["locatorId", "locatorTime"],
+        ),
         args,
         targetLabel(args),
       );
     case "delete":
-      return orEmpty([
-        ...named("locatorId", args.locatorId),
-        ...timeTargets(args.locatorTime, meter),
-        ...deleteNames(args.locatorName, liveSet).map(
-          (value): LocatorTarget => ({ param: "locatorName", value }),
-        ),
-      ]);
+      return required(
+        [
+          ...named("locatorId", args.locatorId),
+          ...timeTargets(args.locatorTime, meter),
+          ...deleteNames(args.locatorName, liveSet).map(
+            (value): LocatorTarget => ({ param: "locatorName", value }),
+          ),
+        ],
+        "delete",
+        args,
+        ["locatorId", "locatorTime", "locatorName"],
+      );
     default:
       throw new Error(`Unknown locator operation: ${operation}`);
   }
@@ -211,7 +227,7 @@ function toBeats(time: string, meter: SongMeter): number {
  * @param targets - The targets, in call order
  * @param args - The locator params as the caller sent them
  * @param label - The params that named the targets, for the error
- * @returns The targets with their names, at least one
+ * @returns The targets with their names
  * @throws Error when the name list and the targets differ in length
  */
 function withNames(
@@ -226,7 +242,7 @@ function withNames(
 
   const names = splitList(args.locatorName, targets.length, "locatorName");
 
-  return orEmpty(targets).map((target, index) => ({
+  return targets.map((target, index) => ({
     ...target,
     name: valueForIndex(args.locatorName, index, names),
   }));
@@ -258,12 +274,37 @@ function deleteNames(
 }
 
 /**
- * The targets, or one empty target when the call named none.
- * @param targets - The targets
- * @returns At least one target
+ * Refuse a call that names no locator for its operation to act on.
+ * @param targets - The targets the call named
+ * @param operation - The operation, for the error
+ * @param args - The locator params as the caller sent them
+ * @param params - The params that could have named one
+ * @returns The targets, at least one
+ * @throws Error when there are none
  */
-function orEmpty(targets: LocatorTarget[]): LocatorTarget[] {
-  return targets.length > 0 ? targets : [{}];
+function required(
+  targets: LocatorTarget[],
+  operation: LocatorOperation,
+  args: LocatorArgs,
+  params: LocatorParam[],
+): LocatorTarget[] {
+  if (targets.length > 0) {
+    return targets;
+  }
+
+  // With no targets, any param that was sent was blank.
+  const blank = params.filter((param) => args[param] != null);
+
+  if (blank.length > 0) {
+    throw new Error(`${blank.join(" and ")} must not be empty`);
+  }
+
+  const last = params.at(-1) as string;
+  const rest = params.slice(0, -1).join(", ");
+  const comma = params.length > 2 ? "," : "";
+  const names = rest === "" ? last : `${rest}${comma} or ${last}`;
+
+  throw new Error(`${names} is required for ${operation}`);
 }
 
 /**
@@ -292,7 +333,7 @@ function locatorAddress(target: LocatorTarget): Record<string, string> {
   const key = { locatorId: "id", locatorTime: "time", locatorName: "name" };
 
   return {
-    ...(target.param != null && { [key[target.param]]: target.value }),
+    [key[target.param]]: target.value as string,
     ...(target.name != null && { name: target.name }),
   };
 }

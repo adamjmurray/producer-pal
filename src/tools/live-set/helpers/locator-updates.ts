@@ -101,14 +101,6 @@ export async function createLocator(
   meter: SongMeter,
   context: { silenceWavPath?: string },
 ): Promise<Record<string, unknown>> {
-  if (target.param == null) {
-    return {
-      operation: "skipped",
-      ok: false,
-      reason: "create needs locatorTime",
-    };
-  }
-
   const { beats, found: existing } = locateTarget(liveSet, target, meter);
   const targetBeats = beats as number;
 
@@ -163,22 +155,6 @@ export function renameLocator(
   target: LocatorTarget,
   meter: SongMeter,
 ): Record<string, unknown> {
-  if (target.name == null) {
-    return {
-      operation: "skipped",
-      ok: false,
-      reason: "rename needs locatorName",
-    };
-  }
-
-  if (target.param == null) {
-    return {
-      operation: "skipped",
-      ok: false,
-      reason: "rename needs locatorId or locatorTime",
-    };
-  }
-
   const { found } = locateTarget(liveSet, target, meter);
 
   if (found == null) {

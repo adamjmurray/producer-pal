@@ -29,14 +29,6 @@ export async function deleteLocator(
   target: LocatorTarget,
   meter: SongMeter,
 ): Promise<Record<string, unknown>> {
-  if (target.param == null) {
-    return {
-      operation: "skipped",
-      ok: false,
-      reason: "delete needs locatorId, locatorTime, or locatorName",
-    };
-  }
-
   if (target.param === "locatorName") {
     return await deleteByName(liveSet, target, meter);
   }
