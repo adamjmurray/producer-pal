@@ -241,9 +241,9 @@ the `producer-pal` npm package. For local testing before publishing to npm:
 
 `.githooks/pre-push` guards pushes to `dev` so every commit gets its own CI
 build: one commit per push, no push while a build is in flight, and no push on
-top of a red or missing build or a red or unfinished Netlify docs preview. The
-test workflow cancels an in-progress run when a new push lands, so batching
-commits leaves earlier ones with no build at all.
+top of a red or missing build or any other red or unfinished check (CodeQL, the
+Netlify docs preview, ...). The test workflow cancels an in-progress run when a
+new push lands, so batching commits leaves earlier ones with no build at all.
 
 It's off by default. Enable it per clone:
 

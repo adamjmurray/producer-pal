@@ -18,8 +18,8 @@
 #   2. no push while a build is in flight
 #   3. no push when the latest build is red, or ran against something other
 #      than what is on the remote right now (a stale green proves nothing)
-#   4. no push while the Netlify docs preview of the remote head is building
-#      or red
+#   4. no push while any other check on the remote head (CodeQL, the Netlify
+#      docs preview, ...) is running or red
 #
 # refs/heads/dev is always guarded. A feature branch normally isn't — its commits
 # get squashed, so only the tip ever needs a build, and waiting on CI per push
@@ -179,31 +179,49 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
 			"Fix $run_short before stacking another commit on it."
 	fi
 
-	# --- 4. the Netlify docs preview -------------------------------------
-	# Netlify reports a commit status, not a workflow run. Statuses come newest
-	# first. None at all means no PR is open (or a fork), so nothing to wait on.
-	netlify_err=$(mktemp)
-	netlify=$(gh api "repos/{owner}/{repo}/commits/$remote_sha/statuses" \
-		--jq '[.[] | select(.context | startswith("netlify/"))][0] // empty | "\(.state) \(.target_url)"' \
-		2>"$netlify_err")
-	netlify_stderr=$(cat "$netlify_err")
-	rm -f "$netlify_err"
+	# --- 4. every other check on the remote head -------------------------
+	# CodeQL, the Netlify preview, and anything added later. Check runs come
+	# from Actions and apps; Netlify posts a commit status. Both lists keep only
+	# the latest result per name. Don't use the combined status's own state: it
+	# reads "pending" when there are no statuses at all.
+	checks_err=$(mktemp)
+	checks=$(
+		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/check-runs?per_page=100" \
+			--jq '.check_runs[] | (if .status != "completed" then "running"
+				elif (.conclusion | IN("success", "neutral", "skipped")) then "green"
+				else .conclusion end) + " " + .name' 2>>"$checks_err"
+		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/status?per_page=100" \
+			--jq '.statuses[] | (if .state == "pending" then "running"
+				elif .state == "success" then "green"
+				else .state end) + " " + .context' 2>>"$checks_err"
+	)
+	checks_stderr=$(cat "$checks_err")
+	rm -f "$checks_err"
 
-	if [ -n "$netlify_stderr" ]; then
-		block "cannot read the Netlify status of $remote_short" "$netlify_stderr"
+	if [ -n "$checks_stderr" ]; then
+		block "cannot read the checks on $remote_short" "$checks_stderr"
 	fi
 
-	netlify_state=${netlify%% *}
-	netlify_url=${netlify#* }
-
-	if [ "$netlify_state" = "pending" ]; then
-		block "the Netlify preview of $remote_short is still building" \
-			"Wait for it: $netlify_url"
+	# Step 2 already waited for a build, so none at all means GitHub hasn't
+	# listed them yet — not that everything passed.
+	if [ -z "$checks" ]; then
+		block "$remote_short has no checks reported yet" "Wait a moment and retry."
 	fi
 
-	if [ -n "$netlify" ] && [ "$netlify_state" != "success" ]; then
-		block "the Netlify preview of $remote_short is $netlify_state" \
-			"Fix or retry it before stacking another commit: $netlify_url"
+	red=$(echo "$checks" | awk '$1 != "green" && $1 != "running" {
+		state = $1; sub(/^[^ ]+ /, ""); print "    " $0 " (" state ")" }')
+	running=$(echo "$checks" | awk '$1 == "running" { sub(/^[^ ]+ /, ""); print "    " $0 }')
+
+	if [ -n "$red" ]; then
+		block "checks on $remote_short are red" \
+			"Fix or retry them before stacking another commit:
+$red"
+	fi
+
+	if [ -n "$running" ]; then
+		block "checks on $remote_short are still running" \
+			"Wait for them:
+$running"
 	fi
 done
 
