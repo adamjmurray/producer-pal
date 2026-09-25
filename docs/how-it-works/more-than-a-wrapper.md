@@ -52,7 +52,7 @@ color it landed on in that clip's own result
   "id": "123",
   "path": "t0/s0",
   "color": "#FF3636",
-  "reason": "color #FF0000 is not in Live's palette; landed as #FF3636"
+  "detail": "color #FF0000 is not in Live's palette; landed as #FF3636"
 }
 ```
 

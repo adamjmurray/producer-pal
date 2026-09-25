@@ -102,7 +102,7 @@ Warnings surface as a separate `warnings` string array (or inline in the
 `result` text under `?format=compact`). They're only for what no result entry
 can carry. When a call names several objects and one can't be done as asked
 (e.g. setting quantize on an audio clip), that object's own entry says why in a
-`reason`, with `ok: false` if nothing was done to it, and the rest still go
+`detail`, with `ok: false` if nothing was done to it, and the rest still go
 through.
 
 Read the warnings too. A misspelled optional param is dropped rather than
