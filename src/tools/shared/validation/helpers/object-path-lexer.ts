@@ -8,6 +8,7 @@
 // the tail.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { locatorRef } from "#src/tools/shared/locator/song-position.ts";
 import { type ObjectPath } from "../object-path.ts";
 
 /**
@@ -146,7 +147,8 @@ export function splitCoord(input: string, label: string): LexedPath {
 
   const position = input.slice(open + 1, -1).trim();
 
-  if (position.includes("[")) {
+  // A locator name may hold brackets; a bar|beat never does.
+  if (position.includes("[") && locatorRef(position) == null) {
     throw pathError(label, input, 'it hit an unexpected second "["');
   }
 

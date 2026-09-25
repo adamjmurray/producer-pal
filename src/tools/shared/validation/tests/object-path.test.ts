@@ -440,6 +440,8 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     ["a locator", "loc:Verse"],
     ["a locator id", "loc:27"],
     ["a name holding both separators", "loc:A, B/C"],
+    ["a name holding brackets", "loc:Chorus [B]"],
+    ["a name holding brackets, long prefix", "locator:[B] Drop"],
     ["a note-value offset", "1|1-n/4"],
   ])("keeps %s verbatim", (_label, position) => {
     expect(parseObjectPath(`t0[${position}]`)).toStrictEqual({
@@ -468,6 +470,7 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     ["an unclosed bracket", "t0[5|1", 'its "[" is never closed'],
     ["a stray closer", "t0 5|1]", 'it closes a "[" it never opened'],
     ["a second coordinate", "t0[5|1][3|1]", 'it hit an unexpected second "["'],
+    ["a locator after a bar|beat", "t0[5|1][loc:A]", 'unexpected second "["'],
   ])("refuses %s", (_label, path, problem) => {
     expect(() => parseObjectPath(path)).toThrow(problem);
   });
