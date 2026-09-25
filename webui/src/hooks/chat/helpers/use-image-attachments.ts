@@ -29,6 +29,8 @@ export interface ImageAttachments {
   notice: string | null;
   /** True while a file drag is over the editor. */
   dragging: boolean;
+  /** True while an added image is still being read. */
+  loading: boolean;
   addFiles: (files: File[]) => void;
   removeImage: (index: number) => void;
   clear: () => void;
@@ -40,13 +42,16 @@ export interface ImageAttachments {
  * and the notice explaining anything rejected. Its drag and paste handlers run
  * in the CAPTURE phase and stop propagation, so the CodeMirror editor
  * underneath never sees the file and can't insert it; a drag or paste carrying
- * no file passes straight through as ordinary text editing.
+ * no file passes straight through as ordinary text editing. A paste with both
+ * images and text lets the editor paste the text, and attaches the images unless
+ * the HTML shows they're a picture of that text (an Office copy).
  * @returns The attachments and their handlers
  */
 export function useImageAttachments(): ImageAttachments {
   const [images, setImages] = useState<ChatImage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [reading, setReading] = useState(0);
   // The latest list, for merging adds that finish after it changed.
   const imagesRef = useRef<ChatImage[]>([]);
   // dragenter/leave fire per child element; a depth counter keeps the overlay
@@ -69,15 +74,18 @@ export function useImageAttachments(): ImageAttachments {
       // when reading finishes, or those changes would be undone.
       const before = imagesRef.current;
 
-      void attachImages(before, files).then((result) => {
-        const added = result.images.slice(before.length);
-        const room = MAX_IMAGES_PER_MESSAGE - imagesRef.current.length;
+      setReading((count) => count + 1);
+      void attachImages(before, files)
+        .then((result) => {
+          const added = result.images.slice(before.length);
+          const room = MAX_IMAGES_PER_MESSAGE - imagesRef.current.length;
 
-        publish([...imagesRef.current, ...added.slice(0, room)]);
-        setNotice(
-          added.length > room ? TOO_MANY_IMAGES_MESSAGE : result.notice,
-        );
-      });
+          publish([...imagesRef.current, ...added.slice(0, room)]);
+          setNotice(
+            added.length > room ? TOO_MANY_IMAGES_MESSAGE : result.notice,
+          );
+        })
+        .finally(() => setReading((count) => count - 1));
     },
     [publish],
   );
@@ -104,9 +112,24 @@ export function useImageAttachments(): ImageAttachments {
         return;
       }
 
-      event.preventDefault();
-      event.stopPropagation();
-      addFiles(files);
+      const text = event.clipboardData?.getData("text/plain") ?? "";
+
+      // Images alone: attach them, and keep the editor from inserting the file.
+      if (text.trim() === "") {
+        event.preventDefault();
+        event.stopPropagation();
+        addFiles(files);
+
+        return;
+      }
+
+      // The editor pastes the text (all CodeMirror inserts). Excel, Word and
+      // OneNote add a picture of that text, with HTML holding the text itself:
+      // skip the picture. HTML that is only an image (a browser's Copy Image)
+      // still attaches it.
+      if (!htmlHasText(event.clipboardData?.getData("text/html") ?? "")) {
+        addFiles(files);
+      }
     },
     [addFiles],
   );
@@ -158,6 +181,7 @@ export function useImageAttachments(): ImageAttachments {
     images,
     notice,
     dragging,
+    loading: reading > 0,
     addFiles,
     removeImage,
     clear,
@@ -169,6 +193,16 @@ export function useImageAttachments(): ImageAttachments {
       onDropCapture,
     },
   };
+}
+
+/**
+ * Whether clipboard HTML shows any text, not just tags such as a lone `<img>`.
+ * A regex, not a parser: Office HTML can run to megabytes.
+ * @param html - The clipboard's `text/html`
+ * @returns True if some text node isn't blank
+ */
+function htmlHasText(html: string): boolean {
+  return /(?:^|>)\s*[^\s<]/.test(html);
 }
 
 /**

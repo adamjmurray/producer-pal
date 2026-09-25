@@ -75,9 +75,11 @@ export function ChatInput({
   // Attached images are a message on their own — a picture with no words still
   // asks the model something.
   const hasContent = input.trim() !== "" || attachments.images.length > 0;
+  // Wait for images still being read, or they'd miss this message.
+  const canSend = hasContent && !disabled && !attachments.loading;
 
   const submitMessage = () => {
-    if (!hasContent || disabled) {
+    if (!canSend) {
       return;
     }
 
@@ -103,6 +105,7 @@ export function ChatInput({
         <ImageAttachments
           images={attachments.images}
           notice={attachments.notice}
+          loading={attachments.loading}
           onRemove={attachments.removeImage}
         />
         <div className="flex gap-3">
@@ -153,7 +156,7 @@ export function ChatInput({
             />
             <button
               onClick={submitMessage}
-              disabled={disabled || !hasContent}
+              disabled={!canSend}
               className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {isAssistantResponding ? "Queue" : "Send"}
