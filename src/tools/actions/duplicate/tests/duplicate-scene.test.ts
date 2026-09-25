@@ -798,8 +798,8 @@ describe("duplicate - several scenes to the arrangement", () => {
   });
 
   // An inserted session scene shifts the copies below it, which is not the
-  // same as burying them: every copy here is still there.
-  it("marks no session scene copy overwritten when a later one shifts it", async () => {
+  // same as burying them: every copy here is still there, just further down.
+  it("reports a session scene copy where a later one shifted it to", async () => {
     registerMockObject("sceneA", { path: livePath.scene(0) });
     registerMockObject("sceneB", { path: livePath.scene(1) });
     registerMockObject("live_set", {
@@ -809,6 +809,7 @@ describe("duplicate - several scenes to the arrangement", () => {
         // Copying scene 0 inserts at 1, pushing sceneB's copy from 2 to 3.
         duplicate_scene: (index: unknown) => {
           if (index === 0) {
+            registerMockObject("sceneCopyOfB", { path: livePath.scene(3) });
             registerMockObject("copyOfB", {
               path: livePath.track(0).clipSlot(3).clip(),
             });
@@ -818,6 +819,8 @@ describe("duplicate - several scenes to the arrangement", () => {
     });
     registerClipSlot(0, 1, true);
     registerClipSlot(0, 2, true);
+    registerMockObject("sceneCopyOfA", { path: livePath.scene(1) });
+    registerMockObject("sceneCopyOfB", { path: livePath.scene(2) });
     registerMockObject("copyOfA", {
       path: livePath.track(0).clipSlot(1).clip(),
     });
@@ -830,8 +833,17 @@ describe("duplicate - several scenes to the arrangement", () => {
       id: "sceneB,sceneA",
     })) as DuplicateSceneResult[];
 
-    expect(
-      result.map((entry) => entry.clips.map((clip) => clip.id)),
-    ).toStrictEqual([["copyOfB"], ["copyOfA"]]);
+    expect(result).toStrictEqual([
+      {
+        id: "sceneCopyOfB",
+        path: "s3",
+        clips: [{ id: "copyOfB", path: "t0/s3" }],
+      },
+      {
+        id: "sceneCopyOfA",
+        path: "s1",
+        clips: [{ id: "copyOfA", path: "t0/s1" }],
+      },
+    ]);
   });
 });

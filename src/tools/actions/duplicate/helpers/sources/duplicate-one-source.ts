@@ -34,11 +34,8 @@ import {
   refuseClipOverwrites,
   refusePadOverwrites,
 } from "./source-overwrites.ts";
-import {
-  duplicateTrackCopies,
-  settleTrackCopyPaths,
-  type TrackCopyEntry,
-} from "./duplicate-track.ts";
+import { duplicateTrackCopies } from "./duplicate-track.ts";
+import { type CopyEntry, settleCopyPaths } from "./copy-path-settling.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -106,8 +103,12 @@ export async function duplicateEverySource(
     );
   }
 
+  // A later source's copies can push an earlier source's along. A scene's
+  // arrangement copies are clips, which nothing here moves.
   if (args.type === "track") {
-    settleTrackCopyPaths(created as TrackCopyEntry[]);
+    settleCopyPaths(created as CopyEntry[], "track");
+  } else if (args.type === "scene" && args.destination !== "arrangement") {
+    settleCopyPaths(created as CopyEntry[], "scene");
   }
 
   return created;

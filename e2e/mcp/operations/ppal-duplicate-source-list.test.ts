@@ -240,6 +240,54 @@ describe("ppal-duplicate with a source list", () => {
     expect((await readClip(copies[1]!.clips[0]!.id)).notes).toContain("D3");
   });
 
+  it("reports each session scene copy where a later source pushed it", async () => {
+    await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
+    await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1");
+
+    await sleep(100);
+
+    // s6's copy lands at s7; s5's copy then lands at s6 and pushes it to s8.
+    const copies = parseToolResult<
+      { id: string; path: string; clips: DuplicateClipResult[] }[]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "scene", path: "s6,s5" },
+      }),
+    );
+
+    expect(
+      copies.map((copy) => [copy.path, copy.clips.map((c) => c.path)]),
+    ).toStrictEqual([
+      ["s8", [`t${EMPTY_MIDI_TRACK}/s8`]],
+      ["s6", [`t${EMPTY_MIDI_TRACK}/s6`]],
+    ]);
+
+    await sleep(100);
+
+    for (const [copy, note] of [
+      [copies[0]!, "D3"],
+      [copies[1]!, "C3"],
+    ] as const) {
+      const scene = parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-scene",
+          arguments: { path: copy.path },
+        }),
+      );
+      const clip = parseToolResult<ReadClipResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-clip",
+          arguments: { path: copy.clips[0]!.path, include: ["notes"] },
+        }),
+      );
+
+      expect(scene.id).toBe(copy.id);
+      expect(clip.id).toBe(copy.clips[0]!.id);
+      expect(clip.notes).toContain(note);
+    }
+  });
+
   // A copy is cleared by whatever lands across it, not only by one starting on
   // the same beat. Both entries name a different bar here, and one of them is
   // still a clip that no longer exists.

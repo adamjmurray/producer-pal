@@ -21,6 +21,7 @@ import {
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
 import { configureRouting } from "../duplicate-routing.ts";
+import { settleCopyPaths } from "./copy-path-settling.ts";
 import { type LandedTrackCopy, landTrackCopy } from "./landed-track-copy.ts";
 
 /** One track copy's entry in the result. */
@@ -254,7 +255,7 @@ export function duplicateTrackCopies(
       );
   }
 
-  settleTrackCopyPaths(entries);
+  settleCopyPaths(entries, "track");
 
   return entries;
 }
@@ -324,41 +325,11 @@ function finishTrackCopy(
 
   return {
     id: track.id,
-    // Where its clips were read; settleTrackCopyPaths moves both along.
+    // Where its clips were read; settleCopyPaths moves both along.
     path: formatObjectPath({ kind: "track", trackIndex: copy.index }),
     clips: copy.clips,
     ...(reason == null ? {} : { reason }),
   };
-}
-
-/**
- * Re-read where each copy sits, and move its clips along with it. A copy made
- * later lands ahead of earlier ones, and a later source's copies can push an
- * earlier source's along, so paths read as each copy landed go stale.
- * @param entries - The copies' entries, updated in place
- */
-export function settleTrackCopyPaths(entries: TrackCopyEntry[]): void {
-  for (const entry of entries) {
-    const trackIndex = LiveAPI.from(entry.id).trackIndex;
-
-    if (trackIndex == null) {
-      continue;
-    }
-
-    // A group's clips sit on its members, so shift each by the group's move.
-    const shift = trackIndex - Number(entry.path.slice(1));
-
-    entry.path = formatObjectPath({ kind: "track", trackIndex });
-
-    for (const clip of entry.clips) {
-      if (clip.path != null) {
-        clip.path = clip.path.replace(
-          /^t(\d+)/,
-          (_, n: string) => `t${Number(n) + shift}`,
-        );
-      }
-    }
-  }
 }
 
 /**
