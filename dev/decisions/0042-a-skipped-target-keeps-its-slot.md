@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date logged:** 2026-09-12
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md)
+- **Amended by:** [ADR-0050](0050-reason-explains-a-skip.md) — a `reason` on an
+  entry that worked was renamed `note`.
 
 ## Context
 
@@ -43,14 +45,14 @@ would have been all along. `update-track path="t99"` used to return `[]` and a
 warning.
 
 **A target that needed no work is not a skip.** It gets its normal entry plus a
-`reason` saying why there was nothing to do, and no `ok`: `delete` of a missing
-`t99` is `{ path: "t99", type: "track", reason: "nothing to delete" }`. The
-delete it asked for has already happened, so a lone one is satisfied rather than
+`note` saying why there was nothing to do, and no `ok`: `delete` of a missing
+`t99` is `{ path: "t99", type: "track", note: "nothing to delete" }`. The delete
+it asked for has already happened, so a lone one is satisfied rather than
 refused — only a lone `ok: false` throws.
 
 **A target the call could only half serve keeps its normal entry too.** Some
 params landed and some did not, so the entry is the one a full hit would have
-plus a `reason` naming what did not land. `ok: false` is for the other case:
+plus a `note` naming what did not land. `ok: false` is for the other case:
 nothing the call asked of that target landed.
 
 **A read miss stays `ok: false` even so.** A read can't be satisfied by an
@@ -76,9 +78,9 @@ target, so no entry exists yet to carry them.
 - **"nothing to delete" as `ok: false`.** Simpler to implement and wrong: it
   would make `delete t99` an error for a Set that is already in the state the
   caller asked for, and a model retrying it can never succeed.
-- **A skip entry for a target that needed no work, with no reason.** Silent
-  no-ops read as hits. The reason is what stops a model from believing a clip it
-  never had was deleted.
+- **A skip entry for a target that needed no work, with no note.** Silent no-ops
+  read as hits. The note is what stops a model from believing a clip it never
+  had was deleted.
 
 ## Consequences
 
@@ -88,7 +90,8 @@ target, so no entry exists yet to carry them.
   [migration](../../docs/guide/migration.md).
 - **Per-target warnings moved into entries.** The Producer Pal device, the host
   track, the main track, a take-lane clip, a rack chain, a delete Live refused —
-  each is a `reason` on its own entry now, and warns nowhere.
+  each is on its own entry now (a `reason` on a skip, else a `note`), and warns
+  nowhere.
 - **One helper owns the fan-out.**
   [`writeFanOut`](../../src/tools/shared/validation/lists/write-fan-out.ts) runs
   each target's body in a try/catch and turns a throw into that target's skip
@@ -115,24 +118,24 @@ target, so no entry exists yet to carry them.
   outright, since where the clip still sits is nothing the caller asked about. A
   clip named twice is updated as its last mention asks; the earlier mention
   holds its slot as a normal entry pointing at the later one, and a clip that
-  was written but not as asked keeps its entry with a `reason`: a throw partway,
-  a move refused beside a name or a length that landed, a re-create and what it
+  was written but not as asked keeps its entry with a `note`: a throw partway, a
+  move refused beside a name or a length that landed, a re-create and what it
   cost, a take-lane leftover, a move that replaced the clip already in the
   destination slot. A param the clip can't take — notes, preTransforms,
   duplicateLoop or quantize on an audio clip, warp markers or the audio params
   (gainDb, pitchShift, warpMode, warping) on a MIDI clip, firstStart on a clip
   that isn't looping or past its content end, warping off while looping — is a
-  reason on its entry too, and a skip when it was all the call asked of the
-  clip. The move and arrangement helpers report all of it on the clip's entry
-  instead of warning, through a per-call collector keyed by the clip id the call
-  found; a step that writes under a new id — a move re-creates the clip — hands
-  its reasons back to the id the caller named. One target never answers with no
+  note on its entry too, and a skip when it was all the call asked of the clip.
+  The move and arrangement helpers report all of it on the clip's entry instead
+  of warning, through a per-call collector keyed by the clip id the call found;
+  a step that writes under a new id — a move re-creates the clip — hands what it
+  reports back to the id the caller named. One target never answers with no
   entries: a split whose pieces the rescan can't find says so too. A clip
   another clip in the same call was moved onto keeps a normal entry rather than
   a skip — `deleted: true` and the address it had: nothing the call asked of it
   landed, but that it is gone is news no skip can carry. When several clips name
-  one slot, the last one moves there and the others stay put, each with a reason
-  naming that clip.
+  one slot, the last one moves there and the others stay put, each with a note
+  naming that clip, or a skip when the move was all it was asked.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer
@@ -141,8 +144,8 @@ target, so no entry exists yet to carry them.
   (the last one wins), a track that won't take the clip, a create Live declined,
   a take lane past the cap, one the deadline never reached. The deadline warning
   only says how far the call got. A `firstStart` the call can't use — it only
-  lands alongside `looping: true` — is a `reason` on that clip's entry rather
-  than a warning, and no `ok`: the clip exists.
+  lands alongside `looping: true` — is a `note` on that clip's entry rather than
+  a warning, and no `ok`: the clip exists.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry
@@ -154,7 +157,7 @@ target, so no entry exists yet to carry them.
   refusal, with create-scene named in the reason.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
-  `reason` on the lane's own entry, which otherwise reads like any other hit.
+  `note` on the lane's own entry, which otherwise reads like any other hit.
   `ok: false` only when the lane was neither created nor named, so nothing the
   call asked of it landed.
 - **duplicate answers per destination named.** A destination no copy landed at
@@ -162,10 +165,10 @@ target, so no entry exists yet to carry them.
   clip, a copy Live declined, a take lane past the cap, a re-create that failed,
   a destination the deadline never reached, one the plan dropped because a clip
   slot can't take an arrangement copy. A copy that landed incomplete is a clip
-  entry with a `reason`, not a skip: it exists, so losing it from the result
-  would cost the caller a clip. The path is spelled the way a copy that landed
-  there would report it, so it pastes back into `toPath`. The deadline warning
-  still names what it never reached, and counts only copies that exist.
+  entry with a `note`, not a skip: it exists, so losing it from the result would
+  cost the caller a clip. The path is spelled the way a copy that landed there
+  would report it, so it pastes back into `toPath`. The deadline warning still
+  names what it never reached, and counts only copies that exist.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
   hands back why rather than warning it, so the destination's reason says what
@@ -180,7 +183,7 @@ target, so no entry exists yet to carry them.
   Live wouldn't take the copy at) is that entry's `reason` now. So is a source
   no destination could be copied from, such as a return chain: it is reported on
   every destination it was given, and a lone one throws. A copy that landed
-  incomplete keeps its entry with a `reason` rather than being rolled back — a
+  incomplete keeps its entry with a `note` rather than being rolled back — a
   chain whose devices didn't all cross, a pad copy that layered onto chains
   already there. `count`, which none of these types uses, is still a warning: it
   is about the call, not a destination.
@@ -191,7 +194,7 @@ target, so no entry exists yet to carry them.
   has no use for — each is `ok: false` with a reason on that param's own entry
   now, and warns nowhere. A param whose value Live changed on the way in (a
   clamp, the nearest step of a coarse ladder) reports the value it reads as plus
-  the reason, and no `ok`. A specialized pseudo-param answers the same way: a
+  a note, and no `ok`. A specialized pseudo-param answers the same way: a
   `PseudoParam.write` returns the reason it refused a value rather than a
   boolean, so the refusal reaches the caller as that param's own entry.
 - **The params that never go through `params` report on the target.** `gainDb`,

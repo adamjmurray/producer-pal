@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date logged:** 2026-09-19
+- **Amended by:** [ADR-0050](0050-reason-explains-a-skip.md) — the entry's
+  `reason` was renamed `note`.
 
 ## Context
 
@@ -22,8 +24,8 @@ they never mentioned.
 range means: a position on the timeline, not a slot that can be occupied. The
 write is never refused, and there is no `force` to opt into it.
 
-**The written clip's entry says what the write cost**, as a `reason`, naming
-each clip by the arrangement path it had or has:
+**The written clip's entry says what the write cost**, as a `note`, naming each
+clip by the arrangement path it had or has:
 
 - `overwrote the clip at t0[4|1]` — it is gone.
 - `shortened the clip at t0[4|1]` — it survives, cut at one end.

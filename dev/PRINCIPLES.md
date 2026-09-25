@@ -60,7 +60,7 @@ should follow from them unambiguously, without being spelled out here.
    where the whole list is checked before anything runs.
 
 5. Observability: On a write, don't report an arg that took effect as intended.
-   Report a value the API changed, reading it back off the object, with a reason
+   Report a value the API changed, reading it back off the object, with a note
    when it's not self-explanatory. Don't count small rounding errors as a
    change, but do report when the arg and the value read back can't be compared
    at all. Properties the call didn't touch aren't returned, with two
