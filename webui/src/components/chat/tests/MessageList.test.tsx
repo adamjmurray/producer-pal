@@ -430,6 +430,7 @@ describe("MessageList", () => {
       expect(handleEditMock).toHaveBeenCalledExactlyOnceWith(
         0,
         "Edited message",
+        [],
       );
     });
 

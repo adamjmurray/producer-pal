@@ -156,7 +156,11 @@ export interface UseChatReturn {
   canUndoCompaction: boolean;
   handleSend: SendMessageHandler;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
-  handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
+  handleEdit: (
+    mergedMessageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
   /**
    * Compact the conversation: summarize the full visible history into a single
    * appended summary marker. Prior turns stay visible but drop out of the model

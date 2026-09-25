@@ -195,8 +195,10 @@ phase on a wrapper around the editor, so CodeMirror never inserts the file).
 They ride on `ChatMessage.images` as base64, reach the model as AI SDK image
 parts ahead of the text (`buildModelMessages`), render as thumbnails in the user
 bubble (`UserImages`), and persist with the conversation like any other message
-field. A message may be images with no text at all, so both the send path and
-the composer treat attachments as content. A paste with both images and text
+field. Editing a message keeps its images unless the user removes them in the
+editor, which is how a chat recovers after a text-only model starts rejecting
+every turn. A message may be images with no text at all, so both the send path
+and the composer treat attachments as content. A paste with both images and text
 lets the editor paste the text. Excel, Word and OneNote add a picture of the
 copied content, so when the clipboard's HTML holds text, the picture is skipped;
 HTML that is only an image (a browser's Copy Image) still attaches it.
