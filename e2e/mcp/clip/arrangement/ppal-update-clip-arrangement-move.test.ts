@@ -445,6 +445,41 @@ describe("arrangement clip moved to another lane", () => {
   });
 });
 
+describe("arrangement clip moved and shortened in one call", () => {
+  // Shortened where it sits, then moved: the move clears only the new length,
+  // so a clip just past the new end survives.
+  it("leaves a clip just past the new end alone", async () => {
+    const source = await createArrangementClip(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+      "661|1",
+      { name: "Shrinking Mover", length: "4bar" },
+    );
+    const neighbor = await createClip("671|1", "Past The End");
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      arrangementStart: "669|1",
+      arrangementLength: "2bar",
+    });
+
+    expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}[669|1]`);
+
+    const placed = await arrangementClipAt(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+      "669|1",
+    );
+
+    expect(placed?.arrangementLength).toBe("2bar");
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "671|1"))?.id,
+    ).toBe(neighbor.id);
+    expect(
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "661|1"),
+    ).toBeUndefined();
+  });
+});
+
 /**
  * Create an audio clip on the audio track's first take lane.
  * @param position - Position in bar|beat format

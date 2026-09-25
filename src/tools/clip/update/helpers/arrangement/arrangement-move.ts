@@ -5,7 +5,10 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
+import {
+  handleArrangementLengthOperation,
+  shortensArrangementClip,
+} from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { type ClipIdResult } from "#src/tools/clip/arrangement/helpers/arrangement-length-changes.ts";
 import {
   buildClipResultObject,
@@ -19,7 +22,10 @@ import {
   snapshotLane,
 } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
-import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  type ArrangementTrack,
+  isTakeLaneClip,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   markClipLanded,
@@ -213,7 +219,13 @@ interface HandleArrangementOperationsArgs {
 }
 
 /**
- * Handle arrangement start and length operations in correct order
+ * Handle arrangement start and length operations in correct order.
+ *
+ * A move copies the clip at its current length and clears that whole span at
+ * the destination, so a main-lane clip being shortened is shortened first:
+ * moving first would wipe neighbors the shortened clip no longer reaches.
+ * Everything else moves first, so lengthening tiles from the new position
+ * instead of over the clip's old neighbors.
  * @param args - Operation arguments
  * @param args.clip - The clip to operate on
  * @param args.isAudioClip - Whether the clip is audio
@@ -227,38 +239,30 @@ interface HandleArrangementOperationsArgs {
  * @param args.reasons - What each clip has to say beyond its result
  * @param args.isNonSurvivor - When true, clip is left for the deferred clear
  */
-export function handleArrangementOperations({
-  clip,
-  isAudioClip,
-  arrangementStartBeats,
-  arrangementLengthBeats,
-  destination,
-  movedClipGroups,
-  context,
-  updatedClips,
-  noteResult,
-  reasons,
-  isNonSurvivor,
-}: HandleArrangementOperationsArgs): void {
-  // Move FIRST so lengthening uses the new position
+export function handleArrangementOperations(
+  args: HandleArrangementOperationsArgs,
+): void {
+  const { clip, isAudioClip, arrangementLengthBeats } = args;
+  const { movedClipGroups, context, updatedClips, noteResult, reasons } = args;
+  // A destination alone is a move too: it keeps the clip's own start time and
+  // changes only the lane it sits on.
+  const moves = args.arrangementStartBeats != null || args.destination != null;
+
+  if (
+    moves &&
+    arrangementLengthBeats != null &&
+    shortensBeforeMove(args, arrangementLengthBeats)
+  ) {
+    shortenThenMove(args, arrangementLengthBeats);
+
+    return;
+  }
+
   let finalClipId: string | null = clip.id;
   let currentClip = clip;
 
-  // A destination alone is a move too: it keeps the clip's own start time and
-  // changes only the lane it sits on.
-  if (arrangementStartBeats != null || destination != null) {
-    finalClipId = handleArrangementStartOperation({
-      clip,
-      arrangementStartBeats: arrangementStartBeats ?? null,
-      destination: destination ?? null,
-      movedClipGroups,
-      isMidiClip: !isAudioClip,
-      context: context as TilingContext,
-      updatedClips,
-      noteResult,
-      reasons,
-      isNonSurvivor,
-    });
+  if (moves) {
+    finalClipId = moveArrangementClip(args);
 
     // A non-survivor is not moved and already recorded its own entry.
     if (finalClipId == null) {
@@ -268,7 +272,6 @@ export function handleArrangementOperations({
     currentClip = LiveAPI.from(finalClipId);
   }
 
-  // Handle arrangementLength SECOND
   let hasArrangementLengthResults = false;
   let finalNoteResult = noteResult;
 
@@ -335,6 +338,97 @@ export function handleArrangementOperations({
       ),
     );
   }
+}
+
+/**
+ * Move the clip, reporting under the id the call found it at.
+ * @param args - Operation arguments
+ * @returns The moved clip's id, the original on failure, or null for a non-survivor
+ */
+function moveArrangementClip(
+  args: HandleArrangementOperationsArgs,
+): string | null {
+  return handleArrangementStartOperation({
+    clip: args.clip,
+    arrangementStartBeats: args.arrangementStartBeats ?? null,
+    destination: args.destination ?? null,
+    movedClipGroups: args.movedClipGroups,
+    isMidiClip: !args.isAudioClip,
+    context: args.context as TilingContext,
+    updatedClips: args.updatedClips,
+    noteResult: args.noteResult,
+    reasons: args.reasons,
+    isNonSurvivor: args.isNonSurvivor,
+  });
+}
+
+/**
+ * Whether to shorten the clip where it sits before moving it. Main lane to main
+ * lane only: take-lane clips refuse arrangementLength, and a move to or from a
+ * take lane re-creates the clip rather than copying it.
+ * @param args - Operation arguments
+ * @param lengthBeats - Target length in beats
+ * @returns True when the resize shortens a main-lane clip bound for a main lane
+ */
+function shortensBeforeMove(
+  args: HandleArrangementOperationsArgs,
+  lengthBeats: number,
+): boolean {
+  const { clip, destination, isNonSurvivor } = args;
+
+  if (isNonSurvivor || destination?.takeLane != null || isTakeLaneClip(clip)) {
+    return false;
+  }
+
+  return shortensArrangementClip(
+    clip.getProperty("start_time") as number,
+    clip.getProperty("end_time") as number,
+    lengthBeats,
+  );
+}
+
+/**
+ * Shorten the clip where it sits, then move it. Shortening lays a temp clip
+ * over the clip's own tail, so it touches nothing the clip doesn't already fill.
+ * @param args - Operation arguments
+ * @param lengthBeats - Target length in beats
+ */
+function shortenThenMove(
+  args: HandleArrangementOperationsArgs,
+  lengthBeats: number,
+): void {
+  const { clip, reasons } = args;
+
+  handleArrangementLengthOperation({
+    clip,
+    isAudioClip: args.isAudioClip,
+    arrangementLengthBeats: lengthBeats,
+    context: args.context,
+    reasons,
+  });
+  // The resize landed, so a move refused after it keeps a real entry.
+  markClipLanded(reasons, clip.id);
+
+  const noteResult = recountNotesAfterLengthChange(clip.id, args.noteResult);
+  let finalClipId: string;
+
+  try {
+    // Never null: a non-survivor doesn't shorten first.
+    finalClipId = moveArrangementClip(args) as string;
+  } catch (error) {
+    noteClipReason(
+      reasons,
+      clip.id,
+      `shortened, but the move didn't finish: ${errorMessage(error)}`,
+    );
+    finalClipId = clip.id;
+  }
+
+  const finalClip = finalClipId === clip.id ? clip : LiveAPI.from(finalClipId);
+
+  args.updatedClips.push(
+    buildClipResultObject(finalClipId, noteResult, objectPathForApi(finalClip)),
+  );
 }
 
 /**

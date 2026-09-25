@@ -207,9 +207,9 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
-  it("should allow both arrangementLength and arrangementStart (move then resize)", async () => {
-    // Order of operations: move FIRST, then resize
-    // This ensures lengthening operations use the new position for tile placement
+  it("shortens before moving when a call both moves and shortens", async () => {
+    // Moving first would copy all 4 bars to bar 9 and clear bars 9-13 there,
+    // then cut the copy back to 2 bars, leaving bars 11-13 empty.
     const { track, movedClipId } = setupMoveThenResize("id temp-midi");
 
     const result = await updateClip({
@@ -218,45 +218,40 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       arrangementStart: "9|1", // Move to bar 9
     });
 
-    // Should FIRST duplicate to new position (move operation)
+    const calls = vi.mocked(track.call).mock.calls.map(([method]) => method);
+
+    // The temp clip cuts the source where it sits: 0-16 to 0-8.
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8.0, 8.0);
     expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       32.0, // bar 9 in 4/4 = 32 beats
     );
-
-    // Should delete original after move
-    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
-
-    // Should THEN create temp clip to shorten (at moved position)
-    // Shortening from 32-48 to 32-40 means temp clip at position 40
-    expect(track.call).toHaveBeenCalledWith(
-      "create_midi_clip",
-      40.0, // newEndTime = 32 + 8 (2 bars)
-      8.0, // tempClipLength = 48 - 40 = 8
+    expect(calls.indexOf("create_midi_clip")).toBeLessThan(
+      calls.indexOf("duplicate_clip_to_arrangement"),
     );
+    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
 
     // The move landed it at beat 32, which 4/4 spells as bar 9.
     expect(result).toStrictEqual({ id: movedClipId, path: "t0[9|1]" });
   });
 
-  // The source is already deleted, so the moved clip must keep its entry.
-  it("reports the moved clip when the resize after a landed move throws", async () => {
+  // Shortening runs first, so a throw there leaves the clip unmoved.
+  it("doesn't move the clip when the shortening before the move throws", async () => {
     const { track } = setupMoveThenResize("id 0");
 
-    const result = await updateClip({
-      id: "789",
-      arrangementLength: "2bar",
-      arrangementStart: "9|1",
-    });
-
-    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
-    expect(result).toStrictEqual({
-      id: "999",
-      path: "t0[9|1]",
-      reason:
-        "moved, but arrangementLength didn't finish: Live created no clip at t0",
-    });
+    await expect(
+      updateClip({
+        id: "789",
+        arrangementLength: "2bar",
+        arrangementStart: "9|1",
+      }),
+    ).rejects.toThrow("Live created no clip at t0");
+    expect(track.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("still refuses a resize that throws when no move landed", async () => {

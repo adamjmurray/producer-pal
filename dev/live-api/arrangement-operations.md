@@ -375,8 +375,19 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
 2. Verify duplicate succeeded
 3. Delete original clip
 
-**Order matters**: in combined move + lengthen operations, move happens FIRST so
-lengthening uses the new position.
+**Order matters** when one call moves and resizes a clip:
+
+- **Shortening, main lane to main lane:** shorten first, where the clip sits,
+  then move. The move copies the clip at its current length and clears that
+  whole span, so moving first would wipe neighbors the shortened clip no longer
+  reaches. Shortening in place only covers the clip's own tail.
+- **Everything else:** move first, so lengthening tiles from the new position
+  instead of over the clip's old neighbors. Take-lane moves re-create the clip
+  and take-lane clips refuse `arrangementLength`, so they keep this order too.
+
+If the second step throws, the clip's entry says what landed:
+`shortened, but the move didn't finish` or
+`moved, but arrangementLength didn't finish`.
 
 **The duplicate clears its destination range first**, so it destroys whatever
 sat there — including another clip the same call names. A take-lane create does
