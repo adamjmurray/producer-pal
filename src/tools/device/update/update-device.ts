@@ -45,6 +45,9 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
   focus?: boolean;
 }
 
+/** Args a wrap can take: `force` only unlocks a params write, refused anyway. */
+const WRAP_ALLOWED_ARGS = new Set(["name", "force"]);
+
 /** The other string params that pair per target, beside name and color. */
 const DEVICE_VALUE_LABELS: PairedParamLabels<"sendReturn" | "mappedPitch"> = {
   sendReturn: {
@@ -132,8 +135,34 @@ export function updateDevice(
     throw new Error("id or path is required");
   }
 
+  // No toPath here: each target takes the destination at its own position.
+  const updateOptions: UpdateTargetOptions = {
+    name,
+    params,
+    actions,
+    macroVariation,
+    macroVariationIndex,
+    macroCount,
+    abCompare,
+    mute,
+    solo,
+    color,
+    gainDb,
+    pan,
+    sendGainDb,
+    sendReturn,
+    sends,
+    chokeGroup,
+    mappedPitch,
+    force,
+  };
+
+  // First, so a wrap names every arg it would ignore before any of them is
+  // checked on its own.
+  refuseArgsWrapIgnores(wrapInRack, updateOptions);
+
   validateSendPair(sendGainDb, sendReturn);
-  params = validateParamEntries(params);
+  updateOptions.params = validateParamEntries(params);
 
   // Checked for the whole call, so a per-target skip wouldn't repeat itself
   // down the list. Refused before any target is touched (ADR-0035).
@@ -185,28 +214,6 @@ export function updateDevice(
     });
     const destinations = moveDestinations(toPath, items.length);
 
-    // No toPath here: each target takes the destination at its own position.
-    const updateOptions: UpdateTargetOptions = {
-      name,
-      params,
-      actions,
-      macroVariation,
-      macroVariationIndex,
-      macroCount,
-      abCompare,
-      mute,
-      solo,
-      color,
-      gainDb,
-      pan,
-      sendGainDb,
-      sendReturn,
-      sends,
-      chokeGroup,
-      mappedPitch,
-      force,
-    };
-
     result = updateMultipleTargets(items, updateOptions, {
       names: parsedNames,
       colors: parsedColors,
@@ -228,6 +235,40 @@ export function updateDevice(
   }
 
   return result;
+}
+
+/**
+ * Refuse update args sent with wrapInRack. A wrap uses only the targets,
+ * toPath and name, so the rest would be dropped while the call reads as done.
+ * @param wrapInRack - Whether the call wraps; nothing is refused otherwise
+ * @param options - The update args
+ */
+function refuseArgsWrapIgnores(
+  wrapInRack: boolean | undefined,
+  options: UpdateTargetOptions,
+): void {
+  if (!wrapInRack) {
+    return;
+  }
+
+  const ignored = Object.entries(options)
+    .filter(([key, value]) => !WRAP_ALLOWED_ARGS.has(key) && isSent(value))
+    .map(([key]) => key);
+
+  if (ignored.length > 0) {
+    throw new Error(
+      `wrapInRack cannot be used with ${ignored.join(", ")}: wrap first, then update in another call`,
+    );
+  }
+}
+
+/**
+ * Whether an arg asks for anything: an empty list sets nothing.
+ * @param value - The arg's value
+ * @returns True when it was sent with something in it
+ */
+function isSent(value: unknown): boolean {
+  return value != null && !(Array.isArray(value) && value.length === 0);
 }
 
 /**

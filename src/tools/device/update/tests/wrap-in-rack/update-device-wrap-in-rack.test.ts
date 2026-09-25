@@ -381,6 +381,56 @@ describe("updateDevice - wrapInRack", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("refuses update args a wrap would ignore, before touching anything", () => {
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        wrapInRack: true,
+        name: "Rack",
+        toPath: "t0/d0",
+        params: [{ name: "Gain", value: "1" }],
+        macroCount: 4,
+        color: "#FF0000",
+        mute: false,
+      }),
+    ).toThrow(
+      "wrapInRack cannot be used with params, macroCount, mute, color: wrap first, then update in another call",
+    );
+    expect(track0.call).not.toHaveBeenCalledWith(
+      "insert_device",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("refuses a wrap's ignored args before checking them on their own", () => {
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, sendGainDb: -3 }),
+    ).toThrow("wrapInRack cannot be used with sendGainDb");
+  });
+
+  it("wraps anyway when the other args set nothing", () => {
+    const result = updateDevice({
+      path: "t0/d0",
+      wrapInRack: true,
+      force: false,
+      params: [],
+      actions: [],
+      sends: [],
+    });
+
+    expect(track0.call).toHaveBeenCalledWith(
+      "insert_device",
+      "Audio Effect Rack",
+      0,
+    );
+    expect(result).toStrictEqual({
+      id: "new-rack",
+      type: "audio-effect-rack",
+      deviceCount: 1,
+    });
+  });
+
   it.each(["t1", "t1/d+"])(
     "appends the rack to the toPath %s, which names no index",
     (toPath) => {

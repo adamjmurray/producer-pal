@@ -212,10 +212,12 @@ everything you asked of that target, and a lone target throws. Same for
 `ppal-update-track`: `monitoringState` on a track that can't be armed, input
 routing on a group or return track, and a routing name the track doesn't have.
 `wrapInRack` throws instead of returning `null` when it can't wrap anything, and
-names each device it dropped on the new rack's `reason`. A `macroVariationIndex`
-that contradicts its `macroVariation` (sent alone, missing for `load`/`delete`,
-or sent beside `create`/`revert`/`randomize`) is refused before anything is
-written.
+names each device it dropped on the new rack's `reason`. It also refuses any
+other update arg (`params`, `macroCount`, `color`, `mute`, ...) instead of
+dropping it; only `name`, `toPath` and `focus` go with a wrap. A
+`macroVariationIndex` that contradicts its `macroVariation` (sent alone, missing
+for `load`/`delete`, or sent beside `create`/`revert`/`randomize`) is refused
+before anything is written.
 
 **`ppal-delete` entries no longer carry `type`.** You sent it, so the entry
 doesn't repeat it. Pair entries to targets by position, as everything else does.
