@@ -15,8 +15,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -201,16 +202,16 @@ describe("return and master tracks", () => {
     expect((await readReturnTracks())[1]!.name).toBe("B-Reverb");
   });
 
-  it("skips input routing on a return track instead of failing", async () => {
+  // Input routing was the only thing asked, so the refusal is the call's error.
+  it("refuses input routing on a return track", async () => {
     const rt0 = (await readReturnTracks())[0]!;
-    const { warnings } = parseToolResultWithWarnings<unknown>(
-      await ctx.client!.callTool({
-        name: "ppal-update-track",
-        arguments: { id: rt0.id, inputRoutingType: "17" },
-      }),
-    );
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: rt0.id, inputRoutingType: "17" },
+    });
 
-    expect(warnings.join("\n")).toContain(
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
       "input routing is only available on regular non-group tracks",
     );
   });

@@ -93,7 +93,7 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.name).toBe("Source B");
   });
 
-  it("rejects the deprecated toSlot on an arrangement destination", async () => {
+  it("lets the deprecated toSlot win over arrangementStart", async () => {
     const position = "21|1";
     const source = await createArrClip(position, "Source C");
 
@@ -105,12 +105,16 @@ describe("cross-track arrangement clip duplicate", () => {
       name: "Cross Copy C",
     });
 
-    // toSlot only ever named clip slots, so it wins over arrangementStart —
-    // and then has nowhere to put an arrangement clip.
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      "cannot duplicate arrangement clips to the session",
-    );
+    // toSlot only ever named clip slots, so arrangementStart is dropped and the
+    // arrangement clip is re-created in that slot.
+    const { data: copy, warnings } = parseToolResultWithWarnings<{
+      id: string;
+      detail?: string;
+    }>(result);
+
+    expect(warnings.join("\n")).toContain("arrangementStart ignored");
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.detail).toContain("re-created from the arrangement clip");
 
     const survivor = await clipAt(EMPTY_MIDI_TRACK, position);
 
