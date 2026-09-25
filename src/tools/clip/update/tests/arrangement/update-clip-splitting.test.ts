@@ -28,6 +28,7 @@ import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test
 import { resolveClipTargets } from "#src/tools/clip/update/helpers/entries/clip-targets.ts";
 import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
 import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import * as processModule from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 
@@ -389,6 +390,38 @@ describe("updateClip - splitting smoke tests", () => {
       },
       { id: "clip_1", path: "t0[1|1]" },
       { id: "dup_2", path: "t0[2|1]" },
+    ]);
+  });
+
+  // A target with no clip keeps its number, and each split piece gets its own.
+  it("numbers split pieces after an empty target, then the next clip", async () => {
+    setupClipSplittingMocks("clip_1");
+    registerMockObject("session_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+    });
+    const update = vi.spyOn(processModule, "processSingleClipUpdate");
+
+    await updateClip(
+      {
+        ids: "missing,clip_1,session_clip",
+        arrangementSplit: "2|1",
+        name: "A,B,C",
+      },
+      {},
+    );
+
+    expect(
+      update.mock.calls.map(([params]) => [
+        params.clip.id,
+        params.clipIndex,
+        params.clipCount,
+      ]),
+    ).toStrictEqual([
+      ["clip_1", 1, 4],
+      ["dup_2", 2, 4],
+      ["session_clip", 3, 4],
     ]);
   });
 

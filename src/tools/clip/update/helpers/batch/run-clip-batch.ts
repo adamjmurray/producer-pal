@@ -30,6 +30,7 @@ import {
   clipAddresses,
   markBuriedClips,
 } from "./buried-clips.ts";
+import { clipBatchIndexes } from "./clip-batch-indexes.ts";
 import { clipValuesAt } from "./clip-value-lists.ts";
 import {
   type ClipAudioWarpQuantizeParams,
@@ -108,6 +109,8 @@ export async function runClipBatch({
   const { name, color } = args;
   // The other per-clip strings pair with the targets the same way.
   const valuesAt = clipValuesAt(args, targets.named.length);
+  // clip.index and clip.count, counted over the targets named.
+  const numbering = clipBatchIndexes(plan.slots, targets.named.length);
   const updatedClips: ClipResult[] = [];
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
@@ -155,8 +158,8 @@ export async function runClipBatch({
 
     const failure = await processClipUpdateStep({
       clip,
-      clipIndex: i,
-      clipCount: clips.length,
+      clipIndex: numbering.indexes[i] as number,
+      clipCount: numbering.count,
       notationString: args.notes,
       transformString: args.transforms,
       preTransformString: args.preTransforms,
