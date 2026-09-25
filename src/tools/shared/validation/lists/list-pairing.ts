@@ -8,7 +8,7 @@
 // entry may be empty. A length mismatch is refused before any work runs, and a
 // hole is refused here. Nothing cycles — a caller can't predict where a cycled
 // value lands. A comma splits only when the call names more than one item:
-// with one item every comma is part of the value (dev/Principles.md,
+// with one item every comma is part of the value (dev/PRINCIPLES.md,
 // Multi-target). With any count, `\,` is a comma inside a value, so a file
 // path or routing name can hold one in a list. No other backslash is touched
 // (Windows paths come through as-is), so a value can't end in a backslash

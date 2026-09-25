@@ -9,7 +9,7 @@ part is a file beside it.
 
 ## Start here
 
-- [Principles.md](Principles.md) — first principles for tool design. Read before
+- [PRINCIPLES.md](PRINCIPLES.md) — first principles for tool design. Read before
   changing a tool's inputs, outputs, or failure behavior.
 - [architecture/](architecture/README.md) — how the pieces fit together.
 - [coding-standards/](coding-standards/README.md) — style guide and Live API

@@ -114,7 +114,7 @@ UI.
   at a different Live object. Build them where you use them. See
   `src/live-api-adapter/live-api-release.ts`.
 
-- **Tool design follows `dev/Principles.md`** — addressing, multi-target,
+- **Tool design follows `dev/PRINCIPLES.md`** — addressing, multi-target,
   relocation, partial completion, observability, warnings, destruction,
   vocabulary, spelling, efficiency. Read it before changing a tool's inputs,
   outputs, or failure behavior. Anything about a target goes in that target's
@@ -297,7 +297,7 @@ we support. `src/test/meta/versions/live-set-versions.test.ts` catches it.
 These encode standards the project is held to — **don't relax or rewrite any of
 them without asking:**
 
-- `dev/Principles.md` — the first principles for tool design. It states the
+- `dev/PRINCIPLES.md` — the first principles for tool design. It states the
   intended future state, so editing one to match today's code retires a goal
   silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
@@ -319,7 +319,7 @@ them without asking:**
 
 Internal docs live in `dev/`, grouped by topic (`tools/`, `live-api/`,
 `clients/`, `quality/`, `process/`, …). `dev/README.md` indexes them all. The
-main ones: `dev/Principles.md` (first principles for tool design — read first),
+main ones: `dev/PRINCIPLES.md` (first principles for tool design — read first),
 `dev/architecture/` (system design), `dev/coding-standards/` (full style guide +
 Live API reference), `dev/quality/testing.md`, `dev/tools/tool-schemas.md`,
 `dev/quality/linting.md`, `dev/specs/` (bar|beat and transform grammars),

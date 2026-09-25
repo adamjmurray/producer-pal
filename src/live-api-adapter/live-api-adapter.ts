@@ -402,7 +402,7 @@ function sendResponse(
   // as one atom: a multi-target call that overflows is exactly the case that
   // also warns per item (up to MAX_CAPTURED_WARNINGS), so the error-plus-
   // warnings payload can itself need several chunks. Dropping the warnings
-  // here would destroy the only copy of what they carried (see Principles.md
+  // here would destroy the only copy of what they carried (see PRINCIPLES.md
   // on warnings).
   const fallbackTooLargeError = sendChunked(
     requestId,
