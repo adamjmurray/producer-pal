@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  newTrackPathFromIndex,
   scenePathFromIndex,
   trackCategoryPath,
   trackPathFromIndex,
@@ -30,6 +31,22 @@ describe("trackPathFromIndex", () => {
       expect(trackPathFromIndex(args)).toBeUndefined();
     },
   );
+});
+
+describe("newTrackPathFromIndex", () => {
+  it.each([
+    [{ trackIndex: 2 }, "t2"],
+    [{ trackIndex: -1, type: "midi" }, "t+"],
+    [{ trackIndex: 2, type: "return" }, "rt+"],
+    // trackType is another tool's param; create-track ignores it.
+    [{ trackIndex: 2, trackType: "return" }, "t2"],
+  ])("spells %o as %s", (args, path) => {
+    expect(newTrackPathFromIndex(args)).toBe(path);
+  });
+
+  it("gives no path without a trackIndex", () => {
+    expect(newTrackPathFromIndex({ type: "audio" })).toBeUndefined();
+  });
 });
 
 describe("trackCategoryPath", () => {

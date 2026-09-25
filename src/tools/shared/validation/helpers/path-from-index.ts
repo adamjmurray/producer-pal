@@ -44,6 +44,25 @@ export function trackPathFromIndex(
 }
 
 /**
+ * The path for where create-track's deprecated trackIndex put a new track.
+ * create-track names the kind `type`, not `trackType`, and Live always appends
+ * a return track, so a return is "rt+" whatever the index.
+ * @param args - The args the call sent
+ * @returns The path, or undefined when no trackIndex was sent
+ */
+export function newTrackPathFromIndex(
+  args: Record<string, unknown>,
+): string | undefined {
+  if (typeof args.trackIndex !== "number") {
+    return undefined;
+  }
+
+  return args.type === "return"
+    ? "rt+"
+    : trackCategoryPath("regular", args.trackIndex);
+}
+
+/**
  * The scene path a call's deprecated sceneIndex named.
  * @param args - The args the call sent
  * @returns The path, or undefined when no sceneIndex was sent
