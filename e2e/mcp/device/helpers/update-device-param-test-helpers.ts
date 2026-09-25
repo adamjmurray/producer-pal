@@ -7,6 +7,9 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
   createTestDevice,
+  getToolErrorMessage,
+  getToolWarnings,
+  isToolError,
   parseToolResultWithWarnings,
   sleep,
 } from "../../mcp-test-helpers";
@@ -19,6 +22,14 @@ export interface UpdateDeviceParamResult {
     ok?: boolean;
     detail?: string;
   }[];
+}
+
+/** What one param write answered with. */
+export interface WrittenParam {
+  data: UpdateDeviceParamResult;
+  warnings: string[];
+  /** The error, when the call failed */
+  error?: string;
 }
 
 /**
@@ -36,40 +47,45 @@ export function createGlueCompressor(client: Client): Promise<string> {
  * @param deviceId - Device holding the parameter
  * @param name - Parameter to write
  * @param value - Value to request, unit and all
- * @returns The parsed result and its warnings
+ * @returns The parsed result and its warnings, or the error
  */
 export async function writeParam(
   client: Client,
   deviceId: string,
   name: string,
   value: string,
-): Promise<{ data: UpdateDeviceParamResult; warnings: string[] }> {
-  const result = parseToolResultWithWarnings<UpdateDeviceParamResult>(
-    await client.callTool({
-      name: "ppal-update-device",
-      arguments: { id: deviceId, params: [{ name, value }] },
-    }),
-  );
+): Promise<WrittenParam> {
+  const result = await client.callTool({
+    name: "ppal-update-device",
+    arguments: { id: deviceId, params: [{ name, value }] },
+  });
 
   await sleep(100);
 
-  return result;
+  if (isToolError(result)) {
+    return {
+      data: {},
+      warnings: getToolWarnings(result),
+      error: getToolErrorMessage(result),
+    };
+  }
+
+  return parseToolResultWithWarnings<UpdateDeviceParamResult>(result);
 }
 
 /**
- * Assert one param came back refused: `ok: false` with the reason why, and no
- * warning — the param's own entry is the whole report.
+ * Assert one param was refused, and no warning raised. It was all the call
+ * asked, so the call fails with the reason.
  * @param result - What writeParam returned
  * @param name - The param name as the call spelled it
  * @param reason - Substring the reason must contain
  */
 export function expectParamRefused(
-  result: { data: UpdateDeviceParamResult; warnings: string[] },
+  result: WrittenParam,
   name: string,
   reason: string,
 ): void {
-  expect(result.data.params).toStrictEqual([
-    { name, ok: false, detail: expect.stringContaining(reason) },
-  ]);
+  expect(result.error).toContain(`no param landed — "${name}": `);
+  expect(result.error).toContain(reason);
   expect(result.warnings).toStrictEqual([]);
 }

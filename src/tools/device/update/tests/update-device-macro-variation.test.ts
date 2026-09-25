@@ -246,6 +246,7 @@ describe("updateMacroCount", () => {
     expect(notes).toStrictEqual({
       said: ["macroCount is only available on rack devices"],
       refused: ["macroCount"],
+      unlanded: [],
     });
     expect(nonRackDevice.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);

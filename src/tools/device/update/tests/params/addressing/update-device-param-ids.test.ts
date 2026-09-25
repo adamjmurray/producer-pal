@@ -8,7 +8,9 @@ import {
   type RegisteredMockObject,
   children,
   livePath,
+  expectParamRefused,
   mockWorkingDeviceMoves,
+  noParamLanded,
   paramsOf,
   registerDeviceWithParams,
   registerMockObject,
@@ -78,22 +80,19 @@ describe("updateDevice - params addressed by id", () => {
   });
 
   it("reports a miss under the id the call sent, and warns nowhere", () => {
-    const result = updateDevice({
-      id: "dev1",
-      params: [
-        { id: "999", value: "0.75" },
-        { id: "N/A", value: "0.75" },
-      ],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "dev1",
+        params: [
+          { id: "999", value: "0.75" },
+          { id: "N/A", value: "0.75" },
+        ],
+      }),
+    );
 
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [
-        { id: "999", ok: false, detail: "not found on t0/d0 (id dev1)" },
-        { id: "N/A", ok: false, detail: "not found on t0/d0 (id dev1)" },
-      ],
-    });
+    expect(message).toBe(
+      'no param landed — "999": not found on t0/d0 (id dev1); "N/A": not found on t0/d0 (id dev1)',
+    );
     expect(capturedWarnings()).toHaveLength(0);
   });
 
@@ -106,38 +105,24 @@ describe("updateDevice - params addressed by id", () => {
       ...continuousParam("Elsewhere"),
     });
 
-    const result = updateDevice({
-      id: "dev1",
-      params: [{ id: "55", value: "0.75" }],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({ id: "dev1", params: [{ id: "55", value: "0.75" }] }),
+    );
 
     expect(foreign.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [
-        {
-          id: "55",
-          ok: false,
-          detail:
-            "id 55 is on another object, not t0/d0 (id dev1), so it was not written",
-        },
-      ],
-    });
+    expect(message).toBe(
+      'no param landed — "55": id 55 is on another object, not t0/d0 (id dev1), so it was not written',
+    );
   });
 
   it("reports a refused value under the id", () => {
-    const result = updateDevice({
-      id: "dev1",
-      params: [{ id: "1", value: "loud" }],
-    });
+    expectParamRefused(
+      () => updateDevice({ id: "dev1", params: [{ id: "1", value: "loud" }] }),
+      "1",
+      "loud",
+    );
 
     expect(volume.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [{ id: "1", ok: false, detail: expect.stringContaining("loud") }],
-    });
   });
 
   // The OpenAI models fill the field they don't use with "" rather than
@@ -197,18 +182,19 @@ describe("updateDevice - params addressed by id", () => {
   });
 
   it("reports an id that reaches nothing, sent twice, once per entry", () => {
-    const result = updateDevice({
-      id: "dev1",
-      params: [
-        { id: "999", value: "0.75" },
-        { id: "999", value: "0.25" },
-      ],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "dev1",
+        params: [
+          { id: "999", value: "0.75" },
+          { id: "999", value: "0.25" },
+        ],
+      }),
+    );
 
-    expect(paramsOf(result)).toStrictEqual([
-      { id: "999", ok: false, detail: "set again by id 999 later in the list" },
-      { id: "999", ok: false, detail: "not found on t0/d0 (id dev1)" },
-    ]);
+    expect(message).toBe(
+      'no param landed — "999": set again by id 999 later in the list; "999": not found on t0/d0 (id dev1)',
+    );
   });
 
   const sameParamTwice = [

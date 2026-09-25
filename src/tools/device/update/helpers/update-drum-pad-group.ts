@@ -29,6 +29,7 @@ import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import {
   type NonDeviceWrites,
   type UpdateTargetOptions,
+  refuseIfNoParamLanded,
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
@@ -153,6 +154,8 @@ export function updateDrumPadGroup(
   if (CHAIN_WRITE_PROPS.some((key) => chainOptions[key] != null)) {
     result.chainIds = chains.map((chain) => chain.id);
   }
+
+  refuseIfNoParamLanded(notes, result.params);
 
   return reportTargetNotes(result, notes, options);
 }

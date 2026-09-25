@@ -313,14 +313,23 @@ that governs what the call did.
 
 Two things moved rather than vanished. A `sends` array now holds only the sends
 Live didn't give the level you asked for, so no `sends` means every one landed;
-one nothing could be written to keeps its slot as
-`{return, returnId, ok: false, detail}`, as does a send a rack macro owns. And a
-write the track can't take is refused on the track's own entry now: `pan` sent
-in split panning mode, `leftPan`/`rightPan` sent in stereo, a gain or pan a rack
-macro owns, `mute`/`solo` on the main track, and `arm` on a track that can't be
-armed. The entry carries a `detail`, and is `ok: false` when that was everything
-you asked of the track, and then a call naming only that track errors. Setting
-one of those switches to off is a `detail` only, since it.s already off.
+one nothing could be written to, a send a rack macro owns included, keeps its
+slot as `{return, returnId, ok: false, detail}`. And a write the object can't
+take is refused on its own entry now. On a track: `pan` sent in split panning
+mode, `leftPan`/`rightPan` sent in stereo, a gain or pan a rack macro owns,
+`mute`/`solo` on the main track, and `arm` on a track that can't be armed. On a
+chain or drum pad in `ppal-update-device`: a gain or pan a rack macro owns,
+which used to be a `WARNING:`. The entry carries a `detail`, and is `ok: false`
+when that was everything you asked of it, and then a call naming only that
+target errors. Setting one of those switches to off is a `detail` only, since
+it's already off.
+
+**Nested writes count.** When every send, `params` entry or action on a target
+failed and you asked nothing else of it, nothing landed. The target is
+`ok: false` with a `detail` starting `no send landed`, `no param landed` or
+`no action landed` that names each failure, and a call naming only that target
+errors. It used to come back as a normal entry holding only failed nested
+entries.
 
 **A locator id is Live's own id now.** `ppal-read-live-set` used to report
 `locator-0`, a position in the list that shifted whenever an earlier locator was

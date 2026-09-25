@@ -19,7 +19,9 @@
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   readIdAtPath,
@@ -56,7 +58,6 @@ interface TargetEntry {
   /** Clips only: true when another clip in the call was moved on top of it. */
   deleted?: boolean;
   detail?: string;
-  params?: Array<{ detail?: string }>;
   sends?: SendEntry[];
 }
 
@@ -243,13 +244,14 @@ describe("calls that report on the entry and warn about nothing", () => {
 
     expect(ignoredParam.detail).toBe("warpMode ignored: the clip is MIDI");
 
-    const unknownParam = await entryFrom("ppal-update-device", {
+    // The param was all it asked, so a miss fails the call.
+    const unknownParam = await errorFrom("ppal-update-device", {
       path: "t0/d0",
       params: [{ name: "Nope", value: 1 }],
     });
 
-    expect(unknownParam.params![0]!.detail).toBe(
-      `not found on ${await label("ppal-read-device", "t0/d0")}`,
+    expect(unknownParam).toContain(
+      `no param landed — "Nope": not found on ${await label("ppal-read-device", "t0/d0")}`,
     );
   });
 
@@ -271,19 +273,15 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(ignoredArg[1]?.path).toBe("t0/d0/pC1/c0");
 
     // A rack's return chains belong to the rack, so the pad the call named is
-    // what has nothing matching — its own entry says it.
-    const padSend = await entryFrom("ppal-update-device", {
+    // what has nothing matching. The send was all it asked, so the call fails.
+    const padSend = await errorFrom("ppal-update-device", {
       path: "t0/d0/pC1",
       sends: [{ return: "Nope", gainDb: -10 }],
     });
 
-    expect(padSend.sends).toStrictEqual([
-      {
-        return: "Nope",
-        ok: false,
-        detail: 'no return chain matching "Nope" (returns: a Saturator)',
-      },
-    ]);
+    expect(padSend).toContain(
+      'no send landed — "Nope": no return chain matching "Nope" (returns: a Saturator)',
+    );
 
     const rackLabel = await label("ppal-read-device", "t0/d0");
     const refusedCopy = await entriesFrom("ppal-duplicate", {
@@ -364,34 +362,31 @@ describe("calls that report on the entry and warn about nothing", () => {
     );
 
     // The main track has no sends at all, so the write has nowhere to land.
-    // The track's entry carries the refusal instead of the call warning and
-    // leaving no entry.
-    const mainSend = await entryFrom("ppal-update-track", {
+    // It was all the call asked, so the call fails instead of warning.
+    const mainSend = await errorFrom("ppal-update-track", {
       path: "mt",
       sends: [{ return: "A", gainDb: -10 }],
     });
 
-    expect(sendsOf(mainSend)).toStrictEqual([
-      expect.objectContaining({ ok: false, detail: "the track has no sends" }),
-    ]);
+    expect(mainSend).toContain("no send landed");
+    expect(mainSend).toContain("the track has no sends");
 
     // Which return tracks exist is a fact about the Set, so it is resolved once
-    // — and every track the call named still says it on its own entry.
+    // — and every track the call named still says it on its own entry, as a
+    // skip since the send was all it asked.
     const noReturn = await entriesFrom("ppal-update-track", {
       path: `t0,${SCRATCH}`,
       sends: [{ return: "Nope", gainDb: -10 }],
     });
 
-    for (const entry of noReturn) {
-      expect(entry.sends).toStrictEqual([
-        {
-          return: "Nope",
-          ok: false,
-          detail:
-            'no return track matching "Nope" (Available: A-Delay, B-Reverb)',
-        },
-      ]);
-    }
+    expect(noReturn).toStrictEqual(
+      ["t0", SCRATCH].map((path) => ({
+        path,
+        ok: false,
+        detail:
+          'no send landed — "Nope": no return track matching "Nope" (Available: A-Delay, B-Reverb)',
+      })),
+    );
 
     const pads = await entriesFrom("ppal-update-device", {
       path: "t0/d0/pC1,t0/d0/pC2",
@@ -431,6 +426,25 @@ async function warningsFrom(
   await sleep(100);
 
   return raised;
+}
+
+/**
+ * One call's error message, asserted to have raised no warnings at all.
+ * @param tool - The tool to call
+ * @param args - The call's arguments
+ * @returns The error it answered with
+ */
+async function errorFrom(
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const result = await ctx.client!.callTool({ name: tool, arguments: args });
+
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(isToolError(result)).toBe(true);
+  await sleep(100);
+
+  return getToolErrorMessage(result);
 }
 
 /**

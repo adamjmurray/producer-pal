@@ -6,6 +6,9 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
+  getToolErrorMessage,
+  getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
 } from "../../mcp-test-helpers.ts";
@@ -77,6 +80,27 @@ export async function callForParams(
   }>(await client.callTool({ name: tool, arguments: args }));
 
   return { entries: data.params ?? [], warnings };
+}
+
+/**
+ * Send one device-tool call expected to fail, as it does when no param landed
+ * and nothing else was asked. Asserts it warned nothing.
+ * @param client - Connected MCP client
+ * @param tool - The tool to call
+ * @param args - The tool arguments
+ * @returns The error message
+ */
+export async function callForParamError(
+  client: Client,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const result = await client.callTool({ name: tool, arguments: args });
+
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(isToolError(result)).toBe(true);
+
+  return getToolErrorMessage(result);
 }
 
 /**

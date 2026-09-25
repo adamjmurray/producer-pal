@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type TargetNotes,
+  refuseTargetWork,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import {
   type PublishedValue,
   publishedReadBack,
@@ -35,36 +38,12 @@ export function isParamEnabled(param: LiveAPI): boolean {
 }
 
 /**
- * Write to a parameter unless it's disabled. Live accepts a `set` on a disabled
- * parameter, reports success, and ignores it, so without this check the tool
- * tells the user a write landed when it did not.
- * @param param - DeviceParameter LiveAPI object
- * @param property - Which property carries the value
- * @param value - Value to write
- * @param label - How to name the parameter in the warning
- * @returns True when the value was written
- */
-export function setParamIfEnabled(
-  param: LiveAPI,
-  property: "value" | "display_value",
-  value: number,
-  label: string,
-): boolean {
-  if (!isParamEnabled(param)) {
-    warnParamDisabled(label);
-
-    return false;
-  }
-
-  param.set(property, value);
-
-  return true;
-}
-
-/**
  * Write a parameter and report what it now reads, the way a read publishes it.
  * Live clamps and snaps what it is given, so echoing the argument would report
  * a value the parameter doesn't hold.
+ *
+ * A disabled parameter is refused on the target's entry: Live accepts the
+ * `set`, reports success, and ignores it.
  *
  * Max serializes some floats as strings (a pan of 0.0001 comes back as
  * "9.999999747378752e-05"), which publish as the number they spell; a volume at
@@ -73,20 +52,30 @@ export function setParamIfEnabled(
  * @param param - DeviceParameter LiveAPI object
  * @param property - Which property carries the value
  * @param value - Value to write, or undefined to leave the parameter alone
- * @param label - How to name the parameter in a warning
+ * @param field - The param the call sent it as
  * @param round - Rounds the read-back to the resolution reads report
+ * @param notes - What the target's entry has to say, added to
  * @returns What the parameter now reads, or undefined when nothing was written
  */
 export function setParamAndReadBack(
   param: LiveAPI,
   property: "value" | "display_value",
   value: number | undefined,
-  label: string,
+  field: string,
   round: (value: number) => number,
+  notes: TargetNotes,
 ): PublishedValue | undefined {
-  if (value == null || !setParamIfEnabled(param, property, value, label)) {
+  if (value == null) {
     return undefined;
   }
+
+  if (!isParamEnabled(param)) {
+    refuseTargetWork(notes, [field], `${field} ${PARAM_DISABLED_REASON}`);
+
+    return undefined;
+  }
+
+  param.set(property, value);
 
   return publishedReadBack(param.getProperty(property), round);
 }
@@ -129,13 +118,3 @@ export function setParamValueAndVerify(
 /** Why a write to a parameter something else owns lands nowhere. */
 export const PARAM_DISABLED_REASON =
   "is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.";
-
-/**
- * Warn that a disabled parameter was skipped. For a chain's own mixer, which
- * still announces it this way; a track's mixer and sends carry the reason on
- * their own entry instead, since silence there means the value landed.
- * @param label - How to name the parameter in the warning
- */
-export function warnParamDisabled(label: string): void {
-  console.warn(`${label} ${PARAM_DISABLED_REASON}`);
-}

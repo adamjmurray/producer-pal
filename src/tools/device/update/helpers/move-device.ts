@@ -10,7 +10,7 @@ import {
   chainMixerToCarry,
   noteChainMixerLeftBehind,
   sourceChain,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer-carry.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,

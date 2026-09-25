@@ -11,7 +11,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
-import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {

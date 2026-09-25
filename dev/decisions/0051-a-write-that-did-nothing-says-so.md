@@ -27,9 +27,12 @@ only one. This covers:
   the entry, not a `WARNING:`, and a refused send keeps its place in `sends`.
 
 **Nested entries count.** When every nested write failed (`sends`, device
-`params`) and nothing else was asked of the target, the target is `ok: false`
-with a `detail` saying none landed. A lone one throws like any other, and the
-error names each write that failed.
+`params`, `actions`) and nothing else was asked of the target, the target is
+`ok: false` with a `detail` saying none landed. A lone one throws like any
+other, and the error names each write that failed. A change the call made on the
+way still counts as landed: a pad instrument swapped or a Simpler created for a
+sample that then didn't load keeps the target's entry, since a throw says
+nothing changed.
 
 **A clip another clip in the call was moved onto says so**, whether it was
 buried or held back: `deleted: true` and the same `detail`. A duplicate copy a

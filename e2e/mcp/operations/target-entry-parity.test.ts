@@ -156,6 +156,7 @@ describe("a write answers the same by path and by id", () => {
     });
   });
 
+  // No param landed and nothing else was asked, so each target is a skip.
   it("update-device: a param name the device doesn't have", async () => {
     const rackId = await idAt("ppal-read-device", "t0/d0");
     const [rack] = await expectSameEntriesBothWays(
@@ -167,9 +168,11 @@ describe("a write answers the same by path and by id", () => {
       ],
     );
 
-    expect(rack!.params).toStrictEqual([
-      { name: "Nope", ok: false, detail: `not found on t0/d0 (id ${rackId})` },
-    ]);
+    expect(rack).toStrictEqual({
+      path: "t0/d0",
+      ok: false,
+      detail: `no param landed — "Nope": not found on t0/d0 (id ${rackId})`,
+    });
   });
 
   it("update-device: a params list on a chain and on a drum pad", async () => {
@@ -183,20 +186,16 @@ describe("a write answers the same by path and by id", () => {
       ],
     );
 
-    expect(chain!.params).toStrictEqual([
-      {
-        name: "Volume",
-        ok: false,
-        detail: `'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
-      },
-    ]);
-    expect(pad!.params).toStrictEqual([
-      {
-        name: "Volume",
-        ok: false,
-        detail: `'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
-      },
-    ]);
+    expect(chain).toStrictEqual({
+      path: "t6/d0/c0",
+      ok: false,
+      detail: `no param landed — "Volume": 'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
+    });
+    expect(pad).toStrictEqual({
+      path: "t0/d0/pC1",
+      ok: false,
+      detail: `no param landed — "Volume": 'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
+    });
   });
 
   it("update-device: a drum pad with no chains to write to", async () => {

@@ -22,6 +22,18 @@ export interface TargetNotes {
   /** Params the call sent that did nothing here, so they stop counting as
    * work asked of the target */
   refused: string[];
+  /** Nested lists none of whose writes landed. Said only when that leaves the
+   * target with nothing, since the list's own entries already say it. */
+  unlanded: string[];
+  /** Set when the call changed the Set on the way to work that then failed (a
+   * swapped or created instrument): a throw would claim nothing changed. */
+  altered?: true;
+}
+
+/** One nested write's entry: a send, a param, an action. */
+interface NestedEntry {
+  ok?: false;
+  detail?: string;
 }
 
 /**
@@ -29,7 +41,7 @@ export interface TargetNotes {
  * @returns An empty collector
  */
 export function newTargetNotes(): TargetNotes {
-  return { said: [], refused: [] };
+  return { said: [], refused: [], unlanded: [] };
 }
 
 /**
@@ -66,6 +78,47 @@ export function refuseTargetWork(
 }
 
 /**
+ * Mark that the call changed the Set for this target, so the target keeps its
+ * entry even if nothing it asked for landed.
+ * @param notes - What the target has to say; undefined when there's no entry
+ */
+export function noteSetAltered(notes: TargetNotes | undefined): void {
+  if (notes != null) {
+    notes.altered = true;
+  }
+}
+
+/**
+ * Count a nested list as refused when none of its writes landed, so a target
+ * asked for nothing else is a skip that names each failure.
+ * @param notes - What the target has to say, added to
+ * @param params - The params that asked for these writes
+ * @param noun - One write, singular ("send")
+ * @param entries - Every write in the list, landed or not
+ * @param name - How the detail names one entry
+ */
+export function refuseIfNoneLanded<T extends object>(
+  notes: TargetNotes,
+  params: readonly string[],
+  noun: string,
+  entries: readonly T[],
+  name: (entry: T) => string,
+): void {
+  const failed = (entry: T): boolean => (entry as NestedEntry).ok === false;
+
+  if (entries.length === 0 || !entries.every(failed)) {
+    return;
+  }
+
+  const failures = entries.map(
+    (entry) => `"${name(entry)}": ${(entry as NestedEntry).detail}`,
+  );
+
+  notes.refused.push(...params);
+  notes.unlanded.push(`no ${noun} landed — ${failures.join("; ")}`);
+}
+
+/**
  * Put everything a target's update had to say onto its entry.
  * @param entry - The target's entry, added to in place
  * @param notes - What the target has to say
@@ -81,15 +134,17 @@ export function reportTargetNotes<T extends EntryWithDetail>(
 ): T {
   const detail = joinDetails(notes.said);
 
-  if (detail == null) {
+  if (detail == null && notes.unlanded.length === 0) {
     return entry;
   }
 
-  if (!askedAnythingElse(asked, notes.refused)) {
-    throw new Error(detail);
+  if (notes.altered !== true && !askedAnythingElse(asked, notes.refused)) {
+    throw new Error(joinDetails([...notes.said, ...notes.unlanded]));
   }
 
-  appendDetail(entry, detail);
+  if (detail != null) {
+    appendDetail(entry, detail);
+  }
 
   return entry;
 }

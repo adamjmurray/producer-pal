@@ -248,22 +248,17 @@ describe("updateDevice - bare drum pad paths", () => {
 
   // The rack's return chains belong to the rack, so a send naming none is a
   // fact about the pad the call named — its own entry says it (ADR-0042).
-  it("reports a send naming no return chain on the pad's entry", () => {
+  it("names a send naming no return chain in the pad's error", () => {
     registerDrumRack(1);
 
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      sends: [{ return: "Nope", gainDb: -6 }],
-    }) as { sends?: unknown[] };
-
-    expect(result.sends).toStrictEqual([
-      {
-        return: "Nope",
-        ok: false,
-        detail:
-          'no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
-      },
-    ]);
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1",
+        sends: [{ return: "Nope", gainDb: -6 }],
+      }),
+    ).toThrow(
+      'no send landed — "Nope": no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
+    );
     expect(capturedWarnings()).toStrictEqual([]);
   });
 

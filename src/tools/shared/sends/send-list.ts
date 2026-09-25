@@ -12,6 +12,9 @@ import {
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
 
+/** The params that ask for a send write, on a track or a chain. */
+export const SEND_PARAMS = ["sends", "sendGainDb", "sendReturn"] as const;
+
 /** A `sends` entry paired with the return it resolved to. */
 export interface IndexedSend extends SendEntry {
   /** Position in the sends list of the object being written */

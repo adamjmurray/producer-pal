@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -262,6 +263,77 @@ describe("updateTrack - refused mute, solo and arm", () => {
       { id: "ret1", ok: false, detail: NOT_ARMABLE },
       { id: "main", ok: false, detail: NOT_ARMABLE },
     ]);
+  });
+});
+
+// A track whose every send failed, and that was asked for nothing else, had
+// nothing land: ok:false in a list, and a lone one throws naming each send.
+describe("updateTrack - every send failed", () => {
+  beforeEach(() => {
+    registerMockObject("123", { path: livePath.track(0) });
+    registerMockObject("456", { path: livePath.track(1) });
+    registerMockObject("mixer_1", {
+      path: livePath.track(0).mixerDevice(),
+      properties: { sends: children("send_1") },
+    });
+    registerMockObject("mixer_2", {
+      path: livePath.track(1).mixerDevice(),
+      properties: { sends: children("send_2") },
+    });
+    registerMockObject("send_1", { properties: { is_enabled: 0 } });
+    registerMockObject("send_2", {});
+    registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: { return_tracks: children("return_A") },
+    });
+    registerMockObject("return_A", {
+      path: livePath.returnTrack(0),
+      properties: { name: "A-Reverb" },
+    });
+  });
+
+  it("throws for a lone track, naming each send", () => {
+    expect(() =>
+      updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "Z", gainDb: -6 },
+        ],
+      }),
+    ).toThrow(
+      `no send landed — "A-Reverb": ${GAIN_DISABLED} — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.; "Z": no return track matching "Z" (Available: A-Reverb)`,
+    );
+  });
+
+  it("keeps the track's slot as ok:false in a list", () => {
+    expect(
+      updateTrack({ id: "123,456", sendGainDb: -6, sendReturn: "A" }),
+    ).toStrictEqual([
+      {
+        id: "123",
+        ok: false,
+        detail: expect.stringMatching(/^no send landed — "A-Reverb": gainDb/),
+      },
+      expect.objectContaining({ id: "456", path: "t1" }),
+    ]);
+  });
+
+  it("keeps the hit and its failed send when a name landed", () => {
+    expect(
+      updateTrack({ id: "123", name: "Bass", sendGainDb: -6, sendReturn: "A" }),
+    ).toStrictEqual({
+      id: "123",
+      path: "t0",
+      sends: [
+        {
+          return: "A-Reverb",
+          returnId: "return_A",
+          ok: false,
+          detail: expect.stringContaining(GAIN_DISABLED),
+        },
+      ],
+    });
   });
 });
 

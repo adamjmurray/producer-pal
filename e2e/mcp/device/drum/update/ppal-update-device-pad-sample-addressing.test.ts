@@ -28,7 +28,7 @@ import {
   sleep,
 } from "../../../mcp-test-helpers.ts";
 import {
-  callWithWarnings,
+  callOrRefusal,
   type ParamEntryResult,
 } from "../../helpers/racks-test-helpers.ts";
 import { createLayeredPad, readDrumPad } from "../drum-pad-test-helpers.ts";
@@ -53,9 +53,11 @@ function writeSample(
   });
 }
 
-/** What a `sample` write reports: one entry per param, plus any warnings. */
+/** What a `sample` write reports: one entry per param, plus any warnings. A
+ * write whose every param failed is refused instead, naming each one. */
 interface SampleWriteResult {
   params: ParamEntryResult[];
+  refusal?: string;
   warnings: string[];
 }
 
@@ -67,7 +69,7 @@ interface SampleWriteResult {
 async function updateParams(
   args: Record<string, unknown>,
 ): Promise<SampleWriteResult> {
-  const { data, warnings } = await callWithWarnings(
+  const { data, refusal, warnings } = await callOrRefusal(
     ctx.client!,
     "ppal-update-device",
     args,
@@ -75,7 +77,11 @@ async function updateParams(
 
   await sleep(200);
 
-  return { params: (data.params as ParamEntryResult[]) ?? [], warnings };
+  return {
+    params: (data.params as ParamEntryResult[]) ?? [],
+    ...(refusal == null ? {} : { refusal }),
+    warnings,
+  };
 }
 
 /**
@@ -130,15 +136,15 @@ describe("a pad holding several layers", () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
     const before = await layerSamples(rackPath);
 
-    const { params, warnings } = await writeSample(
+    const { refusal, warnings } = await writeSample(
       rackPath,
       "pD1",
       DRUM_LOOP_FILE,
     );
-    const reason = params[0]?.detail ?? "";
+    const reason = refusal ?? "";
 
-    expect(params[0]?.name).toBe("pD1/sample");
-    expect(params[0]?.ok).toBe(false);
+    expect(refusal).toContain('"pD1/sample": ');
+    expect(refusal).toMatch(/no param landed — /);
     expect(reason).toContain("sample write SKIPPED");
     expect(reason).toContain("2 layers");
     // The retries are param names relative to the rack — what the caller
@@ -154,14 +160,14 @@ describe("a pad holding several layers", () => {
   it("skips a write that names only a device index", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
 
-    const { params, warnings } = await writeSample(
+    const { refusal, warnings } = await writeSample(
       rackPath,
       "pD1/d0",
       DRUM_LOOP_FILE,
     );
 
-    expect(params[0]?.ok).toBe(false);
-    expect(params[0]?.detail).toContain("2 layers");
+    expect(refusal).toMatch(/no param landed — /);
+    expect(refusal).toContain("2 layers");
     expect(warnings).toStrictEqual([]);
   });
 
@@ -193,14 +199,14 @@ describe("a device index that is not the pad's instrument", () => {
     await createTestDeviceAt(ctx.client!, "Arpeggiator", `${rackPath}/pC1/c0`);
 
     const loaded = await sampleAt(`${rackPath}/pC1/c0/d1`);
-    const { params, warnings } = await writeSample(
+    const { refusal, warnings } = await writeSample(
       rackPath,
       "pC1/d0",
       DRUM_LOOP_FILE,
     );
-    const reason = params[0]?.detail ?? "";
+    const reason = refusal ?? "";
 
-    expect(params[0]?.ok).toBe(false);
+    expect(refusal).toMatch(/no param landed — /);
     expect(reason).toContain("d0 is not its instrument, which is at d1");
     expect(reason).toContain('"pC1/sample"');
     expect(warnings).toStrictEqual([]);
@@ -258,17 +264,17 @@ describe("a sample addressed by the pad's own path", () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
     const before = await layerSamples(rackPath);
 
-    const { params, warnings } = await writeSampleByPath(
+    const { refusal, warnings } = await writeSampleByPath(
       `${rackPath}/pD1`,
       DRUM_LOOP_FILE,
       true,
     );
 
-    expect(params[0]?.name).toBe("sample");
-    expect(params[0]?.ok).toBe(false);
-    expect(params[0]?.detail).toContain("2 layers");
-    expect(params[0]?.detail).toContain(`"${rackPath}/pD1/c0"`);
-    expect(params[0]?.detail).toContain(`"${rackPath}/pD1/c1"`);
+    expect(refusal).toContain('"sample": ');
+    expect(refusal).toMatch(/no param landed — /);
+    expect(refusal).toContain("2 layers");
+    expect(refusal).toContain(`"${rackPath}/pD1/c0"`);
+    expect(refusal).toContain(`"${rackPath}/pD1/c1"`);
     expect(warnings).toStrictEqual([]);
     expect(await layerSamples(rackPath)).toStrictEqual(before);
   });
@@ -324,14 +330,14 @@ describe("a sample addressed by the device's own path", () => {
       `${rackPath}/pE1/c0`,
     );
 
-    const { params, warnings } = await writeSampleByPath(
+    const { refusal, warnings } = await writeSampleByPath(
       operator,
       KICK_FILE,
       true,
     );
-    const reason = params[0]?.detail ?? "";
+    const reason = refusal ?? "";
 
-    expect(params[0]?.name).toBe("sample");
+    expect(refusal).toContain('"sample": ');
     expect(reason).toContain("whose sample the Live API can't set");
     expect(reason).toContain(`path:"${rackPath}"`);
     expect(reason).toContain('params:[{name:"pE1/c0/sample"');
@@ -339,7 +345,7 @@ describe("a sample addressed by the device's own path", () => {
     // The redirect must not hand back a ready-to-run destructive call: the pad
     // call it names hits the swap guard, which is where force is offered.
     expect(reason).not.toContain("force:true");
-    expect(params[0]?.ok).toBe(false);
+    expect(refusal).toMatch(/no param landed — /);
     expect(warnings).toStrictEqual([]);
 
     // A device path never creates or replaces a device — not even under force.
@@ -358,8 +364,7 @@ describe("a sample addressed by the device's own path", () => {
       `${rackPath}/pC1/c0`,
     );
 
-    const reason =
-      (await writeSampleByPath(arp, KICK_FILE)).params[0]?.detail ?? "";
+    const reason = (await writeSampleByPath(arp, KICK_FILE)).refusal ?? "";
 
     expect(reason).toContain("belongs to its instrument");
     expect(reason).toContain(`path:"${rackPath}"`);

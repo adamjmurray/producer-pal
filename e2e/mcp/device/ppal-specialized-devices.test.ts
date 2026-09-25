@@ -29,6 +29,7 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../mcp-test-helpers";
+import { callForParamError } from "./helpers/device-param-test-helpers.ts";
 
 interface PseudoParam {
   id?: string;
@@ -161,6 +162,27 @@ async function writeSample(
   return data.params;
 }
 
+/**
+ * Write a sample path that won't land. It is all the call asks, so the call
+ * fails.
+ * @param deviceId - The device to write to
+ * @param samplePath - The sample path to write
+ * @returns The error message
+ */
+async function failedSampleWrite(
+  deviceId: string,
+  samplePath: string,
+): Promise<string> {
+  const message = await callForParamError(ctx.client!, "ppal-update-device", {
+    id: deviceId,
+    params: [{ name: "sample", value: samplePath }],
+  });
+
+  await sleep(100);
+
+  return message;
+}
+
 describe("specialized devices: Drift", () => {
   it("round-trips mod-matrix slots and asserts the raw indices", async () => {
     // ppal-live-api is excluded from the default e2e tool whitelist; re-enable
@@ -229,31 +251,18 @@ describe("specialized devices: Drift", () => {
     ).toBe(12);
 
     // 13 is out of range (max 12). Live silently reverts, so we refuse the
-    // write rather than send it — the value must stay at 12.
-    const { data: refused, warnings } = parseToolResultWithWarnings<{
-      params?: PseudoParam[];
-    }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          id: id,
-          params: [{ name: "pitchBendRange", value: "13" }],
-        },
-      }),
-    );
+    // write rather than send it — the value must stay at 12. It was all the
+    // call asked, so the call fails, and nothing warns.
+    const refused = await callForParamError(ctx.client!, "ppal-update-device", {
+      id,
+      params: [{ name: "pitchBendRange", value: "13" }],
+    });
 
     await sleep(100);
 
-    // The param keeps its slot and says why nothing was written, so no value
-    // reads back as if the call had put it there — and nothing warns.
-    expect(refused.params).toStrictEqual([
-      {
-        name: "pitchBendRange",
-        ok: false,
-        detail: 'pitchBendRange must be an integer 0-12 (got "13")',
-      },
-    ]);
-    expect(warnings).toStrictEqual([]);
+    expect(refused).toContain(
+      'no param landed — "pitchBendRange": pitchBendRange must be an integer 0-12 (got "13")',
+    );
     expect(
       paramValue(
         await readDevice(id, ["params"], "pitchBendRange"),
@@ -647,13 +656,13 @@ describe("specialized devices: Simpler", () => {
 
     // Absolute, so nothing refuses it up front — Live takes replace_sample,
     // finds no file, and loads nothing.
-    const params = await writeSample(id, missing);
+    const message = await failedSampleWrite(id, missing);
 
-    // read-device omits an empty Simpler's sample too, so this entry is the
+    // read-device omits an empty Simpler's sample too, so this error is the
     // only thing anywhere that says the write never landed.
-    expect(params).toStrictEqual([
-      { name: "sample", ok: false, detail: "written, but no value reads back" },
-    ]);
+    expect(message).toContain(
+      'no param landed — "sample": written, but no value reads back',
+    );
     expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
   });
 
@@ -666,17 +675,13 @@ describe("specialized devices: Simpler", () => {
     });
     await sleep(100);
 
-    const params = await writeSample(id, missing);
+    const message = await failedSampleWrite(id, missing);
 
     // A loaded sample gives the read-back a path to report, and reporting it
     // as the value would read as a write that landed — the caller would only
     // notice by diffing it against the path it sent.
-    const [entry] = params ?? [];
-
-    expect(entry?.name).toBe("sample");
-    expect(entry).not.toHaveProperty("value");
-    expect(entry?.detail).toContain("not loaded");
-    expect(entry?.detail).toContain("sample.aiff");
+    expect(message).toContain('no param landed — "sample": not loaded');
+    expect(message).toContain("sample.aiff");
     // The sample it could not replace is still loaded.
     expect(String((await readDevice(id, ["sample"])).sample)).toContain(
       "sample.aiff",

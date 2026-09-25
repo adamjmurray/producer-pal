@@ -37,6 +37,7 @@ import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import { updateDrumPadGroup } from "./update-drum-pad-group.ts";
 import {
   type UpdateTargetOptions,
+  refuseIfNoParamLanded,
   updateDeviceProperties,
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
@@ -381,6 +382,8 @@ function updateTarget(
     // The chain's own mixer reads back here, so a clamped or snapped level is
     // visible instead of the caller's argument being assumed to have landed.
     const mixer = updateNonDeviceProperties(target, type, options, notes);
+
+    refuseIfNoParamLanded(notes, mixer.params);
 
     const result = reportTargetNotes(
       {

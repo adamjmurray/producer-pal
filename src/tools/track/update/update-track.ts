@@ -7,6 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type TargetNotes,
   newTargetNotes,
+  refuseIfNoneLanded,
   refuseTargetWork,
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -46,6 +47,7 @@ import {
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import {
+  SEND_PARAMS,
   type SendResult,
   warnSendCollisions,
 } from "#src/tools/shared/sends/send-list.ts";
@@ -302,6 +304,14 @@ export function updateTrack(
     ) {
       announced.add(resolvedSends);
     }
+
+    refuseIfNoneLanded(
+      notes,
+      SEND_PARAMS,
+      "send",
+      [...landed.values(), ...resolvedSends.unresolved],
+      (send) => send.return,
+    );
 
     // A send that took the level asked for has nothing to say — the caller
     // named the return and knows the level — so only the rest report. The ones

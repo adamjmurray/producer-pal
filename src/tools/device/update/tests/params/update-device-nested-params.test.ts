@@ -8,8 +8,10 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   expectValueSet,
   livePath,
+  noParamLanded,
   paramsOf,
   registerContinuousParam,
   registerMockObject,
@@ -36,10 +38,7 @@ function registerDrumRackWithC1(...deviceIds: string[]): RegisteredMockObject {
     methods: { insert_device: () => ["id", "new-simpler"] },
   });
 
-  registerMockObject("new-simpler", {
-    type: "SimplerDevice",
-    properties: { class_display_name: "Simpler", multi_sample_mode: 0 },
-  });
+  registerCreatedSimpler();
 
   return chain;
 }
@@ -230,24 +229,20 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     registerRackWithNestedDevice("Reverb", "drywet-param", true);
     const param = registerContinuousParam("drywet-param", { name: "Dry/Wet" });
 
-    const result = updateDevice({
-      path: "t0/d0",
-      params: [{ name: "c0/d0/Dry/Wet", value: "50" }],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0",
+          params: [{ name: "c0/d0/Dry/Wet", value: "50" }],
+        }),
+      ),
+    ).toContain('"c0/d0/Dry/Wet": no device at "t0/d0/c0/d0/Dry"');
 
-    // The deprecation is about the spelling, which no entry can carry, so it
-    // stays a warning even though the param's own entry says it resolved to
-    // nothing.
+    // The deprecation is about the spelling, which the error doesn't carry, so
+    // it stays a warning.
     expect(capturedWarnings()).toStrictEqual([
       'params name "c0/d0/Dry/Wet" is deprecated and will be removed; ' +
         'use path "t0/d0/c0/d0" with name "Dry/Wet"',
-    ]);
-    expect(paramsOf(result)).toStrictEqual([
-      {
-        name: "c0/d0/Dry/Wet",
-        ok: false,
-        detail: expect.stringContaining('no device at "t0/d0/c0/d0/Dry"'),
-      },
     ]);
 
     // Proof the advice itself works: the suggested path and name reach the
@@ -265,49 +260,31 @@ describe("updateDevice - pad instrument guard", () => {
   it("skips a sample write onto a pad instrument and keeps the device", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
-    const result = updateDevice({
-      path: "t0/d0",
-      params: [{ name: "pC1/sample", value: "/snare.wav" }],
-    });
+    noParamLanded(() =>
+      updateDevice({
+        path: "t0/d0",
+        params: [{ name: "pC1/sample", value: "/snare.wav" }],
+      }),
+    );
 
-    expect(paramsOf(result)).toStrictEqual([
-      {
-        name: "pC1/sample",
-        ok: false,
-        detail: expect.stringContaining(
-          "sample write SKIPPED on pad t0/d0/pC1",
-        ),
-      },
-    ]);
     expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
     expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
   });
 
-  // The skip is the param's own entry and nothing else: a params list that came
-  // back a name short is one the caller has to diff against its own request to
-  // read, and a warning saying the same thing twice spends its context window.
-  it("carries the skip reason in the param's result entry, and warns nowhere", () => {
+  // The skip is said once, in the error: a warning repeating it only spends
+  // the caller's context window.
+  it("carries the skip reason in the error, and warns nowhere", () => {
     registerDrumRackWithDrumSamplerOnC1();
 
-    const result = updateDevice({
-      path: "t0/d0",
-      params: [{ name: "pC1/sample", value: "/snare.wav" }],
-    });
-
-    expect(result).toStrictEqual({
-      id: "drum-rack",
-      path: "t0/d0",
-      params: [
-        {
-          name: "pC1/sample",
-          ok: false,
-          detail: expect.stringContaining(
-            "sample write SKIPPED on pad t0/d0/pC1",
-          ) as unknown as string,
-        },
-      ],
-    });
-    expect(capturedWarnings()).toHaveLength(0);
+    expectParamRefused(
+      () =>
+        updateDevice({
+          path: "t0/d0",
+          params: [{ name: "pC1/sample", value: "/snare.wav" }],
+        }),
+      "pC1/sample",
+      "sample write SKIPPED on pad t0/d0/pC1",
+    );
   });
 
   it("swaps the instrument for a Simpler and loads the sample under force", () => {
@@ -324,6 +301,45 @@ describe("updateDevice - pad instrument guard", () => {
       "replace_sample",
       "/snare.wav",
     );
+  });
+
+  // The swap changed the Set, so the call can't throw as if nothing happened.
+  it("keeps the entry when the swap happened but the sample didn't load", () => {
+    const chain = registerDrumRackWithDrumSamplerOnC1();
+
+    registerCreatedSimpler().call.mockImplementation(() => undefined);
+
+    const result = updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+      force: true,
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expect(result).toStrictEqual({
+      id: "drum-rack",
+      path: "t0/d0",
+      params: [expect.objectContaining({ name: "pC1/sample", ok: false })],
+      detail: expect.stringContaining("with a Simpler to load the sample"),
+    });
+  });
+
+  it("keeps the entry when a Simpler was made but the sample didn't load", () => {
+    const chain = registerDrumRackWithC1();
+
+    registerCreatedSimpler().call.mockImplementation(() => undefined);
+
+    const result = updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(result).toStrictEqual({
+      id: "drum-rack",
+      path: "t0/d0",
+      params: [expect.objectContaining({ name: "pC1/sample", ok: false })],
+    });
   });
 });
 
@@ -514,21 +530,19 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     ]);
   });
 
-  it("skips a pad whose instrument has no settable sample, and says why in the entry", () => {
+  it("skips a pad whose instrument has no settable sample, and says why in the error", () => {
     const [chain] = registerPadRack();
 
     registerDrumSamplerOn(chain as RegisteredMockObject);
 
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      params: [{ name: "sample", value: KICK }],
-    });
-
-    expect(result).toStrictEqual({
-      id: "pad-36",
-      path: "t0/d0/pC1",
-      params: [{ name: "sample", ok: false, detail: SWAP_REASON }],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1",
+          params: [{ name: "sample", value: KICK }],
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${SWAP_REASON}`);
     expect(capturedWarnings()).toHaveLength(0);
     expect(chain?.call).not.toHaveBeenCalledWith("delete_device", 0);
   });
@@ -566,17 +580,15 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
       "sample write SKIPPED on pad t0/d0/pC1 — it has 2 layers, so which " +
       'one to load is ambiguous. Name one: "t0/d0/pC1/c0", "t0/d0/pC1/c1".';
 
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      params: [{ name: "sample", value: KICK }],
-      force: true,
-    });
-
-    expect(result).toStrictEqual({
-      id: "pad-36",
-      path: "t0/d0/pC1",
-      params: [{ name: "sample", ok: false, detail: reason }],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1",
+          params: [{ name: "sample", value: KICK }],
+          force: true,
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
     expect(capturedWarnings()).toHaveLength(0);
 
     for (const chain of chains) {
@@ -589,18 +601,17 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
   it("keeps the entries in the order the call sent them", () => {
     registerPadRack(2);
 
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      params: [
-        { name: "Volume", value: "50" },
-        { name: "sample", value: KICK },
-      ],
-    });
-
-    expect(paramsOf(result).map((entry) => entry.name)).toStrictEqual([
-      "Volume",
-      "sample",
-    ]);
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1",
+          params: [
+            { name: "Volume", value: "50" },
+            { name: "sample", value: KICK },
+          ],
+        }),
+      ),
+    ).toMatch(/^no param landed — "Volume": .*; "sample": /);
   });
 
   // A pad with no chain at all is where the rack's `pC1/sample` shortcut used
@@ -640,44 +651,41 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
   });
 
   // Neither is written, so neither overrides the other.
-  it("refuses a param sent twice on a chain in each entry, by id where sent by id", () => {
+  it("refuses a param sent twice on a chain once per entry, by id where sent by id", () => {
     registerPadRack();
 
-    const result = updateDevice({
-      path: "t0/d0/pC1/c0",
-      params: [
-        { name: "Volume", value: "50" },
-        { name: "volume", value: "60" },
-        { id: "7", value: "1" },
-      ],
-    });
-    const notApplicable = expect.stringContaining("'params' not applicable");
+    const notApplicable =
+      "'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id chain-0)";
 
-    expect(paramsOf(result)).toStrictEqual([
-      { name: "Volume", ok: false, detail: notApplicable },
-      { name: "volume", ok: false, detail: notApplicable },
-      { id: "7", ok: false, detail: notApplicable },
-    ]);
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1/c0",
+          params: [
+            { name: "Volume", value: "50" },
+            { name: "volume", value: "60" },
+            { id: "7", value: "1" },
+          ],
+        }),
+      ),
+    ).toBe(
+      `no param landed — "Volume": ${notApplicable}; ` +
+        `"volume": ${notApplicable}; "7": ${notApplicable}`,
+    );
   });
 
-  it("still refuses every other param on a chain, in its own entry", () => {
+  it("still refuses every other param on a chain, in the error", () => {
     registerPadRack();
 
-    const result = updateDevice({
-      path: "t0/d0/pC1/c0",
-      params: [{ name: "Volume", value: "50" }],
-    });
-
-    expect(paramsOf(result)).toStrictEqual([
-      {
-        name: "Volume",
-        ok: false,
-        detail: expect.stringContaining(
-          "'params' not applicable to a drum pad chain t0/d0/pC1/c0",
-        ),
-      },
-    ]);
-    expect(capturedWarnings()).toHaveLength(0);
+    expectParamRefused(
+      () =>
+        updateDevice({
+          path: "t0/d0/pC1/c0",
+          params: [{ name: "Volume", value: "50" }],
+        }),
+      "Volume",
+      "'params' not applicable to a drum pad chain t0/d0/pC1/c0",
+    );
   });
 });
 
@@ -695,16 +703,14 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
       'path:"t0/d0" with params:[{name:"pC1/c0/sample", ' +
       'value:"<the sample>"}].';
 
-    const result = updateDevice({
-      path: "t0/d0/pC1/d0",
-      params: [{ name: "sample", value: KICK }],
-    });
-
-    expect(result).toStrictEqual({
-      id: "ds-1",
-      path: "t0/d0/pC1/d0",
-      params: [{ name: "sample", ok: false, detail: reason }],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1/d0",
+          params: [{ name: "sample", value: KICK }],
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
     expect(capturedWarnings()).toHaveLength(0);
   });
 
@@ -714,11 +720,13 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
     const [chain] = registerPadRack();
     const drumSampler = registerDrumSamplerOn(chain as RegisteredMockObject);
 
-    updateDevice({
-      path: "t0/d0/pC1/d0",
-      params: [{ name: "sample", value: KICK }],
-      force: true,
-    });
+    noParamLanded(() =>
+      updateDevice({
+        path: "t0/d0/pC1/d0",
+        params: [{ name: "sample", value: KICK }],
+        force: true,
+      }),
+    );
 
     expect(chain?.call).not.toHaveBeenCalledWith("delete_device", 0);
     expect(chain?.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
@@ -744,14 +752,14 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
       'path:"t0/d0" with params:[{name:"pC1/c0/sample", ' +
       'value:"<the sample>"}].';
 
-    const result = updateDevice({
-      path: "t0/d0/pC1/d0",
-      params: [{ name: "sample", value: KICK }],
-    });
-
-    expect(paramsOf(result)).toStrictEqual([
-      { name: "sample", ok: false, detail: reason },
-    ]);
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1/d0",
+          params: [{ name: "sample", value: KICK }],
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
   });
 
   it("says only that much for a device that is not on a pad", () => {
@@ -767,12 +775,10 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
       "has one to set.";
 
     expect(
-      updateDevice({ id: "op-1", params: [{ name: "sample", value: KICK }] }),
-    ).toStrictEqual({
-      id: "op-1",
-      path: "t0/d0",
-      params: [{ name: "sample", ok: false, detail: reason }],
-    });
+      noParamLanded(() =>
+        updateDevice({ id: "op-1", params: [{ name: "sample", value: KICK }] }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
     expect(capturedWarnings()).toHaveLength(0);
   });
 });

@@ -18,7 +18,6 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   type SkippedTargetResult,
   sleep,
@@ -501,16 +500,34 @@ describe("ppal-update-track", () => {
   it.each([
     ["sends", { sends: [{ return: "ZZZ", gainDb: -6 }] }],
     ["the scalar pair", { sendGainDb: -6, sendReturn: "ZZZ" }],
-  ])("reports a return that matches none, named by %s", async (_how, args) => {
+  ])("refuses a return that matches none, named by %s", async (_how, args) => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
-    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
-      await updateTrack({ id: trackId, ...args }),
+    const result = await updateTrack({ id: trackId, ...args });
+
+    // The send was all it asked, and nothing landed, so the call fails.
+    expect(getToolWarnings(result).join()).not.toContain(
+      "no return track matching",
+    );
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no send landed — "ZZZ": no return track matching "ZZZ"',
+    );
+  });
+
+  it("keeps a failed send on the entry when a name landed too", async () => {
+    const liveSet = await readTracks();
+    const track = liveSet.tracks![3]!;
+
+    const data = parseToolResult<UpdateTrackResult>(
+      await updateTrack({
+        id: track.id,
+        name: track.name,
+        sends: [{ return: "ZZZ", gainDb: -6 }],
+      }),
     );
 
-    expect(warnings.join()).not.toContain("no return track matching");
-    // Nothing was written, so the entry says why in place of a level.
     expect(data.sends).toContainEqual({
       return: "ZZZ",
       ok: false,

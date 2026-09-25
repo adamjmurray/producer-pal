@@ -16,7 +16,11 @@
  * Run with: npm run e2e:mcp -- ppal-update-device-chain-send-by-id
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import {
+  getToolErrorMessage,
+  getToolWarnings,
+  setupMcpTestContext,
+} from "../../mcp-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
   callWithWarnings,
@@ -57,20 +61,12 @@ describe("update-device sendReturn by id", () => {
     // The rack's own id: a real Live object, and not a return chain of it.
     const kit = await readKitPads(ctx.client!);
 
-    const { data, warnings } = await callWithWarnings(
-      ctx.client!,
-      "ppal-update-device",
-      { path: CLAP, sendGainDb: -3, sendReturn: kit.id },
-    );
+    // The send was all the call asked, so nothing landed and it fails.
+    const message = await sendRefusal({ sendGainDb: -3, sendReturn: kit.id });
 
-    expect(data.sends).toStrictEqual([
-      expect.objectContaining({
-        return: kit.id,
-        ok: false,
-        detail: expect.stringContaining(`no return chain matching "${kit.id}"`),
-      }),
-    ]);
-    expect(warnings).toStrictEqual([]);
+    expect(message).toContain(
+      `no send landed — "${kit.id}": no return chain matching "${kit.id}"`,
+    );
 
     const sends = padChain(await readKitPads(ctx.client!), "Clap").sends ?? [];
 
@@ -79,6 +75,22 @@ describe("update-device sendReturn by id", () => {
       1,
     );
   });
+
+  /**
+   * Write the Clap pad's sends, expecting the call to be refused.
+   * @param args - The update-device args that write the send
+   * @returns The error message
+   */
+  async function sendRefusal(args: Record<string, unknown>): Promise<string> {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: CLAP, ...args },
+    });
+
+    expect(getToolWarnings(result)).toStrictEqual([]);
+
+    return getToolErrorMessage(result);
+  }
 
   /**
    * Write the Clap pad's sends and read the levels back off it.
@@ -132,11 +144,21 @@ describe("update-device sendReturn by id", () => {
     expect(after.find((s) => s.return === "B Reverb")?.gainDb).toBe(-11);
   });
 
-  it("reports no send for a return name that matches none", async () => {
+  it("refuses a lone send whose return name matches none", async () => {
+    const message = await sendRefusal({
+      sends: [{ return: "ZZZ", gainDb: -6 }],
+    });
+
+    expect(message).toContain(
+      'no send landed — "ZZZ": no return chain matching "ZZZ"',
+    );
+  });
+
+  it("keeps a failed send on the entry when a name landed too", async () => {
     const { data, warnings } = await callWithWarnings(
       ctx.client!,
       "ppal-update-device",
-      { path: CLAP, sends: [{ return: "ZZZ", gainDb: -6 }] },
+      { path: CLAP, name: "Clap", sends: [{ return: "ZZZ", gainDb: -6 }] },
     );
 
     // Nothing was written, so the send carries the reason in place of a level.

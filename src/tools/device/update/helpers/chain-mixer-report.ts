@@ -6,7 +6,7 @@
 import {
   type ChainMixerApplied,
   type ChainMixerParams,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
   type PublishedValue,
   differsAtPublishedResolution,

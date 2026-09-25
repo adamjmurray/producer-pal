@@ -19,7 +19,7 @@ import {
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
-import { callForParams } from "../helpers/device-param-test-helpers.ts";
+import { callForParamError } from "../helpers/device-param-test-helpers.ts";
 
 interface ParamInfo {
   id: string;
@@ -48,29 +48,26 @@ async function readWidths(deviceId: string): Promise<ParamInfo[]> {
 }
 
 describe("a device with two params of the same name", () => {
-  it("skips the write and names both ids in the param's entry", async () => {
+  // The param was all the call asked, so skipping it fails the call.
+  it("skips the write and names both ids in the error", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Corpus", "t2");
     const before = await readWidths(deviceId);
 
     expect(before).toHaveLength(2);
 
-    const { entries, warnings } = await callForParams(
-      ctx.client!,
-      "ppal-update-device",
-      { id: deviceId, params: [{ name: "Width", value: "50" }] },
-    );
-    const [entry] = entries;
+    const message = await callForParamError(ctx.client!, "ppal-update-device", {
+      id: deviceId,
+      params: [{ name: "Width", value: "50" }],
+    });
 
-    expect(entry?.name).toBe("Width");
-    expect(entry?.ok).toBe(false);
-    expect(entry?.detail).toContain("names 2 params");
-    expect(entry?.detail).toContain("Send {id, value} to pick one");
+    expect(message).toContain('no param landed — "Width": ');
+    expect(message).toContain("names 2 params");
+    expect(message).toContain("Send {id, value} to pick one");
 
     for (const param of before) {
-      expect(entry?.detail).toContain(`id ${param.id}`);
+      expect(message).toContain(`id ${param.id}`);
     }
 
-    expect(warnings).toStrictEqual([]);
     // Neither param moved: the old behavior wrote the first match, clamping 50
     // into the bandwidth's 0.5-9 range.
     expect(await readWidths(deviceId)).toStrictEqual(before);

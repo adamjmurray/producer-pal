@@ -19,7 +19,7 @@ import {
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers.ts";
-import { callForParams } from "../helpers/device-param-test-helpers.ts";
+import { callForParamError } from "../helpers/device-param-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 
 /** The Instrument Rack whose Macro 1 and Macro 2 are both named "Drive". */
@@ -58,24 +58,21 @@ describe("a rack with two macros renamed the same", () => {
     ]);
   });
 
+  // The param was all the call asked, so skipping it fails the call.
   it("writes neither when addressed by the name they share", async () => {
     const before = await readDrives();
-    const { entries, warnings } = await callForParams(
-      ctx.client!,
-      "ppal-update-device",
-      { path: OUTER, params: [{ name: "Drive", value: "42" }] },
-    );
-    const [entry] = entries;
+    const message = await callForParamError(ctx.client!, "ppal-update-device", {
+      path: OUTER,
+      params: [{ name: "Drive", value: "42" }],
+    });
 
-    expect(entry?.name).toBe("Drive");
-    expect(entry?.ok).toBe(false);
-    expect(entry?.detail).toContain("names 2 params");
+    expect(message).toContain('no param landed — "Drive": ');
+    expect(message).toContain("names 2 params");
 
     for (const param of before) {
-      expect(entry?.detail).toContain(`id ${param.id}`);
+      expect(message).toContain(`id ${param.id}`);
     }
 
-    expect(warnings).toStrictEqual([]);
     expect(await readDrives()).toStrictEqual(before);
   });
 

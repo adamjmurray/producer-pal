@@ -7,13 +7,14 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamResult,
+  type UnresolvedParam,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { applyChainSampleParams } from "./chain-sample-params.ts";
 import {
   applyChainMixer,
   type ChainSend,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
   chainMixerReport,
   type ChainMixerReport,
@@ -29,6 +30,7 @@ import {
 import {
   type TargetNotes,
   newTargetNotes,
+  refuseIfNoneLanded,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
   isChainType,
@@ -148,7 +150,36 @@ export function updateDeviceProperties(
 
   refuseIgnoredParams(notes, ignored, type);
 
-  return { params: refreshParamValues(paramResults), actions: actionResults };
+  const paramsRead = refreshParamValues(paramResults);
+
+  refuseIfNoParamLanded(notes, paramsRead);
+  refuseIfNoneLanded(
+    notes,
+    ["actions"],
+    "action",
+    actionResults,
+    (result) => result.action,
+  );
+
+  return { params: paramsRead, actions: actionResults };
+}
+
+/**
+ * Refuse `params` on the target when none of them landed.
+ * @param notes - What the target's entry has to say, added to
+ * @param params - One entry per param the call sent
+ */
+export function refuseIfNoParamLanded(
+  notes: TargetNotes,
+  params: ParamResult[] = [],
+): void {
+  refuseIfNoneLanded(
+    notes,
+    ["params"],
+    "param",
+    params,
+    (param) => param.name ?? (param as UnresolvedParam).id ?? "",
+  );
 }
 
 /** What a chain or pad update wrote: its mixer, plus any params it took. */

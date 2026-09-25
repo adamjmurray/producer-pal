@@ -129,17 +129,17 @@ describe("updateDevice - recorded param units", () => {
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerRelease();
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Release", value: "50 %" }],
-      });
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
       expectParamRefused(
-        result,
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Release", value: "50 %" }],
+          }),
         "Release",
         'is measured in s, so "50 %" was not written',
       );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });
   });
 
@@ -211,33 +211,33 @@ describe("updateDevice - recorded param units", () => {
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerFilterWidth();
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 Hz" }],
-      });
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
       expectParamRefused(
-        result,
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 Hz" }],
+          }),
         "Filter Width",
         'is measured in octaves, so "1.5 Hz" was not written',
       );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });
 
     it("refuses an unrecognized spelling", () => {
       const param = registerFilterWidth();
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 wobbles" }],
-      });
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
       expectParamRefused(
-        result,
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 wobbles" }],
+          }),
         "Filter Width",
         'could not interpret "1.5 wobbles"',
       );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });
 
     // The range no longer matching drops the recorded entry (the range guard
@@ -247,13 +247,17 @@ describe("updateDevice - recorded param units", () => {
     it("refuses the recorded unit when the param's range no longer matches", () => {
       const param = registerBareParam("Erosion", "Filter Width", 0.1, 3);
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 octaves" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 octaves" }],
+          }),
+        "Filter Width",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expectParamRefused(result, "Filter Width", "never says what it measures");
     });
   });
 
@@ -263,13 +267,17 @@ describe("updateDevice - recorded param units", () => {
   it("leaves a blend ratio unitless", () => {
     const param = registerBareParam("Hybrid Reverb", "Blend", 100, 0);
 
-    const result = updateDevice({
-      id: "dev1",
-      params: [{ name: "Blend", value: "50 %" }],
-    });
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Blend", value: "50 %" }],
+        }),
+      "Blend",
+      "never says what it measures",
+    );
 
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expectParamRefused(result, "Blend", "never says what it measures");
   });
 
   describe("the range guard", () => {
@@ -279,22 +287,31 @@ describe("updateDevice - recorded param units", () => {
     it("drops the entry when the param's range no longer matches", () => {
       const param = registerBareParam("Glue Compressor", "Attack", 0.01, 60);
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Attack", value: "10 ms" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Attack", value: "10 ms" }],
+          }),
+        "Attack",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expectParamRefused(result, "Attack", "never says what it measures");
     });
 
     it("leaves a param on another device alone", () => {
       const param = registerBareParam("Compressor", "Attack", 0.01, 30);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Attack", value: "10 ms" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Attack", value: "10 ms" }],
+          }),
+        "Attack",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });

@@ -6,6 +6,7 @@
 import { assertDefined } from "#src/shared/error-message.ts";
 import {
   type TargetNotes,
+  noteSetAltered,
   noteTarget,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
@@ -186,7 +187,7 @@ export function resolveDrumChainSampleTarget(
   const instrument = findChainInstrument(chain);
 
   return instrument == null
-    ? createSimplerInChain(chain)
+    ? createSimplerInChain(chain, notes)
     : applyPadInstrumentPolicy(
         chain,
         instrument,
@@ -331,7 +332,7 @@ function resolveDrumPadSampleTarget(
 
   // Nothing to hold the sample yet, so a `dN` names nothing to disagree with.
   if (!instrument) {
-    return createSimplerInChain(chain);
+    return createSimplerInChain(chain, notes);
   }
 
   if (deviceIndex != null && deviceIndex !== instrument.index) {
@@ -388,6 +389,7 @@ function applyPadInstrumentPolicy(
   }
 
   chain.call("delete_device", instrument.index);
+  noteSetAltered(notes);
   // A delete renumbers the chain's remaining devices, and the path cache's
   // contract says nothing cached survives that. createSimplerInChain invalidates
   // again after its insert; this one keeps the invariant true in between.
@@ -397,7 +399,7 @@ function applyPadInstrumentPolicy(
     `force:true — replaced ${held} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
   );
 
-  return createSimplerInChain(chain);
+  return createSimplerInChain(chain, notes);
 }
 
 /**
@@ -480,9 +482,14 @@ function findChainInstrument(
  * re-sorts a chain by device type, so the Simpler lands after any MIDI effects
  * and before any audio effects on its own.
  * @param chain - Chain LiveAPI object
+ * @param notes - What the target's entry has to say, marked when the Simpler
+ *   is made
  * @returns The created Simpler, or the reason there is none
  */
-function createSimplerInChain(chain: LiveAPI): NestedParamTarget {
+function createSimplerInChain(
+  chain: LiveAPI,
+  notes: TargetNotes | undefined,
+): NestedParamTarget {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
     | undefined;
@@ -498,6 +505,8 @@ function createSimplerInChain(chain: LiveAPI): NestedParamTarget {
   }
 
   const device = LiveAPI.from(`id ${id}`);
+
+  noteSetAltered(notes);
 
   return device.exists()
     ? { device }

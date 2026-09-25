@@ -47,6 +47,7 @@ describe("moveDrumChainToPath", () => {
     expect(notes).toStrictEqual({
       said: ['nothing at toPath "t0/afx0/pD1": t0 has no audio effects'],
       refused: ["toPath"],
+      unlanded: [],
     });
     expect(chain.set).not.toHaveBeenCalled();
   });

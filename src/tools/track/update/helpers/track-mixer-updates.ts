@@ -5,8 +5,7 @@
 
 import {
   type MixerApplied,
-  PARAM_DISABLED_REASON,
-  isParamEnabled,
+  setParamAndReadBack,
 } from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
   type TargetNotes,
@@ -15,7 +14,6 @@ import {
 import {
   type PublishedValue,
   differsAtPublishedResolution,
-  publishedReadBack,
   readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { roundGainDb, roundPan } from "#src/tools/shared/helpers/rounding.ts";
@@ -231,19 +229,14 @@ function writeMixerParam(
     return;
   }
 
-  if (!isParamEnabled(param)) {
-    refuseTargetWork(
-      report.notes,
-      [field],
-      `${field} ${PARAM_DISABLED_REASON}`,
-    );
-
-    return;
-  }
-
-  param.set(write.property, requested);
-
-  const landed = publishedReadBack(param.getProperty(write.property), round);
+  const landed = setParamAndReadBack(
+    param,
+    write.property,
+    requested,
+    field,
+    round,
+    report.notes,
+  );
 
   if (
     landed == null ||

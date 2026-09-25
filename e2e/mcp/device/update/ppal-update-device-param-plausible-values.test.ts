@@ -49,14 +49,14 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
 
     it("still refuses a value that names neither state", async () => {
       const deviceId = await createGlueCompressor(ctx.client!);
-      const { data, warnings } = await writeParam(
+      const written = await writeParam(
         ctx.client!,
         deviceId,
         "Device On",
         "peak",
       );
 
-      expectParamRefused({ data, warnings }, "Device On", "Options: Off, On");
+      expectParamRefused(written, "Device On", "Options: Off, On");
     });
   });
 

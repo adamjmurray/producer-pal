@@ -16,6 +16,8 @@ import {
   SAMPLE_FILE,
   createTestDeviceAt,
   parseToolResult,
+  getToolErrorMessage,
+  getToolWarnings,
   isToolError,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -109,14 +111,14 @@ async function readContentCount(
 }
 
 /**
- * Assert a `sample` write landed — or, on Live 12.3, that it warned and left the
- * Simpler empty instead of silently doing nothing.
- * @param warnings - Warnings from the tool call that wrote the sample
+ * Assert a `sample` write landed — or, on Live 12.3, that it said why and left
+ * the Simpler empty instead of silently doing nothing.
+ * @param said - What the call answered: its error, or its result as JSON
  * @param sample - Sample path read back from the pad
  * @param fileName - Expected sample file name
  */
 function expectSampleWrite(
-  warnings: string[],
+  said: string,
   sample: string | undefined,
   fileName: string,
 ): void {
@@ -126,8 +128,27 @@ function expectSampleWrite(
     return;
   }
 
-  expect(warnings.join("\n")).toContain("requires Live 12.4");
+  expect(said).toContain("requires Live 12.4");
   expect(sample).toBeUndefined();
+}
+
+/**
+ * Call update-device with a sample write. It keeps its entry even on Live
+ * 12.3, where the sample can't load: the Simpler it made or swapped in changed
+ * the Set.
+ * @param args - Tool arguments
+ * @returns The result, its warnings, and the result as text
+ */
+async function updateDevice(args: Record<string, unknown>): Promise<{
+  data: UpdateDeviceResult;
+  warnings: string[];
+  said: string;
+}> {
+  const answer = parseToolResultWithWarnings<UpdateDeviceResult>(
+    await ctx.client!.callTool({ name: "ppal-update-device", arguments: args }),
+  );
+
+  return { ...answer, said: JSON.stringify(answer.data) };
 }
 
 describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
@@ -166,7 +187,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(kickPad.type).toContain("Simpler");
-    expectSampleWrite(warnings, kickPad.sample, "kick.aiff");
+    expectSampleWrite(JSON.stringify(created), kickPad.sample, "kick.aiff");
 
     // C#1 pad: the other sample.
     const snarePad = parseToolResult<ReadDeviceResult>(
@@ -177,7 +198,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(snarePad.type).toContain("Simpler");
-    expectSampleWrite(warnings, snarePad.sample, "sample.aiff");
+    expectSampleWrite(JSON.stringify(created), snarePad.sample, "sample.aiff");
 
     // gainDb (listed after the sample) applied to the C1 pad's Simpler.
     const kickParams = parseToolResult<{ parameters: { name: string }[] }>(
@@ -209,15 +230,10 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const rack = await createTrackWithDrumRack();
 
     // Load a sample into pad D1 via update-device.
-    const { warnings } = parseToolResultWithWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          path: rack,
-          params: [{ name: "pD1/d0/sample", value: KICK_FILE }],
-        },
-      }),
-    );
+    const { said } = await updateDevice({
+      path: rack,
+      params: [{ name: "pD1/d0/sample", value: KICK_FILE }],
+    });
 
     await sleep(150);
 
@@ -229,7 +245,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(pad.type).toContain("Simpler");
-    expectSampleWrite(warnings, pad.sample, "kick.aiff");
+    expectSampleWrite(said, pad.sample, "kick.aiff");
   });
 
   // A pad one rack down is a pad like any other: its chain is missing, the
@@ -248,17 +264,13 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     await sleep(150);
 
-    const { data, warnings } = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          path: rack,
-          params: [{ name: `${under}/pD1/sample`, value: KICK_FILE }],
-        },
-      }),
-    );
+    const { data, warnings, said } = await updateDevice({
+      path: rack,
+      params: [{ name: `${under}/pD1/sample`, value: KICK_FILE }],
+    });
 
     expect(data.params?.[0]?.name).toBe(`${under}/pD1/sample`);
+
     // The pad shortcut is not the deprecated general form, one level down
     // either — the Simpler it needs still doesn't exist to be addressed.
     expect(warnings.join("\n")).not.toContain("deprecated");
@@ -273,7 +285,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(pad.type).toContain("Simpler");
-    expectSampleWrite(warnings, pad.sample, "kick.aiff");
+    expectSampleWrite(said, pad.sample, "kick.aiff");
   });
 
   it("creates a device on a pad inside a nested Drum Rack", async () => {
@@ -329,23 +341,22 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     expect(before.type).toContain("Sampler");
 
     // Honoring the write means replacing the DrumSampler, losing its settings,
-    // so it skips and names force:true as the way through, in the param's entry.
-    const skipped = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          path: rack,
-          params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
-        },
-      }),
-    );
-    const skippedEntry = skipped.data.params?.[0];
+    // so it skips and names force:true as the way through. The sample was all
+    // the call asked, so the call fails.
+    const skipped = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        path: rack,
+        params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
+      },
+    });
 
-    expect(skippedEntry?.name).toBe("pE1/d0/sample");
-    expect(skippedEntry?.ok).toBe(false);
-    expect(skippedEntry?.detail).toContain("sample write SKIPPED");
-    expect(skippedEntry?.detail).toContain("force:true");
-    expect(skipped.warnings).toStrictEqual([]);
+    expect(isToolError(skipped)).toBe(true);
+    expect(getToolErrorMessage(skipped)).toContain(
+      'no param landed — "pE1/d0/sample": sample write SKIPPED',
+    );
+    expect(getToolErrorMessage(skipped)).toContain("force:true");
+    expect(getToolWarnings(skipped)).toStrictEqual([]);
 
     await sleep(150);
 
@@ -358,18 +369,14 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     expect(kept.type).not.toContain("Simpler");
 
-    const forced = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          path: rack,
-          params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
-          force: true,
-        },
-      }),
-    );
+    const forced = await updateDevice({
+      path: rack,
+      params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
+      force: true,
+    });
 
-    // The swap is destructive, so the target's own entry says what it cost.
+    // The swap is destructive, so the entry says what it cost — on Live 12.3
+    // too, where the sample then can't load: the swap still happened.
     expect(forced.data.detail).toContain("force:true");
     expect(forced.warnings).toStrictEqual([]);
 
@@ -383,7 +390,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(after.type).toContain("Simpler");
-    expectSampleWrite(forced.warnings, after.sample, "kick.aiff");
+    expectSampleWrite(forced.said, after.sample, "kick.aiff");
   });
 
   it("refuses a drum-pad sample write on a non-drum rack and strands no chain", async () => {
@@ -403,21 +410,23 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     const beforeChainCount = await readContentCount(rack, "chains");
 
-    const { data, warnings } = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          path: rack,
-          params: [{ name: "pC1/sample", value: KICK_FILE }],
-        },
-      }),
-    );
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        path: rack,
+        params: [{ name: "pC1/sample", value: KICK_FILE }],
+      },
+    });
 
-    expect(data.params?.[0]?.ok).toBe(false);
-    expect(data.params?.[0]?.detail).toContain(
+    // The sample was all the call asked, so the call fails.
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no param landed — "pC1/sample": ',
+    );
+    expect(getToolErrorMessage(result)).toContain(
       "could not resolve or create drum pad",
     );
-    expect(warnings).toStrictEqual([]);
+    expect(getToolWarnings(result)).toStrictEqual([]);
 
     await sleep(150);
 

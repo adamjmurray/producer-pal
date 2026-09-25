@@ -8,9 +8,9 @@
 // chains and two racks don't share those.
 
 import {
-  applyChainMixer,
+  applyChainMixerAside,
   type ChainSend,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
   noteTarget,
   type TargetNotes,
@@ -43,11 +43,15 @@ export function copyChainMixerTo(
     notes,
   );
 
-  applyChainMixer(created, {
-    gainDb: mixer.gainDb as number | undefined,
-    pan: mixer.pan as number | undefined,
-    ...(sends.length > 0 ? { sends } : {}),
-  });
+  applyChainMixerAside(
+    created,
+    {
+      gainDb: mixer.gainDb as number | undefined,
+      pan: mixer.pan as number | undefined,
+      ...(sends.length > 0 ? { sends } : {}),
+    },
+    notes,
+  );
 }
 
 /**

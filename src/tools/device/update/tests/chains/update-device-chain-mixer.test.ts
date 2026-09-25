@@ -161,25 +161,14 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   // The rack's return chains belong to the rack, so this is about the chain the
-  // call named — its own entry says it, and nothing warns (ADR-0042).
-  it("reports no send for a return name that matches none", () => {
-    const result = updateDevice({
-      id: "chain-0",
-      sends: [{ return: "nope", gainDb: -12 }],
-    });
-
+  // call named. It asked for nothing else, so the call throws naming the send.
+  it("refuses a lone send whose return name matches none", () => {
+    expect(() =>
+      updateDevice({ id: "chain-0", sends: [{ return: "nope", gainDb: -12 }] }),
+    ).toThrow(
+      'no send landed — "nope": no return chain matching "nope" (returns: a Reverb)',
+    );
     expect(send.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "chain-0",
-      path: "t0/d0/c0",
-      sends: [
-        {
-          return: "nope",
-          ok: false,
-          detail: 'no return chain matching "nope" (returns: a Reverb)',
-        },
-      ],
-    });
     expect(capturedWarnings()).toStrictEqual([]);
   });
 

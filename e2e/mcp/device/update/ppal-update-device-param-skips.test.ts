@@ -5,8 +5,9 @@
 
 /**
  * E2E tests for a param write that lands nowhere: it keeps its slot in `params`
- * as `ok: false` with a reason, and warns nowhere. The `actions` arg answers the
- * same way, one entry per action sent.
+ * as `ok: false` with a reason, and warns nowhere. When no param landed and the
+ * call asked nothing else, the call fails with each reason instead. The
+ * `actions` arg answers the same way, one entry per action sent.
  *
  * These need a real Live: what a stock param does with a value a mock was told
  * to expect proves nothing.
