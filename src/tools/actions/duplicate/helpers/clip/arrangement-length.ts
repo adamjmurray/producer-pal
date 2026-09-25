@@ -193,14 +193,13 @@ async function lengthenClipAndCollectInfo(
     songTimeSigDenominator,
   );
 
-  const updateResult = await updateClip(
-    { ids: newClipId, arrangementLength, name, color },
+  const clipResults = await lengthenCopy(
+    newClipId,
+    arrangementLength,
+    name,
+    color,
     context,
   );
-
-  const clipResults = (
-    Array.isArray(updateResult) ? updateResult : [updateResult]
-  ) as { id: string; detail?: string }[];
   const arrangementClipIds = track.getChildIds("arrangement_clips");
 
   for (const clipObj of clipResults) {
@@ -209,12 +208,45 @@ async function lengthenClipAndCollectInfo(
       .find((c) => c.id === clipObj.id);
 
     if (clipLiveAPI) {
-      // update-clip says on its entry when the file ran out before the length
-      // asked for; the copy's entry keeps that.
+      // The copy's entry keeps update-clip's detail but never its `ok: false`:
+      // the copy was made.
       duplicatedClips.push({
         ...getMinimalClipInfo(clipLiveAPI),
         ...(clipObj.detail == null ? {} : { detail: clipObj.detail }),
       });
     }
+  }
+}
+
+/**
+ * Lengthen one copy, putting a refusal on its entry instead of letting it
+ * escape. A lone target update-clip can't lengthen throws, and that throw
+ * would fail a duplicate whose copies are all made.
+ * @param clipId - The copy to lengthen
+ * @param arrangementLength - The length to give it
+ * @param name - Optional name
+ * @param color - Optional color
+ * @param context - Tool execution context
+ * @returns update-clip's entries, or the copy with the reason it wasn't lengthened
+ */
+async function lengthenCopy(
+  clipId: string,
+  arrangementLength: string,
+  name: string | undefined,
+  color: string | undefined,
+  context: Partial<ToolContext & TilingContext>,
+): Promise<{ id: string; detail?: string }[]> {
+  try {
+    const result = await updateClip(
+      { ids: clipId, arrangementLength, name, color },
+      context,
+    );
+
+    return (Array.isArray(result) ? result : [result]) as {
+      id: string;
+      detail?: string;
+    }[];
+  } catch (error) {
+    return [{ id: clipId, detail: errorMessage(error) }];
   }
 }

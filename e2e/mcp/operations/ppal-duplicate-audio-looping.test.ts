@@ -139,9 +139,9 @@ describe("ppal-duplicate with a looping audio source", () => {
 
     expectWholeLoopTiles(copies, 10, "n0.1125/4");
 
-    const withReasons = entries.filter((entry) => entry.detail != null);
+    const withDetail = entries.filter((entry) => entry.detail != null);
 
-    expect(withReasons).toStrictEqual([
+    expect(withDetail).toStrictEqual([
       expect.objectContaining({
         path: `t5[${TARGET_BAR}|1]`,
         detail: expect.stringContaining("no more content"),
