@@ -384,6 +384,9 @@ export interface WrittenPseudoParam {
    * `PseudoParam.writeFailed`.
    */
   writeFailed?: (readBack: unknown) => string | undefined;
+  /** What the call made to hold the write (an empty Simpler on a pad), said
+   * on the entry if the write turns out not to have landed. */
+  made?: string;
 }
 
 /** One param the call named: what a write landed on, or why nothing did. */
@@ -480,7 +483,7 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
       const value = entry.read();
 
       if (value === undefined) {
-        return [skippedParam(entry.name, NO_VALUE_AFTER_WRITE)];
+        return [unlandedPseudoParam(entry, NO_VALUE_AFTER_WRITE)];
       }
 
       // A device that ignored the write left the value it already had, and
@@ -489,11 +492,27 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
 
       return failed == null
         ? [{ name: entry.name, value }]
-        : [skippedParam(entry.name, failed)];
+        : [unlandedPseudoParam(entry, failed)];
     }
 
     return [entry];
   });
+}
+
+/**
+ * The entry for a pseudo-param whose write the read-back shows didn't land.
+ * @param entry - The written pseudo-param
+ * @param detail - Why it didn't land
+ * @returns The skip entry, naming anything the call made for the write
+ */
+function unlandedPseudoParam(
+  entry: WrittenPseudoParam,
+  detail: string,
+): UnresolvedParam {
+  return skippedParam(
+    entry.name,
+    entry.made == null ? detail : `${detail}; ${entry.made}`,
+  );
 }
 
 /**

@@ -194,6 +194,7 @@ export interface NonDeviceWrites extends ChainMixerReport {
  * @param options - Update options
  * @param notes - What this target's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
+ * @param chainsMade - How many chains this call made on the pad for its sample
  * @returns What the chain's mixer and sample writes didn't land as asked
  */
 export function updateNonDeviceProperties(
@@ -201,11 +202,18 @@ export function updateNonDeviceProperties(
   type: string,
   options: UpdatePropertyOptions,
   notes: TargetNotes = newTargetNotes(),
+  chainsMade = 0,
 ): NonDeviceWrites {
   // A drum pad owns its sample, so a `sample` param addressed to the pad takes
   // the same route the rack's `pC1/sample` shortcut does. Everything else in
   // `params` is still not applicable, and says so in its own entry.
-  const params = applyChainSampleParams(target, type, options, notes);
+  const params = applyChainSampleParams(
+    target,
+    type,
+    options,
+    notes,
+    chainsMade,
+  );
   const ignored: string[] = [];
 
   noteIfSet(ignored, "preset", options.preset);

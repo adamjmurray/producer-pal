@@ -16,6 +16,7 @@ import {
 import {
   isDrumPadSampleShortcut,
   resolveNestedParamTarget,
+  sayWhatWasLeft,
   splitForAdvice,
 } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import {
@@ -310,11 +311,14 @@ function applyNestedParam(
   // worth of bare "Volume" entries would name nothing. A skip is named with the
   // key exactly as it arrived, spacing and all, since that is what the caller
   // has to match it on.
-  return setParamValues(
-    target.device,
-    [{ name: paramName, value: rawValue }],
-    force,
-    notes,
+  return sayWhatWasLeft(
+    target,
+    setParamValues(
+      target.device,
+      [{ name: paramName, value: rawValue }],
+      force,
+      notes,
+    ),
   ).map((result) =>
     "ok" in result
       ? { ...result, name: key }

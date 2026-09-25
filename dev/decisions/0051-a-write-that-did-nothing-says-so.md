@@ -32,7 +32,11 @@ only one. This covers:
 other, and the error names each write that failed. A change the call made on the
 way still counts as landed: a pad instrument swapped or a Simpler created for a
 sample that then didn't load keeps the target's entry, since a throw says
-nothing changed.
+nothing changed. What the call made is not undone: it stays, and the `detail`
+says so ("left an empty Simpler on pad …"). The call may already have
+force-removed an instrument that can't be put back, so a report beats a
+half-undo. The one exception is wrapping an instrument in a rack: it removes the
+rack it made and puts the instrument back, then throws.
 
 **A clip another clip in the call was moved onto says so**, whether it was
 buried or held back: `deleted: true` and the same `detail`. A duplicate copy a

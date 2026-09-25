@@ -105,10 +105,13 @@ export function wrapDevicesInRack({
     for (const { param, value } of devices) {
       reasons.push(`${param} "${value}" stayed put: Live made no chain for it`);
     }
-
-    reasons.push("the new rack was left empty");
   } else {
     moveDevicesIntoChain(chain, devices, reasons);
+  }
+
+  // The rack stays even with nothing in it: the call already changed the Set.
+  if ((chain?.getChildCount("devices") ?? 0) === 0) {
+    reasons.push("the new rack was left empty");
   }
 
   return rackResult(rack, rackType, chain, reasons);

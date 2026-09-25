@@ -115,6 +115,23 @@ describe("updateDevice - wrapInRack chain", () => {
       detail: 'path "t0/d0" is not in the rack: Live didn\'t move it',
     });
   });
+
+  it("says the rack was left empty when Live ignores every move", () => {
+    registerGrowingChainRack(1);
+    registerTrackingChain(liveSet, () => true);
+
+    const result = updateDevice({ path: "t0/d0,t0/d1", wrapInRack: true });
+
+    expect(result).toStrictEqual({
+      id: "new-rack",
+      type: "audio-effect-rack",
+      deviceCount: 0,
+      detail:
+        'path "t0/d0" is not in the rack: Live didn\'t move it; ' +
+        'path "t0/d1" is not in the rack: Live didn\'t move it; ' +
+        "the new rack was left empty",
+    });
+  });
 });
 
 // Looking up what to wrap is read-only: a path past a rack's last chain, or to

@@ -31,7 +31,11 @@ import {
   callOrRefusal,
   type ParamEntryResult,
 } from "../../helpers/racks-test-helpers.ts";
-import { createLayeredPad, readDrumPad } from "../drum-pad-test-helpers.ts";
+import {
+  createLayeredPad,
+  createTrackWithDrumRack,
+  readDrumPad,
+} from "../drum-pad-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -370,4 +374,40 @@ describe("a sample addressed by the device's own path", () => {
     expect(reason).toContain(`path:"${rackPath}"`);
     expect(reason).not.toContain("force:true");
   });
+});
+
+// What the call made stays when the sample then fails, so the entry says so.
+describe("a sample that doesn't load on an empty pad", () => {
+  const missing = "/Library/producer-pal-missing-sample.wav";
+
+  for (const [what, value, why] of [
+    ["no file at the path", missing, "written, but no value reads back"],
+    [
+      "a relative path",
+      "kick.wav",
+      `'sample' must be an absolute file path (got "kick.wav")`,
+    ],
+  ] as const) {
+    it(`leaves the new Simpler for ${what}, and the entry says so`, async () => {
+      const { rackPath } = await createTrackWithDrumRack(ctx.client!);
+
+      const { params, refusal } = await writeSample(rackPath, "pF1", value);
+
+      expect(refusal).toBeUndefined();
+      expect(params).toStrictEqual([
+        {
+          name: "pF1/sample",
+          ok: false,
+          detail: `${why}; left an empty Simpler on pad ${rackPath}/pF1`,
+        },
+      ]);
+
+      const devices = (await readDrumPad(ctx.client!, `${rackPath}/pF1`))
+        .chains?.[0]?.devices;
+
+      expect(devices).toHaveLength(1);
+      expect(devices?.[0]?.type).toContain("Simpler");
+      expect(await sampleAt(`${rackPath}/pF1/c0/d0`)).toBeUndefined();
+    });
+  }
 });

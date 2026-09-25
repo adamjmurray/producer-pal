@@ -13,7 +13,11 @@ import {
   DEVICE_CLASS,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
-import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import {
+  type CreatedChains,
+  resolveOrCreateDrumPadChain,
+} from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import { type ParamOutcome } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   ambiguousLayerReason,
   isSampleParam,
@@ -27,6 +31,7 @@ import {
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { createdCount } from "#src/tools/shared/helpers/created-range.ts";
 
 interface DrumPadSlot {
   /** Segments from the addressed device down to the rack the pad sits on.
@@ -177,28 +182,68 @@ export function resolveNestedParamTarget(
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
  * @param notes - What the target's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
+ * @param chainsMade - How many chains this call made on the pad for the write
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 export function resolveDrumChainSampleTarget(
   chain: LiveAPI,
   force: boolean,
   notes?: TargetNotes,
+  chainsMade = 0,
 ): NestedParamTarget {
   const instrument = findChainInstrument(chain);
+  const chainLabel = pathPrefix(chain);
+  // What a failed write left is named by the pad, the way the rack's
+  // `pC1/sample` shortcut names it.
+  const made = { padLabel: padOf(chainLabel), chainsMade };
 
   return instrument == null
-    ? createSimplerInChain(chain, notes)
-    : applyPadInstrumentPolicy(
-        chain,
-        instrument,
-        pathPrefix(chain),
-        force,
-        notes,
-      );
+    ? createSimplerInChain(chain, notes, made)
+    : applyPadInstrumentPolicy(chain, instrument, chainLabel, force, notes);
 }
 
-/** The device a nested param write lands on, or why it lands on nothing. */
-export type NestedParamTarget = { device: LiveAPI } | { reason: string };
+/**
+ * The device a nested param write lands on, or why it lands on nothing. `made`
+ * names what the call made to hold the write, for a write that then fails.
+ */
+export type NestedParamTarget =
+  | { device: LiveAPI; made?: string }
+  | { reason: string };
+
+/**
+ * Add what the call made for a write to each entry that then didn't land.
+ * Nothing made is undone — the call may already have force-removed an
+ * instrument that can't be put back — so the entry has to say it's there.
+ * @param target - The device the write went to
+ * @param outcomes - The write's entries
+ * @returns The entries, a failed one naming what was left behind
+ */
+export function sayWhatWasLeft(
+  target: { device: LiveAPI; made?: string },
+  outcomes: ParamOutcome[],
+): ParamOutcome[] {
+  const { made } = target;
+
+  if (made == null) {
+    return outcomes;
+  }
+
+  // A pseudo-param only finds out it didn't land when its value is read back,
+  // at the end of the call, so it carries the note until then.
+  return outcomes.map((outcome) => {
+    if ("ok" in outcome) {
+      return { ...outcome, detail: `${outcome.detail}; ${made}` };
+    }
+
+    return "read" in outcome ? { ...outcome, made } : outcome;
+  });
+}
+
+/** The pad a Simpler is made on, and how many chains the call made there. */
+interface MadeOnPad {
+  padLabel: string;
+  chainsMade: number;
+}
 
 /**
  * Say why a write landed nowhere. The caller puts this in the param's own result
@@ -318,21 +363,29 @@ function resolveDrumPadSampleTarget(
   }
 
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
+  const created: CreatedChains = [];
   const chain = resolveOrCreateDrumPadChain(
     holder.device,
     padNote,
     chainSegments,
+    created,
   );
 
   if (!chain?.exists()) {
     return skip(`could not resolve or create drum pad "${padLabel}"`);
   }
 
+  const chainsMade = createdCount(created);
+
+  if (chainsMade > 0) {
+    noteSetAltered(notes);
+  }
+
   const instrument = findChainInstrument(chain);
 
   // Nothing to hold the sample yet, so a `dN` names nothing to disagree with.
   if (!instrument) {
-    return createSimplerInChain(chain, notes);
+    return createSimplerInChain(chain, notes, { padLabel, chainsMade });
   }
 
   if (deviceIndex != null && deviceIndex !== instrument.index) {
@@ -394,12 +447,18 @@ function applyPadInstrumentPolicy(
   // contract says nothing cached survives that. createSimplerInChain invalidates
   // again after its insert; this one keeps the invariant true in between.
   invalidateDevicePathCache();
+  const pad = padOf(padLabel);
+
   noteTarget(
     notes,
-    `force:true — replaced ${held} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
+    `force:true — replaced ${held} on pad ${pad} with a Simpler to load the sample. Its settings are gone.`,
   );
 
-  return createSimplerInChain(chain, notes);
+  // The instrument's chain was there already, so the call made none.
+  return createSimplerInChain(chain, notes, {
+    padLabel: pad,
+    chainsMade: 0,
+  });
 }
 
 /**
@@ -484,11 +543,14 @@ function findChainInstrument(
  * @param chain - Chain LiveAPI object
  * @param notes - What the target's entry has to say, marked when the Simpler
  *   is made
+ * @param pad - The pad, and the chains the call made there, for naming what a
+ *   failed write left
  * @returns The created Simpler, or the reason there is none
  */
 function createSimplerInChain(
   chain: LiveAPI,
   notes: TargetNotes | undefined,
+  pad: MadeOnPad,
 ): NestedParamTarget {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
@@ -501,7 +563,13 @@ function createSimplerInChain(
   const id = rawId ? String(rawId) : null;
 
   if (!id) {
-    return skip(`failed to create a Simpler on the drum pad`);
+    const failed = "failed to create a Simpler on the drum pad";
+
+    return skip(
+      pad.chainsMade > 0
+        ? `${failed}; ${leftOnPad(pad.padLabel, false, pad.chainsMade)}`
+        : failed,
+    );
   }
 
   const device = LiveAPI.from(`id ${id}`);
@@ -509,6 +577,42 @@ function createSimplerInChain(
   noteSetAltered(notes);
 
   return device.exists()
-    ? { device }
+    ? {
+        device,
+        // The Simpler fills the last chain made; any before it stay empty.
+        made: leftOnPad(pad.padLabel, true, Math.max(pad.chainsMade - 1, 0)),
+      }
     : skip(`the Simpler created on the drum pad could not be read back`);
+}
+
+/**
+ * The pad a label names, without the chain a pad path may end in.
+ * @param label - A pad's label, or one of its chains' ("t0/d0/pC1/c0")
+ * @returns The pad's label ("t0/d0/pC1")
+ */
+function padOf(label: string): string {
+  return label.replace(/\/c\d+$/, "");
+}
+
+/**
+ * What a failed pad sample write left on the pad.
+ * @param padLabel - How to name the pad
+ * @param simpler - Whether it left an empty Simpler
+ * @param emptyChains - How many empty chains it left
+ * @returns e.g. "left an empty Simpler and 2 empty chains on pad t0/d0/pC1"
+ */
+function leftOnPad(
+  padLabel: string,
+  simpler: boolean,
+  emptyChains: number,
+): string {
+  const left = simpler ? ["an empty Simpler"] : [];
+
+  if (emptyChains === 1) {
+    left.push("an empty chain");
+  } else if (emptyChains > 1) {
+    left.push(`${emptyChains} empty chains`);
+  }
+
+  return `left ${left.join(" and ")} on pad ${padLabel}`;
 }
