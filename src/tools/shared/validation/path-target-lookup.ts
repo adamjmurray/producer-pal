@@ -21,6 +21,7 @@ import {
   isNewObjectPath,
   NEW_OBJECT_ADVICE,
   parseObjectPath,
+  type NewObjectSegment,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
@@ -168,7 +169,7 @@ function refuseNewObject(
   entry: string,
   label: string,
   spellings: string,
-): void {
+): asserts path is Exclude<ObjectPath, NewObjectSegment> {
   if (isNewObjectPath(path)) {
     throw pathError(
       label,
@@ -180,11 +181,15 @@ function refuseNewObject(
 
 /**
  * Names what a path points at, for a message saying it's the wrong kind.
- * @param path - A parsed path
+ * @param path - A parsed path, "+" roots already refused
  * @returns What it names, as a noun phrase
  */
-function describePathKind(path: ObjectPath): string {
+function describePathKind(path: Exclude<ObjectPath, NewObjectSegment>): string {
   switch (path.kind) {
+    case "track":
+    case "return-track":
+    case "master-track":
+      return "a track";
     case "scene":
       return "a scene";
     case "slot":
@@ -195,9 +200,19 @@ function describePathKind(path: ObjectPath): string {
       return "a new take lane";
     case "device":
       return "a device";
+    case "new-device":
+      return "a new device";
+    case "new-chain":
+      return "a new chain";
     case "arrangement-position":
       return "an arrangement clip";
-    default:
-      return "a track";
+
+    // Unreachable; the `never` makes a new kind fail the typecheck rather than
+    // get a wrong noun.
+    default: {
+      const exhaustive: never = path;
+
+      return exhaustive;
+    }
   }
 }
