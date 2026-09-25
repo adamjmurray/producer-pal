@@ -119,10 +119,7 @@ describe("moveDeviceToPath", () => {
 
     const move = moveDeviceToPath(LiveAPI.from(device.path), "t1/d0");
 
-    // The container comes back so a result can name the device by where the
-    // call spelled it landing, without re-resolving toPath.
     expect(move.outcome).toBe("moved");
-    expect(move.container?.id).toBe("track-1");
     expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-0",
@@ -264,7 +261,6 @@ describe("moveDeviceToPath", () => {
     const move = moveDeviceToPath(LiveAPI.from(device.path), "t1/d0/c+");
 
     expect(move.outcome).toBe("moved");
-    expect(move.container?.id).toBe("chain-new");
     // The new chain appends, and the static mock already lists the device, so
     // the count read before the move is 1 rather than an empty chain's 0.
     expect(liveSet.call).toHaveBeenCalledWith(

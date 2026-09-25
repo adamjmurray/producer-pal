@@ -18,10 +18,7 @@ import {
   type DrumPadGroup,
   drumRackOfPad,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import {
-  pathField,
-  pathTargetLabel,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { pathTargetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type TargetNotes,
   newTargetNotes,
@@ -149,7 +146,8 @@ export function updateDrumPadGroup(
   }
 
   if (pad != null) {
-    Object.assign(result, { id: pad.id }, pathField(pad));
+    // The caller fills the path in once every target in the call has run.
+    Object.assign(result, { id: pad.id, path: undefined });
   }
 
   if (CHAIN_WRITE_PROPS.some((key) => chainOptions[key] != null)) {

@@ -17,7 +17,6 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import {
-  insertionContainerPath,
   resolveInsertionPath,
   resolvePathToLiveApi,
 } from "../insertion-path.ts";
@@ -83,15 +82,5 @@ describe("resolvePathToLiveApi by device type", () => {
 
     expect(resolvePathToLiveApi("t0/afx0").path).toBe("t0/d1");
     expect(resolvePathToLiveApi("t0/mfx0").path).toBe("t0/mfx0");
-  });
-});
-
-describe("insertionContainerPath by device type", () => {
-  it("drops a trailing type segment without reading anything", () => {
-    expect(insertionContainerPath("t0/afx0")).toBe("t0");
-    expect(insertionContainerPath("t0/d0/pC1/mfx1")).toBe("t0/d0/pC1");
-    // A path the grammar rejects still comes back trimmed, never naming the
-    // object inside the container.
-    expect(insertionContainerPath("t0/nope/inst")).toBe("t0/nope");
   });
 });

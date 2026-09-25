@@ -63,20 +63,23 @@ Resolving one against a real drum chain warns once per request (see
 [Errors and warnings](#errors-and-warnings)), so the caller learns the pad
 spelling before a layered pad makes the two disagree.
 
-An update echoes whichever spelling still names where the object is. Only a
-device move replaces the address the call reached the object by, and only once
-Live confirms it arrived — a refused move, a skipped Producer Pal device, and a
-drum chain's pad re-map all keep the addressing spelling. The re-map leaves the
-chain's path stale, but harmlessly: a container spelled through a pad always
-resolves to a chain, and a chain's parent is the rack, so the check below never
-matches and the path is re-derived from the new `in_note`. A target named only
-by `id` spelled no container, so its path stays derived — which is the same
-pad-relative answer echoing would have given.
+An update echoes the spelling the call reached the object by. A device that
+moved is named by its derived path instead, never its `toPath`: `pC1/c+` names a
+chain to make, so echoed back it would make another one. A refused move, a
+skipped Producer Pal device, and a drum chain's pad re-map all keep the
+addressing spelling. The re-map leaves the chain's path stale, but harmlessly: a
+container spelled through a pad always resolves to a chain, and a chain's parent
+is the rack, so the check below never matches and the path is re-derived from
+the new `in_note`. A target named only by `id` spelled no container, so its path
+stays derived — which is the same pad-relative answer echoing would have given.
 
-Echoing only ever replaces the container the call actually named, and it can
-only ever agree with the derived path now: a chain copy whose destination rack
-is spelled rack-relative (`toPath: "t0/d0/c2/d0"`) gets pad-relative ancestors
-either way.
+update-device names each target, and duplicate each device copy, once the whole
+call has run: a later move or copy can push an earlier one along.
+
+Echoing only ever replaces the container the call actually named, so it names
+the same object the derived path does. The spelling can still differ: an echoed
+`pC1/d0` derives as `pC1/c0/d0`. A rack-relative container (`t0/d0/c2/d0`) is
+never echoed, so it gets pad-relative ancestors.
 
 `pathField` does the substitution. It takes the resolved container as well as
 its spelling, so it can check that the spelling really names the object's parent
