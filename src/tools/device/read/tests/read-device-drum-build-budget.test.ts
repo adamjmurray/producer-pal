@@ -239,9 +239,10 @@ describe("readDevice drum rack build budget", () => {
     // A chain with a send up has to name the returns it feeds, and the names
     // live on the rack — the same rack for every chain. Reading them per chain
     // cost 1 + RETURNS objects a pad and doubled the time to read a 64-pad kit
-    // against real Live. The + 1 + RETURNS here is the whole rack's share.
+    // against real Live. Now each chain builds only the rack (to key the memo
+    // by its id), and the RETURNS are built once for the whole rack.
     expect(liveApiBuildStats().resolved).toBe(
-      2 + PADS * (2 + 3 + RETURNS) + 1 + RETURNS,
+      2 + PADS * (2 + 3 + RETURNS + 1) + RETURNS,
     );
   });
 });

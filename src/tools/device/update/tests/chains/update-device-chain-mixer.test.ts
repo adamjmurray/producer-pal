@@ -382,5 +382,52 @@ describe("updateDevice - return chain rename mid-request", () => {
   });
 });
 
+describe("updateDevice - rack moved mid-request", () => {
+  it("sends against the rack now at a path, not the one that moved away", () => {
+    const rackPath = livePath.track(0).device(0);
+    const chainPath = rackPath.chain(0);
+
+    registerMockObject("chain", { path: chainPath, type: "Chain" });
+    registerMockObject("mixer", {
+      path: `${chainPath} mixer_device`,
+      properties: { sends: children("send") },
+    });
+    const send = registerMockObject("send");
+
+    registerMockObject("rc-a", {
+      type: "Chain",
+      properties: { name: "Delay" },
+    });
+    registerMockObject("rc-b", { type: "Chain", properties: { name: "Verb" } });
+    const rack = registerMockObject("rack-a", {
+      path: rackPath,
+      properties: { return_chains: children("rc-a") },
+    });
+
+    beginLiveApiScope();
+
+    let result: unknown;
+
+    try {
+      updateDevice({ id: "chain", sends: [{ return: "Delay", gainDb: -12 }] });
+
+      // Rack A moves away and rack B slides into its path. Mutated in place:
+      // registering B would clear the memo this test is about.
+      rack.id = "rack-b";
+      rack.properties.return_chains = children("rc-b");
+
+      result = updateDevice({
+        id: "chain",
+        sends: [{ return: "Verb", gainDb: -6 }],
+      });
+    } finally {
+      endLiveApiScope();
+    }
+
+    expect(send.set).toHaveBeenLastCalledWith("display_value", -6);
+    expect(result).toStrictEqual({ id: "chain", path: "t0/d0/c0" });
+  });
+});
+
 /** The entries a multi-target update-device answers with, as far as sends go. */
 type SendEntries = Array<{ sends?: unknown[] }>;
