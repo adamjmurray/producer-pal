@@ -6,6 +6,10 @@
 // The `path` an index names, for errors and for the warnings that retire the
 // index params. Kept free of imports so a tool schema can reach it.
 
+// Longer lists are too long for an example; count's warning says to repeat
+// the path once per track.
+const MAX_LISTED_TRACKS = 5;
+
 /**
  * The track path an index and category name.
  * @param category - "regular", "return" or "master"
@@ -44,22 +48,35 @@ export function trackPathFromIndex(
 }
 
 /**
- * The path for where create-track's deprecated trackIndex put a new track.
- * create-track names the kind `type`, not `trackType`, and Live always appends
- * a return track, so a return is "rt+" whatever the index.
+ * The path for where create-track's deprecated trackIndex put new tracks: one
+ * entry per track when count is small, else the one place they all go.
  * @param args - The args the call sent
- * @returns The path, or undefined when no trackIndex was sent
+ * @returns The path, or undefined when no single path names the place
  */
 export function newTrackPathFromIndex(
   args: Record<string, unknown>,
 ): string | undefined {
-  if (typeof args.trackIndex !== "number") {
+  return newTrackPathFromCount(args) ?? newTrackPlace(args);
+}
+
+/**
+ * The path list that makes the same tracks as create-track's deprecated count.
+ * It sends the same targets as the call did, so it fails wherever the call
+ * would, the track cap included.
+ * @param args - The args the call sent
+ * @returns The list, or undefined when it would be too long to show
+ */
+export function newTrackPathFromCount(
+  args: Record<string, unknown>,
+): string | undefined {
+  const count = typeof args.count === "number" ? args.count : 1;
+  const place = newTrackPlace(args);
+
+  if (place == null || count > MAX_LISTED_TRACKS) {
     return undefined;
   }
 
-  return args.type === "return"
-    ? "rt+"
-    : trackCategoryPath("regular", args.trackIndex);
+  return Array.from({ length: count }, () => place).join(",");
 }
 
 /**
@@ -73,4 +90,28 @@ export function scenePathFromIndex(
   const index = args.sceneIndex;
 
   return typeof index === "number" ? `s${String(index)}` : undefined;
+}
+
+/**
+ * The one place create-track's args put a new track. create-track names the
+ * kind `type`, not `trackType`, and Live always appends a return track, so a
+ * return is "rt+" whatever the index.
+ * @param args - The args the call sent
+ * @returns The path, or undefined for a path list, which count can't repeat
+ */
+function newTrackPlace(args: Record<string, unknown>): string | undefined {
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+
+  // The tool reads a blank or coerced-null path as unsent.
+  if (path !== "" && path !== "null" && path !== "undefined") {
+    return path.includes(",") ? undefined : path;
+  }
+
+  if (args.type === "return") {
+    return "rt+";
+  }
+
+  const index = typeof args.trackIndex === "number" ? args.trackIndex : -1;
+
+  return trackCategoryPath("regular", index);
 }

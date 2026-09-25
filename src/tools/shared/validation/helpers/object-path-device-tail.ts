@@ -215,6 +215,15 @@ export function parseDeviceTail(
 }
 
 /**
+ * What a device chain names, for messages: whatever its last segment names.
+ * @param segments - The parsed segments, empty for the track itself
+ * @returns A noun phrase, e.g. "a chain"
+ */
+export function deviceTailNoun(segments: DeviceSegment[]): string {
+  return DEVICE_TAIL_RULES[segments.at(-1)?.kind ?? "root"].noun;
+}
+
+/**
  * Checks an append marker closes the path, since what it makes is empty and
  * nothing can be addressed inside it.
  * @param last - Whether the marker is the final segment

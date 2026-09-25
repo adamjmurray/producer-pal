@@ -57,6 +57,10 @@ describe("trackIdAtPath", () => {
     ["t0/l0", "a take lane"],
     ["t0/l+", "a new take lane"],
     ["t0/d1", "a device"],
+    ["t0/inst", "a device"],
+    ["t0/d0/c1", "a chain"],
+    ["t0/d0/rc0", "a return chain"],
+    ["t0/d0/pC1", "a drum pad"],
     ["t0/d+", "a new device"],
     ["t0/d0/c+", "a new chain"],
     ["t0[5|1]", "an arrangement clip"],
@@ -102,6 +106,7 @@ describe("sceneIdAtPath", () => {
     ["rt1", "a track"],
     ["mt", "a track"],
     ["t0/s1", "a clip slot"],
+    ["t0/d0/pC1", "a drum pad"],
     ["t0/d+", "a new device"],
   ])("throws that %s names %s, not a scene", (path, noun) => {
     expect(() => sceneIdAtPath(path)).toThrow(

@@ -7,7 +7,10 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { newTrackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+import {
+  newTrackPathFromCount,
+  newTrackPathFromIndex,
+} from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
@@ -32,7 +35,7 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
 
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
-      example: "t+,t+,t+",
+      example: newTrackPathFromCount,
       note: "path names every track, so repeat it once per track instead of counting",
     }),
 

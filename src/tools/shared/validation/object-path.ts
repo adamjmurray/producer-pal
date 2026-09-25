@@ -20,7 +20,9 @@ import {
 } from "./helpers/object-path-lexer.ts";
 import {
   DEVICE_TYPE_FORMS,
+  deviceTailNoun,
   parseDeviceTail,
+  type DeviceTail,
 } from "./helpers/object-path-device-tail.ts";
 import {
   arrangementPosition,
@@ -358,12 +360,19 @@ function parseTail(
     return parseTrackChild(root, tail, label, input);
   }
 
-  // A scene or take lane inside a device chain is a misplaced coordinate, not
-  // a device — say so instead of blaming a device segment.
+  // A scene or take lane in a device chain is misplaced; check the chain
+  // before it first, so a bad segment there is blamed for itself.
   const misplaced = tail.findIndex(isTrackChild);
 
   if (misplaced !== -1) {
-    throw trackChildError(label, input, tail[misplaced] as string);
+    const owner =
+      root.kind === "track"
+        ? misplacedOwner(
+            parseDeviceTail(tail.slice(0, misplaced), label, input),
+          )
+        : undefined;
+
+    throw trackChildError(label, input, tail[misplaced] as string, owner);
   }
 
   const { segments, appendsChain, appendsDevice } = parseDeviceTail(
@@ -373,6 +382,19 @@ function parseTail(
   );
 
   return { kind: deviceTailKind(appendsChain, appendsDevice), root, segments };
+}
+
+/**
+ * What a scene or take lane was put under instead of a track.
+ * @param tail - The device chain before it
+ * @returns A noun phrase, e.g. "a device"
+ */
+function misplacedOwner(tail: DeviceTail): string {
+  if (tail.appendsDevice) {
+    return "a new device";
+  }
+
+  return tail.appendsChain ? "a new chain" : deviceTailNoun(tail.segments);
 }
 
 /**
@@ -455,20 +477,26 @@ function parseTrackChild(
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @param segment - The offending segment
+ * @param owner - What it came after on a regular track, e.g. "a device"
  * @returns The error to throw
  */
-function trackChildError(label: string, input: string, segment: string): Error {
-  return SCENE.test(segment)
-    ? pathError(
-        label,
-        input,
-        `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes`,
-      )
-    : pathError(
-        label,
-        input,
-        `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes`,
-      );
+function trackChildError(
+  label: string,
+  input: string,
+  segment: string,
+  owner?: string,
+): Error {
+  const scene = SCENE.test(segment);
+  const shape = scene
+    ? `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1")`
+    : `a take lane is "t<track>/l<lane>" (e.g. "t0/l0")`;
+  const children = scene ? "clip slots" : "take lanes";
+  const why =
+    owner == null
+      ? `only regular tracks have ${scene ? "scenes" : "take lanes"}`
+      : `${children} belong to a track, not ${owner}`;
+
+  return pathError(label, input, `${shape}; ${why}`);
 }
 
 /**

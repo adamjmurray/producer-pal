@@ -24,6 +24,7 @@ import {
   type NewObjectSegment,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { deviceTailNoun } from "#src/tools/shared/validation/helpers/object-path-device-tail.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
@@ -199,7 +200,7 @@ function describePathKind(path: Exclude<ObjectPath, NewObjectSegment>): string {
     case "new-take-lane":
       return "a new take lane";
     case "device":
-      return "a device";
+      return deviceTailNoun(path.segments);
     case "new-device":
       return "a new device";
     case "new-chain":

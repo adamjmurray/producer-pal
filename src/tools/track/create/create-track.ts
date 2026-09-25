@@ -6,7 +6,6 @@
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   type Insertion,
@@ -71,12 +70,6 @@ export function createTrack(
 ): CreatedTrackResult | CreatedTrackResult[] {
   const { count, name, color, mute, solo, arm } = args;
   const targets = resolveCreateTrackTargets(args);
-
-  if (args.type === "return" && args.trackIndex != null) {
-    console.warn(
-      "trackIndex is ignored for return tracks (always added at end)",
-    );
-  }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const insertions = planTrackInsertions(liveSet, targets);
