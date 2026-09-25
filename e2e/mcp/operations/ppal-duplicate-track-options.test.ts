@@ -280,4 +280,56 @@ describe("ppal-duplicate from a group track", () => {
     expect(after[12]!.groupId).toBe(after[11]!.id);
     expect(after[14]!.groupId).toBe(after[13]!.id);
   });
+
+  it("reports and strips the members' copies, not just the group's", async () => {
+    const clip = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: { path: "t10/s0", notes: "C3 1|1" },
+      }),
+    );
+    const parentId = (await readTracks()).tracks[9]!.id;
+
+    const full = parseToolResult<DuplicateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "track", id: parentId },
+      }),
+    );
+
+    await sleep(100);
+
+    // Live puts the copy right after the group, its member copy right after it.
+    expect(full.clips).toStrictEqual([
+      expect.objectContaining({ path: "t12/s0" }),
+    ]);
+    expect(full.clips).not.toContainEqual(
+      expect.objectContaining({ id: clip.id }),
+    );
+
+    const bare = parseToolResult<DuplicateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "track",
+          id: parentId,
+          withoutClips: true,
+          withoutDevices: true,
+        },
+      }),
+    );
+
+    await sleep(100);
+    const tracks = (await readTracks()).tracks;
+    const bareMember = tracks[12]!;
+
+    expect(bare.clips).toStrictEqual([]);
+    expect(bareMember.groupId).toBe(bare.id);
+    expect(await readDevices("t12")).toStrictEqual([]);
+    expect((await readTrack(bareMember.id)).sessionClipCount ?? 0).toBe(0);
+    // The source member keeps its own.
+    expect(await readDevices("t10")).toStrictEqual([
+      expect.objectContaining({ type: "instrument: Operator" }),
+    ]);
+  });
 });

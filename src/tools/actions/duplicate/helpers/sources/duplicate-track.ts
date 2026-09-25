@@ -21,7 +21,7 @@ import {
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
 import { configureRouting } from "../duplicate-routing.ts";
-import { landTrackCopy } from "./landed-track-copy.ts";
+import { type LandedTrackCopy, landTrackCopy } from "./landed-track-copy.ts";
 
 /** One track copy's entry in the result. */
 export interface TrackCopyEntry {
@@ -32,42 +32,52 @@ export interface TrackCopyEntry {
 }
 
 /**
- * Remove the Producer Pal device from a duplicated track if it was the host track
- * @param trackIndex - Original track index
+ * Remove the Producer Pal device from the copy of its host track. A group's
+ * copy holds copies of its members right after it, in the same order, so the
+ * host may be one of those.
+ * @param trackIndex - The source track
+ * @param landing - Where the copy landed
  * @param withoutDevices - Whether devices were excluded
- * @param newTrack - The new track LiveAPI object
- * @param notes - What the new track's entry should say
+ * @param notes - What the copy's entry should say
  */
 function removeHostTrackDevice(
   trackIndex: number,
+  landing: LandedTrackCopy,
   withoutDevices: boolean | undefined,
-  newTrack: LiveAPI,
   notes: TargetNotes,
 ): void {
   const hostTrackIndex = getHostTrackIndex();
 
-  if (trackIndex === hostTrackIndex && withoutDevices !== true) {
-    try {
-      const thisDevice = LiveAPI.from("this_device");
-      const thisDevicePath = thisDevice.path;
+  if (hostTrackIndex == null || withoutDevices === true) {
+    return;
+  }
 
-      // Extract device index from path like "live_set tracks 1 devices 0"
-      const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
+  const offset = hostTrackIndex - trackIndex;
 
-      if (deviceIndexMatch) {
-        newTrack.call(
-          "delete_device",
-          Number.parseInt(deviceIndexMatch[1] ?? ""),
-        );
-        noteTarget(notes, "the Producer Pal device was not copied");
-      }
-    } catch {
-      // this_device is unreadable, so nothing was removed either way.
-      noteTarget(
-        notes,
-        "could not check the new track for the Producer Pal device",
+  if (offset < 0 || offset >= landing.added) {
+    return;
+  }
+
+  try {
+    const thisDevice = LiveAPI.from("this_device");
+    const thisDevicePath = thisDevice.path;
+
+    // Extract device index from path like "live_set tracks 1 devices 0"
+    const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
+
+    if (deviceIndexMatch) {
+      LiveAPI.from(livePath.track(landing.index + offset)).call(
+        "delete_device",
+        Number.parseInt(deviceIndexMatch[1] ?? ""),
       );
+      noteTarget(notes, "the Producer Pal device was not copied");
     }
+  } catch {
+    // this_device is unreadable, so nothing was removed either way.
+    noteTarget(
+      notes,
+      "could not check the new track for the Producer Pal device",
+    );
   }
 }
 
@@ -193,6 +203,8 @@ export interface TrackCopyLabel {
 /** A copy that exists but isn't labeled or routed yet. */
 interface MadeTrackCopy {
   track: LiveAPI;
+  /** Where the copy was when its clips were read */
+  index: number;
   clips: MinimalClipInfo[];
   notes: TargetNotes;
 }
@@ -259,17 +271,25 @@ function makeTrackCopy(
   options: TrackCopyOptions,
 ): MadeTrackCopy {
   const notes = newTargetNotes();
-  const track = LiveAPI.from(livePath.track(landTrackCopy(trackIndex).index));
+  const landing = landTrackCopy(trackIndex);
+  const clips: MinimalClipInfo[] = [];
 
-  removeHostTrackDevice(trackIndex, options.withoutDevices, track, notes);
+  removeHostTrackDevice(trackIndex, landing, options.withoutDevices, notes);
 
-  if (options.withoutDevices === true) {
-    deleteAllDevices(track);
+  // A group's copy brings its members' copies, which get the same treatment.
+  for (let offset = 0; offset < landing.added; offset++) {
+    const copied = LiveAPI.from(livePath.track(landing.index + offset));
+
+    if (options.withoutDevices === true) {
+      deleteAllDevices(copied);
+    }
+
+    clips.push(...processClipsForDuplication(copied, options.withoutClips));
   }
 
-  const clips = processClipsForDuplication(track, options.withoutClips);
+  const track = LiveAPI.from(livePath.track(landing.index));
 
-  return { track, clips, notes };
+  return { track, index: landing.index, clips, notes };
 }
 
 /**
@@ -304,15 +324,15 @@ function finishTrackCopy(
 
   return {
     id: track.id,
-    // Set by settleTrackCopyPaths once every copy has landed.
-    path: "",
+    // Where its clips were read; settleTrackCopyPaths moves both along.
+    path: formatObjectPath({ kind: "track", trackIndex: copy.index }),
     clips: copy.clips,
     ...(reason == null ? {} : { reason }),
   };
 }
 
 /**
- * Re-read where each copy sits, and put its clips on that track. A copy made
+ * Re-read where each copy sits, and move its clips along with it. A copy made
  * later lands ahead of earlier ones, and a later source's copies can push an
  * earlier source's along, so paths read as each copy landed go stale.
  * @param entries - The copies' entries, updated in place
@@ -325,11 +345,17 @@ export function settleTrackCopyPaths(entries: TrackCopyEntry[]): void {
       continue;
     }
 
+    // A group's clips sit on its members, so shift each by the group's move.
+    const shift = trackIndex - Number(entry.path.slice(1));
+
     entry.path = formatObjectPath({ kind: "track", trackIndex });
 
     for (const clip of entry.clips) {
       if (clip.path != null) {
-        clip.path = clip.path.replace(/^t\d+/, entry.path);
+        clip.path = clip.path.replace(
+          /^t(\d+)/,
+          (_, n: string) => `t${Number(n) + shift}`,
+        );
       }
     }
   }
