@@ -34,6 +34,8 @@ interface TileClipOptions {
   startOffset?: number;
   /** Arrangement length per tile (defaults to clip content length) */
   tileLength?: number | null;
+  /** Collects each tile as it lands, so the caller keeps them if one throws */
+  placed?: CreatedClip[];
 }
 
 interface PartialTileOptions {
@@ -133,6 +135,7 @@ export function createPartialTile(
  * @param options.adjustPreRoll - Whether to adjust pre-roll on subsequent tiles
  * @param options.startOffset - Content offset in beats to start tiling from
  * @param options.tileLength - Arrangement length per tile (defaults to clip content length)
+ * @param options.placed - Collects each tile as it lands
  * @returns Array of created clip objects with id property
  */
 export function tileClipToRange(
@@ -145,9 +148,10 @@ export function tileClipToRange(
     adjustPreRoll = true,
     startOffset = 0,
     tileLength = null,
+    placed = [],
   }: TileClipOptions = {},
 ): CreatedClip[] {
-  const createdClips: CreatedClip[] = [];
+  const createdClips = placed;
 
   // Store clip ID and track index before loop to prevent object staleness issues
   const sourceClipId = sourceClip.id;
