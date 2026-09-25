@@ -54,13 +54,12 @@ export interface ClipResult {
    */
   reason?: string;
   /**
-   * Only when another clip in the same call landed on this one: true when this
-   * clip is gone (`path` is the address it last had), false when it is still
-   * there. A placement that failed destroys it just the same — it clears the
-   * target range before the copy it never makes — so this says what became of
-   * the clip, not whether the overwrite went to plan.
+   * True when another clip in the same call left this one gone (`path` is the
+   * address it last had). A placement that failed destroys it just the same —
+   * it clears the target range before the copy it never makes — so this says
+   * what became of the clip, not whether the overwrite went to plan.
    */
-  deleted?: boolean;
+  deleted?: true;
 }
 
 /**

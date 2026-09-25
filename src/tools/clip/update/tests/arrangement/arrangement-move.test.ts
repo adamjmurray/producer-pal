@@ -519,7 +519,7 @@ describe("a clip held back for an overwrite", () => {
 
     expect(deletedIds(track)).toStrictEqual([]);
     expect(result).toStrictEqual([
-      { id: FIRST, path: "t0[1|1]", deleted: false },
+      { id: FIRST, path: "t0[1|1]", reason: HELD_BACK },
       {
         id: SECOND,
         ok: false,
@@ -576,17 +576,25 @@ describe("a clip held back for an overwrite", () => {
       false,
     );
 
-    expect(result).toStrictEqual({ id: FIRST, deleted: true });
+    expect(result).toStrictEqual({
+      id: FIRST,
+      deleted: true,
+      reason: "deleted: a move onto it failed after clearing its place",
+    });
     expect(sourceTrack.call).not.toHaveBeenCalled();
   });
 
   it("clears nothing when the call planned no overwrite at all", () => {
     const { result, sourceTrack } = flushHeldBack(SECOND, undefined);
 
-    expect(result).toStrictEqual({ id: FIRST, deleted: false });
+    expect(result).toStrictEqual({ id: FIRST, reason: HELD_BACK });
     expect(sourceTrack.call).not.toHaveBeenCalled();
   });
 });
+
+/** What a held-back clip nothing landed on says. */
+const HELD_BACK =
+  "not moved: the clip due to land on top of it at t0[17|1] didn't, so the original was kept";
 
 /** Same length as SECOND and named first, so it is the one held back. */
 const FIRST = "100";
@@ -714,7 +722,7 @@ function planBurying(
  * @param flushed - What the flush left behind
  */
 function expectHeldClipKept(flushed: ReturnType<typeof flushHeldBack>): void {
-  expect(flushed.result).toStrictEqual({ id: FIRST, deleted: false });
+  expect(flushed.result).toStrictEqual({ id: FIRST, reason: HELD_BACK });
   expect(flushed.sourceTrack.call).not.toHaveBeenCalled();
 }
 

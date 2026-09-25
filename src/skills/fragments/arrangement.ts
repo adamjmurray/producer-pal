@@ -57,7 +57,7 @@ create-clip's \`path\` takes a comma-separated list and may mix the two kinds, s
 A clip moved into a slot or onto a take lane is re-created there, so it loses its automation envelopes. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
 \`arrangementSplit\` cuts clips at song positions — the same timeline a \`[...]\` coordinate names, not offsets into the clip. One list covers every clip, not one per clip: each is cut where a position falls inside it, so one call can cut several clips at the same bar. A cut makes new clips with new ids, so it can't be combined with \`toPath\` or \`arrangementLength\`: cut in one call, then move or resize the pieces in the next, using the ids the cut returned.
-A clip another clip in the same call was moved onto comes back with \`deleted: true\` and the address it had; \`deleted: false\` means it is still there, because the move that would have covered it never landed.
+A clip another clip in the same call was moved onto comes back with \`deleted: true\` and the address it had.
 Writing into an occupied range overwrites what is there — that's normal, and the written clip's \`reason\` says what it cost: \`overwrote\`, \`shortened\` or \`split the clip at <path>\`. Not an error; pass it on if the user might care.
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 Duplicating a *scene* to the arrangement uses \`toPath: "[5|1]"\` — a scene copy lands a clip on every track, so it has no lane of its own to name.
