@@ -332,6 +332,7 @@ export function moveClipFromHolding(
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @param deleteSource - A move: delete the source once the holding copy is safe
  * @returns The placed full-length copy at the target (LiveAPI instance)
  */
 export function duplicateSelfOverlappingClip(
@@ -340,6 +341,7 @@ export function duplicateSelfOverlappingClip(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
+  deleteSource = false,
 ): LiveAPI {
   // Copy the source to a far holding area FIRST (guaranteed empty → no crash),
   // verified before anything is mutated, so the full content is preserved even
@@ -367,9 +369,16 @@ export function duplicateSelfOverlappingClip(
     `self-overlap dup-to-holding for clip ${sourceClipId} at ${holdingStart}`,
   );
 
+  // A move must delete the source here, not after: the clear below keeps the
+  // part of it past the target as a new clip, which the caller can't find by
+  // the source's id (a move back less than its length leaves that tail).
+  if (deleteSource) {
+    track.call("delete_clip", toLiveApiId(sourceClipId));
+  }
+
   // Place the independent copy at the target. moveClipFromHolding clears the
-  // ORIGINAL (now just an "other" overlapping clip), duplicates holding→target
-  // as a full copy, and deletes the holding clip.
+  // original if still there (now just an "other" overlapping clip), duplicates
+  // holding→target as a full copy, and deletes the holding clip.
   return moveClipFromHolding(
     holdingClipId,
     track,

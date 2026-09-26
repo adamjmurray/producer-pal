@@ -108,6 +108,7 @@ export function placeMovedClip({
     isMidiClip,
     context,
     clip,
+    true,
   );
 }
 
