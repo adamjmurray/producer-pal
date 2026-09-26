@@ -14,9 +14,11 @@ small Ableton control surface script that runs inside Live and listens on
 
 Install it if you want AI to:
 
-- **Load VST/AU plug-ins and Max for Live devices by name.** Without it,
-  [Create Device](/features/tools#ppal-create-device) can only add Live's
-  built-in devices.
+- **Load VST/AU plug-ins and Max for Live devices by name**, like "add Pro-Q 4
+  to the bass track". The AI finds them with the
+  [Library](/features/tools#ppal-library) tool. Without the script,
+  [Create Device](/features/tools#ppal-create-device) can only add Live's native
+  devices, not Max for Live ones such as LFO or DS Kick.
 - **Load presets**: create a device or rack straight from a preset (`.adv` or
   `.adg`), including drum kits from your Packs, or swap a preset onto a device
   that's already in the Set with
@@ -54,8 +56,8 @@ it is installed and what it does may change.
 ## Check it's working
 
 The Remote Script tab shows whether the script is installed, its version, and
-whether it is running. "Running" means Live loaded it and it is answering on
-port 3349.
+whether it is running. After restarting Live, click **Refresh**. "Running" means
+Live loaded it and it is answering on port 3349.
 
 If it says installed but not running, you either skipped the restart or the
 Control Surface slot isn't set.
