@@ -116,12 +116,12 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     return clip!;
   }
 
-  // end_time is read twice: before the resize and after it.
+  // end_time is read three times: to record the resize, before it, and after.
   it("should extend unwarped clip by setting loop_end (hidden content)", async () => {
     const clip = setupUnwarpedClip(
       "800",
       "Unwarped Audio",
-      new MockSequence(6.0, 12.0),
+      new MockSequence(6.0, 6.0, 12.0),
     );
 
     const result = await updateClip(
@@ -134,7 +134,11 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
   });
 
   it("says on the entry that the file boundary capped it", async () => {
-    setupUnwarpedClip("810", "Unwarped Capped", new MockSequence(6.0, 10.0));
+    setupUnwarpedClip(
+      "810",
+      "Unwarped Capped",
+      new MockSequence(6.0, 6.0, 10.0),
+    );
 
     const result = await updateClip(
       { id: "810", arrangementLength: "3bar" },

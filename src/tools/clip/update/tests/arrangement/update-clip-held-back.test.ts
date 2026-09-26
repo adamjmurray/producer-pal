@@ -395,7 +395,7 @@ function groupHoldingOneClipBack(landed: string, clipExists = true) {
       {
         landing: { trackIndex: 0, takeLane: null },
         startBeats: TARGET_BEATS,
-        landed: new Map([[landed, { id: MOVED, length: 16 }]]),
+        landed: new Map([[landed, { id: MOVED, span: null }]]),
         deferred: [
           {
             clip: {
@@ -409,6 +409,7 @@ function groupHoldingOneClipBack(landed: string, clipExists = true) {
             result,
           },
         ],
+        cleared: [],
       },
     ],
   ]);

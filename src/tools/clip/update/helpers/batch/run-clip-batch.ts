@@ -18,7 +18,9 @@ import { flushDeferredDeletions } from "../arrangement/update-clip-deferred-dele
 import { trackMoveSkips } from "../arrangement/update-clip-move-skip.ts";
 import {
   isHeldBackEntry,
+  landedSpans,
   type MoveGroup,
+  writtenSpans,
 } from "../arrangement/update-clip-move-groups.ts";
 import {
   type ClipReasons,
@@ -39,7 +41,6 @@ import {
   processSingleClipUpdate,
 } from "./process-single-clip-update.ts";
 import { settleClipTurn, skipUnmovedClips } from "./settle-clip-turn.ts";
-import { trimmedLandings } from "./trimmed-landings.ts";
 
 /** Every param one update-clip call carries, as the tool received them. */
 export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
@@ -215,7 +216,8 @@ export async function runClipBatch({
     results: resultsPerClip.flat(),
     clearsSpans: clears,
     heldBack: plan.overwrites?.nonSurvivorIds,
-    trims: trimmedLandings(movedClipGroups),
+    landed: landedSpans(movedClipGroups),
+    written: writtenSpans(movedClipGroups),
   });
 
   skipUnmovedClips({

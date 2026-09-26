@@ -3,6 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import {
+  type LandedSpan,
+  nextLandingOrder,
+  wholeLaneWrite,
+} from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 import {
   takeLaneLabel,
   type ArrangementTrack,
@@ -23,12 +29,8 @@ export interface DeferredDeletion {
 export interface LandedClip {
   /** The copy Live made, which is the id that clip's entry reports. */
   id: string;
-  /**
-   * Its arrangement length as it landed, or null when nothing can be concluded
-   * from it (unreadable, or the call resized it afterwards). See
-   * batch/trimmed-landings.ts for what the length is for.
-   */
-  length: number | null;
+  /** Where and when it landed, or null when its length couldn't be read. */
+  span: LandedSpan | null;
 }
 
 /** The clips a call lands on one lane at one position. */
@@ -41,6 +43,11 @@ export interface MoveGroup {
   landed: Map<string, LandedClip>;
   /** Clips waiting to see whether the overwrite really happens. */
   deferred: DeferredDeletion[];
+  /**
+   * What else the call wrote from here, which no entry's clip is a piece of: a
+   * resize, or a landing of unknown length (see wholeLaneWrite).
+   */
+  cleared: LandedSpan[];
 }
 
 /**
@@ -69,35 +76,140 @@ export function moveGroupKey(
  * @param startBeats - The position it landed at, in beats
  * @param sourceClipId - Id of the clip that was moved here
  * @param copy - The copy it landed, as it was before anything trimmed it
+ * @param copy.id - The copy's id
+ * @param copy.length - Its length as it landed, or null when unreadable
  */
 export function recordLandedClip(
   groups: Map<string, MoveGroup>,
   landing: ArrangementTrack,
   startBeats: number,
   sourceClipId: string,
-  copy: LandedClip,
+  copy: { id: string; length: number | null },
 ): void {
-  moveGroupFor(groups, landing, startBeats).landed.set(sourceClipId, copy);
+  const group = moveGroupFor(groups, landing, startBeats);
+  const lane = arrangementLaneOf(landing);
+
+  if (copy.length == null) {
+    group.landed.set(sourceClipId, { id: copy.id, span: null });
+    group.cleared.push(wholeLaneWrite(lane));
+
+    return;
+  }
+
+  group.landed.set(sourceClipId, {
+    id: copy.id,
+    span: {
+      lane,
+      start: startBeats,
+      end: startBeats + copy.length,
+      order: nextLandingOrder(),
+    },
+  });
 }
 
 /**
- * Drop a landing's length, for a call that changed it after the copy landed.
- * Nothing else knows the new geometry, so the group is left to the read-back
- * rather than described from a length that is no longer true.
- * @param groups - Counts per group
- * @param sourceClipId - Id of the clip that was moved
+ * Record a placement that failed but may have left a clip behind, as a partial
+ * re-create does. No entry names that clip, so no earlier landing may claim it.
+ * @param groups - Counts per group, added to
+ * @param landing - The track and lane it was headed for
+ * @param startBeats - The position it was headed for, in beats
+ * @param length - The moved clip's length, or null when unreadable
  */
-export function forgetLandedLength(
+export function recordFailedLanding(
   groups: Map<string, MoveGroup>,
-  sourceClipId: string,
+  landing: ArrangementTrack,
+  startBeats: number,
+  length: number | null,
 ): void {
-  for (const group of groups.values()) {
-    const landed = group.landed.get(sourceClipId);
+  const lane = arrangementLaneOf(landing);
 
-    if (landed != null) {
-      landed.length = null;
+  moveGroupFor(groups, landing, startBeats).cleared.push(
+    length == null
+      ? wholeLaneWrite(lane)
+      : {
+          lane,
+          start: startBeats,
+          end: startBeats + length,
+          order: nextLandingOrder(),
+        },
+  );
+}
+
+/**
+ * Where each landed copy landed, and when.
+ * @param groups - Counts per group
+ * @returns Each copy's span, by the id its entry reported
+ */
+export function landedSpans(
+  groups: ReadonlyMap<string, MoveGroup>,
+): Map<string, LandedSpan> {
+  const spans = new Map<string, LandedSpan>();
+
+  for (const group of groups.values()) {
+    for (const { id, span } of group.landed.values()) {
+      if (span != null) {
+        spans.set(id, span);
+      }
     }
   }
+
+  return spans;
+}
+
+/**
+ * Record what a resize is about to write: between the clip's end and its new
+ * end, where any tiles or temp clips go. Not the clip's own span, or a clip
+ * resized to its own length and then front-cut could never claim its rest.
+ * Call it just before the resize. It belongs to no entry's clip, so it only
+ * keeps earlier landings from claiming a piece there.
+ * @param groups - Counts per group, added to
+ * @param clip - The clip about to be resized
+ * @param lengthBeats - The length it is resized to, in beats
+ */
+export function recordResize(
+  groups: Map<string, MoveGroup>,
+  clip: LiveAPI,
+  lengthBeats: number,
+): void {
+  const { trackIndex } = clip;
+
+  if (trackIndex == null) {
+    return;
+  }
+
+  const landing = { trackIndex, takeLane: clip.takeLaneIndex };
+  const lane = arrangementLaneOf(landing);
+  const start = clip.getProperty("start_time");
+  const end = clip.getProperty("end_time");
+
+  if (typeof start !== "number" || typeof end !== "number") {
+    moveGroupFor(groups, landing, 0).cleared.push(wholeLaneWrite(lane));
+
+    return;
+  }
+
+  const newEnd = start + lengthBeats;
+
+  moveGroupFor(groups, landing, start).cleared.push({
+    lane,
+    start: Math.min(end, newEnd),
+    end: Math.max(end, newEnd),
+    order: nextLandingOrder(),
+  });
+}
+
+/**
+ * Every span the call wrote, whoever's clip it holds.
+ * @param groups - Counts per group
+ * @returns The landings' spans and everything else written
+ */
+export function writtenSpans(
+  groups: ReadonlyMap<string, MoveGroup>,
+): LandedSpan[] {
+  return [...groups.values()].flatMap((group) => [
+    ...[...group.landed.values()].flatMap(({ span }) => span ?? []),
+    ...group.cleared,
+  ]);
 }
 
 /**
@@ -153,6 +265,7 @@ function moveGroupFor(
     startBeats,
     landed: new Map<string, LandedClip>(),
     deferred: [],
+    cleared: [],
   };
 
   groups.set(key, group);

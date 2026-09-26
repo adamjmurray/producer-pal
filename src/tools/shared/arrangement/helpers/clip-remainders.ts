@@ -3,21 +3,47 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Finding what is left of a clip another clip landed across the front of. Live
-// re-creates the rest under a new id, so the old id can't find it. The rest
-// ends where the clip did, which is what identifies it.
+// Finding what is left of a clip another clip in the call landed across. Live
+// re-creates the rest under a new id, so the old id can't find it, and later
+// landings can cut the rest short or split it. A landing clears its whole span
+// and pieces only shrink, so a piece of this clip lies inside the span it
+// landed at and outside every span the call wrote after it.
 
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipsOnLane } from "./arrangement-clip-at-position.ts";
 
-/** What is left of a landing once later ones trimmed its front. */
-export interface TrimmedLanding {
+/** Counts landings as they happen; only the order matters, never the value. */
+let landings = 0;
+
+/** Where a landing put its clip, and when. */
+export interface LandedSpan {
   lane: ArrangementLane;
-  /** The earliest beat the remainder can start at. */
-  beats: number;
-  /** Where the landing ends, which the trim leaves alone. */
+  /** Where the clip started as it landed, in beats. */
+  start: number;
+  /** Where it ended as it landed, in beats. */
   end: number;
+  /** Higher landed later, from nextLandingOrder(). Not result order. */
+  order: number;
+}
+
+/** What is left of a landed clip, and the path to report it by. */
+export interface Remainder {
+  clip: LiveAPI;
+  path: string;
+}
+
+/** What claimRemainders() looks up, and what it has to steer clear of. */
+export interface RemainderClaim<Entry> {
+  /** The entries whose clip is gone from where they put it. */
+  entries: Iterable<Entry>;
+  /** Where an entry's clip landed, or undefined when that isn't known. */
+  spanOf: (entry: Entry) => LandedSpan | undefined;
+  /** Every span the call wrote: landings, gone or not, and anything else. */
+  written: Iterable<LandedSpan>;
+  /** Ids the call's other entries still name. */
+  taken: Iterable<string>;
 }
 
 /** A clip on a scanned lane, with its span read once. */
@@ -28,28 +54,71 @@ interface ScannedClip {
 }
 
 /**
- * Looks a trimmed landing's remainder up, scanning each lane (and reading each
- * clip's span) at most once. A clip whose id is in `taken` belongs to
- * something else and is passed over.
- * @returns A look-up that answers with the remainder, or null when it is gone
+ * The order of a landing that just happened, for LandedSpan.order.
+ * @returns A number higher than any landing before it
  */
-export function remainderFinder(): (
-  trim: TrimmedLanding,
-  taken?: ReadonlySet<string>,
-) => LiveAPI | null {
-  const scanned = new Map<string, ScannedClip[]>();
+export function nextLandingOrder(): number {
+  return landings++;
+}
 
-  return (trim, taken) => {
-    const key = JSON.stringify(trim.lane);
-    const clips = scanned.get(key) ?? scanClips(trim.lane);
+/**
+ * A write whose span is unknown, taken as the whole lane: no landing before it
+ * on that lane can claim anything.
+ * @param lane - The lane it wrote to
+ * @returns The span, ordered as landing now
+ */
+export function wholeLaneWrite(lane: ArrangementLane): LandedSpan {
+  return { lane, start: -Infinity, end: Infinity, order: nextLandingOrder() };
+}
+
+/**
+ * Finds what is left of each gone entry's clip: a clip inside the span it
+ * landed at that no span written later touches, and that no other entry
+ * names. Latest landed first, each clip claimed once. Scans each lane (and
+ * reads each clip's span) at most once.
+ * @param claim - The entries, where they landed, and what to steer clear of
+ * @returns The piece each entry names, for each clip with any left
+ */
+export function claimRemainders<Entry>(
+  claim: RemainderClaim<Entry>,
+): Map<Entry, Remainder> {
+  const claimed = new Set(claim.taken);
+  const written = [...claim.written];
+  const scanned = new Map<string, ScannedClip[]>();
+  const found = new Map<Entry, Remainder>();
+  const latestFirst = [...claim.entries]
+    .flatMap((entry) => {
+      const span = claim.spanOf(entry);
+
+      return span == null ? [] : [{ entry, span }];
+    })
+    .toSorted((a, b) => b.span.order - a.span.order);
+
+  for (const { entry, span } of latestFirst) {
+    const key = JSON.stringify(span.lane);
+    const clips = scanned.get(key) ?? scanClips(span.lane);
 
     scanned.set(key, clips);
 
-    return (
-      clips.find((clip) => !taken?.has(clip.api.id) && isRemainder(clip, trim))
-        ?.api ?? null
+    const later = written.filter(
+      (other) => other.order > span.order && JSON.stringify(other.lane) === key,
     );
-  };
+    const pieces = clips.filter(
+      (clip) =>
+        !claimed.has(clip.api.id) &&
+        liesInside(clip, span) &&
+        !later.some((other) => overlaps(clip, other)),
+    );
+    const piece = namedPiece(pieces, span)?.api;
+    const path = piece == null ? undefined : objectPathForApi(piece);
+
+    if (piece != null && path != null) {
+      claimed.add(piece.id);
+      found.set(entry, { clip: piece, path });
+    }
+  }
+
+  return found;
 }
 
 /**
@@ -66,16 +135,47 @@ function scanClips(lane: ArrangementLane): ScannedClip[] {
 }
 
 /**
- * Whether a clip is what a trim left: it ends where the landing did, and
- * starts no earlier than the trim could have left it. A landing trimmed again
- * from the front by some other clip is still itself, and still ends there.
+ * Whether a clip lies wholly inside a landing's span.
  * @param clip - A clip on the landing's lane
- * @param trim - What the trim left behind
- * @returns True when this is the remainder
+ * @param span - Where the landing put its clip
+ * @returns True when the clip could be a piece of it
  */
-function isRemainder(clip: ScannedClip, trim: TrimmedLanding): boolean {
+function liesInside(clip: ScannedClip, span: LandedSpan): boolean {
   return (
-    Math.abs(clip.end - trim.end) < SAME_TIME_EPSILON &&
-    clip.start > trim.beats - SAME_TIME_EPSILON
+    clip.start > span.start - SAME_TIME_EPSILON &&
+    clip.end < span.end + SAME_TIME_EPSILON
+  );
+}
+
+/**
+ * Whether a clip reaches into a landing's span.
+ * @param clip - A clip on the landing's lane
+ * @param span - Where the landing put its clip
+ * @returns True when they share more than an edge
+ */
+function overlaps(clip: ScannedClip, span: LandedSpan): boolean {
+  return (
+    clip.start < span.end - SAME_TIME_EPSILON &&
+    clip.end > span.start + SAME_TIME_EPSILON
+  );
+}
+
+/**
+ * The piece an entry names when its clip was cut: the one ending where it
+ * landed, else the earliest — which is the one starting there, if any does.
+ * @param pieces - The candidate clips
+ * @param span - Where the landing put its clip
+ * @returns The piece, or undefined when there is none
+ */
+function namedPiece(
+  pieces: ScannedClip[],
+  span: LandedSpan,
+): ScannedClip | undefined {
+  const earliestFirst = pieces.toSorted((a, b) => a.start - b.start);
+
+  return (
+    earliestFirst.find(
+      (clip) => Math.abs(clip.end - span.end) < SAME_TIME_EPSILON,
+    ) ?? earliestFirst[0]
   );
 }

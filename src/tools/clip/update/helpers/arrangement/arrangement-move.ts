@@ -40,8 +40,9 @@ import {
 } from "./update-clip-deferred-deletion.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
 import {
-  forgetLandedLength,
+  recordFailedLanding,
   recordLandedClip,
+  recordResize,
   type MoveGroup,
 } from "./update-clip-move-groups.ts";
 
@@ -166,6 +167,16 @@ export function handleArrangementStartOperation({
   // anything was touched, or a partial re-create. Either way the source is
   // left alone.
   if (newClip == null) {
+    // A partial re-create may have left a clip there that no entry names.
+    if (displaced != null) {
+      recordFailedLanding(
+        movedClipGroups,
+        landing,
+        targetBeats,
+        landedLength(clip),
+      );
+    }
+
     return clip.id;
   }
 
@@ -276,9 +287,8 @@ export function handleArrangementOperations(
   let finalNoteResult = noteResult;
 
   if (arrangementLengthBeats != null) {
-    // The copy's length was recorded as it landed, and the resize is about to
-    // move its end.
-    forgetLandedLength(movedClipGroups, clip.id);
+    // A lengthen writes past the span the clip landed at.
+    recordResize(movedClipGroups, currentClip, arrangementLengthBeats);
 
     let results: ClipIdResult[] = [];
 
@@ -399,6 +409,7 @@ function shortenThenMove(
 ): void {
   const { clip, reasons } = args;
 
+  recordResize(args.movedClipGroups, clip, lengthBeats);
   handleArrangementLengthOperation({
     clip,
     isAudioClip: args.isAudioClip,
@@ -437,9 +448,9 @@ function shortenThenMove(
 }
 
 /**
- * A copy's arrangement length, read the moment it lands, before a later clip
- * in this call can trim it (batch/trimmed-landings.ts).
- * @param clip - The copy the placement just made
+ * A clip's arrangement length. For a copy, read the moment it lands, before a
+ * later clip in this call can trim it.
+ * @param clip - The copy the placement just made, or the clip being moved
  * @returns Its length in beats, or null when Live answered with neither edge
  */
 function landedLength(clip: LiveAPI): number | null {
