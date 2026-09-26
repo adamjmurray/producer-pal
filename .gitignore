@@ -67,3 +67,4 @@ test-reports
 
 # Project context sidecars left behind by e2e/eval runs
 **/live-sets/**/Producer Pal Project Context.md*
+__pycache__/

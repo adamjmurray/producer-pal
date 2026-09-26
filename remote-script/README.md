@@ -164,7 +164,10 @@ Returns the device's name afterwards and whether Live `replaced` it.
   device in its place, and the old one's automation is gone.
 - **Kinds must match.** Live silently loads nothing when they don't (a reverb
   preset onto an instrument), so a known mismatch is a 409 up front. A plug-in
-  or file's kind isn't known, so an untouched device afterwards is a 409 too.
+  or file's kind isn't known, so an untouched device afterwards is a 409 too,
+  unless it's already named after the preset: Live names a kept device after the
+  preset it loads, so reloading the same one changes nothing visible. A
+  mismatched preset with that same name then goes unnoticed.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
 
@@ -195,6 +198,9 @@ the queue and runs them. The HTTP thread waits up to 30s for the reply.
   build of the Producer Pal device, open an e2e Set (`e2e/live-sets/`), which
   references the repo's device, rather than loading `Producer_Pal` from the
   browser, which finds whatever copy is in your library.
+- **Tests**: `tests/` runs routes against fake Live objects, outside Live. From
+  the repo root:
+  `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests`.
 - **Stay out of the Sounds and Drums sections**: listing `app.browser.sounds`
   crashed Live 12.4.6 with an internal assert. The `type` param only reaches the
   sections above, and presets are found under their devices or by file.

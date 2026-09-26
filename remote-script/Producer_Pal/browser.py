@@ -179,6 +179,11 @@ def match_items(root, name, devices_only):
     return exact or partial
 
 
+def same_name(a, b):
+    """True when two names match, ignoring case and a .amxd/.adg/.adv suffix."""
+    return _normalize(a).strip() == _normalize(b).strip()
+
+
 def _walk(root, segments):
     """The item at `segments` below `root`, or None."""
     try:

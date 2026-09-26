@@ -133,8 +133,14 @@ def hotswap_device(bridge, params):
     after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
     replaced = after != device
     # A preset for a different kind of device loads nothing. When the kind was
-    # unknown up front, an untouched device is the only sign.
-    if kind is None and not replaced and after.name == before_name:
+    # unknown up front, an untouched device is the only sign. A kept device is
+    # renamed after the preset, so one already named for it counts as loaded.
+    if (
+        kind is None
+        and not replaced
+        and after.name == before_name
+        and not browser.same_name(after.name, item.name)
+    ):
         raise RouteError(
             409,
             "Live didn't load %r onto %r; it may be for a different kind of device"
