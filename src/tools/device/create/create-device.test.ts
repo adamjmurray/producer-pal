@@ -477,12 +477,12 @@ describe("createDevice", () => {
         };
         const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(
-          function (this: { _path?: string }) {
-            // Chains container doesn't exist
-            return !this._path?.includes("chains");
-          },
-        );
+        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
+          _path?: string;
+        }) {
+          // Chains container doesn't exist
+          return !this._path?.includes("chains");
+        });
 
         await expect(
           createDevice({
