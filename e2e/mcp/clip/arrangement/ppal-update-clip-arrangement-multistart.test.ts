@@ -85,11 +85,13 @@ interface UpdatedClip {
  * read the track back.
  * @param sources - [position, length] for each clip to create, in call order
  * @param toPath - Where the clips move to, e.g. "[170|1]"
+ * @param extra - Any other update-clip arguments, e.g. arrangementLength
  * @returns The move's per-clip entries and the clips left on the track
  */
 async function moveClipsTo(
   sources: [position: string, length: string][],
   toPath: string,
+  extra: Record<string, unknown> = {},
 ): Promise<{
   clips: UpdatedClip[];
   finalClips: ReadClipResult[];
@@ -105,7 +107,7 @@ async function moveClipsTo(
   const { clips } = parseUpdateResults(
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: ids.join(","), toPath },
+      arguments: { id: ids.join(","), toPath, ...extra },
     }),
   );
 
@@ -131,7 +133,24 @@ function expectDeleted(
   expect(clips.map((clip) => clip.deleted)).toStrictEqual(deleted);
 }
 
+/**
+ * Assert every entry names a clip that is really on the track.
+ * @param clips - The move's per-clip entries
+ * @param finalClips - The clips left on the track
+ */
+function expectAllOnTrack(
+  clips: UpdatedClip[],
+  finalClips: ReadClipResult[],
+): void {
+  const onTrack = finalClips.map((clip) => clip.id);
+
+  for (const clip of clips) {
+    expect(onTrack).toContain(clip.id);
+  }
+}
+
 const MOVED_ONTO = "another clip in this call was moved onto it";
+const TRIMMED = "trimmed: another clip in this call landed on part of it";
 
 describe("ppal-update-clip arrangement multistart", () => {
   it("moves clip to position with existing clip without crashing", async () => {
@@ -257,11 +276,9 @@ describe("ppal-update-clip arrangement multistart", () => {
     ]);
     // B and C each cut the front off the clip they landed on, and say where
     // what is left of it now starts.
-    const trimmed = "trimmed: another clip in this call landed on its start";
-
     expect(clips.map((clip) => clip.detail)).toStrictEqual([
-      trimmed,
-      `shortened the clip at t${EMPTY_MIDI_TRACK}[271|1]; ${trimmed}`,
+      TRIMMED,
+      `shortened the clip at t${EMPTY_MIDI_TRACK}[271|1]; ${TRIMMED}`,
       `shortened the clip at t${EMPTY_MIDI_TRACK}[270|3]`,
     ]);
     // A trimmed entry says how much is left: A(8) minus B(4), B(4) minus C(2).
@@ -275,11 +292,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     expect(finalClips).toHaveLength(3);
     expect(arrangementStartOf(finalClips[0]!)).toBe("270|1");
     // Every reported id is one of the clips that ended up on the track.
-    const onTrack = finalClips.map((clip) => clip.id);
-
-    for (const clip of clips) {
-      expect(onTrack).toContain(clip.id);
-    }
+    expectAllOnTrack(clips, finalClips);
   });
 
   // A second group lands right where A's remainder is predicted to start.
@@ -320,5 +333,72 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     expect(finalClips).toHaveLength(3);
     expect(finalClips.map((clip) => clip.id)).toContain(clips[0]?.id);
+  });
+});
+
+// B takes A's front, which re-creates the rest under a new id. C then cuts
+// that rest again somewhere other than its front, and A's entry has to follow
+// it there.
+describe("ppal-update-clip remainder cut again", () => {
+  it("follows a remainder a later landing cut short at the back", async () => {
+    // A(8 bars) at 501-509, B(2) takes 501-503, C(4) takes 505-509.
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["461|1", "8bar"],
+        ["471|1", "2bar"],
+        ["475|1", "4bar"],
+      ],
+      "[501|1],[501|1],[505|1]",
+    );
+
+    expectDeleted(clips, [undefined, undefined, undefined]);
+    expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[503|1]`);
+    expect(clips[0]?.arrangementLength).toBe("2bar");
+    expect(clips[0]?.detail).toContain(TRIMMED);
+
+    expect(finalClips).toHaveLength(3);
+    expectAllOnTrack(clips, finalClips);
+  });
+
+  it("names the end piece of a remainder a later landing split", async () => {
+    // A(8 bars) at 521-529, B(2) takes 521-523, C(1) lands at 525 and splits
+    // the rest into 523-525 and 526-529.
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["461|1", "8bar"],
+        ["471|1", "2bar"],
+        ["475|1", "1bar"],
+      ],
+      "[521|1],[521|1],[525|1]",
+    );
+
+    expectDeleted(clips, [undefined, undefined, undefined]);
+    expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[526|1]`);
+    expect(clips[0]?.arrangementLength).toBe("3bar");
+    expect(clips[0]?.detail).toContain(TRIMMED);
+
+    // The front piece is the fourth clip, and no entry names it.
+    expect(finalClips).toHaveLength(4);
+    expectAllOnTrack(clips, finalClips);
+  });
+
+  it("follows the rest of a clip shortened as it moved", async () => {
+    // A(4 bars) is shortened to 3 and lands at 541-544; B(1) takes 541-542.
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["461|1", "4bar"],
+        ["467|1", "1bar"],
+      ],
+      "[541|1],[541|1]",
+      { arrangementLength: "3bar,1bar" },
+    );
+
+    expectDeleted(clips, [undefined, undefined]);
+    expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[542|1]`);
+    expect(clips[0]?.arrangementLength).toBe("2bar");
+    expect(clips[0]?.detail).toContain(TRIMMED);
+
+    expect(finalClips).toHaveLength(2);
+    expectAllOnTrack(clips, finalClips);
   });
 });

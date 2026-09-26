@@ -32,8 +32,8 @@ export type ClipAddresses = ReadonlyMap<string, string | undefined>;
 /** What became of a clip another clip in the call was moved onto. */
 export const BURIED = "another clip in this call was moved onto it";
 
-/** What became of a clip a shorter landing only covered the front of. */
-const TRIMMED = "trimmed: another clip in this call landed on its start";
+/** What became of a clip a later landing covered only part of. */
+const TRIMMED = "trimmed: another clip in this call landed on part of it";
 
 /** What the batch has to check its entries against. */
 export interface BuriedClipsCheck {
@@ -106,8 +106,7 @@ export function markBuriedClips({
 }
 
 /**
- * Point an entry at what is left of its clip. Its id only dies when a later
- * landing covers its start, so the "trimmed" detail holds for every piece.
+ * Point an entry at what is left of its clip.
  * @param entry - The entry whose clip is no longer where it was
  * @param remainder - What the trim left, and where
  */

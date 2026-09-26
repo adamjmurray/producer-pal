@@ -341,7 +341,7 @@ describe("a survivor a shorter clip landed on", () => {
       id: expect.any(String),
       path: "t0[101|3]",
       arrangementLength: "1bar+n/2",
-      detail: "trimmed: another clip in this call landed on its start",
+      detail: "trimmed: another clip in this call landed on part of it",
     });
     expect(result[2]?.path).toBe("t0[101|1]");
     expect(result[2]?.deleted).toBeUndefined();
@@ -434,7 +434,7 @@ describe("a survivor a shorter clip landed on", () => {
       id: expect.any(String),
       path: "t0[103|1]",
       arrangementLength: "2bar",
-      detail: "trimmed: another clip in this call landed on its start",
+      detail: "trimmed: another clip in this call landed on part of it",
     });
     expect(stackedLaneClips()).toContain(result[0]?.id);
     expect(new Set(result.map((entry) => entry.id)).size).toBe(3);
@@ -548,7 +548,7 @@ describe("a sibling's pieces inside a clip's span", () => {
     expect(result[2]?.path).toBe("t0[103|3]");
     expect(result[2]?.arrangementLength).toBe("n/2");
     expect(result[2]?.detail).toContain(
-      "trimmed: another clip in this call landed on its start",
+      "trimmed: another clip in this call landed on part of it",
     );
     expect(stackedLaneClips()).toContain(result[2]?.id);
   });

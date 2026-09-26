@@ -328,7 +328,7 @@ describe("ppal-duplicate with a source list", () => {
     expect(copies[0]).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}[105|1]`,
-      detail: "trimmed: a later copy in this call landed on its start",
+      detail: "trimmed: a later copy in this call landed on part of it",
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[101|1]`);
 
@@ -338,6 +338,78 @@ describe("ppal-duplicate with a source list", () => {
     for (const copy of copies) {
       expect((await readClip(copy.id)).path).toBe(copy.path);
     }
+  });
+
+  /**
+   * Session sources on the empty MIDI track, one per scene from s5.
+   * @param lengths - Each source's length, in call order
+   * @returns The source ids
+   */
+  async function createSessionSources(lengths: string[]): Promise<string> {
+    const ids: string[] = [];
+
+    for (const [index, length] of lengths.entries()) {
+      ids.push(
+        await createSource(
+          `t${EMPTY_MIDI_TRACK}/s${5 + index}`,
+          "C3 1|1",
+          length,
+        ),
+      );
+    }
+
+    await sleep(100);
+
+    return ids.join(",");
+  }
+
+  // The 1bar takes the 4bar's front, re-creating the rest; the n/2 then lands
+  // inside that rest and splits it. The 4bar's entry names the end piece.
+  it("points a copy a later copy split at its end piece", async () => {
+    const id = await createSessionSources(["4bar", "1bar", "n/2"]);
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id,
+        toPath: `t${EMPTY_MIDI_TRACK}[211|1],t${EMPTY_MIDI_TRACK}[211|1],t${EMPTY_MIDI_TRACK}[213|1]`,
+      }),
+    );
+
+    expect(copies[0]).toStrictEqual({
+      id: expect.any(String),
+      path: `t${EMPTY_MIDI_TRACK}[213|3]`,
+      detail: "trimmed: a later copy in this call landed on part of it",
+    });
+
+    await sleep(100);
+
+    for (const copy of copies) {
+      expect((await readClip(copy.id)).path).toBe(copy.path);
+    }
+  });
+
+  // The 3bar buries what the 1bar left of the 4bar, and the n/2 splits the
+  // 3bar. The tail is the 3bar's, not a piece of the 4bar.
+  it("keeps a split tail from a copy that landed before the one it split", async () => {
+    const id = await createSessionSources(["4bar", "1bar", "3bar", "n/2"]);
+    const copies = parseToolResult<(DuplicateClipResult | DeletedClipResult)[]>(
+      await duplicateClips({
+        id,
+        toPath: [221, 221, 222, 223]
+          .map((bar) => `t${EMPTY_MIDI_TRACK}[${bar}|1]`)
+          .join(","),
+      }),
+    );
+
+    expect(copies[0]).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}[221|1]`,
+      deleted: true,
+      detail: LANDED_ON,
+    });
+    expect(copies.slice(1).map((copy) => copy.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}[221|1]`,
+      `t${EMPTY_MIDI_TRACK}[222|1]`,
+      `t${EMPTY_MIDI_TRACK}[223|1]`,
+    ]);
   });
 
   // duplicate used to take a path only for a drum pad, so a path a model just

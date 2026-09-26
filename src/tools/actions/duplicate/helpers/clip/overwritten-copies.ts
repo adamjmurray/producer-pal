@@ -18,8 +18,8 @@ import {
 /** What became of a copy a later copy covered whole. */
 const DELETED = "a later copy in this call landed on it";
 
-/** What became of a copy a later copy covered only the front of. */
-const TRIMMED = "trimmed: a later copy in this call landed on its start";
+/** What became of a copy a later copy covered only part of. */
+const TRIMMED = "trimmed: a later copy in this call landed on part of it";
 
 /** A copy a later copy in the same call deleted. It has no id: it is gone. */
 interface DeletedCopyInfo {

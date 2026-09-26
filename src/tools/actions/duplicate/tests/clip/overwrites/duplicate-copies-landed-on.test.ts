@@ -29,7 +29,7 @@ import {
 const COPY_BEATS = 16;
 
 const DELETED = "a later copy in this call landed on it";
-const TRIMMED = "trimmed: a later copy in this call landed on its start";
+const TRIMMED = "trimmed: a later copy in this call landed on part of it";
 const PROMOTED = "promoted to the main lane by re-creating it";
 
 describe("a copy a later copy in the call landed on", () => {
