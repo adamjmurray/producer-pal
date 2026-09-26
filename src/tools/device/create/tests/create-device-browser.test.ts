@@ -13,6 +13,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type BrowserItemLoad,
   type BrowserItemResolution,
+  REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
@@ -144,6 +145,8 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         path: "VST3/FabFilter/Pro-Q 4",
         trackIndex: 1,
         trackName: expect.stringMatching(/^Producer Pal temp \w+$/),
+        expiresInMs:
+          REMOTE_SCRIPT_REQUEST_TIMEOUT_MS - REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
       },
       REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
     );
@@ -458,10 +461,11 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         { name: "Pro-Q 4" },
         10_000,
       );
-      // Less the time the arrival poll can take.
+      // Less the time the arrival poll can take. The load expires sooner, so
+      // Live never runs one V8 stopped waiting for.
       expect(requestNode).toHaveBeenCalledWith(
         REMOTE_SCRIPT_ROUTES.load,
-        expect.anything(),
+        expect.objectContaining({ expiresInMs: 6000 }),
         8000,
       );
     });

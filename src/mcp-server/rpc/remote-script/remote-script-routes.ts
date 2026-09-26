@@ -51,7 +51,7 @@ export function registerRemoteScriptRoutes(): void {
 /**
  * Load a resolved browser item onto an existing track. The remote script finds
  * the track by `trackName`; an older one that ignores it falls back to the index.
- * @param args - `{ type, path, trackIndex, trackName }`
+ * @param args - `{ type, path, trackIndex, trackName, expiresInMs }`
  * @returns Whether it loaded, an error worded for the model, or `available: false`
  */
 async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
@@ -69,6 +69,7 @@ async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
       path: requireString(args, "path"),
       track_index: trackIndex,
       track_name: requireString(args, "trackName"),
+      expires_in_ms: requireExpiry(args),
     },
   });
 
@@ -84,7 +85,7 @@ async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
 /**
  * Load a resolved browser item in place of the device at a Live path. The
  * remote script refuses when the device there no longer has `deviceName`.
- * @param args - `{ type, path, devicePath, deviceName }`
+ * @param args - `{ type, path, devicePath, deviceName, expiresInMs }`
  * @returns Whether Live replaced the device, an error worded for the model, or
  *   `available: false`
  */
@@ -97,6 +98,7 @@ async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
       path: requireString(args, "path"),
       device_path: requireString(args, "devicePath"),
       device_name: requireString(args, "deviceName"),
+      expires_in_ms: requireExpiry(args),
     },
   });
 
@@ -130,4 +132,19 @@ function presetScope(args: unknown): PresetScope | undefined {
         device: requireString(scope, "device"),
         orAnywhere: (scope as { orAnywhere?: unknown }).orAnywhere === true,
       };
+}
+
+/**
+ * How long the remote script may leave a change queued before skipping it.
+ * @param args - The route args, with `expiresInMs`
+ * @returns The expiry, in ms
+ */
+function requireExpiry(args: unknown): number {
+  const value = (args as Record<string, unknown> | null)?.expiresInMs;
+
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new TypeError("expiresInMs must be a number, 0 or more");
+  }
+
+  return value;
 }

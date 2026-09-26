@@ -16,9 +16,9 @@ export const REMOTE_SCRIPT_ROUTES = {
 } as const;
 
 // Node's waits outlast the remote script's 30s. V8's does too unless the
-// request's deadline is nearer, so V8 may stop waiting and delete its temp track
-// while a load is queued in Live. A load finds that track by name, so a late one
-// is refused, not put on another track.
+// request's deadline is nearer, so each change V8 asks for carries an expiry a
+// bit under V8's wait. Live skips a job it hasn't started by then, rather than
+// make a change V8 already reported as failed.
 
 /** Node's wait for one HTTP reply. Longer than the remote script's own 30s. */
 export const REMOTE_SCRIPT_HTTP_TIMEOUT_MS = 35_000;
@@ -32,6 +32,14 @@ export const REMOTE_SCRIPT_ROUTE_TIMEOUT_MS = 40_000;
  * still queued.
  */
 export const REMOTE_SCRIPT_REQUEST_TIMEOUT_MS = 45_000;
+
+/**
+ * How much sooner than V8's wait a change expires. Covers the trip to the
+ * remote script and back, where Max and Node can each stall under load, plus a
+ * typical load. A job that starts in time but runs past V8's wait still lands
+ * after V8 reported it failed.
+ */
+export const REMOTE_SCRIPT_EXPIRY_MARGIN_MS = 2000;
 
 /** Something in Live's browser the remote script can load. */
 export interface BrowserItem {

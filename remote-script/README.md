@@ -100,6 +100,11 @@ this script is installed in), a pack under Packs, or a Places folder.
 Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 
+Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
+skipped with a 504. Producer Pal sends one with every `/load` and `/hotswap`, a
+bit under how long it waits, so a change it stopped waiting for isn't made
+later.
+
 ### `GET /ping`
 
 Liveness, Live's version, and this script's (`script_version`, from
@@ -176,7 +181,9 @@ Returns the device's name afterwards and whether Live `replaced` it.
 Live's Python is single-threaded and the Live API breaks if touched from any
 other thread. So the HTTP server runs on its own thread and only queues jobs;
 `update_display()`, which Live calls about 10x/sec on the main thread, drains
-the queue and runs them. The HTTP thread waits up to 30s for the reply.
+the queue and runs them. The HTTP thread waits up to 30s for the reply, or until
+`expires_in_ms` if that's sooner. A job still queued by then is skipped; one
+already running is waited for.
 
 - `http_server.py`: the HTTP server; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control

@@ -19,6 +19,15 @@ const LOAD_ARGS = {
   path: "VST3/FabFilter/Pro-Q 4",
   trackIndex: 3,
   trackName: "Producer Pal temp abc",
+  expiresInMs: 5000,
+};
+
+const HOTSWAP_ARGS = {
+  type: "instrument",
+  path: "Drift/Bass/AG Bass.adv",
+  devicePath: "live_set tracks 3 devices 0",
+  deviceName: "Drift",
+  expiresInMs: 5000,
 };
 
 let fake: FakeRemoteScript | undefined;
@@ -77,6 +86,7 @@ describe("remoteScript.load", () => {
           path: "VST3/FabFilter/Pro-Q 4",
           track_index: 3,
           track_name: "Producer Pal temp abc",
+          expires_in_ms: 5000,
         },
       },
     ]);
@@ -163,13 +173,6 @@ describe("remoteScript.resolvePreset", () => {
 });
 
 describe("remoteScript.hotswap", () => {
-  const HOTSWAP_ARGS = {
-    type: "instrument",
-    path: "Drift/Bass/AG Bass.adv",
-    devicePath: "live_set tracks 3 devices 0",
-    deviceName: "Drift",
-  };
-
   it("loads the item in place of the device, and says whether Live replaced it", async () => {
     const remote = await answerWith({
       body: { device: { name: "AG Bass", replaced: false } },
@@ -190,6 +193,7 @@ describe("remoteScript.hotswap", () => {
         path: "Drift/Bass/AG Bass.adv",
         device_path: "live_set tracks 3 devices 0",
         device_name: "Drift",
+        expires_in_ms: 5000,
       },
     });
   });
@@ -227,4 +231,24 @@ describe("remoteScript.hotswap", () => {
       }),
     ).toStrictEqual({ success: false, error: "deviceName must be a string" });
   });
+});
+
+describe.each([
+  ["load", REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS],
+  ["hotswap", REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS],
+])("remoteScript.%s's expiry", (_name, route, args) => {
+  it.each([undefined, "5000", -1, Number.NaN])(
+    "refuses %s",
+    async (expiresInMs) => {
+      const remote = await answerWith({ body: {} });
+
+      expect(
+        await dispatchNodeRoute(route, { ...args, expiresInMs }),
+      ).toStrictEqual({
+        success: false,
+        error: "expiresInMs must be a number, 0 or more",
+      });
+      expect(remote.requests).toStrictEqual([]);
+    },
+  );
 });
