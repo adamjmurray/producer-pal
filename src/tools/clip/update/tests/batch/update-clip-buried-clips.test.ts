@@ -178,6 +178,55 @@ describe("updateClip reports a clip the batch buried", () => {
     expect(result[1]?.deleted).toBeUndefined();
   });
 
+  // The second move fails after Live made its clip, and that half-made clip
+  // covers the first one's landing. It is nobody's rest. (The third move is
+  // there because a lone landed entry skips the read-back.)
+  it("does not name a half-made clip as the rest of one it buried", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({
+      initialLanes: 1,
+      initialLaneClips: [
+        [
+          { start: 0, end: 4 },
+          { start: 32, end: 36 },
+          { start: 64, end: 68 },
+        ],
+      ],
+      postCreateFails: true,
+    });
+
+    const [first, second, third] = [0, 1, 2].map(
+      (index) =>
+        lookupMockObject(
+          undefined,
+          livePath.track(0).takeLane(0).arrangementClip(index),
+        )?.id as string,
+    );
+
+    // Only the second has notes, so only its re-create fails.
+    const secondClip = lookupMockObject(second);
+
+    registerMockObject(second as string, {
+      type: "Clip",
+      properties: secondClip?.properties,
+      methods: {
+        get_notes_extended: () =>
+          JSON.stringify({
+            notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100 }],
+          }),
+      },
+    });
+
+    const result = (await updateClip({
+      id: `${first},${second},${third}`,
+      toPath: "t0/l0[5|1],t0/l0[5|1],t0/l0[20|1]",
+    })) as ClipResult[];
+
+    expect(result[1]?.detail).toContain("an incomplete clip was left");
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.detail).toContain(BURIED);
+  });
+
   it("reads nothing back for a batch that clears no span", async () => {
     const [first, second] = seedTakeLane([
       { start: 0, end: 4 },
@@ -292,7 +341,7 @@ describe("a survivor a shorter clip landed on", () => {
       id: expect.any(String),
       path: "t0[101|3]",
       arrangementLength: "1bar+n/2",
-      detail: "trimmed: another clip in this call landed on its start",
+      detail: "trimmed: another clip in this call landed on part of it",
     });
     expect(result[2]?.path).toBe("t0[101|1]");
     expect(result[2]?.deleted).toBeUndefined();
@@ -347,6 +396,92 @@ describe("a survivor a shorter clip landed on", () => {
     expect(result[2]?.path).toBe("t0[101|3]");
   });
 
+  // Two stacks end at one beat: the 28 lands over what the 8 left of the 32,
+  // then the 4 trims the 28. Both trimmed entries predict a rest ending there,
+  // but only the 28's is left, so only its entry may name it.
+  it("names a shared-end remainder once, for the landing that left it", async () => {
+    const result = await moveAll(
+      [32, 8, 28, 4],
+      ["101|1", "101|1", "102|1", "102|1"],
+    );
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.detail).toContain(BURIED);
+    expect(result[2]?.path).toBe("t0[103|1]");
+    expect(result[2]?.detail).toContain("trimmed:");
+    expect(stackedLaneClips()).toContain(result[2]?.id);
+    expect(new Set(result.map((entry) => entry.id)).size).toBe(4);
+  });
+
+  // The 24 lands whole where the 32's rest would end, and its own entry names
+  // it: the 32's entry must not name it too.
+  it("does not name a sibling's own landing as a remainder", async () => {
+    const result = await moveAll([32, 8, 24], ["101|1", "101|1", "103|1"]);
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.detail).toContain(BURIED);
+    expect(result[2]?.path).toBe("t0[103|1]");
+    expect(result[2]?.detail).not.toContain("trimmed:");
+    expect(new Set(result.map((entry) => entry.id)).size).toBe(3);
+  });
+
+  // The 16 cuts the back off what the 8 left of the 32: the rest no longer
+  // ends where the 32 did, but it is still there.
+  it("reports a remainder a later landing cut short at the back", async () => {
+    const result = await moveAll([32, 8, 16], ["101|1", "101|1", "105|1"]);
+
+    expect(result[0]).toStrictEqual({
+      id: expect.any(String),
+      path: "t0[103|1]",
+      arrangementLength: "2bar",
+      detail: "trimmed: another clip in this call landed on part of it",
+    });
+    expect(stackedLaneClips()).toContain(result[0]?.id);
+    expect(new Set(result.map((entry) => entry.id)).size).toBe(3);
+  });
+
+  // The 4 lands inside what the 8 left of the 32, splitting it in two. The
+  // entry names the piece that ends where the 32 did.
+  it("names the end piece of a remainder split in two", async () => {
+    const result = await moveAll([32, 8, 4], ["101|1", "101|1", "105|1"]);
+
+    expect(result[0]?.path).toBe("t0[106|1]");
+    expect(result[0]?.arrangementLength).toBe("3bar");
+    expect(result[0]?.deleted).toBeUndefined();
+    expect(stackedLaneClips()).toContain(result[0]?.id);
+  });
+
+  // Same split, then the last 4 cuts the end piece short: nothing of the 32 ends
+  // where it did, so the entry names its earliest piece.
+  it("names the earliest piece once the end piece is cut short", async () => {
+    const result = await moveAll(
+      [32, 8, 4, 4],
+      ["101|1", "101|1", "105|1", "108|1"],
+    );
+
+    expect(result[0]?.path).toBe("t0[103|1]");
+    expect(result[0]?.arrangementLength).toBe("2bar");
+    expect(result[0]?.deleted).toBeUndefined();
+    expect(stackedLaneClips()).toContain(result[0]?.id);
+    expect(new Set(result.map((entry) => entry.id)).size).toBe(4);
+  });
+
+  // An arrangementLength that keeps the 16's length writes nothing, so the
+  // rest the 4 left is still the 16's.
+  it("names the rest of a clip resized to its own length", async () => {
+    const ids = registerStackingTrack([16, 4]);
+    const result = (await updateClip({
+      id: ids.join(","),
+      arrangementStart: "101|1,101|1",
+      arrangementLength: "4bar,1bar",
+    })) as ClipResult[];
+
+    expect(result[0]?.deleted).toBeUndefined();
+    expect(result[0]?.path).toBe("t0[102|1]");
+    expect(result[0]?.arrangementLength).toBe("3bar");
+    expect(stackedLaneClips()).toContain(result[0]?.id);
+  });
+
   // Every clip survives, so every one but the last is trimmed by the next.
   it("reports each clip of a descending stack", async () => {
     const result = await moveAll([8, 4, 2]);
@@ -367,5 +502,86 @@ describe("a survivor a shorter clip landed on", () => {
       "n/2",
       undefined,
     ]);
+  });
+});
+
+// Pieces of a sibling's clip can lie inside this clip's span: a sibling that
+// landed inside it and was then split or front-cut. They are the sibling's.
+describe("a sibling's pieces inside a clip's span", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // The last 2 splits the 8, whose tail lies where the 16 was.
+  it("does not name a sibling's split tail", async () => {
+    const result = await moveAll(
+      [16, 4, 8, 8, 2],
+      ["101|1", "101|1", "102|1", "104|1", "102|3"],
+    );
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.detail).toContain(BURIED);
+    expect(result[2]?.path).toBe("t0[102|1]");
+  });
+
+  // Same, when the split tail is all that is left where the 16 ended.
+  it("does not name a sibling's split tail that ends where it did", async () => {
+    const result = await moveAll(
+      [16, 4, 12, 2],
+      ["101|1", "101|1", "102|1", "103|1"],
+    );
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.detail).toContain(BURIED);
+  });
+
+  // The 6 cuts the front off the second 4, which landed inside the 16. What is
+  // left is that 4's, and its entry has to say so.
+  it("gives a sibling's front-cut rest to the sibling", async () => {
+    const result = await moveAll(
+      [16, 4, 4, 6, 8],
+      ["101|1", "101|1", "103|1", "102|1", "104|1"],
+    );
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[2]?.deleted).toBeUndefined();
+    expect(result[2]?.path).toBe("t0[103|3]");
+    expect(result[2]?.arrangementLength).toBe("n/2");
+    expect(result[2]?.detail).toContain(
+      "trimmed: another clip in this call landed on part of it",
+    );
+    expect(stackedLaneClips()).toContain(result[2]?.id);
+  });
+
+  // Both clips keep a piece: the 16 its front, cut short by the last 4, and
+  // the 8 its back.
+  it("names each clip's own piece when both survive", async () => {
+    const result = await moveAll(
+      [16, 4, 8, 4],
+      ["101|1", "101|1", "103|1", "102|3"],
+    );
+
+    expect(result[0]?.path).toBe("t0[102|1]");
+    expect(result[0]?.arrangementLength).toBe("n/2");
+    expect(result[2]?.path).toBe("t0[103|3]");
+    expect(result[2]?.arrangementLength).toBe("1bar+n/2");
+    expect(stackedLaneClips()).toStrictEqual(
+      expect.arrayContaining([result[0]?.id, result[2]?.id]),
+    );
+  });
+
+  // The 16 lands inside what is left of the 32 and is lengthened to 6 bars,
+  // over where the 32 ended. What the lengthen wrote is the 16's, not a piece
+  // of the 32.
+  it("does not name a piece a sibling's lengthen wrote", async () => {
+    const ids = registerStackingTrack([32, 16, 8, 8]);
+    const result = (await updateClip({
+      id: ids.join(","),
+      arrangementStart: "101|1,101|1,104|1,107|1",
+      arrangementLength: "8bar,6bar,2bar,2bar",
+    })) as ClipResult[];
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.detail).toContain(BURIED);
   });
 });

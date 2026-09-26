@@ -5,7 +5,12 @@
 
 // The clip shape every duplicate result reports a copy with.
 
-import { type TrimmedLanding } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import {
+  type LandedSpan,
+  nextLandingOrder,
+  wholeLaneWrite,
+} from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
@@ -17,16 +22,9 @@ import {
 // lives. A later copy covering only its front re-creates the rest under a new
 // id, and the span is what finds that rest. Keyed by the entry, so it lives as
 // long as the call's result.
-const copySpans = new WeakMap<object, CopySpan>();
-
-/** Counts copies as they land; only the order matters, never the value. */
-let landings = 0;
-
-/** Where a copy landed, and when relative to the call's other copies. */
-export interface CopySpan extends TrimmedLanding {
-  /** Higher landed later. Result order is not landing order. */
-  order: number;
-}
+const copySpans = new WeakMap<object, LandedSpan>();
+// A copy whose span couldn't be read still cleared something on its lane.
+const unknownWrites = new WeakMap<object, LandedSpan>();
 
 export interface MinimalClipInfo {
   id: string;
@@ -92,8 +90,18 @@ export function getMinimalClipInfo(
  * @param entry - The copy's result entry
  * @returns Its lane, span and landing order, or undefined for a session copy
  */
-export function copySpan(entry: object): CopySpan | undefined {
+export function copySpan(entry: object): LandedSpan | undefined {
   return copySpans.get(entry);
+}
+
+/**
+ * What an arrangement copy wrote: its span, or the whole lane when that span
+ * couldn't be read.
+ * @param entry - The copy's result entry
+ * @returns The span, or undefined for a session copy
+ */
+export function copyWrite(entry: object): LandedSpan | undefined {
+  return copySpans.get(entry) ?? unknownWrites.get(entry);
 }
 
 /**
@@ -121,19 +129,22 @@ function recordCopySpan(
   const start = clip.getProperty("start_time");
   const end = clip.getProperty("end_time");
 
+  const laneIndex = clip.takeLaneIndex;
+  const lane: ArrangementLane =
+    laneIndex == null
+      ? { kind: "track", trackIndex }
+      : { kind: "take-lane", trackIndex, laneIndex };
+
   if (typeof start !== "number" || typeof end !== "number" || end <= start) {
+    unknownWrites.set(entry, wholeLaneWrite(lane));
+
     return;
   }
 
-  const laneIndex = clip.takeLaneIndex;
-
   copySpans.set(entry, {
-    lane:
-      laneIndex == null
-        ? { kind: "track", trackIndex }
-        : { kind: "take-lane", trackIndex, laneIndex },
-    beats: start,
+    lane,
+    start,
     end,
-    order: landings++,
+    order: nextLandingOrder(),
   });
 }

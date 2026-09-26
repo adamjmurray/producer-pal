@@ -6,19 +6,20 @@
 // What a duplicate result says about a copy another copy in the same call
 // landed on top of.
 
-import { remainderFinder } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import { claimRemainders } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { stillAtPath } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
-  objectPathForApi,
-  stillAtPath,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
-import { copySpan, type MinimalClipInfo } from "../minimal-clip-info.ts";
+  copySpan,
+  copyWrite,
+  type MinimalClipInfo,
+} from "../minimal-clip-info.ts";
 
 /** What became of a copy a later copy covered whole. */
 const DELETED = "a later copy in this call landed on it";
 
-/** What became of a copy a later copy covered only the front of. */
-const TRIMMED = "trimmed: a later copy in this call landed on its start";
+/** What became of a copy a later copy covered only part of. */
+const TRIMMED = "trimmed: a later copy in this call landed on part of it";
 
 /** A copy a later copy in the same call deleted. It has no id: it is gone. */
 interface DeletedCopyInfo {
@@ -59,27 +60,19 @@ export function markOverwrittenCopies(createdObjects: object[]): void {
   }
 
   const gone = goneCopies(slots);
-  // A clip another entry still names isn't this copy's rest.
-  const taken = new Set(
-    slots.filter((slot) => !gone.has(slot)).map(({ entry }) => entry.id),
-  );
-  const findRemainder = remainderFinder();
+  const rests = claimRemainders({
+    entries: gone.keys(),
+    spanOf: ({ entry }) => copySpan(entry),
+    written: slots.flatMap(({ entry }) => copyWrite(entry) ?? []),
+    taken: slots.filter((slot) => !gone.has(slot)).map(({ entry }) => entry.id),
+  });
 
-  // Latest landed first: a later copy's rest can end where an earlier copy
-  // did, and it has to be claimed by its own entry. Result order won't do —
-  // copies onto a source land last but keep their place in the result.
-  const byLanding = [...gone]
-    .map(([slot, path]) => ({ slot, path, span: copySpan(slot.entry) }))
-    .toSorted((a, b) => (b.span?.order ?? -1) - (a.span?.order ?? -1));
+  for (const [slot, path] of gone) {
+    const rest = rests.get(slot);
 
-  for (const { slot, path, span } of byLanding) {
-    const rest = span == null ? null : findRemainder(span, taken);
-    const restPath = rest == null ? undefined : objectPathForApi(rest);
-
-    if (rest != null && restPath != null) {
-      taken.add(rest.id);
-      slot.entry.id = rest.id;
-      slot.entry.path = restPath;
+    if (rest != null) {
+      slot.entry.id = rest.clip.id;
+      slot.entry.path = rest.path;
       appendDetail(slot.entry, TRIMMED);
       continue;
     }

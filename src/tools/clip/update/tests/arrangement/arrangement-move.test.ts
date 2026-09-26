@@ -312,8 +312,9 @@ describe("arrangement-move", () => {
           {
             landing: { trackIndex, takeLane: null },
             startBeats: 64,
-            landed: new Map([["earlier", { id: "earlier-copy", length: 16 }]]),
+            landed: new Map([["earlier", { id: "earlier-copy", span: null }]]),
             deferred: [],
+            cleared: [],
           },
         ],
       ]);
