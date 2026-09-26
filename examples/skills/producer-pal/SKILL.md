@@ -39,6 +39,24 @@ so the very first request that reads a schema already needs it.
    `ppal-connect` also confirms the device is running and reports the current
    Live Set state.
 
+## If Producer Pal isn't running
+
+When a call fails with "Could not connect to Producer Pal", the open Live Set
+has no running Producer Pal device. If the user wants it, add it:
+
+```bash
+node ppal.mjs --add-to-live-set
+```
+
+This adds a MIDI track with the Producer Pal device to the user's Set, so ask
+first unless they already asked for Producer Pal. It does nothing if Producer
+Pal is already running. It needs the
+[Producer Pal remote script](https://producer-pal.org/guide/remote-script)
+installed and selected in Live; if it isn't, the error says how to fix it.
+Prints
+`{"producerPal": true, "addedProducerPal": {"trackIndex": 4, "trackName": "5-MIDI"}}`
+once the device answers (up to 30 seconds).
+
 ## Narrowing the toolset (optional, saves context)
 
 `--disable-tools <names>` withholds tools from a single request. A withheld tool
@@ -138,7 +156,8 @@ Object Model when the standard tools aren't enough. (The user can also toggle
 ## Prerequisites
 
 - Ableton Live running with the **Producer Pal** Max for Live device loaded on a
-  track. The device shows "Producer Pal Running" when ready.
+  track. The device shows "Producer Pal Running" when ready. See
+  [If Producer Pal isn't running](#if-producer-pal-isnt-running) to add it.
 - Default endpoint: `http://localhost:3350`. Override with `--url` if needed.
 
 ## References

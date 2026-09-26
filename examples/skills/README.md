@@ -89,8 +89,9 @@ a draggable Session clip); only the final drop is manual.
 - **[`ableton-open-live-set`](ableton-open-live-set/)** — open a `.als` file in
   Live, or create a new Set, and wait until it has loaded, answering the dialogs
   in the way. It never throws away unsaved changes or crash-recovered work
-  unless the user agrees. Can also add Producer Pal to the Set through the
-  Producer Pal remote script. **macOS only**; opening doesn't need the device.
+  unless the user agrees. Can also add Producer Pal to that Set, or to the one
+  open now, through the Producer Pal remote script. **macOS only**; opening
+  doesn't need the device.
 
 ## Shared conventions
 

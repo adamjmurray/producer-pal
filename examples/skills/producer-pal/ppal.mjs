@@ -3,6 +3,7 @@
 // Producer Pal REST API client (Node 18+, no dependencies).
 //
 // CLI:
+//   node ppal.mjs --add-to-live-set
 //   node ppal.mjs --set-config '<json>'
 //   node ppal.mjs --list-tools
 //   node ppal.mjs <tool> [json-args] [options]
@@ -23,7 +24,7 @@
 //   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 //
 // Library:
-//   import { listTools, callTool, setConfig } from "./ppal.mjs";
+//   import { listTools, callTool, setConfig, addToLiveSet } from "./ppal.mjs";
 //   const { result, warnings } = await callTool("ppal-read-live-set");
 
 import { realpathSync } from "node:fs";
@@ -142,6 +143,102 @@ export async function setConfig(patch, options = {}) {
   return res.json();
 }
 
+const REMOTE_SCRIPT_URL = `http://127.0.0.1:${process.env.PPAL_REMOTE_SCRIPT_PORT ?? 3349}`;
+const REMOTE_SCRIPT_REPO =
+  "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
+const ADD_WAIT_MS = 30_000;
+// Live can re-create the device right after a load, so one answer can be the
+// old device's last. Two in a row counts as up.
+const READY_STREAK = 2;
+
+/**
+ * Add the Producer Pal device to the open Live Set, on a new MIDI track,
+ * through the Producer Pal remote script (which must be installed and selected
+ * as a Control Surface in Live). Then wait for Producer Pal to answer. Does
+ * nothing if it already answers. This changes the user's Set, so only do it
+ * when they asked for Producer Pal.
+ *
+ * Resolves to `{ producerPal: true }`, plus `addedProducerPal: { trackIndex,
+ * trackName }` when it added the device.
+ */
+export async function addToLiveSet(options = {}) {
+  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  if (await answers(`${baseUrl}/config`)) {
+    return { producerPal: true };
+  }
+
+  let res;
+  try {
+    res = await fetch(`${REMOTE_SCRIPT_URL}/load`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
+      signal: AbortSignal.timeout(35_000), // the script waits up to 30s for Live
+    });
+  } catch (err) {
+    throw new Error(
+      err.cause?.code === "ECONNREFUSED"
+        ? `The Producer Pal remote script isn't answering on ${REMOTE_SCRIPT_URL}. Is Live running? Install the script and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`
+        : `The Producer Pal remote script didn't reply: ${err.message}`,
+      { cause: err },
+    );
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      `Couldn't add Producer Pal: ${loadFailure(res.status, body, baseUrl)}`,
+    );
+  }
+
+  const track = { trackIndex: body.track?.index, trackName: body.track?.name };
+  if (!(await waitUntilUp(`${baseUrl}/config`, Date.now() + ADD_WAIT_MS))) {
+    throw new Error(
+      `Added the Producer_Pal device to track ${track.trackIndex} ("${track.trackName}"), but it didn't answer on ${baseUrl} within ${ADD_WAIT_MS / 1000}s. Check the device in Live.`,
+    );
+  }
+  return { producerPal: true, addedProducerPal: track };
+}
+
+/** Explain a failed remote script /load. */
+function loadFailure(status, body, baseUrl) {
+  if (status === 404) {
+    return "Live's browser has no Producer_Pal device. Put Producer_Pal.amxd where the browser's Max for Live section lists it, e.g. the User Library.";
+  }
+  if (status === 409 && body.candidates != null) {
+    return `Live's browser has more than one Producer_Pal device: ${body.candidates.join(", ")}. Keep only one device named Producer_Pal there.`;
+  }
+  // A 409 without candidates: the Set already has one, but it didn't answer.
+  if (status === 409 && body.error != null) {
+    return `${body.error}. It isn't answering on ${baseUrl}: check that device.`;
+  }
+  return `the remote script answered ${status}: ${body.error ?? "(no error text)"}`;
+}
+
+/** Wait for `url` to answer READY_STREAK times in a row, until `deadline`. */
+async function waitUntilUp(url, deadline) {
+  let streak = 0;
+  for (;;) {
+    streak = (await answers(url)) ? streak + 1 : 0;
+    if (streak >= READY_STREAK) {
+      return true;
+    }
+    if (Date.now() >= deadline) {
+      return false;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
+/** Whether a GET to `url` succeeds. */
+async function answers(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // --- CLI ---
 
 function parseArgs(argv) {
@@ -155,6 +252,8 @@ function parseArgs(argv) {
       opts.timeoutMs = Number(argv[++i]);
     } else if (arg === "--list-tools") {
       opts.listTools = true;
+    } else if (arg === "--add-to-live-set") {
+      opts.addToLiveSet = true;
     } else if (arg === "--set-config") {
       opts.setConfig = argv[++i];
     } else if (arg === "--disable-tools") {
@@ -175,6 +274,7 @@ function parseArgs(argv) {
 const HELP = `Producer Pal REST API client
 
 Usage:
+  node ppal.mjs --add-to-live-set
   node ppal.mjs --set-config '<json>'
   node ppal.mjs --list-tools
   node ppal.mjs <tool> [json-args] [options]
@@ -182,6 +282,8 @@ Usage:
 Options:
   --url <baseUrl>          override Producer Pal URL (default ${DEFAULT_BASE_URL})
   --timeout-ms <ms>        per-request timeout (1–55000)
+  --add-to-live-set        add the Producer Pal device to the open Live Set if it
+                           isn't running (needs the Producer Pal remote script)
   --set-config <json>      update device settings, e.g. '{"liveApiEnabled":true}'
                            Global to the device — it moves every other client too.
   --notation <name>        barbeat | midi-json | stark
@@ -206,6 +308,11 @@ async function main(argv) {
   const { opts, positional } = parseArgs(argv);
   if (opts.help) {
     console.log(HELP);
+    return;
+  }
+
+  if (opts.addToLiveSet) {
+    console.log(JSON.stringify(await addToLiveSet(opts), null, 2));
     return;
   }
 
