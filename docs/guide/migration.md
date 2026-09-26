@@ -207,7 +207,9 @@ instead of shifting the names after it onto the wrong clips, and every piece a
 split cuts a target into takes that target's name. `ppal-duplicate` likewise
 returns one entry per destination you named, with a destination no copy landed
 at holding its slot as `{path, ok: false, detail}` instead of dropping out of
-the array.
+the array. A track or scene copy names no destination, so a failed one holds its
+slot under its source instead, as you sent it:
+`{id or path, ok: false, detail}`.
 
 That covers device, chain and drum-pad copies too. A destination that used to
 drop out of the array with a warning now keeps its slot as
@@ -297,7 +299,8 @@ routing on a group or return track, and a routing name the track doesn't have.
 `wrapInRack` throws instead of returning `null` when it can't wrap anything, and
 names each device it dropped on the new rack's `detail`. It also refuses any
 other update arg (`params`, `macroCount`, `color`, `mute`, ...) instead of
-dropping it; only `name`, `toPath` and `focus` go with a wrap. A
+dropping it; only `name`, `toPath` and `focus` go with a wrap, plus args that
+ask for nothing (`force`, or an empty `params`, `actions` or `sends`). A
 `macroVariationIndex` that contradicts its `macroVariation` (sent alone, missing
 for `load`/`delete`, or sent beside `create`/`revert`/`randomize`) is refused
 before anything is written.
@@ -402,8 +405,8 @@ it's already off.
 
 **Nested writes count.** When every send, `params` entry or action on a target
 failed and you asked nothing else of it, nothing landed. The target is
-`ok: false` with a `detail` starting `no send landed`, `no param landed` or
-`no action landed` that names each failure, and a call naming only that target
+`ok: false` with a `detail` that includes `no send landed`, `no param landed` or
+`no action landed` and names each failure, and a call naming only that target
 errors. It used to come back as a normal entry holding only failed nested
 entries.
 
@@ -468,9 +471,10 @@ read the entries instead.
 **A copy a later copy landed on reads like update-clip's.** `ppal-duplicate`
 marked one `overwritten: true`. A copy the later one covered whole is now
 `{path, deleted: true, detail}` (plus `created` when it made scenes), as
-`ppal-update-clip` reports a clip another was moved onto. One that lost only its
-front still exists, so its entry names what is left, a new `id` and `path`, with
-a `detail` saying it was trimmed. Read `deleted` instead of `overwritten`.
+`ppal-update-clip` reports a clip another was moved onto. One that lost only
+part of itself still exists, so its entry names the piece that is left, a new
+`id` and `path`, with a `detail` saying it was trimmed. Read `deleted` instead
+of `overwritten`.
 
 `ppal-select`'s result is unchanged: what it reports is the selection it made.
 
