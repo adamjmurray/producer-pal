@@ -198,9 +198,8 @@ the queue and runs them. The HTTP thread waits up to 30s for the reply.
   build of the Producer Pal device, open an e2e Set (`e2e/live-sets/`), which
   references the repo's device, rather than loading `Producer_Pal` from the
   browser, which finds whatever copy is in your library.
-- **Tests**: `tests/` runs routes against fake Live objects, outside Live. From
-  the repo root:
-  `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests`.
+- **Tests**: `tests/` runs routes against fake Live objects, outside Live:
+  `npm run remote-script:test`.
 - **Stay out of the Sounds and Drums sections**: listing `app.browser.sounds`
   crashed Live 12.4.6 with an internal assert. The `type` param only reaches the
   sections above, and presets are found under their devices or by file.

@@ -99,6 +99,7 @@
     "ui:test": "npm run ui:build && playwright test -c config/playwright.ui.config.ts",
     "ui:test:dev": "npm run ui:build && playwright test -c config/playwright.ui.config.ts --ui",
     "remote-script:install": "node --env-file-if-exists=.env scripts/live-api/install-remote-script.ts",
+    "remote-script:test": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests",
     "validate:typescript-only": "node scripts/build-and-release/validate-typescript-only.ts",
     "docs:dev": "npm run docs:generate && vitepress dev docs --port 5174",
     "docs:schemas": "node scripts/build-and-release/tool-reference/generate-tool-schema-docs.ts",
