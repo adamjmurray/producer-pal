@@ -372,7 +372,7 @@ underneath. Two consequences on Update Clip:
 - It erases a `start`/`length` sent in the same call. Reshape the region in a
   follow-up call.
 - `looping: true` forces warping back on, so it vetoes a `warping: false` sent
-  alongside it, and warns that it did.
+  alongside it, and says so in that clip's `detail`.
 
 **Unwarped clips are measured against the sample.** Live switches a clip's
 markers from beats to seconds when warping is off, and reports an unwarped

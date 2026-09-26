@@ -157,12 +157,12 @@ left as a warning is only what no entry can carry:
 **`ppal-create-clip` answers per destination named.** A `path` list mixing clip
 slots and arrangement positions used to come back clip slots first and the
 arrangement after; it now comes back in the order you named them, and `name` and
-`color` pair with that place. A destination that got no clip (an occupied clip
-slot, a track that won't take the clip, a create Live declined, a take lane past
-the cap, one the request ran out of time for) used to drop out of the array with
-a warning, and now holds its slot as `{path, ok: false, detail}`. Where that was
-the only destination you named, the reason comes back as the call's error
-instead of an empty array.
+`color` pair with that place. A destination that got no clip (a slot named again
+later in the call, a track that won't take the clip, a create Live declined, a
+take lane past the cap, one the request ran out of time for) used to drop out of
+the array with a warning, and now holds its slot as `{path, ok: false, detail}`.
+Where that was the only destination you named, the reason comes back as the
+call's error instead of an empty array.
 
 It says the rest on the clip's entry too: a `firstStart` sent without
 `looping: true` used to warn (and, with `looping` left out, was dropped without
@@ -271,7 +271,7 @@ which read as a success. It is now an error, raised before anything in the call
 is written, naming the roots and scale names Live accepts. `tempo` in the same
 tool has always worked this way.
 
-### Three values read differently without the field changing
+### Four values read differently without the field changing
 
 - **An all-digit name is a string.** A track named `5678` used to serialize as
   the JSON number `5678`. Strict type checks will notice.
@@ -280,6 +280,9 @@ tool has always worked this way.
 - **`update-live-set`'s `scale` is the spelling Live stores**, not yours:
   `"F# Dorian"` in, `"Gb Dorian"` out, and only when the two differ. Every read
   already said this; the write result was the one that disagreed.
+- **`update-live-set`'s `scalePitches` is a comma-joined string**
+  (`"C,D,E,F,G,A,B"`), as `ppal-read-live-set` already returned it. The write
+  result used to return an array.
 
 ### Error and warning text
 
