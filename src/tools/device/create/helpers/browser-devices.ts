@@ -15,6 +15,7 @@ import {
   type BrowserItem,
   type BrowserItemLoad,
   type BrowserItemResolution,
+  REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
@@ -139,6 +140,19 @@ export function remoteScriptWait(
   return left > 0 ? Math.min(REMOTE_SCRIPT_REQUEST_TIMEOUT_MS, left) : null;
 }
 
+/**
+ * When a change sent to the remote script expires: a bit under V8's wait, so a
+ * job Live starts in time can answer before V8 gives up. The margin never takes
+ * more than half a short wait.
+ * @param waitMs - How long V8 waits for the route
+ * @returns How long Live may leave the job queued, in ms
+ */
+export function remoteScriptExpiry(waitMs: number): number {
+  return (
+    waitMs - Math.min(REMOTE_SCRIPT_EXPIRY_MARGIN_MS, Math.ceil(waitMs / 2))
+  );
+}
+
 // --- Helpers below main exports ---
 
 /**
@@ -228,6 +242,7 @@ async function loadOnto(
       path: item.path,
       trackIndex: track.trackIndex,
       trackName,
+      expiresInMs: remoteScriptExpiry(waitMs),
     },
     waitMs,
   );

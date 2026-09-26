@@ -16,7 +16,7 @@ import {
   type PresetScope,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { remoteScriptWait } from "./browser-devices.ts";
+import { remoteScriptExpiry, remoteScriptWait } from "./browser-devices.ts";
 
 /** Why nothing loads when the remote script isn't answering. */
 export const PRESET_NEEDS_REMOTE_SCRIPT =
@@ -154,6 +154,7 @@ export async function hotswapPreset(
       path: item.path,
       devicePath,
       deviceName: device.getName(),
+      expiresInMs: remoteScriptExpiry(waitMs),
     },
     waitMs,
   );

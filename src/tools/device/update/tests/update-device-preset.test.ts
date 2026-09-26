@@ -18,6 +18,8 @@ import {
   type BrowserItem,
   type BrowserItemHotswap,
   type BrowserItemResolution,
+  REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
+  REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { updateDeviceWithPreset } from "../update-device-with-preset.ts";
@@ -152,9 +154,34 @@ describe("updateDeviceWithPreset", () => {
         path: "Drift/Bass/AG Bass.adv",
         devicePath: String(DRIFT_PATH),
         deviceName: "Drift",
+        expiresInMs:
+          REMOTE_SCRIPT_REQUEST_TIMEOUT_MS - REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
       },
     ]);
   });
+
+  // Live skips a hotswap still queued at its expiry, so one V8 stopped waiting
+  // for and reported as not loaded never lands later.
+  it.each([
+    { left: 10_000, expiresInMs: 8000 },
+    { left: 3000, expiresInMs: 1500 },
+  ])(
+    "expires the hotswap before V8 stops waiting, with $left ms left",
+    async ({ left, expiresInMs }) => {
+      vi.spyOn(Date, "now").mockReturnValue(1_000_000);
+
+      await updateDeviceWithPreset(
+        { path: "t3/d0", preset: "AG Bass" },
+        { deadline: 1_000_000 + left },
+      );
+
+      expect(requestNode).toHaveBeenCalledWith(
+        REMOTE_SCRIPT_ROUTES.hotswap,
+        expect.objectContaining({ expiresInMs }),
+        left,
+      );
+    },
+  );
 
   it("names the new device, and says so, when Live replaced it", async () => {
     answerRemoteScript({
