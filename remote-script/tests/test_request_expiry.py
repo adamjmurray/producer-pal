@@ -88,7 +88,14 @@ class ExpiryTest(unittest.TestCase):
 
         self.assertEqual(handler.calls, 0)
         self.assertEqual(
-            expired.wait(), (504, {"error": "the request expired before Live ran it"})
+            expired.wait(),
+            (
+                504,
+                {
+                    "error": "the request expired before Live ran it"
+                    "; nothing changed, re-run it"
+                },
+            ),
         )
 
     def test_runs_a_job_before_it_expires(self):
@@ -108,7 +115,10 @@ class ExpiryTest(unittest.TestCase):
 
         self.assertEqual(pending._reply.timeouts, [30.0])
         self.assertEqual(status, 504)
-        self.assertEqual(payload["error"], "Live did not run the request within 30.0s")
+        self.assertEqual(
+            payload["error"],
+            "Live did not run the request within 30.0s; nothing changed, re-run it",
+        )
 
     def test_waits_until_an_expiry_sooner_than_30s(self):
         pending = job(Handler(), 5)

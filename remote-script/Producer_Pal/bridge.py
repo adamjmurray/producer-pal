@@ -23,6 +23,9 @@ PORT = 3349
 # time is the slow case.
 REQUEST_TIMEOUT = 30.0
 
+# Ends the error for a job Live skipped: it changed nothing, so a re-run is safe.
+_RERUN = "; nothing changed, re-run it"
+
 
 class ProducerPalBridge:
     def __init__(self, c_instance):
@@ -177,9 +180,12 @@ class _Job:
             if not self._started:
                 self._abandoned = True
                 if self._expired():
-                    return 504, {"error": "the request expired before Live ran it"}
+                    return 504, {
+                        "error": "the request expired before Live ran it" + _RERUN
+                    }
                 return 504, {
-                    "error": "Live did not run the request within %ss" % REQUEST_TIMEOUT
+                    "error": "Live did not run the request within %ss%s"
+                    % (REQUEST_TIMEOUT, _RERUN)
                 }
         # It started in time, so wait for its reply. If it finishes after the
         # client stopped waiting, the client reports a change that did happen.
