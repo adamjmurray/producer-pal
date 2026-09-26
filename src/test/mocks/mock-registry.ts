@@ -11,6 +11,7 @@ import {
   applyRegistrationOptions,
   createRegistration,
   refreshHolders,
+  setKeepAllMockWrites,
 } from "./mock-registry-helpers.ts";
 
 export type { RegisteredMockObject, RegisteredMockObjectOptions };
@@ -134,6 +135,18 @@ const deletedIds = new Set<string>();
  */
 export function simulateMockDeletes(): void {
   _simulateDeletes = true;
+}
+
+/**
+ * Make set() keep a write to any property, so a later read sees it the way it
+ * would in Live.
+ *
+ * Off by default, and only the tool-reference examples turn it on. A mock that
+ * kept every write would pass code that echoes its argument instead of reading
+ * the object back.
+ */
+export function simulateMockWrites(): void {
+  setKeepAllMockWrites(true);
 }
 
 /**
@@ -361,6 +374,7 @@ export function clearMockRegistry(): void {
   registryByPath.clear();
   deletedIds.clear();
   _simulateDeletes = false;
+  setKeepAllMockWrites(false);
   _nonExistentByDefault = false;
   mockTrackCopies = 0;
 }
