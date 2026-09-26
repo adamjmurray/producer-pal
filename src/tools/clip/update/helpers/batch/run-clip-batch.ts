@@ -41,6 +41,8 @@ import {
   processSingleClipUpdate,
 } from "./process-single-clip-update.ts";
 import { settleClipTurn, skipUnmovedClips } from "./settle-clip-turn.ts";
+import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelopes.ts";
+import { type EnvelopeLine } from "#src/tools/clip/envelopes/envelope-lines.ts";
 
 /** Every param one update-clip call carries, as the tool received them. */
 export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
@@ -68,6 +70,7 @@ export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
   arrangementSplit?: string;
   split?: string;
   code?: string;
+  envelopes?: string;
   focus?: boolean;
 }
 
@@ -80,6 +83,8 @@ export interface RunClipBatchArgs {
   reasons: ClipReasons;
   context: Partial<ToolContext>;
   deadline: number | null;
+  /** The `envelopes` param, already read into lines and checked. */
+  envelopeLines?: EnvelopeLine[];
 }
 
 /**
@@ -93,6 +98,7 @@ export interface RunClipBatchArgs {
  * @param batch.reasons - What each clip has to say beyond its result
  * @param batch.context - Per-request context
  * @param batch.deadline - The request deadline
+ * @param batch.envelopeLines - The `envelopes` param, already read into lines
  * @returns The results each target produced, by its place in the call
  */
 export async function runClipBatch({
@@ -103,6 +109,7 @@ export async function runClipBatch({
   reasons,
   context,
   deadline,
+  envelopeLines,
 }: RunClipBatchArgs): Promise<Map<number, ClipResult[]>> {
   const { clips, moveOrder, destinationById } = plan;
   const { parsedNames, parsedColors } = labels;
@@ -194,6 +201,7 @@ export async function runClipBatch({
       movedClipGroups,
       reasons,
       code: args.code,
+      envelopeLines,
     });
 
     const results = updatedClips.slice(written);
@@ -277,6 +285,7 @@ const CONTENT_PARAMS = [
   "quantizeGrid",
   "quantizePitch",
   "code",
+  "envelopes",
 ] as const satisfies ReadonlyArray<keyof ClipUpdateArgs>;
 
 /**
@@ -371,15 +380,19 @@ function stopBatch({
 }
 
 /**
- * Process one clip update + per-clip code-exec, keeping a failure for the
- * clip's own entry to report.
- * @param params - Per-clip update params plus optional code to apply
+ * Process one clip update + per-clip code-exec, then its envelopes, keeping a
+ * failure for the clip's own entry to report.
+ * @param params - Per-clip update params plus optional code and envelope lines
  * @returns Why the update threw, or null when it ran to the end
  */
 async function processClipUpdateStep(
-  params: ProcessSingleClipUpdateParams & { code?: string },
+  params: ProcessSingleClipUpdateParams & {
+    code?: string;
+    envelopeLines?: EnvelopeLine[];
+  },
 ): Promise<string | null> {
-  const { code, clipIndex, clipCount, ...processParams } = params;
+  const { code, envelopeLines, clipIndex, clipCount, ...processParams } =
+    params;
   const prevLen = params.updatedClips.length;
 
   try {
@@ -391,6 +404,9 @@ async function processClipUpdateStep(
       clipCount,
       code,
     );
+    // Last, and on the entry the rest of the update settled on: a move
+    // re-creates the clip under a new id.
+    await applyClipEnvelopes(params.updatedClips[prevLen], envelopeLines);
 
     return null;
   } catch (error) {

@@ -6,7 +6,7 @@
 // What the E2E suites that need the Producer Pal remote script share.
 
 import { beforeAll } from "vitest";
-import { remoteScriptAnswers } from "../../mcp-test-helpers";
+import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers";
 
 const PORT = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
 

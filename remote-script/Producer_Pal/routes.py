@@ -326,5 +326,9 @@ ROUTES = {
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
 # <img> tag), so these refuse GET.
-POST_ONLY = ("/load", "/hotswap")
+POST_ONLY = ("/load", "/hotswap", "/envelope/write", "/envelope/clear")
 
+# Imported after ROUTES so envelopes.py can import RouteError from here.
+from .envelopes import ROUTES as _ENVELOPE_ROUTES  # noqa: E402
+
+ROUTES.update(_ENVELOPE_ROUTES)

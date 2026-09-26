@@ -49,15 +49,25 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     }),
     include: param(
       z
-        .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
+        .array(
+          z.enum([
+            "sample",
+            "notes",
+            "color",
+            "timing",
+            "warp",
+            "envelopes",
+            "*",
+          ]),
+        )
         .default([]),
       {
         default:
-          'notes = MIDI data. timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. "*" = all',
+          'notes = MIDI data. timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. envelopes = clip automation, session clips only; needs the Producer Pal remote script and a round trip per parameter, so ask for it by name - "*" leaves it out. "*" = all the rest',
         smallModel: {
           description:
             "notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color",
-          excludeEnumValues: ["warp", "*"],
+          excludeEnumValues: ["warp", "envelopes", "*"],
         },
       },
     ),

@@ -15,11 +15,12 @@ import { requireString } from "../route-string-args.ts";
 import { lookUpBrowserDevice } from "./browser-device-lookup.ts";
 import { lookUpBrowserPreset } from "./browser-preset-lookup.ts";
 import { remoteScriptRequest, replyError } from "./remote-script-client.ts";
+import { registerRemoteScriptEnvelopeRoutes } from "./remote-script-envelope-routes.ts";
 
 /**
- * Register the routes V8 uses to load a plug-in, Max for Live device, or preset
- * through the remote script. All outlast the remote script's own 30s wait on
- * Live.
+ * Register every route V8 uses to reach the remote script: loading a plug-in,
+ * Max for Live device, or preset, plus clip envelopes. The loading routes
+ * outlast the remote script's own 30s wait on Live.
  */
 export function registerRemoteScriptRoutes(): void {
   registerNodeRoute(
@@ -46,6 +47,8 @@ export function registerRemoteScriptRoutes(): void {
     hotswapBrowserItem,
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
+
+  registerRemoteScriptEnvelopeRoutes();
 }
 
 /**

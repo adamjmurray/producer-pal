@@ -18,6 +18,9 @@
 //
 // These count resolutions rather than asserting output, so they fail when a
 // repeat comes back — a correctness test cannot see repeated work.
+//
+// readClip is async only for the envelope include, which none of these ask for,
+// so every read here does all its Live API work before it returns.
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
@@ -93,8 +96,8 @@ function setupTrackWithClips(): void {
 describe("readClip build budget", () => {
   beforeEach(setupTrackWithClips);
 
-  it("builds the clip and nothing above it", () => {
-    readClip({ path: "t0/s0" });
+  it("builds the clip and nothing above it", async () => {
+    await readClip({ path: "t0/s0" });
 
     // A clip that answers proves its track and its scene are there, so a read
     // by path costs exactly the clip.
@@ -107,10 +110,13 @@ describe("readClip build budget", () => {
     expect(resolves("id rackChain*")).toBe(0);
   });
 
-  it("walks the device tree once for every clip one request reads", () => {
+  it("walks the device tree once for every clip one request reads", async () => {
     inOneRequest(() => {
       for (let sceneIndex = 0; sceneIndex < CLIP_COUNT; sceneIndex++) {
-        readClip({ path: `t0/s${String(sceneIndex)}`, include: ["notes"] });
+        void readClip({
+          path: `t0/s${String(sceneIndex)}`,
+          include: ["notes"],
+        });
       }
     });
 
@@ -121,10 +127,13 @@ describe("readClip build budget", () => {
     expect(liveApiBuildStats().resolved).toBe(WALK_COST + CLIP_COUNT);
   });
 
-  it("walks again for the next request", () => {
+  it("walks again for the next request", async () => {
     for (let sceneIndex = 0; sceneIndex < 2; sceneIndex++) {
       inOneRequest(() => {
-        readClip({ path: `t0/s${String(sceneIndex)}`, include: ["notes"] });
+        void readClip({
+          path: `t0/s${String(sceneIndex)}`,
+          include: ["notes"],
+        });
       });
     }
 
@@ -135,8 +144,8 @@ describe("readClip build budget", () => {
     expect(liveApiBuildStats().resolved).toBe((WALK_COST + 1) * 2);
   });
 
-  it("skips the walk for a clip with no notes to spell", () => {
-    readClip({
+  it("skips the walk for a clip with no notes to spell", async () => {
+    await readClip({
       path: `t0/s${String(EMPTY_CLIP_SCENE)}`,
       include: ["notes"],
     });
@@ -147,9 +156,9 @@ describe("readClip build budget", () => {
     expect(resolves("id rackChain*")).toBe(0);
   });
 
-  it("costs one object per clip when the caller supplies drum mode", () => {
+  it("costs one object per clip when the caller supplies drum mode", async () => {
     for (let sceneIndex = 0; sceneIndex < CLIP_COUNT; sceneIndex++) {
-      readClip({
+      await readClip({
         path: `t0/s${String(sceneIndex)}`,
         include: ["notes"],
         drumMode: false,
@@ -164,11 +173,13 @@ describe("readClip build budget", () => {
     expect(resolves("live_set tracks *")).toBe(0);
   });
 
-  it("builds the track and the scene only to explain an empty slot", () => {
+  it("builds the track and the scene only to explain an empty slot", async () => {
     registerMockObject("scene9", { path: livePath.scene(9), properties: {} });
     mockNonExistentObjects();
 
-    expect(() => readClip({ path: "t0/s9" })).toThrow("no clip at t0/s9");
+    await expect(readClip({ path: "t0/s9" })).rejects.toThrow(
+      "no clip at t0/s9",
+    );
 
     // Nothing at the address: only now does telling an empty slot from a bad
     // one need the track and the scene, and it needs each of them once.
@@ -227,8 +238,8 @@ function setupArrangementTrack(): void {
 describe("readClip arrangement build budget", () => {
   beforeEach(setupArrangementTrack);
 
-  it("scans the track's arrangement clips once to find one by position", () => {
-    readClip({ path: "t1[13|1]", include: ["timing"] });
+  it("scans the track's arrangement clips once to find one by position", async () => {
+    await readClip({ path: "t1[13|1]", include: ["timing"] });
 
     // An arrangement clip has no slot to address, so a position is matched
     // against the track's clips one start_time at a time. The scan reads every

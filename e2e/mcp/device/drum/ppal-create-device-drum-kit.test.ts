@@ -22,9 +22,9 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-  supportsSampleLoading,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
+import { supportsSampleLoading } from "../../workflow/helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 

@@ -8,6 +8,10 @@ import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
+  type EnvelopeLine,
+  parseEnvelopeLines,
+} from "#src/tools/clip/envelopes/envelope-lines.ts";
+import {
   type ClipEntry,
   clipEntriesInCallOrder,
   type ClipTargets,
@@ -36,9 +40,8 @@ import {
  *
  * @param args - The clip parameters
  * @param args.id - Clip ID or comma-separated list of clip IDs to update
- * @param args.ids - Hidden alias for id
+ * @param args.ids - Hidden alias for id (args.paths is the one for path)
  * @param args.path - Clip slot(s) of clips to update, instead of id
- * @param args.paths - Hidden alias for path
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all the clips
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
@@ -68,6 +71,7 @@ import {
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
  * @param args.code - JavaScript code to transform notes (broadcast across the clips; use context.clip.{index,count} for per-clip variation)
+ * @param args.envelopes - Clip automation, one "<target>: <notation>" line per parameter (broadcast across the clips)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Per-request context
  * @returns The clip when one was named, otherwise one entry per target named
@@ -88,6 +92,10 @@ export async function updateClip(
 
   refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
+  // Every envelope line is read before the first clip is touched: a batch of
+  // them half written can't be cleaned up (ADR-0035).
+  const envelopeLines: EnvelopeLine[] | undefined =
+    args.envelopes == null ? undefined : parseEnvelopeLines(args.envelopes);
 
   // Paired with the targets named, not the clips found, so name[k] lands on
   // target k and every piece of a split takes its target's name. Done before
@@ -127,6 +135,7 @@ export async function updateClip(
     reasons,
     context,
     deadline,
+    envelopeLines,
   });
 
   return finishUpdate({

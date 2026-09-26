@@ -176,6 +176,33 @@ Returns the device's name afterwards and whether Live `replaced` it.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
 
+### `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`
+
+Clip automation envelopes, which Max for Live's LOM can't reach. **Session clips
+only**: Live refuses envelope writes on Arrangement clips and reads them as
+empty, so write in Session and duplicate to the Arrangement. That copies the
+envelope into the track's automation lane, which stays after the clip is deleted
+but can't be read back.
+
+Common params: `track` (`t0`, `rt0`, `mt`), `slot` (0-based Session slot) or
+`arrangement_index`, and a parameter: `parameter` = `volume`, `pan`, `send0`..
+for the mixer, or `device` (`d0`, `d0/c1/d0` into rack chains) plus `parameter`
+as an exact name or 0-based index.
+
+| Route    | Params                                 | Returns                                                                                                                   |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/list`  | clip                                   | every automated parameter on the clip with its event count                                                                |
+| `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range (default: all, even past the clip end): `time`, `value` (raw), `display` (Hz/dB), `display_str` |
+| `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?}]`, raw values                                              |
+| `/clear` | clip, optional parameter               | removes one envelope, or all of them                                                                                      |
+
+Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
+device params are `0..1`); `display` is what Live shows. Each point ramps to the
+next; a point with `jump: true` holds the previous value until its time, then
+jumps (two events at one time, which is how Live stores a step). A quantized
+parameter holds each value until the next anyway. Capped at 1000 events per read
+or write.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -191,6 +218,7 @@ already running is waited for.
 - `routes.py`: what each route does; main thread only
 - `browser.py`: browser tree walking, name matching, and finding a file
 - `hotswap.py`: walking a device path, and loading in place of a device
+- `envelopes.py`: clip automation envelopes
 
 ## Notes
 

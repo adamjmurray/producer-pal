@@ -9,6 +9,7 @@ import {
   arrangementBasic,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
+import { automation } from "#src/skills/fragments/automation.ts";
 import {
   contextBasic,
   contextStandard,
@@ -112,6 +113,7 @@ export const SKILL_SLOT_NAMES = [
   ARRANGEMENT,
   "arrangement-write",
   "arrangement-basic",
+  "automation",
   "object-paths",
   "object-paths-basic",
   "working-with-live",
@@ -316,6 +318,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Moving clips with toPath — along the arrangement timeline and between clip slots — plus splitting them and stacking take lanes. It's the only place toPath is explained. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
     builtIn: arrangementWrite,
+  },
+
+  automation: {
+    title: "Clip automation",
+    description:
+      "Reading and writing a clip's automation envelopes, and the session-to-arrangement round trip that puts one in a track's automation lane. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
+    builtIn: automation,
   },
 
   "arrangement-basic": {
