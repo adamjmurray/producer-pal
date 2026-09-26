@@ -128,7 +128,7 @@ describe("ppal-update-clip audio warping", () => {
       warping: false,
     });
 
-    expect(entry.reason).toContain(
+    expect(entry.detail).toContain(
       "warping ignored: looping forces warping on",
     );
     expect(clip.warping).toBe(true);

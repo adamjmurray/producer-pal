@@ -10,10 +10,10 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  type EntryWithReason,
-  appendReason,
-  joinReasons,
-} from "#src/tools/shared/helpers/entry-reasons.ts";
+  type EntryWithDetail,
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
 
 /** What one target's update has to say beyond its own result. */
 export interface TargetNotes {
@@ -22,6 +22,18 @@ export interface TargetNotes {
   /** Params the call sent that did nothing here, so they stop counting as
    * work asked of the target */
   refused: string[];
+  /** Nested lists none of whose writes landed. Said only when that leaves the
+   * target with nothing, since the list's own entries already say it. */
+  unlanded: string[];
+  /** Set when the call changed the Set on the way to work that then failed (a
+   * swapped or created instrument): a throw would claim nothing changed. */
+  altered?: true;
+}
+
+/** One nested write's entry: a send, a param, an action. */
+interface NestedEntry {
+  ok?: false;
+  detail?: string;
 }
 
 /**
@@ -29,22 +41,22 @@ export interface TargetNotes {
  * @returns An empty collector
  */
 export function newTargetNotes(): TargetNotes {
-  return { said: [], refused: [] };
+  return { said: [], refused: [], unlanded: [] };
 }
 
 /**
  * Note something the target's entry should say, where the work landed anyway.
  * @param notes - What the target has to say, added to; undefined warns instead
- * @param reason - What happened, as the entry will read it
+ * @param detail - What happened, as the entry will read it
  */
 export function noteTarget(
   notes: TargetNotes | undefined,
-  reason: string,
+  detail: string,
 ): void {
   if (notes == null) {
-    console.warn(reason);
+    console.warn(detail);
   } else {
-    notes.said.push(reason);
+    notes.said.push(detail);
   }
 }
 
@@ -54,15 +66,56 @@ export function noteTarget(
  * target, so an ignored one has to stop counting or the target looks updated.
  * @param notes - What the target has to say, added to; undefined warns instead
  * @param params - The params that did nothing
- * @param reason - What happened instead, as the entry will read it
+ * @param detail - What happened instead, as the entry will read it
  */
 export function refuseTargetWork(
   notes: TargetNotes | undefined,
   params: readonly string[],
-  reason: string,
+  detail: string,
 ): void {
-  noteTarget(notes, reason);
+  noteTarget(notes, detail);
   notes?.refused.push(...params);
+}
+
+/**
+ * Mark that the call changed the Set for this target, so the target keeps its
+ * entry even if nothing it asked for landed.
+ * @param notes - What the target has to say; undefined when there's no entry
+ */
+export function noteSetAltered(notes: TargetNotes | undefined): void {
+  if (notes != null) {
+    notes.altered = true;
+  }
+}
+
+/**
+ * Count a nested list as refused when none of its writes landed, so a target
+ * asked for nothing else is a skip that names each failure.
+ * @param notes - What the target has to say, added to
+ * @param params - The params that asked for these writes
+ * @param noun - One write, singular ("send")
+ * @param entries - Every write in the list, landed or not
+ * @param name - How the detail names one entry
+ */
+export function refuseIfNoneLanded<T extends object>(
+  notes: TargetNotes,
+  params: readonly string[],
+  noun: string,
+  entries: readonly T[],
+  name: (entry: T) => string,
+): void {
+  const failed = (entry: T): boolean => (entry as NestedEntry).ok === false;
+
+  if (entries.length === 0 || !entries.every(failed)) {
+    return;
+  }
+
+  const failures = entries.map(
+    (entry) => `"${name(entry)}": ${(entry as NestedEntry).detail}`,
+  );
+
+  notes.refused.push(...params);
+  notes.unlanded.push(`no ${noun} landed — ${failures.join("; ")}`);
 }
 
 /**
@@ -74,22 +127,24 @@ export function refuseTargetWork(
  * @throws Error when the refusals were everything the call asked, so nothing
  *   landed and the entry is a skip (a lone target throws outright)
  */
-export function reportTargetNotes<T extends EntryWithReason>(
+export function reportTargetNotes<T extends EntryWithDetail>(
   entry: T,
   notes: TargetNotes,
   asked: object,
 ): T {
-  const reason = joinReasons(notes.said);
+  const detail = joinDetails(notes.said);
 
-  if (reason == null) {
+  if (detail == null && notes.unlanded.length === 0) {
     return entry;
   }
 
-  if (!askedAnythingElse(asked, notes.refused)) {
-    throw new Error(reason);
+  if (notes.altered !== true && !askedAnythingElse(asked, notes.refused)) {
+    throw new Error(joinDetails([...notes.said, ...notes.unlanded]));
   }
 
-  appendReason(entry, reason);
+  if (detail != null) {
+    appendDetail(entry, detail);
+  }
 
   return entry;
 }

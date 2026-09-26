@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -12,16 +12,8 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const CHANGED_GAIN = "gainDb read back as shown, not as sent";
-const SPLIT_ONLY =
-  "leftPan/rightPan had no effect: they only apply in split panning mode — " +
-  "set panningMode to 'split', or use pan";
-const STEREO_ONLY =
-  "pan had no effect: it only applies in stereo panning mode — set " +
-  "panningMode to 'stereo', or use leftPan/rightPan";
 
 describe("updateTrack - mixer properties", () => {
   let track123: RegisteredMockObject;
@@ -214,41 +206,6 @@ describe("updateTrack - mixer properties", () => {
     expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 0.5);
   });
 
-  // The refusal is about this one track, so it rides on the track's entry
-  // rather than in a warning the caller has to match back to a target.
-  it("says on the entry that pan had no effect in split mode", () => {
-    const errorSpy = vi.spyOn(console, "warn");
-
-    splitMode();
-
-    expect(updateTrack({ id: "123", pan: 0.5 })).toStrictEqual({
-      id: "123",
-      path: "t0",
-      panningMode: "split",
-      reason: STEREO_ONLY,
-    });
-    expect(errorSpy).not.toHaveBeenCalled();
-
-    errorSpy.mockRestore();
-  });
-
-  it("says on the entry that leftPan/rightPan had no effect in stereo mode", () => {
-    const errorSpy = vi.spyOn(console, "warn");
-
-    // Default panning_mode is 0 (stereo) from createGetMock fallback
-
-    expect(
-      updateTrack({ id: "123", leftPan: -0.5, rightPan: 0.5 }),
-    ).toStrictEqual({
-      id: "123",
-      path: "t0",
-      reason: SPLIT_ONLY,
-    });
-    expect(errorSpy).not.toHaveBeenCalled();
-
-    errorSpy.mockRestore();
-  });
-
   it("should switch mode and update panning in one call", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
@@ -327,7 +284,7 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       gainDb: -6.02,
       pan: 0.26,
-      reason: "gainDb, pan read back as shown, not as sent",
+      detail: "gainDb, pan read back as shown, not as sent",
     });
   });
 
@@ -373,7 +330,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       gainDb: "-inf",
-      reason: CHANGED_GAIN,
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -382,8 +339,8 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam2, -5.98);
 
     expect(updateTrack({ id: "123,456", gainDb: -6 })).toStrictEqual([
-      { id: "123", path: "t0", gainDb: -6.02, reason: CHANGED_GAIN },
-      { id: "456", path: "t1", gainDb: -5.98, reason: CHANGED_GAIN },
+      { id: "123", path: "t0", gainDb: -6.02, detail: CHANGED_GAIN },
+      { id: "456", path: "t1", gainDb: -5.98, detail: CHANGED_GAIN },
     ]);
   });
 
@@ -395,7 +352,7 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       gainDb: -6.02,
-      reason: CHANGED_GAIN,
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -414,7 +371,7 @@ describe("updateTrack - mixer properties", () => {
       leftPan: -0.74,
       rightPan: 0.51,
       panningMode: "split",
-      reason: "leftPan, rightPan read back as shown, not as sent",
+      detail: "leftPan, rightPan read back as shown, not as sent",
     });
   });
 
@@ -460,7 +417,7 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       gainDb: -6.02,
       panningMode: "split",
-      reason: CHANGED_GAIN,
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -500,27 +457,13 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       pan: 0.51,
-      reason: "pan read back as shown, not as sent",
+      detail: "pan read back as shown, not as sent",
     });
 
     expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 0);
     // The split params belong to the mode the call left, so they stay untouched.
     expect(leftSplitParam1.set).not.toHaveBeenCalled();
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
-  });
-
-  it("omits leftPan/rightPan when the track is in stereo panning mode", () => {
-    const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
-
-    keepsParamValue(leftSplitParam1, -1);
-    keepsParamValue(rightSplitParam1, 1);
-
-    // Nothing was written, so nothing may report as landed — the entry says why.
-    expect(updateTrack({ id: "123", leftPan: -1, rightPan: 1 })).toStrictEqual({
-      id: "123",
-      path: "t0",
-      reason: SPLIT_ONLY,
-    });
   });
 
   it("omits a split pan when its parameter does not exist", () => {
@@ -539,39 +482,7 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       rightPan: 0.98,
       panningMode: "split",
-      reason: "rightPan read back as shown, not as sent",
-    });
-  });
-
-  it("omits pan when the track is in split panning mode", () => {
-    splitMode();
-    keepsParamValue(panningParam1, -0.5);
-
-    // Nothing was written, so nothing may report as landed — the entry says why.
-    expect(updateTrack({ id: "123", pan: 0.5 })).toStrictEqual({
-      id: "123",
-      path: "t0",
-      panningMode: "split",
-      reason: STEREO_ONLY,
-    });
-  });
-
-  // Live accepts a set on a disabled parameter and ignores it. Silence now
-  // means the value landed, so the refusal has to ride on the track's entry.
-  it("says on the entry that a disabled volume was not written", () => {
-    volumeParam1 = registerMockObject("volume_param_1", {
-      path: `${livePath.track(0).mixerDevice()} volume`,
-      properties: { is_enabled: 0 },
-    });
-
-    const result = updateTrack({ id: "123", gainDb: -6 });
-
-    expect(volumeParam1.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toStrictEqual([]);
-    expect(result).toStrictEqual({
-      id: "123",
-      path: "t0",
-      reason: expect.stringContaining("gainDb is disabled and was not changed"),
+      detail: "rightPan read back as shown, not as sent",
     });
   });
 });

@@ -172,7 +172,7 @@ describe("useConversations", () => {
     it("keeps the model a save started with when a new chat replaces it", async () => {
       const { props, state } = createProps();
 
-      props.activeMeta.activeModel = "claude-opus-5";
+      props.activeMeta.activeModel = "claude-opus-5-5";
       props.activeMeta.activeProvider = "anthropic";
 
       const { result } = renderHook(() => useConversationsWithUndo(props));
@@ -195,7 +195,7 @@ describe("useConversations", () => {
 
       expect(await loadConversation(id)).toStrictEqual(
         expect.objectContaining({
-          model: "claude-opus-5",
+          model: "claude-opus-5-5",
           provider: "anthropic",
         }),
       );

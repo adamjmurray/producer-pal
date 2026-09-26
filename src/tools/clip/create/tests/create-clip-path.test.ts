@@ -112,11 +112,7 @@ describe("createClip path param", () => {
     expect(result).toHaveLength(2);
   });
 
-  // A short track list used to cycle, so two tracks against four positions
-  // silently made four clips. It pairs now: the positions with no track of
-  // their own get nothing, and the caller is told which.
-  // It never cycled — only two clips were made, for four positions asked for.
-  // Now the uneven call is refused before any of them is created.
+  // Two tracks and four positions can't pair, so nothing is created.
   it("refuses uneven tracks and positions", async () => {
     setupArrangementClipMocks();
     registerArrangementTrack(1);
@@ -128,7 +124,150 @@ describe("createClip path param", () => {
         notes: "C3 1|1",
       }),
     ).rejects.toThrow(
-      "path names 2 entries but arrangementStart names 4 entries.",
+      "path names 2 arrangement tracks but arrangementStart names 4 positions.",
+    );
+  });
+
+  it("refuses uneven tracks and positions beside a clip slot", async () => {
+    setupArrangementClipMocks();
+    registerArrangementTrack(1);
+    registerArrangementTrack(2);
+
+    await expect(
+      createClip({
+        path: "t0/s0,t1,t2",
+        arrangementStart: "1|1,2|1,3|1",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "path names 2 arrangement tracks but arrangementStart names 3 positions.",
+    );
+  });
+
+  // arrangementStart pairs with the path's tracks, not with its clip slots.
+  it("pairs positions with the tracks alone when the path also names a slot", async () => {
+    setupArrangementClipMocks();
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { length: 4 },
+    });
+    registerArrangementTrack(1);
+    registerArrangementTrack(2);
+
+    const result = (await createClip({
+      path: "t0/s0,t1,t2",
+      arrangementStart: "1|1,5|1",
+      notes: "C3 1|1",
+    })) as Array<{ path?: string }>;
+
+    expect(result.map((entry) => entry.path)).toStrictEqual([
+      "t0/s0",
+      "t1[1|1]",
+      "t2[5|1]",
+    ]);
+  });
+
+  // One track across two positions makes three clips with the slot, so a
+  // per-clip list has to name three.
+  it.each([
+    ["name", "A,B"],
+    ["length", "1bar,2bar"],
+  ])(
+    "refuses a %s list that doesn't match the clips a fanned-out track makes",
+    async (param, value) => {
+      setupArrangementClipMocks();
+      const { clipSlot } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        clip: { length: 4 },
+      });
+
+      registerArrangementTrack(1);
+
+      await expect(
+        createClip({
+          path: "t0/s0,t1",
+          arrangementStart: "1|1,5|1",
+          notes: "C3 1|1",
+          [param]: value,
+        }),
+      ).rejects.toThrow(
+        `path with arrangementStart names 3 clips but ${param} names 2 entries.`,
+      );
+      expect(clipSlot.call).not.toHaveBeenCalledWith(
+        "create_clip",
+        expect.anything(),
+      );
+    },
+  );
+
+  // A comma makes a list even when it names one entry, so a trailing comma
+  // can't turn a short list into a literal name for one clip.
+  it.each([
+    [{ path: "t0/s0," }, "path names 1 entry"],
+    [{ path: "t0,", arrangementStart: "1|1" }, "path names 1 entry"],
+    [
+      { path: "t0", arrangementStart: "1|1," },
+      "arrangementStart names 1 entry",
+    ],
+  ])(
+    "refuses a two-name list beside a one-entry list %j",
+    async (destination, counted) => {
+      setupArrangementClipMocks();
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        clip: { length: 4 },
+      });
+
+      await expect(
+        createClip({ ...destination, notes: "C3 1|1", name: "A,B" }),
+      ).rejects.toThrow(`${counted} but name names 2 entries.`);
+    },
+  );
+
+  it.each([
+    [
+      { path: "t0,t1", arrangementStart: "1|1," },
+      "2 arrangement tracks",
+      "1 position",
+    ],
+    [
+      { path: "t0,", arrangementStart: "1|1,5|1" },
+      "1 arrangement track",
+      "2 positions",
+    ],
+  ])(
+    "refuses tracks and positions a trailing comma leaves uneven %j",
+    async (destination, tracks, positions) => {
+      setupArrangementClipMocks();
+      registerArrangementTrack(1);
+
+      await expect(
+        createClip({ ...destination, notes: "C3 1|1" }),
+      ).rejects.toThrow(
+        `path names ${tracks} but arrangementStart names ${positions}. ` +
+          "Drop the trailing comma.",
+      );
+    },
+  );
+
+  it("counts the trackIndex clip beside a legacy slot list", async () => {
+    setupArrangementClipMocks();
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { length: 4 },
+    });
+    registerArrangementTrack(1);
+
+    await expect(
+      createClip({
+        slot: "0/0",
+        trackIndex: 1,
+        arrangementStart: "1|1",
+        notes: "C3 1|1",
+        name: "A,B,C",
+      }),
+    ).rejects.toThrow(
+      "slot with trackIndex names 2 clips but name names 3 entries.",
     );
   });
 

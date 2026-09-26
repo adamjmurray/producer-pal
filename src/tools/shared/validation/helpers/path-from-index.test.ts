@@ -5,6 +5,10 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  newScenePathFromCount,
+  newScenePathFromIndex,
+  newTrackPathFromCount,
+  newTrackPathFromIndex,
   scenePathFromIndex,
   trackCategoryPath,
   trackPathFromIndex,
@@ -32,6 +36,47 @@ describe("trackPathFromIndex", () => {
   );
 });
 
+describe("newTrackPathFromIndex", () => {
+  it.each([
+    [{ trackIndex: 2 }, "t2"],
+    [{ trackIndex: -1, type: "midi" }, "t+"],
+    [{ trackIndex: 2, type: "return" }, "rt+"],
+    // trackType is another tool's param; create-track ignores it.
+    [{ trackIndex: 2, trackType: "return" }, "t2"],
+    // count repeats the one place, so the path names it once per track.
+    [{ trackIndex: 2, count: 3 }, "t2,t2,t2"],
+    // Too many to list: count's own warning says to repeat it.
+    [{ trackIndex: 2, count: 6 }, "t2"],
+  ])("spells %o as %s", (args, path) => {
+    expect(newTrackPathFromIndex(args)).toBe(path);
+  });
+});
+
+describe("newTrackPathFromCount", () => {
+  it.each([
+    [{ count: 2 }, "t+,t+"],
+    [{ count: 2, type: "return" }, "rt+,rt+"],
+    [{ trackIndex: 2, count: 3 }, "t2,t2,t2"],
+    [{ path: "rt+", count: 2 }, "rt+,rt+"],
+    [{ path: "t2", count: 3, type: "audio" }, "t2,t2,t2"],
+    [{ count: 5 }, "t+,t+,t+,t+,t+"],
+    // A path the tool reads as unsent leaves the index to name the place.
+    [{ path: "", trackIndex: 2, count: 3 }, "t2,t2,t2"],
+    [{ path: "null", trackIndex: 2, count: 3 }, "t2,t2,t2"],
+    [{ path: " t2 ", count: 2 }, "t2,t2"],
+  ])("spells %o as %s", (args, path) => {
+    expect(newTrackPathFromCount(args)).toBe(path);
+  });
+
+  it.each([
+    [{ count: 6 }],
+    // count with a path list is refused, so no list reproduces it.
+    [{ path: "t+,t+", count: 2 }],
+  ])("gives no example for %o", (args) => {
+    expect(newTrackPathFromCount(args)).toBeUndefined();
+  });
+});
+
 describe("trackCategoryPath", () => {
   it.each([
     ["regular", 2, "t2"],
@@ -50,5 +95,45 @@ describe("scenePathFromIndex", () => {
 
   it("gives no path without a sceneIndex", () => {
     expect(scenePathFromIndex({})).toBeUndefined();
+  });
+});
+
+describe("newScenePathFromIndex", () => {
+  it.each([
+    [{ sceneIndex: 2 }, "s2"],
+    // count repeats the one place, so the path names it once per scene.
+    [{ sceneIndex: 2, count: 3 }, "s2,s2,s2"],
+    // Too many to list: count's own warning says to repeat it.
+    [{ sceneIndex: 2, count: 6 }, "s2"],
+    // A path the tool reads as unsent leaves the index to name the place.
+    [{ path: " null ", sceneIndex: 4 }, "s4"],
+    [{ path: "", sceneIndex: 4 }, "s4"],
+    // capture makes one scene and ignores count.
+    [{ sceneIndex: 2, count: 3, capture: true }, "s2"],
+  ])("spells %o as %s", (args, path) => {
+    expect(newScenePathFromIndex(args)).toBe(path);
+  });
+});
+
+describe("newScenePathFromCount", () => {
+  it.each([
+    [{ count: 3 }, "s+,s+,s+"],
+    [{ count: 5 }, "s+,s+,s+,s+,s+"],
+    [{ sceneIndex: 2, count: 3 }, "s2,s2,s2"],
+    [{ path: "s1", count: 2 }, "s1,s1"],
+    [{ path: " s1 ", count: 2 }, "s1,s1"],
+    [{ path: "undefined", sceneIndex: 1, count: 2 }, "s1,s1"],
+  ])("spells %o as %s", (args, path) => {
+    expect(newScenePathFromCount(args)).toBe(path);
+  });
+
+  it.each([
+    [{ count: 7 }],
+    // count with a path list is refused, so no list reproduces it.
+    [{ path: "s+,s+", count: 2 }],
+    // capture ignores count, so no path stands in for it.
+    [{ count: 2, capture: true }],
+  ])("gives no example for %o", (args) => {
+    expect(newScenePathFromCount(args)).toBeUndefined();
   });
 });

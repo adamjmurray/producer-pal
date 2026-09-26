@@ -15,12 +15,14 @@ import {
 import {
   expectClipCreated,
   expectNotesAdded,
+  mockScratchSwap,
   note,
   registerEmptyClipSlot,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 describe("createClip - basic validation and time signatures", () => {
@@ -278,7 +280,7 @@ describe("createClip - basic validation and time signatures", () => {
 
       expect(result).toStrictEqual(
         expect.objectContaining({
-          reason: "firstStart ignored: set looping: true to use it",
+          detail: "firstStart ignored: set looping: true to use it",
         }),
       );
       expect(capturedWarnings().join(" ")).not.toContain("firstStart");
@@ -297,10 +299,10 @@ describe("createClip - basic validation and time signatures", () => {
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
     expect(result).toHaveLength(2);
-    expect(result.map((clip) => clip.reason)).toStrictEqual([
+    expect(result.map((clip) => clip.detail)).toStrictEqual([
       "firstStart ignored: set looping: true to use it",
       "firstStart ignored: set looping: true to use it",
     ]);
@@ -325,9 +327,9 @@ describe("createClip - basic validation and time signatures", () => {
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
-    expect(result.map((entry) => entry.reason)).toStrictEqual([
+    expect(result.map((entry) => entry.detail)).toStrictEqual([
       "track t1 (id 7) is audio; a MIDI clip needs a MIDI track",
       "firstStart ignored: set looping: true to use it",
     ]);
@@ -336,9 +338,17 @@ describe("createClip - basic validation and time signatures", () => {
   // Both are the clip's own news, so neither note replaces the other.
   it("keeps the note about the clip it replaced beside the firstStart note", async () => {
     setupSessionMocks({
-      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      liveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children("scene0"),
+      },
       clip: { signature_numerator: 4, signature_denominator: 4 },
       clipSlot: { has_clip: 1 },
+    });
+    mockScratchSwap(0, 1, 0, {
+      id: "new_clip",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     const result = (await createClip({
@@ -346,9 +356,9 @@ describe("createClip - basic validation and time signatures", () => {
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "overwrote the existing clip at t0/s0; " +
         "firstStart ignored: set looping: true to use it",
     );

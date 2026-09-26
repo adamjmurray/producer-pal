@@ -27,7 +27,7 @@ interface DeviceEntry {
   type?: string;
   name?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 async function readDevices(path: string): Promise<unknown> {
@@ -99,17 +99,17 @@ describe("device paths by type", () => {
       {
         path: "t2/d0/c0/inst",
         ok: false,
-        reason: 'nothing at path "t2/d0/c0/inst": t2/d0/c0 has no instrument',
+        detail: 'nothing at path "t2/d0/c0/inst": t2/d0/c0 has no instrument',
       },
       {
         path: "t2/afx2",
         ok: false,
-        reason: 'nothing at path "t2/afx2": t2 has 2 audio effects (afx0-afx1)',
+        detail: 'nothing at path "t2/afx2": t2 has 2 audio effects (afx0-afx1)',
       },
       {
         path: "rt0/inst",
         ok: false,
-        reason:
+        detail:
           'nothing at path "rt0/inst": return and main tracks hold only audio effects',
       },
     ]);
@@ -142,8 +142,7 @@ describe("device paths by type", () => {
 
     expect(data).toStrictEqual({
       path: "t2/afx2",
-      type: "device",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(warnings).toStrictEqual([]);
   });

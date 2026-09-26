@@ -5,7 +5,8 @@
 
 // `id` and `path` each name one source or a list of them. A list runs the
 // single-source logic once per source, in order, and concatenates — so the only
-// thing to settle here is how the destinations are shared out.
+// thing to settle here is how the destinations are shared out. One source takes
+// any number; several take one each, in order (ADR-0031).
 
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
@@ -25,6 +26,10 @@ import {
   pathEntries,
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  destinationLane,
+  pathCarriesPosition,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   resolveClipDestinations,
   type ClipDestinations,
@@ -50,6 +55,9 @@ interface SourcePlanArgs {
   toPath: string | undefined;
   toSlot: string | undefined;
   arrangementStart: string | undefined;
+  /** The param the caller wrote the positions in, for an error message: a
+   * scene's toPath folds onto arrangementStart. Defaults to arrangementStart. */
+  startParam?: string;
   /**
    * Whether the copies land on the arrangement, where a destination is a
    * position rather than a slot. Both spellings — a positioned `toPath`, and a
@@ -70,6 +78,7 @@ interface SourcePlanArgs {
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination clip slot(s)
  * @param args.arrangementStart - Position(s), already resolved to bar|beat
+ * @param args.startParam - The param the caller wrote the positions in
  * @param args.onArrangement - Whether the copies land on the arrangement
  * @param args.idPerPath - Path lookup to use instead of the type's own
  * @returns One share per source, ids first, then the paths in order
@@ -81,6 +90,7 @@ export function planSources({
   toPath,
   toSlot,
   arrangementStart,
+  startParam = "arrangementStart",
   onArrangement,
   idPerPath,
 }: SourcePlanArgs): SourceShare[] {
@@ -100,16 +110,31 @@ export function planSources({
     "/",
   );
 
-  // toSlot only ever named a clip slot, so a call using it lands in the session
-  // however the position params read — and shares its destinations out below.
-  if (onArrangement && !pathNamesSomething(toSlot)) {
-    return arrangementShares(sources, toPath, arrangementStart, named);
+  // toSlot only ever named a clip slot, so a clip call using it lands in the
+  // session however the position params read — and shares its destinations out
+  // below. Other types ignore it.
+  if (onArrangement && (type !== "clip" || !pathNamesSomething(toSlot))) {
+    return arrangementShares(
+      sources,
+      toPath,
+      { value: arrangementStart, param: startParam, isScene: type === "scene" },
+      named,
+    );
   }
 
   // toPath and toSlot can't both name a destination (resolveClipDestinations
   // refuses that), so at most one of these does any splitting.
-  const paths = shareDestinations(toPath, sources, "toPath", named);
-  const slots = shareDestinations(toSlot, sources, "toSlot", named);
+  const count = { param: named, count: sources.length };
+  const paths = destinationShares(
+    pathEntries(toPath, "toPath"),
+    "toPath",
+    count,
+  );
+  const slots = destinationShares(
+    pathEntries(toSlot, "toSlot"),
+    "toSlot",
+    count,
+  );
 
   return sources.map((source, i) => ({
     ...source,
@@ -148,8 +173,23 @@ export function resolveSourceClipDestinations(
     return sources.map(() => shared);
   }
 
+  // Each share resolves as part of the whole list, as one source's would: a
+  // slot beside an arrangement entry is refused, and a track beside a
+  // positioned entry needs its own position.
+  const beside = {
+    arrangement:
+      hasArrangementParams &&
+      sources.some((source) => namesArrangementEntry(source.toPath)),
+    position: sources.some((source) => pathCarriesPosition(source.toPath)),
+  };
+
   return sources.map((source) =>
-    resolveClipDestinations(source.toPath, source.toSlot, hasArrangementParams),
+    resolveClipDestinations(
+      source.toPath,
+      source.toSlot,
+      hasArrangementParams,
+      beside,
+    ),
   );
 }
 
@@ -162,54 +202,108 @@ interface SourceTarget {
 }
 
 /**
- * Shares an arrangement destination out across the sources: one entry covers
- * them all, a list gives one per source in order, and nothing cycles
- * (ADR-0031). Both params that can carry it pair the same way, so
- * `toPath: "t0[1|1],t0[17|1]"` matches `toPath: "t0"` with `"1|1,17|1"`.
+ * Shares an arrangement destination out across the sources. A clip's
+ * arrangementStart is a position only, so one covers every source; a scene
+ * copy spans every track, so its positions are destinations and pair one per
+ * scene — and so do a clip's when one track is the whole toPath.
  * @param sources - The sources, in call order
  * @param toPath - Destination path(s)
- * @param arrangementStart - Position(s), already resolved to bar|beat
+ * @param start - Position(s), already resolved to bar|beat, the param the
+ * caller wrote them in, and whether the sources are scenes
+ * @param start.value - The positions
+ * @param start.param - The param's name, for an error message
+ * @param start.isScene - Whether the sources are scenes
  * @param named - The params that named the sources, for an error message
  * @returns One share per source
  */
 function arrangementShares(
   sources: SourceTarget[],
   toPath: string | undefined,
-  arrangementStart: string | undefined,
+  start: { value: string | undefined; param: string; isScene: boolean },
   named: string,
 ): SourceShare[] {
   const count = { param: named, count: sources.length };
-  const paths = perSource(pathEntries(toPath, "toPath"), "toPath", count);
-  const starts = perSource(
-    targetEntries(arrangementStart, "arrangementStart"),
-    "arrangementStart",
-    count,
-  );
+  const paths = pathEntries(toPath, "toPath");
+  const startEntries = targetEntries(start.value, start.param);
+  const lone = loneToPath(paths);
+  // A bare position lands each clip on its own track; a lone track or take
+  // lane lands them apart when the positions pair one per source.
+  const covers =
+    lone.bare || (lone.trackOrLane && startEntries.length > 1)
+      ? Array.from({ length: sources.length }, () => paths[0])
+      : null;
+  const destinations =
+    covers ??
+    destinationShares(
+      paths,
+      "toPath",
+      count,
+      lone.trackOrLane
+        ? 'Drop toPath to keep each clip\'s own track, or name one track per clip ("t2,t3").'
+        : "A bare [5|1] keeps each clip on its own track.",
+    );
+  const starts =
+    start.isScene || lone.trackOrLane
+      ? destinationShares(startEntries, start.param, count)
+      : positionShares(startEntries, start.param, count);
 
   return sources.map((source, i) => ({
     ...source,
-    toPath: paths[i],
+    toPath: destinations[i],
     toSlot: undefined,
     arrangementStart: starts[i],
   }));
 }
 
 /**
- * One list param's share per source: one entry covers them all, a list names
- * one each, and any other count is refused. An arrangement position holds any
- * number of clips, so a lone entry broadcasts here where a slot's can't.
+ * Whether a toPath names a spot on the arrangement: any entry that isn't a clip
+ * slot, a bare `[5|1]` included.
+ * @param toPath - One source's destination path(s)
+ * @returns True when some entry isn't a clip slot
+ */
+function namesArrangementEntry(toPath: string | undefined): boolean {
+  return pathEntries(toPath, "toPath").some(
+    (entry) => destinationLane(entry, "toPath")?.kind !== "slot",
+  );
+}
+
+/**
+ * What a toPath of one entry names: a bare `[5|1]` (or an entry that doesn't
+ * parse, which is reported where it's resolved), or a track or take lane with
+ * no position. A slot is neither — arrangementStart doesn't move it.
+ * @param paths - toPath's entries, in call order
+ * @returns Whether the lone entry is bare, or a track or lane alone
+ */
+function loneToPath(paths: string[]): { bare: boolean; trackOrLane: boolean } {
+  const only = paths.length === 1 ? (paths[0] as string) : null;
+
+  if (only == null) {
+    return { bare: false, trackOrLane: false };
+  }
+
+  const lane = destinationLane(only, "toPath");
+
+  return {
+    bare: lane == null,
+    trackOrLane:
+      lane != null && lane.kind !== "slot" && !pathCarriesPosition(only),
+  };
+}
+
+/**
+ * A clip position list's share per source: one entry covers them all, a list
+ * names one each, and any other count is refused.
  * @param entries - The param's entries, in call order
  * @param param - The param's name, for an error message
  * @param sources - What named the sources, and how many there are
  * @returns One entry per source
  */
-function perSource(
+function positionShares(
   entries: string[],
   param: string,
   sources: { param: string; count: number },
 ): (string | undefined)[] {
-  // An unsent param reaches every source: a clip with no toPath lands on its
-  // own track, and a position can come from toPath instead of arrangementStart.
+  // An unsent param reaches every source: a position can come from toPath.
   if (entries.length === 0) {
     return Array.from({ length: sources.count });
   }
@@ -219,6 +313,32 @@ function perSource(
   return entries.length === 1
     ? Array.from({ length: sources.count }, () => entries[0])
     : entries;
+}
+
+/**
+ * A destination list's share per source: one each, in order. Refused before
+ * the first copy otherwise, which the caller would have to undo by hand
+ * (ADR-0035).
+ * @param entries - The destination param's entries, in call order
+ * @param param - The param's name, for an error message
+ * @param sources - What named the sources, and how many there are
+ * @param hint - A sentence for the error, naming another way out
+ * @returns One entry per source, all undefined when the param wasn't sent
+ */
+function destinationShares(
+  entries: string[],
+  param: string,
+  sources: { param: string; count: number },
+  hint?: string,
+): (string | undefined)[] {
+  // Nothing to share out. The branch decides whether it can do without one.
+  if (entries.length === 0) {
+    return Array.from({ length: sources.count });
+  }
+
+  requireDestinationPerSource({ param, count: entries.length }, sources, hint);
+
+  return entries;
 }
 
 /**
@@ -259,43 +379,4 @@ function sourceTargets(
     id: entry as string,
     named: named[i] as NamedTarget,
   }));
-}
-
-/**
- * Shares a slot-shaped destination list out across the sources: each source
- * takes the same number of destinations, in the order they were written.
- *
- * A destination that holds one object can't be broadcast — the next source
- * would overwrite the last — so a list that doesn't divide evenly is refused
- * before the first copy, which the caller would have to undo by hand
- * (ADR-0035).
- * @param value - The raw destination param, comma-separated for multiple
- * @param sources - The sources, in call order
- * @param label - Param name for messages
- * @param named - The params that named the sources, for an error message
- * @returns One share per source
- */
-function shareDestinations(
-  value: string | undefined,
-  sources: SourceTarget[],
-  label: string,
-  named: string,
-): (string | undefined)[] {
-  const entries = pathEntries(value, label);
-
-  // Nothing to share out. The branch decides whether it can do without one.
-  if (entries.length === 0) {
-    return Array.from({ length: sources.length });
-  }
-
-  requireDestinationPerSource(
-    { param: label, count: entries.length },
-    { param: named, count: sources.length },
-  );
-
-  const each = entries.length / sources.length;
-
-  return Array.from({ length: sources.length }, (_, i) =>
-    entries.slice(i * each, (i + 1) * each).join(","),
-  );
 }

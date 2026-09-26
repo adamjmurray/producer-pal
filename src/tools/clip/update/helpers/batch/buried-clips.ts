@@ -7,7 +7,7 @@
 // on top of: the move ordering avoids that where it can, but a take-lane
 // destination never enters its graph and two clips sent to one spot must stack.
 // Read the path, never `exists()` — a held object keeps reporting its id after
-// its target dies, and only the path clears (dev/LiveAPI-Object-Reuse.md).
+// its target dies, and only the path clears (dev/live-api/object-reuse.md).
 
 import {
   buildClipResultObject,
@@ -19,17 +19,21 @@ import {
   objectPathForApi,
   stillAtPath,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
-import { remainderFinder, type TrimmedLanding } from "./trimmed-landings.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  claimRemainders,
+  type LandedSpan,
+  type Remainder,
+} from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 
 /** Where each clip sat before the call moved any of them, by id. */
 export type ClipAddresses = ReadonlyMap<string, string | undefined>;
 
 /** What became of a clip another clip in the call was moved onto. */
-const BURIED = "another clip in this call was moved onto it";
+export const BURIED = "another clip in this call was moved onto it";
 
-/** What became of a clip a shorter landing only covered the front of. */
-const TRIMMED = "trimmed: another clip in this call landed on its start";
+/** What became of a clip a later landing covered only part of. */
+const TRIMMED = "trimmed: another clip in this call landed on part of it";
 
 /** What the batch has to check its entries against. */
 export interface BuriedClipsCheck {
@@ -39,8 +43,10 @@ export interface BuriedClipsCheck {
   clearsSpans: boolean;
   /** Clips the call clears once their own overwrite has landed. */
   heldBack: ReadonlySet<string> | undefined;
-  /** Where a landing a later one trimmed left its remainder, by entry id. */
-  trims: ReadonlyMap<string, TrimmedLanding>;
+  /** Where and when each copy the call landed landed, by entry id. */
+  landed: ReadonlyMap<string, LandedSpan>;
+  /** Every span the call wrote, whoever's clip it holds. */
+  written: readonly LandedSpan[];
 }
 
 /**
@@ -51,13 +57,15 @@ export interface BuriedClipsCheck {
  * @param check.results - The call's clip entries, marked in place
  * @param check.clearsSpans - Whether the call writes anywhere a clip could sit
  * @param check.heldBack - Clips the call clears once their overwrite has landed
- * @param check.trims - Where a trimmed landing left its remainder, by entry id
+ * @param check.landed - Where and when each landed copy landed, by entry id
+ * @param check.written - Every span the call wrote
  */
 export function markBuriedClips({
   results,
   clearsSpans,
   heldBack,
-  trims,
+  landed,
+  written,
 }: BuriedClipsCheck): void {
   // The read-back costs a look-up per entry, so most calls skip it: one that
   // clears nothing buries nothing, and a lone entry has no sibling.
@@ -65,65 +73,48 @@ export function markBuriedClips({
     return;
   }
 
-  const findRemainder = remainderFinder();
+  // Skip the entries that already say what became of their clip: one the
+  // batch found gone before its turn, and one the flush settles after this.
+  const gone = results.filter(
+    ({ id, path, deleted }) =>
+      path != null &&
+      deleted == null &&
+      !heldBack?.has(id) &&
+      !stillAtPath(id, path),
+  );
+  const goneSet = new Set(gone);
+  // Gone from where it was doesn't mean gone: a later landing that takes only
+  // part of it re-creates the rest under a new id.
+  const remainders = claimRemainders({
+    entries: gone,
+    spanOf: (entry) => landed.get(entry.id),
+    written,
+    taken: results.filter((entry) => !goneSet.has(entry)).map(({ id }) => id),
+  });
 
-  for (const entry of results) {
-    const { path } = entry;
+  for (const entry of gone) {
+    const remainder = remainders.get(entry);
 
-    // Skip the entries that already say what became of their clip: one the
-    // batch found gone before its turn, and one the flush settles after this.
-    if (
-      path == null ||
-      entry.deleted != null ||
-      heldBack?.has(entry.id) ||
-      stillAtPath(entry.id, path)
-    ) {
-      continue;
-    }
-
-    // Gone from where it was doesn't mean gone: a shorter landing takes only
-    // the front off, which re-creates the rest under a new id.
-    if (reportTrimmedSurvivor(entry, trims.get(entry.id), findRemainder)) {
+    if (remainder != null) {
+      reportTrimmedSurvivor(entry, remainder);
       continue;
     }
 
     entry.deleted = true;
-    appendReason(entry, BURIED);
+    appendDetail(entry, BURIED);
   }
 }
 
 /**
- * Point an entry at what is left of its clip, when a later landing took only
- * the front off it. The trim re-creates the clip, so the id the entry reported
- * is gone either way — finding the remainder where the trim would have left it
- * is what tells a survivor from a buried clip.
+ * Point an entry at what is left of its clip.
  * @param entry - The entry whose clip is no longer where it was
- * @param trim - What a trim would have left, or undefined for no trim
- * @param findRemainder - Looks the remainder up on its lane
- * @returns True when the remainder is there and the entry now names it
+ * @param remainder - What the trim left, and where
  */
-function reportTrimmedSurvivor(
-  entry: ClipResult,
-  trim: TrimmedLanding | undefined,
-  findRemainder: (trim: TrimmedLanding) => LiveAPI | null,
-): boolean {
-  if (trim == null) {
-    return false;
-  }
-
-  const remainder = findRemainder(trim);
-  const path = remainder == null ? null : objectPathForApi(remainder);
-
-  if (remainder == null || path == null) {
-    return false;
-  }
-
-  entry.id = remainder.id;
-  entry.path = path;
-  entry.arrangementLength = arrangementLengthOf(remainder);
-  appendReason(entry, TRIMMED);
-
-  return true;
+function reportTrimmedSurvivor(entry: ClipResult, remainder: Remainder): void {
+  entry.id = remainder.clip.id;
+  entry.path = remainder.path;
+  entry.arrangementLength = arrangementLengthOf(remainder.clip);
+  appendDetail(entry, TRIMMED);
 }
 
 /**
@@ -183,7 +174,7 @@ export function buriedClipEntry(
   const entry = buildClipResultObject(clip.id, null, addresses.get(clip.id));
 
   entry.deleted = true;
-  appendReason(entry, `not updated: ${BURIED}`);
+  appendDetail(entry, `not updated: ${BURIED}`);
 
   return entry;
 }

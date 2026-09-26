@@ -146,7 +146,7 @@ describe("updateTrack take lane targets", () => {
       path: "t0/l0",
       name: "Take A",
       created: "l0",
-      reason: "a take lane takes only name; ignored color, mute",
+      detail: "a take lane takes only name; ignored color, mute",
     });
   });
 
@@ -161,14 +161,14 @@ describe("updateTrack take lane targets", () => {
         path: "t0/l0",
         name: "Lane",
         ok: false,
-        reason: "a take lane takes only name; ignored color",
+        detail: "a take lane takes only name; ignored color",
       },
       {
         id: lane(0)!.id,
         path: "t0/l0",
         name: "Lane",
         ok: false,
-        reason: "a take lane takes only name; ignored color",
+        detail: "a take lane takes only name; ignored color",
       },
     ]);
   });
@@ -219,7 +219,7 @@ describe("updateTrack take lane targets", () => {
       path: "t0/l0",
       name: "Lane",
       ok: false,
-      reason: "a take lane takes only name; ignored color",
+      detail: "a take lane takes only name; ignored color",
     });
   });
 
@@ -238,14 +238,45 @@ describe("updateTrack take lane targets", () => {
     });
   });
 
+  // Live lets the user make more lanes than the cap; renaming one creates none.
+  it("renames a lane past the cap on a track that already has it", () => {
+    track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+
+    const result = updateTrack({
+      path: `t0/l${MAX_TAKE_LANES + 1},t0/l2`,
+      name: "Keep,Also",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        path: `t0/l${MAX_TAKE_LANES + 1}`,
+        name: "Keep",
+      }),
+      expect.objectContaining({ path: "t0/l2", name: "Also" }),
+    ]);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
   it("refuses the whole call when the lanes would pass the cap", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
 
     expect(() => updateTrack({ path: "t0/l+,t0/l+" })).toThrow(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through ` +
-        `"l${MAX_TAKE_LANES - 1}"; "t0/l+" would add it. Nothing was created`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates ` +
+        `take lanes only up to "l${MAX_TAKE_LANES - 1}"; "t0/l+" would add it. ` +
+        `Nothing was created`,
     );
     // Nothing was created: a lane an earlier entry made could not be taken back.
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // Lanes past the cap can exist, so the message mustn't say otherwise.
+  it("refuses adding a lane to a track already past the cap", () => {
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 2 });
+
+    expect(() => updateTrack({ path: "t0/l+" })).toThrow(
+      `take lane "l${MAX_TAKE_LANES + 2}" is out of range: Producer Pal ` +
+        `creates take lanes only up to "l${MAX_TAKE_LANES - 1}"; "t0/l+" would add it.`,
+    );
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
@@ -285,24 +316,24 @@ describe("updateTrack take lane targets", () => {
       {
         path: "rt0/l0",
         ok: false,
-        reason:
+        detail:
           'invalid path "rt0/l0" - a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
       },
       {
         path: "mt/l0",
         ok: false,
-        reason:
+        detail:
           'invalid path "mt/l0" - a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
       },
       {
         path: "t1/l0",
         ok: false,
-        reason: 'only regular tracks have take lanes; "t1" is a group track',
+        detail: 'only regular tracks have take lanes; "t1" is a group track',
       },
       {
         path: "t9/l0",
         ok: false,
-        reason: 'no track at path "t9/l0"; ppal-create-track adds tracks',
+        detail: 'no track at path "t9/l0"; ppal-create-track adds tracks',
       },
       { id: lane(0)!.id, path: "t0/l0", name: "E", created: "l0" },
     ]);

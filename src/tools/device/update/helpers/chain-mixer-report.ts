@@ -6,18 +6,18 @@
 import {
   type ChainMixerApplied,
   type ChainMixerParams,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
   type PublishedValue,
   differsAtPublishedResolution,
-  readBackReason,
+  readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { roundGainDb, roundPan } from "#src/tools/shared/helpers/rounding.ts";
 
 /** What a chain mixer write has to say, once the values that landed drop out. */
 export interface ChainMixerReport extends ChainMixerApplied {
   /** Why a value isn't the one asked for */
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -48,16 +48,16 @@ export function chainMixerReport(
   }
 
   // A send marks its own level as one Live didn't keep.
-  const sends = (applied.sends ?? []).filter((send) => send.reason != null);
+  const sends = (applied.sends ?? []).filter((send) => send.detail != null);
 
   if (sends.length > 0) {
     report.sends = sends;
   }
 
-  const reason = readBackReason(changed);
+  const detail = readBackDetail(changed);
 
-  if (reason != null) {
-    report.reason = reason;
+  if (detail != null) {
+    report.detail = detail;
   }
 
   return report;

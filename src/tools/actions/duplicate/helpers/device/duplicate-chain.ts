@@ -11,8 +11,9 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
-import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -27,7 +28,7 @@ import {
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   newTargetNotes,
   noteTarget,
@@ -47,7 +48,7 @@ interface ChainCopy {
   id: string;
   path?: string;
   /** What the copy is missing, when the chain exists but isn't a full copy. */
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -102,6 +103,14 @@ function duplicateChain(
     );
   }
 
+  // Its devices move into the copy, so this would leave a second Producer Pal
+  // device fighting the first for the same connection.
+  if (isProducerPalDevice(chain)) {
+    throw new Error(
+      `cannot duplicate ${targetLabel(chain)}: it holds the Producer Pal device`,
+    );
+  }
+
   const sourceRack = LiveAPI.from(chainRackPath(chain));
   const destinationRack = resolveDestinationRack(toPath, sourceRack);
   const created = insertChain(destinationRack);
@@ -140,7 +149,7 @@ function duplicateChain(
     noteTarget(notes, errorMessage(error));
   }
 
-  const reason = joinReasons(notes.said);
+  const detail = joinDetails(notes.said);
 
   return {
     id: created.id,
@@ -150,7 +159,7 @@ function duplicateChain(
         ? undefined
         : { container: () => destinationRack, path: canonicalPath(toPath) },
     ),
-    ...(reason == null ? {} : { reason }),
+    ...(detail == null ? {} : { detail }),
   };
 }
 
@@ -330,10 +339,10 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
     );
   }
 
-  withTempTrackCopy(chain.path, "chain", ({ tempPath, sourceTrackIndex }) => {
+  withTempTrackCopy(chain.path, "chain", ({ tempPath, ...landing }) => {
     const adjusted = adjustTrackIndicesForTempTrack(
       destinationChainPath,
-      sourceTrackIndex,
+      landing,
     );
 
     for (let index = 0; index < deviceCount; index++) {

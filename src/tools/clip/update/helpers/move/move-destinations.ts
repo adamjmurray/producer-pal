@@ -24,7 +24,8 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  namedEarlierReason,
+  destinationNamedLaterReason,
+  namedLaterReason,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
@@ -34,7 +35,6 @@ import {
 import {
   objectPathForApi,
   targetLabel,
-  targetLabelForId,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
 import { refuseTarget, type ClipTargets } from "../entries/clip-targets.ts";
@@ -135,7 +135,7 @@ export function resolveMoveDestinations(
     shortfall: "have nowhere to go",
   };
   // A bare "[5|1]" keeps each clip's lane, so one covers every clip. A lane or
-  // slot holds one clip, so those pair 1:1 (see dev/Object-Paths.md).
+  // slot holds one clip, so those pair 1:1 (see dev/tools/object-paths/README.md).
   const paired = namesNoLane(entries)
     ? pairValues(entries, clipCount, labels)
     : pairExact(entries, clipCount, labels);
@@ -175,29 +175,35 @@ export function resolveRequestedClips(
   const clips: LiveAPI[] = [];
   const destinationById = new Map<string, ClipPath>();
   const requestedIndexById = new Map<string, number>();
-  const claimedBy = new Map<string, string>();
+  const claims: Array<[string, ClipPath]> = [];
 
-  for (const [index, id] of targets.ids.entries()) {
+  const named = targets.ids.map((id, index) =>
     // A path that named no clip already holds its slot with the reason.
-    if (id == null) {
-      continue;
+    id == null ? null : namedClip(id, targets, index),
+  );
+  const lastIndexById = new Map<string, number>();
+
+  for (const [index, clip] of named.entries()) {
+    if (clip != null) {
+      lastIndexById.set(clip.id, index);
     }
+  }
 
-    const clip = namedClip(id, targets, index);
-
+  for (const [index, clip] of named.entries()) {
     if (clip == null) {
       continue;
     }
 
     // An id and a path can name the same clip, as can a repeated id. Updating
-    // it twice compounds every operation — duplicateLoop would double it again.
-    const earlier = requestedIndexById.get(clip.id);
+    // it twice compounds every operation — duplicateLoop would double it again
+    // — so only the last target to name it runs.
+    const last = lastIndexById.get(clip.id) as number;
 
-    if (earlier != null) {
+    if (last !== index) {
       targets.unused.set(index, {
         id: clip.id,
         path: objectPathForApi(clip),
-        reason: namedEarlierReason(targets.named[earlier] as NamedTarget),
+        detail: namedLaterReason(targets.named[last] as NamedTarget),
       });
 
       continue;
@@ -207,12 +213,14 @@ export function resolveRequestedClips(
     requestedIndexById.set(clip.id, index);
     noteRefusedDestination(reasons, clip.id, moves.refusals[index]);
 
-    claimDestination(clip.id, moves.destinations[index], {
-      destinationById,
-      claimedBy,
-      reasons,
-    });
+    const destination = moves.destinations[index];
+
+    if (destination != null) {
+      claims.push([clip.id, destination]);
+    }
   }
+
+  assignDestinations(claims, destinationById, reasons);
 
   dropDestinationsHoldingBatchClips(
     destinationById,
@@ -304,51 +312,54 @@ function namesNoLane(entries: Array<DestinationEntry | null>): boolean {
 }
 
 /**
- * Gives a clip the destination named at its position, unless an earlier clip in
- * the batch is already moving there. Two clips sent to one slot means the second
- * overwrites the first, and the response then claims both are in it.
+ * Gives each clip the destination named at its position. When several clips
+ * name one slot, the last wins and the others stay put: moving both would have
+ * the later one overwrite the earlier, and the response claim both are there.
  *
  * Only slots are exclusive. An arrangement lane holds as many clips as fit on
  * it, so several clips can share one — and when they do land on top of each
- * other, the "moved to the same position" warning already says so.
- * @param clipId - The clip being given a destination
- * @param destination - Where the call named it to go, if anywhere
- * @param batch - Destinations by clip id, the clip claiming each slot, and what the clips have to say
+ * other, the entry of the clip underneath says so.
+ * @param claims - Each clip and the destination named for it, in call order
+ * @param destinationById - Destinations by clip id, added to
+ * @param reasons - What each clip has to say beyond its result, added to
  */
-function claimDestination(
-  clipId: string,
-  destination: ClipPath | null | undefined,
-  batch: {
-    destinationById: Map<string, ClipPath>;
-    claimedBy: Map<string, string>;
-    reasons: ClipReasons;
-  },
+function assignDestinations(
+  claims: Array<[string, ClipPath]>,
+  destinationById: Map<string, ClipPath>,
+  reasons: ClipReasons,
 ): void {
-  if (destination == null) {
-    return;
+  const lastClaimant = new Map<string, string>();
+
+  for (const [clipId, destination] of claims) {
+    if (destination.kind === "slot") {
+      lastClaimant.set(destinationSlot(destination), clipId);
+    }
   }
 
-  if (destination.kind !== "slot") {
-    batch.destinationById.set(clipId, destination);
+  for (const [clipId, destination] of claims) {
+    const slot =
+      destination.kind === "slot" ? destinationSlot(destination) : null;
 
-    return;
+    if (slot != null && lastClaimant.get(slot) !== clipId) {
+      refuseClipWork(
+        reasons,
+        clipId,
+        `not moved: ${destinationNamedLaterReason(slot)}`,
+      );
+    } else {
+      destinationById.set(clipId, destination);
+    }
   }
+}
 
-  const slot = slotPath(destination.trackIndex, destination.sceneIndex);
-  const claimant = batch.claimedBy.get(slot);
-
-  if (claimant != null) {
-    refuseClipWork(
-      batch.reasons,
-      clipId,
-      `not moved: clip ${targetLabelForId(claimant)} is already moving to ${slot}; name one slot per clip`,
-    );
-
-    return;
-  }
-
-  batch.claimedBy.set(slot, clipId);
-  batch.destinationById.set(clipId, destination);
+/**
+ * @param destination - A slot destination
+ * @returns The slot, as a path
+ */
+function destinationSlot(
+  destination: Extract<ClipPath, { kind: "slot" }>,
+): string {
+  return slotPath(destination.trackIndex, destination.sceneIndex);
 }
 
 /**

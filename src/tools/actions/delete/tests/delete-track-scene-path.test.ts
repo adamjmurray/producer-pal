@@ -81,7 +81,7 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "s9", type: "scene" })).toStrictEqual({
       path: "s9",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -100,7 +100,7 @@ describe("deleteObject by track and scene path", () => {
       {
         path: "t0/s1",
         ok: false,
-        reason:
+        detail:
           'invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
       },
       { id: "track_1", deletedPath: "t0" },
@@ -120,4 +120,76 @@ describe("deleteObject by track and scene path", () => {
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);
   });
+
+  it("says a take lane can't be deleted, by path or by id", () => {
+    registerMockObject("lane_1", {
+      path: livePath.track(0).takeLane(1),
+      type: "TakeLane",
+    });
+
+    expect(
+      deleteObject({ path: "t0/l1", id: "lane_1", type: "track" }),
+    ).toStrictEqual([
+      {
+        id: "lane_1",
+        ok: false,
+        detail:
+          "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
+      },
+      {
+        id: "lane_1",
+        path: "t0/l1",
+        ok: false,
+        detail:
+          "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
+      },
+    ]);
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  // No delete type reaches a take lane. One that's there says what it is; one
+  // that isn't is the wrong kind of path, like any other.
+  it.each([
+    [
+      "track",
+      'names a take lane, not a track; expected "t<index>", "rt<index>", or "mt"',
+    ],
+    ["scene", 'names a take lane, not a scene; expected "s<index>"'],
+    [
+      "device",
+      'a take lane holds no devices; devices live on a track ("t0") or down its device chain ("t0/d0")',
+    ],
+  ])(
+    "refuses take-lane paths, there or not, for type %s",
+    (type, wrongKind) => {
+      mockNonExistentObjects();
+      registerMockObject("lane_1", {
+        path: livePath.track(0).takeLane(1),
+        type: "TakeLane",
+      });
+
+      expect(
+        deleteObject({ path: "t0/l1, t0/l9, t99/l0", type }),
+      ).toStrictEqual([
+        {
+          id: "lane_1",
+          path: "t0/l1",
+          ok: false,
+          detail:
+            "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
+        },
+        {
+          path: "t0/l9",
+          ok: false,
+          detail: `invalid path "t0/l9" - ${wrongKind}`,
+        },
+        {
+          path: "t99/l0",
+          ok: false,
+          detail: `invalid path "t99/l0" - ${wrongKind}`,
+        },
+      ]);
+      expect(liveSet.call).not.toHaveBeenCalled();
+    },
+  );
 });

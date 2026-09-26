@@ -8,14 +8,15 @@
 // the tail.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { locatorRef } from "#src/tools/shared/locator/song-position.ts";
 import { type ObjectPath } from "../object-path.ts";
 
 /**
- * Why a tool other than ppal-update-track can't act on an `l+`. Here with
+ * Why a tool that can't append a take lane refuses an `l+`. Here with
  * {@link pathError} because every part of the grammar imports this file.
  */
 export const NEW_TAKE_LANE_ADVICE =
-  '"l+" adds a take lane, which only ppal-update-track does';
+  '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do';
 
 /** Appends a chain to the rack (or drum pad) the rest of the path names. */
 export const NEW_CHAIN = "c+";
@@ -146,7 +147,8 @@ export function splitCoord(input: string, label: string): LexedPath {
 
   const position = input.slice(open + 1, -1).trim();
 
-  if (position.includes("[")) {
+  // A locator name may hold brackets; a bar|beat never does.
+  if (position.includes("[") && locatorRef(position) == null) {
     throw pathError(label, input, 'it hit an unexpected second "["');
   }
 

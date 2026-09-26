@@ -44,8 +44,8 @@ describe("createClip - deadline exceeded", () => {
       "not created: the request ran out of time; re-run for this clip";
 
     expect(result).toStrictEqual([
-      { path: "t0[1|1]", ok: false, reason },
-      { path: "t0[3|1]", ok: false, reason },
+      { path: "t0[1|1]", ok: false, detail: reason },
+      { path: "t0[3|1]", ok: false, detail: reason },
     ]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after creating 0 of 2 clips"),
@@ -94,7 +94,7 @@ describe("createClip - deadline exceeded", () => {
       {
         path: "t0[3|1]",
         ok: false,
-        reason:
+        detail:
           "not created: the request ran out of time; re-run for this clip",
       },
     ]);

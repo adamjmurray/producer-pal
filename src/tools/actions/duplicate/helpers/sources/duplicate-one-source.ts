@@ -9,11 +9,20 @@
 
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import {
+  skipEntry,
+  type TargetSkip,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
 import { duplicateChainWithPaths } from "../device/duplicate-chain.ts";
-import { duplicateDeviceWithPaths } from "../device/duplicate-device.ts";
+import {
+  type DeviceCopy,
+  duplicateDeviceWithPaths,
+  settleDevicePaths,
+} from "../device/duplicate-device.ts";
 import {
   copyPerDestination,
   warnCountIgnored,
@@ -30,7 +39,12 @@ import {
 } from "./copy-labels.ts";
 import { duplicateSceneToArrangementAtPositions } from "./scene-arrangement-positions.ts";
 import { type SourceShare } from "./source-plan.ts";
-import { duplicateTrack } from "./duplicate-track.ts";
+import {
+  refuseClipOverwrites,
+  refusePadOverwrites,
+} from "./source-overwrites.ts";
+import { duplicateTrackCopies } from "./duplicate-track.ts";
+import { type CopyEntry, settleCopyPaths } from "./copy-path-settling.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -69,7 +83,9 @@ export interface EverySourceArgs extends Omit<
 
 /**
  * Makes every source's copies, in the order the call named them. Each source
- * takes its own share of the destinations and positions.
+ * takes its own share of the destinations and positions. A copy that would
+ * land on a later source refuses the call first: it would wreck that source's
+ * own turn.
  * @param args - The sources, and what they share
  * @returns Every copy, source by source
  */
@@ -77,6 +93,13 @@ export async function duplicateEverySource(
   args: EverySourceArgs,
 ): Promise<object[]> {
   const created: object[] = [];
+
+  if (args.clipDestinations != null) {
+    refuseClipOverwrites(args.sources, args.clipDestinations, {
+      arrangementLength: args.params.arrangementLength,
+      takeLane: args.takeLane,
+    });
+  }
 
   for (const [index, source] of args.sources.entries()) {
     created.push(
@@ -87,6 +110,14 @@ export async function duplicateEverySource(
         params: { ...args.params, arrangementStart: source.arrangementStart },
       })),
     );
+  }
+
+  // A later source's copies can push an earlier source's along. A scene's
+  // arrangement copies are clips, which nothing here moves.
+  if (args.type === "track") {
+    settleCopyPaths(landedCopies(created), "track");
+  } else if (args.type === "scene" && args.destination !== "arrangement") {
+    settleCopyPaths(landedCopies(created), "scene");
   }
 
   return created;
@@ -123,7 +154,7 @@ export async function duplicateOneSource(
     type,
     args.destination,
     object,
-    id,
+    source,
     args.count,
     labels,
     args.params,
@@ -133,7 +164,8 @@ export async function duplicateOneSource(
 
 /**
  * Copies a device or a drum pad — the two types whose destination is a slot in
- * a device chain rather than a spot on the timeline.
+ * a device chain rather than a spot on the timeline. A pad copy onto another
+ * source pad refuses the call first.
  * @param type - "device" or "drum-pad"
  * @param sources - The shares to copy, in order
  * @param labels - The call's names and colors
@@ -146,11 +178,40 @@ export function duplicateChainSources(
   labels: CopyLabels,
   count: number,
 ): object[] {
-  return sources.flatMap((source, i) =>
+  if (type === "drum-pad") {
+    refusePadOverwrites(sources);
+  }
+
+  const entries = sources.flatMap((source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.
     runOneChainSource(type, source, labels, i === 0 ? count : 1),
   );
+
+  // A later copy, from this source or another, can push an earlier one along.
+  if (type === "device") {
+    settleDevicePaths(entries as Array<DeviceCopy | TargetSkip>);
+  }
+
+  return entries;
+}
+
+/**
+ * The source's regular track index.
+ * @param object - The source track
+ * @returns Its index
+ * @throws Error for a return or main track, which Live can't duplicate
+ */
+export function regularTrackIndex(object: LiveAPI): number {
+  const trackIndex = object.trackIndex;
+
+  if (trackIndex == null) {
+    throw new Error(
+      `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
+    );
+  }
+
+  return trackIndex;
 }
 
 // --- Helpers below main exports ---
@@ -248,7 +309,7 @@ function duplicateDrumPadSource(
  * @param type - Type of object (track or scene)
  * @param destination - Destination for duplication
  * @param object - Live API object to duplicate
- * @param id - ID of the object
+ * @param source - The source's turn
  * @param count - Number of duplicates to create
  * @param labels - The call's names and colors
  * @param params - Additional parameters
@@ -259,7 +320,7 @@ async function duplicateTrackOrSceneWithCount(
   type: string,
   destination: string | undefined,
   object: LiveAPI,
-  id: string,
+  source: SourceShare,
   count: number,
   labels: CopyLabels,
   params: DuplicateParams,
@@ -269,7 +330,7 @@ async function duplicateTrackOrSceneWithCount(
   if (type === "scene" && destination === "arrangement") {
     return await duplicateSceneToArrangementAtPositions(
       object,
-      id,
+      source.id,
       count,
       labels,
       params,
@@ -283,93 +344,104 @@ async function duplicateTrackOrSceneWithCount(
 
   claimLabels(labels, count);
 
+  if (type === "track") {
+    return duplicateTrackCopies(
+      regularTrackIndex(object),
+      source.named,
+      count,
+      (i) => ({ name: labelName(labels, i), color: labelColor(labels, i) }),
+      { withoutClips, withoutDevices, routeToSource },
+      (made) => outOfTime(context, made, count, type),
+    );
+  }
+
+  let landed = 0;
+
   for (let i = 0; i < count; i++) {
-    if (
-      stopForDeadline(
-        context.deadline,
-        () =>
-          `Ran out of time after duplicating ${createdObjects.length} of ${count} ${type}s. ` +
-          `Re-run for the rest.`,
-      )
-    ) {
+    if (outOfTime(context, landed, count, type)) {
       break;
     }
 
-    createdObjects.push(
-      duplicateTrackOrSceneToSession(
-        type,
-        object,
-        i,
-        labelName(labels, i),
-        labelColor(labels, i),
-        withoutClips,
-        withoutDevices,
-        routeToSource,
-      ),
-    );
+    // Each copy is made from the last one that landed, so a failed one is
+    // skipped over rather than copied from.
+    try {
+      createdObjects.push(
+        duplicateSceneToSession(
+          object,
+          landed,
+          labelName(labels, i),
+          labelColor(labels, i),
+          withoutClips,
+        ),
+      );
+      landed++;
+    } catch (error) {
+      createdObjects.push(skipEntry(source.named, errorMessage(error)));
+    }
   }
 
   return createdObjects;
 }
 
 /**
- * Duplicates a track or scene to the session view
- * @param type - Type of object being duplicated (track or scene)
- * @param object - Live API object to duplicate
- * @param i - Current duplicate index
- * @param objectName - Name for the duplicated object
- * @param objectColor - Color for the duplicated object
- * @param withoutClips - Whether to exclude clips
- * @param withoutDevices - Whether to exclude devices
- * @param routeToSource - Whether to route to source track
- * @returns Metadata about the duplicated object
+ * Stop a count loop once the request runs out of time, saying how far it got.
+ * @param context - Per-request context
+ * @param made - Copies made so far
+ * @param count - Copies asked for
+ * @param type - What is being copied
+ * @returns True when the loop should stop
  */
-function duplicateTrackOrSceneToSession(
+function outOfTime(
+  context: Partial<ToolContext>,
+  made: number,
+  count: number,
   type: string,
+): boolean {
+  return stopForDeadline(
+    context.deadline,
+    () =>
+      `Ran out of time after duplicating ${made} of ${count} ${type}s. ` +
+      `Re-run for the rest.`,
+  );
+}
+
+/**
+ * Duplicates a scene in the session view
+ * @param object - The source scene
+ * @param landed - Copies already made; the newest sits that far below the source
+ * @param objectName - Name for the duplicated scene
+ * @param objectColor - Color for the duplicated scene
+ * @param withoutClips - Whether to exclude clips
+ * @returns Metadata about the duplicated scene
+ */
+function duplicateSceneToSession(
   object: LiveAPI,
-  i: number,
+  landed: number,
   objectName: string | undefined,
   objectColor: string | undefined,
   withoutClips: boolean | undefined,
-  withoutDevices: boolean | undefined,
-  routeToSource: boolean | undefined,
 ): object {
-  if (type === "track") {
-    const trackIndex = object.trackIndex;
-
-    if (trackIndex == null) {
-      throw new Error(
-        `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
-      );
-    }
-
-    const actualTrackIndex = trackIndex + i;
-
-    return duplicateTrack(
-      actualTrackIndex,
-      objectName,
-      objectColor,
-      withoutClips,
-      withoutDevices,
-      routeToSource,
-      trackIndex,
-    );
-  }
-
-  // Only "track" and "scene" get here: clip, device and drum-pad all return
-  // from duplicate() before the count-based path.
+  // Only "track" and "scene" reach the count-based path, and tracks return
+  // before the loop.
   const sceneIndex = object.sceneIndex;
 
   if (sceneIndex == null) {
     throw new Error(`no scene index for ${targetLabel(object)}`);
   }
 
-  const actualSceneIndex = sceneIndex + i;
-
   return duplicateScene(
-    actualSceneIndex,
+    sceneIndex + landed,
     objectName,
     objectColor,
     withoutClips,
   );
+}
+
+/**
+ * The entries of copies that landed.
+ * @param entries - Every copy's entry
+ * @returns Those that aren't skips
+ */
+function landedCopies(entries: object[]): CopyEntry[] {
+  return entries.filter((entry) => !("ok" in entry)) as CopyEntry[];
 }

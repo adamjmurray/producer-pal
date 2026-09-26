@@ -19,13 +19,14 @@ import {
   extractDevicePath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DuplicateDrumPadResult {
   id: string;
   path: string;
   /** What the copy did that wasn't asked for, when it did. */
-  reason?: string;
+  detail?: string;
 }
 
 export interface PadTarget {
@@ -103,6 +104,14 @@ export function duplicateDrumPad(
     );
   }
 
+  // copy_pad copies the pad's devices too. A pad's path isn't a prefix of its
+  // devices' paths, so its chains are checked instead.
+  if (sourcePad.someChild("chains", isProducerPalDevice)) {
+    throw new Error(
+      `cannot duplicate drum pad ${midiToNoteName(source.midi)}: it holds the Producer Pal device`,
+    );
+  }
+
   const chainsBefore =
     findDrumPadByNote(rack, destination.midi)?.getChildCount("chains") ?? 0;
 
@@ -142,7 +151,7 @@ function refuseRackWithoutPads(rack: LiveAPI): void {
  * @returns The pad target
  * @throws Error when the path doesn't name one pad
  */
-function resolvePadTarget(path: string, label: string): PadTarget {
+export function resolvePadTarget(path: string, label: string): PadTarget {
   const resolved = resolvePathToLiveApi(path, label);
 
   if (resolved.namesNothing != null) {
@@ -225,7 +234,7 @@ function finishPadCopy(
     // Live layers rather than replaces, matching a device-based pad move onto
     // an occupied pad. Say so, because the pad now plays both.
     ...(chainsBefore > 0 && {
-      reason: `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
+      detail: `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
     }),
   };
 }

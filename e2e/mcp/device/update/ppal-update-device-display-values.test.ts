@@ -138,7 +138,7 @@ describe("ppal-update-device at the ends of a param's range", () => {
         id: expect.any(String),
         name: "Release",
         value: 1.2,
-        reason:
+        detail:
           'only goes from 0.1 to 1.2 (or "A"), so 9999 was set to the nearest valid value',
       },
     ]);
@@ -240,7 +240,7 @@ interface UpdateDeviceResult {
     id: string;
     name: string;
     value?: number | string;
-    reason?: string;
+    detail?: string;
   }>;
 }
 

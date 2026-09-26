@@ -14,7 +14,7 @@
  */
 
 import { argText } from "../../arg-text.ts";
-import { lastSuccessfulToolCall } from "../../../assertions/index.ts";
+import { requireSuccessfulToolCall } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -34,12 +34,7 @@ import { TOOL_UPDATE_CLIP } from "../helpers/clip-tool-constants.ts";
  * @returns The joined argument text
  */
 function noteWritingArgs(turns: EvalTurnResult[], turn: number): string {
-  const call = lastSuccessfulToolCall(turns, turn, TOOL_UPDATE_CLIP);
-
-  if (!call) {
-    throw new Error(`${TOOL_UPDATE_CLIP} not found in turn ${turn}`);
-  }
-
+  const call = requireSuccessfulToolCall(turns, turn, TOOL_UPDATE_CLIP);
   const text = ["transforms", "notes", "preTransforms"]
     .map((param) => argText(call.args[param]))
     .filter((value) => value !== "")

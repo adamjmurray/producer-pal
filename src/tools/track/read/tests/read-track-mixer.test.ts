@@ -411,7 +411,7 @@ describe("readOneTrack - mixer properties", () => {
       returnTracks: RETURN_TRACKS.slice(0, 1),
     });
 
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "send count (2) doesn't match return track count (1)",
     );
     expect(consoleSpy).not.toHaveBeenCalled();

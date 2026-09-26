@@ -11,6 +11,7 @@ import {
   getToolCalls,
   lastSuccessfulToolCall,
   parsedToolResult,
+  requireSuccessfulToolCall,
   toolCallFailed,
 } from "../turn-tool-calls.ts";
 
@@ -151,16 +152,58 @@ describe("lastSuccessfulToolCall", () => {
     );
   });
 
-  it("falls back to the last call when every attempt failed", () => {
+  it("returns undefined when every attempt failed", () => {
     const turns = [turn(errored, errored)];
 
-    expect(lastSuccessfulToolCall(turns, 0, "ppal-create-clip")).toBe(errored);
+    expect(
+      lastSuccessfulToolCall(turns, 0, "ppal-create-clip"),
+    ).toBeUndefined();
   });
 
   it("returns undefined when the tool was never called", () => {
     expect(
       lastSuccessfulToolCall([turn()], 0, "ppal-create-clip"),
     ).toBeUndefined();
+  });
+});
+
+describe("requireSuccessfulToolCall", () => {
+  const turn = (...toolCalls: ToolCall[]): EvalTurnResult[] => [
+    {
+      turnIndex: 0,
+      userMessage: "u",
+      assistantResponse: "a",
+      toolCalls,
+      durationMs: 1,
+    },
+  ];
+
+  const errored: ToolCall = {
+    name: "ppal-update-clip",
+    args: { transforms: "velocity = 90" },
+    result: "Error: bad selector",
+  };
+
+  it("returns the last successful call", () => {
+    const ok: ToolCall = { ...errored, result: '{id:"1"}' };
+
+    expect(requireSuccessfulToolCall(turn(errored, ok), 0, errored.name)).toBe(
+      ok,
+    );
+  });
+
+  it("names the last error when every call failed", () => {
+    expect(() =>
+      requireSuccessfulToolCall(turn(errored), 0, errored.name),
+    ).toThrow(
+      "every ppal-update-clip call in turn 0 failed: Error: bad selector",
+    );
+  });
+
+  it("says so when the tool was never called", () => {
+    expect(() => requireSuccessfulToolCall(turn(), 0, errored.name)).toThrow(
+      "ppal-update-clip not called in turn 0",
+    );
   });
 });
 

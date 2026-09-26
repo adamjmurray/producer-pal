@@ -5,6 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
+  requireCreatedArrangementClip,
   requireCreatedClip,
   requireCreatedSessionClip,
 } from "#src/tools/clip/helpers/clip-results.ts";
@@ -89,11 +90,14 @@ export function recreateClip(
       createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
         destination,
+        startBeats,
       ),
     createAudio: (filePath) =>
       createdArrangementClip(
         destination.call("create_audio_clip", filePath, startBeats) as string,
         destination,
+        startBeats,
+        filePath,
       ),
   });
 }
@@ -260,15 +264,32 @@ function recreateInto(
  * this goes through the same guard the create-clip paths use.
  * @param createResult - What `create_midi_clip`/`create_audio_clip` returned
  * @param destination - The lane it was asked for, to name in the error
+ * @param startBeats - Where it was asked to start, in Ableton beats
+ * @param sampleFile - The file an audio create loaded, or undefined
  * @returns The new clip
  */
 function createdArrangementClip(
   createResult: string,
   destination: LiveAPI,
+  startBeats: number,
+  sampleFile?: string,
 ): LiveAPI {
-  return requireCreatedClip(
-    LiveAPI.from(createResult),
-    pathPrefix(destination),
+  const trackIndex = destination.trackIndex;
+
+  if (trackIndex == null) {
+    return requireCreatedClip(
+      LiveAPI.from(createResult),
+      pathPrefix(destination),
+      sampleFile,
+    );
+  }
+
+  return requireCreatedArrangementClip(
+    createResult,
+    trackIndex,
+    destination.takeLaneIndex,
+    startBeats,
+    sampleFile,
   );
 }
 

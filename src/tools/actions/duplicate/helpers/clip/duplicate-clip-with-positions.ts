@@ -6,14 +6,15 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  aliasTakeLane,
   isTakeLaneClip,
   isTakeLaneRequested,
-  normalizeTakeLaneTarget,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   claimLabels,
   labelColor,
+  labelLength,
   labelName,
   type CopyLabels,
 } from "../sources/copy-labels.ts";
@@ -119,7 +120,7 @@ async function duplicateClipToArrangementPositions(
   const requested = applyTakeLaneAlias(resolved.destinations, takeLane);
 
   const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
-    resolveSongPositions(arrangementStart, destinations.arrangementPositions);
+    resolveSongPositions(arrangementStart, destinations);
 
   const {
     copies,
@@ -129,6 +130,10 @@ async function duplicateClipToArrangementPositions(
     requestedTargets,
     requestedPositions,
   } = planCopies(requested, positionsInBeats);
+
+  // Before any lane or copy: neither can be undone, so a label list that
+  // doesn't match the copies, or a length that won't parse, refuses the call.
+  claimLabels(labels, copies);
 
   const perDestination = {
     requestIndices,
@@ -182,8 +187,6 @@ async function duplicateClipToArrangementPositions(
     ? null
     : "it's an audio clip with no sample file; drag it in Live's UI";
 
-  claimLabels(labels, copies);
-
   const results = await makeCopies({
     copy: {
       tracks,
@@ -194,7 +197,6 @@ async function duplicateClipToArrangementPositions(
       object,
       id,
       labels,
-      arrangementLength,
       songTimeSigNumerator,
       songTimeSigDenominator,
       context,
@@ -218,7 +220,6 @@ interface SharedCopyOptions {
   object: LiveAPI;
   id: string;
   labels: CopyLabels;
-  arrangementLength: string | undefined;
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   context: Partial<ToolContext>;
@@ -255,15 +256,20 @@ async function makeCopies({
   const { songTimeSigNumerator, songTimeSigDenominator, context } = copy;
   // Results keep the order the destinations were asked for, even though the
   // copies are made in another one.
+  const lengths = requestIndices.map((index) =>
+    labelLength(copy.labels, index),
+  );
   const order = sourceLastOrder(
     copy.object,
     targetTracks,
     targetPositions,
-    copySpanBeats(
-      copy.object,
-      copy.arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
+    lengths.map((length) =>
+      copySpanBeats(
+        copy.object,
+        length,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      ),
     ),
   );
   const results: (object | null)[] = targetTracks.map(() => null);
@@ -298,6 +304,7 @@ async function makeCopies({
       startBeats: targetPositions[i] as number,
       name: labelName(copy.labels, requestIndex),
       color: labelColor(copy.labels, requestIndex),
+      arrangementLength: lengths[i],
     });
 
     if (attempt.copy != null) {
@@ -325,12 +332,13 @@ async function makeCopies({
  * otherwise. Only one of the two is ever in play: a call sending both is
  * refused before it starts.
  * @param arrangementStart - Comma-separated bar|beat positions
- * @param pathPositions - The position each destination's own `[...]` named
+ * @param destinations - The destinations, with the position each one's own
+ *   `[...]` named
  * @returns The song time signature and one position per entry, in Ableton beats
  */
 function resolveSongPositions(
   arrangementStart: string | undefined,
-  pathPositions: (string | null)[],
+  destinations: ClipDestinations,
 ): {
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
@@ -343,7 +351,13 @@ function resolveSongPositions(
   const songTimeSigDenominator = liveSet.getProperty(
     "signature_denominator",
   ) as number;
-  const fromPath = pathPositions.some((position) => position != null);
+  const pathPositions = destinations.arrangementPositions;
+  const targets = destinations.arrangementTargets;
+  // A source whose every entry is a refused clip slot lands nothing, so it
+  // needs no position — and may have none, when the others came from toPath.
+  const fromPath =
+    pathPositions.some((position) => position != null) ||
+    (targets.length > 0 && targets.every((target) => target == null));
 
   return {
     songTimeSigNumerator,
@@ -417,21 +431,14 @@ function applyTakeLaneAlias(
   targets: (ArrangementTrack | null)[],
   takeLane: number | string | undefined,
 ): (ArrangementTrack | null)[] {
-  if (!isTakeLaneRequested(takeLane)) {
-    return targets;
-  }
-
   // A destination this call can't use is null and names no lane, so it can't
   // block the alias for the ones around it.
-  if (targets.some((target) => target?.takeLane != null)) {
+  if (
+    isTakeLaneRequested(takeLane) &&
+    targets.some((target) => target?.takeLane != null)
+  ) {
     console.warn('takeLane ignored — "toPath" already names the take lane');
-
-    return targets;
   }
 
-  const target = normalizeTakeLaneTarget(takeLane);
-
-  return targets.map((entry) =>
-    entry == null ? null : { ...entry, takeLane: target },
-  );
+  return aliasTakeLane(targets, takeLane);
 }

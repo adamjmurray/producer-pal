@@ -9,7 +9,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   STATE,
 } from "#src/tools/constants.ts";
-import { readChainMixer } from "./chain-mixer.ts";
+import { readChainMixer } from "./chain-mixer/chain-mixer.ts";
 
 // Live allows one instrument per chain, and says so by refusing the write
 // without a reason. Shared so a move and a create name the same cause.

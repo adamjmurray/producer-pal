@@ -22,11 +22,11 @@ import {
   type ClipEnvelopeResult,
   parseToolResult,
   type ReadClipResult,
-  remoteScriptAnswers,
   setupMcpTestContext,
   sleep,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
+import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const TRACK = `t${String(EMPTY_MIDI_TRACK)}`;

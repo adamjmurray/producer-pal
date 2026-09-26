@@ -9,7 +9,7 @@
 // `p<note>` is the only exception, because Live indexes drum pads by MIDI note.
 //
 // Parsing only: nothing here touches the Live API, so a bad path fails before
-// anything is created or moved. See dev/Object-Paths.md.
+// anything is created or moved. See dev/tools/object-paths/README.md.
 
 import {
   NEW_CHAIN,
@@ -20,7 +20,9 @@ import {
 } from "./helpers/object-path-lexer.ts";
 import {
   DEVICE_TYPE_FORMS,
+  deviceTailNoun,
   parseDeviceTail,
+  type DeviceTail,
 } from "./helpers/object-path-device-tail.ts";
 import {
   arrangementPosition,
@@ -354,18 +356,23 @@ function parseTail(
 
   const first = tail[0] as string;
 
-  // A scene or take lane anywhere but right after the track is a misplaced
-  // coordinate, not a device — say so instead of blaming a device segment.
-  const misplaced = tail.findIndex(
-    (segment, i) => i > 0 && isTrackChild(segment),
-  );
-
-  if (misplaced !== -1) {
-    throw trackChildError(label, input, tail[misplaced] as string);
+  if (isTrackChild(first)) {
+    return parseTrackChild(root, tail, label, input);
   }
 
-  if (isTrackChild(first)) {
-    return parseTrackChild(root, first, tail.length, label, input);
+  // A scene or take lane in a device chain is misplaced; check the chain
+  // before it first, so a bad segment there is blamed for itself.
+  const misplaced = tail.findIndex(isTrackChild);
+
+  if (misplaced !== -1) {
+    const owner =
+      root.kind === "track"
+        ? misplacedOwner(
+            parseDeviceTail(tail.slice(0, misplaced), label, input),
+          )
+        : undefined;
+
+    throw trackChildError(label, input, tail[misplaced] as string, owner);
   }
 
   const { segments, appendsChain, appendsDevice } = parseDeviceTail(
@@ -375,6 +382,19 @@ function parseTail(
   );
 
   return { kind: deviceTailKind(appendsChain, appendsDevice), root, segments };
+}
+
+/**
+ * What a scene or take lane was put under instead of a track.
+ * @param tail - The device chain before it
+ * @returns A noun phrase, e.g. "a device"
+ */
+function misplacedOwner(tail: DeviceTail): string {
+  if (tail.appendsDevice) {
+    return "a new device";
+  }
+
+  return tail.appendsChain ? "a new chain" : deviceTailNoun(tail.segments);
 }
 
 /**
@@ -408,21 +428,25 @@ function isTrackChild(segment: string): boolean {
 /**
  * Builds the clip slot or take lane a track child names.
  * @param root - The parsed root segment
- * @param segment - The child segment
- * @param tailLength - How many segments follow the root
+ * @param tail - Segments after the root; the first is the child
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @returns The slot or take lane
  */
 function parseTrackChild(
   root: TrackSegment,
-  segment: string,
-  tailLength: number,
+  tail: string[],
   label: string,
   input: string,
 ): ObjectPath {
-  if (root.kind !== "track" || tailLength !== 1) {
+  const segment = tail[0] as string;
+
+  if (root.kind !== "track") {
     throw trackChildError(label, input, segment);
+  }
+
+  if (tail.length > 1) {
+    throw trackChildTailError(label, input, segment, tail[1] as string);
   }
 
   if (segment === NEW_TAKE_LANE) {
@@ -453,20 +477,55 @@ function parseTrackChild(
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @param segment - The offending segment
+ * @param owner - What it came after on a regular track, e.g. "a device"
  * @returns The error to throw
  */
-function trackChildError(label: string, input: string, segment: string): Error {
-  return SCENE.test(segment)
-    ? pathError(
-        label,
-        input,
-        `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes`,
-      )
-    : pathError(
-        label,
-        input,
-        `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes`,
-      );
+function trackChildError(
+  label: string,
+  input: string,
+  segment: string,
+  owner?: string,
+): Error {
+  const scene = SCENE.test(segment);
+  const shape = scene
+    ? `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1")`
+    : `a take lane is "t<track>/l<lane>" (e.g. "t0/l0")`;
+  const children = scene ? "clip slots" : "take lanes";
+  const why =
+    owner == null
+      ? `only regular tracks have ${scene ? "scenes" : "take lanes"}`
+      : `${children} belong to a track, not ${owner}`;
+
+  return pathError(label, input, `${shape}; ${why}`);
+}
+
+/**
+ * Explains a segment after a clip slot or take lane, which have no parts.
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @param child - The slot or lane segment
+ * @param next - The segment after it
+ * @returns The error to throw
+ */
+function trackChildTailError(
+  label: string,
+  input: string,
+  child: string,
+  next: string,
+): Error {
+  if (child === NEW_TAKE_LANE) {
+    return pathError(
+      label,
+      input,
+      `"${child}" appends a take lane, so nothing can follow it`,
+    );
+  }
+
+  const problem = SCENE.test(child)
+    ? "can't follow a clip slot; a path ends at the slot"
+    : "can't follow a take lane; a path ends at the lane";
+
+  return pathError(label, input, `"${next}" ${problem}`);
 }
 
 /**

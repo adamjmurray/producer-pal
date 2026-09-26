@@ -60,7 +60,7 @@ function slotRefusal(trackIndex: number, sceneIndex: number) {
   return {
     path: `t${trackIndex}/s${sceneIndex}`,
     ok: false as const,
-    reason:
+    detail:
       "a clip slot can't take an arrangement copy; " +
       `name a track's arrangement instead, as "t${trackIndex}[5|1]"`,
   };
@@ -185,6 +185,30 @@ describe("resolveClipDestinations", () => {
       );
     });
 
+    // Another source's share holds the arrangement entry, so this slot-only
+    // share is refused on its own entry, just as in one source's mixed list.
+    it("refuses a slot-only share when the call names the arrangement", () => {
+      const warnSpy = vi.spyOn(console, "warn");
+
+      expect(
+        resolveClipDestinations("t2/s1", undefined, true, {
+          arrangement: true,
+          position: true,
+        }),
+      ).toStrictEqual(arrangementResult([null], [null], [slotRefusal(2, 1)]));
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    // Another source's share carries a position, so this track needs its own.
+    it("refuses a track share with no position beside a positioned one", () => {
+      expect(() =>
+        resolveClipDestinations("t2", undefined, true, {
+          arrangement: true,
+          position: true,
+        }),
+      ).toThrow('toPath "t2" names no position; add one, as "t2[5|1]"');
+    });
+
     // The dropped slot keeps its place as a null, so the two lane entries stay
     // where the caller wrote them.
     it("keeps both lane entries when a dropped slot shares the list", () => {
@@ -277,6 +301,18 @@ describe("warnInapplicableClipParams", () => {
     );
   });
 
+  // Several sources take one destination each, so "list more in toPath" would
+  // lead straight to a refusal.
+  it("points several sources at one call each for more copies", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    warnInapplicableClipParams(arrangement, 3, undefined, 2);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "count ignored for clips: one copy per destination — for more copies, send one call per source",
+    );
+  });
+
   it("warns that a session copy ignores arrangementLength", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
@@ -298,22 +334,19 @@ describe("warnInapplicableClipParams", () => {
 });
 
 describe("warnUnusedDestination", () => {
-  it("says nothing for clips, which use both params", () => {
+  it("says nothing for clips, which take toSlot", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnUnusedDestination("clip", "t2/s1", undefined);
+    warnUnusedDestination("clip", "2/1");
 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns when a track or scene is given a destination", () => {
+  it("warns when any other type is given a toSlot", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnUnusedDestination("scene", "t2", "2/1");
+    warnUnusedDestination("scene", "2/1");
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      'toPath ignored: only supported for clips, devices, drum pads and chains (type "scene")',
-    );
     expect(warnSpy).toHaveBeenCalledWith(
       'toSlot ignored: only supported for clips (type "scene")',
     );
@@ -323,21 +356,8 @@ describe("warnUnusedDestination", () => {
   it("says nothing about a toSlot sent as null", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnUnusedDestination("scene", undefined, "null");
+    warnUnusedDestination("scene", "null");
 
     expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it("leaves toPath alone for devices but still flags toSlot", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnUnusedDestination("device", "t1/d0", "2/1");
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("toPath ignored"),
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      'toSlot ignored: only supported for clips (type "device")',
-    );
   });
 });

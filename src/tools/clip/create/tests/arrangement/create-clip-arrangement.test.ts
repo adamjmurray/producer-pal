@@ -197,8 +197,8 @@ describe("createClip - arrangement view", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t0[1|1]", ok: false, reason: "Live created no clip at t0" },
-      { path: "t0[3|1]", ok: false, reason: "Live created no clip at t0" },
+      { path: "t0[1|1]", ok: false, detail: "Live created no clip at t0[1|1]" },
+      { path: "t0[3|1]", ok: false, detail: "Live created no clip at t0[3|1]" },
     ]);
   });
 
@@ -531,9 +531,9 @@ describe("createClip - what an arrangement create displaced", () => {
     const result = (await createClip({
       path: "t0[4|1]",
       length: "1bar",
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toBe("overwrote the clip at t0[4|1]");
+    expect(result.detail).toBe("overwrote the clip at t0[4|1]");
   });
 
   it("says it cut short the clip it landed after", async () => {
@@ -548,9 +548,9 @@ describe("createClip - what an arrangement create displaced", () => {
     const result = (await createClip({
       path: "t0[4|1]",
       length: "1bar",
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toBe("shortened the clip at t0[1|1]");
+    expect(result.detail).toBe("shortened the clip at t0[1|1]");
   });
 
   it("names both pieces of a clip it landed inside", async () => {
@@ -566,9 +566,9 @@ describe("createClip - what an arrangement create displaced", () => {
     const result = (await createClip({
       path: "t0[4|1]",
       length: "1bar",
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "split the clip at t0[1|1] into t0[1|1] and t0[5|1]",
     );
   });
@@ -579,8 +579,8 @@ describe("createClip - what an arrangement create displaced", () => {
     const result = (await createClip({
       path: "t0[4|1]",
       length: "1bar",
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toBeUndefined();
+    expect(result.detail).toBeUndefined();
   });
 });

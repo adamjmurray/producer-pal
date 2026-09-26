@@ -25,14 +25,16 @@
 //   node open-live-set.mjs "My Song Project/My Song.als"
 //   node open-live-set.mjs --new --add-producer-pal
 //   node open-live-set.mjs song.als --discard-unsaved   # only if the user agreed
+//   node open-live-set.mjs song.als --restart           # quit Live first
 //
 // Prints JSON on stdout: {"opened":"<path>","producerPal":true,"dismissed":[]}.
 // Status/progress → stderr.
 
 import { execFile } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { get, request } from "node:http";
 import { basename, extname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -55,6 +57,9 @@ const PPAL_ADDED_MS = 30_000;
 const REMOTE_SCRIPT_START_MS = 10_000;
 // The remote script waits up to 30s for Live before it answers.
 const LOAD_TIMEOUT_MS = 35_000;
+// Live's process can linger briefly after its windows go; launching then can
+// hand the file to the dying process.
+const QUIT_SETTLE_MS = 1_000;
 
 // --- CLI ---------------------------------------------------------------------
 
@@ -81,6 +86,9 @@ const USAGE = `Usage: node open-live-set.mjs <path.als> [options]
   --add-producer-pal   if Producer Pal isn't running in the Set, add the
                        Producer_Pal device on a new MIDI track (needs the
                        Producer Pal remote script)
+  --restart            quit Live first (if running), then relaunch the same
+                       Live to open the Set; a save prompt on quit follows
+                       --discard-unsaved
   --discard-unsaved    click Don't Save if the open Set has unsaved changes
                        (default: cancel, open nothing)
   --discard-recovery   click No if Live offers to recover work after a crash
@@ -114,6 +122,7 @@ async function main() {
     recovery: flag("--discard-recovery"),
   };
   const addProducerPal = flag("--add-producer-pal");
+  const restart = flag("--restart");
   await assertAssistiveAccess();
   const result = await openLiveSet({
     file,
@@ -121,6 +130,7 @@ async function main() {
     timeoutMs,
     discard,
     addProducerPal,
+    restart,
   });
   process.stdout.write(JSON.stringify(result) + "\n");
 }
@@ -201,15 +211,31 @@ async function assertAssistiveAccess() {
  * @param {{unsaved: boolean, recovery: boolean}} o.discard - What the user
  *   agreed to lose.
  * @param {boolean} o.addProducerPal - Add the device if Producer Pal isn't up.
+ * @param {boolean} o.restart - Quit Live before opening.
  * @returns {Promise<object>} The result printed on stdout.
  */
-async function openLiveSet({ file, app, timeoutMs, discard, addProducerPal }) {
+async function openLiveSet({
+  file,
+  app,
+  timeoutMs,
+  discard,
+  addProducerPal,
+  restart,
+}) {
   const deadline = Date.now() + timeoutMs;
   const name = file ? basename(file, extname(file)) : NEW_SET_NAME;
+  const dismissed = new Set();
+  const answerDialogs = (verb) => answerDialog(discard, dismissed, verb);
+
+  // Once Live has quit, `open` would pick macOS's default Live, so keep the
+  // one that was running.
+  const restarted =
+    restart && (await quitLive({ deadline, timeoutMs, answerDialogs }));
+  if (restarted) {
+    app ??= restarted.app;
+  }
   const wasServing = await ppalAnswers();
   const titleWasShowing = await windowTitled(name);
-  const dismissed = new Set();
-  const answerDialogs = () => answerDialog(discard, dismissed);
 
   await (file ? startOpen(file, app) : startNewSet(app, answerDialogs));
   await waitForSet({ name, wasServing, deadline, timeoutMs, answerDialogs });
@@ -230,12 +256,51 @@ async function openLiveSet({ file, app, timeoutMs, discard, addProducerPal }) {
     ...(file ? { opened: file } : { new: true }),
     producerPal: producerPal || added != null,
     ...(added && { addedProducerPal: added }),
+    ...(restart && { restarted: Boolean(restarted) }),
     dismissed: [...dismissed],
     ...(titleWasShowing &&
       !wasServing && {
         warning: `A Live window was already titled "${name}", so the swap couldn't be confirmed.`,
       }),
   };
+}
+
+/**
+ * Quit the running Live and wait for its process to go, answering the save
+ * prompt like an open would.
+ * @param {object} o - Options.
+ * @param {number} o.deadline - Give up at this time (epoch ms).
+ * @param {number} o.timeoutMs - The time limit, for error messages.
+ * @param {(verb: string) => Promise<void>} o.answerDialogs - Runs on every
+ *   tick.
+ * @returns {Promise<{app: string | undefined} | undefined>} The .app that
+ *   was quit, or undefined if Live wasn't running.
+ */
+async function quitLive({ deadline, timeoutMs, answerDialogs }) {
+  if ((await livePid()) == null) {
+    process.stderr.write("Live isn't running, so nothing to quit…\n");
+    return undefined;
+  }
+  const app = await runningLiveApp();
+  const answer = () => answerDialogs("quit");
+  await answer(); // a dialog already up would block the menu
+  process.stderr.write("Quitting Live…\n");
+  // A menu click returns at once; an AppleScript `quit` would block while the
+  // save prompt is up, so the prompt could never be answered.
+  const { error } = await osascript(
+    `tell application "System Events" to tell process "${PROCESS}" to click menu item "Quit Live" of menu "Live" of menu bar 1`,
+  );
+  if (error != null) {
+    throw new Error(`Couldn't click Live → Quit Live: ${error}`);
+  }
+  const gone = async () => (await livePid()) == null;
+  if (!(await poll(gone, deadline, answer))) {
+    throw new Error(
+      `Live did not quit within ${timeoutMs / 1000}s. ${await describeLiveState()}`,
+    );
+  }
+  await sleep(QUIT_SETTLE_MS);
+  return { app };
 }
 
 /**
@@ -328,7 +393,7 @@ async function loadProducerPal() {
   );
   if (!reachable) {
     throw new Error(
-      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${REMOTE_SCRIPT_PORT}. Install it and select it as a Control Surface (Live Settings → Link, Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${REMOTE_SCRIPT_PORT}. Install it and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
     );
   }
 
@@ -358,12 +423,17 @@ async function loadProducerPal() {
  * @param {{error?: string, candidates?: string[]}} body - The reply.
  * @returns {string} What went wrong and what to do.
  */
-function loadFailure(status, body) {
+export function loadFailure(status, body) {
   if (status === 404) {
     return "Live's browser has no Producer_Pal device. Put Producer_Pal.amxd where the browser's Max for Live section lists it, e.g. the User Library.";
   }
-  if (status === 409) {
-    return `Live's browser has more than one Producer_Pal device: ${(body.candidates ?? []).join(", ")}. Keep only one device named Producer_Pal there.`;
+  if (status === 409 && body.candidates != null) {
+    return `Live's browser has more than one Producer_Pal device: ${body.candidates.join(", ")}. Keep only one device named Producer_Pal there.`;
+  }
+  // A 409 without candidates: the Set already has Producer Pal, but it didn't
+  // answer while we waited.
+  if (status === 409 && body.error != null) {
+    return `${body.error}. It didn't answer on port ${PPAL_PORT}: check that device, or set PPAL_PORT if it uses another port.`;
   }
   const reply = status ? `answered ${status}` : "didn't reply"; // 0: no reply
   return `the remote script ${reply}: ${body.error ?? "(no error text)"}`;
@@ -460,9 +530,10 @@ async function poll(check, until, answerDialogs = async () => {}) {
  * @param {{unsaved: boolean, recovery: boolean}} discard - What the user agreed
  *   to lose.
  * @param {Set<string>} dismissed - Collects what was clicked away.
+ * @param {string} [verb] - What Cancel stopped: "opened" (default) or "quit".
  * @returns {Promise<void>} Resolves when nothing needs the user.
  */
-async function answerDialog(discard, dismissed) {
+async function answerDialog(discard, dismissed, verb = "opened") {
   const { output } = await osascript(dialogScript(discard));
   if (output == null) {
     return;
@@ -486,7 +557,7 @@ async function answerDialog(discard, dismissed) {
   } else if (tag === "unsaved-cancel") {
     const titles = await liveWindowTitles();
     throw new Error(
-      `The open Set has unsaved changes, so nothing was opened (clicked Cancel; that Set is untouched).${said} Live windows: ${titles.join(", ")}. Ask the user to save it first, ${unsavedAsk}`,
+      `The open Set has unsaved changes, so nothing was ${verb} (clicked Cancel; that Set is untouched).${said} Live windows: ${titles.join(", ")}. Ask the user to save it first, ${unsavedAsk}`,
     );
   } else if (tag === "unsaved") {
     throw new Error(
@@ -722,9 +793,24 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-try {
-  await main();
-} catch (err) {
-  process.stderr.write(`Error: ${err.message ?? err}\n`);
-  process.exit(1);
+if (isEntryPoint()) {
+  try {
+    await main();
+  } catch (err) {
+    process.stderr.write(`Error: ${err.message ?? err}\n`);
+    process.exit(1);
+  }
+}
+
+// Compare real paths: argv[1] may go through a symlink, and a file URL is
+// percent-encoded (and /C:/... on Windows).
+function isEntryPoint() {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
 }

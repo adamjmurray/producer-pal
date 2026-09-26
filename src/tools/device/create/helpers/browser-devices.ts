@@ -7,128 +7,102 @@
 // Producer Pal remote script loads each one from Live's browser onto a temp
 // track, and it moves from there to the path the call named.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
+import { loopBudgetMs } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   type BrowserItem,
   type BrowserItemLoad,
   type BrowserItemResolution,
+  REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import {
-  type NamedTarget,
-  type TargetSkip,
-  skipEntry,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type CreateDeviceResult,
   type CreationTarget,
   createdDeviceEntry,
   insertionPosition,
   insertRefusal,
-  labelCreatedDevice,
   resolveCreationTarget,
 } from "./device-creation.ts";
 
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 
-interface BrowserDeviceArgs {
-  item: BrowserItem;
-  /** The device as the call named it, for errors and warnings */
-  deviceName: string;
-  targets: NamedTarget[];
-  name: string | undefined;
-  parsedNames: ListEntries | null;
-  params: ParamEntry[] | undefined;
-}
+/** The longest the arrival poll runs. */
+const ARRIVAL_WAIT_MS = ARRIVAL_POLL.pollingInterval * ARRIVAL_POLL.maxRetries;
+
+/** The request's time limits, from ToolContext. */
+export type RequestTiming = Pick<
+  Partial<ToolContext>,
+  "deadline" | "timeoutMs"
+>;
 
 /**
- * Load a browser device at every path the call named. `writeFanOut`'s rules,
- * hand-rolled because each load has to be awaited.
- * @param args - The item, how the call named it, and the call's per-path args
- * @param args.item - What to load
- * @param args.deviceName - The device as the call named it
- * @param args.targets - Where each one goes, in the order the call named them
- * @param args.name - The call's name arg
- * @param args.parsedNames - Comma-separated display names, or null
- * @param args.params - {name, value} entries applied to each device
- * @returns The device when one path was named, otherwise one entry per path
+ * Load one device and move it to a path. The path resolves first, so it fails
+ * the way a native insert does, and a `c+` makes its chain once.
+ * @param item - What to load
+ * @param deviceName - The device as the call named it
+ * @param path - Where it goes
+ * @param timing - The request's time limits
+ * @returns The device and its result entry
  */
-export async function createBrowserDevices({
-  item,
-  deviceName,
-  targets,
-  name,
-  parsedNames,
-  params,
-}: BrowserDeviceArgs): Promise<WriteResult<CreateDeviceResult>> {
-  const createOne = async (
-    target: NamedTarget,
-    index: number,
-  ): Promise<CreateDeviceResult> => {
-    const { device, entry } = await createAtPath(
-      item,
-      deviceName,
-      target.value,
-    );
+export async function createBrowserDevice(
+  item: BrowserItem,
+  deviceName: string,
+  path: string,
+  timing: RequestTiming = {},
+): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
+  const target = resolveCreationTarget(path);
+  const waitMs = remoteScriptWait(timing.deadline, ARRIVAL_WAIT_MS);
 
-    return labelCreatedDevice(
-      device,
-      entry,
-      getNameForIndex(name, index, parsedNames),
-      params,
+  if (waitMs == null) {
+    throw new Error(
+      `could not load "${deviceName}": ${outOfTime(timing.timeoutMs)}`,
     );
-  };
-
-  // A lone path throws, as a native insert does: nothing was created, so
-  // there is no list for an entry to hold a place in. A blank `path` was
-  // already refused, so there is always at least one target.
-  if (targets.length < 2) {
-    return await createOne(targets[0] as NamedTarget, 0);
   }
 
-  const entries: Array<CreateDeviceResult | TargetSkip> = [];
+  return await withTempTrack(deviceName, async (track) => {
+    const device = await loadOnto(track, item, deviceName, waitMs);
 
-  for (const [i, target] of targets.entries()) {
-    try {
-      entries.push(await createOne(target, i));
-    } catch (error) {
-      entries.push(skipEntry(target, errorMessage(error)));
-    }
-  }
+    moveIntoPlace(device, target, deviceName, path);
 
-  return entries;
+    return { device, entry: createdDeviceEntry(device.id, device, target) };
+  });
 }
 
 /**
  * Find a device name in Live's browser.
  * @param deviceName - The name the call used
+ * @param deadline - The request deadline from ToolContext
  * @returns The item, or null when the remote script isn't answering
  * @throws Error when nothing, or more than one thing, goes by that name
  */
 export async function resolveBrowserDevice(
   deviceName: string,
+  deadline?: number | null,
 ): Promise<BrowserItem | null> {
+  const lookUpFailed = (why: string): Error =>
+    new Error(`could not look up "${deviceName}" in Live's browser: ${why}`);
+  const waitMs = remoteScriptWait(deadline);
+
+  // Every lookup runs before any device is made, so nothing was created yet.
+  if (waitMs == null) {
+    throw lookUpFailed("the request ran out of time; nothing was created");
+  }
+
   const response = await requestNode<BrowserItemResolution>(
     REMOTE_SCRIPT_ROUTES.resolve,
     { name: deviceName },
-    REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
+    waitMs,
   );
 
   if (!response.success || response.result == null) {
-    throw new Error(
-      `could not look up "${deviceName}" in Live's browser: ${response.error ?? "no answer"}`,
-    );
+    throw lookUpFailed(response.error ?? "no answer");
   }
 
   const resolution = response.result;
@@ -144,30 +118,53 @@ export async function resolveBrowserDevice(
   return resolution.item;
 }
 
+/**
+ * How long V8 waits on a remote-script route: its usual wait, cut to what is
+ * left of the request's time. V8 must answer before Node's tool timeout, or it
+ * goes on creating devices the caller was told timed out, and a retry
+ * duplicates them.
+ * @param deadline - The request deadline, or null for none
+ * @param reserveMs - Time to keep for work after the route answers
+ * @returns The wait, or null when there's no time left to start
+ */
+export function remoteScriptWait(
+  deadline: number | null | undefined,
+  reserveMs = 0,
+): number | null {
+  if (deadline == null) {
+    return REMOTE_SCRIPT_REQUEST_TIMEOUT_MS;
+  }
+
+  const left = deadline - Date.now() - reserveMs;
+
+  return left > 0 ? Math.min(REMOTE_SCRIPT_REQUEST_TIMEOUT_MS, left) : null;
+}
+
+/**
+ * When a change sent to the remote script expires: a bit under V8's wait, so a
+ * job Live starts in time can answer before V8 gives up. The margin never takes
+ * more than half a short wait.
+ * @param waitMs - How long V8 waits for the route
+ * @returns How long Live may leave the job queued, in ms
+ */
+export function remoteScriptExpiry(waitMs: number): number {
+  return (
+    waitMs - Math.min(REMOTE_SCRIPT_EXPIRY_MARGIN_MS, Math.ceil(waitMs / 2))
+  );
+}
+
 // --- Helpers below main exports ---
 
 /**
- * Load one device and move it to a path. The path resolves first, so it fails
- * the way a native insert does, and a `c+` makes its chain once.
- * @param item - What to load
- * @param deviceName - The device as the call named it
- * @param path - Where it goes
- * @returns The device and its result entry
+ * Why a load didn't start for lack of time. When the whole budget can't cover
+ * the arrival poll, a re-run fails the same way, so the Timeout must go up.
+ * @param timeoutMs - The request timeout, when known
+ * @returns The reason, worded for the model
  */
-async function createAtPath(
-  item: BrowserItem,
-  deviceName: string,
-  path: string,
-): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
-  const target = resolveCreationTarget(path);
-
-  return await withTempTrack(deviceName, async (track) => {
-    const device = await loadOnto(track, item, deviceName);
-
-    moveIntoPlace(device, target, deviceName, path);
-
-    return { device, entry: createdDeviceEntry(device.id, device, target) };
-  });
+function outOfTime(timeoutMs: number | undefined): string {
+  return timeoutMs != null && loopBudgetMs(timeoutMs) <= ARRIVAL_WAIT_MS
+    ? `the Timeout setting (${timeoutMs / 1000}s) is too short to load it; ask the user to raise it`
+    : "the request ran out of time; re-run for this path";
 }
 
 /**
@@ -221,21 +218,39 @@ async function withTempTrack<T>(
  * @param track - The temp track
  * @param item - What to load
  * @param deviceName - The device as the call named it
+ * @param waitMs - How long to wait for the remote script
  * @returns The loaded device
  */
 async function loadOnto(
   track: LiveAPI,
   item: BrowserItem,
   deviceName: string,
+  waitMs: number,
 ): Promise<LiveAPI> {
   const before = new Set(track.getChildIds("devices"));
+  // The remote script finds the track by this name, not the index: tracks can
+  // shift before it runs, and a late load must not land on a user's track.
+  const trackName = `Producer Pal temp ${Math.random().toString(36).slice(2)}`;
+
+  track.set("name", trackName);
+
+  const started = Date.now();
   const response = await requestNode<BrowserItemLoad>(
     REMOTE_SCRIPT_ROUTES.load,
-    { type: item.type, path: item.path, trackIndex: track.trackIndex },
-    REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
+    {
+      type: item.type,
+      path: item.path,
+      trackIndex: track.trackIndex,
+      trackName,
+      expiresInMs: remoteScriptExpiry(waitMs),
+    },
+    waitMs,
   );
+  // When V8 stops waiting, the temp track is deleted, and a load that runs
+  // later can't find it by name, so nothing reaches the path.
+  const gaveUp = Date.now() - started >= waitMs;
   const failure = !response.success
-    ? response.error
+    ? `${response.error ?? "no answer"}${gaveUp ? "; nothing was added at this path, re-run for it" : ""}`
     : response.result == null
       ? "the remote script returned nothing"
       : !response.result.available

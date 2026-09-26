@@ -123,7 +123,8 @@ sections to see the AI's reasoning process:
 You can revise a conversation without losing where it was:
 
 - **Edit** a message you sent: hover over it and click the pencil icon, change
-  the text, and send.
+  the text, and send. Click ✕ on an attached image to send without it, for
+  example, when a model that can't read images keeps failing.
 - **Retry** an AI response: click the ↻ icon to generate a different response.
 
 Either action **branches** the conversation: Producer Pal keeps the original and

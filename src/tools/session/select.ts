@@ -7,7 +7,7 @@ import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { toLiveApiView } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   applyDetailView,
@@ -84,7 +84,7 @@ export interface SelectResult {
     id: string;
     path: string;
     pluginWindowOpen?: boolean;
-    reason?: string;
+    detail?: string;
   };
   selectedDrumPad?: { id: string; path: string };
   selectedChain?: { id: string; path: string };
@@ -235,8 +235,8 @@ export function select(
       result.selectedDevice.pluginWindowOpen = pluginWindow.open;
     }
 
-    if (pluginWindow.reason != null) {
-      appendReason(result.selectedDevice, pluginWindow.reason);
+    if (pluginWindow.detail != null) {
+      appendDetail(result.selectedDevice, pluginWindow.detail);
     }
   }
 

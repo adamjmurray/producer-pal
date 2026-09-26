@@ -11,10 +11,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import {
-  insertionContainerPath,
-  resolveInsertionPath,
-} from "../insertion-path.ts";
+import { resolveInsertionPath } from "../insertion-path.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
 
@@ -93,21 +90,5 @@ describe('resolveInsertionPath, the "d+" that appends a device', () => {
     expect(appended.container?.path).toBe(plain.container?.path);
     expect(appended.position).toBe(plain.position);
     expect(appended.containerPath).toBe(plain.containerPath);
-  });
-});
-
-describe('insertionContainerPath, the "d+" that appends a device', () => {
-  it.each([
-    ["t0/d+", "t0"],
-    ["mt/d0/c1/d+", "mt/d0/c1"],
-    ["t0/d0/pC1/c1/d+", "t0/d0/pC1/c1"],
-  ])("drops the %s to name its container", (path, expected) => {
-    expect(insertionContainerPath(path)).toBe(expected);
-  });
-
-  // The lexical fallback for a path the grammar can't parse has to trim a "d+"
-  // too, or a result names the place instead of the container.
-  it("trims a d+ off a path it can't parse", () => {
-    expect(insertionContainerPath("r0/d+")).toBe("r0");
   });
 });

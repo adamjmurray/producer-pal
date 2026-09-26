@@ -87,17 +87,17 @@ describe("updateDevice - param units", () => {
     });
 
     it("refuses a value in some other unit, naming the one it wants", () => {
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Amount", value: "20 dB" }],
-      });
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
       expectParamRefused(
-        result,
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Amount", value: "20 dB" }],
+          }),
         "Amount",
         'is measured in %, so "20 dB" was not written',
       );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });
   });
 
@@ -118,17 +118,17 @@ describe("updateDevice - param units", () => {
     // arrived as 500 on a param whose range is 0-100 — clamped to the top and
     // warned about as if 0.5 had been out of range.
     it("refuses a value carrying a unit, since it can't check one", () => {
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Amount", value: "0.5 s" }],
-      });
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
       expectParamRefused(
-        result,
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Amount", value: "0.5 s" }],
+          }),
         "Amount",
         "displays a plain number from 0 to 100",
       );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });
   });
 
@@ -175,13 +175,17 @@ describe("updateDevice - param units", () => {
     it("refuses semitones on a param displaying cents", () => {
       const param = registerParam((raw) => `${raw} ct`);
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Amount", value: "20 st" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Amount", value: "20 st" }],
+          }),
+        "Amount",
+        'is measured in cents, so "20 st"',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expectParamRefused(result, "Amount", 'is measured in cents, so "20 st"');
     });
 
     it("writes a fractional semitone value", () => {
@@ -198,17 +202,17 @@ describe("updateDevice - param units", () => {
     it("refuses semitones on a param counting scale degrees", () => {
       const param = registerParam((raw) => `${raw} sd`);
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Amount", value: "3 st" }],
-      });
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
       expectParamRefused(
-        result,
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Amount", value: "3 st" }],
+          }),
         "Amount",
         'is measured in scale degrees, so "3 st"',
       );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });
   });
 });

@@ -14,10 +14,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import {
-  insertionContainerPath,
-  resolveInsertionPath,
-} from "../insertion-path.ts";
+import { resolveInsertionPath } from "../insertion-path.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
 
@@ -193,12 +190,3 @@ function registerNestedRack(
     methods: { insert_chain: insertChain },
   });
 }
-
-describe('insertionContainerPath, the "c+" that appends a chain', () => {
-  // There is no index to report until the chain exists, and nothing sits
-  // inside a "c+" to trim off it.
-  it("hands the path back as written", () => {
-    expect(insertionContainerPath("t0/d0/c+")).toBe("t0/d0/c+");
-    expect(insertionContainerPath("t0/d0/pC1/c+")).toBe("t0/d0/pC1/c+");
-  });
-});

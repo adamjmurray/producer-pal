@@ -57,7 +57,7 @@ describe("playback clip entries", () => {
 
     expect(slot.call).toHaveBeenCalledWith("fire");
     expect(result.clips).toStrictEqual([
-      { id: "999999", ok: false, reason: 'id "999999" does not exist' },
+      { id: "999999", ok: false, detail: 'id "999999" does not exist' },
       { id: "clip2", path: "t1/s0" },
     ]);
     // The reason is the entry's, so nothing warns it too.
@@ -95,12 +95,12 @@ describe("playback clip entries", () => {
 
     expect(slot.call).toHaveBeenCalledExactlyOnceWith("fire");
     expect(result.clips).toStrictEqual([
-      { id: "clip1", path: "t0/s0" },
       {
         id: "clip1",
         path: "t0/s0",
-        reason: "already named as id clip1 earlier in this call",
+        detail: 'named again as "t0/s0" later in this call',
       },
+      { id: "clip1", path: "t0/s0" },
     ]);
   });
 
@@ -115,7 +115,7 @@ describe("playback clip entries", () => {
 
     expect(result.clips).toStrictEqual([
       { id: "clip1", path: "t0/s0" },
-      { path: "99/0", ok: false, reason: "no clip slot at t99/s0" },
+      { path: "99/0", ok: false, detail: "no clip slot at t99/s0" },
     ]);
   });
 
@@ -136,7 +136,7 @@ describe("playback clip entries", () => {
     expect(track0.call).toHaveBeenCalledExactlyOnceWith("stop_all_clips");
     expect(result.clips).toStrictEqual([
       { id: "clip1", path: "t0/s0" },
-      { id: "999999", ok: false, reason: 'id "999999" does not exist' },
+      { id: "999999", ok: false, detail: 'id "999999" does not exist' },
     ]);
   });
 

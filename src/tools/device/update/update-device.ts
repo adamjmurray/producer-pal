@@ -13,21 +13,35 @@ import {
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { plural } from "#src/tools/shared/validation/lists/plural.ts";
+import {
+  type NamedTarget,
+  namedTargets,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
-import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
+import {
+  type PresetOutcome,
+  type TargetLists,
+  updateMultipleTargets,
+} from "./helpers/update-multiple-targets.ts";
 import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import {
+  requireDestinationPerSource,
+  validateListLengths,
+} from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  type PairedParamLabels,
+  pairParams,
+} from "#src/tools/shared/validation/lists/paired-values.ts";
 import {
   targetCount,
   targetParamLabel,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 
-interface UpdateDeviceArgs extends UpdateTargetOptions {
+export interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
@@ -38,8 +52,60 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
   focus?: boolean;
 }
 
+/** Args a wrap can take: `force` only unlocks a params write, refused anyway. */
+const WRAP_ALLOWED_ARGS = new Set(["name", "force"]);
+
+/** The other string params that pair per target, beside name and color. */
+const DEVICE_VALUE_LABELS: PairedParamLabels<
+  "sendReturn" | "mappedPitch" | "preset"
+> = {
+  sendReturn: {
+    param: "sendReturn",
+    noun: "return",
+    item: "target",
+    shortfall: "kept their sends",
+  },
+  mappedPitch: {
+    param: "mappedPitch",
+    noun: "pitch",
+    item: "target",
+    shortfall: "kept their pitch",
+  },
+  preset: {
+    param: "preset",
+    noun: "preset",
+    item: "target",
+    shortfall: "kept their devices",
+  },
+};
+
+/** A device update, checked and ready to run: a wrap, or per-target updates. */
+export type DeviceUpdatePlan = { focus?: boolean } & (
+  | { wrap: Parameters<typeof wrapDevicesInRack>[0] }
+  | {
+      /** The targets, tagged with the param that named each */
+      items: NamedTarget[];
+      updateOptions: UpdateTargetOptions;
+      lists: TargetLists;
+    }
+);
+
 /**
- * Update device(s), chain(s), or drum pad(s) by ID or path
+ * Update device(s), chain(s), or drum pad(s) by ID or path. A `preset` is
+ * loaded by updateDeviceWithPreset before this runs.
+ * @param args - The update-device args
+ * @param _context - Internal context object (unused)
+ * @returns Updated object info(s)
+ */
+export function updateDevice(
+  args: UpdateDeviceArgs,
+  _context: Partial<ToolContext> = {},
+): WriteResult<Record<string, unknown>> {
+  return runDeviceUpdate(planDeviceUpdate(args));
+}
+
+/**
+ * Check a device update, refusing a bad call before anything is written.
  * @param args - The parameters
  * @param args.id - Comma-separated ID(s)
  * @param args.ids - Hidden alias for id
@@ -66,17 +132,49 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
  * @param args.force - Allow a destructive pad-device swap a `sample` write needs
+ * @param args.preset - Preset to load first (updateDeviceWithPreset loads it)
  * @param args.focus - Select the device and show device detail view
- * @param _context - Internal context object (unused)
- * @returns Updated object info(s)
+ * @returns The checked update
  */
-export function updateDevice(
-  {
-    id,
-    ids,
-    path,
-    paths,
-    toPath,
+export function planDeviceUpdate({
+  id,
+  ids,
+  path,
+  paths,
+  toPath,
+  name,
+  params,
+  actions,
+  macroVariation,
+  macroVariationIndex,
+  macroCount,
+  abCompare,
+  mute,
+  solo,
+  color,
+  gainDb,
+  pan,
+  sendGainDb,
+  sendReturn,
+  sends,
+  chokeGroup,
+  mappedPitch,
+  wrapInRack,
+  force,
+  preset,
+  focus,
+}: UpdateDeviceArgs): DeviceUpdatePlan {
+  // A value the schema coerced from a JSON null names nothing, so it must not
+  // count as the caller having sent both addressing params.
+  ids = namedIdParam(id, ids, "ids");
+  path = namedPathParam(path, paths);
+
+  if (ids == null && path == null) {
+    throw new Error("id or path is required");
+  }
+
+  // No toPath here: each target takes the destination at its own position.
+  const updateOptions: UpdateTargetOptions = {
     name,
     params,
     actions,
@@ -94,28 +192,27 @@ export function updateDevice(
     sends,
     chokeGroup,
     mappedPitch,
-    wrapInRack,
     force,
-    focus,
-  }: UpdateDeviceArgs,
-  _context: Partial<ToolContext> = {},
-): WriteResult<Record<string, unknown>> {
-  // A value the schema coerced from a JSON null names nothing, so it must not
-  // count as the caller having sent both addressing params.
-  ids = namedIdParam(id, ids, "ids");
-  path = namedPathParam(path, paths);
+    preset,
+  };
 
-  if (ids == null && path == null) {
-    throw new Error("id or path is required");
-  }
+  // First, so a wrap names every arg it would ignore before any of them is
+  // checked on its own.
+  refuseArgsWrapIgnores(wrapInRack, updateOptions);
 
   validateSendPair(sendGainDb, sendReturn);
-  params = validateParamEntries(params);
+  updateOptions.params = validateParamEntries(params);
 
-  // One value for the whole call, so a per-target skip would repeat itself
+  // Checked for the whole call, so a per-target skip wouldn't repeat itself
   // down the list. Refused before any target is touched (ADR-0035).
-  if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
-    throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
+  for (const pitch of everyEntry(
+    mappedPitch,
+    targetCount({ ids, path }),
+    "mappedPitch",
+  )) {
+    if (noteNameToMidi(pitch) == null) {
+      throw new Error(`invalid note name "${pitch}" for mappedPitch`);
+    }
   }
 
   const badVariation = macroVariationParamsReason(
@@ -127,63 +224,73 @@ export function updateDevice(
     throw new Error(badVariation);
   }
 
-  let result: WriteResult<Record<string, unknown>>;
-
   if (wrapInRack) {
-    result = { ...wrapDevicesInRack({ ids, path, toPath, name }) };
-  } else {
-    // Every list in the call is checked together, before any of them is split:
-    // once one is split nothing knows whether the others are lists at all.
-    // toPath is left out — moveDestinations owns it, so a lone destination
-    // against several targets is refused rather than broadcast.
-    validateListLengths([
-      {
-        param: targetParamLabel({ ids, path }),
-        count: targetCount({ ids, path }),
-      },
-      { param: "name", value: name },
-      { param: "color", value: color },
-    ]);
+    return { wrap: { ids, path, toPath, name }, focus };
+  }
 
-    const items = namedTargets({ id: ids, path });
-    const { parsedNames, parsedColors } = pairLabels({
-      noun: "device",
-      count: items.length,
-      name,
-      color,
-    });
-    const destinations = moveDestinations(toPath, items.length);
+  // Every list in the call is checked together, before any of them is split:
+  // once one is split nothing knows whether the others are lists at all.
+  // toPath is left out — moveDestinations owns it, so a lone destination
+  // against several targets is refused rather than broadcast.
+  validateListLengths([
+    {
+      param: targetParamLabel({ ids, path }),
+      count: targetCount({ ids, path }),
+    },
+    { param: "name", value: name },
+    { param: "color", value: color },
+    { param: "sendReturn", value: sendReturn },
+    { param: "mappedPitch", value: mappedPitch },
+    { param: "preset", value: preset },
+  ]);
 
-    // No toPath here: each target takes the destination at its own position.
-    const updateOptions: UpdateTargetOptions = {
-      name,
-      params,
-      actions,
-      macroVariation,
-      macroVariationIndex,
-      macroCount,
-      abCompare,
-      mute,
-      solo,
-      color,
-      gainDb,
-      pan,
-      sendGainDb,
-      sendReturn,
-      sends,
-      chokeGroup,
-      mappedPitch,
-      force,
-    };
+  const items = namedTargets({ id: ids, path });
+  const { parsedNames, parsedColors } = pairLabels({
+    noun: "device",
+    count: items.length,
+    name,
+    color,
+  });
+  const destinations = moveDestinations(toPath, items.length);
 
-    result = updateMultipleTargets(items, updateOptions, {
+  return {
+    items,
+    updateOptions,
+    lists: {
       names: parsedNames,
       colors: parsedColors,
       destinations,
-    });
-  }
+      valuesAt: pairParams(
+        { sendReturn, mappedPitch, preset },
+        DEVICE_VALUE_LABELS,
+        items.length,
+      ),
+    },
+    focus,
+  };
+}
 
-  if (focus) {
+/**
+ * Run a checked device update.
+ * @param plan - What planDeviceUpdate checked
+ * @param presetOutcomes - What loading each target's preset did, by index
+ * @returns Updated object info(s)
+ */
+export function runDeviceUpdate(
+  plan: DeviceUpdatePlan,
+  presetOutcomes: Array<PresetOutcome | undefined> = [],
+): WriteResult<Record<string, unknown>> {
+  const result =
+    "wrap" in plan
+      ? { ...wrapDevicesInRack(plan.wrap) }
+      : updateMultipleTargets(
+          plan.items,
+          plan.updateOptions,
+          plan.lists,
+          presetOutcomes,
+        );
+
+  if (plan.focus) {
     const lastId = lastWrittenId(result);
 
     if (lastId) {
@@ -192,6 +299,40 @@ export function updateDevice(
   }
 
   return result;
+}
+
+/**
+ * Refuse update args sent with wrapInRack. A wrap uses only the targets,
+ * toPath and name, so the rest would be dropped while the call reads as done.
+ * @param wrapInRack - Whether the call wraps; nothing is refused otherwise
+ * @param options - The update args
+ */
+function refuseArgsWrapIgnores(
+  wrapInRack: boolean | undefined,
+  options: UpdateTargetOptions,
+): void {
+  if (!wrapInRack) {
+    return;
+  }
+
+  const ignored = Object.entries(options)
+    .filter(([key, value]) => !WRAP_ALLOWED_ARGS.has(key) && isSent(value))
+    .map(([key]) => key);
+
+  if (ignored.length > 0) {
+    throw new Error(
+      `wrapInRack cannot be used with ${ignored.join(", ")}: wrap first, then update in another call`,
+    );
+  }
+}
+
+/**
+ * Whether an arg asks for anything: an empty list sets nothing.
+ * @param value - The arg's value
+ * @returns True when it was sent with something in it
+ */
+function isSent(value: unknown): boolean {
+  return value != null && !(Array.isArray(value) && value.length === 0);
 }
 
 /**
@@ -214,13 +355,10 @@ function moveDestinations(
 
   const entries = targetEntries(named, "toPath");
 
-  if (entries.length !== count) {
-    throw new Error(
-      `toPath names ${plural(entries.length, "destination")} but the call ` +
-        `names ${plural(count, "target")}. A destination holds one object, ` +
-        `so toPath must name one per target, in order.`,
-    );
-  }
+  requireDestinationPerSource(
+    { param: "toPath", count: entries.length },
+    { param: "the call", count, noun: "target" },
+  );
 
   return entries;
 }

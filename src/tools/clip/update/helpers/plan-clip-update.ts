@@ -73,6 +73,8 @@ export interface ClipUpdatePlan {
   moveOrder: number[];
   destinationById: Map<string, ClipPath>;
   destinationParam: "toPath" | "toSlot";
+  /** The param that named the clips' start: a toPath `[...]` or arrangementStart. */
+  startParam: "toPath" | "arrangementStart";
   /** Clips to clear rather than move, or null when nothing can be skipped */
   overwrites: OverwritePlan | null;
   startBeatsFor: (clip: LiveAPI) => number | null;
@@ -213,6 +215,10 @@ export function planClipUpdate({
     moveOrder: order,
     destinationById,
     destinationParam: moveDestinationParam(toPath, toSlot),
+    // The two can't both be set: a coordinate beside arrangementStart is refused.
+    startParam: moves.positions.some((position) => position != null)
+      ? "toPath"
+      : "arrangementStart",
     // Weighed in processing order, and without the refused moves: the plan
     // holds a clip back for an overwrite that would now never come.
     overwrites: computeOverwritePlan(
@@ -340,6 +346,12 @@ function applySplittingIfNeeded({
 
   const arrangementClips = clips.filter((clip) => {
     if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
+      refuseClipWork(
+        reasons,
+        clip.id,
+        `${mode.param} ignored: this is a session clip`,
+      );
+
       return false;
     }
 
@@ -358,6 +370,12 @@ function applySplittingIfNeeded({
 
     return true;
   });
+
+  // Every clip left out already says why on its own entry; don't warn too.
+  if (arrangementClips.length === 0) {
+    return { clips, slots };
+  }
+
   const splitPoints = prepareSplitParams(
     value,
     arrangementClips,

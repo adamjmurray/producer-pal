@@ -38,7 +38,7 @@ interface ChainResult {
   id?: string;
   path?: string;
   ok?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 interface RackRead {
@@ -68,11 +68,11 @@ function expectOnlyReasons(
   expected: string[],
 ): void {
   for (const substring of expected) {
-    expect(copy.reason ?? "").toContain(substring);
+    expect(copy.detail ?? "").toContain(substring);
   }
 
   if (expected.length === 0) {
-    expect(copy.reason).toBeUndefined();
+    expect(copy.detail).toBeUndefined();
   }
 
   expect(warnings).toStrictEqual([]);
@@ -295,7 +295,7 @@ describe("ppal-duplicate type=chain", () => {
     expect(entries[1]).toStrictEqual({
       path: KIT,
       ok: false,
-      reason: expect.stringContaining(
+      detail: expect.stringContaining(
         '(an instrument rack) into "' + KIT + '" (a drum rack)',
       ),
     });
@@ -354,7 +354,7 @@ describe("ppal-duplicate type=chain", () => {
     );
 
     expect(warnings).toStrictEqual([]);
-    expect((data as ChainResult).reason ?? "").not.toContain("stays behind");
+    expect((data as ChainResult).detail ?? "").not.toContain("stays behind");
 
     const copy = (await readChains(OUTER)).find(
       (chain) => chain.id === (data as ChainResult).id,

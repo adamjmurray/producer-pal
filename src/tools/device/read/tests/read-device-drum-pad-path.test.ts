@@ -136,7 +136,6 @@ describe("readOneDevice with drum pad path", () => {
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chainCount: 0,
     });
@@ -415,7 +414,6 @@ describe("readOneDevice with drum pad path", () => {
     expect(readOneDevice({ path: "t1/d0/p*", include: [] })).toStrictEqual({
       path: "t1/d0/p*",
       name: "All Notes",
-      note: -1,
       pitch: "*",
       chainCount: 1,
     });
@@ -631,7 +629,6 @@ describe("readOneDevice drumPads list", () => {
       {
         path: "t1/d0/p*",
         name: "All Notes",
-        note: -1,
         pitch: "*",
         chainCount: 1,
       },
@@ -661,7 +658,6 @@ describe("readOneDevice drumPads list", () => {
         id: "pad-36",
         path: "t1/d0/pC1",
         name: "Chain",
-        note: 36,
         pitch: "C1",
         chainCount: 1,
         hasInstrument: false,
@@ -690,7 +686,6 @@ describe("readOneDevice drumPads list", () => {
     expect(pad).toStrictEqual({
       path: "t1/d0/p*",
       name: "All Notes",
-      note: -1,
       pitch: "*",
       chainCount: 1,
       state: "muted",
@@ -713,7 +708,6 @@ describe("readOneDevice drumPads list", () => {
       {
         path: "t1/d0/pC1/c0/d0/pC3",
         name: "Hat",
-        note: 60,
         pitch: "C3",
         chainCount: 1,
         hasInstrument: false,

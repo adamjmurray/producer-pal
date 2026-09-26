@@ -16,10 +16,15 @@ import {
   type ParamResult,
   refreshParamValues,
   skippedParam,
+  skippedParamById,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { resolveDrumChainSampleTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import {
+  resolveDrumChainSampleTarget,
+  sayWhatWasLeft,
+} from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
+import { supersededParamReasons } from "./params/superseded-params.ts";
 import { type UpdatePropertyOptions } from "./update-device-properties.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { notApplicableReason } from "./update-target-types.ts";
@@ -37,6 +42,7 @@ import { notApplicableReason } from "./update-target-types.ts";
  * @param type - Its Live API type
  * @param options - Update options
  * @param notes - What the target's entry has to say, added to
+ * @param chainsMade - How many chains this call made on the pad for its sample
  * @returns One entry per param the call sent, in order
  */
 export function applyChainSampleParams(
@@ -44,21 +50,33 @@ export function applyChainSampleParams(
   type: string,
   options: UpdatePropertyOptions,
   notes: TargetNotes,
+  chainsMade = 0,
 ): ParamResult[] {
   const params = options.params ?? [];
   const force = options.force ?? false;
+  const writable = params.filter(
+    (entry) => type === "DrumChain" && isSampleParam(paramEntryKey(entry).key),
+  );
+  // Each entry is written on its own below, so a later `sample` entry has to
+  // be spotted here, or both would load. Only entries that would be written
+  // compete: the rest are not applicable either way.
+  const superseded = supersededParamReasons(null, writable);
 
   return refreshParamValues(
-    params.flatMap((entry) =>
-      type === "DrumChain" && isSampleParam(paramEntryKey(entry).key)
-        ? writeChainSample(target, entry, force, notes)
-        : [
-            skippedParam(
-              paramEntryKey(entry).key,
-              notApplicableReason("params", type, target),
-            ),
-          ],
-    ),
+    params.flatMap((entry) => {
+      const { key, byId } = paramEntryKey(entry);
+      const writableIndex = writable.indexOf(entry);
+      const skip =
+        writableIndex === -1
+          ? notApplicableReason("params", type, target)
+          : superseded.get(writableIndex);
+
+      if (skip == null) {
+        return writeChainSample(target, entry, force, notes, chainsMade);
+      }
+
+      return [byId ? skippedParamById(key, skip) : skippedParam(key, skip)];
+    }),
   );
 }
 
@@ -68,6 +86,7 @@ export function applyChainSampleParams(
  * @param entry - The `sample` param entry, as the caller wrote it
  * @param force - Allow the instrument-to-Simpler swap the write needs
  * @param notes - What the chain's entry has to say, added to
+ * @param chainsMade - How many chains this call made on the pad for the write
  * @returns What the write landed on, or why it landed nowhere
  */
 function writeChainSample(
@@ -75,12 +94,21 @@ function writeChainSample(
   entry: ParamEntry,
   force: boolean,
   notes: TargetNotes,
+  chainsMade: number,
 ): ParamOutcome[] {
-  const resolved = resolveDrumChainSampleTarget(chain, force, notes);
+  const resolved = resolveDrumChainSampleTarget(
+    chain,
+    force,
+    notes,
+    chainsMade,
+  );
 
   if ("reason" in resolved) {
     return [skippedParam(paramEntryKey(entry).key, resolved.reason)];
   }
 
-  return setParamValues(resolved.device, [entry], force, notes);
+  return sayWhatWasLeft(
+    resolved,
+    setParamValues(resolved.device, [entry], force, notes),
+  );
 }

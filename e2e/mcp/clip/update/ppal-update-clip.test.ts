@@ -483,11 +483,11 @@ describe("ppal-update-clip", () => {
     const { data, warnings } = parseToolResultWithWarnings<{
       id: string;
       slot?: string;
-      reason?: string;
+      detail?: string;
     }>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(data.reason).toContain(
+    expect(data.detail).toContain(
       'not moved: toPath "t7" names an arrangement lane and this is a session clip',
     );
     expect(warnings.join(" ")).not.toContain("not moved");
@@ -546,7 +546,7 @@ describe("ppal-update-clip", () => {
     expect(missed).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}/s21`,
       ok: false,
-      reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
+      detail: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
     });
     expect(warnings.join(" ")).not.toContain("no clip at path");
   });
@@ -577,7 +577,7 @@ describe("ppal-update-clip", () => {
     expect(data[1]).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}/s24`,
       ok: false,
-      reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s24"`,
+      detail: `no clip at path "t${EMPTY_MIDI_TRACK}/s24"`,
     });
 
     await sleep(100);
@@ -587,30 +587,34 @@ describe("ppal-update-clip", () => {
   });
 
   // An id and a path can name one clip. Updating it twice would compound every
-  // operation, so the later mention keeps its slot and says where the work is.
+  // operation, so the earlier mention keeps its slot and says where the work is.
   it("keeps both slots when one clip is named by id and by path", async () => {
     const path = `t${EMPTY_MIDI_TRACK}/s26`;
     const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: clipId, path, name: "Named Twice" },
+      arguments: { id: clipId, path, name: "First,Last" },
     });
     const { data, warnings } =
-      parseToolResultWithWarnings<Array<ReadClipResult & { reason?: string }>>(
+      parseToolResultWithWarnings<Array<ReadClipResult & { detail?: string }>>(
         result,
       );
 
     expect(data).toHaveLength(2);
-    expect(data[0]?.id).toBe(clipId);
-    expect(data[0]?.reason).toBeUndefined();
-    // A repeat needed no work, so it carries a reason and no `ok`.
-    expect(data[1]).toStrictEqual({
+    // The earlier mention needed no work, so it carries a reason and no `ok`.
+    expect(data[0]).toStrictEqual({
       id: clipId,
       path,
-      reason: `already named as id ${clipId} earlier in this call`,
+      detail: `named again as "${path}" later in this call`,
     });
-    expect(warnings.join(" ")).not.toContain("earlier in this call");
+    expect(data[1]?.id).toBe(clipId);
+    expect(data[1]?.detail).toBeUndefined();
+    expect(warnings.join(" ")).not.toContain("later in this call");
+
+    await sleep(100);
+
+    expect(await readClipName(clipId)).toBe("Last");
   });
 
   // One target and nothing done: there is no list for an entry to hold a place

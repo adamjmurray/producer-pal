@@ -18,6 +18,7 @@ import {
   getToolErrorMessage,
   getToolWarnings,
   isToolError,
+  KICK_FILE,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -527,5 +528,79 @@ describe("ppal-create-clip audio warping", () => {
     // "not empty" check would pass on a region Live had stretched or truncated.
     expect(clip.start).toBe("1|1");
     expect(clip.length).toBe(expectedSampleLength(clip, song));
+  });
+});
+
+// ============================================================================
+// sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
+// positions path names, the way name and color do.
+// ============================================================================
+
+describe("ppal-create-clip per-position params", () => {
+  /** Read back every clip a create call made, in the order it made them. */
+  async function readCreated(
+    created: CreateClipResult[],
+  ): Promise<ReadClipResult[]> {
+    await sleep(100);
+
+    const clips: ReadClipResult[] = [];
+
+    for (const clip of created) {
+      clips.push(
+        parseToolResult<ReadClipResult>(
+          await ctx.client!.callTool({
+            name: "ppal-read-clip",
+            arguments: { id: clip.id, include: ["timing"] },
+          }),
+        ),
+      );
+    }
+
+    return clips;
+  }
+
+  it("creates two audio clips from two different samples in one call", async () => {
+    const created = parseToolResult<CreateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${AUDIO_TRACK}/s4,t${AUDIO_TRACK}/s5`,
+          sampleFile: `${SAMPLE_FILE},${KICK_FILE}`,
+          name: "paired sample,paired kick",
+        },
+      }),
+    );
+
+    expect(created).toHaveLength(2);
+
+    const clips = await readCreated(created);
+
+    expect(clips.map((clip) => clip.type)).toStrictEqual(["audio", "audio"]);
+    expect(clips[0]?.name).toBe("paired sample");
+    expect(clips[1]?.name).toBe("paired kick");
+    // Different files, so the two clips can't be the same length.
+    expect(clips[0]?.length).not.toBe(clips[1]?.length);
+  });
+
+  it("gives each MIDI clip its own time signature and length", async () => {
+    const created = parseToolResult<CreateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}/s20,t${EMPTY_MIDI_TRACK}/s21`,
+          timeSignature: "4/4,3/4",
+          length: "2bar,4bar",
+        },
+      }),
+    );
+
+    expect(created).toHaveLength(2);
+
+    const clips = await readCreated(created);
+
+    expect(clips[0]?.timeSignature).toBe("4/4");
+    expect(clips[1]?.timeSignature).toBe("3/4");
+    expect(clips[0]?.length).toBe("2bar");
+    expect(clips[1]?.length).toBe("4bar");
   });
 });

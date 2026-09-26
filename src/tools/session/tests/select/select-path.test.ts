@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -203,6 +204,13 @@ describe("select path param", () => {
   it("refuses a list of paths, saying select takes one target", () => {
     expect(() => select({ path: "t0,t1" })).toThrow(
       'invalid path "t0,t1" - select takes one target per call (Live holds one selection)',
+    );
+    expect(() => select({ path: "t0[loc:A, B],t1" })).toThrow(
+      "select takes one target per call",
+    );
+    // Refused, though other tools drop a trailing comma as a typo.
+    expect(() => select({ path: "t0," })).toThrow(
+      "select takes one target per call",
     );
   });
 
@@ -648,6 +656,24 @@ describe("select by arrangement position", () => {
     expect(
       select({ path: "t0[5|1]", clipId: "id clip_arr" }).selectedClip,
     ).toStrictEqual({ id: "clip_arr", path: "t0[5|1]" });
+  });
+
+  // A comma inside the brackets is part of the name, not a second target.
+  it("takes a locator whose name holds a comma", () => {
+    setupTrackMock("clip_arr");
+    setupMainLaneClip("clip_arr", BAR_5);
+    setupSongViewMock();
+    setupAppViewMock();
+
+    const { liveSet } = setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue_0", time: BAR_5, name: "Verse, part 2" }],
+      liveSetProps: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const result = select({ path: "t0[loc:Verse, part 2]" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("start_time", BAR_5);
+    expect(result.selectedClip?.id).toBe("clip_arr");
   });
 
   it("takes a position on a take lane", () => {

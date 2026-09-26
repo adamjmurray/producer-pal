@@ -254,13 +254,16 @@ describe("lookUpBrowserDevice", () => {
   it("reports a search the remote script failed", async () => {
     fake = await startFakeRemoteScript(() => ({
       status: 504,
-      body: { error: "Live did not run the request within 30.0s" },
+      body: {
+        error:
+          "Live did not run the request within 30.0s; nothing changed, re-run it",
+      },
     }));
 
     expect(await lookUpBrowserDevice("Reverb")).toStrictEqual({
       available: true,
       error:
-        'could not search Live\'s browser for "Reverb": Live did not run the request within 30.0s',
+        'could not search Live\'s browser for "Reverb": Live did not run the request within 30.0s; nothing changed, re-run it',
     });
   });
 

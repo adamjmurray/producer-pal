@@ -34,7 +34,7 @@ existing tools already do.
 
 - **A synthesis DSL — parameters or an expression language for building
   sounds.** This is the real alternative, and the reason it loses is scope.
-  [Transforms](../specs/Transforms-Spec.md) work as a DSL because MIDI
+  [Transforms](../specs/transforms/README.md) work as a DSL because MIDI
   transformation has a small vocabulary. Synthesis doesn't: every new timbre
   wants an operator the grammar doesn't have, so the DSL either stays narrow
   enough to be useless or grows until it's a programming language we also have

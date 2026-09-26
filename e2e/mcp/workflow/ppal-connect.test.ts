@@ -15,16 +15,18 @@ import {
   CONFIG_URL,
   fetchSkillOverrides,
   parseToolResult,
-  remoteScriptAnswers,
-  serverHasCodeExec,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import {
+  remoteScriptAnswers,
+  serverHasCodeExec,
+} from "./helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
 /** The section the skills add only while the remote script answers. */
-const PLUGINS_HEADING = "### Plug-Ins & Max for Live Devices";
+const PLUGINS_HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
 /** Helper to call ppal-connect and return the raw MCP result. */
 async function callConnectRaw(): Promise<unknown> {

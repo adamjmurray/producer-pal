@@ -56,6 +56,13 @@ describe("parseTagArgs", () => {
     expect(parseTagArgs([])).toStrictEqual([]);
   });
 
+  it.each([[[""]], [[" , "]], [["paths", ""]]])(
+    "rejects an empty tag in %j instead of running everything",
+    (values) => {
+      expect(() => parseTagArgs(values)).toThrow(/--tag needs a tag name/);
+    },
+  );
+
   it("rejects a tag no scenario could carry", () => {
     expect(() => parseTagArgs(["notaton"])).toThrow(
       /Unknown tag\(s\): notaton/,

@@ -10,7 +10,7 @@ import {
   chainMixerToCarry,
   noteChainMixerLeftBehind,
   sourceChain,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer-carry.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,
@@ -32,12 +32,9 @@ export type DeviceMoveOutcome =
   | "refused"
   | "unresolvable";
 
-/** What a move did, and where it put the device. */
+/** What a move did. */
 export interface DeviceMove {
   outcome: DeviceMoveOutcome;
-  /** The container the device landed in, so a caller that has to name it
-   * afterwards doesn't re-resolve toPath. Only a "moved" outcome has one. */
-  container?: LiveAPI;
   /** Why the move didn't happen, spelled as the caller wrote it. Always on an
    * "unresolvable" and on a "refused". */
   reason?: string;
@@ -60,7 +57,7 @@ export interface DeviceMove {
  *   (device duplication shifts track indices past its temp track)
  * @param notes - What the device's entry has to say, added to; left out where
  *   the caller keeps no entry for this move
- * @returns What the move did, plus the container it landed in or why it didn't
+ * @returns What the move did, and why it didn't when it didn't
  */
 export function moveDeviceToPath(
   device: LiveAPI,
@@ -98,7 +95,7 @@ export function moveDeviceToPath(
  * @param source - As in moveDeviceToPath
  * @param reportPath - How to spell the destination back to the caller
  * @param notes - As in moveDeviceToPath
- * @returns What the move did, plus the container it landed in or why it didn't
+ * @returns What the move did, and why it didn't when it didn't
  */
 export function moveDeviceIntoContainer(
   device: LiveAPI,
@@ -157,7 +154,7 @@ export function moveDeviceIntoContainer(
     noteChainMixerLeftBehind(chain, container, source.id !== device.id, notes);
   }
 
-  return { outcome: "moved", container };
+  return { outcome: "moved" };
 }
 
 /**

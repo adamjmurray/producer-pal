@@ -109,7 +109,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(result).toStrictEqual({
       id: "chain-0",
       path: "t0/d0/pD1/c0",
-      reason:
+      detail:
         "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move " +
         "layers on top of them rather than replacing them",
     });
@@ -159,6 +159,19 @@ describe("updateDevice - moving a drum chain", () => {
     });
   });
 
+  // Every pad resolves before the first move: resolved afterwards, pD1 would
+  // hold C1's chains too and send all three on to E1.
+  it("moves each pad's own chains when one pad moves onto the next", () => {
+    updateDevice({
+      path: "t0/d0/pC1,t0/d0/pD1",
+      toPath: "t0/d0/pD1,t0/d0/pE1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+  });
+
   // Live layers rather than replaces, so the destination ends up playing both
   // the sound that was there and the one that arrived.
   it("says on the pad's entry that a move onto an occupied pad layers", () => {
@@ -169,7 +182,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain1.set).toHaveBeenCalledWith("in_note", 38);
     expect(result).toStrictEqual({
       ...unmovedPadC1,
-      reason:
+      detail:
         "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move " +
         "layers on top of them rather than replacing them",
     });
@@ -246,7 +259,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/d1",
-      reason: "the Producer Pal device cannot be moved",
+      detail: "the Producer Pal device cannot be moved",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -437,8 +450,8 @@ describe("updateDevice - a toPath that does not resolve", () => {
     expect(first.set).toHaveBeenCalledWith("name", "X");
     expect(second.set).toHaveBeenCalledWith("name", "X");
     expect(result).toStrictEqual([
-      { id: "123", reason: expect.stringContaining(reason) },
-      { id: "456", reason: expect.stringContaining(reason) },
+      { id: "123", detail: expect.stringContaining(reason) },
+      { id: "456", detail: expect.stringContaining(reason) },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });

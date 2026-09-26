@@ -63,7 +63,10 @@ describe("createDevice by device type", () => {
     });
 
     expect(() =>
-      validateInsertionOrder(["t1/inst", "t0/afx0"], "Compressor"),
+      validateInsertionOrder([
+        { path: "t1/inst", device: "Compressor" },
+        { path: "t0/afx0", device: "Compressor" },
+      ]),
     ).not.toThrow();
   });
 

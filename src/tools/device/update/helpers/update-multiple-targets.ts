@@ -14,7 +14,6 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
-  insertionContainerPath,
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
@@ -38,12 +37,14 @@ import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import { updateDrumPadGroup } from "./update-drum-pad-group.ts";
 import {
   type UpdateTargetOptions,
+  refuseIfNoParamLanded,
   updateDeviceProperties,
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
 import {
   type TargetNotes,
   newTargetNotes,
+  noteTarget,
   refuseTargetWork,
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -63,21 +64,31 @@ interface UpdateTargetResult extends ChainMixerReport {
   actions?: ActionResult[];
 }
 
-/** Where a `toPath` move put the target, and what it made getting there. */
+/** Whether a `toPath` move happened, and what it made getting there. */
 interface TargetMove {
-  /** The destination spelling, absent when the move didn't happen */
-  written?: WrittenContainer;
+  moved?: boolean;
   created?: string;
+}
+
+/** A target's entry, its id, and the call's spelling of its container when
+ * that spelling is kept. */
+interface TargetUpdate {
+  id: string;
+  result: { path?: string };
+  written?: WrittenContainer;
 }
 
 /** A bare pad path names the whole pad, so it resolves to a group of objects
  * rather than to one. Everything else resolves to a single object. */
-type ResolvedTarget =
+export type ResolvedTarget =
   | { kind: "object"; target: LiveAPI }
   | { kind: "drum-pad"; group: DrumPadGroup; padPath: string };
 
 /** An object's own last path segment, so the rest of the path is its container. */
 const OWN_SEGMENT = /\/[^/]+$/;
+
+/** What loading a target's preset did: replaced the device or kept it, or why not. */
+export type PresetOutcome = { replaced: boolean } | { error: string };
 
 /** One entry per target, except where null means one value covers them all. */
 export interface TargetLists {
@@ -85,6 +96,10 @@ export interface TargetLists {
   colors: ListEntries | null;
   /** Where each target moves, undefined where the call named nowhere */
   destinations: Array<string | undefined>;
+  /** The other per-target strings for the target at an index */
+  valuesAt: (
+    index: number,
+  ) => Pick<UpdateTargetOptions, "sendReturn" | "mappedPitch" | "preset">;
 }
 
 /**
@@ -92,46 +107,109 @@ export interface TargetLists {
  * @param items - The targets, each tagged with the param it came from
  * @param updateOptions - Options to pass to updateTarget, minus the per-target lists
  * @param lists - The name, color and destination lists, paired with the targets
+ * @param presetOutcomes - What loading each target's preset did, by index
  * @returns The result when one target was named, otherwise one entry per target
  */
 export function updateMultipleTargets(
   items: NamedTarget[],
   updateOptions: UpdateTargetOptions,
   lists: TargetLists,
+  presetOutcomes: Array<PresetOutcome | undefined> = [],
 ): WriteResult<Record<string, unknown>> {
-  return writeFanOut(items, ({ param, value }, i) => {
-    // Resolution throws for a path that names nothing a target can sit in, and
-    // that message is the target's reason — so it is not caught here.
-    const resolved =
-      param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
+  // Resolve every target before the first write: a move re-indexes what it
+  // leaves, so a later path would name whatever slid into the slot.
+  const targets = items.map(resolveUpFront);
+  const updated: TargetUpdate[] = [];
 
-    if (!resolved) {
-      throw new Error(
-        param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
-      );
-    }
-
+  const results = writeFanOut<object>(items, ({ param, value }, i) => {
+    // Rethrows a failed resolution, whose message is the target's reason.
+    const resolved = (targets[i] as () => ResolvedTarget)();
     const options: UpdateTargetOptions = {
       ...updateOptions,
       name: getNameForIndex(updateOptions.name, i, lists.names),
       color: getColorForIndex(updateOptions.color, i, lists.colors),
       toPath: lists.destinations[i],
+      ...lists.valuesAt(i),
     };
 
-    const result =
-      resolved.kind === "drum-pad"
-        ? updateDrumPadGroup(resolved.group, resolved.padPath, options)
-        : updateTarget(
-            resolved.target,
-            options,
-            param === "path" ? value : undefined,
-          );
+    if (resolved.kind === "drum-pad") {
+      const padResult = updateDrumPadGroup(
+        resolved.group,
+        resolved.padPath,
+        options,
+      );
 
-    return result as Record<string, unknown>;
+      // A virtual pad has no id, and nothing to name.
+      if (padResult.id != null) {
+        updated.push({ id: padResult.id, result: padResult });
+      }
+
+      return padResult;
+    }
+
+    const update = updateTarget(
+      resolved.target,
+      options,
+      param === "path" ? value : undefined,
+      presetOutcomes[i],
+    );
+
+    updated.push(update);
+
+    return update.result;
   });
+
+  // A later move can push an earlier target along, so name each one once every
+  // target has had its turn.
+  for (const update of updated) {
+    renamePath(update);
+  }
+
+  return results as WriteResult<Record<string, unknown>>;
+}
+
+/**
+ * Resolve a target by the param that named it.
+ * @param item - The target, tagged with the param that named it
+ * @param item.param - Which param named it
+ * @param item.value - The id or path
+ * @returns The resolved target
+ * @throws Error when it names nothing a target can be
+ */
+export function resolveNamedTarget({
+  param,
+  value,
+}: NamedTarget): ResolvedTarget {
+  const resolved =
+    param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
+
+  if (!resolved) {
+    throw new Error(
+      param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
+    );
+  }
+
+  return resolved;
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Resolve one target now, keeping a failure to throw when its turn comes.
+ * @param item - The target, tagged with the param that named it
+ * @returns Hands back the resolved target, or throws why it has none
+ */
+function resolveUpFront(item: NamedTarget): () => ResolvedTarget {
+  try {
+    const resolved = resolveNamedTarget(item);
+
+    return () => resolved;
+  } catch (error) {
+    return () => {
+      throw error;
+    };
+  }
+}
 
 /**
  * Resolve an ID to a LiveAPI target
@@ -258,14 +336,17 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
  * @param target - Live API object to update
  * @param options - Update options
  * @param writtenPath - The path the call named the target by, if it named one
- * @returns Result with ID and any params written
+ * @param presetOutcome - What loading its preset did, when the call sent one
+ * @returns Result with ID and any params written, and the container spelling
+ *   it was named by
  * @throws Error when this kind of object can't be written to
  */
 function updateTarget(
   target: LiveAPI,
   options: UpdateTargetOptions,
   writtenPath?: string,
-): UpdateTargetResult {
+  presetOutcome?: PresetOutcome,
+): TargetUpdate {
   const type = target.type;
 
   // Validate type is updatable
@@ -277,15 +358,17 @@ function updateTarget(
 
   const notes = newTargetNotes();
 
+  notePresetOutcome(notes, presetOutcome);
+
   // Handle move operation first (before other updates)
   const moved: TargetMove =
     options.toPath == null
       ? {}
       : moveTargetToPath(target, type, options.toPath, notes);
 
-  // A move re-parents the object, so its toPath replaces the address the call
-  // reached it by.
-  const written = moved.written ?? writtenContainer(writtenPath);
+  // A moved device is named where it landed: the call's toPath spelling can
+  // name a chain to make ("c+") rather than the one it made.
+  const written = moved.moved ? undefined : writtenContainer(writtenPath);
   const madeChains = moved.created == null ? {} : { created: moved.created };
 
   // No DrumPad case: a pad is never a lone target — id and path both resolve
@@ -300,16 +383,21 @@ function updateTarget(
     // visible instead of the caller's argument being assumed to have landed.
     const mixer = updateNonDeviceProperties(target, type, options, notes);
 
-    return reportTargetNotes(
+    refuseIfNoParamLanded(notes, mixer.params);
+
+    const result = reportTargetNotes(
       {
         id: target.id,
-        ...pathField(target, written),
+        // Filled in by renamePath once every target has run.
+        path: undefined,
         ...madeChains,
         ...mixer,
       },
       notes,
       options,
     );
+
+    return { id: result.id, result, written };
   }
 
   const { params, actions } = updateDeviceProperties(
@@ -320,7 +408,8 @@ function updateTarget(
   );
   const result: UpdateTargetResult = {
     id: target.id,
-    ...pathField(target, written),
+    // Filled in by renamePath once every target has run.
+    path: undefined,
     ...madeChains,
   };
 
@@ -332,7 +421,52 @@ function updateTarget(
     result.actions = actions;
   }
 
-  return reportTargetNotes(result, notes, options);
+  return {
+    id: result.id,
+    result: reportTargetNotes(result, notes, options),
+    written,
+  };
+}
+
+/**
+ * Say what loading a preset did, when there's anything to say: why it didn't
+ * load, or that a new device took the old one's place.
+ * @param notes - What the target's entry has to say, added to
+ * @param outcome - What loading the preset did, if the call sent one
+ */
+function notePresetOutcome(
+  notes: TargetNotes,
+  outcome: PresetOutcome | undefined,
+): void {
+  if (outcome == null) {
+    return;
+  }
+
+  if ("error" in outcome) {
+    refuseTargetWork(notes, ["preset"], `preset not loaded: ${outcome.error}`);
+  } else if (outcome.replaced) {
+    noteTarget(
+      notes,
+      "the preset replaced the device with a new one (new id); any automation on the old device is gone",
+    );
+  }
+}
+
+/**
+ * Name a target by where it sits now, keeping its entry's key order.
+ * @param update - The target, whose entry is updated in place
+ * @param update.id - Its id
+ * @param update.result - Its entry
+ * @param update.written - The container spelling it was named by, if any
+ */
+function renamePath({ id, result, written }: TargetUpdate): void {
+  const { path } = pathField(LiveAPI.from(id), written);
+
+  if (path == null) {
+    delete result.path;
+  } else {
+    result.path = path;
+  }
 }
 
 /**
@@ -341,8 +475,7 @@ function updateTarget(
  * @param type - Its Live API type
  * @param toPath - Where the call asked to move it
  * @param notes - What the target's entry has to say, added to
- * @returns The destination as the call spelled it, for naming the object
- *   afterwards, plus any chains the path made; empty when it stayed put
+ * @returns Whether it moved, plus any chains the path made
  */
 function moveTargetToPath(
   target: LiveAPI,
@@ -361,11 +494,11 @@ function moveTargetToPath(
   }
 
   if (isDeviceType(type)) {
-    return moveDeviceAndName(target, toPath, notes);
+    return moveDevice(target, toPath, notes);
   }
 
   if (type === "DrumChain") {
-    moveDrumChainToPath(target, toPath, false, notes);
+    moveDrumChainToPath([target], toPath, notes);
 
     return {};
   }
@@ -382,19 +515,18 @@ function moveTargetToPath(
 }
 
 /**
- * Move a device, and say where it landed as the call spelled it.
+ * Move a device, noting why when it didn't move.
  * @param device - The device being moved
  * @param toPath - Where the call asked to move it
  * @param notes - What the device's entry has to say, added to
- * @returns The destination spelling, absent when the move didn't happen, plus
- *   any chains the path made on the way
+ * @returns Whether it moved, plus any chains the path made on the way
  */
-function moveDeviceAndName(
+function moveDevice(
   device: LiveAPI,
   toPath: string,
   notes: TargetNotes,
 ): TargetMove {
-  const { outcome, container, reason, created } = moveDeviceToPath(
+  const { outcome, reason, created } = moveDeviceToPath(
     device,
     toPath,
     device,
@@ -418,17 +550,8 @@ function moveDeviceAndName(
     refuseTargetWork(notes, ["toPath"], `not moved to "${toPath}"${explained}`);
   }
 
-  // Live confirms the device is in this container before the move reports
-  // "moved", which is what makes the destination safe to name it by.
   return {
-    ...(container == null
-      ? {}
-      : {
-          written: {
-            container: () => container,
-            path: insertionContainerPath(toPath, "toPath"),
-          },
-        }),
+    moved: outcome === "moved",
     ...(created == null ? {} : { created }),
   };
 }

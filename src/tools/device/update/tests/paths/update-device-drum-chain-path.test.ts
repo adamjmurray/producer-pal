@@ -203,4 +203,30 @@ describe("updateDevice — drum chain path spelling", () => {
       path: "t0/d0/pC1/c1/d1",
     });
   });
+
+  // Echoing "c+" back would make another chain when pasted.
+  it("names a device moved to a new layer by the chain it made", () => {
+    mockWorkingDeviceMoves();
+    registerPlainDevice();
+    writesThroughSets(
+      registerMockObject("chain-3", {
+        path: livePath.track(0).device(0).chain(3),
+        type: "DrumChain",
+        properties: { in_note: -1, devices: children() },
+      }),
+    );
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        chains: children("chain-0", "chain-1", "chain-2", "chain-3"),
+        can_have_drum_pads: 1,
+      },
+      methods: { insert_chain: () => ["id", "chain-3"] },
+    });
+
+    expect(
+      updateDevice({ path: "t1/d0", toPath: "t0/d0/pC1/c+" }),
+    ).toStrictEqual({ id: "plain-dev", path: "t0/d0/pC1/c2/d0" });
+  });
 });

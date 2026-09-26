@@ -5,8 +5,9 @@
 
 /**
  * E2E tests for a param write that lands nowhere: it keeps its slot in `params`
- * as `ok: false` with a reason, and warns nowhere. The `actions` arg answers the
- * same way, one entry per action sent.
+ * as `ok: false` with a reason, and warns nowhere. When no param landed and the
+ * call asked nothing else, the call fails with each reason instead. The
+ * `actions` arg answers the same way, one entry per action sent.
  *
  * These need a real Live: what a stock param does with a value a mock was told
  * to expect proves nothing.
@@ -21,7 +22,7 @@ import {
   createGlueCompressor,
   expectParamRefused,
   writeParam,
-} from "./update-device-param-test-helpers";
+} from "../helpers/update-device-param-test-helpers";
 import {
   createMidiTrack,
   createTestDevice,
@@ -70,7 +71,7 @@ describe("ppal-update-device on a param that lands nowhere", () => {
         name: string;
         value?: number | string;
         ok?: boolean;
-        reason?: string;
+        detail?: string;
       }>;
     }>(
       await ctx.client!.callTool({
@@ -92,7 +93,7 @@ describe("ppal-update-device on a param that lands nowhere", () => {
       {
         name: "Nope",
         ok: false,
-        reason: expect.stringContaining("not found on t0/d"),
+        detail: expect.stringContaining("not found on t0/d"),
       },
     ]);
     expect(warnings).toStrictEqual([]);
@@ -133,7 +134,7 @@ describe("ppal-update-device on a pseudo-param the device refused", () => {
 interface ActionEntry {
   action: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 /** Create an instrument on a fresh MIDI track; returns the device id. */
@@ -179,17 +180,17 @@ describe("ppal-update-device actions", () => {
       { action: "addModulationTarget('Flt 1 Freq')" },
       {
         action: "addModulationTarget('Flt 1 Freq')",
-        reason: 'parameter "Flt 1 Freq" is already in the modulation matrix',
+        detail: 'parameter "Flt 1 Freq" is already in the modulation matrix',
       },
       {
         action: "setModulation('Flt 1 Freq','LFO 1')",
         ok: false,
-        reason: "requires 3 arguments (target, source, amount)",
+        detail: "requires 3 arguments (target, source, amount)",
       },
       {
         action: "reverse",
         ok: false,
-        reason: "unknown action for this device",
+        detail: "unknown action for this device",
       },
     ]);
     expect(warnings).toStrictEqual([]);
@@ -214,7 +215,7 @@ describe("ppal-update-device actions", () => {
       {
         action: "warpAs(soon)",
         ok: false,
-        reason: "requires a numeric beats argument",
+        detail: "requires a numeric beats argument",
       },
     ]);
     expect(warnings).toStrictEqual([]);

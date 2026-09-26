@@ -34,12 +34,11 @@ export function RemoteScriptTab() {
           <p data-testid="remote-script-loading">Checking…</p>
         ) : (
           <>
-            <p
-              className="text-red-600 dark:text-red-400"
-              data-testid="remote-script-load-error"
-            >
-              {remote.loadError ?? "Could not read the remote script status."}
-            </p>
+            <LoadError
+              message={
+                remote.loadError ?? "Could not read the remote script status."
+              }
+            />
             <RefreshButton onRefresh={remote.refresh} />
           </>
         )}
@@ -80,6 +79,8 @@ export function RemoteScriptTab() {
         />
       )}
 
+      {/* A failed Refresh keeps the last status on screen. */}
+      {remote.loadError != null && <LoadError message={remote.loadError} />}
       <RefreshButton onRefresh={remote.refresh} />
     </div>
   );
@@ -105,6 +106,10 @@ function summarize(status: RemoteScriptStatus): string {
 
   if (status.updateAvailable) {
     return `Update available: installed ${versionText(status.installedVersion)}, this build has v${status.bundledVersion} (${running})`;
+  }
+
+  if (status.installedNewer) {
+    return `Installed ${versionText(status.installedVersion)} is newer than this device's v${status.bundledVersion} (${running})`;
   }
 
   return `Installed ${versionText(status.installedVersion)} (${running})`;
@@ -238,6 +243,10 @@ function installLabel(status: RemoteScriptStatus, installing: boolean): string {
     return "Install";
   }
 
+  if (status.installedNewer) {
+    return "Downgrade to match";
+  }
+
   return status.updateAvailable ? "Update" : "Reinstall";
 }
 
@@ -266,7 +275,7 @@ function EnableSteps({
       )}
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>Restart Live — it only scans Remote Scripts at startup.</li>
-        <li>In Live, open Settings → Link, Tempo &amp; MIDI.</li>
+        <li>In Live, open Settings → Tempo &amp; MIDI.</li>
         <li>
           Under Control Surface pick Producer_Pal. Leave Input and Output as
           None.
@@ -295,5 +304,22 @@ function RefreshButton({ onRefresh }: { onRefresh: () => void }) {
     >
       Refresh
     </button>
+  );
+}
+
+/**
+ * Why the status read failed.
+ * @param {object} props - Component props
+ * @param {string} props.message - The error to show
+ * @returns {JSX.Element} The error line
+ */
+function LoadError({ message }: { message: string }) {
+  return (
+    <p
+      className="text-red-600 dark:text-red-400"
+      data-testid="remote-script-load-error"
+    >
+      {message}
+    </p>
   );
 }

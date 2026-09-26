@@ -7,10 +7,13 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   differsAtPublishedResolution,
   publishedReadBack,
-  readBackReason,
+  readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
+
+/** The params that ask for a send write, on a track or a chain. */
+export const SEND_PARAMS = ["sends", "sendGainDb", "sendReturn"] as const;
 
 /** A `sends` entry paired with the return it resolved to. */
 export interface IndexedSend extends SendEntry {
@@ -32,14 +35,14 @@ export interface SendResult {
   /** Only on a send nothing was written to */
   ok?: false;
   /** Why the level isn't the one asked for, or why nothing was written */
-  reason?: string;
+  detail?: string;
 }
 
 /**
  * Read a send's level back off Live, so a write result says what landed rather
  * than what was asked for — Live clamps the level and hands back a 32-bit float.
  *
- * The `reason` marks a level Live didn't keep, which is the only one a result
+ * The `detail` marks a level Live didn't keep, which is the only one a result
  * reports: a send that took the level asked for has nothing to say. The entry
  * is built either way, because a collision names the level the send ended up at.
  * @param send - The send DeviceParameter
@@ -60,7 +63,7 @@ export function readSendBack(
   const landed =
     publishedReadBack(send.getProperty("display_value"), roundGainDb) ??
     written;
-  const reason = readBackReason(
+  const detail = readBackDetail(
     differsAtPublishedResolution(written, landed, roundGainDb)
       ? ["gainDb"]
       : [],
@@ -72,28 +75,28 @@ export function readSendBack(
     // and `sends` accepts either.
     ...(id == null ? {} : { returnId: id }),
     gainDb: landed,
-    ...(reason == null ? {} : { reason }),
+    ...(detail == null ? {} : { detail }),
   };
 }
 
 /**
  * The entry for a send nothing was written to. It has no level the call put
- * there, so it carries the reason in place of one.
+ * there, so it carries the detail in place of one.
  * @param name - The resolved return's name
  * @param id - The resolved return's id, when there is one
- * @param reason - Why nothing was written
+ * @param detail - Why nothing was written
  * @returns The entry to report for this send
  */
 export function refusedSend(
   name: string,
   id: string | undefined,
-  reason: string,
+  detail: string,
 ): SendResult {
   return {
     return: name,
     ...(id == null ? {} : { returnId: id }),
     ok: false,
-    reason,
+    detail,
   };
 }
 

@@ -35,7 +35,7 @@ import {
 // Central registry of specialized-device specs and the dispatch entry points
 // used by the device read/update plumbing. Devices are matched by
 // `class_display_name` (consistent with the existing Simpler handling). See
-// dev/Specialized-Devices.md.
+// dev/live-api/specialized-devices/README.md.
 
 const SPECS: SpecializedDeviceSpec[] = [
   // Instruments
@@ -352,11 +352,11 @@ function findParam(
 /**
  * The entry for an action nothing was done for.
  * @param action - The action as the call wrote it
- * @param reason - Why nothing was done
+ * @param detail - Why nothing was done
  * @returns The skip entry
  */
-function refusedAction(action: string, reason: string): ActionResult {
-  return { action, ok: false, reason };
+function refusedAction(action: string, detail: string): ActionResult {
+  return { action, ok: false, detail };
 }
 
 /**

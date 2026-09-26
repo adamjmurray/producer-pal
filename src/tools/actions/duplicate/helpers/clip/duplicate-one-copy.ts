@@ -20,7 +20,7 @@ import {
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 
-/** What one copy attempt produced: the clip (with a reason when it isn't quite
+/** What one copy attempt produced: the clip (with a detail when it isn't quite
  * what was asked for), or why there is none. */
 export type CopyAttempt =
   | { copy: object; refused?: undefined }
@@ -153,27 +153,25 @@ function recreateCopy(
   const losses = recreatedClipLosses(options.object);
 
   try {
-    const copy = getMinimalClipInfo(
-      recreateClip(
-        options.object,
-        destination,
-        options.startBeats,
-        options.name,
-        options.color,
-        losses,
-      ),
+    const clip = recreateClip(
+      options.object,
+      destination,
+      options.startBeats,
+      options.name,
+      options.color,
+      losses,
     );
 
-    return { copy: { ...copy, reason: landedNote(kind, losses) } };
+    return { copy: getMinimalClipInfo(clip, landedNote(kind, losses)) };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
     // refusal would lose a clip the caller has to know about.
     if (error instanceof PartialRecreateError) {
       return {
-        copy: {
-          ...getMinimalClipInfo(error.partialClip),
-          reason: `the ${kind} copy is incomplete (${error.message})`,
-        },
+        copy: getMinimalClipInfo(
+          error.partialClip,
+          `the ${kind} copy is incomplete (${error.message})`,
+        ),
       };
     }
 

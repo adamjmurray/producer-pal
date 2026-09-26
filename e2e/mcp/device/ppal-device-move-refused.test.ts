@@ -131,9 +131,9 @@ describe("a device move Live refuses", () => {
     const result = await moveInstrumentOntoInstrument({ name: "Still Here" });
 
     // The rename landed, so the device keeps a normal entry and no `ok`.
-    const entry = parseToolResult<{ id: string; reason?: string }>(result);
+    const entry = parseToolResult<{ id: string; detail?: string }>(result);
 
-    expect(entry.reason).toContain("already has an instrument");
+    expect(entry.detail).toContain("already has an instrument");
     expect(entry).not.toHaveProperty("ok");
     expect(getToolWarnings(result)).toStrictEqual([]);
   });
@@ -400,10 +400,10 @@ describe("a rack chain a call asks to move", () => {
       name: "ppal-update-device",
       arguments: { id: chainId, toPath: "t0", name: "Renamed" },
     });
-    const entry = parseToolResult<{ id: string; reason?: string }>(result);
+    const entry = parseToolResult<{ id: string; detail?: string }>(result);
 
     expect(entry.id).toBe(chainId);
-    expect(entry.reason).toBe(
+    expect(entry.detail).toBe(
       "a chain cannot be moved; move its devices instead",
     );
     expect(getToolWarnings(result)).toStrictEqual([]);

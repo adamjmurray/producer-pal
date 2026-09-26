@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-duplicate with a list of sources in `id`.
+ * E2E tests for ppal-duplicate's lists: a list of sources in `id`, and values
+ * that pair one per copy.
  * Uses: e2e-test-set (t8 and t10 are empty MIDI tracks; s5-s7 are empty scenes)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -12,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  createTestDeviceAt,
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
@@ -24,13 +26,17 @@ const ctx = setupMcpTestContext();
 interface DuplicateClipResult {
   id: string;
   path?: string;
+  detail?: string;
 }
 
-/** The entry for a copy a later copy in the same call landed on. */
-interface OverwrittenClipResult {
+/** The entry for a copy a later copy in the same call deleted. */
+interface DeletedClipResult {
   path: string;
-  overwritten: true;
+  deleted: true;
+  detail: string;
 }
+
+const LANDED_ON = "a later copy in this call landed on it";
 
 describe("ppal-duplicate with a source list", () => {
   /**
@@ -164,7 +170,7 @@ describe("ppal-duplicate with a source list", () => {
     );
 
     expect(copies).toHaveLength(2);
-    expect(copies.some((copy) => "overwritten" in copy)).toBe(false);
+    expect(copies.some((copy) => "deleted" in copy)).toBe(false);
     expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}[109|1]`);
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[113|1]`);
 
@@ -184,9 +190,7 @@ describe("ppal-duplicate with a source list", () => {
 
     await sleep(100);
 
-    const copies = parseToolResult<
-      (DuplicateClipResult | OverwrittenClipResult)[]
-    >(
+    const copies = parseToolResult<(DuplicateClipResult | DeletedClipResult)[]>(
       await duplicateClips({
         id: [first, second].join(","),
         toPath: "[97|1]",
@@ -197,7 +201,8 @@ describe("ppal-duplicate with a source list", () => {
     // The first copy is gone, so its entry says where it went and stops there.
     expect(copies[0]).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}[97|1]`,
-      overwritten: true,
+      deleted: true,
+      detail: LANDED_ON,
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[97|1]`);
 
@@ -213,10 +218,84 @@ describe("ppal-duplicate with a source list", () => {
     }
   });
 
-  // A copy is cleared by whatever lands across it, not only by one starting on
-  // the same beat. Both entries name a different bar here, and one of them is
-  // still a clip that no longer exists.
-  it("hands back no id for a copy the next one cleared", async () => {
+  // Scenes pair the same way clips do: each scene takes its own position,
+  // rather than every scene landing on every position over the one before.
+  it("pairs a scene position list one position per scene", async () => {
+    await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
+    await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1");
+
+    await sleep(100);
+
+    const copies = parseToolResult<{ clips: DuplicateClipResult[] }[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "scene", path: "s5,s6", toPath: "[97|1],[101|1]" },
+      }),
+    );
+
+    expect(copies.map((copy) => copy.clips.map((c) => c.path))).toStrictEqual([
+      [`t${EMPTY_MIDI_TRACK}[97|1]`],
+      [`t${EMPTY_MIDI_TRACK}[101|1]`],
+    ]);
+
+    await sleep(100);
+
+    expect((await readClip(copies[0]!.clips[0]!.id)).notes).toContain("C3");
+    expect((await readClip(copies[1]!.clips[0]!.id)).notes).toContain("D3");
+  });
+
+  it("reports each session scene copy where a later source pushed it", async () => {
+    await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
+    await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1");
+
+    await sleep(100);
+
+    // s6's copy lands at s7; s5's copy then lands at s6 and pushes it to s8.
+    const copies = parseToolResult<
+      { id: string; path: string; clips: DuplicateClipResult[] }[]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "scene", path: "s6,s5" },
+      }),
+    );
+
+    expect(
+      copies.map((copy) => [copy.path, copy.clips.map((c) => c.path)]),
+    ).toStrictEqual([
+      ["s8", [`t${EMPTY_MIDI_TRACK}/s8`]],
+      ["s6", [`t${EMPTY_MIDI_TRACK}/s6`]],
+    ]);
+
+    await sleep(100);
+
+    for (const [copy, note] of [
+      [copies[0]!, "D3"],
+      [copies[1]!, "C3"],
+    ] as const) {
+      const scene = parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-scene",
+          arguments: { path: copy.path },
+        }),
+      );
+      const clip = parseToolResult<ReadClipResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-clip",
+          arguments: { path: copy.clips[0]!.path, include: ["notes"] },
+        }),
+      );
+
+      expect(scene.id).toBe(copy.id);
+      expect(clip.id).toBe(copy.clips[0]!.id);
+      expect(clip.notes).toContain(note);
+    }
+  });
+
+  // A copy is cut by whatever lands across it, not only by one starting on the
+  // same beat. Losing its front re-creates the rest under a new id, so the
+  // entry has to name that clip, not the one that is gone.
+  it("points a copy the next one cut short at what is left of it", async () => {
     const session = await createSource(
       `t${EMPTY_MIDI_TRACK}/s5`,
       "C3 1|1",
@@ -238,10 +317,8 @@ describe("ppal-duplicate with a source list", () => {
     await sleep(100);
 
     // The copy at 101 spans four bars, so it clears the front of the one at
-    // 102 - which leaves that one deleted and its tail re-created at 105.
-    const copies = parseToolResult<
-      (DuplicateClipResult | OverwrittenClipResult)[]
-    >(
+    // 102, whose tail is re-created at 105.
+    const copies = parseToolResult<DuplicateClipResult[]>(
       await duplicateClips({
         id: source.id,
         toPath: `t${EMPTY_MIDI_TRACK}[102|1],t${EMPTY_MIDI_TRACK}[101|1]`,
@@ -249,20 +326,90 @@ describe("ppal-duplicate with a source list", () => {
     );
 
     expect(copies[0]).toStrictEqual({
-      path: `t${EMPTY_MIDI_TRACK}[102|1]`,
-      overwritten: true,
+      id: expect.any(String),
+      path: `t${EMPTY_MIDI_TRACK}[105|1]`,
+      detail: "trimmed: a later copy in this call landed on part of it",
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[101|1]`);
 
     await sleep(100);
 
+    // Both ids name a clip that is really there, where the entry says.
     for (const copy of copies) {
-      if (!("id" in copy)) {
-        continue;
-      }
-
-      expect((await readClip(copy.id)).notes).toContain("C3");
+      expect((await readClip(copy.id)).path).toBe(copy.path);
     }
+  });
+
+  /**
+   * Session sources on the empty MIDI track, one per scene from s5.
+   * @param lengths - Each source's length, in call order
+   * @returns The source ids
+   */
+  async function createSessionSources(lengths: string[]): Promise<string> {
+    const ids: string[] = [];
+
+    for (const [index, length] of lengths.entries()) {
+      ids.push(
+        await createSource(
+          `t${EMPTY_MIDI_TRACK}/s${5 + index}`,
+          "C3 1|1",
+          length,
+        ),
+      );
+    }
+
+    await sleep(100);
+
+    return ids.join(",");
+  }
+
+  // The 1bar takes the 4bar's front, re-creating the rest; the n/2 then lands
+  // inside that rest and splits it. The 4bar's entry names the end piece.
+  it("points a copy a later copy split at its end piece", async () => {
+    const id = await createSessionSources(["4bar", "1bar", "n/2"]);
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id,
+        toPath: `t${EMPTY_MIDI_TRACK}[211|1],t${EMPTY_MIDI_TRACK}[211|1],t${EMPTY_MIDI_TRACK}[213|1]`,
+      }),
+    );
+
+    expect(copies[0]).toStrictEqual({
+      id: expect.any(String),
+      path: `t${EMPTY_MIDI_TRACK}[213|3]`,
+      detail: "trimmed: a later copy in this call landed on part of it",
+    });
+
+    await sleep(100);
+
+    for (const copy of copies) {
+      expect((await readClip(copy.id)).path).toBe(copy.path);
+    }
+  });
+
+  // The 3bar buries what the 1bar left of the 4bar, and the n/2 splits the
+  // 3bar. The tail is the 3bar's, not a piece of the 4bar.
+  it("keeps a split tail from a copy that landed before the one it split", async () => {
+    const id = await createSessionSources(["4bar", "1bar", "3bar", "n/2"]);
+    const copies = parseToolResult<(DuplicateClipResult | DeletedClipResult)[]>(
+      await duplicateClips({
+        id,
+        toPath: [221, 221, 222, 223]
+          .map((bar) => `t${EMPTY_MIDI_TRACK}[${bar}|1]`)
+          .join(","),
+      }),
+    );
+
+    expect(copies[0]).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}[221|1]`,
+      deleted: true,
+      detail: LANDED_ON,
+    });
+    expect(copies.slice(1).map((copy) => copy.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}[221|1]`,
+      `t${EMPTY_MIDI_TRACK}[222|1]`,
+      `t${EMPTY_MIDI_TRACK}[223|1]`,
+    ]);
   });
 
   // duplicate used to take a path only for a drum pad, so a path a model just
@@ -338,9 +485,9 @@ describe("ppal-duplicate with a source list", () => {
     await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
   });
 
-  // The other half of the same mismatch: destinations that don't divide across
-  // the sources leave one naming a place no copy goes.
-  it("refuses destinations that don't divide across the sources", async () => {
+  // The other half of the same mismatch: more destinations than sources leave
+  // one naming a place no copy goes.
+  it("refuses more destinations than sources", async () => {
     const [firstId, secondId] = await createSources();
 
     const result = await duplicateClips({
@@ -354,5 +501,133 @@ describe("ppal-duplicate with a source list", () => {
 
     await sleep(100);
     await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+  });
+
+  // Two per source isn't dealt out either: the caller would have to count to
+  // know which copy went where.
+  it("refuses a few destinations per source", async () => {
+    const [firstId, secondId] = await createSources();
+
+    const result = await duplicateClips({
+      id: `${firstId},${secondId}`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s6,t${EMPTY_MIDI_TRACK}/s7,t${CHILD_TRACK}/s6,t${CHILD_TRACK}/s7`,
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 4 destinations but id names 2 sources",
+    );
+
+    await sleep(100);
+    await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+  });
+
+  // A track and a position name one spot, so the second copy would bury the
+  // first. Only a bare position covers several sources.
+  it("refuses one positioned toPath for two sources", async () => {
+    const [firstId, secondId] = await createSources();
+
+    const result = await duplicateClips({
+      id: `${firstId},${secondId}`,
+      toPath: `t${EMPTY_MIDI_TRACK}[117|1]`,
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 1 destination but id names 2 sources",
+    );
+
+    await sleep(100);
+
+    const spot = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}[117|1]` },
+    });
+
+    expect(JSON.stringify(spot)).toContain("no clip at");
+  });
+
+  // Scenes share every track, so one position for two scenes would bury the
+  // first copy under the second.
+  it("refuses one position for two scenes", async () => {
+    await createSources();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "scene", path: "s5,s6", toPath: "[117|1]" },
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 1 destination but path names 2 sources",
+    );
+  });
+
+  // arrangementLength pairs one per copy, as name does, so one clip holding an
+  // A-B phrase lays out A-A-AB in one call.
+  it("gives each copy of one source its own arrangementLength", async () => {
+    const sourceId = await createSource(
+      `t${EMPTY_MIDI_TRACK}/s0`,
+      "C3 1|1\nG3 2|1",
+      "2bar",
+    );
+
+    await sleep(100);
+
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id: sourceId,
+        toPath: `t${EMPTY_MIDI_TRACK}[1|1],[2|1],[3|1]`,
+        arrangementLength: "1bar,1bar,2bar",
+      }),
+    );
+
+    await sleep(100);
+
+    const lengths: Array<string | undefined> = [];
+
+    for (const copy of copies) {
+      const read = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: copy.id, include: ["timing"] },
+      });
+
+      lengths.push(parseToolResult<ReadClipResult>(read).arrangementLength);
+    }
+
+    expect(lengths).toStrictEqual(["1bar", "1bar", "2bar"]);
+  });
+
+  // An insert ahead of an earlier copy pushes it along, so each entry is read
+  // back where the copy ends up.
+  it("reports each device copy where a later copy pushed it", async () => {
+    const source = await createTestDeviceAt(
+      ctx.client!,
+      "Saturator",
+      `t${EMPTY_MIDI_TRACK}`,
+    );
+
+    const copies = parseToolResult<Array<{ id: string; path: string }>>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "device",
+          path: source,
+          toPath: `t${EMPTY_MIDI_TRACK}/d+,t${EMPTY_MIDI_TRACK}/d0`,
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(copies).toHaveLength(2);
+
+    for (const copy of copies) {
+      const read = parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-device",
+          arguments: { path: copy.path },
+        }),
+      );
+
+      expect(read.id).toBe(copy.id);
+    }
   });
 });

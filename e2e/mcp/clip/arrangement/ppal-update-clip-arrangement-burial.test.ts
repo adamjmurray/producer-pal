@@ -55,7 +55,7 @@ describe("a batch move that buries a clip the call names", () => {
       id: victim.id,
       path: `${TRACK}/l0[605|1]`,
       deleted: true,
-      reason: BURIED,
+      detail: BURIED,
     });
     expect(data[0]?.path).toBe(`${TRACK}/l0[605|1]`);
     expect(warnings).toStrictEqual([]);
@@ -76,7 +76,7 @@ describe("a batch move that buries a clip the call names", () => {
       id: short.id,
       path: `${TRACK}[629|1]`,
       deleted: true,
-      reason: BURIED,
+      detail: BURIED,
     });
     expect(data[0]?.path).toBe(`${TRACK}[629|1]`);
     // Only one clip ever landed there, so nothing stacked.

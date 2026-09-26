@@ -168,7 +168,7 @@ describe("updateClip - Basic operations", () => {
     },
   );
 
-  // Same reason: "path names the clips" is false when it named none, and the
+  // Same detail: "path names the clips" is false when it named none, and the
   // no-clip warning already says what went wrong.
   // One target, nothing done: there is no list for an entry to hold a place in,
   // so the reason goes back as the error (ADR-0042).
@@ -326,7 +326,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
 
     expect(result).toStrictEqual([
-      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },
       { id: "456", path: "t1/s1" },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -721,12 +721,12 @@ describe("updateClip - Basic operations", () => {
         {
           id: "nonexistent",
           ok: false,
-          reason: 'id "nonexistent" does not exist',
+          detail: 'id "nonexistent" does not exist',
         },
         {
           id: "also-nonexistent",
           ok: false,
-          reason: 'id "also-nonexistent" does not exist',
+          detail: 'id "also-nonexistent" does not exist',
         },
       ]);
       expect(selectSpy).not.toHaveBeenCalled();
@@ -811,6 +811,7 @@ describe("updateClip - Basic operations", () => {
       clipIndex: 0,
       clipCount: 1,
       destinationParam: "toPath",
+      startParam: "arrangementStart",
       context: {},
       reasons: newClipReasons(),
       updatedClips: [],
@@ -827,20 +828,18 @@ describe("updateClip - Basic operations", () => {
 });
 
 describe("updateClip - splitting mutation coverage", () => {
-  it("should warn when arrangementSplit targets a non-arrangement clip", async () => {
+  it("refuses arrangementSplit on a session clip, on the clip's own entry", async () => {
     const mocks = setupUpdateClipMocks();
 
     setupMidiClipMock(mocks.clip123); // session clip: is_arrangement_clip = 0
 
-    const result = await updateClip({ id: "123", arrangementSplit: "2|1" });
-
-    // Session clips are excluded from arrangementClips, so prepareSplitParams
-    // sees an empty list and warns. The <= 0 guard must return false for them
-    // (forced-true / never-false mutants would include the clip and split it).
-    expect(capturedWarnings()).toContain(
-      "arrangementSplit requires arrangement clips",
-    );
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    // The <= 0 guard must refuse it: a mutant that skips the guard would try to
+    // split it instead. A lone target with nothing else to do throws.
+    await expect(
+      updateClip({ id: "123", arrangementSplit: "2|1" }),
+    ).rejects.toThrow("arrangementSplit ignored: this is a session clip");
+    // The entry says it, so no warning repeats it.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should split an arrangement clip and return the fresh clips only", async () => {

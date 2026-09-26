@@ -173,7 +173,7 @@ export const STALENESS_RISK: StalenessRisk = {
  */
 export async function expectQueryDegradesOnBrokenDb(
   dbPathMod: { findLiveFilesDbPath: (...args: never[]) => unknown },
-  runQuery: () => Promise<{ dbAvailable?: boolean; reason?: string }>,
+  runQuery: () => Promise<{ dbAvailable?: boolean; detail?: string }>,
 ): Promise<void> {
   const broken = createBrokenLibraryDb();
 
@@ -183,7 +183,7 @@ export async function expectQueryDegradesOnBrokenDb(
     const result = await runQuery();
 
     expect(result.dbAvailable).toBe(false);
-    expect(result.reason).toContain("Failed to read Live database");
+    expect(result.detail).toContain("Failed to read Live database");
   } finally {
     broken.cleanup();
   }
@@ -199,12 +199,12 @@ export async function expectQueryDegradesOnBrokenDb(
  * @returns The query result, for any further assertions
  */
 export async function expectSampleFolderExplained<
-  T extends { reason?: string },
+  T extends { detail?: string },
 >(runQuery: () => Promise<T>, matches: (result: T) => unknown[]): Promise<T> {
   const result = await runQuery();
 
   expect(matches(result)).toStrictEqual([]);
-  expect(result.reason).toContain("sampleFolder");
+  expect(result.detail).toContain("sampleFolder");
 
   return result;
 }
@@ -219,7 +219,7 @@ export async function expectSampleFolderExplained<
  * @returns The query result, for any further assertions
  */
 export async function expectQueryDegradesWithoutDb<
-  T extends { dbAvailable?: boolean; reason?: string },
+  T extends { dbAvailable?: boolean; detail?: string },
 >(
   dbPathMod: { findLiveFilesDbPath: (...args: never[]) => unknown },
   runQuery: () => Promise<T>,
@@ -229,7 +229,7 @@ export async function expectQueryDegradesWithoutDb<
   const result = await runQuery();
 
   expect(result.dbAvailable).toBe(false);
-  expect(result.reason).toBe("Live database not found");
+  expect(result.detail).toBe("Live database not found");
 
   return result;
 }

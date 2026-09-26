@@ -331,7 +331,7 @@ describe("readClip - envelopes", () => {
     expect(entries[1]).toStrictEqual({
       path: "t0/s2",
       ok: false,
-      reason: 'no track at "t0"',
+      detail: 'no track at "t0"',
     });
     expect(entries[0]?.envelopes).toHaveLength(1);
   });

@@ -28,6 +28,8 @@ import {
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Tiling context with silenceWavPath for audio operations
  * @param source - The source clip, when the caller already resolved it
+ * @param movesSource - The caller deletes the source after: a self-overlapping
+ *   one is deleted here instead, so none of it survives past the copy
  * @returns The placed clip, or a nonexistent object when Live refused the copy
  *   — check exists()
  */
@@ -38,6 +40,7 @@ export function duplicateToArrangementTarget(
   isMidiClip: boolean,
   context: TilingContext,
   source: LiveAPI | null = null,
+  movesSource = false,
 ): LiveAPI {
   const safe = clearClipAtDuplicateTarget(
     track,
@@ -55,6 +58,7 @@ export function duplicateToArrangementTarget(
       targetBeats,
       isMidiClip,
       context,
+      movesSource,
     );
   }
 

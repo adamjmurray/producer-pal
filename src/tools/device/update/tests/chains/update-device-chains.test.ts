@@ -200,22 +200,12 @@ describe("updateDevice - Chain and DrumPad support", () => {
   describe("device-only properties on non-devices", () => {
     // collapsed — kept for potential future use (test removed)
 
-    it("refuses each param in its own entry on a Chain", () => {
-      const result = updateDevice({
-        id: "456",
-        params: [{ name: "789", value: "0.5" }],
-      });
-
-      expect(result).toStrictEqual({
-        id: "456",
-        params: [
-          {
-            name: "789",
-            ok: false,
-            reason: "'params' not applicable to a chain id 456",
-          },
-        ],
-      });
+    it("refuses a Chain's params, naming each in the error", () => {
+      expect(() =>
+        updateDevice({ id: "456", params: [{ name: "789", value: "0.5" }] }),
+      ).toThrow(
+        `no param landed — "789": 'params' not applicable to a chain id 456`,
+      );
       expect(capturedWarnings()).toHaveLength(0);
     });
 
@@ -255,7 +245,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         // did nothing rides on it as a reason.
         expect(updateDevice({ id, name: "Named", ...args })).toStrictEqual(
           expect.objectContaining({
-            reason: `${label} not applicable to a device`,
+            detail: `${label} not applicable to a device`,
           }),
         );
         expect(capturedWarnings()).toStrictEqual([]);
@@ -277,7 +267,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
           updateDevice({ id: "456", name: "Named", ...args }),
         ).toStrictEqual(
           expect.objectContaining({
-            reason: `${label} not applicable to a chain`,
+            detail: `${label} not applicable to a chain`,
           }),
         );
         expect(capturedWarnings()).toStrictEqual([]);
@@ -295,7 +285,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         updateDevice({ id: "801", abCompare: "a", name: "Named" }),
       ).toStrictEqual({
         id: "801",
-        reason: "A/B Compare is not available here",
+        detail: "A/B Compare is not available here",
       });
     });
   });
@@ -450,12 +440,12 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
    */
   function moveReason(toPath: string): string | undefined {
     const result = updateDevice({ id: "device-0", toPath }) as {
-      reason?: string;
+      detail?: string;
     };
 
     expect(capturedWarnings()).toStrictEqual([]);
 
-    return result.reason;
+    return result.detail;
   }
 
   it("carries the trim onto an untouched destination chain", () => {
@@ -565,13 +555,13 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     registerDestinationMixer({ is_enabled: 0 });
 
     const result = updateDevice({ id: "device-0", toPath: "t0/d0/c1" }) as {
-      reason?: string;
+      detail?: string;
     };
 
-    expect(result.reason).toContain(
+    expect(result.detail).toContain(
       'chain "Trimmed" t0/d0/c0 (id chain-0) trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
-    expect(result.reason).not.toContain(
+    expect(result.detail).not.toContain(
       "carried onto the destination chain, which was",
     );
   });

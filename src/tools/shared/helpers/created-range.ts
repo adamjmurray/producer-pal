@@ -21,3 +21,18 @@ export function createdRange(
     ? `${prefix}${first}`
     : `${prefix}${first}-${prefix}${last}`;
 }
+
+/**
+ * How many objects some {@link createdRange} spellings name in all.
+ * @param ranges - e.g. ["s8", "s10-s12"]
+ * @returns The count
+ */
+export function createdCount(ranges: readonly string[]): number {
+  return ranges.reduce((sum, range) => {
+    const [first = 0, last = first] = range
+      .split("-")
+      .map((end) => Number(end.replace(/^\D+/, "")));
+
+    return sum + last - first + 1;
+  }, 0);
+}

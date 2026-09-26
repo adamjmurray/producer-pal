@@ -265,7 +265,7 @@ describe("duplicate - transforms/code", () => {
         {
           id: "a",
           path: "t0/s1",
-          reason:
+          detail:
             "the copy was made, but the edit wasn't: transform syntax error at position 0",
         },
       ]);
@@ -278,7 +278,7 @@ describe("duplicate - transforms/code", () => {
 
       updateClipMock.mockReturnValueOnce([
         { id: "a", noteCount: 1 },
-        { id: "b", ok: false, reason: "failed to update" },
+        { id: "b", ok: false, detail: "failed to update" },
       ]);
 
       await applyTransformsToDuplicatedClips(
@@ -290,7 +290,7 @@ describe("duplicate - transforms/code", () => {
 
       expect(createdObjects).toStrictEqual([
         { id: "a", noteCount: 1 },
-        { id: "b", reason: "failed to update" },
+        { id: "b", detail: "failed to update" },
       ]);
     });
 

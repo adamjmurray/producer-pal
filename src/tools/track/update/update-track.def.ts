@@ -13,7 +13,8 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
-  description: "Update track(s).",
+  description:
+    "Update track(s). Params with no list form apply to every target.",
 
   annotations: {
     readOnlyHint: false,
@@ -37,12 +38,11 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
 
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per target, in order, ideally unique",
+      default: "name, ideally unique, or comma-separated one per target",
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per track, in order",
+      default: "#RRGGBB, or comma-separated one per target",
       smallModel: "#RRGGBB",
     }),
     gainDb: z.coerce
@@ -74,19 +74,23 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     arm: z.boolean().optional().describe("record armed?"),
 
     inputRoutingType: param(z.coerce.string().optional(), {
-      default: "name from availableInputRoutingTypes, set before channel",
+      default:
+        "name from availableInputRoutingTypes, set before channel; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
     inputRoutingChannel: param(z.coerce.string().optional(), {
-      default: "name from availableInputRoutingChannels",
+      default:
+        "name from availableInputRoutingChannels; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
     outputRoutingType: param(z.coerce.string().optional(), {
-      default: "name from availableOutputRoutingTypes, set before channel",
+      default:
+        "name from availableOutputRoutingTypes, set before channel; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
     outputRoutingChannel: param(z.coerce.string().optional(), {
-      default: "name from availableOutputRoutingChannels",
+      default:
+        "name from availableOutputRoutingChannels; or comma-separated one per target (write a comma in a name as \\,)",
       smallModel: null,
     }),
 
@@ -117,7 +121,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     sendReturn: param(z.coerce.string().optional(), {
       default:
-        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A")',
+        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A"), or comma-separated one per target',
       smallModel: null,
     }),
     sends: param(sendsInputSchema, {

@@ -81,7 +81,7 @@ describe("readOneClip - warp markers", () => {
     const result = readClipWithWarp();
 
     expect(result.warpMarkers).toBeUndefined();
-    expect(result.reason).toContain("warpMarkers unreadable:");
+    expect(result.detail).toContain("warpMarkers unreadable:");
   });
 
   it("does not include warp markers when not requested", () => {

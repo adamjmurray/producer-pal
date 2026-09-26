@@ -13,15 +13,15 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(
-  import("#src/tools/shared/device/helpers/chain-mixer.ts"),
+  import("#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts"),
   async (importOriginal) => ({
     ...(await importOriginal()),
-    applyChainMixer: vi.fn(() => ({})),
+    applyChainMixerAside: vi.fn(() => ({})),
   }),
 );
 
 import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/copy-chain-mixer.ts";
-import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { applyChainMixerAside } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 
 const SOURCE_RACK = livePath.track(0).device(0);
@@ -95,10 +95,14 @@ describe("copyChainMixerTo", () => {
       rack,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: -6,
-      pan: 0.4,
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: -6,
+        pan: 0.4,
+      },
+      expect.anything(),
+    );
   });
 
   it("carries every send when the copy stays in the same rack", () => {
@@ -110,11 +114,15 @@ describe("copyChainMixerTo", () => {
       rack,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-      sends: [{ return: "a Verb", gainDb: -9 }],
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+        sends: [{ return: "a Verb", gainDb: -9 }],
+      },
+      expect.anything(),
+    );
   });
 
   it("carries a cross-rack send whose return name exists on both sides", () => {
@@ -127,11 +135,15 @@ describe("copyChainMixerTo", () => {
       destination,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-      sends: [{ return: "a Verb", gainDb: -9 }],
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+        sends: [{ return: "a Verb", gainDb: -9 }],
+      },
+      expect.anything(),
+    );
   });
 
   it("carries a cross-rack send to a return chain with an all-digit name", () => {
@@ -145,11 +157,15 @@ describe("copyChainMixerTo", () => {
       destination,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-      sends: [{ return: "1", gainDb: -9 }],
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+        sends: [{ return: "1", gainDb: -9 }],
+      },
+      expect.anything(),
+    );
   });
 
   it("drops a cross-rack send with no match, naming it on the copy's entry", () => {
@@ -162,10 +178,14 @@ describe("copyChainMixerTo", () => {
       destination,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+      },
+      expect.anything(),
+    );
     expect(said.join()).toContain(
       'no return chain named "a Verb", so that send was not copied',
     );

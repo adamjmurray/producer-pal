@@ -40,7 +40,7 @@ export interface UpdateTakeLaneResult {
    * the one named), when it made any */
   created?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 /** The params that name the targets, plus the one a lane can use. */
@@ -127,7 +127,7 @@ export function updateTakeLane(
       ? {}
       : {
           ...(wrote ? {} : { ok: false as const }),
-          reason: `a take lane takes only name; ignored ${ignored.join(", ")}`,
+          detail: `a take lane takes only name; ignored ${ignored.join(", ")}`,
         }),
   };
 }
@@ -202,7 +202,9 @@ function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
         ? before + 1
         : Math.max(before, spec.laneIndex + 1);
 
-    if (total > MAX_TAKE_LANES) {
+    // A lane that already exists creates nothing, so a track already over the
+    // cap can still have one renamed.
+    if (total > before && total > MAX_TAKE_LANES) {
       throw new Error(
         `${takeLaneCapacityMessage(total - 1)}; "${spec.entry}" would add it. ` +
           `Nothing was created — a take lane can't be deleted.`,

@@ -101,7 +101,7 @@ describe("playback - song positions", () => {
     it("should throw if the locator id is not found", () => {
       expect(() =>
         playback({ action: "play-arrangement", startTime: "loc:99" }),
-      ).toThrow("locator not found: 99");
+      ).toThrow("locator not found: 99 for startTime");
     });
 
     it("should throw if the locator name is not found", () => {
@@ -151,7 +151,7 @@ describe("playback - song positions", () => {
           loop: true,
           loopStart: "loc:99",
         }),
-      ).toThrow("locator not found: 99");
+      ).toThrow("locator not found: 99 for loopStart");
     });
 
     it("should throw if the loopEnd locator is not found", () => {

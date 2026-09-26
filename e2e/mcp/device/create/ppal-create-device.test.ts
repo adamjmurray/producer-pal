@@ -135,8 +135,8 @@ describe("ppal-create-device", () => {
 
     await sleep(150);
 
-    // One past the rack's last chain, so the gap below it is filled as well.
-    const firstNew = rack.deviceCount;
+    // A wrap makes one chain; aim one past the next, so the gap fills too.
+    const firstNew = 1;
     const target = firstNew + 1;
     const created = await createDevice(
       "Compressor",
@@ -181,6 +181,28 @@ describe("ppal-create-device", () => {
     const arp = await createDevice("Arpeggiator", "t0");
 
     expect((await readDevice(arp.id)).type).toContain("Arpeggiator");
+  });
+
+  // `device` pairs with `path` the way `name` does, so one call builds two
+  // different devices in two places.
+  it("pairs a device list with the paths, in order", async () => {
+    const first = await createTrack("midi");
+    const second = await createTrack("midi");
+    const results = parseToolResult<CreateDeviceResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Compressor,Reverb",
+          path: `t${first}/d+,t${second}/d+`,
+        },
+      }),
+    );
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.path).toMatch(new RegExp(`^t${first}/d\\d+$`));
+    expect(results[1]?.path).toMatch(new RegExp(`^t${second}/d\\d+$`));
+    expect((await readDevice(results[0]!.id)).type).toContain("Compressor");
+    expect((await readDevice(results[1]!.id)).type).toContain("Reverb");
   });
 
   it("creates a device on the master track", async () => {
@@ -232,7 +254,7 @@ describe("ppal-create-device", () => {
     expect(results).toHaveLength(2);
     expect(results[0]?.path).toBe("t99/d+");
     expect(results[0]?.ok).toBe(false);
-    expect(results[0]?.reason).toContain("t99");
+    expect(results[0]?.detail).toContain("t99");
     expect(results[1]?.id).toBeDefined();
     expect(results[1]?.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
     expect(warnings).toHaveLength(0);
@@ -644,7 +666,7 @@ interface ListDevicesResult {
 interface TargetSkip {
   path: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 interface CreateDeviceResult {
@@ -656,7 +678,7 @@ interface CreateDeviceResult {
     id?: string;
     name: string;
     value?: number | string;
-    reason?: string;
+    detail?: string;
   }>;
 }
 
@@ -667,9 +689,8 @@ interface ReadDeviceResult {
   name?: string;
 }
 
-/** What a wrapInRack answers with; `deviceCount` is the rack's chain count. */
+/** What a wrapInRack answers with. */
 interface WrapResult {
   id: string;
   path: string;
-  deviceCount: number;
 }

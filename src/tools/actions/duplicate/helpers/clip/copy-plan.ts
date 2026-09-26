@@ -29,14 +29,14 @@ import { parseArrangementLength } from "./arrangement-length.ts";
  * @param source - The clip being copied
  * @param targets - Destination per copy
  * @param positions - Start position per copy, in Ableton beats
- * @param spanBeats - How far each copy clears forward from its start
+ * @param spanBeats - How far each copy clears forward from its start, per copy
  * @returns Copy indexes, in the order to make them
  */
 export function sourceLastOrder(
   source: LiveAPI,
   targets: ArrangementTrack[],
   positions: number[],
-  spanBeats: number,
+  spanBeats: number[],
 ): number[] {
   const indexes = positions.map((_, i) => i);
 
@@ -62,7 +62,7 @@ export function sourceLastOrder(
       ((targets[i] as ArrangementTrack).trackIndex === sourceTrackIndex &&
         sameLane(i))) &&
     (positions[i] as number) < sourceEnd &&
-    (positions[i] as number) + spanBeats > sourceStart;
+    (positions[i] as number) + (spanBeats[i] as number) > sourceStart;
 
   return [
     ...indexes.filter((i) => !overwritesSource(i)),
@@ -74,9 +74,8 @@ export function sourceLastOrder(
  * How far one copy clears forward from its start, in beats.
  *
  * An explicit `arrangementLength` is the span the copy fills; otherwise a copy
- * is the source's own length. A length that won't parse is not decided here:
- * the copies that use it throw on their own, and the ones that ignore it
- * (re-created lane copies) are the source's length anyway.
+ * is the source's own length. Every length was checked before any copy, so
+ * this one parses.
  *
  * A take-lane source ignores it outright, because every copy of one is
  * re-created — Live's arrangement duplicate handles neither direction — and a
@@ -103,15 +102,11 @@ export function copySpanBeats(
     return sourceLength;
   }
 
-  try {
-    return parseArrangementLength(
-      arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-  } catch {
-    return sourceLength;
-  }
+  return parseArrangementLength(
+    arrangementLength,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 }
 
 /** The copies a call makes, and where each one sits in what was requested. */

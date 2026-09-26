@@ -144,9 +144,9 @@ Why each row exists:
 - **pC1** — every chain mixer param disabled at once, but **send B stays
   enabled**: sends are mapped individually, so one chain can have a dead send
   and a live one.
-- **pD1** — only volume mapped. Proves a warning must be **per-parameter**, not
+- **pD1** — only volume mapped. Proves a refusal must be **per-parameter**, not
   per-chain: pan and sends on this chain still work.
-- **pE1** — nothing mapped. The control: writes here must land, with no warning.
+- **pE1** — nothing mapped. The control: writes here must land, with no refusal.
 - **rc0 / rc1** — same disabled/control pair for a **return chain**. Return
   chain volume and pan are macro-mappable, confirming the disabled case isn't
   specific to regular chains.

@@ -173,6 +173,35 @@ describe("arrangementWriteEffects", () => {
     ).toBe("shortened the clip at t0[5|1]");
   });
 
+  // Live re-creates what a front trim leaves under a new id, so the old id
+  // vanishing doesn't mean the clip is gone.
+  it("names a front-trimmed clip Live gave a new id as shortened", () => {
+    expect(
+      effectsOfWrite(
+        [{ id: "a", start: 8, end: 24 }],
+        [
+          { id: "new", start: 0, end: 16 },
+          { id: "rest", start: 16, end: 24 },
+        ],
+        ["new"],
+      ),
+    ).toBe("shortened the clip at t0[5|1]");
+  });
+
+  // A new clip inside the old span that stops short of its end isn't the rest.
+  it("still says overwrote when no new clip ends where the old one did", () => {
+    expect(
+      effectsOfWrite(
+        [{ id: "a", start: 8, end: 24 }],
+        [
+          { id: "new", start: 0, end: 18 },
+          { id: "s", start: 18, end: 22 },
+        ],
+        ["new"],
+      ),
+    ).toBe("overwrote the clip at t0[3|1]");
+  });
+
   // Live keeps the head on the original id and gives the tail a new one, so
   // the new clip inside the old span is what says a split happened.
   it("names both pieces of a clip the write split", () => {

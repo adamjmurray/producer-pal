@@ -5,16 +5,11 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  prepareSessionClipSlot,
-  requireCreatedClip,
-  requireCreatedSessionClip,
+  createInSessionSlot,
+  requireCreatedArrangementClip,
   type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 export interface AudioSessionClipResult extends SlotWork {
   clip: LiveAPI;
@@ -35,20 +30,15 @@ export function createAudioSessionClip(
   sampleFile: string,
   liveSet: LiveAPI,
 ): AudioSessionClipResult {
-  const { clipSlot, created, overwrote } = prepareSessionClipSlot(
+  const { clip, created, overwrote } = createInSessionSlot(
     trackIndex,
     sceneIndex,
     liveSet,
+    (clipSlot) => clipSlot.call("create_audio_clip", sampleFile),
+    sampleFile,
   );
 
-  clipSlot.call("create_audio_clip", sampleFile);
-
-  return {
-    clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
-    sceneIndex,
-    created,
-    overwrote,
-  };
+  return { clip, sceneIndex, created, overwrote };
 }
 
 export interface AudioArrangementClipResult {
@@ -90,9 +80,12 @@ export function createAudioArrangementClip(
     sampleFile,
     arrangementStartBeats,
   ) as string;
-  const clip = requireCreatedClip(
-    LiveAPI.from(newClipResult),
-    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  const clip = requireCreatedArrangementClip(
+    newClipResult,
+    trackIndex,
+    takeLane?.takeLaneIndex ?? null,
+    arrangementStartBeats,
+    sampleFile,
   );
 
   return { clip, arrangementStartBeats };

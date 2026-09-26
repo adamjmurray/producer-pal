@@ -121,7 +121,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason:
+      detail:
         "track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -134,7 +134,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason:
+      detail:
         "track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
     });
   });
@@ -147,7 +147,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
+      detail: "track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
     });
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
@@ -168,7 +168,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "Live made no copy there",
+      detail: "Live made no copy there",
     });
   });
 
@@ -183,7 +183,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "Live made no copy there",
+      detail: "Live made no copy there",
     });
     // The clip that was already there is not the copy, so it keeps its name.
     expect(occupant?.set).not.toHaveBeenCalled();
@@ -197,14 +197,14 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       id: COPY_ID,
       path: "t1/s0",
-      reason: "overwrote the existing clip at t1/s0",
+      detail: "overwrote the existing clip at t1/s0",
     });
   });
 
   it("says nothing about overwriting when the slot was empty", () => {
     setupSlotDuplication({ destHasClip: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("reason");
+    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("detail");
   });
 });
 
@@ -239,7 +239,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,
-      copyLabels(undefined, undefined, 1),
+      copyLabels({}, 1),
       undefined,
       undefined,
       undefined,
@@ -252,7 +252,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
       {
         path: "t2/s0",
         ok: false,
-        reason: "track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
+        detail: "track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -267,9 +267,16 @@ describe("duplicateClipSlot past the last scene", () => {
   /**
    * A Set with two scenes whose t1/s3 slot only appears once create_scene has
    * made the scenes up to it.
+   * @param opts - Test options
+   * @param opts.copyLands - Whether duplicate_clip_to makes the copy
+   * @param opts.slotAppears - Whether the new scenes bring the slot with them
    * @returns The Live Set mock
    */
-  function setupShortSet(): RegisteredMockObject {
+  function setupShortSet(
+    opts: { copyLands?: boolean; slotAppears?: boolean } = {},
+  ): RegisteredMockObject {
+    const { copyLands = true, slotAppears = true } = opts;
+
     mockNonExistentObjects();
 
     const destClipPath = livePath.track(1).clipSlot(3).clip();
@@ -283,7 +290,9 @@ describe("duplicateClipSlot past the last scene", () => {
       properties: { has_clip: 1 },
       methods: {
         duplicate_clip_to: () => {
-          registerMockObject(COPY_ID, { path: destClipPath });
+          if (copyLands) {
+            registerMockObject(COPY_ID, { path: destClipPath });
+          }
 
           return null;
         },
@@ -299,10 +308,12 @@ describe("duplicateClipSlot past the last scene", () => {
       properties: { scenes: ["id", 1, "id", 2] },
       methods: {
         create_scene: () =>
-          registerMockObject("live_set/tracks/1/clip_slots/3", {
-            path: livePath.track(1).clipSlot(3),
-            properties: { has_clip: 0 },
-          }),
+          slotAppears
+            ? registerMockObject("live_set/tracks/1/clip_slots/3", {
+                path: livePath.track(1).clipSlot(3),
+                properties: { has_clip: 0 },
+              })
+            : null,
       },
     }) as RegisteredMockObject;
   }
@@ -318,13 +329,34 @@ describe("duplicateClipSlot past the last scene", () => {
     expect(liveSet.call).toHaveBeenCalledTimes(2);
   });
 
+  // The scenes stay when the copy doesn't land, so the skip has to name them.
+  it("names the scenes it made when Live declines the copy", () => {
+    setupShortSet({ copyLands: false });
+
+    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+      path: "t1/s3",
+      ok: false,
+      detail: "Live made no copy there; created s2-s3 to reach it",
+    });
+  });
+
+  it("names the scenes it made when the slot still isn't there", () => {
+    setupShortSet({ slotAppears: false });
+
+    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+      path: "t1/s3",
+      ok: false,
+      detail: "no clip slot there; created s2-s3 to reach it",
+    });
+  });
+
   it("refuses a destination past the scene cap, making nothing", () => {
     const liveSet = setupShortSet();
 
     expect(duplicateClipSlot(0, 0, 1, MAX_AUTO_CREATED_SCENES)).toStrictEqual({
       path: `t1/s${MAX_AUTO_CREATED_SCENES}`,
       ok: false,
-      reason:
+      detail:
         `scene "s${MAX_AUTO_CREATED_SCENES}" is out of range: ` +
         `scenes auto-create only through "s${MAX_AUTO_CREATED_SCENES - 1}"`,
     });
@@ -370,7 +402,7 @@ describe("duplicateClipSlot with a missing slot or clip", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       path: "t1/s0",
       ok: false,
-      reason: "no clip slot there",
+      detail: "no clip slot there",
     });
   });
 });

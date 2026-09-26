@@ -3,8 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
-import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { fetchJson } from "#webui/utils/fetch-json";
 import {
   getRemoteScriptInstallUrl,
@@ -23,7 +22,10 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** Installed is older than this build (or unreadable). */
   updateAvailable: boolean;
+  /** Installed is newer than this build, so installing downgrades it. */
+  installedNewer: boolean;
 }
 
 export interface UseRemoteScriptReturn {
@@ -57,12 +59,11 @@ export function useRemoteScript(): UseRemoteScriptReturn {
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
   const [installedPath, setInstalledPath] = useState<string | null>(null);
-  // Refresh installs a fresh controller here; the effect below runs that read
-  // and aborts it on the way out, so a late answer can't set state on a tab
-  // the user has already left.
-  const [refreshAbort, setRefreshAbort] = useState<AbortController | null>(
-    null,
-  );
+  // The read in flight. Each new read aborts it first, so a slow older answer
+  // can't overwrite a newer one.
+  const readRef = useRef<AbortController | null>(null);
+  // An install can finish after the tab closes; its re-read must not start.
+  const unmountedRef = useRef(false);
 
   const load = useCallback(async (signal: AbortSignal): Promise<void> => {
     setLoading(true);
@@ -73,10 +74,14 @@ export function useRemoteScript(): UseRemoteScriptReturn {
         signal,
       });
 
+      if (signal.aborted) {
+        return;
+      }
+
       setStatus(next);
       setLoadError(null);
     } catch (err) {
-      // An abort is the tab going away, not a failure to show.
+      // A newer read or the tab going away aborted this one: not a failure.
       if (signal.aborted) {
         return;
       }
@@ -89,20 +94,27 @@ export function useRemoteScript(): UseRemoteScriptReturn {
     }
   }, []);
 
-  useAbortableLoad(load);
-
-  // Null until the first Refresh — useAbortableLoad owns the mount read.
-  useEffect(() => {
-    if (refreshAbort != null) {
-      void load(refreshAbort.signal);
+  const refresh = useCallback((): void => {
+    if (unmountedRef.current) {
+      return;
     }
 
-    return () => refreshAbort?.abort();
-  }, [load, refreshAbort]);
+    readRef.current?.abort();
+    const controller = new AbortController();
 
-  const refresh = useCallback((): void => {
-    setRefreshAbort(new AbortController());
-  }, []);
+    readRef.current = controller;
+    void load(controller.signal);
+  }, [load]);
+
+  useEffect(() => {
+    unmountedRef.current = false;
+    refresh();
+
+    return () => {
+      unmountedRef.current = true;
+      readRef.current?.abort();
+    };
+  }, [refresh]);
 
   const install = useCallback(
     (userLibrary: string): void => {

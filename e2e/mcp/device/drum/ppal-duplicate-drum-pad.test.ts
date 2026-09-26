@@ -209,7 +209,7 @@ describe("ppal-duplicate drum-pad", () => {
     const sourceId = (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).id;
 
     const entries = parseToolResult<
-      { path?: string; ok?: boolean; reason?: string }[]
+      { path?: string; ok?: boolean; detail?: string }[]
     >(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
@@ -227,7 +227,7 @@ describe("ppal-duplicate drum-pad", () => {
     expect(entries[0]).toStrictEqual({
       path: `${rackPath}/pC1`,
       ok: false,
-      reason: expect.stringContaining("can't be copied onto itself"),
+      detail: expect.stringContaining("can't be copied onto itself"),
     });
     expect(entries[1]?.path).toBe(`${rackPath}/pE1`);
 

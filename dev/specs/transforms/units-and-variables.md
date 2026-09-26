@@ -20,7 +20,7 @@ time across meters (see Absolute Durations below).
 > in **Ableton (quarter-note) beats**, where `n/4` = `1.0` in any meter. So the
 > same `n/4` reads as `1.0` in parsed-note output but as "1 in 4/4, 2 in 6/8"
 > here. Same physical duration; different unit (see
-> [../BarBeat-Spec.md](../BarBeat-Spec.md)).
+> [the bar|beat spec](../barbeat/README.md)).
 
 ### Examples by Time Signature
 
@@ -102,10 +102,11 @@ and transforms.
 The `n` sigil marks a denominator-bearing note value. A bare-count `n`-prefixed
 bar (`n1bar`, `n4bar`) is an untaught input-tolerance alias of `<count>bar` on
 every duration surface — models reach for it by analogy with the other note
-values, and the bare count is unambiguous. The FRACTION forms (`n/1bar`,
-`n3/4bar`) stay invalid — a bar count can't be guessed from a fraction — and
-raise a targeted error ("an n fraction and a bar count are different things"),
-not the generic format error.
+values, and the bare count is unambiguous. The count is an integer ≥ 1 with no
+leading zero (`n0bar`, `n04bar` fail). The FRACTION forms (`n/1bar`, `n3/4bar`)
+stay invalid — a bar count can't be guessed from a fraction — and raise a
+targeted error ("an n fraction and a bar count are different things"), not the
+generic format error.
 
 A plural `bars` (`2bars`, `2bars+n/4`) is accepted as an input-tolerance alias
 of `<count>bar` everywhere; serialized output is always singular (`2bar`).

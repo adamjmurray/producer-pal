@@ -103,7 +103,9 @@ describe("updateDevice - param conversion discriminators", () => {
         },
         methods: {
           str_for_value: (v: unknown) =>
-            Number(v) <= 0 ? "custom" : `${1000 * Number(v)} Hz`,
+            Number(v) <= 0
+              ? "custom"
+              : `${Number((1000 * Number(v)).toPrecision(6))} Hz`,
         },
       });
     });

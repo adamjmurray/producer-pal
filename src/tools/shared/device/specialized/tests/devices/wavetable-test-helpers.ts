@@ -115,7 +115,7 @@ export function expectModulationNotSet(
   expect(results).toStrictEqual([
     expect.objectContaining({
       ok: false,
-      reason: expect.stringContaining(reasonSubstring),
+      detail: expect.stringContaining(reasonSubstring),
     }),
   ]);
   expect(capturedWarnings()).toStrictEqual([]);

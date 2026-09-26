@@ -25,16 +25,21 @@ import {
   isTakeLaneClip,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { clipIsGone } from "../batch/buried-clips.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { BURIED, clipIsGone } from "../batch/buried-clips.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-overwrite-plan.ts";
 import {
   deferClipDeletion,
   type MoveGroup,
 } from "./update-clip-move-groups.ts";
+
+/** What a held-back clip says when a failed placement cleared it anyway. */
+const CLEARED = "deleted: a move onto it failed after clearing its place";
 
 interface DeferNonSurvivorArgs {
   clip: LiveAPI;
@@ -93,11 +98,14 @@ export function deferNonSurvivorDeletion({
  * on its group. A clip nothing landed on top of stays.
  * @param movedClipGroups - Tally of clips landing on each lane and position
  * @param plan - What the call was set to overwrite; absent when it planned none
+ * @returns The entries of the clips left where they were, not moved
  */
 export function flushDeferredDeletions(
   movedClipGroups: Map<string, MoveGroup>,
   plan: OverwritePlan | null | undefined,
-): void {
+): Set<ClipResult> {
+  const unmoved = new Set<ClipResult>();
+
   for (const [key, group] of movedClipGroups) {
     if (group.deferred.length === 0) {
       continue;
@@ -112,12 +120,22 @@ export function flushDeferredDeletions(
         // Nothing landed on it — but the placement that failed still cleared
         // the target range first, which destroys a clip that already sat in it.
         // Report what is true now, not what was planned.
-        result.deleted = clipIsGone(clip);
+        if (clipIsGone(clip)) {
+          result.deleted = true;
+          appendDetail(result, CLEARED);
+        } else {
+          appendDetail(
+            result,
+            `not moved: the clip due to land on top of it at ${groupSpot(group)} didn't, so the original was kept`,
+          );
+          unmoved.add(result);
+        }
 
         continue;
       }
 
       result.deleted = true;
+      appendDetail(result, BURIED);
 
       // The landing may already have cleared the range this clip sat in, in
       // which case there is nothing left to delete.
@@ -125,11 +143,13 @@ export function flushDeferredDeletions(
         const leftover = removeMovedSource(clip, sourceTrack);
 
         if (leftover != null) {
-          appendReason(result, leftover);
+          appendDetail(result, leftover);
         }
       }
     }
   }
+
+  return unmoved;
 }
 
 /**
@@ -151,6 +171,17 @@ export function removeMovedSource(
   sourceTrack.call("delete_clip", toLiveApiId(clip.id));
 
   return null;
+}
+
+/**
+ * Where a group's clips were headed, as a path.
+ * @param group - The group
+ * @param group.landing - The track and lane they were headed for
+ * @param group.startBeats - The position they were headed for, in beats
+ * @returns The path, e.g. "t0[17|1]" or "t0/l1[17|1]"
+ */
+function groupSpot({ landing, startBeats }: MoveGroup): string {
+  return arrangementPositionPath(arrangementLaneOf(landing), startBeats);
 }
 
 /**

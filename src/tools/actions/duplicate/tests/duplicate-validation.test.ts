@@ -65,6 +65,7 @@ describe("duplicate - input validation", () => {
 // Every other write tool takes `ids`, so a model carries the plural here too.
 describe("duplicate - the ids alias", () => {
   it("copies every source a list names", async () => {
+    registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("track2", { path: livePath.track(3) });
     registerMockObject("live_set/tracks/1", {
@@ -230,6 +231,7 @@ describe("duplicate - coerced-null takeLane", () => {
 
 describe("duplicate - return format", () => {
   it("should return single object format when count=1", async () => {
+    registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track1", { path: livePath.track(0) });
 
     const result = await duplicate({ type: "track", id: "track1", count: 1 });
@@ -242,6 +244,7 @@ describe("duplicate - return format", () => {
   });
 
   it("should return objects array format when count>1", async () => {
+    registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track1", { path: livePath.track(0) });
 
     const result = await duplicate({ type: "track", id: "track1", count: 2 });
@@ -263,6 +266,18 @@ describe("duplicate - track/scene index validation", () => {
     await expect(duplicate({ type: "track", id: "track1" })).rejects.toThrow(
       "is not a regular track, and Live only duplicates those",
     );
+  });
+
+  it("refuses a return track in a source list before copying anything", async () => {
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("return1", { path: livePath.returnTrack(0) });
+
+    await expect(
+      duplicate({ type: "track", id: "track1,return1" }),
+    ).rejects.toThrow("is not a regular track");
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   describe("scene index validation", () => {

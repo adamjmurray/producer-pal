@@ -12,21 +12,28 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
   description:
-    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain.",
+    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Params with no list form apply to every device.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    device: z
-      .string()
-      .optional()
-      .describe(
-        'device to create (e.g. "Wavetable", "Drum Rack"), omit to list available devices',
-      ),
+    device: param(z.string().optional(), {
+      default:
+        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit this and preset to list available devices',
+      smallModel:
+        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit to list available devices',
+    }),
 
     deviceName: deprecatedParam(z.string().optional(), {
       replacedBy: "device",
+    }),
+
+    // Needs the remote script, which small-model mode never uses.
+    preset: param(z.string().optional(), {
+      default:
+        "create from a preset (needs the Producer Pal remote script): a preset name, looked up among device's presets when device is given, else among all; or a path from ppal-library. Comma-separated one per path",
+      smallModel: null,
     }),
 
     path: param(z.coerce.string().optional(), {
@@ -36,12 +43,12 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
         "insertion path, required with device ('t0/d+' appends, 't0/d1' inserts at 1, 't0/d0/c0/d+'; 't0/d0/c+' appends a new rack chain)",
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per device, in order",
+      default: "name, or comma-separated one per path",
       smallModel: "display name",
     }),
     params: param(paramsInputSchema, {
       default:
-        "applied after creation — array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a reason) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack, prefix the name with a pad path to address a pad's device, e.g. {name:'pC1/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
+        "applied after creation — array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack, prefix the name with a pad path to address a pad's device, e.g. {name:'pC1/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
       // See update-device: small mode has no devices fragment, so the value
       // format and the sample write both have to survive the trim.
       smallModel:

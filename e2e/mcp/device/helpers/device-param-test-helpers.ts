@@ -6,6 +6,9 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
+  getToolErrorMessage,
+  getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
 } from "../../mcp-test-helpers.ts";
@@ -57,7 +60,7 @@ export interface ParamResultEntry {
   value?: unknown;
   /** False only on a param nothing was written to */
   ok?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -80,6 +83,27 @@ export async function callForParams(
 }
 
 /**
+ * Send one device-tool call expected to fail, as it does when no param landed
+ * and nothing else was asked. Asserts it warned nothing.
+ * @param client - Connected MCP client
+ * @param tool - The tool to call
+ * @param args - The tool arguments
+ * @returns The error message
+ */
+export async function callForParamError(
+  client: Client,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const result = await client.callTool({ name: tool, arguments: args });
+
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(isToolError(result)).toBe(true);
+
+  return getToolErrorMessage(result);
+}
+
+/**
  * Assert a two-param write answered with one entry each: the name that reached
  * nothing as a skip, the one that was written, and no warning. The written one
  * carries a `value` only where Live kept a different one, so pass `value` only
@@ -98,7 +122,7 @@ export function expectSkipThenValue(
     {
       name: missing,
       ok: false,
-      reason: expect.stringContaining("not found on"),
+      detail: expect.stringContaining("not found on"),
     },
     { id: expect.any(String), ...landed },
   ]);

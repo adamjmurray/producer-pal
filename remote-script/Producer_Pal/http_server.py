@@ -9,14 +9,18 @@ import json
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlsplit
+
+# A Host outside these is a DNS-rebinding page reaching us under its own name.
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 
 
 class BridgeHTTPServer:
     """Owns the listening socket and its thread.
 
-    `dispatch(path, params)` is called on an HTTP worker thread and must return
-    `(status, payload)`. It is responsible for hopping to Live's main thread.
+    `dispatch(method, path, params)` is called on an HTTP worker thread and must
+    return `(status, payload)`. It is responsible for hopping to Live's main
+    thread.
     """
 
     def __init__(self, port, dispatch, log):
@@ -65,10 +69,14 @@ class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def do_GET(self):
+        if not self._allowed():
+            return
         path, params = self._parse_url()
         self._respond(path, params)
 
     def do_POST(self):
+        if not self._allowed():
+            return
         path, params = self._parse_url()
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length) if length else b""
@@ -84,6 +92,25 @@ class _Handler(BaseHTTPRequestHandler):
             params.update(body)
         self._respond(path, params)
 
+    def _allowed(self):
+        """Refuse any request a web page could have sent. Returns False if refused."""
+        # Browsers send Origin on every POST and cross-origin request (even
+        # "null"), and Sec-Fetch-Site on nearly every request, <img> GETs
+        # included; our own clients send neither.
+        if (
+            self.headers.get("Origin") is not None
+            or self.headers.get("Sec-Fetch-Site") is not None
+        ):
+            error = "requests from a web page are refused"
+        elif _hostname(self.headers.get("Host")) not in LOOPBACK_HOSTS:
+            error = "Host must be 127.0.0.1 or localhost"
+        else:
+            return True
+        # The body is unread, so it can't stay on the connection.
+        self.close_connection = True
+        self._send(403, {"error": error})
+        return False
+
     def _parse_url(self):
         parsed = urlparse(self.path)
         params = {key: values[0] for key, values in parse_qs(parsed.query).items()}
@@ -91,7 +118,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _respond(self, path, params):
         try:
-            status, payload = self.server.dispatch(path, params)
+            status, payload = self.server.dispatch(self.command, path, params)
         except Exception as err:
             status, payload = 500, {
                 "error": "%s: %s" % (type(err).__name__, err),
@@ -109,3 +136,11 @@ class _Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         self.server.log("http: " + (fmt % args))
+
+
+def _hostname(host):
+    """The lowercase hostname of a Host header, or None when it has none."""
+    try:
+        return urlsplit("//" + host).hostname if host else None
+    except ValueError:
+        return None

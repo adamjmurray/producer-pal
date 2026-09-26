@@ -81,7 +81,7 @@ export async function runSearchBatch(
       results.push({
         label: resolvedLabel,
         items: [],
-        reason: errorMessage(err),
+        detail: errorMessage(err),
       });
       continue;
     }
@@ -101,9 +101,9 @@ export async function runSearchBatch(
     };
 
     results.push(
-      searchResult.reason == null
+      searchResult.detail == null
         ? entry
-        : { ...entry, reason: searchResult.reason },
+        : { ...entry, detail: searchResult.detail },
     );
   }
 
@@ -115,9 +115,9 @@ export async function runSearchBatch(
   // One search needs no grouping, so it answers in the shape a plain search
   // does. An array where the caller asked for one thing confuses small models.
   if (results.length === 1) {
-    const [{ items, reason }] = results as [LibraryBatchEntry];
+    const [{ items, detail }] = results as [LibraryBatchEntry];
 
-    return { ...envelope, items, ...(reason != null && { reason }) };
+    return { ...envelope, items, ...(detail != null && { detail }) };
   }
 
   return { ...envelope, results };

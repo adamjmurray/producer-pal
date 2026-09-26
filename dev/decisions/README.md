@@ -5,7 +5,7 @@ from the code or git history — especially the things we deliberately chose not
 to do.
 
 The codebase already documents its rules (`AGENTS.md`,
-`dev/Coding-Standards.md`) and its intended work (`dev/plans/`, the
+`dev/coding-standards/README.md`) and its intended work (`dev/plans/`, the
 [roadmap](https://producer-pal.org/roadmap)). What neither captures is the
 reasoning behind a settled decision, particularly a rejection. That's the most
 expensive knowledge to reconstruct and the easiest to lose. If a future
@@ -17,8 +17,8 @@ answer belongs here.
 - **ADR** — a decision already made, with lasting consequences, that isn't
   self-evident from the code. Includes "won't fix" calls.
 - **Not an ADR** — proposals still being weighed (→ `dev/plans/`), coding rules
-  (→ `dev/Coding-Standards.md`), or anything the code and tests already make
-  obvious.
+  (→ `dev/coding-standards/README.md`), or anything the code and tests already
+  make obvious.
 
 ## Conventions
 
@@ -112,3 +112,7 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0045](0045-c-plus-appends-a-rack-chain.md)                        | `c+` appends a rack chain; nothing ever inserts one                   |
 | [0046](0046-d-plus-appends-a-device.md)                            | `d+` appends a device; `d<n>` still inserts at n                      |
 | [0047](0047-an-arrangement-write-overwrites-and-says-so.md)        | An arrangement write overwrites, and says so on the entry             |
+| [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target  |
+| [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |
+| [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                  |
+| [0051](0051-a-write-that-did-nothing-says-so.md)                   | A write that did nothing says so                                      |

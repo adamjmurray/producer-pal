@@ -40,6 +40,7 @@ import {
   getTimeSignature,
 } from "../clip-beat-positions.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
+import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 
 interface ClipResult {
   id: string;
@@ -81,6 +82,8 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   /** Where this clip moves, from toPath (or the deprecated toSlot). */
   destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
+  /** The param that named arrangementStartBeats. */
+  startParam: "toPath" | "arrangementStart";
   nonSurvivorClipIds?: Set<string> | null;
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
@@ -161,6 +164,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     });
     forceWarpForLooping(clip, reasons, looping, warping);
   } else {
+    parseNoteEdits(params, timeSigNumerator, timeSigDenominator);
     ignoreAudioParams(clip.id, reasons, params);
   }
 
@@ -242,6 +246,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     isAudioClip,
     destination: params.destination,
     destinationParam: params.destinationParam,
+    startParam: params.startParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
     movedClipGroups,

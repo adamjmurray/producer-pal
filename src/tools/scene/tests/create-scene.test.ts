@@ -185,6 +185,22 @@ describe("createScene", () => {
     ).toThrow(/would exceed the maximum allowed scenes/);
   });
 
+  // s+ after the last allowed index would land one past the cap.
+  it("counts an s+ entry against the maximum", () => {
+    expect(() =>
+      createScene({ path: `s${MAX_AUTO_CREATED_SCENES - 1},s+` }),
+    ).toThrow(/would exceed the maximum allowed scenes/);
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  // Refused before the plan fills a gap that size with empty scenes.
+  it("refuses a huge index before planning", () => {
+    expect(() => createScene({ path: "s+,s1000000000" })).toThrow(
+      `creating 2 scenes at index 1000000000 would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
   it("allows creating scenes up to exactly the maximum", () => {
     // Boundary: sceneIndex + count === MAX is allowed (> not >=).
     expect(() =>
@@ -355,7 +371,7 @@ describe("createScene", () => {
         id: "live_set/scenes/1",
         path: "s1",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 
@@ -445,7 +461,7 @@ describe("createScene", () => {
         path: "s2",
         clips: [],
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 

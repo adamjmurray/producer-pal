@@ -13,18 +13,20 @@ import {
   isSampleParam,
 } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
-import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import {
+  type CreatedChains,
+  resolveOrCreateDrumPadChain,
+} from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import {
   type DrumPadGroup,
   drumRackOfPad,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import {
-  pathField,
-  pathTargetLabel,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { createdCount } from "#src/tools/shared/helpers/created-range.ts";
+import { pathTargetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type TargetNotes,
   newTargetNotes,
+  noteSetAltered,
   refuseTargetWork,
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -32,6 +34,7 @@ import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import {
   type NonDeviceWrites,
   type UpdateTargetOptions,
+  refuseIfNoParamLanded,
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
@@ -77,8 +80,8 @@ export interface DrumPadUpdateResult extends NonDeviceWrites {
 
 /**
  * Update a whole drum pad: the DrumPad object and every chain on it. Pad-wide
- * properties broadcast to the chains; the per-layer ones are skipped with a
- * warning once a pad is stacked. A single-chain pad takes everything.
+ * properties broadcast to the chains; the per-layer ones are skipped, on the
+ * pad's entry, once a pad is stacked. A single-chain pad takes everything.
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
@@ -96,10 +99,10 @@ export function updateDrumPadGroup(
   // A sample write makes the pad's chain, exactly as the rack's `pC1/sample`
   // shortcut does — the pad is the address either way. The new chain then takes
   // the whole call: a one-layer pad is what the pad now is.
-  const chains =
+  const { chains, chainsMade } =
     group.chains.length === 0
-      ? createChainForSample(pad, options)
-      : group.chains;
+      ? createChainForSample(pad, options, notes)
+      : { chains: group.chains, chainsMade: 0 };
 
   // Live drops every write to a pad with no chains — `set` returns 1 and the
   // read-back stays 0 — so there is nothing here to write, and saying the
@@ -140,7 +143,7 @@ export function updateDrumPadGroup(
 
   // Only a single-layer pad reaches the chain mixer — the per-layer settings
   // are dropped above once a pad is stacked — so this is one chain's read-back.
-  const mixer = applyToChains(chains, chainOptions, notes);
+  const mixer = applyToChains(chains, chainOptions, notes, chainsMade);
 
   const result: DrumPadUpdateResult = { ...mixer };
 
@@ -149,12 +152,15 @@ export function updateDrumPadGroup(
   }
 
   if (pad != null) {
-    Object.assign(result, { id: pad.id }, pathField(pad));
+    // The caller fills the path in once every target in the call has run.
+    Object.assign(result, { id: pad.id, path: undefined });
   }
 
   if (CHAIN_WRITE_PROPS.some((key) => chainOptions[key] != null)) {
     result.chainIds = chains.map((chain) => chain.id);
   }
+
+  refuseIfNoParamLanded(notes, result.params);
 
   return reportTargetNotes(result, notes, options);
 }
@@ -185,29 +191,43 @@ function inRequestOrder(
  * one — every other setting would land on a chain the caller never asked for.
  * @param pad - The DrumPad, or null on a virtual pad that has none
  * @param options - Update options
- * @returns The new chain as the pad's only layer, or none when nothing was made
+ * @param notes - What the pad's entry has to say, marked when a chain is made
+ * @returns The new chain as the pad's only layer (none when nothing was made),
+ *   and how many chains the call made
  */
 function createChainForSample(
   pad: LiveAPI | null,
   options: UpdateTargetOptions,
-): LiveAPI[] {
+  notes: TargetNotes,
+): { chains: LiveAPI[]; chainsMade: number } {
   const wantsSample = (options.params ?? []).some((entry) =>
     isSampleParam(paramEntryKey(entry).key),
   );
 
-  if (!wantsSample || pad == null) {
-    return [];
+  const note =
+    wantsSample && pad != null
+      ? midiToNoteName(pad.getProperty("note") as number)
+      : null;
+
+  if (pad == null || note == null) {
+    return { chains: [], chainsMade: 0 };
   }
 
-  const note = midiToNoteName(pad.getProperty("note") as number);
+  const created: CreatedChains = [];
+  const chain = resolveOrCreateDrumPadChain(
+    drumRackOfPad(pad),
+    note,
+    [],
+    created,
+  );
 
-  if (note == null) {
-    return [];
+  const chainsMade = createdCount(created);
+
+  if (chainsMade > 0) {
+    noteSetAltered(notes);
   }
 
-  const chain = resolveOrCreateDrumPadChain(drumRackOfPad(pad), note, []);
-
-  return chain?.exists() ? [chain] : [];
+  return { chains: chain?.exists() ? [chain] : [], chainsMade };
 }
 
 /**
@@ -215,19 +235,21 @@ function createChainForSample(
  * @param chains - The pad's chains, in rack order
  * @param options - Update options, already filtered for this pad
  * @param notes - What the pad's entry has to say, added to
+ * @param chainsMade - How many chains the call made on the pad for its sample
  * @returns The first chain's mixer read-back; the rest only take pad-wide props
  */
 function applyToChains(
   chains: LiveAPI[],
   options: UpdateTargetOptions,
   notes: TargetNotes,
+  chainsMade: number,
 ): NonDeviceWrites {
   const first = chains[0] as LiveAPI;
 
-  // in_note is what puts a chain on a pad, and this already retargets every
-  // chain sharing the note, so the whole pad lands together.
+  // Moves the chains the pad held when the call began, not whatever shares the
+  // note now: an earlier move in the same call may have landed on this pad.
   if (options.toPath != null) {
-    moveDrumChainToPath(first, options.toPath, true, notes);
+    moveDrumChainToPath(chains, options.toPath, notes);
   }
 
   // Only reachable on a single-chain pad; a stacked pad drops `name` above.
@@ -245,6 +267,7 @@ function applyToChains(
       "DrumChain",
       index === 0 ? options : broadcastOnly(options),
       index === 0 ? notes : undefined,
+      index === 0 ? chainsMade : 0,
     );
 
     if (index === 0) {

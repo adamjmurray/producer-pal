@@ -18,7 +18,6 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   type SkippedTargetResult,
   sleep,
@@ -320,6 +319,32 @@ describe("ppal-update-track", () => {
     expect(track.sends![1]!.gainDb).toBeCloseTo(-21, 1);
   });
 
+  // sendReturn is a string, so it pairs one per track like name does.
+  it("gives each track its own sendReturn", async () => {
+    const liveSet = await readTracks();
+    const ids = [liveSet.tracks![3]!.id, liveSet.tracks![4]!.id].join(",");
+    const [first, second] = liveSet.returnTracks!;
+
+    await updateTrack({
+      id: ids,
+      sends: [
+        { return: first!.id, gainDb: -40 },
+        { return: second!.id, gainDb: -40 },
+      ],
+    });
+    await updateTrack({
+      id: ids,
+      sendGainDb: -15,
+      sendReturn: `${first!.id},${second!.id}`,
+    });
+
+    const one = await readTrackMixer(liveSet.tracks![3]!.id);
+    const two = await readTrackMixer(liveSet.tracks![4]!.id);
+
+    expect(one.sends!.map((send) => send.gainDb)).toStrictEqual([-15, -40]);
+    expect(two.sends!.map((send) => send.gainDb)).toStrictEqual([-40, -15]);
+  });
+
   it("reports track and send gain at Live's display resolution", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![2]!.id;
@@ -357,7 +382,7 @@ describe("ppal-update-track", () => {
 
     expect(data.gainDb).toBeUndefined();
     expect(data.pan).toBeUndefined();
-    expect(data.reason).toBeUndefined();
+    expect(data.detail).toBeUndefined();
     // Stereo is the mode every caller assumes, so it goes unsaid.
     expect(data.panningMode).toBeUndefined();
 
@@ -390,7 +415,7 @@ describe("ppal-update-track", () => {
       expect(data.leftPan).toBeUndefined();
       expect(data.rightPan).toBeUndefined();
       expect(data.pan).toBeUndefined();
-      expect(data.reason).toContain("pan had no effect");
+      expect(data.detail).toContain("pan had no effect");
       // The call set the mode itself, so it isn't reported back.
       expect(data.panningMode).toBeUndefined();
 
@@ -411,6 +436,22 @@ describe("ppal-update-track", () => {
     } finally {
       // In a finally so a failed assertion can't strand the track in split
       // mode for the rest of the file.
+      await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
+    }
+  });
+
+  it("refuses a lone pan on a split-mode track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    try {
+      await updateTrack({ id: trackId, panningMode: "split" });
+
+      const result = await updateTrack({ id: trackId, pan: 0.5 });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain("pan had no effect");
+    } finally {
       await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
     }
   });
@@ -459,20 +500,38 @@ describe("ppal-update-track", () => {
   it.each([
     ["sends", { sends: [{ return: "ZZZ", gainDb: -6 }] }],
     ["the scalar pair", { sendGainDb: -6, sendReturn: "ZZZ" }],
-  ])("reports a return that matches none, named by %s", async (_how, args) => {
+  ])("refuses a return that matches none, named by %s", async (_how, args) => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
-    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
-      await updateTrack({ id: trackId, ...args }),
+    const result = await updateTrack({ id: trackId, ...args });
+
+    // The send was all it asked, and nothing landed, so the call fails.
+    expect(getToolWarnings(result).join()).not.toContain(
+      "no return track matching",
+    );
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no send landed — "ZZZ": no return track matching "ZZZ"',
+    );
+  });
+
+  it("keeps a failed send on the entry when a name landed too", async () => {
+    const liveSet = await readTracks();
+    const track = liveSet.tracks![3]!;
+
+    const data = parseToolResult<UpdateTrackResult>(
+      await updateTrack({
+        id: track.id,
+        name: track.name,
+        sends: [{ return: "ZZZ", gainDb: -6 }],
+      }),
     );
 
-    expect(warnings.join()).not.toContain("no return track matching");
-    // Nothing was written, so the entry says why in place of a level.
     expect(data.sends).toContainEqual({
       return: "ZZZ",
       ok: false,
-      reason: expect.stringContaining('no return track matching "ZZZ"'),
+      detail: expect.stringContaining('no return track matching "ZZZ"'),
     });
   });
 
@@ -544,7 +603,7 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       {
         path: "t999",
         ok: false,
-        reason: 'no track at path "t999"; ppal-create-track adds tracks',
+        detail: 'no track at path "t999"; ppal-create-track adds tracks',
       },
     ]);
 
@@ -566,8 +625,8 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
     );
 
     expect(entries).toStrictEqual([
-      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
-      { id: "99998", ok: false, reason: 'id "99998" does not exist' },
+      { id: "99999", ok: false, detail: 'id "99999" does not exist' },
+      { id: "99998", ok: false, detail: 'id "99998" does not exist' },
     ]);
   });
 
@@ -618,7 +677,8 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       {
         path: "rt0",
         ok: false,
-        reason: "monitoringState is only available on armable tracks",
+        detail:
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
       },
     ]);
   });
@@ -637,8 +697,8 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
     expect(entries[1]).toStrictEqual(
       expect.objectContaining({
         path: "rt0",
-        reason: expect.stringContaining(
-          "monitoringState is only available on armable tracks",
+        detail: expect.stringContaining(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
         ),
       }),
     );
@@ -663,12 +723,12 @@ interface UpdateTrackResult {
   leftPan?: number;
   rightPan?: number;
   panningMode?: "stereo" | "split";
-  reason?: string;
+  detail?: string;
   sends?: Array<{
     return: string;
     returnId?: string;
     gainDb: number;
-    reason?: string;
+    detail?: string;
   }>;
 }
 

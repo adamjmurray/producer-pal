@@ -396,7 +396,6 @@ describe("readOneDevice", () => {
       expect(drumPads).toHaveLength(1);
       expect(drumPads[0]).toStrictEqual({
         id: "pad-36",
-        note: 36,
         pitch: "C1",
         name: "Kick",
         chainCount: 1,

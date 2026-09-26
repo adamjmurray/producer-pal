@@ -39,7 +39,7 @@ describe("codexTurnArgs", () => {
     instructions: "You are Producer Pal.",
     instructionsFile: "/tmp/instructions.md",
     mcpUrl: "http://localhost:3350/mcp",
-    model: "terra",
+    model: "sol",
   };
 
   it("builds a restricted initial MCP turn", () => {
@@ -47,7 +47,7 @@ describe("codexTurnArgs", () => {
 
     expect(args.slice(0, 3)).toStrictEqual(["exec", "--sandbox", "read-only"]);
     expect(args).toStrictEqual(
-      expect.arrayContaining(["--model", "gpt-5.6-terra"]),
+      expect.arrayContaining(["--model", "gpt-6-sol"]),
     );
     expectRestrictions(args);
     expect(args).toContain("mcp_servers.producer-pal.required=true");
@@ -77,7 +77,7 @@ describe("codexJudgeArgs", () => {
 
     expect(args).toContain("--ephemeral");
     expect(args).toStrictEqual(
-      expect.arrayContaining(["--model", "gpt-5.6-luna"]),
+      expect.arrayContaining(["--model", "gpt-6-luna"]),
     );
     expectRestrictions(args);
     expect(args.join(" ")).not.toContain("mcp_servers");
@@ -86,10 +86,9 @@ describe("codexJudgeArgs", () => {
 
 describe("resolveCodexModel", () => {
   it("resolves friendly aliases and preserves explicit model ids", () => {
-    expect(resolveCodexModel("sol")).toBe("gpt-5.6-sol");
-    expect(resolveCodexModel("terra")).toBe("gpt-5.6-terra");
-    expect(resolveCodexModel("luna")).toBe("gpt-5.6-luna");
-    expect(resolveCodexModel("gpt-5.6-terra")).toBe("gpt-5.6-terra");
+    expect(resolveCodexModel("sol")).toBe("gpt-6-sol");
+    expect(resolveCodexModel("luna")).toBe("gpt-6-luna");
+    expect(resolveCodexModel("gpt-6-astra")).toBe("gpt-6-astra");
   });
 });
 

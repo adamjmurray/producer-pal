@@ -137,6 +137,36 @@ describe("ppal-update-scene", () => {
     ).toBeUndefined();
   });
 
+  it("pairs one time signature per scene in one call", async () => {
+    const [sceneId, secondSceneId] = await createScenes();
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-scene",
+      arguments: {
+        id: `${sceneId},${secondSceneId}`,
+        timeSignature: "6/8,7/4",
+      },
+    });
+
+    parseBatchResult<UpdateSceneResult>(result, 2);
+
+    await sleep(100);
+
+    const meters = [];
+
+    for (const id of [sceneId!, secondSceneId!]) {
+      const scene = parseToolResult<ReadSceneResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-scene",
+          arguments: { id },
+        }),
+      );
+
+      meters.push(scene.timeSignature);
+    }
+
+    expect(meters).toStrictEqual(["6/8", "7/4"]);
+  });
+
   it("updates several scenes in one call", async () => {
     const [sceneId, secondSceneId] = await createScenes();
     const result = await ctx.client!.callTool({
@@ -183,7 +213,7 @@ describe("ppal-update-scene over a list with a target it can't reach", () => {
       {
         path: "s999",
         ok: false,
-        reason: 'no scene at path "s999"; ppal-create-scene makes one',
+        detail: 'no scene at path "s999"; ppal-create-scene makes one',
       },
     ]);
 
@@ -216,7 +246,7 @@ interface UpdateSceneResult {
   id: string;
   path?: string;
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface ReadSceneResult {

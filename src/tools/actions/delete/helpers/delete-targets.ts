@@ -11,11 +11,16 @@
 // object named earlier. A target that is there and this call can't remove is
 // skipped, `ok: false`, with the reason a lone target would have thrown.
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  namedEarlierReason,
+  type ObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+import {
+  namedLaterReason,
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -36,7 +41,7 @@ export interface DeleteResult {
   /** Only on a target this call could not delete. */
   ok?: false;
   /** Why it wasn't deleted, or why there was nothing left for it to delete. */
-  reason?: string;
+  detail?: string;
 }
 
 /** A result entry tagged with its target's position in the request. */
@@ -91,32 +96,38 @@ export function resolveDeleteTargets(
 
   const settled: IndexedDeleteResult[] = [];
   const deletable: DeleteTarget[] = [];
-  // The first target to name an object deletes it; deleting it again would
+  const resolved = targets.map((named, requestIndex) =>
+    resolveTarget(named, type, requestIndex),
+  );
+  // The last target to name an object deletes it; deleting it again would
   // shift another object into the slot and remove that instead. Keyed by what
   // each target resolved to, so an id and a path naming one object are caught.
-  const firstNamedBy = new Map<string, NamedTarget>();
+  const lastNamedBy = new Map<string, NamedTarget>();
 
-  for (const [requestIndex, named] of targets.entries()) {
-    const { target, entry } = resolveTarget(named, type, requestIndex);
+  for (const [requestIndex, { target }] of resolved.entries()) {
+    if (target != null) {
+      lastNamedBy.set(target.object.id, targets[requestIndex] as NamedTarget);
+    }
+  }
 
+  for (const [requestIndex, { target, entry }] of resolved.entries()) {
     if (entry != null) {
       settled.push(entry);
       continue;
     }
 
-    const earlier = firstNamedBy.get(target.object.id);
+    const later = lastNamedBy.get(target.object.id) as NamedTarget;
 
-    if (earlier != null) {
+    if (later !== targets[requestIndex]) {
       settled.push({
         id: target.id,
         ...requestAddress(target.requestPath),
-        reason: namedEarlierReason(earlier),
+        detail: namedLaterReason(later),
         requestIndex,
       });
       continue;
     }
 
-    firstNamedBy.set(target.object.id, named);
     deletable.push(target);
   }
 
@@ -124,6 +135,38 @@ export function resolveDeleteTargets(
 }
 
 // --- Helpers below main exports ---
+
+/** Why no take lane can be deleted, after the lane's own label. */
+const TAKE_LANE_REFUSAL =
+  "is a take lane, which Live's API can't delete; remove it in Live's UI";
+
+/**
+ * The id of the take lane a path names, when there is one. No delete type
+ * reaches a take lane, so the type's own lookup would call an existing lane the
+ * wrong kind; with its id, the refusal says what it is.
+ * @param requestPath - One path, as the caller wrote it
+ * @returns The lane's id, or null for any other path or a lane that isn't
+ *   there, which the type's lookup reports
+ */
+function existingTakeLane(requestPath: string): IdLookup | null {
+  let parsed: ObjectPath;
+
+  try {
+    parsed = parseObjectPath(requestPath);
+  } catch {
+    return null;
+  }
+
+  if (parsed.kind !== "take-lane") {
+    return null;
+  }
+
+  const lane = LiveAPI.from(
+    livePath.track(parsed.trackIndex).takeLane(parsed.laneIndex),
+  );
+
+  return lane.exists() ? { id: lane.id } : null;
+}
 
 /**
  * One named target: the object to delete, or the entry standing in for it.
@@ -137,20 +180,22 @@ function resolveTarget(
   type: string,
   requestIndex: number,
 ): TargetOutcome {
-  const lookup: IdLookup =
-    named.param === "id"
-      ? { id: named.value }
-      : resolvePathForType(type, named.value);
   const requestPath = named.param === "path" ? named.value : undefined;
   const address = requestAddress(requestPath);
+
+  const lookup: IdLookup =
+    requestPath == null
+      ? { id: named.value }
+      : (existingTakeLane(requestPath) ??
+        resolvePathForType(type, requestPath));
 
   if (lookup.id == null) {
     return {
       entry: {
         ...address,
         ...(lookup.empty
-          ? { reason: NOTHING_TO_DELETE }
-          : { ok: false as const, reason: lookup.reason }),
+          ? { detail: NOTHING_TO_DELETE }
+          : { ok: false as const, detail: lookup.reason }),
         requestIndex,
       },
     };
@@ -161,7 +206,7 @@ function resolveTarget(
 
   if (!object.exists()) {
     return {
-      entry: { id, ...address, reason: NOTHING_TO_DELETE, requestIndex },
+      entry: { id, ...address, detail: NOTHING_TO_DELETE, requestIndex },
     };
   }
 
@@ -169,7 +214,7 @@ function resolveTarget(
 
   if (refusal != null) {
     return {
-      entry: { id, ...address, ok: false, reason: refusal, requestIndex },
+      entry: { id, ...address, ok: false, detail: refusal, requestIndex },
     };
   }
 
@@ -196,6 +241,10 @@ function requestAddress(requestPath: string | undefined): { path?: string } {
  * @returns The reason, or null when the object can be deleted
  */
 function undeletable(object: LiveAPI, type: string): string | null {
+  if (object.type === "TakeLane") {
+    return `${targetLabel(object)} ${TAKE_LANE_REFUSAL}`;
+  }
+
   const isChain = object.type === "Chain" || object.type === "DrumChain";
 
   // `type="chain"` is how a caller means a chain, so only the other types

@@ -499,7 +499,7 @@ describe("useSettings", () => {
     expect(result.current).toStrictEqual(
       expect.objectContaining({
         apiKey: "",
-        model: "gpt-5.6-terra",
+        model: "gpt-6-sol",
         thinking: "Default",
       }),
     );

@@ -23,10 +23,10 @@ import { openLiveDb } from "#src/mcp-server/live-library/live-db.ts";
 import {
   isToolError,
   parseToolResult,
-  readLiveVersion,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { readLiveVersion } from "./helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -47,13 +47,13 @@ interface LibrarySearchResult {
   items: LibraryItem[];
   /** Present when DB was consulted; omitted when bypassed (source=sampleFolder). */
   dbAvailable?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 interface LibraryListTagsResult {
   tags: Array<{ name: string; count: number }>;
   dbAvailable?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 interface LibrarySimilarItem extends LibraryItem {
@@ -64,13 +64,13 @@ interface LibraryFindSimilarResult {
   seed: { path: string; found: boolean };
   items: LibrarySimilarItem[];
   dbAvailable?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 interface LibraryFindDuplicatesResult {
   groups: Array<{ count: number; items: LibraryItem[] }>;
   dbAvailable?: boolean;
-  reason?: string;
+  detail?: string;
 }
 
 type LibraryArgs = Record<string, string | number | undefined>;
@@ -427,14 +427,14 @@ describe("ppal-library", () => {
 
       expect(result.seed.found).toBe(false);
       expect(result.items).toStrictEqual([]);
-      expect(typeof result.reason).toBe("string");
+      expect(typeof result.detail).toBe("string");
     });
 
     it("reports a missing similarTo arg without throwing", async () => {
       const result = await findSimilar();
 
       expect(result.seed.found).toBe(false);
-      expect(result.reason).toContain("similarTo");
+      expect(result.detail).toContain("similarTo");
     });
   });
 

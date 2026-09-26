@@ -28,6 +28,7 @@ import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test
 import { resolveClipTargets } from "#src/tools/clip/update/helpers/entries/clip-targets.ts";
 import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
 import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import * as processModule from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 
@@ -62,6 +63,18 @@ describe("updateClip - splitting smoke tests", () => {
     await updateClip({ id: clipId, split: "2|1" }, {});
 
     expectDuplicateCalled(callState.trackMock);
+  });
+
+  it.each([
+    [{ color: "red" }, 'invalid color "red"'],
+    [{ id: "clip_1,clip_1,clip_1", name: "A,,B" }, "empty"],
+  ])("refuses bad labels %o before splitting", async (extra, message) => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    await expect(
+      updateClip({ id: "clip_1", arrangementSplit: "2|1", ...extra }, {}),
+    ).rejects.toThrow(message);
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
   });
 
   it("splits nothing when both split params are given", async () => {
@@ -231,7 +244,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     for (const entry of results) {
       expect("ok" in entry).toBe(false);
-      expect(entry.reason).toBe("firstStart ignored: the clip is not looping");
+      expect(entry.detail).toBe("firstStart ignored: the clip is not looping");
     }
   });
 
@@ -328,7 +341,7 @@ describe("updateClip - splitting smoke tests", () => {
       id: "dup_2",
       noteCount: 0,
       path: "t0[2|1]",
-      reason:
+      detail:
         "transforms ignored: the clip has no notes; Live refused the note read",
     });
   });
@@ -348,10 +361,92 @@ describe("updateClip - splitting smoke tests", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         id: clipId,
-        reason:
+        detail:
           "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
       }),
     );
+  });
+
+  it("refuses a session clip in a batch while the arrangement clip splits", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    registerMockObject("session_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+    });
+
+    const result = await updateClip(
+      { ids: "session_clip,clip_1", arrangementSplit: "2|1" },
+      {},
+    );
+
+    expectDuplicateCalled(callState.trackMock);
+    expect(result).toStrictEqual([
+      {
+        id: "session_clip",
+        ok: false,
+        detail: "arrangementSplit ignored: this is a session clip",
+      },
+      { id: "clip_1", path: "t0[1|1]" },
+      { id: "dup_2", path: "t0[2|1]" },
+    ]);
+  });
+
+  // A target with no clip keeps its number, and each split piece gets its own.
+  it("numbers split pieces after an empty target, then the next clip", async () => {
+    setupClipSplittingMocks("clip_1");
+    registerMockObject("session_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+    });
+    const update = vi.spyOn(processModule, "processSingleClipUpdate");
+
+    await updateClip(
+      {
+        ids: "missing,clip_1,session_clip",
+        arrangementSplit: "2|1",
+        name: "A,B,C",
+      },
+      {},
+    );
+
+    expect(
+      update.mock.calls.map(([params]) => [
+        params.clip.id,
+        params.clipIndex,
+        params.clipCount,
+      ]),
+    ).toStrictEqual([
+      ["clip_1", 1, 4],
+      ["dup_2", 2, 4],
+      ["session_clip", 3, 4],
+    ]);
+  });
+
+  // With a name to write, the name lands, so the clip keeps a real entry and
+  // carries the reason on it.
+  it("keeps a session clip's entry when its rename lands beside the split", async () => {
+    setupClipSplittingMocks("clip_1");
+
+    const sessionClip = registerMockObject("session_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+    });
+
+    const result = await updateClip(
+      { id: "session_clip", arrangementSplit: "2|1", name: "Renamed Anyway" },
+      {},
+    );
+
+    expect(sessionClip.set).toHaveBeenCalledWith("name", "Renamed Anyway");
+    expect(result).toStrictEqual({
+      id: "session_clip",
+      path: "t0/s0",
+      detail: "arrangementSplit ignored: this is a session clip",
+    });
   });
 
   it("should not warn about split on a take-lane clip when split is not given", async () => {

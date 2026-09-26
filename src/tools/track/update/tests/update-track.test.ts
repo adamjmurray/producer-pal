@@ -132,7 +132,7 @@ describe("updateTrack", () => {
       {
         id: "nonexistent",
         ok: false,
-        reason: 'id "nonexistent" does not exist',
+        detail: 'id "nonexistent" does not exist',
       },
     ]);
     // The entry carries it, so the response doesn't say it twice.
@@ -156,7 +156,7 @@ describe("updateTrack", () => {
       {
         id: "nonexistent",
         ok: false,
-        reason: 'id "nonexistent" does not exist',
+        detail: 'id "nonexistent" does not exist',
       },
       { id: "123", path: "t0" },
       { id: "456", path: "t1" },
@@ -186,6 +186,17 @@ describe("updateTrack", () => {
     expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
       "id names 3 entries but name names 2 entries.",
     );
+  });
+
+  // One target reads every value whole, so their comma counts can't disagree.
+  it("reads each value whole for one target, whatever its commas", () => {
+    updateTrack({
+      id: "123",
+      name: "Bass, Sub",
+      outputRoutingType: "Low, End, Bus",
+    });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "Bass, Sub");
   });
 
   // A gap in a name list used to mean "leave this one alone", while the same
@@ -405,7 +416,7 @@ describe("updateTrack", () => {
         expect(result).toStrictEqual({
           id: "ret1",
           path: "rt0",
-          reason: "input routing is only available on regular non-group tracks",
+          detail: "input routing is only available on regular non-group tracks",
         });
         expect(capturedWarnings()).toStrictEqual([]);
       });
@@ -437,7 +448,9 @@ describe("updateTrack", () => {
 
         expect(() =>
           updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN }),
-        ).toThrow("monitoringState is only available on armable tracks");
+        ).toThrow(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+        );
 
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "current_monitoring_state",
@@ -464,7 +477,8 @@ describe("updateTrack", () => {
           {
             id: "ret1",
             ok: false,
-            reason: "monitoringState is only available on armable tracks",
+            detail:
+              "monitoringState had no effect: return, main and group tracks have no monitoring",
           },
         ]);
         expect(capturedWarnings()).toStrictEqual([]);
@@ -508,7 +522,7 @@ describe("updateTrack", () => {
         id: "ret3",
         path: "rt2",
         name: "C-B-Side",
-        reason: "Live prefixes a return track's name with its send letter",
+        detail: "Live prefixes a return track's name with its send letter",
       });
     });
 
@@ -529,7 +543,7 @@ describe("updateTrack", () => {
         id: "ret1",
         path: "rt0",
         name: "A-Tape",
-        reason: "Live prefixes a return track's name with its send letter",
+        detail: "Live prefixes a return track's name with its send letter",
       });
     });
   });
@@ -553,7 +567,7 @@ describe("updateTrack", () => {
         id: "123",
         path: "t0",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -576,13 +590,13 @@ describe("updateTrack", () => {
           id: "123",
           path: "t0",
           color: "#1AFC2F",
-          reason: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
         },
         {
           id: "456",
           path: "t1",
           color: "#1AFC2F",
-          reason: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
         },
       ]);
     });
@@ -610,7 +624,7 @@ describe("updateTrack", () => {
         path: "rt0",
         name: "A-Verb",
         color: "#FF3636",
-        reason:
+        detail:
           "Live prefixes a return track's name with its send letter; " +
           "color #FF0000 is not in Live's palette; landed as #FF3636",
       });

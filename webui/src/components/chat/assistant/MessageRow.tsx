@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
+import { useState } from "preact/hooks";
 import { formatUserContent } from "#webui/chat/helpers/message-formatting";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
@@ -21,7 +22,7 @@ import {
   formatTimestampDate,
   formatTimestampTime,
 } from "#webui/lib/utils/format-timestamp";
-import { type UIMessage } from "#webui/types/messages";
+import { type UIImagePart, type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
 import { RenderErrorFallback, SafeMarkdown } from "./helpers/SafeMarkdown";
 import { formatStepTiming } from "./helpers/step-usage";
@@ -35,7 +36,11 @@ export interface MessageRowProps {
   showTokenUsage: boolean;
   requestedModel?: string | null;
   handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
+  handleEdit: (
+    messageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
   handleCompact?: (messageIndex: number) => Promise<void>;
   editingIndex: number | null;
   setEditingIndex: (index: number | null) => void;
@@ -74,6 +79,13 @@ function UserRow({
 }: MessageRowProps) {
   const isEditing = editingIndex === originalIdx;
   const canEdit = !isAssistantResponding;
+  // Original indexes of the images this edit drops.
+  const [removedImages, setRemovedImages] = useState<number[]>([]);
+  const keptImages = message.parts
+    .filter((part): part is UIImagePart => part.type === "image")
+    .flatMap((image, index) =>
+      removedImages.includes(index) ? [] : [{ image, index }],
+    );
   const timestamp = renderTimestamp(message.timestamp, showTimestamps);
 
   return (
@@ -83,13 +95,21 @@ function UserRow({
         className="min-w-0 rounded-lg bg-blue-100 px-3 py-0.5 text-black shadow-sm dark:border dark:border-blue-700/40 dark:bg-blue-900/80 dark:text-white dark:shadow-white/10"
         data-message-index={originalIdx}
       >
-        <UserImages parts={message.parts} />
+        {!isEditing && <UserImages parts={message.parts} />}
         {isEditing ? (
           <UserMessageEditor
             text={editText}
             onTextChange={setEditText}
+            images={keptImages.map(({ image }) => image)}
+            onRemoveImage={(position) => {
+              const kept = keptImages[position];
+
+              if (kept != null) {
+                setRemovedImages([...removedImages, kept.index]);
+              }
+            }}
             onSave={() => {
-              void handleEdit(originalIdx, editText);
+              void handleEdit(originalIdx, editText, removedImages);
               setEditingIndex(null);
             }}
             onCancel={() => setEditingIndex(null)}
@@ -105,6 +125,7 @@ function UserRow({
           onClick={() => {
             setEditingIndex(originalIdx);
             setEditText(formatUserContent(message));
+            setRemovedImages([]);
           }}
         />
       ) : (

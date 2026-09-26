@@ -40,7 +40,7 @@ const ctx = setupMcpTestContext();
 interface DeleteResult {
   id: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 interface ArrangementClipsResult {

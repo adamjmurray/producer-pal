@@ -366,7 +366,9 @@ describe("createTrack", () => {
       expect(track.set).toHaveBeenCalledWith("color", 255);
     });
 
-    it("should warn when trackIndex provided for return track", () => {
+    // The trackIndex and type deprecations both already say to use "rt+", so a
+    // third warning about the ignored index only repeats them.
+    it("warns once for a return track sent with a trackIndex", () => {
       registerMockObject("return_track_0", {});
 
       const result = createTrack({
@@ -375,8 +377,8 @@ describe("createTrack", () => {
         name: "Ignored Index",
       });
 
-      expect(console.warn).toHaveBeenCalledWith(
-        "trackIndex is ignored for return tracks (always added at end)",
+      expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+        'type "return" is deprecated and will be removed; use path "rt+" instead',
       );
       // Should still create the track
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
@@ -409,7 +411,7 @@ describe("createTrack", () => {
         id: "return_track_0",
         path: "rt2",
         name: "C-Delay",
-        reason: "Live prefixes a return track's name with its send letter",
+        detail: "Live prefixes a return track's name with its send letter",
       });
     });
 
@@ -425,7 +427,7 @@ describe("createTrack", () => {
         id: "return_track_0",
         path: "rt2",
         name: "C-B-Side",
-        reason: "Live prefixes a return track's name with its send letter",
+        detail: "Live prefixes a return track's name with its send letter",
       });
     });
 
@@ -523,7 +525,7 @@ describe("createTrack", () => {
         id: "midi_track_1",
         path: "t1",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 

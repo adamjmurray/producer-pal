@@ -294,6 +294,8 @@ export interface ChatClientConfig {
    */
   notation?: Notation;
   providerOptions?: ProviderOptions;
+  /** Most images one request may carry. Absent = MAX_REQUEST_IMAGES. */
+  maxRequestImages?: number;
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
   chatHistory?: ChatMessage[];

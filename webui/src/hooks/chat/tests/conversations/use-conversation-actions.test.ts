@@ -201,6 +201,41 @@ describe("useConversationActions guards", () => {
     });
   });
 
+  it.each([
+    {
+      what: "leaves out the removed images",
+      removed: [0],
+      expected: {
+        role: "user",
+        content: "just text",
+        images: [{ mediaType: "image/png", data: "BBB" }],
+      },
+    },
+    {
+      what: "sends plain text once every image is removed",
+      removed: [0, 1],
+      expected: { role: "user", content: "just text" },
+    },
+  ])("handleEdit $what", async ({ removed, expected }) => {
+    const images = [
+      { mediaType: "image/png", data: "AAA" },
+      { mediaType: "image/png", data: "BBB" },
+    ];
+    const { client, result } = setupWithHistory(
+      [
+        { role: "user", content: "match this", images },
+        { role: "assistant", content: "reply" },
+      ],
+      [userMessage(0)],
+    );
+
+    await act(async () => {
+      await result.current.handleEdit(0, "just text", removed);
+    });
+
+    expect(client.chatHistory).toContainEqual(expected);
+  });
+
   it("handleRetry bails when the raw entry yields no user message", async () => {
     // The raw history slot resolves to an assistant turn, so extractUserMessage
     // returns undefined and there is nothing to re-send.

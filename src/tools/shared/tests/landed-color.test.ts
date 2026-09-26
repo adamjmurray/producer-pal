@@ -42,7 +42,7 @@ describe("landedColor", () => {
       ),
     ).toStrictEqual({
       color: "#FF3636",
-      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
     });
   });
 
@@ -63,7 +63,7 @@ describe("landedColor", () => {
     });
 
     expect(landedColor(object, "#FF0000")).toStrictEqual({
-      reason:
+      detail:
         "color #FF0000 was set but could not be read back: object is gone",
     });
   });

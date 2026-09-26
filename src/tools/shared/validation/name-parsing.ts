@@ -5,10 +5,9 @@
 
 import {
   type ListEntries,
-  splitList,
   valueForIndex,
-  warnPairingMismatch,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { parsePairedValues } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /**
  * Parse a comma-separated name param and warn when it names the wrong number.
@@ -25,16 +24,12 @@ export function parseNames(
   count: number,
   item: string,
 ): ListEntries | null {
-  const parsed = splitList(value, count, "name");
-
-  warnPairingMismatch(parsed?.length ?? 0, count, {
+  return parsePairedValues(value, count, {
     param: "name",
     noun: "name",
     item,
     shortfall: "were not renamed",
   });
-
-  return parsed;
 }
 
 /**

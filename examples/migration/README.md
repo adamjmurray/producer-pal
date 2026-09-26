@@ -5,8 +5,8 @@ scripts driving Producer Pal through
 [MCP](https://producer-pal.org/guide/npx-cli) or the
 [REST API](https://producer-pal.org/guide/rest-api).
 
-The params these scripts rewrite still work in 2.3 — they emit a deprecation
-warning — and are removed in 2.4. See the
+The params these scripts rewrite still work — they emit a deprecation warning —
+and will be removed in a later release. See the
 [migration guide](https://producer-pal.org/guide/migration) for the full
 picture, including the parts these scripts deliberately leave alone.
 

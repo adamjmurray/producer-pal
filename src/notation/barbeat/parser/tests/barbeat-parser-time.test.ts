@@ -182,6 +182,11 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
+  it("rejects a zero or leading-zero @n<count>bar count (@n0bar, @n04bar)", () => {
+    expect(() => parser.parse("1|1x3@n0bar")).toThrow(/^Expected /);
+    expect(() => parser.parse("1|1x3@n04bar")).toThrow(/^Expected /);
+  });
+
   it("rejects n-fraction bar steps with a targeted steer (@n/1bar)", () => {
     // Same category error as the duration sites: a bar count can't be guessed
     // from a fraction.

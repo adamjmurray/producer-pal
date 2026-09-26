@@ -7,7 +7,7 @@
 // Live overwrites, trims and splits them to make room and reports none of it,
 // so the lane is photographed before the write and compared after.
 
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { clipsOnLane, laneObject } from "./arrangement-clip-at-position.ts";
@@ -71,13 +71,13 @@ export function arrangementWriteEffects(
   const wasThere = new Set(before.clips.map((clip) => clip.id));
   const after = scanLane(before.lane, before.api);
   const nowById = new Map(after.map((clip) => [clip.id, clip]));
-  // A clip Live cut in two keeps its head on the original id and gives the
-  // tail a new one, so a stranger inside an old span is that tail.
+  // A new id inside an old span is what Live kept of that clip: the tail of a
+  // split, or the rest of a front trim.
   const strangers = after.filter(
     (clip) => !ours.has(clip.id) && !wasThere.has(clip.id),
   );
 
-  return joinReasons(
+  return joinDetails(
     before.clips
       .filter((was) => !ours.has(was.id))
       .map((was) =>
@@ -118,15 +118,22 @@ function effectOnClip(
   strangers: readonly ClipSpan[],
 ): string | undefined {
   const wasAt = arrangementPositionPath(lane, was.start);
-
-  if (now == null) {
-    return `overwrote the clip at ${wasAt}`;
-  }
-
-  const tail = strangers.find(
+  const inside = strangers.filter(
     (clip) =>
       clip.start > was.start + EPSILON && clip.start < was.end - EPSILON,
   );
+
+  if (now == null) {
+    // Live re-creates what a front trim leaves under a new id, ending where
+    // the old clip did.
+    const rest = inside.find((clip) => Math.abs(clip.end - was.end) <= EPSILON);
+
+    return rest == null
+      ? `overwrote the clip at ${wasAt}`
+      : `shortened the clip at ${arrangementPositionPath(lane, rest.start)}`;
+  }
+
+  const tail = inside[0];
 
   if (tail != null) {
     return `split the clip at ${wasAt} into ${arrangementPositionPath(lane, now.start)} and ${arrangementPositionPath(lane, tail.start)}`;

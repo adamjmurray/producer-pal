@@ -79,6 +79,18 @@ describe("describeRunAbort", () => {
     expect(message).toContain("Live is not recovering");
   });
 
+  it.each([
+    [["first", "second"], "second"],
+    [["first", "second", "first", undefined], "first"],
+  ])("quotes the last trial's error of %j", (errors, last) => {
+    const message = describeRunAbort(
+      3,
+      errors.map((error) => run("error", error)),
+    );
+
+    expect(message).toMatch(new RegExp(`Last error: ${last}$`));
+  });
+
   it("blames Live and omits the sample when there is no error text", () => {
     const message = describeRunAbort(3, [run("error")]);
 

@@ -15,6 +15,10 @@ import {
   labelNewTargets,
   pairLabels,
 } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import {
+  splitList,
+  valueForIndex,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
 import {
@@ -32,6 +36,7 @@ import {
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
+  validateTimeSignatures,
 } from "./helpers/scene-tempo-signature.ts";
 
 interface SceneResult {
@@ -42,7 +47,7 @@ interface SceneResult {
   created?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface SceneProperties {
@@ -73,7 +78,7 @@ interface CreateSceneArgs {
  * @param args.name - Name for all, or one per scene, in order
  * @param args.color - Color for all, or one per scene, in order (CSS format: hex)
  * @param args.tempo - Tempo in BPM for the scenes. Pass -1 to disable.
- * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
+ * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled" when capturing)
  * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
  * @returns One object per scene, unwrapped when the call named one
@@ -102,19 +107,23 @@ export function createScene(
     return runCapture(sceneIndex, { color, tempo, timeSignature }, name, focus);
   }
 
-  const sceneCount = liveSet.getChildIds("scenes").length;
-  const spots = resolveCreateSceneSpots(
-    path,
-    sceneIndexParam,
-    count,
-    sceneCount,
-  );
+  const spots = resolveCreateSceneSpots(path, sceneIndexParam, count);
 
   validateTempo(tempo, -1);
+  // Checked before planning too: a huge index would fill the plan with that
+  // many empty scenes first.
+  validateSceneIndexCap(
+    spots.filter((spot): spot is number => spot !== "end"),
+    spots.length,
+  );
 
-  const insertions = planInsertions(spots, sceneCount, true);
+  const insertions = planInsertions(
+    spots,
+    liveSet.getChildIds("scenes").length,
+    true,
+  );
 
-  validateSceneIndexCap(insertions.map((insertion) => insertion.insertIndex));
+  validateSceneIndexCap(insertions.map((insertion) => insertion.finalIndex));
 
   const { parsedNames, parsedColors } = labelNewTargets({
     noun: "scene",
@@ -122,14 +131,26 @@ export function createScene(
     count: spots.length,
     name,
     color,
+    extraLists: [{ param: "timeSignature", value: timeSignature }],
   });
+  const parsedTimeSignatures = splitList(
+    timeSignature ?? undefined,
+    spots.length,
+    "timeSignature",
+  );
+
+  validateTimeSignatures(timeSignature, parsedTimeSignatures);
 
   const createdScenes = insertions.map((insertion, i) =>
     createSingleScene(liveSet, insertion, {
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       tempo,
-      timeSignature,
+      timeSignature: valueForIndex(
+        timeSignature ?? undefined,
+        i,
+        parsedTimeSignatures,
+      ),
     }),
   );
 
@@ -159,9 +180,9 @@ function runCapture(
   name: string | undefined,
   focus: boolean | undefined,
 ): CaptureSceneResult & LandedColor {
-  // A malformed color would otherwise only surface inside setColor, after
-  // captureScene has already captured the playing clips into a real scene.
+  // Check these before capturing: they're only applied after the scene exists.
   pairLabels({ noun: "scene", count: 1, color: props.color });
+  validateTimeSignatures(props.timeSignature, null);
 
   // The index is Live's answer to where the capture landed; it stays out of
   // the result, where `path` already says it.
@@ -233,10 +254,10 @@ function applyCaptureProperties(
  */
 function createSingleScene(
   liveSet: LiveAPI,
-  insertion: Insertion<number>,
+  insertion: Insertion,
   props: SceneProperties & { name?: string },
 ): SceneResult {
-  const sceneIndex = insertion.insertIndex;
+  const sceneIndex = insertion.atIndex;
 
   // An index past the end has no scene to insert before, so fill the gap first.
   for (let i = 0; i < insertion.padCount; i++) {
@@ -256,15 +277,13 @@ function createSingleScene(
   return {
     id: scene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: insertion.finalIndex }),
-    // Named at the indices they were made at, before this scene went in above
-    // them.
-    ...(insertion.padCount === 0
+    ...(insertion.emptyBelow === 0
       ? {}
       : {
           created: createdRange(
             "s",
-            sceneIndex - insertion.padCount,
-            sceneIndex - 1,
+            insertion.finalIndex - insertion.emptyBelow,
+            insertion.finalIndex - 1,
           ),
         }),
     ...landed,

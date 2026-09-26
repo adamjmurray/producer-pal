@@ -391,7 +391,7 @@ describe("library tool — folder scan integration", () => {
     expect("dbAvailable" in result).toBe(false);
     // No diagnostic cause here, so the reason key must be omitted entirely
     // (not present-but-undefined).
-    expect("reason" in result).toBe(false);
+    expect("detail" in result).toBe(false);
   });
 
   it("merged requests propagate dbAvailable from the DB call", async () => {
@@ -404,8 +404,8 @@ describe("library tool — folder scan integration", () => {
 
     expect(result.dbAvailable).toBe(true);
     // Neither the folder scan nor the DB supplied a reason, so the merged
-    // result must omit the key rather than carry reason: undefined.
-    expect("reason" in result).toBe(false);
+    // result must omit the key rather than carry detail: undefined.
+    expect("detail" in result).toBe(false);
   });
 
   it("skips folder scan when tags filter is set (folder has no tag info)", async () => {
@@ -643,7 +643,7 @@ describe("library tool — folder scan integration", () => {
     assertItems(result);
 
     expect(result.items).toHaveLength(0);
-    expect(result.reason).toMatch(/sample folder not configured/i);
+    expect(result.detail).toMatch(/sample folder not configured/i);
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
@@ -654,7 +654,7 @@ describe("library tool — folder scan integration", () => {
       result: {
         dbAvailable: false,
         items: [],
-        reason: "Live database not found",
+        detail: "Live database not found",
       },
     });
 
@@ -663,7 +663,7 @@ describe("library tool — folder scan integration", () => {
     assertItems(result);
 
     expect(result.dbAvailable).toBe(false);
-    expect(result.reason).toBe("Live database not found");
+    expect(result.detail).toBe("Live database not found");
     // Folder items should still come through alongside the diagnostic.
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
@@ -673,7 +673,7 @@ describe("library tool — folder scan integration", () => {
       new Error("EACCES: permission denied"),
     );
 
-    expect(result.reason).toMatch(/sample folder scan failed.*EACCES/);
+    expect(result.detail).toMatch(/sample folder scan failed.*EACCES/);
     // DB results should still flow through.
     expect(result.dbAvailable).toBe(true);
   });
@@ -682,7 +682,7 @@ describe("library tool — folder scan integration", () => {
     // Not an Error: the reason has to survive String() instead.
     const result = await libraryWithFailedScan("no folder for you");
 
-    expect(result.reason).toBe("sample folder scan failed: no folder for you");
+    expect(result.detail).toBe("sample folder scan failed: no folder for you");
   });
 
   it("extracts the leaf filename from nested folder paths", async () => {

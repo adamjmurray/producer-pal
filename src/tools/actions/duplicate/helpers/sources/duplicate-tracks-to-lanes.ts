@@ -56,6 +56,10 @@ import {
   type CopyLabels,
 } from "./copy-labels.ts";
 import { laneSource, type LaneSource } from "./lane-sources.ts";
+import {
+  refuseLaneOverwrites,
+  type LaneCopySource,
+} from "./source-overwrites.ts";
 import { type SourceShare } from "./source-plan.ts";
 import { type DuplicateParams } from "./duplicate-one-source.ts";
 
@@ -234,8 +238,9 @@ function warnUnusedTrackParams(count: number, params: DuplicateParams): void {
 
 /**
  * Plans every destination in the call before any lane exists, so a refusal
- * costs nothing: the labels are claimed, the tracks are checked, and each `l+`
- * lands after the lanes the entries before it named.
+ * costs nothing: the labels are claimed, the tracks are checked, a copy over
+ * a later source is refused, and each `l+` lands after the lanes the entries
+ * before it named.
  * @param sources - The sources, in call order
  * @param labels - The call's names and colors
  * @returns One plan per destination, in the order the call named them
@@ -247,10 +252,12 @@ function planLaneCopies(
   const copies: LaneCopy[] = [];
   /** Lanes each destination track will have, as the plan grows. */
   const laneCounts = new Map<number, number>();
+  const planned: LaneCopySource[] = [];
 
   for (const share of sources) {
     const source = laneSource(share.id);
     const entries = pathEntries(share.toPath, "toPath");
+    const first = copies.length;
 
     claimLabels(labels, entries.length);
 
@@ -262,7 +269,11 @@ function planLaneCopies(
         }),
       );
     }
+
+    planned.push({ ...share, ...source, copies: copies.slice(first) });
   }
+
+  refuseLaneOverwrites(planned);
 
   return refuseLanesPastCap(copies);
 }
@@ -507,7 +518,7 @@ function runLaneCopy(
       ? { name: takeLaneName }
       : {}),
     clips,
-    reason: [onLane ? LANE_COPY_NOTE : MAIN_LANE_COPY_NOTE, ...losses].join(
+    detail: [onLane ? LANE_COPY_NOTE : MAIN_LANE_COPY_NOTE, ...losses].join(
       "; ",
     ),
   };
@@ -573,10 +584,10 @@ function copyClipToLane(
     return getMinimalClipInfo(copy);
   } catch (error) {
     if (error instanceof PartialRecreateError) {
-      return {
-        ...getMinimalClipInfo(error.partialClip),
-        reason: `the ${kind} copy is incomplete (${errorMessage(error)})`,
-      };
+      return getMinimalClipInfo(
+        error.partialClip,
+        `the ${kind} copy is incomplete (${errorMessage(error)})`,
+      );
     }
 
     return missed(`the ${kind} copy failed: ${errorMessage(error)}`);

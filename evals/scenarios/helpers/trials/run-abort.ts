@@ -36,7 +36,8 @@ export function describeRunAbort(
   const cause = providerRefused
     ? "the model provider is refusing requests, so this is not Live"
     : "Live is not recovering";
-  const sample = errors.length === 0 ? "" : `\nLast error: ${errors[0]}`;
+  const last = runs.findLast((run) => run.error)?.error;
+  const sample = last == null ? "" : `\nLast error: ${last}`;
 
   return (
     `${count} scenarios in a row never started — ${cause}. Stopping so the ` +

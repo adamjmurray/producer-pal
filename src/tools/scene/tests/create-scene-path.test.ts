@@ -10,6 +10,11 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  collectHiddenParams,
+  hiddenParamWarnings,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { toolDefCreateScene } from "../create-scene.def.ts";
 import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -84,6 +89,67 @@ describe("createScene by path", () => {
     expect(liveSet.call).toHaveBeenCalledTimes(5);
     expect(liveSet.call).toHaveBeenNthCalledWith(4, "create_scene", 5);
     expect(liveSet.call).toHaveBeenNthCalledWith(5, "create_scene", 6);
+  });
+
+  describe("past the end", () => {
+    beforeEach(() => {
+      for (let i = 4; i <= 6; i++) {
+        registerMockObject(`live_set/scenes/${i}`, { path: livePath.scene(i) });
+      }
+    });
+
+    // s+ appends to the Set as it stands when it runs, after the scene the
+    // first entry padded out to.
+    it("appends s+ after an entry past the end", () => {
+      expect(createScene({ path: "s5,s+" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+        { id: "live_set/scenes/6", path: "s6" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 5],
+        ["create_scene", 6],
+      ]);
+    });
+
+    it("puts each entry at the index it names", () => {
+      expect(createScene({ path: "s5,s6" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+        { id: "live_set/scenes/6", path: "s6" },
+      ]);
+      expect(liveSet.call).toHaveBeenCalledTimes(5);
+    });
+
+    // The second insert goes in under the first, so the first ends up at s6.
+    it("puts each entry at the index it names in reverse order", () => {
+      expect(createScene({ path: "s6,s5" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s6" },
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 5],
+        ["create_scene", 5],
+      ]);
+    });
+
+    // The insert at s1 takes the place of one empty scene, so s5 stays at s5.
+    it("keeps an entry past the end in place around an insert inside", () => {
+      expect(createScene({ path: "s5,s1" })).toStrictEqual([
+        { id: "live_set/scenes/4", path: "s5", created: "s3-s4" },
+        { id: "live_set/scenes/1", path: "s1" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 4],
+        ["create_scene", 1],
+      ]);
+    });
   });
 
   it("refuses count sent with a path list", () => {
@@ -213,5 +279,44 @@ describe("createScene by path", () => {
       expect(liveSet.call).not.toHaveBeenCalled();
       expect(appView.set).not.toHaveBeenCalled();
     });
+  });
+});
+
+// Read through the tool's own schema, so the example can't drift from the
+// param names create-scene actually uses.
+describe("createScene sceneIndex and count deprecation examples", () => {
+  const hidden = collectHiddenParams(
+    toolDefCreateScene.toolOptions.inputSchema,
+  );
+
+  // Both warnings name the path that makes the same three scenes at 2.
+  it("names every scene a count made", () => {
+    const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
+      sceneIndex: 2,
+      count: 3,
+    });
+
+    expect(warnings).toHaveLength(2);
+
+    for (const warning of warnings) {
+      expect(warning).toContain('(e.g. path: "s2,s2,s2")');
+    }
+  });
+
+  it("repeats s+ once per scene when nothing names a place", () => {
+    expect(hiddenParamWarnings(["count"], hidden, { count: 3 })[0]).toContain(
+      '(e.g. path: "s+,s+,s+")',
+    );
+  });
+
+  it("gives capture's one place, since capture ignores count", () => {
+    const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
+      sceneIndex: 2,
+      count: 3,
+      capture: true,
+    });
+
+    expect(warnings[0]).toContain('(e.g. path: "s2")');
+    expect(warnings[1]).not.toContain("e.g.");
   });
 });

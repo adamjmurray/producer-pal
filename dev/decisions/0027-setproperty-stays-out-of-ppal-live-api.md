@@ -45,8 +45,8 @@ operation, so removing it breaks callers to save one enum entry.
 **Make `set` echo the value, so `set_property` becomes redundant.** `set`
 already returns something: the number `1`. Both operations perform the identical
 write, and neither return is informative — the echo only repeats the input, and
-the `1` is a constant. See `dev/Coding-Standards.md` → "What Live Returns When
-There Is No Object".
+the `1` is a constant. See `dev/coding-standards/live-api-behavior.md` → "What
+Live Returns When There Is No Object".
 
 ## Consequences
 

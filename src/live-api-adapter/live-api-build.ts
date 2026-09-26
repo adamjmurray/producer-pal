@@ -51,7 +51,7 @@
  * its own path each time, kept its id, and read the same trackIndex a fresh
  * lookup did. That last one is the case that had to pass: delete's "don't
  * remove Producer Pal's own track" guard compares against exactly that number.
- * See dev/LiveAPI-Object-Reuse.md.
+ * See dev/live-api/object-reuse.md.
  *
  * Repeats of anything else are fixed where they happen, by resolving once and
  * passing the object down.

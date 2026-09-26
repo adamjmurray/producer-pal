@@ -21,10 +21,10 @@ import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   parseToolResult,
   type ReadClipResult,
-  remoteScriptAnswers,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers.ts";
 import {
   createArrangementClip,
   createClipInSlot,

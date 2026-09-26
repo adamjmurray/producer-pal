@@ -13,6 +13,7 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 const C3 = {
   pitch: 60,
@@ -112,17 +113,34 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
+  // clip.index pairs by target, like name does, so an empty slot among the
+  // targets doesn't shift the clips after it.
+  it("counts clip.index/clip.count over the targets named, empty ones included", async () => {
+    mockNonExistentObjects();
+
+    await updateClip({
+      path: "t9/s9,t0/s0,t1/s1",
+      name: "A,B,C",
+      transforms: "velocity = clip.index * 20 + clip.count",
+    });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "B");
+    expect(addedVelocity(mocks.clip123)).toBe(23); // 1*20 + 3
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "C");
+    expect(addedVelocity(mocks.clip456)).toBe(43); // 2*20 + 3
+  });
+
   // The throw lands in the clip's own slot, so the caller can tell which of the
   // three it was — and the other two still come back.
   it("keeps going when a transform string is malformed, refusing each clip", async () => {
     const result = (await updateClip({
       id: "123, 456, 789",
       transforms: "!!!bad!!!",
-    })) as Array<{ id?: string; ok?: false; reason?: string }>;
+    })) as Array<{ id?: string; ok?: false; detail?: string }>;
 
     expect(result[0]?.id).toBe("123");
     expect(result[0]?.ok).toBe(false);
-    expect(result[0]?.reason).toContain("transform syntax error");
+    expect(result[0]?.detail).toContain("transform syntax error");
     expect(result).toHaveLength(3);
   });
 });

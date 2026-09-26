@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -281,6 +282,7 @@ describe("arrangement-length-changes", () => {
         adjustPreRoll: true,
         startOffset: 0,
         tileLength: 8,
+        placed: expect.any(Array),
       });
 
       tile.mockRestore();
@@ -306,6 +308,7 @@ describe("arrangement-length-changes", () => {
         adjustPreRoll: true,
         startOffset: 0,
         tileLength: 20,
+        placed: expect.any(Array),
       });
 
       tile.mockRestore();
@@ -331,7 +334,11 @@ describe("arrangement-length-changes", () => {
       const track = requireMockObject(livePath.track(0));
 
       expect(track.call).toHaveBeenCalledWith("create_midi_clip", 9, 4);
-      expectTiled(tile, clip, 9, 12, { adjustPreRoll: true, tileLength: 8 });
+      expectTiled(tile, clip, 9, 12, {
+        adjustPreRoll: true,
+        tileLength: 8,
+        placed: expect.any(Array),
+      });
 
       tile.mockRestore();
     });
@@ -358,6 +365,7 @@ describe("arrangement-length-changes", () => {
         adjustPreRoll: true,
         startOffset: 5,
         tileLength: 8,
+        placed: expect.any(Array),
       });
 
       tile.mockRestore();
@@ -383,6 +391,7 @@ describe("arrangement-length-changes", () => {
         adjustPreRoll: true,
         startOffset: 0,
         tileLength: 9,
+        placed: expect.any(Array),
       });
 
       tile.mockRestore();
@@ -406,7 +415,34 @@ describe("arrangement-length-changes", () => {
         adjustPreRoll: true,
         startOffset: 0,
         tileLength: 8.0000001,
+        placed: expect.any(Array),
       });
+
+      tile.mockRestore();
+    });
+
+    // Only a throw with nothing in the Set yet stays a throw.
+    it("still throws when tiling fails before any tile lands", () => {
+      setupArrangementMocks();
+
+      const tile = vi
+        .spyOn(arrangementTiling, "tileClipToRange")
+        .mockImplementation(() => {
+          throw new Error("Live said no");
+        });
+
+      expect(() =>
+        handleArrangementLengthening({
+          clip: createMockClip() as unknown as LiveAPI,
+          isAudioClip: false,
+          arrangementLengthBeats: 16,
+          currentArrangementLength: 8,
+          currentStartTime: 0,
+          currentEndTime: 8,
+          context: {},
+          reasons: newClipReasons(),
+        }),
+      ).toThrow("Live said no");
 
       tile.mockRestore();
     });

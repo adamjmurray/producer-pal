@@ -288,12 +288,12 @@ describe("a lane move whose resize can't run", () => {
       id: SOURCE_ID,
       toPath: `t${DEST_TRACK}/l0`,
       arrangementLength: "2bar",
-    })) as { id: string; reason?: string };
+    })) as { id: string; detail?: string };
 
     // The clip moved, so its entry is real — and it carries what the move and
     // the refused resize each had to say.
     expect(result.id).not.toBe(SOURCE_ID);
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       `re-created on t${DEST_TRACK}/l0; ` +
         "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
     );
@@ -365,7 +365,7 @@ describe("moving an arrangement clip to another lane", () => {
     });
 
     expect(movedReason()).toContain(
-      `not moved: Live created no clip at t${DEST_TRACK}/l0`,
+      `not moved: Live created no clip at t${DEST_TRACK}/l0[9|1]`,
     );
     expect(movedReason()).not.toContain("re-created on");
     expect(result).toBe(SOURCE_ID);
@@ -563,7 +563,7 @@ describe("moving a clip off a take lane", () => {
     });
 
     expect(movedReason()).toContain(
-      `not moved: Live created no clip at t${DEST_TRACK}`,
+      `not moved: Live created no clip at t${DEST_TRACK}[9|1]`,
     );
     expect(movedReason()).not.toContain("re-created on");
     expect(result).toBe(SOURCE_ID);
@@ -713,11 +713,11 @@ describe("a move that names a position but no lane", () => {
     const result = (await updateClip({
       id: registerLaneSource(),
       toPath: "[9|1]",
-    })) as { path?: string; reason?: string };
+    })) as { path?: string; detail?: string };
 
     expectTakeLaneMidiClip(0, BAR_9, 8, DEST_TRACK);
     expect(result.path).toBe(`t${DEST_TRACK}/l0[9|1]`);
-    expect(result.reason).toContain(`re-created on t${DEST_TRACK}/l0`);
+    expect(result.detail).toContain(`re-created on t${DEST_TRACK}/l0`);
   });
 
   // arrangementStart is the deprecated spelling of the same bare position, so
@@ -737,13 +737,13 @@ describe("a move that names a position but no lane", () => {
     const result = (await updateClip({
       id: registerLaneSource(),
       toPath: `t${DEST_TRACK}[9|1]`,
-    })) as { reason?: string };
+    })) as { detail?: string };
 
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", BAR_9, 8);
-    expect(result.reason).toContain(`re-created on t${DEST_TRACK}`);
-    expect(result.reason).not.toContain(`re-created on t${DEST_TRACK}/l0`);
+    expect(result.detail).toContain(`re-created on t${DEST_TRACK}`);
+    expect(result.detail).not.toContain(`re-created on t${DEST_TRACK}/l0`);
   });
 
   // The shape that lost a clip: both clips sit on one track, so before this
@@ -765,7 +765,7 @@ describe("a move that names a position but no lane", () => {
     // Different lanes, so neither entry reports overwriting the other.
     expect(result).not.toContainEqual(
       expect.objectContaining({
-        reason: expect.stringContaining("overwrote the clip"),
+        detail: expect.stringContaining("overwrote the clip"),
       }),
     );
   });

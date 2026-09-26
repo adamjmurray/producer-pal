@@ -38,7 +38,7 @@ const SHORT_TIMEOUT_MS = 1000;
 
 interface RestClipEntry {
   id: string;
-  reason?: string;
+  detail?: string;
 }
 
 interface RestResponse {
@@ -60,7 +60,7 @@ describe("arrangementLength that runs out of time", () => {
     const entry = Array.isArray(result) ? result[0] : result;
 
     expect(entry?.id).toBe(clip.id);
-    expect(entry?.reason).toMatch(
+    expect(entry?.detail).toMatch(
       /^ran out of time: placed \d+ of 499 tiles, reaching \d+(\.\d+)? beats instead of \d+(\.\d+)?; re-run to continue/,
     );
     // The clip's entry carries it, so nothing is left for a warning to say.

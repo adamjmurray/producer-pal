@@ -40,6 +40,8 @@ export interface LaneSource {
   isMidi: boolean;
   /** How the source is addressed, for a refusal that names it */
   label: string;
+  /** The lane its clips sit on, as "t2" or "t2/l0", or null when unknown. */
+  place: string | null;
   /** The lane's own path when the source is a lane: a copy onto itself is
    * refused, and only this source promotes onto a track's main lane. */
   lanePath?: string;
@@ -62,12 +64,19 @@ export function laneSource(id: string): LaneSource {
 
   if (lane == null) {
     const track = validateIdType(id, "track");
+    const trackIndex = track.trackIndex;
 
-    return sourceOfClips(
-      arrangementClipsOf(track, false),
-      track,
-      targetLabel(track),
-    );
+    return {
+      ...sourceOfClips(
+        arrangementClipsOf(track, false),
+        track,
+        targetLabel(track),
+      ),
+      place:
+        trackIndex == null
+          ? null
+          : takeLaneLabel({ trackIndex, takeLane: null }),
+    };
   }
 
   const trackIndex = lane.trackIndex as number;
@@ -82,6 +91,7 @@ export function laneSource(id: string): LaneSource {
       LiveAPI.from(livePath.track(trackIndex)),
       label,
     ),
+    place: label,
     lanePath: label,
   };
 }
@@ -196,7 +206,7 @@ function sourceOfClips(
   clips: LiveAPI[],
   track: LiveAPI,
   label: string,
-): LaneSource {
+): Omit<LaneSource, "place"> {
   return {
     clips,
     recreatable: clips.some(canRecreateClip),

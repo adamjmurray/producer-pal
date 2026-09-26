@@ -574,7 +574,7 @@ describe("ppal-duplicate", () => {
     expect(refused).toStrictEqual({
       path: capped,
       ok: false,
-      reason:
+      detail:
         `scene "s${MAX_AUTO_CREATED_SCENES}" is out of range: ` +
         `scenes auto-create only through "s${MAX_AUTO_CREATED_SCENES - 1}"`,
     });

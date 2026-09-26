@@ -156,11 +156,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     // Nothing else was asked of either clip, so both targets keep a skip.
     expect(result).toStrictEqual([
-      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },
       {
         path: "t1/s1",
         ok: false,
-        reason: "not moved: track t5 does not exist",
+        detail: "not moved: track t5 does not exist",
       },
     ]);
   });
@@ -184,7 +184,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(mocks.clip456.set).toHaveBeenCalledWith("color", 255);
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0" },
-      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },
       { id: "456", path: "t1/s1" },
     ]);
   });
@@ -243,6 +243,26 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  // A toPath position is a spelling of the start, so the refusal names toPath —
+  // never the arrangementStart the caller didn't send — and says it once.
+  it.each([
+    ["[5|1]", "not moved: toPath names an arrangement position"],
+    ["t1[5|1]", 'not moved: toPath "t1" names an arrangement lane'],
+  ])(
+    "refuses a toPath of %s on a session clip once, naming toPath",
+    async (toPath, reason) => {
+      setupMidiClipMock(mocks.clip123);
+
+      await expect(updateClip({ id: "123", toPath })).rejects.toThrow(
+        `${reason} and this is a session clip; name a clip slot ("t2/s3") ` +
+          "to move it, or use ppal-duplicate to copy it into the arrangement",
+      );
+      await expect(updateClip({ id: "123", toPath })).rejects.not.toThrow(
+        "arrangementStart",
+      );
+    },
+  );
+
   // The same call with a name to write: the name lands, so the clip keeps a real
   // entry and the reasons ride along on it.
   it("keeps a real entry when something else the call asked for landed", async () => {
@@ -263,7 +283,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason:
+      detail:
         "toPath ignored: a clip slot is off the arrangement timeline the other " +
         "position params name; arrangementStart ignored: this is a session clip",
     });
@@ -280,19 +300,19 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
-    // The second naming of the same clip keeps its slot, saying the update it
-    // asked for already happened.
+    // The first naming of the clip keeps its slot, pointing at the later one
+    // that did the update.
     expect(result).toStrictEqual([
+      {
+        id: "456",
+        path: "t1/s1",
+        detail: 'named again as "t1/s1" later in this call',
+      },
       {
         id: "456",
         path: "t1/s1",
         noteCount: 0,
         length: "2bar",
-      },
-      {
-        id: "456",
-        path: "t1/s1",
-        reason: "already named as id 456 earlier in this call",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -307,42 +327,43 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("updates a clip once when an id repeats", async () => {
+  it("updates a clip once, as the last naming asks, when an id repeats", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    const result = await updateClip({ id: "123,123", name: "Once" });
+    const result = await updateClip({ id: "123,123", name: "First,Last" });
 
     expect(callsNamed(mocks.clip123.set, "name")).toBe(1);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Last");
     expect(result).toStrictEqual([
-      { id: "123", path: "t0/s0" },
       {
         id: "123",
         path: "t0/s0",
-        reason: "already named as id 123 earlier in this call",
+        detail: "named again as id 123 later in this call",
       },
+      { id: "123", path: "t0/s0" },
     ]);
   });
 
-  it("gives a repeated clip the destination named the first time", async () => {
+  it("gives a repeated clip the destination named the last time", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
 
     const result = await updateClip({
       id: "456",
       path: "t1/s1",
-      toPath: "t5/s0,t5/s1",
+      toPath: "t5/s0,t6/s1",
     });
 
     expect(result).toStrictEqual([
       {
         id: "456",
-        ok: false,
-        reason: "not moved: track t5 does not exist",
+        path: "t1/s1",
+        detail: 'named again as "t1/s1" later in this call',
       },
       {
-        id: "456",
         path: "t1/s1",
-        reason: "already named as id 456 earlier in this call",
+        ok: false,
+        detail: "not moved: track t6 does not exist",
       },
     ]);
   });
@@ -355,7 +376,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result[0]).toStrictEqual({
       path: "t0/s0",
       ok: false,
-      reason:
+      detail:
         "not moved: t1/s1 holds clip t1/s1 (id 456), which this call also " +
         "updates; move that clip out in its own call first",
     });
@@ -378,12 +399,12 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = (await updateClip({
       path: "t0/s0,t1/s1",
       toPath: "t1/s1,t0/s0",
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
-    expect(result[0]?.reason).toContain(
+    expect(result[0]?.detail).toContain(
       "not moved: t1/s1 holds clip t1/s1 (id 456)",
     );
-    expect(result[1]?.reason).toContain(
+    expect(result[1]?.detail).toContain(
       "not moved: t0/s0 holds clip t0/s0 (id 123)",
     );
 
@@ -396,20 +417,18 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
   });
 
   // Both clips landing in one slot means the second overwrites the first, and
-  // the response claims two clips are in it.
-  it("moves only the first clip when toPath names one slot twice", async () => {
+  // the response claims two clips are in it. The last one named wins.
+  it("moves only the last clip when toPath names one slot twice", async () => {
     const { slots, result } = await moveBothClips("t1/s2,t1/s2");
 
-    expect(result[0]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
-    // The second clip stayed put, so its path is still its own slot.
-    expect(result[1]).toStrictEqual({
-      path: "t1/s1",
+    // The first clip stayed put, so its path is still its own slot.
+    expect(result[0]).toStrictEqual({
+      path: "t0/s0",
       ok: false,
-      reason:
-        "not moved: clip t0/s0 (id 123) is already moving to t1/s2; " +
-        "name one slot per clip",
+      detail: "not moved: t1/s2 is named again later in this call",
     });
-    expect(slots.get("t1/s1")?.call).not.toHaveBeenCalledWith(
+    expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
+    expect(slots.get("t0/s0")?.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to",
       expect.anything(),
     );
@@ -424,11 +443,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = (await updateClip({
       path: "t0/s0,t1/s1",
       toPath: "t0/d0",
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
     // The one unreadable destination covers both clips, so both say so.
-    expect(result[0]?.reason).toContain("device paths hold no clips");
-    expect(result[1]?.reason).toContain("device paths hold no clips");
+    expect(result[0]?.detail).toContain("device paths hold no clips");
+    expect(result[1]?.detail).toContain("device paths hold no clips");
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("destination for"),
     );

@@ -9,7 +9,7 @@
 // it's a scratch artifact for iterating on the fragment carve, not a committed
 // baseline.
 //
-//   npm run skills:snapshot                 write dev/skills-snapshots, print the report
+//   npm run skills:snapshot                 write tmp/skills-snapshots, print the report
 //   npm run skills:snapshot -- --out DIR    write somewhere else (keep a "before")
 //   npm run skills:snapshot -- --diff DIR   write, then show what changed vs DIR
 
@@ -29,7 +29,7 @@ const PROJECT_ROOT = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-const DEFAULT_DIR = path.join(PROJECT_ROOT, "dev/skills-snapshots");
+const DEFAULT_DIR = path.join(PROJECT_ROOT, "tmp/skills-snapshots");
 
 await main();
 

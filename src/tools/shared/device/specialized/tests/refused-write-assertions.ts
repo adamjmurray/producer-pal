@@ -24,7 +24,7 @@ export function expectWriteRefused(
   reason: string,
 ): void {
   expect(outcome).toStrictEqual([
-    { name, ok: false, reason: expect.stringContaining(reason) },
+    { name, ok: false, detail: expect.stringContaining(reason) },
   ]);
   expect(capturedWarnings()).toStrictEqual([]);
 }

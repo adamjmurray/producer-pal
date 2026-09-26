@@ -77,7 +77,7 @@ describe("updateDevice - macroVariation", () => {
     expect(result).toStrictEqual({
       id: "456",
       path: "t0/d1",
-      reason: "macro variations are only available on rack devices",
+      detail: "macro variations are only available on rack devices",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -246,6 +246,7 @@ describe("updateMacroCount", () => {
     expect(notes).toStrictEqual({
       said: ["macroCount is only available on rack devices"],
       refused: ["macroCount"],
+      unlanded: [],
     });
     expect(nonRackDevice.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);

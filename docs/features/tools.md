@@ -338,7 +338,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Change audio clip gain, pitch shift, and warp settings (see
   [Audio Clips](#audio-clips))
 - Move clips and change their length in the Arrangement, addressing a clip by
-  where it starts (`t0[5|1]`, or `t0[loc:Chorus]`)
+  any position it covers (`t0[5|1]`, or `t0[loc:Chorus]`)
 - Move a clip with `toPath`: along its own track, to another track, onto or off
   a [take lane](/features#take-lanes), or back into a session slot. A move Live
   has no API for re-creates the clip, which costs its automation envelopes; the
@@ -372,7 +372,7 @@ underneath. Two consequences on Update Clip:
 - It erases a `start`/`length` sent in the same call. Reshape the region in a
   follow-up call.
 - `looping: true` forces warping back on, so it vetoes a `warping: false` sent
-  alongside it, and warns that it did.
+  alongside it, and says so in that clip's `detail`.
 
 **Unwarped clips are measured against the sample.** Live switches a clip's
 markers from beats to seconds when warping is off, and reports an unwarped
@@ -391,6 +391,8 @@ sounding.
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
+- Create a device or rack from a preset (needs the
+  [remote script](/guide/remote-script))
 - Load a sample into a Simpler instrument via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
   `{name: "gainDb", value: <dB>}` (new in Live 12.4)
@@ -427,6 +429,7 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
+- Swap a preset onto a device (needs the [remote script](/guide/remote-script))
 
 <!--@include: ../_generated/ppal-update-device-schema.md-->
 

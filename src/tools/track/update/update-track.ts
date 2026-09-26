@@ -7,6 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type TargetNotes,
   newTargetNotes,
+  refuseIfNoneLanded,
   refuseTargetWork,
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -23,9 +24,15 @@ import {
   applyMixerProperties,
 } from "./helpers/track-mixer-updates.ts";
 import {
+  ROUTING_PARAMS,
   type RoutingParams,
   applyRoutingProperties,
+  routingValuesAt,
 } from "./helpers/track-routing-updates.ts";
+import {
+  applyTrackSwitches,
+  canBeArmed,
+} from "./helpers/track-switch-updates.ts";
 import {
   paramsTakeLanesIgnore,
   planTakeLaneTargets,
@@ -33,12 +40,14 @@ import {
   type UpdateTakeLaneResult,
 } from "./helpers/track-take-lanes.ts";
 import {
+  type TrackSends,
   applyTrackSends,
-  resolveTrackSends,
+  trackSendsAt,
 } from "./helpers/track-send-updates.ts";
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import {
+  SEND_PARAMS,
   type SendResult,
   warnSendCollisions,
 } from "#src/tools/shared/sends/send-list.ts";
@@ -116,21 +125,20 @@ interface UpdateTrackResult extends TrackMixerApplied {
   id: string;
   path?: string;
   /**
-   * The name the track ended up with, when it isn't the one asked for. `reason`
+   * The name the track ended up with, when it isn't the one asked for. `detail`
    * says why, and there is no `ok` — the rename happened.
    */
   name?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
-  reason?: string;
+  detail?: string;
   /** Every send the call wrote, read back off the track */
   sends?: SendResult[];
 }
 
 /**
  * Apply monitoring state to a track. Monitoring exists only on armable tracks,
- * so it is refused on non-armable tracks (return/master) — mirroring the
- * read-side `canBeArmed` guard in track-routing.ts.
+ * so it is refused on the rest.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off)
  * @param notes - What the track's entry has to say, added to
@@ -144,13 +152,11 @@ function applyMonitoringState(
     return;
   }
 
-  const canBeArmed = (track.getProperty("can_be_armed") as number) > 0;
-
-  if (!canBeArmed) {
+  if (!canBeArmed(track)) {
     refuseTargetWork(
       notes,
       ["monitoringState"],
-      "monitoringState is only available on armable tracks",
+      "monitoringState had no effect: return, main and group tracks have no monitoring",
     );
 
     return;
@@ -224,14 +230,6 @@ export function updateTrack(
     mute,
     solo,
     arm,
-    inputRoutingType,
-    inputRoutingChannel,
-    outputRoutingType,
-    outputRoutingChannel,
-    inputRoutingTypeId,
-    inputRoutingChannelId,
-    outputRoutingTypeId,
-    outputRoutingChannelId,
     monitoringState,
     sendGainDb,
     sendReturn,
@@ -242,7 +240,12 @@ export function updateTrack(
     targets: { id, ids, path, paths },
     name,
     color,
+    extraLists: [...ROUTING_PARAMS, "sendReturn" as const].map((param) => ({
+      param,
+      value: args[param],
+    })),
   });
+  const routingAt = routingValuesAt(args, targets.length);
 
   validateSendPair(sendGainDb, sendReturn);
 
@@ -251,13 +254,13 @@ export function updateTrack(
   const laneTargets = planTakeLaneTargets(targets);
   const laneIgnores = laneTargets.size === 0 ? [] : paramsTakeLanesIgnore(args);
 
-  // Resolved once: the return tracks belong to the Live Set, so nothing about a
-  // track decides this. What matched nothing still rides back on every track.
-  const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
+  // The return tracks belong to the Live Set, so only the sendReturn a track
+  // was given decides what its sends resolve to.
+  const sendsAt = trackSendsAt(sendGainDb, sendReturn, sends, targets.length);
 
-  // The collisions belong to the call, not to a track, so they are announced
+  // Collisions belong to a resolution, not to a track, so each is announced
   // once — off the first track a collision actually landed on.
-  let announcedCollisions = false;
+  const announced = new Set<TrackSends>();
 
   return writeFanOut(targets, (target, i) => {
     const trackName = getNameForIndex(name, i, parsedNames);
@@ -273,62 +276,58 @@ export function updateTrack(
 
     const rename = returnTrackRename(track.path, trackName);
 
-    track.setAll({
-      name: rename.write,
-      color: trackColor,
-      mute,
-      solo,
-      arm,
-    });
+    track.setAll({ name: rename.write, color: trackColor });
+    applyTrackSwitches(track, { mute, solo, arm }, notes);
 
     const colorLanded =
       trackColor == null ? {} : landedColor(track, trackColor);
 
-    const mixer = trackMixer(track, {
-      gainDb,
-      pan,
-      panningMode,
-      leftPan,
-      rightPan,
-    });
+    const mixer = trackMixer(
+      track,
+      { gainDb, pan, panningMode, leftPan, rightPan },
+      notes,
+    );
 
-    // Handle routing properties
-    const routing = {
-      inputRoutingType: inputRoutingType ?? inputRoutingTypeId,
-      inputRoutingChannel: inputRoutingChannel ?? inputRoutingChannelId,
-      outputRoutingType: outputRoutingType ?? outputRoutingTypeId,
-      outputRoutingChannel: outputRoutingChannel ?? outputRoutingChannelId,
-    };
+    const routing = routingAt(i);
 
     applyRoutingProperties(track, routing, notes);
 
     // Handle monitoring state
     applyMonitoringState(track, monitoringState, notes);
 
+    const resolvedSends = sendsAt(i);
     const landed = applyTrackSends(track, resolvedSends.winners);
 
-    if (!announcedCollisions) {
-      announcedCollisions = warnSendCollisions(
-        resolvedSends.collisions,
-        landed,
-      );
+    if (
+      !announced.has(resolvedSends) &&
+      warnSendCollisions(resolvedSends.collisions, landed)
+    ) {
+      announced.add(resolvedSends);
     }
+
+    refuseIfNoneLanded(
+      notes,
+      SEND_PARAMS,
+      "send",
+      [...landed.values(), ...resolvedSends.unresolved],
+      (send) => send.return,
+    );
 
     // A send that took the level asked for has nothing to say — the caller
     // named the return and knows the level — so only the rest report. The ones
     // that named no return track follow, in the order the call named them.
     const changedSends = [
-      ...[...landed.values()].filter((send) => send.reason != null),
+      ...[...landed.values()].filter((send) => send.detail != null),
       ...resolvedSends.unresolved,
     ];
 
     // Optimistic except for the color, mixer and sends, read back off the
-    // track. Each of those can have its own say, so the reasons are joined
+    // track. Each of those can have its own say, so the details are joined
     // rather than spread over one another.
-    const reason = joinReasons([
-      rename.landed.reason,
-      colorLanded.reason,
-      mixer.reason,
+    const detail = joinDetails([
+      rename.landed.detail,
+      colorLanded.detail,
+      mixer.detail,
     ]);
 
     const result: UpdateTrackResult = {
@@ -337,7 +336,7 @@ export function updateTrack(
       ...rename.landed,
       ...colorLanded,
       ...mixer,
-      ...(reason == null ? {} : { reason }),
+      ...(detail == null ? {} : { detail }),
       ...(changedSends.length > 0 ? { sends: changedSends } : {}),
     };
 
@@ -353,11 +352,16 @@ export function updateTrack(
  * Write a track's mixer, when the call asked for any of it.
  * @param track - Track object
  * @param params - The mixer values, as the call sent them
+ * @param notes - What the track's entry has to say, added to
  * @returns What the write landed, read back; empty when none was asked for
  */
-function trackMixer(track: LiveAPI, params: MixerParams): TrackMixerApplied {
+function trackMixer(
+  track: LiveAPI,
+  params: MixerParams,
+  notes: TargetNotes,
+): TrackMixerApplied {
   return Object.values(params).some((value) => value != null)
-    ? applyMixerProperties(track, params)
+    ? applyMixerProperties(track, params, notes)
     : {};
 }
 

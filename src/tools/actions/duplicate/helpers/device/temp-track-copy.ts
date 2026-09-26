@@ -10,16 +10,16 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  landTrackCopy,
+  type LandedTrackCopy,
+} from "../sources/landed-track-copy.ts";
+import {
   formatObjectPath,
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 
 /** What a caller gets to work with while the temp track exists. */
-export interface TempTrackCopy {
-  /** Where the temp track landed */
-  tempTrackIndex: number;
-  /** The source's own track index, before the copy shifted anything */
-  sourceTrackIndex: number;
+export interface TempTrackCopy extends LandedTrackCopy {
   /** The same in-track path as the source, but on the temp track */
   tempPath: string;
 }
@@ -45,25 +45,21 @@ export function withTempTrackCopy<T>(
   }
 
   const withinTrack = extractPathWithinTrack(sourcePath, what);
-  const liveSet = LiveAPI.from(livePath.liveSet);
 
-  liveSet.call("duplicate_track", sourceTrackIndex);
-
-  const tempTrackIndex = sourceTrackIndex + 1;
+  const landing = landTrackCopy(sourceTrackIndex);
 
   // From here a full copy of the source track — devices, clips and all — is
-  // parked at tempTrackIndex, so every exit deletes it. Anything that throws in
+  // parked at landing.index, so every exit deletes it. Anything that throws in
   // between (a bad destination path, an unreachable chain) used to strand it.
   try {
     return body({
-      tempTrackIndex,
-      sourceTrackIndex,
-      tempPath: `${livePath.track(tempTrackIndex)} ${withinTrack}`,
+      ...landing,
+      tempPath: `${livePath.track(landing.index)} ${withinTrack}`,
     });
   } finally {
     // Moving a device creates and deletes no tracks, so the temp track is still
-    // where duplicate_track put it.
-    liveSet.call("delete_track", tempTrackIndex);
+    // where duplicate_track put it. Deleting a group deletes its members too.
+    LiveAPI.from(livePath.liveSet).call("delete_track", landing.index);
   }
 }
 
@@ -111,15 +107,15 @@ export function canonicalPath(path: string): string {
 }
 
 /**
- * Shift a destination past the temp track. Duplicating track N puts a new track
- * at N+1, so anything addressing a track after N is now one index further on.
+ * Shift a destination past the temp track: anything at or after where it
+ * landed moved on by the tracks it added.
  * @param toPath - Destination path
- * @param sourceTrackIndex - The duplicated track's index
+ * @param landing - Where the temp track landed, and how many tracks it added
  * @returns The adjusted path
  */
 export function adjustTrackIndicesForTempTrack(
   toPath: string,
-  sourceTrackIndex: number,
+  landing: LandedTrackCopy,
 ): string {
   const match = toPath.match(/^t(\d+)/);
 
@@ -130,7 +126,7 @@ export function adjustTrackIndicesForTempTrack(
 
   const destTrackIndex = Number.parseInt(match[1] as string);
 
-  return destTrackIndex > sourceTrackIndex
-    ? toPath.replace(/^t\d+/, `t${destTrackIndex + 1}`)
+  return destTrackIndex >= landing.index
+    ? toPath.replace(/^t\d+/, `t${destTrackIndex + landing.added}`)
     : toPath;
 }

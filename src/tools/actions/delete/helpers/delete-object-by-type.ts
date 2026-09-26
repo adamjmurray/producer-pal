@@ -177,6 +177,12 @@ function deleteDeviceObject(id: string, object: LiveAPI): string | null {
  * @returns null if the pad's chains are gone, else why some survived
  */
 function deleteDrumPadObject(object: LiveAPI): string | null {
+  // A pad's path isn't a prefix of its devices' paths, so the check at the top
+  // misses it: look through its chains instead.
+  if (object.someChild("chains", isProducerPalDevice)) {
+    return `cannot delete drum pad ${targetLabel(object)}: it holds the Producer Pal device`;
+  }
+
   const rack = drumRackOfPad(object);
 
   object.call("delete_all_chains");

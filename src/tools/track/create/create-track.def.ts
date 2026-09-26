@@ -7,11 +7,15 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+import {
+  newTrackPathFromCount,
+  newTrackPathFromIndex,
+} from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
-  description: "Create track(s).",
+  description:
+    "Create track(s). Params with no list form apply to every track.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -26,21 +30,21 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
 
     trackIndex: deprecatedParam(z.coerce.number().int().min(-1).optional(), {
       replacedBy: "path",
-      example: trackPathFromIndex,
+      example: newTrackPathFromIndex,
     }),
 
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
-      example: "t+,t+,t+",
+      example: newTrackPathFromCount,
       note: "path names every track, so repeat it once per track instead of counting",
     }),
 
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per track, in order",
+      default: "name, or comma-separated one per track",
       smallModel: "track name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per track, in order",
+      default: "#RRGGBB, or comma-separated one per track",
       smallModel: "#RRGGBB",
     }),
     type: param(z.enum(["midi", "audio", "return"]).default("midi"), {

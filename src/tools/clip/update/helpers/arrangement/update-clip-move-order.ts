@@ -27,6 +27,7 @@
  * other move — `create_midi_clip` wipes the range it writes to.
  */
 
+import { shortensArrangementClip } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import {
   type ArrangementTrack,
   takeLaneIndexOfClip,
@@ -228,16 +229,45 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
   // No position of its own means "same place, other lane".
   const targetStart = intent.startBeats ?? start;
   const landing = intent.landing ?? { trackIndex, takeLane };
-  // A move clears the clip's own length; a longer arrangementLength tiles
-  // copies forward and clears the span it fills, so the wider one wins. Both
-  // at the destination — and update-clip never tiles on a take lane.
-  const tiled = landing.takeLane == null ? (intent.lengthBeats ?? 0) : 0;
-  const cleared = Math.max(end - start, tiled);
+  const cleared = clearedLength(start, end, takeLane, landing, intent);
 
   return {
     current,
     target: { ...landing, start: targetStart, end: targetStart + cleared },
   };
+}
+
+/**
+ * How much of the destination a clip's move and resize clear.
+ * @param start - The clip's start_time
+ * @param end - The clip's end_time
+ * @param takeLane - The clip's take lane, or null for the main lane
+ * @param landing - The lane it lands on
+ * @param intent - What the call does to its span
+ * @returns The cleared length in beats, from the landing position
+ */
+function clearedLength(
+  start: number,
+  end: number,
+  takeLane: number | null,
+  landing: ArrangementTrack,
+  intent: MoveIntent,
+): number {
+  const { lengthBeats } = intent;
+
+  // update-clip never tiles on a take lane.
+  if (landing.takeLane != null || lengthBeats == null) {
+    return end - start;
+  }
+
+  // Main lane to main lane, a shortened clip is shortened before it moves, so
+  // the move clears only the new length.
+  if (takeLane == null && shortensArrangementClip(start, end, lengthBeats)) {
+    return lengthBeats;
+  }
+
+  // A longer arrangementLength tiles forward and clears the span it fills.
+  return Math.max(end - start, lengthBeats);
 }
 
 /**

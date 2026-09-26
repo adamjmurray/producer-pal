@@ -116,21 +116,21 @@ describe("findSimilar", () => {
 
     expect(result.seed.found).toBe(false);
     expect(result.items).toStrictEqual([]);
-    expect(result.reason).toContain("similarTo is required");
+    expect(result.detail).toContain("similarTo is required");
   });
 
   it("reports a seed that isn't in Live's library", async () => {
     const result = await findSimilar({ similarTo: "/nope/missing.wav" });
 
     expect(result.seed.found).toBe(false);
-    expect(result.reason).toContain("not in Live's library");
+    expect(result.detail).toContain("not in Live's library");
   });
 
   it("reports a seed that exists but has no fingerprint yet", async () => {
     const result = await findSimilar({ similarTo: UNANALYZED });
 
     expect(result.seed.found).toBe(false);
-    expect(result.reason).toContain("hasn't analyzed");
+    expect(result.detail).toContain("hasn't analyzed");
   });
 
   it("reports an unresolvable inFolder (seed found, no candidates)", async () => {
@@ -141,7 +141,7 @@ describe("findSimilar", () => {
 
     expect(result.seed.found).toBe(true);
     expect(result.items).toStrictEqual([]);
-    expect(result.reason).toContain("inFolder path not found");
+    expect(result.detail).toContain("inFolder path not found");
   });
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {

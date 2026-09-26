@@ -286,9 +286,9 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   },
 
   "plugins-and-max-devices": {
-    title: "Devices: loading plug-ins & Max devices",
+    title: "Devices: loading plug-ins, Max devices & presets",
     description:
-      "Loading VST/AU plug-ins and Max for Live devices with create-device, found through library search. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode. Needs the devices guide it sits under.",
+      "Loading VST/AU plug-ins, Max for Live devices and presets with create-device and update-device, found through library search. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode. Needs the devices guide it sits under.",
     builtIn: pluginsAndMaxDevices,
   },
 

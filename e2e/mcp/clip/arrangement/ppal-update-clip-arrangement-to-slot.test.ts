@@ -55,7 +55,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
-    expect(moved.reason).toContain(`re-created at t${EMPTY_MIDI_TRACK}/s1`);
+    expect(moved.detail).toContain(`re-created at t${EMPTY_MIDI_TRACK}/s1`);
 
     const clip = await readClipFully(ctx.client!, {
       path: `t${EMPTY_MIDI_TRACK}/s1`,
@@ -167,7 +167,7 @@ describe("arrangement clip moved into a session slot", () => {
       toPath: `t${EMPTY_MIDI_TRACK}/s4`,
     });
 
-    expect(moved.reason).toContain(
+    expect(moved.detail).toContain(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
     );
     expect(warnings).toStrictEqual([]);
@@ -224,6 +224,51 @@ describe("arrangement clip moved into a session slot", () => {
 
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "25|1"))?.id,
+    ).toBe(source.id);
+  });
+});
+
+// ppal-duplicate re-creates the same way, but leaves the original in place.
+describe("arrangement clip duplicated into a session slot", () => {
+  it("re-creates the copy in the slot and keeps the original", async () => {
+    const source = await createClip({
+      path: `t${EMPTY_MIDI_TRACK}[29|1]`,
+      name: "Copy Home",
+      notes: "C3 D3 E3 1|1",
+      length: "1bar",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        toPath: `t${EMPTY_MIDI_TRACK}/s6`,
+        name: "Copied",
+      },
+    });
+    const { data: copy } = parseToolResultWithWarnings<{
+      id: string;
+      path: string;
+      detail?: string;
+    }>(result);
+
+    expect(copy.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
+    expect(copy.detail).toContain("re-created from the arrangement clip");
+
+    await sleep(100);
+
+    const clip = await readClipFully(ctx.client!, {
+      path: `t${EMPTY_MIDI_TRACK}/s6`,
+    });
+
+    expect(clip.id).toBe(copy.id);
+    expect(clip.view).toBe("session");
+    expect(clip.name).toBe("Copied");
+    expect(clip.length).toBe("1bar");
+    expect(clip.notes).toContain("E3");
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "29|1"))?.id,
     ).toBe(source.id);
   });
 });

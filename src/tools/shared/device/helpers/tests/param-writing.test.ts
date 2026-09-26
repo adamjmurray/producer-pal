@@ -11,10 +11,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import {
   isParamEnabled,
-  setParamIfEnabled,
+  setParamAndReadBack,
   setParamValueAndVerify,
-  warnParamDisabled,
 } from "../param-writing.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -63,27 +63,41 @@ describe("isParamEnabled", () => {
   });
 });
 
-describe("setParamIfEnabled", () => {
-  it("writes the value and reports success when the parameter is enabled", () => {
-    const param = registerParam({ is_enabled: 1 });
-
-    expect(setParamIfEnabled(paramApi(), "display_value", -6, "gainDb")).toBe(
-      true,
-    );
-    expect(param.set).toHaveBeenCalledWith("display_value", -6);
-    expect(capturedWarnings()).toHaveLength(0);
-  });
-
-  it("skips the write and warns when the parameter is disabled", () => {
-    const param = registerParam({ is_enabled: 0 });
+describe("setParamAndReadBack", () => {
+  it("writes the value and reads it back when the parameter is enabled", () => {
+    const param = registerParam({ is_enabled: 1, display_value: -6 });
+    const notes = newTargetNotes();
 
     expect(
-      setParamIfEnabled(paramApi(), "value", 0.5, 'chain "Kick" pan'),
-    ).toBe(false);
+      setParamAndReadBack(
+        paramApi(),
+        "display_value",
+        -6,
+        "gainDb",
+        Math.round,
+        notes,
+      ),
+    ).toBe(-6);
+    expect(param.set).toHaveBeenCalledWith("display_value", -6);
+    expect(notes.said).toStrictEqual([]);
+  });
+
+  it("refuses the write on the entry when the parameter is disabled", () => {
+    const param = registerParam({ is_enabled: 0 });
+    const notes = newTargetNotes();
+
+    expect(
+      setParamAndReadBack(paramApi(), "value", 0.5, "pan", Math.round, notes),
+    ).toBeUndefined();
     expect(param.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('chain "Kick" pan is disabled'),
-    );
+    expect(notes).toStrictEqual({
+      said: [
+        "pan is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
+      ],
+      refused: ["pan"],
+      unlanded: [],
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 
@@ -179,15 +193,5 @@ describe("setParamValueAndVerify", () => {
     const refused = setParamValueAndVerify(paramApi(), 0.7000124999999999);
 
     expect(refused).toBeNull();
-  });
-});
-
-describe("warnParamDisabled", () => {
-  it("names the parameter and points at the macro", () => {
-    warnParamDisabled("gainDb");
-
-    expect(capturedWarnings()).toContain(
-      "gainDb is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
-    );
   });
 });

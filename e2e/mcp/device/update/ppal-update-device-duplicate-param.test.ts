@@ -11,8 +11,6 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
-  getToolErrorMessage,
-  isToolError,
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
@@ -22,7 +20,12 @@ const ctx = setupMcpTestContext();
 interface ParamInfo {
   id: string;
   name: string;
-  value?: unknown;
+  value?: number;
+}
+
+interface ParamEntry {
+  ok?: false;
+  detail?: string;
 }
 
 interface DeviceRead {
@@ -50,64 +53,58 @@ async function readThreshold(deviceId: string): Promise<ParamInfo> {
   return threshold as ParamInfo;
 }
 
+/** How the first entry addresses Threshold. */
+type FirstEntry = { name: string } | { id: string };
+
 /**
  * Write Threshold twice in one call, naming it two ways.
  * @param deviceId - The device to write to
- * @param firstSpelling - How the first entry names the param
- * @returns The refused result
+ * @param first - How the first entry addresses the param
+ * @returns The call's param entries
  */
 async function writeThresholdTwice(
   deviceId: string,
-  firstSpelling: string,
-): Promise<unknown> {
-  return ctx.client!.callTool({
-    name: "ppal-update-device",
-    arguments: {
-      id: deviceId,
-      params: [
-        { name: firstSpelling, value: "-6" },
-        { name: "Threshold", value: "-12" },
-      ],
-    },
-  });
-}
+  first: FirstEntry,
+): Promise<ParamEntry[]> {
+  const result = parseToolResult<{ params: ParamEntry[] }>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        id: deviceId,
+        params: [
+          { ...first, value: "-6 dB" },
+          { name: "Threshold", value: "-12 dB" },
+        ],
+      },
+    }),
+  );
 
-/**
- * A fresh Glue Compressor and its Threshold param as it reads now.
- * @returns The device's id and its Threshold param
- */
-async function glueCompressor(): Promise<{
-  deviceId: string;
-  before: ParamInfo;
-}> {
-  const deviceId = await createTestDevice(ctx.client!, "Glue Compressor", "t0");
-
-  return { deviceId, before: await readThreshold(deviceId) };
+  return result.params;
 }
 
 describe("ppal-update-device with the same param named twice", () => {
-  it("is refused before any write lands", async () => {
-    const { deviceId, before } = await glueCompressor();
-    const result = await writeThresholdTwice(deviceId, "Threshold");
+  // An id and a name are different text, so only resolving both to the same
+  // param catches those. An all-digit name also reaches the param by id.
+  it.each<[string, (id: string) => FirstEntry]>([
+    ["the same name in another case", () => ({ name: "threshold" })],
+    ["its id, then its name", (id) => ({ id })],
+    ["its id as a name, then its name", (id) => ({ name: id })],
+  ])("writes only the last entry: %s", async (_label, firstEntry) => {
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Glue Compressor",
+      "t0",
+    );
+    const { id } = await readThreshold(deviceId);
+    const params = await writeThresholdTwice(deviceId, firstEntry(id));
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toMatch(/Threshold.*more than once/);
-    expect((await readThreshold(deviceId)).value).toBe(before.value);
-  });
-
-  // The id and the name are different text, so only resolving both to the same
-  // param catches this one. The refusal names both spellings.
-  it("is refused when one entry is the id and the other the name", async () => {
-    const { deviceId, before } = await glueCompressor();
-    const result = await writeThresholdTwice(deviceId, before.id);
-
-    expect(isToolError(result)).toBe(true);
-
-    const message = getToolErrorMessage(result);
-
-    expect(message).toMatch(/more than once/);
-    expect(message).toContain("Threshold");
-    expect(message).toContain(before.id);
-    expect((await readThreshold(deviceId)).value).toBe(before.value);
+    expect(params[0]).toStrictEqual(
+      expect.objectContaining({
+        ok: false,
+        detail: 'set again by "Threshold" later in the list',
+      }),
+    );
+    expect(params[1]).not.toHaveProperty("ok");
+    expect((await readThreshold(deviceId)).value).toBeCloseTo(-12, 0);
   });
 });

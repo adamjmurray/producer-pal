@@ -72,7 +72,7 @@ export function setNumericParamValue(write: NumericWrite): ParamWriteOutcome {
   }
 
   return writeParam(param, target.value, {
-    changed: target.reason,
+    changed: target.detail,
     requested: write.requested,
   });
 }

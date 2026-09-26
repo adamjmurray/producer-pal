@@ -18,7 +18,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 // mirror the note-value rules in barbeat-grammar.peggy and
 // transform-grammar.peggy. Peggy can't share rules, and these run in per-note
 // hot paths, so the duplication is deliberate — see ADR-0003 "Notation grammar
-// duplication" and dev/Coding-Standards.md. The contract across all sites is
+// duplication" and dev/coding-standards/README.md. The contract across all sites is
 // locked by note-value-grammar-parity.test.ts; change every site and that test
 // together.
 
@@ -431,11 +431,11 @@ export function durationToAbletonBeats(
   // `1bar-n/16` is "almost a full bar". A leading sign group shifts the capture
   // indices read below.
   // Bare-count `n<count>bar` (`n1bar`, `n4bar`) is an accepted alias of
-  // `<count>bar` (untaught tolerance, ADR-0018): unambiguous, so it is matched
-  // as its own alternative (group 9) rather than routed through the bar-count
-  // group, keeping the existing group numbering below untouched.
+  // `<count>bar` (untaught tolerance, ADR-0018), matched as its own alternative
+  // (group 9) so the group numbering below is untouched. Its count is `[1-9]\d*`
+  // like the grammars' — no `n0bar` exception, unlike `0bar`.
   const match = duration.match(
-    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?)|n(0|[1-9]\d*)bars?)$/,
+    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?)|n([1-9]\d*)bars?)$/,
   );
 
   if (!match) {

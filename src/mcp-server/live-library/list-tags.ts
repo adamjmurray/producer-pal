@@ -48,7 +48,7 @@ export async function listTags(
     return {
       dbAvailable: false,
       tags: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     };
   }
 
@@ -88,7 +88,7 @@ export async function listTags(
     return {
       dbAvailable: false,
       tags: [],
-      reason: `Failed to read Live database: ${errorMessage(error)}`,
+      detail: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
 }

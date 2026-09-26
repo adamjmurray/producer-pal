@@ -49,7 +49,7 @@ export function buildDrumPadFields(
     ...(id == null ? {} : { id }),
     ...(path == null ? {} : { path }),
     name,
-    note,
+    // No numeric `note`: it repeats `pitch`, which is what pads are addressed by.
     pitch: drumPadPitch(note),
     // Stands in for the `chains` array when it isn't being sent: `name` alone
     // can't tell a layered pad from a single-chain one, since Live labels both
@@ -110,7 +110,6 @@ export interface ProcessedChain {
 export interface DrumPadInfo {
   id?: string;
   path?: string;
-  note: number;
   pitch: string | null;
   name?: string;
   state?: string;
@@ -391,8 +390,9 @@ export function processDrumPads(
       );
     }
 
-    // Store for internal use (drum map building)
+    // Store for internal use (drum map building, sorting)
     drumPadInfo._processedChains = processedChains;
+    drumPadInfo._note = inNote;
 
     processedDrumPads.push(drumPadInfo);
   }
@@ -400,8 +400,8 @@ export function processDrumPads(
   // Note pads in note order, then the catch-all — grouping by note above
   // leaves one pad per note, so there is only ever one catch-all.
   processedDrumPads.sort((a, b) => {
-    const aNote = a.note as number;
-    const bNote = b.note as number;
+    const aNote = a._note as number;
+    const bNote = b._note as number;
 
     if (aNote === -1) {
       return 1;
@@ -418,7 +418,7 @@ export function processDrumPads(
 
   if (includeDrumPads) {
     deviceInfo.drumPads = processedDrumPads.map(
-      ({ _processedChains, ...drumPadInfo }) => drumPadInfo,
+      ({ _processedChains, _note, ...drumPadInfo }) => drumPadInfo,
     );
   }
 

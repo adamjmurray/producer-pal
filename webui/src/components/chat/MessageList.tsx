@@ -28,7 +28,11 @@ interface MessageListProps {
   /** Whether a manual compaction is in progress (footer shows "Compacting…") */
   isCompacting?: boolean;
   handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
+  handleEdit: (
+    messageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
   /** Compact-up-to-here; omitted in surfaces that don't support compaction (voice/demo) */
   handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;

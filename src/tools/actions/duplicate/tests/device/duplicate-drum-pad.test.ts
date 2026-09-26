@@ -195,6 +195,19 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
+  it("refuses a pad whose chain holds the Producer Pal device", async () => {
+    const rack = registerCopyReadyRack();
+
+    registerMockObject("this_device", {
+      path: `${RACK_PATH} chains kick devices 0`,
+    });
+
+    await expect(copyC1ToD1()).rejects.toThrow(
+      "cannot duplicate drum pad C1: it holds the Producer Pal device",
+    );
+    expectNoCopy(rack);
+  });
+
   it("refuses an empty source pad", async () => {
     const rack = registerDrumRack([
       { note: 36, chainIds: [] },
@@ -214,7 +227,7 @@ describe("duplicate - drum pad", () => {
     expect(result).toStrictEqual({
       id: "pad38",
       path: "t0/d0/pD1",
-      reason: expect.stringContaining("layers on top of them"),
+      detail: expect.stringContaining("layers on top of them"),
     });
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
@@ -262,7 +275,7 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pC1",
         ok: false,
-        reason: expect.stringContaining("can't be copied onto itself"),
+        detail: expect.stringContaining("can't be copied onto itself"),
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
@@ -288,7 +301,7 @@ describe("duplicate - drum pad", () => {
       {
         path: "nonsense",
         ok: false,
-        reason: expect.stringContaining("nonsense"),
+        detail: expect.stringContaining("nonsense"),
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
@@ -353,12 +366,12 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pD1",
         ok: false,
-        reason: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining("drum pad C1 is empty"),
       },
       {
         path: "t0/d0/pE1",
         ok: false,
-        reason: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining("drum pad C1 is empty"),
       },
     ]);
   });
@@ -379,6 +392,64 @@ describe("duplicate - drum pad", () => {
     expect(result).toStrictEqual([
       { id: "pad38", path: "t0/d0/pD1" },
       { id: "pad40", path: "t0/d0/pE1" },
+    ]);
+  });
+
+  // copy_pad layers, so D1's own turn would copy C1's chains along with its own.
+  it("refuses a copy onto another source pad before any copy", async () => {
+    const rack = registerDrumRack([
+      { note: 36, chainIds: ["kick"] },
+      { note: 38, chainIds: ["snare"] },
+      { note: 40, chainIds: [] },
+    ]);
+
+    await expect(
+      duplicate({
+        type: "drum-pad",
+        id: "pad36,pad38",
+        toPath: "t0/d0/pD1,t0/d0/pE1",
+      }),
+    ).rejects.toThrow(
+      'a copy to "t0/d0/pD1" would overwrite id "pad38", another source of ' +
+        "this call; list it before this one, or duplicate it in its own " +
+        "call first",
+    );
+
+    expectNoCopy(rack);
+  });
+
+  it("copies onto an earlier source pad once its turn has run", async () => {
+    const rack = registerDrumRack([
+      { note: 36, chainIds: ["kick"] },
+      { note: 38, chainIds: ["snare"] },
+      { note: 40, chainIds: [] },
+    ]);
+
+    await duplicate({
+      type: "drum-pad",
+      id: "pad36,pad38",
+      toPath: "t0/d0/pE1,t0/d0/pC1",
+    });
+
+    expect(rack.call).toHaveBeenNthCalledWith(1, "copy_pad", 36, 40);
+    expect(rack.call).toHaveBeenNthCalledWith(2, "copy_pad", 38, 36);
+  });
+
+  // Each is refused on its own entry, so the check for a copy onto another
+  // source leaves both alone.
+  it("leaves a chain source and a bad destination to their own entries", async () => {
+    const rack = registerCopyReadyRack();
+
+    const result = await duplicate({
+      type: "drum-pad",
+      id: "pad36,kick",
+      toPath: "t0/d0/pD1,t0/d0/pC1/d0",
+    });
+
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+    expect(result).toStrictEqual([
+      { id: "pad38", path: "t0/d0/pD1" },
+      expect.objectContaining({ ok: false }),
     ]);
   });
 

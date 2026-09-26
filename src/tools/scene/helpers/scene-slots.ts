@@ -16,15 +16,17 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
- * Refuses a set of insert positions that would auto-create too many scenes.
- * @param insertIndexes - Where each new scene is created, in order
+ * Refuses new scenes that would reach past the scene cap.
+ * @param sceneIndexes - Where each new scene ends up, in order
+ * @param count - How many scenes the call creates
  */
-export function validateSceneIndexCap(insertIndexes: number[]): void {
-  const count = insertIndexes.length;
-
-  if (Math.max(-1, ...insertIndexes) + 1 > MAX_AUTO_CREATED_SCENES) {
+export function validateSceneIndexCap(
+  sceneIndexes: number[],
+  count = sceneIndexes.length,
+): void {
+  if (Math.max(-1, ...sceneIndexes) + 1 > MAX_AUTO_CREATED_SCENES) {
     throw new Error(
-      `creating ${count} scene${count === 1 ? "" : "s"} at index ${insertIndexes[0]} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+      `creating ${count} scene${count === 1 ? "" : "s"} at index ${sceneIndexes[0]} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
     );
   }
 }
@@ -107,15 +109,13 @@ export function resolveCreateSceneIndex(
  * @param path - "s+", "s2", comma-separated for several scenes
  * @param sceneIndex - Deprecated index
  * @param count - Deprecated repeat of a single path
- * @param sceneCount - Scenes in the Set before the call, where "s+" lands
  * @returns One spot per scene to create, in the order the call named them
  */
 export function resolveCreateSceneSpots(
   path: string | undefined,
   sceneIndex: number | undefined,
   count: number | undefined,
-  sceneCount: number,
-): number[] {
+): InsertionSpot[] {
   const entries = pathEntries(path, "path");
 
   if (entries.length === 0) {
@@ -125,7 +125,7 @@ export function resolveCreateSceneSpots(
 
     validateCount(count);
 
-    return repeatForCount([sceneIndex], count);
+    return repeatForCount<InsertionSpot>([sceneIndex], count);
   }
 
   if (sceneIndex != null) {
@@ -137,14 +137,7 @@ export function resolveCreateSceneSpots(
   refuseCountWithPathList(count, entries.length, "scene", "s+,s+");
   validateCount(count);
 
-  return repeatForCount(
-    entries.map((entry) => {
-      const spot = sceneSpotFromPath(entry);
-
-      return spot === "end" ? sceneCount : spot;
-    }),
-    count,
-  );
+  return repeatForCount(entries.map(sceneSpotFromPath), count);
 }
 
 // --- Helpers below main exports ---

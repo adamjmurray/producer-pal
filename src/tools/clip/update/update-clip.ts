@@ -6,9 +6,6 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
-import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
-import { type MoveGroup } from "./helpers/arrangement/update-clip-move-groups.ts";
 import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
   type EnvelopeLine,
@@ -21,6 +18,7 @@ import {
   resolveClipTargets,
 } from "./helpers/entries/clip-targets.ts";
 import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { planClipUpdate, warnBlankArgs } from "./helpers/plan-clip-update.ts";
 import {
   refuseRegionWithDuplicateLoop,
@@ -49,10 +47,10 @@ import {
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
- * @param args.timeSignature - Time signature in format "4/4"
- * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction>. end = start + length
- * @param args.firstStart - Bar|beat position for initial playback start
+ * @param args.timeSignature - Time signature in format "4/4", one per clip
+ * @param args.start - Bar|beat position where loop/clip region begins, one per clip
+ * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction> (end = start + length), one per clip
+ * @param args.firstStart - Bar|beat position for initial playback start, one per clip
  * @param args.looping - Enable looping for the clip
  * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
@@ -82,7 +80,7 @@ export async function updateClip(
   args: ClipUpdateArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipEntry | ClipEntry[]> {
-  const { id, ids, path, paths, name, color, toPath, toSlot } = args;
+  const { id, ids, path, paths, toPath, toSlot } = args;
   const { arrangementStart, arrangementLength, arrangementSplit, split } = args;
   // Set once per request by the V8 adapter, so a nested call (duplicate ->
   // updateClip) spends the caller's remaining budget instead of restarting it.
@@ -90,23 +88,25 @@ export async function updateClip(
 
   // Refuses a call whose lists disagree, or that names no clip at all, before
   // resolving anything.
-  const targets = clipTargets(
-    { id, ids, path, paths },
-    { name, color, arrangementStart, arrangementLength, toPath, toSlot },
-  );
+  const targets = clipTargets({ id, ids, path, paths }, args);
 
-  refuseUnreadableCall(
-    args.timeSignature,
-    args.quantizePitch,
-    toPath,
-    arrangementStart,
-    targets.named.length,
-  );
+  refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
   // Every envelope line is read before the first clip is touched: a batch of
   // them half written can't be cleaned up (ADR-0035).
   const envelopeLines: EnvelopeLine[] | undefined =
     args.envelopes == null ? undefined : parseEnvelopeLines(args.envelopes);
+
+  // Paired with the targets named, not the clips found, so name[k] lands on
+  // target k and every piece of a split takes its target's name. Done before
+  // the plan, which may split: a bad color or a gap in the names must be
+  // refused before anything is cut.
+  const labels = pairLabels({
+    noun: "clip",
+    count: targets.named.length,
+    name: args.name,
+    color: args.color,
+  });
 
   // What the clips the call did reach have to say beyond their own results.
   const reasons = newClipReasons();
@@ -127,21 +127,18 @@ export async function updateClip(
   warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
   warnBlankArgs(args);
 
-  const movedClipGroups = new Map<string, MoveGroup>();
   const resultsPerSlot = await runClipBatch({
     args,
     plan,
     targets,
+    labels,
     reasons,
     context,
     deadline,
-    movedClipGroups,
     envelopeLines,
   });
 
   return finishUpdate({
-    movedClipGroups,
-    overwrites: plan.overwrites,
     targets,
     resultsPerSlot,
     focus: args.focus,
@@ -157,25 +154,23 @@ export async function updateClip(
  * different clips and add up, so the target count is their sum — comparing the
  * two to each other would refuse a call naming two of each.
  * @param targets - The call's id/ids and path/paths params
- * @param values - The lists paired against the clips those params name
+ * @param values - The tool arguments as received, for the lists paired against
+ *   the clips those params name
  * @returns The targets the call names, and the clips they found
  */
 function clipTargets(
   targets: Pick<ClipUpdateArgs, "id" | "ids" | "path" | "paths">,
-  values: Pick<
-    ClipUpdateArgs,
-    | "name"
-    | "color"
-    | "arrangementStart"
-    | "arrangementLength"
-    | "toPath"
-    | "toSlot"
-  >,
+  values: ClipUpdateArgs,
 ): ClipTargets {
   validateListLengths([
     { param: targetParamLabel(targets), count: targetCount(targets) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
+    { param: "timeSignature", value: values.timeSignature },
+    { param: "start", value: values.start },
+    { param: "length", value: values.length },
+    { param: "firstStart", value: values.firstStart },
+    { param: "quantizePitch", value: values.quantizePitch },
     { param: "arrangementStart", value: values.arrangementStart },
     { param: "arrangementLength", value: values.arrangementLength },
     {
@@ -213,20 +208,14 @@ function focusLastUpdatedClip(
 }
 
 interface FinishUpdateArgs {
-  movedClipGroups: Map<string, MoveGroup>;
-  /** Which clips the moves were set to land on top of. */
-  overwrites: OverwritePlan | null;
   targets: ClipTargets;
   resultsPerSlot: Map<number, ClipResult[]>;
   focus: boolean | undefined;
 }
 
 /**
- * Settles the clips the moves held back, says what the batch's moves collided
- * over, focuses the last clip written, and shapes the result.
- * @param finish - The call's collectors and what it wrote
- * @param finish.movedClipGroups - Tally of clips landing on each lane and position
- * @param finish.overwrites - Which clips the moves were set to land on top of
+ * Focuses the last clip written and shapes the result.
+ * @param finish - The call's targets and what it wrote
  * @param finish.targets - The targets the call named
  * @param finish.resultsPerSlot - Each target's results, by its place in the call
  * @param finish.focus - Whether to select the last one in Live
@@ -234,14 +223,10 @@ interface FinishUpdateArgs {
  * @throws Error when the call named one target and it got nothing done
  */
 function finishUpdate({
-  movedClipGroups,
-  overwrites,
   targets,
   resultsPerSlot,
   focus,
 }: FinishUpdateArgs): ClipEntry | ClipEntry[] {
-  flushDeferredDeletions(movedClipGroups, overwrites);
-
   const entries = clipEntriesInCallOrder(
     targets.named,
     targets.unused,

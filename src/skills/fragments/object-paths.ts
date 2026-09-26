@@ -18,9 +18,9 @@ export const objectPaths = `## Addressing Tracks and Scenes
 
 A \`path\` names an object by where it is, counting from 0: \`t0\` is the first track, \`s0\` the first scene, \`rt0\` the first return track, \`mt\` the main track. Reads report a \`path\` beside every \`id\` and the write tools take one, so what you just read is what you address next — no re-reading an object to learn its id.
 
-Reads take a comma-separated list too: \`path: "t0,t2"\` returns one entry per target in order, and a target the call couldn't carry out is \`ok: false\` with a \`reason\` — reads and writes alike. One target returns the object, not an array, and errors instead of reporting.
+Reads take a comma-separated list too: \`path: "t0,t2"\` returns one entry per target in order, and a target the call couldn't carry out is \`ok: false\` with a \`detail\` — reads and writes alike. One target returns the object, not an array, and errors instead of reporting.
 
-A write's entry says only what you don't already know: a value that landed as you asked for it isn't repeated back, so an entry with nothing but an \`id\` and \`path\` means everything worked. What comes back is a value Live kept instead of yours, with a \`reason\` saying so.
+A write's entry says only what you don't already know: a value that landed as you asked for it isn't repeated back, so an entry with nothing but an \`id\` and \`path\` means everything worked. What comes back is a value Live kept instead of yours, with a \`detail\` saying so.
 
 **A number the user says is 1-based — subtract one.** Their "scene 1" is \`s0\`, their "scene 3" is \`s2\`, their "track 3" is \`t2\`. Live labels scenes from 1 too, so the scene shown as "3" is also \`s2\`. Never pass their number straight through.
 
@@ -28,7 +28,7 @@ A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a re
 
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
-Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. \`name\` and \`color\` pair with the list 1:1. With one target a comma is part of the value, not a separator: it's how a name like \`Verse, take 2\` is set.
+Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. Text params (\`name\`, \`color\`, a scene's \`timeSignature\`) also take a list that pairs with it 1:1; numbers, true/false and fixed choices apply to every object. With one target a comma is part of the value; with several, write it as \`\\,\` (\`Verse\\, take 2\`).
 
 A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
 

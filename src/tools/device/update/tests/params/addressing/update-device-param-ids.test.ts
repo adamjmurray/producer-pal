@@ -6,7 +6,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
+  children,
   livePath,
+  expectParamRefused,
+  mockWorkingDeviceMoves,
+  noParamLanded,
+  paramsOf,
   registerDeviceWithParams,
   registerMockObject,
   updateDevice,
@@ -33,12 +38,13 @@ function continuousParam(name: string) {
 }
 
 describe("updateDevice - params addressed by id", () => {
+  let device: RegisteredMockObject;
   let volume: RegisteredMockObject;
   // A param whose name is the digits of another param's id.
   let namedOne: RegisteredMockObject;
 
   beforeEach(() => {
-    registerDeviceWithParams("1", "42");
+    device = registerDeviceWithParams("1", "42");
     namedOne = registerMockObject("42", {
       path: livePath.track(0).device(0).parameter(0),
       ...continuousParam("1"),
@@ -74,22 +80,19 @@ describe("updateDevice - params addressed by id", () => {
   });
 
   it("reports a miss under the id the call sent, and warns nowhere", () => {
-    const result = updateDevice({
-      id: "dev1",
-      params: [
-        { id: "999", value: "0.75" },
-        { id: "N/A", value: "0.75" },
-      ],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "dev1",
+        params: [
+          { id: "999", value: "0.75" },
+          { id: "N/A", value: "0.75" },
+        ],
+      }),
+    );
 
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [
-        { id: "999", ok: false, reason: "not found on t0/d0 (id dev1)" },
-        { id: "N/A", ok: false, reason: "not found on t0/d0 (id dev1)" },
-      ],
-    });
+    expect(message).toBe(
+      'no param landed — "999": not found on t0/d0 (id dev1); "N/A": not found on t0/d0 (id dev1)',
+    );
     expect(capturedWarnings()).toHaveLength(0);
   });
 
@@ -102,38 +105,24 @@ describe("updateDevice - params addressed by id", () => {
       ...continuousParam("Elsewhere"),
     });
 
-    const result = updateDevice({
-      id: "dev1",
-      params: [{ id: "55", value: "0.75" }],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({ id: "dev1", params: [{ id: "55", value: "0.75" }] }),
+    );
 
     expect(foreign.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [
-        {
-          id: "55",
-          ok: false,
-          reason:
-            "id 55 is on another object, not t0/d0 (id dev1), so it was not written",
-        },
-      ],
-    });
+    expect(message).toBe(
+      'no param landed — "55": id 55 is on another object, not t0/d0 (id dev1), so it was not written',
+    );
   });
 
   it("reports a refused value under the id", () => {
-    const result = updateDevice({
-      id: "dev1",
-      params: [{ id: "1", value: "loud" }],
-    });
+    expectParamRefused(
+      () => updateDevice({ id: "dev1", params: [{ id: "1", value: "loud" }] }),
+      "1",
+      "loud",
+    );
 
     expect(volume.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [{ id: "1", ok: false, reason: expect.stringContaining("loud") }],
-    });
   });
 
   // The OpenAI models fill the field they don't use with "" rather than
@@ -175,30 +164,97 @@ describe("updateDevice - params addressed by id", () => {
     );
   });
 
-  it("refuses the same id twice", () => {
-    expect(() =>
-      updateDevice({
-        id: "dev1",
-        params: [
-          { id: "1", value: "0.75" },
-          { id: "1", value: "0.25" },
-        ],
-      }),
-    ).toThrow('params entry "1" is set more than once');
+  it("writes only the last of the same id twice", () => {
+    const result = updateDevice({
+      id: "dev1",
+      params: [
+        { id: "1", value: "0.75" },
+        { id: "1", value: "0.25" },
+      ],
+    });
+
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "1", ok: false, detail: "set again by id 1 later in the list" },
+      { id: "1", name: "Volume" },
+    ]);
   });
 
-  it("refuses a param addressed once by id and once by name", () => {
-    expect(() =>
+  it("reports an id that reaches nothing, sent twice, once per entry", () => {
+    const message = noParamLanded(() =>
       updateDevice({
         id: "dev1",
         params: [
-          { id: "1", value: "0.75" },
-          { name: "Volume", value: "0.25" },
+          { id: "999", value: "0.75" },
+          { id: "999", value: "0.25" },
         ],
       }),
-    ).toThrow(
-      'params entry "Volume" is set more than once — "1" names the same param (id 1)',
     );
+
+    expect(message).toBe(
+      'no param landed — "999": set again by id 999 later in the list; "999": not found on t0/d0 (id dev1)',
+    );
+  });
+
+  const sameParamTwice = [
+    { id: "1", value: "0.75" },
+    { name: "Volume", value: "0.25" },
+  ];
+
+  it("writes only the last of an id and a name reaching one param", () => {
+    const result = updateDevice({ id: "dev1", params: sameParamTwice });
+
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "1", ok: false, detail: 'set again by "Volume" later in the list' },
+      { id: "1", name: "Volume" },
+    ]);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("still renames the device when a param is reached twice", () => {
+    updateDevice({ id: "dev1", name: "Renamed", params: sameParamTwice });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+  });
+
+  it("still moves the device when a param is reached twice", () => {
+    const liveSet = mockWorkingDeviceMoves();
+
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { devices: children("dev1") },
+    });
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children() },
+    });
+
+    const result = updateDevice({
+      id: "dev1",
+      toPath: "t1/d+",
+      params: sameParamTwice,
+    });
+
+    expect(liveSet.call).toHaveBeenCalledWith(
+      "move_device",
+      "id dev1",
+      "id track-1",
+      0,
+    );
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)[0]).toStrictEqual({
+      id: "1",
+      ok: false,
+      detail: 'set again by "Volume" later in the list',
+    });
   });
 
   it("does not confuse id 1 with the param named 1 when deduplicating", () => {

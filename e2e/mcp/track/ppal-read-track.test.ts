@@ -315,7 +315,7 @@ describe("ppal-read-track over a list of targets", () => {
       {
         path: "t999",
         ok: false,
-        reason: 'nothing at path "t999"; ppal-create-track adds tracks',
+        detail: 'nothing at path "t999"; ppal-create-track adds tracks',
       },
       expect.objectContaining({ path: "t4", name: "Audio 1" }),
     ]);

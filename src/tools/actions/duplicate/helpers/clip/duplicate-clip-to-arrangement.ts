@@ -53,7 +53,7 @@ export async function duplicateClipToArrangement(
   // an exact self-cover no-ops and hands back the source's own id — and
   // clearClipAtDuplicateTarget refuses to clear it. That matters because
   // exists() could not tell us otherwise: a dead handle keeps its id
-  // (dev/LiveAPI-Object-Reuse.md).
+  // (dev/live-api/object-reuse.md).
   const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {

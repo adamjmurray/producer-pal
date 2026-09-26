@@ -25,7 +25,7 @@ const ctx = setupMcpTestContext();
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  reason?: string;
+  detail?: string;
 }
 
 describe("ppal-duplicate into an occupied clip slot", () => {
@@ -68,7 +68,7 @@ describe("ppal-duplicate into an occupied clip slot", () => {
       parseToolResultWithWarnings<DuplicateClipResult>(result);
 
     expect(copy.path).toBe(`t${RACKS_TRACK}/s0`);
-    expect(copy.reason).toBe(
+    expect(copy.detail).toBe(
       `overwrote the existing clip at t${RACKS_TRACK}/s0`,
     );
     expect(copy.id).not.toBe(occupantId);

@@ -83,7 +83,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       id: "chain-0",
       path: "t0/d0/c0",
       gainDb: -15.02,
-      reason: "gainDb read back as shown, not as sent",
+      detail: "gainDb read back as shown, not as sent",
     });
   });
 
@@ -98,7 +98,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       path: "t0/d0/c0",
       gainDb: -15.02,
       pan: -0.26,
-      reason: "gainDb, pan read back as shown, not as sent",
+      detail: "gainDb, pan read back as shown, not as sent",
     });
   });
 
@@ -123,7 +123,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
           return: "a Reverb",
           returnId: "rc-0",
           gainDb: -11.98,
-          reason: SNAPPED_SEND,
+          detail: SNAPPED_SEND,
         },
       ],
     });
@@ -154,33 +154,47 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
           return: "a Reverb",
           returnId: "rc-0",
           gainDb: -6.02,
-          reason: SNAPPED_SEND,
+          detail: SNAPPED_SEND,
         },
       ],
     });
   });
 
   // The rack's return chains belong to the rack, so this is about the chain the
-  // call named — its own entry says it, and nothing warns (ADR-0042).
-  it("reports no send for a return name that matches none", () => {
-    const result = updateDevice({
-      id: "chain-0",
-      sends: [{ return: "nope", gainDb: -12 }],
-    });
-
+  // call named. It asked for nothing else, so the call throws naming the send.
+  it("refuses a lone send whose return name matches none", () => {
+    expect(() =>
+      updateDevice({ id: "chain-0", sends: [{ return: "nope", gainDb: -12 }] }),
+    ).toThrow(
+      'no send landed — "nope": no return chain matching "nope" (returns: a Reverb)',
+    );
     expect(send.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "chain-0",
-      path: "t0/d0/c0",
-      sends: [
-        {
-          return: "nope",
-          ok: false,
-          reason: 'no return chain matching "nope" (returns: a Reverb)',
-        },
-      ],
-    });
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("gives each chain its own sendReturn", () => {
+    const secondMixer = `${rackPath.chain(1)} mixer_device`;
+
+    registerMockObject("rack-0", {
+      path: rackPath,
+      properties: { return_chains: children("rc-0", "rc-1") },
+    });
+    registerMockObject("rc-1", { properties: { name: "b Delay" } });
+    registerMockObject("chain-1", {
+      path: rackPath.chain(1),
+      type: "DrumChain",
+    });
+    registerMockObject("mixer-1", {
+      path: secondMixer,
+      properties: { sends: children("send-1a", "send-1b") },
+    });
+    registerMockObject("send-1a");
+    const secondB = registerMockObject("send-1b");
+
+    updateDevice({ id: "chain-0,chain-1", sendGainDb: -12, sendReturn: "a,b" });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    expect(secondB.set).toHaveBeenCalledWith("display_value", -12);
   });
 
   it("sets a chain's send to a rack return chain", () => {
@@ -256,7 +270,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       id: "chain-0",
       path: "t0/d0/c0",
       gainDb: -15.02,
-      reason:
+      detail:
         "gainDb read back as shown, not as sent; macroCount not applicable to a drum pad chain",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -273,7 +287,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(result[0]).toStrictEqual({
       id: "target-1",
       ok: false,
-      reason: "gainDb not applicable to a device",
+      detail: "gainDb not applicable to a device",
     });
     expect(result[1].id).toBe("chain-0");
     expect(capturedWarnings()).toStrictEqual([]);
@@ -345,7 +359,7 @@ describe("updateDevice - return chain rename mid-request", () => {
       {
         return: "Echo",
         ok: false,
-        reason: 'no return chain matching "Echo" (returns: Delay)',
+        detail: 'no return chain matching "Echo" (returns: Delay)',
       },
     ]);
     expect(result[2]?.sends).toBeUndefined();
@@ -354,6 +368,53 @@ describe("updateDevice - return chain rename mid-request", () => {
     expect(
       capturedWarnings().filter((w) => w.includes("no return chain matching")),
     ).toStrictEqual([]);
+  });
+});
+
+describe("updateDevice - rack moved mid-request", () => {
+  it("sends against the rack now at a path, not the one that moved away", () => {
+    const rackPath = livePath.track(0).device(0);
+    const chainPath = rackPath.chain(0);
+
+    registerMockObject("chain", { path: chainPath, type: "Chain" });
+    registerMockObject("mixer", {
+      path: `${chainPath} mixer_device`,
+      properties: { sends: children("send") },
+    });
+    const send = registerMockObject("send");
+
+    registerMockObject("rc-a", {
+      type: "Chain",
+      properties: { name: "Delay" },
+    });
+    registerMockObject("rc-b", { type: "Chain", properties: { name: "Verb" } });
+    const rack = registerMockObject("rack-a", {
+      path: rackPath,
+      properties: { return_chains: children("rc-a") },
+    });
+
+    beginLiveApiScope();
+
+    let result: unknown;
+
+    try {
+      updateDevice({ id: "chain", sends: [{ return: "Delay", gainDb: -12 }] });
+
+      // Rack A moves away and rack B slides into its path. Mutated in place:
+      // registering B would clear the memo this test is about.
+      rack.id = "rack-b";
+      rack.properties.return_chains = children("rc-b");
+
+      result = updateDevice({
+        id: "chain",
+        sends: [{ return: "Verb", gainDb: -6 }],
+      });
+    } finally {
+      endLiveApiScope();
+    }
+
+    expect(send.set).toHaveBeenLastCalledWith("display_value", -6);
+    expect(result).toStrictEqual({ id: "chain", path: "t0/d0/c0" });
   });
 });
 

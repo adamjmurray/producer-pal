@@ -18,6 +18,16 @@ const LOAD_ARGS = {
   type: "plugin",
   path: "VST3/FabFilter/Pro-Q 4",
   trackIndex: 3,
+  trackName: "Producer Pal temp abc",
+  expiresInMs: 5000,
+};
+
+const HOTSWAP_ARGS = {
+  type: "instrument",
+  path: "Drift/Bass/AG Bass.adv",
+  devicePath: "live_set tracks 3 devices 0",
+  deviceName: "Drift",
+  expiresInMs: 5000,
 };
 
 let fake: FakeRemoteScript | undefined;
@@ -75,6 +85,8 @@ describe("remoteScript.load", () => {
           type: "plugin",
           path: "VST3/FabFilter/Pro-Q 4",
           track_index: 3,
+          track_name: "Producer Pal temp abc",
+          expires_in_ms: 5000,
         },
       },
     ]);
@@ -105,4 +117,138 @@ describe("remoteScript.load", () => {
       }),
     ).toStrictEqual({ success: false, error: "trackIndex must be a number" });
   });
+
+  it("needs a track name", async () => {
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
+        ...LOAD_ARGS,
+        trackName: undefined,
+      }),
+    ).toStrictEqual({ success: false, error: "trackName must be a string" });
+  });
+});
+
+describe("remoteScript.resolvePreset", () => {
+  it("searches under the device the call named", async () => {
+    const remote = await answerWith({
+      body: {
+        items: [{ name: "Warm Pad.adv", path: "Wavetable/Warm Pad.adv" }],
+      },
+    });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
+        name: "Warm Pad",
+        scope: { type: "instrument", path: "Wavetable", device: "Wavetable" },
+      }),
+    ).toHaveProperty("result.item.path", "Wavetable/Warm Pad.adv");
+    expect(remote.requests[0]?.query).toStrictEqual({
+      type: "instrument",
+      presets: "true",
+      q: "warm pad",
+      path: "Wavetable",
+    });
+  });
+
+  it("searches everywhere with no device", async () => {
+    const remote = await answerWith({ body: { items: [] } });
+
+    await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
+      name: "Warm Pad",
+    });
+
+    expect(remote.requests.every((request) => request.query.path == null)).toBe(
+      true,
+    );
+  });
+
+  it("needs a scope's device", async () => {
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
+        name: "Warm Pad",
+        scope: { type: "instrument", path: "Wavetable" },
+      }),
+    ).toStrictEqual({ success: false, error: "device must be a string" });
+  });
+});
+
+describe("remoteScript.hotswap", () => {
+  it("loads the item in place of the device, and says whether Live replaced it", async () => {
+    const remote = await answerWith({
+      body: { device: { name: "AG Bass", replaced: false } },
+    });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, replaced: false },
+    });
+    expect(remote.requests[0]).toStrictEqual({
+      method: "POST",
+      route: "/hotswap",
+      query: {},
+      body: {
+        type: "instrument",
+        path: "Drift/Bass/AG Bass.adv",
+        device_path: "live_set tracks 3 devices 0",
+        device_name: "Drift",
+        expires_in_ms: 5000,
+      },
+    });
+  });
+
+  it("reads a replaced device", async () => {
+    await answerWith({ body: { device: { replaced: true } } });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toHaveProperty("result.replaced", true);
+  });
+
+  it("hands back why a load failed", async () => {
+    await answerWith({ status: 409, body: { error: "kinds differ" } });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: "kinds differ" },
+    });
+  });
+
+  it("says so when the remote script isn't running", async () => {
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toStrictEqual({ success: true, result: { available: false } });
+  });
+
+  it("needs the device's name", async () => {
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, {
+        ...HOTSWAP_ARGS,
+        deviceName: undefined,
+      }),
+    ).toStrictEqual({ success: false, error: "deviceName must be a string" });
+  });
+});
+
+describe.each([
+  ["load", REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS],
+  ["hotswap", REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS],
+])("remoteScript.%s's expiry", (_name, route, args) => {
+  it.each([undefined, "5000", -1, Number.NaN])(
+    "refuses %s",
+    async (expiresInMs) => {
+      const remote = await answerWith({ body: {} });
+
+      expect(
+        await dispatchNodeRoute(route, { ...args, expiresInMs }),
+      ).toStrictEqual({
+        success: false,
+        error: "expiresInMs must be a number, 0 or more",
+      });
+      expect(remote.requests).toStrictEqual([]);
+    },
+  );
 });

@@ -47,7 +47,7 @@ type DuplicateRow = SearchRow & { data: Uint8Array | null; hash: string };
  * Find groups of library files that share an audio fingerprint.
  *
  * @param args - Search filters scoping which files are checked
- * @returns Duplicate groups (most-duplicated first), or a graceful reason
+ * @returns Duplicate groups (most-duplicated first), or why there are none
  */
 export function findDuplicates(
   args: FindDuplicatesArgs = {},
@@ -56,12 +56,12 @@ export function findDuplicates(
     onMissing: () => ({
       dbAvailable: false,
       groups: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     }),
     onError: (message) => ({
       dbAvailable: false,
       groups: [],
-      reason: `Failed to read Live database: ${message}`,
+      detail: `Failed to read Live database: ${message}`,
     }),
     run: (db, stalenessRisk) => runFindDuplicates(db, stalenessRisk, args),
   });
@@ -93,7 +93,7 @@ function runFindDuplicates(
     return {
       ...base,
       groups: [],
-      reason:
+      detail:
         "duplicate detection uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
     };
   }
@@ -101,7 +101,7 @@ function runFindDuplicates(
   const resolved = resolveInFolder(db, args.inFolder);
 
   if (!resolved.ok) {
-    return { ...base, groups: [], reason: resolved.reason };
+    return { ...base, groups: [], detail: resolved.reason };
   }
 
   const { where, params } = buildCandidateWhere(args, resolved.parentId);

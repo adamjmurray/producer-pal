@@ -7,38 +7,32 @@
  * E2E tests for ppal-create-device loading a device from Live's browser through
  * the Producer Pal remote script. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
  * and failed, not skipped, when that's set but the remote script isn't
- * answering. Uses Live's built-in LFO, never a machine-specific plug-in.
+ * answering. Uses the Max for Live LFO by its browser path: newer Live (12.4.6)
+ * also has a built-in LFO of the same name. Never a machine-specific plug-in.
  *
  * Uses: e2e-test-set (rt0 is a return track)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
-  remoteScriptAnswers,
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
+import {
+  REMOTE_SCRIPT_E2E,
+  requireRemoteScript,
+} from "../helpers/remote-script-test-helpers";
 
-describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
+describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
   () => {
-    // Ahead of the per-test hooks, so a missing remote script fails before any
-    // Live Set opens.
-    beforeAll(async () => {
-      if (!(await remoteScriptAnswers())) {
-        const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
-
-        throw new Error(
-          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${port}. Install it and select it as a control surface (see remote-script/README.md).`,
-        );
-      }
-    });
+    requireRemoteScript();
 
     const ctx = setupMcpTestContext();
 
@@ -114,7 +108,10 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
     it("appends LFO to a track and leaves no temp track behind", async () => {
       const trackIndex = await createTrack("audio");
       const before = await trackCount();
-      const lfo = await createDevice("LFO", `t${trackIndex}/d+`);
+      const lfo = await createDevice(
+        "Max for Live/Max Audio Effect/LFO",
+        `t${trackIndex}/d+`,
+      );
 
       expect(lfo.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -126,7 +123,10 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
 
       await createDevice("Compressor", `t${trackIndex}/d+`);
 
-      const lfo = await createDevice("LFO", `t${trackIndex}/d0`);
+      const lfo = await createDevice(
+        "Max for Live/Max Audio Effect/LFO",
+        `t${trackIndex}/d0`,
+      );
 
       expect(lfo.path).toBe(`t${trackIndex}/d0`);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -135,7 +135,10 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
     it("loads LFO into a rack chain", async () => {
       const trackIndex = await createTrack("audio");
       const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
-      const lfo = await createDevice("LFO", `${rack.path}/c0/d+`);
+      const lfo = await createDevice(
+        "Max for Live/Max Audio Effect/LFO",
+        `${rack.path}/c0/d+`,
+      );
 
       expect(lfo.path.startsWith(`${rack.path}/c0/d`)).toBe(true);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -143,7 +146,10 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
 
     it("loads LFO onto a return track", async () => {
       const before = await trackCount();
-      const lfo = await createDevice("LFO", "rt0/d+");
+      const lfo = await createDevice(
+        "Max for Live/Max Audio Effect/LFO",
+        "rt0/d+",
+      );
 
       expect(lfo.path).toMatch(/^rt0\/d\d+$/);
       expect(await idAt(lfo.path)).toBe(lfo.id);

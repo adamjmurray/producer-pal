@@ -232,7 +232,7 @@ describe("Simpler pseudo-params", () => {
       );
 
       expect(handled).toStrictEqual([
-        { name: "multiSampleMode", ok: false, reason: "read-only" },
+        { name: "multiSampleMode", ok: false, detail: "read-only" },
       ]);
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toHaveLength(0);
@@ -270,7 +270,7 @@ describe("Simpler pseudo-params", () => {
         {
           action: "warpAs(soon)",
           ok: false,
-          reason: "requires a numeric beats argument",
+          detail: "requires a numeric beats argument",
         },
       ]);
       expect(device.call).not.toHaveBeenCalledWith(

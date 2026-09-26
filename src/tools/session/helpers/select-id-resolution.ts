@@ -11,7 +11,10 @@ import {
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
-import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import {
+  pathError,
+  splitPathEntries,
+} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { buildTrackPath } from "./selection-updates.ts";
 import { rackOfTarget } from "./rack-selection.ts";
 
@@ -218,15 +221,26 @@ export function isSameLiveApiId(idA: string, idB: string): boolean {
 /**
  * Refuse a comma-separated value on a param select can only take one of. Every
  * other tool takes a list, so a model sends one here too, and without this the
- * value reads as a single id or path that names nothing.
+ * value reads as a single id or path that names nothing. In a path, only a
+ * comma outside `[...]` counts; one inside is part of a locator name.
  * @param label - The param the value came from
  * @param value - The value as the caller wrote it
+ * @param isPath - Whether the value is a path
  */
 export function assertOneSelectTarget(
   label: string,
   value: string | undefined,
+  isPath = false,
 ): void {
-  if (value?.includes(",")) {
+  if (value == null) {
+    return;
+  }
+
+  const isList = isPath
+    ? splitPathEntries(value).length > 1
+    : value.includes(",");
+
+  if (isList) {
     throw pathError(
       label,
       value,

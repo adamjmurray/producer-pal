@@ -24,6 +24,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
+  DRUM_LOOP_8BAR_FILE,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -95,7 +96,7 @@ describe("arrangement clip moved to another lane", () => {
       toPath: `t${CHILD_TRACK}/l0`,
     });
 
-    expect(moved.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+    expect(moved.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
     expect(moved.path).toMatch(
       new RegExp(`^t${CHILD_TRACK}/l\\d+\\[17\\|1\\]$`),
     );
@@ -129,7 +130,7 @@ describe("arrangement clip moved to another lane", () => {
       toPath: `t${CHILD_TRACK}/l0`,
     });
 
-    expect(moved.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+    expect(moved.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
 
     const after = await noteDicts(moved.id!);
 
@@ -201,8 +202,8 @@ describe("arrangement clip moved to another lane", () => {
     const entries = data as unknown as ReadClipResult[];
 
     for (const entry of entries) {
-      expect(entry.reason).toContain(`not moved: track t${AUDIO_TRACK} (id `);
-      expect(entry.reason).not.toContain("overwrote");
+      expect(entry.detail).toContain(`not moved: track t${AUDIO_TRACK} (id `);
+      expect(entry.detail).not.toContain("overwrote");
     }
 
     expect(warnings).toStrictEqual([]);
@@ -238,7 +239,7 @@ describe("arrangement clip moved to another lane", () => {
     expect(landed[0]).not.toBe(landed[1]);
 
     for (const entry of entries) {
-      expect(entry.reason).not.toContain("overwrote");
+      expect(entry.detail).not.toContain("overwrote");
     }
 
     expect(warnings).toStrictEqual([]);
@@ -261,12 +262,12 @@ describe("arrangement clip moved to another lane", () => {
 
     // Both moves ran, so the stack is real.
     for (const entry of entries) {
-      expect(entry.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+      expect(entry.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
     }
 
     // The first found the lane empty; the second found the first there.
-    expect(entries[0]?.reason).not.toContain("overwrote");
-    expect(entries[1]?.reason).toMatch(
+    expect(entries[0]?.detail).not.toContain("overwrote");
+    expect(entries[1]?.detail).toMatch(
       new RegExp(`overwrote the clip at t${CHILD_TRACK}/l\\d+\\[93\\|1\\]`),
     );
     expect(warnings).toStrictEqual([]);
@@ -287,10 +288,10 @@ describe("arrangement clip moved to another lane", () => {
     );
     const [moverEntry, blockerEntry] = data as unknown as ReadClipResult[];
 
-    expect(blockerEntry?.reason).toContain(
+    expect(blockerEntry?.detail).toContain(
       `not moved: track t${MISSING_TRACK} does not exist`,
     );
-    expect(moverEntry?.reason).toContain(
+    expect(moverEntry?.detail).toContain(
       `not moved: it would land on clip ${blocker.path} (id ${blocker.id}), which Live wouldn't move`,
     );
 
@@ -315,7 +316,7 @@ describe("arrangement clip moved to another lane", () => {
     });
 
     expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[610|1]`);
-    expect(moved.reason).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
+    expect(moved.detail).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
     expect(warnings).toStrictEqual([]);
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
@@ -406,7 +407,7 @@ describe("arrangement clip moved to another lane", () => {
       toPath: `t${AUDIO_TRACK}[17|1]`,
     });
 
-    expect(first.reason).toContain("muted instead of deleted");
+    expect(first.detail).toContain("muted instead of deleted");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[21|1]`,
@@ -431,7 +432,7 @@ describe("arrangement clip moved to another lane", () => {
       toPath: `t${AUDIO_TRACK}[9|1]`,
     });
 
-    expect(moved.reason).toContain("muted instead of deleted");
+    expect(moved.detail).toContain("muted instead of deleted");
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
 
@@ -442,6 +443,72 @@ describe("arrangement clip moved to another lane", () => {
 
     expect(leftover.name).toBe("(moved) Audio Take");
     expect(leftover.muted).toBe(true);
+  });
+});
+
+describe("arrangement clip moved and shortened in one call", () => {
+  // Shortened where it sits, then moved: the move clears only the new length,
+  // so a clip just past the new end survives.
+  it("leaves a clip just past the new end alone", async () => {
+    const source = await createArrangementClip(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+      "661|1",
+      { name: "Shrinking Mover", length: "4bar" },
+    );
+    const neighbor = await createClip("671|1", "Past The End");
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      arrangementStart: "669|1",
+      arrangementLength: "2bar",
+    });
+
+    expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}[669|1]`);
+
+    const placed = await arrangementClipAt(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+      "669|1",
+    );
+
+    expect(placed?.arrangementLength).toBe("2bar");
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "671|1"))?.id,
+    ).toBe(neighbor.id);
+    expect(
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "661|1"),
+    ).toBeUndefined();
+  });
+
+  // Audio shortening takes its own route, through the session holding area.
+  it("leaves an audio clip just past the new end alone", async () => {
+    const source = await createAudioClipAt(
+      `t${AUDIO_TRACK}[101|1]`,
+      "Shrinking Audio",
+      DRUM_LOOP_8BAR_FILE,
+    );
+    const neighbor = await createAudioClipAt(
+      `t${AUDIO_TRACK}[112|1]`,
+      "Audio Past The End",
+      SAMPLE_FILE,
+    );
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      arrangementStart: "111|1",
+      arrangementLength: "1bar",
+    });
+
+    expect(moved.path).toBe(`t${AUDIO_TRACK}[111|1]`);
+    expect(
+      (await arrangementClipAt(ctx.client!, AUDIO_TRACK, "111|1"))
+        ?.arrangementLength,
+    ).toBe("1bar");
+    expect(
+      (await arrangementClipAt(ctx.client!, AUDIO_TRACK, "112|1"))?.id,
+    ).toBe(neighbor.id);
+    expect(
+      await arrangementClipAt(ctx.client!, AUDIO_TRACK, "101|1"),
+    ).toBeUndefined();
   });
 });
 

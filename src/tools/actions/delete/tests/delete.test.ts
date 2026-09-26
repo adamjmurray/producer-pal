@@ -164,7 +164,7 @@ describe("deleteObject", () => {
     // rather than refused — and nothing warns about it.
     expect(deleteObject({ path: "t0/s9", type: "clip" })).toStrictEqual({
       path: "t0/s9",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
@@ -209,7 +209,7 @@ describe("deleteObject", () => {
         id: "take_lane_clip",
         path: "t0/l0[1|1]",
         ok: false,
-        reason: expect.stringContaining("cannot delete take-lane clip"),
+        detail: expect.stringContaining("cannot delete take-lane clip"),
       },
       { id: "clip_1_1", deletedPath: "t1/s1" },
     ]);
@@ -251,7 +251,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "999",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
@@ -280,7 +280,7 @@ describe("deleteObject", () => {
       {
         id: "scene_1",
         ok: false,
-        reason: "s0 (id scene_1) is not a track (found scene)",
+        detail: "s0 (id scene_1) is not a track (found scene)",
       },
       { id: "track_0", deletedPath: "t0" },
     ]);
@@ -307,7 +307,7 @@ describe("deleteObject", () => {
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
       { id: "track_0", deletedPath: "t0" },
-      { id: "nonexistent", reason: "nothing to delete" },
+      { id: "nonexistent", detail: "nothing to delete" },
       { id: "track_2", deletedPath: "t2" },
     ]);
     expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -334,9 +334,9 @@ describe("deleteObject", () => {
     // rejected id, a success, and an unresolved path.
     expect(result).toStrictEqual([
       { id: "track_a", deletedPath: "t0" },
-      { id: "missing_id", reason: "nothing to delete" },
+      { id: "missing_id", detail: "nothing to delete" },
       { id: "track_b", deletedPath: "t2" },
-      { path: "t99", reason: "nothing to delete" },
+      { path: "t99", detail: "nothing to delete" },
     ]);
   });
 
@@ -351,8 +351,8 @@ describe("deleteObject", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: "nonexistent1", reason: "nothing to delete" },
-      { id: "nonexistent2", reason: "nothing to delete" },
+      { id: "nonexistent1", detail: "nothing to delete" },
+      { id: "nonexistent2", detail: "nothing to delete" },
     ]);
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
@@ -387,11 +387,57 @@ describe("deleteObject", () => {
         id: "track_1",
         path: "t1",
         ok: false,
-        reason:
+        detail:
           "cannot delete track t1 (id track_1), which hosts the Producer Pal device",
       },
       { id: "track_0", deletedPath: "t0" },
     ]);
+  });
+
+  describe("a group holding the Producer Pal host track", () => {
+    // t0 groups t1, which groups the host track t2. Deleting a group deletes
+    // its members, so either group would take the device with it.
+    beforeEach(() => {
+      registerMockObject("this_device", { path: livePath.track(2).device(0) });
+      registerMockObject("outer_group", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+      registerMockObject("inner_group", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { group_track: ["id", "outer_group"] },
+      });
+      registerMockObject("host_track", {
+        path: livePath.track(2),
+        type: "Track",
+        properties: { group_track: ["id", "inner_group"] },
+      });
+    });
+
+    it("refuses the outermost group", () => {
+      expect(() => deleteObject({ id: "outer_group", type: "track" })).toThrow(
+        /contains the Producer Pal device/,
+      );
+      expect(liveSet.call).not.toHaveBeenCalledWith("delete_track", 0);
+    });
+
+    it("refuses the group beside a track it did delete", () => {
+      setupTrackMocks({ track_3: String(livePath.track(3)) });
+
+      expect(
+        deleteObject({ id: "inner_group, track_3", type: "track" }),
+      ).toStrictEqual([
+        {
+          id: "inner_group",
+          path: "t1",
+          ok: false,
+          detail:
+            "cannot delete group track t1 (id inner_group), which contains the Producer Pal device",
+        },
+        { id: "track_3", deletedPath: "t3" },
+      ]);
+    });
   });
 
   it("refuses the Producer Pal device", () => {

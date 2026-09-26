@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -11,7 +12,8 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildClipResultObject,
-  prepareSessionClipSlot,
+  createInSessionSlot,
+  requireCreatedArrangementClip,
 } from "../clip-results.ts";
 
 describe("clip-results", () => {
@@ -76,78 +78,137 @@ describe("clip-results", () => {
     });
   });
 
-  describe("prepareSessionClipSlot", () => {
-    function registerLiveSet(sceneCount: number) {
-      const scenes: (string | number)[] = [];
+  describe("createInSessionSlot", () => {
+    const create = (slot: LiveAPI): unknown => slot.call("create_clip", 4);
 
-      for (let i = 0; i < sceneCount; i++) {
-        scenes.push("id", i + 1);
-      }
-
+    function registerLiveSet(sceneCount: number): RegisteredMockObject {
       return registerMockObject("live-set", {
         path: livePath.liveSet,
         type: "Song",
-        properties: { scenes },
+        properties: {
+          scenes: children(
+            ...Array.from({ length: sceneCount }, (_, i) => `scene${i}`),
+          ),
+        },
       });
     }
 
     /**
-     * Register t0/s1 as a clip slot.
+     * Register t0/s<scene> as a clip slot holding a clip or not.
+     * @param sceneIndex - The slot's scene
      * @param hasClip - Whether the slot already holds a clip
+     * @param clipId - The clip's id, when it holds one
      * @returns The registered clip slot
      */
-    function registerSlot(hasClip: number): RegisteredMockObject {
-      return registerMockObject(livePath.track(0).clipSlot(1), {
-        path: livePath.track(0).clipSlot(1),
+    function registerSlot(
+      sceneIndex: number,
+      hasClip: number,
+      clipId = `clip${sceneIndex}`,
+    ): RegisteredMockObject {
+      const slotPath = livePath.track(0).clipSlot(sceneIndex);
+
+      registerMockObject(hasClip ? clipId : "0", {
+        path: slotPath.clip(),
+        type: "Clip",
+      });
+
+      return registerMockObject(slotPath, {
+        path: slotPath,
         type: "ClipSlot",
         properties: { has_clip: hasClip },
       });
     }
 
-    it("creates no scenes when the slot already exists", () => {
-      // sceneIndex 1 < currentSceneCount 3 → no scenes created; the slot is empty.
-      const liveSet = registerLiveSet(3);
-      const clipSlot = registerSlot(0);
-      const prepared = prepareSessionClipSlot(
+    /**
+     * Make the slot's create_clip land a clip.
+     * @param slot - The slot
+     * @param sceneIndex - Its scene
+     */
+    function landsClip(slot: RegisteredMockObject, sceneIndex: number): void {
+      slot.call.mockImplementation((method: string) => {
+        if (method === "create_clip") {
+          registerMockObject("made", {
+            path: livePath.track(0).clipSlot(sceneIndex).clip(),
+            type: "Clip",
+          });
+        }
+      });
+    }
+
+    it("creates straight into an empty slot", () => {
+      registerLiveSet(3);
+      landsClip(registerSlot(1, 0), 1);
+
+      const made = createInSessionSlot(
         0,
         1,
         LiveAPI.from(livePath.liveSet),
+        create,
       );
 
-      expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
-      expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
-      expect(prepared.created).toBeNull();
-      expect(prepared.overwrote).toBeNull();
-      expect(prepared.clipSlot.path).toBe(
-        String(livePath.track(0).clipSlot(1)),
-      );
+      expect(made.clip.id).toBe("made");
+      expect(made.created).toBeNull();
+      expect(made.overwrote).toBeNull();
     });
 
     it("reports the scenes it had to create", () => {
       registerLiveSet(1);
-      registerSlot(0);
+      landsClip(registerSlot(1, 0), 1);
 
-      const prepared = prepareSessionClipSlot(
+      const made = createInSessionSlot(
         0,
         1,
         LiveAPI.from(livePath.liveSet),
+        create,
       );
 
-      expect(prepared.created).toBe("s1");
+      expect(made.created).toBe("s1");
     });
 
-    it("deletes the clip the slot already holds, and says what it replaced", () => {
-      registerLiveSet(3);
+    it("clears the scratch slot when the copy onto the destination fails", () => {
+      registerLiveSet(2);
 
-      const clipSlot = registerSlot(1);
-      const prepared = prepareSessionClipSlot(
-        0,
-        1,
-        LiveAPI.from(livePath.liveSet),
+      const dest = registerSlot(1, 1);
+      const scratch = registerSlot(0, 0);
+
+      registerMockObject(livePath.track(0), {
+        path: livePath.track(0),
+        properties: { clip_slots: children("slot0", "slot1") },
+      });
+      // The build lands, but duplicate_clip_to copies nothing.
+      scratch.call.mockImplementation((method: string) => {
+        if (method === "create_clip") {
+          scratch.properties.has_clip = 1;
+          registerMockObject("built", {
+            path: livePath.track(0).clipSlot(0).clip(),
+            type: "Clip",
+          });
+        }
+      });
+
+      expect(() =>
+        createInSessionSlot(0, 1, LiveAPI.from(livePath.liveSet), create),
+      ).toThrow(
+        "Live didn't copy the new clip onto t0/s1; the clip at t0/s1 was not touched",
       );
+      expect(scratch.call).toHaveBeenCalledWith("delete_clip");
+      expect(dest.call).not.toHaveBeenCalledWith("delete_clip");
+    });
+  });
 
-      expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
-      expect(prepared.overwrote).toBe("overwrote the existing clip at t0/s1");
+  describe("requireCreatedArrangementClip", () => {
+    it("names the take lane and position, and the file", () => {
+      expect(() =>
+        requireCreatedArrangementClip("id 0", 2, 1, 4, "/samples/gone.wav"),
+      ).toThrow(
+        'Live created no clip at t2/l1[2|1] from sampleFile "/samples/gone.wav"',
+      );
+    });
+
+    it("names only the lane when the create had no start", () => {
+      expect(() =>
+        requireCreatedArrangementClip("id 0", 2, null, null),
+      ).toThrow(/^Live created no clip at t2$/);
     });
   });
 });

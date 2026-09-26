@@ -25,6 +25,7 @@ interface RemoteScriptStatus {
   runningVersion: string | null;
   liveVersion: string | null;
   updateAvailable: boolean;
+  installedNewer: boolean;
 }
 
 /** How the stubbed install answers, and what it does to the status after. */
@@ -52,6 +53,7 @@ function status(
     runningVersion: null,
     liveVersion: "12.1",
     updateAvailable: false,
+    installedNewer: false,
     ...overrides,
   };
 }

@@ -5,10 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  registerMockObject,
-  type RegisteredMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
@@ -17,18 +14,20 @@ import {
   handleArrangementOperations,
   handleArrangementStartOperation,
 } from "../../helpers/arrangement/arrangement-move.ts";
-import { type OverwritePlan } from "../../helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
-import { flushDeferredDeletions } from "../../helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
   moveGroupKey,
   type MoveGroup,
 } from "../../helpers/arrangement/update-clip-move-groups.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type ClipReasons,
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
+import {
+  registerStackingTrack,
+  stackedLaneClips,
+  stackedLaneSpans,
+} from "../batch/stacking-track-test-helpers.ts";
 
 /** What the clips had to say about the last operation run here. */
 let reasons: ClipReasons = newClipReasons();
@@ -70,7 +69,8 @@ function clipStub(
     getProperty: vi.fn((prop) =>
       prop === "is_arrangement_clip" ? isArrangementClip : null,
     ),
-    exists: () => true,
+    // Only a deleted clip reads an empty path.
+    path: `live_set tracks ${String(trackIndex ?? 0)} arrangement_clips 0`,
     trackIndex,
   } as unknown as LiveAPI;
 }
@@ -110,15 +110,6 @@ describe("arrangement-move", () => {
   });
 
   describe("handleArrangementStartOperation", () => {
-    it("reports arrangementStart on a session clip's own entry", () => {
-      const result = runStartOperation(clipStub("123", 0), 16);
-
-      expect(clipReason("123")).toBe(
-        "arrangementStart ignored: this is a session clip",
-      );
-      expect(result).toBe("123");
-    });
-
     it("reports an unknown track on the clip's own entry", () => {
       // Should not throw, just report it and return the original clip id
       const result = runStartOperation(clipStub("456", 1, null), 16);
@@ -171,8 +162,8 @@ describe("arrangement-move", () => {
 
       // Real workaround, no mock: source [0,16] moved to 4 overlaps its own
       // target [4,20], so the move routes through holding — copy to holding,
-      // trim/overwrite the original, place a full copy — then deletes the
-      // original, leaving one full-length clip at the new position.
+      // delete the original, place a full copy — leaving one full-length clip
+      // at the new position.
       const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
         path: `live_set tracks ${trackIndex}`,
         properties: { arrangement_clips: ["id", "700"] },
@@ -321,8 +312,9 @@ describe("arrangement-move", () => {
           {
             landing: { trackIndex, takeLane: null },
             startBeats: 64,
-            landed: new Map([["earlier", { id: "earlier-copy", length: 16 }]]),
+            landed: new Map([["earlier", { id: "earlier-copy", span: null }]]),
             deferred: [],
+            cleared: [],
           },
         ],
       ]);
@@ -364,8 +356,9 @@ describe("arrangement-move", () => {
         path: `live_set tracks ${trackIndex}`,
       });
 
-      // Unsafe move (self-overlap): the holding round-trip already trimmed/replaced
-      // the original, so clip.exists() is false and delete must be skipped.
+      // Unsafe move (self-overlap): the holding round-trip already deleted the
+      // original, so its path is empty and delete must be skipped — even though
+      // a held object's exists() still says true.
       const clearSpy = vi
         .spyOn(arrangementWorkaround, "clearClipAtDuplicateTarget")
         .mockReturnValue(false);
@@ -384,12 +377,12 @@ describe("arrangement-move", () => {
           prop === "is_arrangement_clip" ? 1 : null,
         ),
         trackIndex,
-        exists: () => false,
+        path: "",
+        exists: () => true,
       };
 
       const result = runStartOperation(mockClip as unknown as LiveAPI, 16);
 
-      // safeToMove(false) || clip.exists()(false) === false → no delete.
       expect(trackMock.call).not.toHaveBeenCalledWith(
         "delete_clip",
         expect.anything(),
@@ -495,294 +488,44 @@ describe("arrangement-move", () => {
   });
 });
 
-describe("a clip held back for an overwrite", () => {
+// A move that lands on part of its own span leaves one clip, either direction:
+// nothing of the source may survive past the copy.
+describe("moving a clip onto part of its own span", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("clears it once the clip that overwrites it has landed", async () => {
-    const track = setupTwoClipsOnOneTrack();
+  it("leaves no tail behind when it moves back less than its length", async () => {
+    const entry = await moveFourBarClip("2|1");
 
-    const result = await updateClip({
-      id: `${FIRST},${SECOND}`,
-      arrangementStart: "17|1",
-    });
-
-    expect(result).toStrictEqual([
-      { id: FIRST, path: "t0[1|1]", deleted: true },
-      { id: MOVED, path: "t0[17|1]" },
+    expect(stackedLaneSpans()).toStrictEqual([
+      [0, 4],
+      [4, 20],
     ]);
-    expect(deletedIds(track)).toStrictEqual([`id ${SECOND}`, `id ${FIRST}`]);
+    expect(entry.path).toBe("t0[2|1]");
+    expect(stackedLaneClips()).toContain(entry.id);
   });
 
-  // The bug this guards: the first clip used to be cleared on the prediction
-  // alone, so a refused second move left the caller with one clip destroyed and
-  // nothing in the response naming it.
-  it("keeps it when Live silently declines the move that would overwrite it", async () => {
-    const track = setupTwoClipsOnOneTrack(true);
+  it("leaves no head behind when it moves forward less than its length", async () => {
+    const entry = await moveFourBarClip("4|1");
 
-    const result = await updateClip({
-      id: `${FIRST},${SECOND}`,
-      arrangementStart: "17|1",
-    });
-
-    expect(deletedIds(track)).toStrictEqual([]);
-    expect(result).toStrictEqual([
-      { id: FIRST, path: "t0[1|1]", deleted: false },
-      {
-        id: SECOND,
-        ok: false,
-        reason:
-          "not moved: Live made no copy at the destination, so the original was kept",
-      },
+    expect(stackedLaneSpans()).toStrictEqual([
+      [0, 4],
+      [12, 28],
     ]);
-    // Nothing landed, so nothing stacked.
-    expect(capturedWarnings().join(" ")).not.toContain(
-      "moved to the same position",
-    );
+    expect(entry.path).toBe("t0[4|1]");
   });
 
-  it("does not clear it for a landing by a clip outside its group", () => {
-    // A tiling clip can land on the same track and position without being one
-    // of the clips whose length made this one a non-survivor.
-    expectHeldClipKept(flushHeldBack("outsider", planBuryingFirst()));
-  });
+  it("leaves one clip when it moves onto its own start", async () => {
+    const entry = await moveFourBarClip("3|1");
 
-  it("skips the delete when the landing already cleared it away", () => {
-    const { result, sourceTrack } = flushHeldBack(
-      SECOND,
-      planBuryingFirst(),
-      false,
-    );
-
-    expect(result).toStrictEqual({ id: FIRST, deleted: true });
-    expect(sourceTrack.call).not.toHaveBeenCalled();
-  });
-
-  // Survivors descend in length, but a non-survivor can outlast a later, shorter
-  // one: lengths [20, 40, 12] leave the 20 a non-survivor while the 12 survives.
-  // The 12 landing buries only 12 of its 20 beats, so it settles nothing.
-  it("does not clear it for a landing too short to bury it", () => {
-    expectHeldClipKept(flushHeldBack(SECOND, planBurying(20, 12)));
-  });
-
-  it("clears it for a landing exactly as long as it is", () => {
-    const { result, sourceTrack } = flushHeldBack(SECOND, planBurying(20, 20));
-
-    expect(result).toStrictEqual({ id: FIRST, deleted: true });
-    expect(sourceTrack.call).toHaveBeenCalledWith(
-      "delete_clip",
-      expect.anything(),
-    );
-  });
-
-  // The failed placement cleared the target range before the copy it never
-  // made, and this clip was sitting in it.
-  it("reports a held-back clip the failed placement destroyed anyway", () => {
-    const { result, sourceTrack } = flushHeldBack(
-      "outsider",
-      planBuryingFirst(),
-      false,
-    );
-
-    expect(result).toStrictEqual({ id: FIRST, deleted: true });
-    expect(sourceTrack.call).not.toHaveBeenCalled();
-  });
-
-  it("clears nothing when the call planned no overwrite at all", () => {
-    const { result, sourceTrack } = flushHeldBack(SECOND, undefined);
-
-    expect(result).toStrictEqual({ id: FIRST, deleted: false });
-    expect(sourceTrack.call).not.toHaveBeenCalled();
+    expect(stackedLaneSpans()).toStrictEqual([
+      [0, 4],
+      [8, 24],
+    ]);
+    expect(stackedLaneClips()).toContain(entry.id);
   });
 });
-
-/** Same length as SECOND and named first, so it is the one held back. */
-const FIRST = "100";
-const SECOND = "101";
-/** The clip Live hands back when the duplicate really happens. */
-const MOVED = "moved-101";
-/** 17|1 in beats: clear of both clips, so neither move self-overlaps. */
-const TARGET_BEATS = 64;
-/** The track and position both clips are headed for. */
-const GROUP = moveGroupKey({ trackIndex: 0, takeLane: null }, TARGET_BEATS);
-
-/**
- * Two equal-length arrangement clips on one track, both about to be moved to
- * one position — so the first is the clip the optimizer expects the second to
- * land on top of.
- * @param duplicateFails - Answer the duplicate with id 0, as a frozen track does
- * @returns The track mock, which records the deletes and the duplicate
- */
-function setupTwoClipsOnOneTrack(duplicateFails = false): RegisteredMockObject {
-  registerMockObject("live-set", {
-    path: "live_set",
-    type: "Song",
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
-
-  for (const [index, id] of [FIRST, SECOND].entries()) {
-    registerMockObject(id, {
-      path: livePath.track(0).arrangementClip(index),
-      type: "Clip",
-      properties: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: index * 16,
-        end_time: index * 16 + 16,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
-  }
-
-  return registerMockObject("held-back-track", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { track_index: 0 },
-    methods: {
-      // Live answers a duplicate it silently declined — on a frozen track, say
-      // — with an id that resolves to nothing.
-      duplicate_clip_to_arrangement: () => {
-        if (duplicateFails) {
-          return ["id", 0];
-        }
-
-        registerMockObject(MOVED, {
-          path: livePath.track(0).arrangementClip(2),
-          type: "Clip",
-          properties: {
-            is_arrangement_clip: 1,
-            is_midi_clip: 1,
-            start_time: TARGET_BEATS,
-            end_time: TARGET_BEATS + 16,
-            signature_numerator: 4,
-            signature_denominator: 4,
-          },
-        });
-
-        return ["id", MOVED];
-      },
-      delete_clip: () => null,
-    },
-  });
-}
-
-/**
- * Every clip id the track was told to delete.
- * @param track - The track mock
- * @returns The ids, in call order
- */
-function deletedIds(track: RegisteredMockObject): string[] {
-  return vi
-    .mocked(track.call)
-    .mock.calls.filter(([method]) => method === "delete_clip")
-    .map((call) => call[1] as string);
-}
-
-/**
- * One group holding one clip back, with whatever landed on it.
- * @param landed - The id whose placement landed on this track and position
- * @param clipExists - Whether the held-back clip is still there
- * @returns The tally, the clip's entry, and the track it sits on
- */
-/**
- * A plan whose survivor is long enough to bury the held-back clip.
- * @returns The overwrite plan
- */
-function planBuryingFirst(): OverwritePlan {
-  return planBurying(8, 16);
-}
-
-/**
- * A plan where FIRST is the non-survivor and SECOND's landing is what decides
- * whether FIRST gets buried.
- * @param firstLength - FIRST's length, in beats
- * @param survivorLength - SECOND's landing length, in beats
- * @returns The overwrite plan
- */
-function planBurying(
-  firstLength: number,
-  survivorLength: number,
-): OverwritePlan {
-  return {
-    nonSurvivorIds: new Set([FIRST]),
-    survivorLengthsByGroup: new Map([
-      [GROUP, new Map([[SECOND, survivorLength]])],
-    ]),
-    lengthById: new Map([
-      [FIRST, firstLength],
-      [SECOND, survivorLength],
-    ]),
-  };
-}
-
-/**
- * The held clip survived the landing: its entry says so and nothing was
- * deleted.
- * @param flushed - What the flush left behind
- */
-function expectHeldClipKept(flushed: ReturnType<typeof flushHeldBack>): void {
-  expect(flushed.result).toStrictEqual({ id: FIRST, deleted: false });
-  expect(flushed.sourceTrack.call).not.toHaveBeenCalled();
-}
-
-/**
- * Flush the deferred deletes of a group holding FIRST back, and report what
- * the flush left behind.
- * @param landed - The clip that landed at the destination
- * @param plan - The overwrite plan, or undefined when the call planned none
- * @param clipExists - Whether the held clip survived the landing
- * @returns Its entry and its source track
- */
-function flushHeldBack(
-  landed: string,
-  plan: OverwritePlan | undefined,
-  clipExists = true,
-) {
-  const { movedClipGroups, result, sourceTrack } = groupHoldingOneClipBack(
-    landed,
-    clipExists,
-  );
-
-  flushDeferredDeletions(movedClipGroups, plan);
-
-  return { result, sourceTrack };
-}
-
-function groupHoldingOneClipBack(landed: string, clipExists = true) {
-  const sourceTrack = registerMockObject(`flush-track-${landed}`, {
-    path: livePath.track(0),
-    type: "Track",
-    methods: { delete_clip: () => null },
-  });
-  const result: ClipResult = { id: FIRST };
-  const movedClipGroups = new Map<string, MoveGroup>([
-    [
-      GROUP,
-      {
-        landing: { trackIndex: 0, takeLane: null },
-        startBeats: TARGET_BEATS,
-        landed: new Map([[landed, { id: MOVED, length: 16 }]]),
-        deferred: [
-          {
-            clip: {
-              id: FIRST,
-              // The half that tells the truth about a held clip: a dead one
-              // keeps its id and clears its path.
-              path: clipExists ? livePath.track(0).arrangementClip(0) : "",
-              exists: () => clipExists,
-            } as unknown as LiveAPI,
-            sourceTrack: sourceTrack as unknown as LiveAPI,
-            result,
-          },
-        ],
-      },
-    ],
-  ]);
-
-  return { movedClipGroups, result, sourceTrack };
-}
 
 /**
  * Sets up a non-survivor clip scenario and calls handleArrangementStartOperation.
@@ -862,4 +605,15 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
   });
 
   return { result, movedClipGroups, updatedClips };
+}
+
+/**
+ * Lay out a 1-bar clip then a 4-bar clip at beat 8, and move the 4-bar one.
+ * @param arrangementStart - Where it goes
+ * @returns The move's entry
+ */
+async function moveFourBarClip(arrangementStart: string): Promise<ClipResult> {
+  const [, fourBars] = registerStackingTrack([4, 16]);
+
+  return (await updateClip({ id: fourBars, arrangementStart })) as ClipResult;
 }

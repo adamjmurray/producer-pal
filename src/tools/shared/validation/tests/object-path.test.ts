@@ -81,11 +81,10 @@ describe("parseObjectPath", () => {
     });
   });
 
-  // Only the track's own tools append a lane, so a clip destination carrying
-  // one is refused with the tool that does it.
+  // A song position needs a lane that is already numbered.
   it("refuses l+ under a song position, and on a track that has no lanes", () => {
     expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
-      '"l+" adds a take lane, which only ppal-update-track does; name an existing lane as "t<track>/l<lane>"',
+      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
     );
     expect(() => parseObjectPath("rt0/l+")).toThrow(
       'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
@@ -223,17 +222,70 @@ describe("parseObjectPath", () => {
   });
 
   it("rejects a scene segment anywhere a slot can't be", () => {
-    for (const path of ["rt0/s1", "mt/s1", "t0/d0/s1", "t0/s1/d0"]) {
+    for (const path of ["rt0/s1", "mt/s1", "mt/d0/s1"]) {
       expect(() => parseObjectPath(path)).toThrow(
-        /a clip slot is "t<track>\/s<scene>"/,
+        'a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes',
       );
     }
   });
 
   it("rejects a take lane anywhere a track's lanes can't be", () => {
-    for (const path of ["rt0/l1", "mt/l1", "t0/d0/l1", "t0/l1/d0"]) {
+    for (const path of ["rt0/l1", "mt/l1", "rt0/d0/l1"]) {
       expect(() => parseObjectPath(path)).toThrow(
-        /a take lane is "t<track>\/l<lane>"/,
+        'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
+      );
+    }
+  });
+
+  // t0 is a regular track, so "only regular tracks" would send the caller the
+  // wrong way; what's wrong is the device in between.
+  it("says a slot or lane under a device belongs to the track", () => {
+    expect(() => parseObjectPath("t0/d0/s1")).toThrow(
+      'invalid path "t0/d0/s1" - a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); clip slots belong to a track, not a device',
+    );
+
+    for (const path of ["t0/d0/l1", "t0/d0/l+", "t0/inst/l1"]) {
+      expect(() => parseObjectPath(path)).toThrow(
+        'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); take lanes belong to a track, not a device',
+      );
+    }
+
+    expect(() => parseObjectPath("t0/d0/c1/l1")).toThrow(
+      "take lanes belong to a track, not a chain",
+    );
+    expect(() => parseObjectPath("t0/d+/s1")).toThrow(
+      "clip slots belong to a track, not a new device",
+    );
+  });
+
+  // A chain can't sit on a track, so that's the mistake to name.
+  it("blames a bad chain before a slot, not a device", () => {
+    expect(() => parseObjectPath("t0/c0/s1")).toThrow(
+      '"c0" can\'t follow a track',
+    );
+  });
+
+  // The track is fine here; blaming it sends the caller to the wrong fix.
+  it("blames the segment after a take lane or clip slot, not the track", () => {
+    expect(() => parseObjectPath("t0/l0/d0")).toThrow(
+      'invalid path "t0/l0/d0" - "d0" can\'t follow a take lane; a path ends at the lane',
+    );
+    expect(() => parseObjectPath("t0/l0/l1")).toThrow(
+      '"l1" can\'t follow a take lane; a path ends at the lane',
+    );
+    expect(() => parseObjectPath("t0/s1/c0")).toThrow(
+      'invalid path "t0/s1/c0" - "c0" can\'t follow a clip slot; a path ends at the slot',
+    );
+    expect(() => parseObjectPath("t0/s0/s1")).toThrow(
+      '"s1" can\'t follow a clip slot; a path ends at the slot',
+    );
+    expect(() => parseObjectPath("t0/l+/d0")).toThrow(
+      'invalid path "t0/l+/d0" - "l+" appends a take lane, so nothing can follow it',
+    );
+
+    for (const path of ["rt0/l0/d0", "rt0/l0/l1"]) {
+      expect(() => parseObjectPath(path)).toThrow(
+        "only regular tracks have take lanes",
       );
     }
   });
@@ -441,6 +493,8 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     ["a locator", "loc:Verse"],
     ["a locator id", "loc:27"],
     ["a name holding both separators", "loc:A, B/C"],
+    ["a name holding brackets", "loc:Chorus [B]"],
+    ["a name holding brackets, long prefix", "locator:[B] Drop"],
     ["a note-value offset", "1|1-n/4"],
   ])("keeps %s verbatim", (_label, position) => {
     expect(parseObjectPath(`t0[${position}]`)).toStrictEqual({
@@ -469,6 +523,7 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     ["an unclosed bracket", "t0[5|1", 'its "[" is never closed'],
     ["a stray closer", "t0 5|1]", 'it closes a "[" it never opened'],
     ["a second coordinate", "t0[5|1][3|1]", 'it hit an unexpected second "["'],
+    ["a locator after a bar|beat", "t0[5|1][loc:A]", 'unexpected second "["'],
   ])("refuses %s", (_label, path, problem) => {
     expect(() => parseObjectPath(path)).toThrow(problem);
   });

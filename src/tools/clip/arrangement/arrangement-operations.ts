@@ -107,7 +107,13 @@ export function handleArrangementLengthOperation({
     }
 
     updatedClips.push(...result);
-  } else if (arrangementLengthBeats < currentArrangementLength) {
+  } else if (
+    shortensArrangementClip(
+      currentStartTime,
+      currentEndTime,
+      arrangementLengthBeats,
+    )
+  ) {
     // Shortening: Use temp clip overlay pattern
     handleArrangementShortening({
       clip,
@@ -120,4 +126,19 @@ export function handleArrangementLengthOperation({
   }
 
   return updatedClips;
+}
+
+/**
+ * Whether an arrangementLength shortens a clip's arrangement span.
+ * @param startTime - The clip's start_time, in beats
+ * @param endTime - The clip's end_time, in beats
+ * @param arrangementLengthBeats - Target length in beats
+ * @returns True when the target is shorter than the clip is now
+ */
+export function shortensArrangementClip(
+  startTime: number,
+  endTime: number,
+  arrangementLengthBeats: number,
+): boolean {
+  return arrangementLengthBeats < endTime - startTime;
 }

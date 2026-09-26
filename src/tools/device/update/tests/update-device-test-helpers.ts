@@ -8,6 +8,7 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { expect } from "vitest";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
@@ -314,20 +315,41 @@ export function paramsOf(result: unknown): ParamResult[] {
 
 /**
  * Assert the one param a call named came back refused, with the reason why and
- * no warning — the entry is the whole report.
- * @param result - What updateDevice returned
- * @param name - The param name as the call spelled it
+ * no warning. Nothing else was asked of the lone target, so nothing landed and
+ * the call throws, naming the param.
+ * @param call - Runs the updateDevice call
+ * @param name - The param as the call spelled it
  * @param reason - Substring the reason must contain
  */
 export function expectParamRefused(
-  result: unknown,
+  call: () => unknown,
   name: string,
   reason: string,
 ): void {
-  expect(paramsOf(result)).toStrictEqual([
-    { name, ok: false, reason: expect.stringContaining(reason) },
-  ]);
+  const message = noParamLanded(call);
+
+  expect(message).toContain(`"${name}": `);
+  expect(message).toContain(reason);
   expect(capturedWarnings()).toHaveLength(0);
+}
+
+/**
+ * The error a lone target throws when none of its params landed.
+ * @param call - Runs the updateDevice call
+ * @returns The error message, which names each param and why it failed
+ */
+export function noParamLanded(call: () => unknown): string {
+  let message: string | undefined;
+
+  try {
+    call();
+  } catch (error) {
+    message = errorMessage(error);
+  }
+
+  expect(message).toMatch(/^no param landed — /);
+
+  return message as string;
 }
 
 /**

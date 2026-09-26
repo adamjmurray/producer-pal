@@ -2,20 +2,16 @@
 
 ## Next
 
-### 2.4
+Automation, through the remote script: read and draw automation envelopes, so
+the AI can shape filter sweeps, volume rides, and other changes over time.
 
-The params deprecated in 2.2 and 2.3 are removed. If you drive Producer Pal from
-a script, the [migration guide](/guide/migration) covers what to change, plus
-the response changes that already shipped in 2.3.
+The params deprecated in 2.2, 2.3 and 2.4 still work, with a warning, and will
+be removed in a later release. If you drive Producer Pal from a script, the
+[migration guide](/guide/migration) covers what to change.
 
 In consideration:
 
-- Read tools take a list so several clips or devices can be read in one call
-- Address a device by what it is instead of where it sits: `t0/inst` for a
-  track's instrument, `t0/afx1` for its second audio effect
-- One consistent way for every tool to report a target it couldn't do, and why
-- Attach an image in the built-in chat, so a sketch of a song can become MIDI
-  clips
+- Directly support Vercel's AI Gateway in the built-in chat UI
 - Fetch model options from Ollama and LM Studio/Bionic servers instead of
   hard-coding
 
@@ -23,6 +19,28 @@ In consideration:
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.4 - Fewer dead ends (September 2026)
+
+When something can't be done, the AI now finds out what and why for each target,
+and keeps going with the rest.
+
+- One consistent way for every tool to report a target it couldn't do, and why
+- Read tools take a list, so several clips, tracks, scenes or devices can be
+  read in one call
+- Address a device by what it is instead of where it sits: `t0/inst` for a
+  track's instrument, `t0/afx1` for its second audio effect
+- `t0[5|1]` finds the clip playing at bar 5, even if it started earlier
+- Attach images in the built-in chat, so a sketch of a song can become MIDI
+  clips
+
+The new Producer Pal remote script (experimental) does what the Live API alone
+can't:
+
+- Put Producer Pal into a freshly opened Live Set
+- Add plug-ins and Max for Live devices
+- Add a device from a preset, including racks
+- Swap a preset onto a device already in the Set
 
 ### 2.3 - Consistency (September 2026)
 

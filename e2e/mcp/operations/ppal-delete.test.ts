@@ -149,7 +149,7 @@ describe("ppal-delete", () => {
   });
 
   // Deleting one object twice would shift a different track into the slot and
-  // remove that instead, so only the first mention deletes. The repeat keeps
+  // remove that instead, so only the last mention deletes. The earlier keeps
   // its own slot: N targets named, N entries back, in the order named.
   it("keeps both slots when one track is named by id and by path", async () => {
     const track = await createTrack({ name: "Named Twice" });
@@ -159,18 +159,17 @@ describe("ppal-delete", () => {
     );
 
     expect(data).toStrictEqual([
-      { id: track.id, deletedPath: track.path },
       {
         id: track.id,
-        path: track.path,
-        reason: `already named as id ${track.id} earlier in this call`,
+        detail: `named again as "${track.path}" later in this call`,
       },
+      { id: track.id, deletedPath: track.path },
     ]);
 
     await expectGone("ppal-read-track", { id: track.id });
   });
 
-  // Named, another, named again: the repeat reports third, where it was named,
+  // Named, another, named again: the delete reports third, where it was named,
   // so matching entries against the call by position pairs the right ones.
   it("reports a repeated id at the slot it was named at", async () => {
     const first = await createTrack({ name: "Repeat First" });
@@ -184,13 +183,13 @@ describe("ppal-delete", () => {
       second.id,
       first.id,
     ]);
-    // The first mention did the delete, so it reads as a plain removal.
-    expect(data[0]?.deletedPath).toBe(first.path);
-    expect(data[0]?.reason).toBeUndefined();
-    // A repeat needed no work, so it carries a reason and no `ok`.
-    expect(data[2]).toStrictEqual({
+    // The last mention did the delete, so it reads as a plain removal.
+    expect(data[2]?.deletedPath).toBe(first.path);
+    expect(data[2]?.detail).toBeUndefined();
+    // The earlier mention needed no work, so it carries a reason and no `ok`.
+    expect(data[0]).toStrictEqual({
       id: first.id,
-      reason: `already named as id ${first.id} earlier in this call`,
+      detail: `named again as id ${first.id} later in this call`,
     });
 
     await expectGone("ppal-read-track", { id: first.id });
@@ -238,7 +237,7 @@ describe("ppal-delete", () => {
   ): Promise<void> {
     expect(result?.id).toBe(hostId);
     expect(result?.ok).toBe(false);
-    expect(result?.reason?.toLowerCase()).toContain("producer pal");
+    expect(result?.detail?.toLowerCase()).toContain("producer pal");
     expect((await readTrack({ id: hostId })).id).toBe(hostId);
   }
 
@@ -411,7 +410,7 @@ describe("ppal-delete", () => {
 
     expect(data).toStrictEqual({
       path: "t99/d99",
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
   });
 
@@ -435,7 +434,7 @@ describe("ppal-delete", () => {
           new RegExp(`^t${RACKS_TRACK}/d\\d+$`),
         ),
       },
-      { id: "99999", reason: "nothing to delete" },
+      { id: "99999", detail: "nothing to delete" },
     ]);
   });
 
@@ -461,7 +460,7 @@ describe("ppal-delete", () => {
     expect(data[1]).toStrictEqual({
       id: scene.id,
       ok: false,
-      reason: expect.stringContaining("is not a clip"),
+      detail: expect.stringContaining("is not a clip"),
     });
   });
 
@@ -529,7 +528,7 @@ interface DeleteResult {
   /** Only on a target this call could not delete. */
   ok?: false;
   /** Why it wasn't deleted, or why there was nothing to delete. */
-  reason?: string;
+  detail?: string;
 }
 
 interface DrumRackRead {
@@ -541,7 +540,6 @@ interface DrumPadRead {
   id: string;
   path: string;
   name: string;
-  note: number;
   pitch: string;
   chains: unknown[];
 }

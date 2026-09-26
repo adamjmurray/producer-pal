@@ -152,7 +152,7 @@ describe("updateClip - duplicateLoop", () => {
       {
         id: "456",
         ok: false,
-        reason: "duplicateLoop ignored: the clip is audio",
+        detail: "duplicateLoop ignored: the clip is audio",
       },
     ]);
   });

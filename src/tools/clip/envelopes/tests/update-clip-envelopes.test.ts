@@ -233,7 +233,7 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
-        reason: 'envelope "volume": value 5 is outside 0..1',
+        detail: 'envelope "volume": value 5 is outside 0..1',
       }),
     );
   });
@@ -249,7 +249,7 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
-        reason: `envelope "${FILTER_ID}": point 4|1 is past the clip end (3|1), so it never plays`,
+        detail: `envelope "${FILTER_ID}": point 4|1 is past the clip end (3|1), so it never plays`,
       }),
     );
   });
@@ -263,7 +263,7 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
-        reason: expect.stringContaining("is not on the clip's track") as string,
+        detail: expect.stringContaining("is not on the clip's track") as string,
       }),
     );
   });
@@ -278,7 +278,7 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 0,
-        reason: expect.stringContaining("drum pad") as string,
+        detail: expect.stringContaining("drum pad") as string,
       }),
     );
   });
@@ -291,7 +291,7 @@ describe("updateClip - envelopes", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        reason: expect.stringContaining("not a parameter") as string,
+        detail: expect.stringContaining("not a parameter") as string,
       }),
     );
   });
@@ -304,7 +304,7 @@ describe("updateClip - envelopes", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        reason: 'envelope "98765": no Live object with id 98765',
+        detail: 'envelope "98765": no Live object with id 98765',
       }),
     );
   });

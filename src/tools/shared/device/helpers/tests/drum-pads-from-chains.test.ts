@@ -32,12 +32,11 @@ vi.mock(import("../chain-info.ts"), () => ({
 }));
 
 // Test helper for creating drum pads with optional state
-const pad = (note: number, pitch: string, name: string, state?: string) =>
-  state !== undefined ? { note, pitch, name, state } : { note, pitch, name };
+const pad = (pitch: string, name: string, state?: string) =>
+  state !== undefined ? { pitch, name, state } : { pitch, name };
 
 // Helper to assert pad states after calling updateDrumPadSoloStates
 type DrumPadInput = {
-  note: number;
   pitch: string;
   name: string;
   state?: string;
@@ -62,7 +61,7 @@ describe("drum-pads-from-chains", () => {
   describe("updateDrumPadSoloStates", () => {
     it("should not modify pads when none are soloed", () => {
       expectSoloStates(
-        [pad(36, "C1", "Kick"), pad(37, "C#1", "Snare")],
+        [pad("C1", "Kick"), pad("C#1", "Snare")],
         [undefined, undefined],
       );
     });
@@ -70,9 +69,9 @@ describe("drum-pads-from-chains", () => {
     it("should keep soloed pads as soloed and mute others via solo", () => {
       expectSoloStates(
         [
-          pad(36, "C1", "Kick", STATE.SOLOED),
-          pad(37, "C#1", "Snare"),
-          pad(38, "D1", "Clap"),
+          pad("C1", "Kick", STATE.SOLOED),
+          pad("C#1", "Snare"),
+          pad("D1", "Clap"),
         ],
         [STATE.SOLOED, STATE.MUTED_VIA_SOLO, STATE.MUTED_VIA_SOLO],
       );
@@ -81,9 +80,9 @@ describe("drum-pads-from-chains", () => {
     it("should mark already-muted pads as muted_also_via_solo when others are soloed", () => {
       expectSoloStates(
         [
-          pad(36, "C1", "Kick", STATE.SOLOED),
-          pad(37, "C#1", "Snare", STATE.MUTED),
-          pad(38, "D1", "Clap"),
+          pad("C1", "Kick", STATE.SOLOED),
+          pad("C#1", "Snare", STATE.MUTED),
+          pad("D1", "Clap"),
         ],
         [STATE.SOLOED, STATE.MUTED_ALSO_VIA_SOLO, STATE.MUTED_VIA_SOLO],
       );
@@ -92,9 +91,9 @@ describe("drum-pads-from-chains", () => {
     it("should handle multiple soloed pads", () => {
       expectSoloStates(
         [
-          pad(36, "C1", "Kick", STATE.SOLOED),
-          pad(37, "C#1", "Snare", STATE.SOLOED),
-          pad(38, "D1", "Clap"),
+          pad("C1", "Kick", STATE.SOLOED),
+          pad("C#1", "Snare", STATE.SOLOED),
+          pad("D1", "Clap"),
         ],
         [STATE.SOLOED, STATE.SOLOED, STATE.MUTED_VIA_SOLO],
       );
@@ -102,7 +101,7 @@ describe("drum-pads-from-chains", () => {
 
     it("should not modify pads when only muted pads exist", () => {
       expectSoloStates(
-        [pad(36, "C1", "Kick", STATE.MUTED), pad(37, "C#1", "Snare")],
+        [pad("C1", "Kick", STATE.MUTED), pad("C#1", "Snare")],
         [STATE.MUTED, undefined],
       );
     });
@@ -115,7 +114,6 @@ describe("drum-pads-from-chains", () => {
 
     interface DrumPadInfoResult {
       id?: string;
-      note: number;
       pitch: string | null;
       name?: string;
       state?: string;
@@ -237,8 +235,10 @@ describe("drum-pads-from-chains", () => {
       const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }]);
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads![0]!.note).toBe(36);
       expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
+      // The MIDI number repeats `pitch`, so it stays internal.
+      expect(deviceInfo.drumPads![0]).not.toHaveProperty("note");
+      expect(deviceInfo.drumPads![0]).not.toHaveProperty("_note");
     });
 
     it("reports an all-digit chain name as the pad's string name", () => {
@@ -286,7 +286,6 @@ describe("drum-pads-from-chains", () => {
       const deviceInfo = setupAndProcess([{ inNote: -1, name: "Catch All" }]);
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads![0]!.note).toBe(-1);
       expect(deviceInfo.drumPads![0]!.pitch).toBe("*");
     });
 
@@ -324,9 +323,9 @@ describe("drum-pads-from-chains", () => {
       ]);
 
       expect(deviceInfo.drumPads).toHaveLength(3);
-      expect(deviceInfo.drumPads![0]!.note).toBe(36);
-      expect(deviceInfo.drumPads![1]!.note).toBe(48);
-      expect(deviceInfo.drumPads![2]!.note).toBe(-1); // catch-all at end
+      expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
+      expect(deviceInfo.drumPads![1]!.pitch).toBe("C2");
+      expect(deviceInfo.drumPads![2]!.pitch).toBe("*"); // catch-all at end
     });
 
     it("should include chains when includeDrumPads and includeChains are both true", () => {
@@ -376,7 +375,7 @@ describe("drum-pads-from-chains", () => {
 
       // Should have only one drum pad (chains are grouped)
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads![0]!.note).toBe(36);
+      expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
     });
 
     // Chain whose getChildren("devices") is non-empty, so processDrumRackChain
@@ -473,7 +472,10 @@ describe("drum-pads-from-chains", () => {
           notes.map((inNote) => ({ inNote, name: `Pad ${String(inNote)}` })),
         );
 
-        expect(deviceInfo.drumPads!.map((p) => p.note)).toStrictEqual([36, 48]);
+        expect(deviceInfo.drumPads!.map((p) => p.pitch)).toStrictEqual([
+          "C1",
+          "C2",
+        ]);
       },
     );
 
@@ -485,7 +487,10 @@ describe("drum-pads-from-chains", () => {
         { inNote: -1, name: "Catch All" },
       ]);
 
-      expect(deviceInfo.drumPads!.map((p) => p.note)).toStrictEqual([36, -1]);
+      expect(deviceInfo.drumPads!.map((p) => p.pitch)).toStrictEqual([
+        "C1",
+        "*",
+      ]);
     });
 
     it("should handle invalid in_note values outside MIDI range", () => {
@@ -496,7 +501,6 @@ describe("drum-pads-from-chains", () => {
       ]);
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads![0]!.note).toBe(200);
       // midiToNoteName returns null for invalid MIDI notes
       expect(deviceInfo.drumPads![0]!.pitch).toBeNull();
     });

@@ -778,9 +778,9 @@ badVelocityShorthandInExpression
   }
 
 nDuration "absolute duration value"
-  = "n" count:$([0-9]+) "bar" "s"? {
+  = "n" bars:oneOrMoreInt "bar" "s"? {
     // Untaught tolerance: n1bar/n4bar alias <count>bar (ADR-0018).
-    return { type: "barDuration", bars: parseInt(count, 10) };
+    return { type: "barDuration", bars };
   }
   / badBarDuration
   / "n" frac:unsignedFraction {

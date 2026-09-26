@@ -22,7 +22,7 @@ import {
 } from "../../../mcp-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../../../e2e-test-set.ts";
 import {
-  callWithWarnings,
+  callOrRefusal,
   type DeviceInfo,
   KIT,
   type ParamEntryResult,
@@ -37,13 +37,19 @@ const ctx = setupMcpTestContext({ liveSetPath: RACKS_TEST_PATH });
  * Write a sample onto a pad through the rack's path-prefixed param form.
  * @param padNote - Pad note segment (e.g. "pAb1")
  * @param force - Whether to pass force:true
- * @returns The `params` the result reports, and the warnings the write produced
+ * @returns The `params` and `detail` the result reports, or the refusal when
+ * the write landed nowhere, and the warnings the write produced
  */
 async function writeSample(
   padNote: string,
   force = false,
-): Promise<{ params: ParamEntryResult[]; warnings: string[] }> {
-  const { data, warnings } = await callWithWarnings(
+): Promise<{
+  params: ParamEntryResult[];
+  detail?: string;
+  refusal?: string;
+  warnings: string[];
+}> {
+  const { data, refusal, warnings } = await callOrRefusal(
     ctx.client!,
     "ppal-update-device",
     {
@@ -53,7 +59,12 @@ async function writeSample(
     },
   );
 
-  return { params: (data.params as ParamEntryResult[]) ?? [], warnings };
+  return {
+    params: (data.params as ParamEntryResult[]) ?? [],
+    detail: data.detail as string | undefined,
+    ...(refusal == null ? {} : { refusal }),
+    warnings,
+  };
 }
 
 /**
@@ -83,31 +94,27 @@ function padSwapTests(
   held: string,
   instrumentType: string,
 ): void {
-  it("skips the write in the param's own entry, leaving the instrument alone", async () => {
-    const { params, warnings } = await writeSample(pad);
+  it("refuses the write, leaving the instrument alone", async () => {
+    const { refusal, warnings } = await writeSample(pad);
 
-    // A params list that came back a name short is one the caller has to diff
-    // against its request, and the entry is also where the model learns
-    // force:true exists.
-    expect(params).toHaveLength(1);
-    expect(params[0]?.name).toBe(`${pad}/sample`);
-    expect(params[0]?.ok).toBe(false);
-    expect(params[0]?.reason).toContain("sample write SKIPPED");
-    expect(params[0]?.reason).toContain(held);
-    expect(params[0]?.reason).toContain("force:true");
+    // It was all the call asked, so the call fails naming the param. The
+    // message is also where the model learns force:true exists.
+    expect(refusal).toMatch(/no param landed — /);
+    expect(refusal).toContain(`"${pad}/sample": sample write SKIPPED`);
+    expect(refusal).toContain(held);
+    expect(refusal).toContain("force:true");
     expect(warnings).toStrictEqual([]);
 
     expect((await padDevices(padName))[0]?.type).toContain(instrumentType);
   });
 
   it("replaces it with a Simpler under force, and says what was lost", async () => {
-    const { warnings } = await writeSample(pad, true);
+    const { detail, warnings } = await writeSample(pad, true);
 
-    expect(
-      warnings.some(
-        (w) => w.includes("force:true") && w.includes("settings are gone"),
-      ),
-    ).toBe(true);
+    // The swap is destructive, so the target's own entry says what it cost.
+    expect(detail).toContain("force:true");
+    expect(detail).toContain("settings are gone");
+    expect(warnings).toStrictEqual([]);
 
     const devices = await padDevices(padName);
 

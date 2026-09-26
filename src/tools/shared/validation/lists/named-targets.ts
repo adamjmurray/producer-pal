@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The targets a call names, and the entries they leave in place of work not
-// done — a skip, or a repeat of an object named earlier. Each is addressed by
+// done — a skip, or an object a later target names again. Each is addressed by
 // the param and spelling the caller wrote, which is all they have to match on.
 
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -24,7 +24,7 @@ export interface TargetSkip {
   id?: string;
   path?: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 /**
@@ -66,25 +66,46 @@ export function attemptTarget<T>(
 /**
  * The entry for a target a call couldn't act on.
  * @param target - The target, as the caller named it
- * @param reason - Why it was skipped, in the words a single target would throw
+ * @param detail - Why it was skipped, in the words a single target would throw
  * @returns The skip entry
  */
-export function skipEntry(target: NamedTarget, reason: string): TargetSkip {
-  return { ...targetAddress(target), ok: false, reason };
+export function skipEntry(target: NamedTarget, detail: string): TargetSkip {
+  return { ...targetAddress(target), ok: false, detail };
 }
 
 /**
- * How a repeat target says an earlier one named the same object, in that
- * target's own spelling — what the caller matches the working entry on. One
- * wording for every tool: the work happened at the entry this names, once.
- * @param earlier - The target that named the object first
+ * How a target says a later one named the same object, in that target's own
+ * spelling — what the caller matches the working entry on. One wording for
+ * every tool: the last target to name an object is the one acted on.
+ * @param later - The target that named the object last
  * @returns The reason, pointing at the entry that did the work
  */
-export function namedEarlierReason(earlier: NamedTarget): string {
+export function namedLaterReason(later: NamedTarget): string {
   const address =
-    earlier.param === "id" ? `id ${earlier.value}` : `"${earlier.value}"`;
+    later.param === "id" ? `id ${later.value}` : `"${later.value}"`;
 
-  return `already named as ${address} earlier in this call`;
+  return namedAgain(address);
+}
+
+/**
+ * How a destination says a later one names the same place, in the words
+ * {@link namedLaterReason} uses: the last to name it gets the clip.
+ * @param destination - The place, as a path
+ * @returns The reason, e.g. "t0/s1 is named again later in this call"
+ */
+export function destinationNamedLaterReason(destination: string): string {
+  return `${destination} is ${namedAgain()}`;
+}
+
+/**
+ * The stem every named-twice reason shares.
+ * @param address - How the later mention spelled it, when that differs
+ * @returns The stem
+ */
+function namedAgain(address?: string): string {
+  return address == null
+    ? "named again later in this call"
+    : `named again as ${address} later in this call`;
 }
 
 /**
@@ -97,7 +118,7 @@ export function loneRefusal(entries: object[]): string | null {
   const [only] = entries;
 
   return entries.length === 1 && only != null && "ok" in only
-    ? (only as TargetSkip).reason
+    ? (only as TargetSkip).detail
     : null;
 }
 

@@ -208,7 +208,7 @@ describe("ppal-update-live-set", () => {
 
     expect(updated.scale).toBe("Gb Dorian");
     // Without this reason a model reads the changed spelling as a failed write.
-    expect(updated.reason).toBe(
+    expect(updated.detail).toBe(
       "scale roots are spelled with flats, so F# comes back as Gb — " +
         "same scale, set correctly",
     );
@@ -442,6 +442,148 @@ describe("ppal-update-live-set", () => {
     expect(locators).toStrictEqual(initialLocators);
   });
 
+  it("deletes by id, time and name in one call, each locator once", async () => {
+    // Only real Live proves a locator named twice isn't toggled twice: a
+    // second toggle at its time would create a new one there.
+    const initialLocators = await readLocatorList();
+
+    const created = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "5|1,6|1,7|1",
+          locatorName: "E2E Comma,E2E Solo,E2E Tail",
+        },
+      }),
+    );
+    const soloId = created.locator?.[1]?.id;
+
+    expect(soloId).toBeDefined();
+
+    // A lone target takes the comma literally, so this names one locator.
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "rename",
+        locatorTime: "5|1",
+        locatorName: "E2E Comma, Two",
+      },
+    });
+
+    await sleep(100);
+
+    const deleted = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "delete",
+          locatorId: soloId,
+          locatorTime: "6|1,7|1",
+          locatorName: "E2E Comma, Two",
+        },
+      }),
+    );
+
+    expect(deleted.locator).toStrictEqual([
+      {
+        operation: "delete",
+        id: soloId,
+        detail: 'named again as "6|1" later in this call',
+      },
+      { operation: "delete", id: soloId },
+      { operation: "delete", id: expect.any(String) },
+      { operation: "delete", count: 1, name: "E2E Comma, Two" },
+    ]);
+
+    await sleep(100);
+
+    expect(await readLocatorList()).toStrictEqual(initialLocators);
+  });
+
+  it("answers a create where a locator is and a delete where none is", async () => {
+    // A create toggles the cue at its time, so only real Live proves one aimed
+    // at an existing locator leaves it alone rather than deleting it.
+    const initialLocators = await readLocatorList();
+    const { originalTempo } = await readLiveSetOriginals();
+    const updateLocator = async (
+      args: Record<string, unknown>,
+    ): Promise<UpdateResult["locator"]> =>
+      parseToolResult<UpdateResult>(
+        await ctx.client!.callTool({
+          name: "ppal-update-live-set",
+          arguments: args,
+        }),
+      ).locator;
+
+    const created = await updateLocator({
+      locatorOperation: "create",
+      locatorTime: "5|1",
+      locatorName: "E2E Here",
+    });
+
+    await sleep(100);
+
+    // No name: nothing to do, and no failure.
+    expect(
+      await updateLocator({ locatorOperation: "create", locatorTime: "5|1" }),
+    ).toStrictEqual({
+      operation: "create",
+      id: created?.id,
+      detail: "a locator is already at 5|1",
+    });
+
+    // A different name didn't land. Alone, that's the call's error.
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "5|1",
+        locatorName: "E2E Other",
+      },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "not created: a locator is already at 5|1; rename it instead",
+    );
+
+    // Beside a tempo write, the refusal stays on the locator's entry.
+    expect(
+      await updateLocator({
+        tempo: originalTempo,
+        locatorOperation: "create",
+        locatorTime: "5|1",
+        locatorName: "E2E Other",
+      }),
+    ).toStrictEqual({
+      operation: "skipped",
+      time: "5|1",
+      name: "E2E Other",
+      ok: false,
+      detail: "not created: a locator is already at 5|1; rename it instead",
+    });
+
+    await sleep(100);
+    const here = (await readLocatorList()).find((l) => l.id === created?.id);
+
+    expect(here?.name).toBe("E2E Here");
+
+    await updateLocator({ locatorOperation: "delete", locatorTime: "5|1" });
+    await sleep(100);
+
+    // Already gone: the delete's goal holds, so it's not a failure.
+    expect(
+      await updateLocator({ locatorOperation: "delete", locatorTime: "5|1" }),
+    ).toStrictEqual({
+      operation: "delete",
+      detail: "nothing to delete: no locator at 5|1",
+      time: "5|1",
+    });
+
+    expect(await readLocatorList()).toStrictEqual(initialLocators);
+  });
+
   it("refuses locator lists that name different numbers of locators", async () => {
     // Nothing is written: the lists are split before the first locator runs.
     const before = await readLocatorList();
@@ -563,7 +705,7 @@ interface UpdateLocatorListResult {
     name?: string;
     time?: string;
     ok?: boolean;
-    reason?: string;
+    detail?: string;
   }>;
 }
 
@@ -573,7 +715,7 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string;
-  reason?: string;
+  detail?: string;
   $meta?: string[];
   locator?: {
     operation: string;
@@ -581,5 +723,7 @@ interface UpdateResult {
     name?: string;
     time?: string;
     count?: number;
+    ok?: boolean;
+    detail?: string;
   };
 }

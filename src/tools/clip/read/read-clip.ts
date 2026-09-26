@@ -11,7 +11,7 @@ import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   parseIncludeArray,
@@ -119,7 +119,7 @@ export interface ReadClipResult {
   envelopes?: ClipEnvelope[] | string;
 
   /** What the read couldn't produce for this clip */
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -492,14 +492,14 @@ function processAudioClip(
 
     // Warp markers are work-in-progress: debug builds only (build:debug)
     if (process.env.ENABLE_WARP_MARKERS === "true") {
-      const { markers, reason } = processWarpMarkers(clip);
+      const { markers, detail } = processWarpMarkers(clip);
 
       if (markers !== undefined) {
         result.warpMarkers = markers;
       }
 
-      if (reason != null) {
-        appendReason(result, reason);
+      if (detail != null) {
+        appendDetail(result, detail);
       }
     }
   }

@@ -109,6 +109,47 @@ describe("duplicate - arrangementLength functionality", () => {
     await expectDuplicateDelegatesLengthening(track0, "1bar+n/2"); // 6 beats - longer than original 4 beats
   });
 
+  // One source laid out A-A-AB: the list pairs per copy, as name does.
+  it("gives each copy of one source its own arrangementLength", async () => {
+    registerSourceClip({
+      length: 4,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 1,
+    });
+    setupLengthMocks();
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "2|1,4|1,6|1",
+      arrangementLength: "2bar,2bar,4bar",
+    });
+
+    expect(updateClipMock.mock.calls.map(([args]) => args)).toStrictEqual([
+      expect.objectContaining({ arrangementLength: "2bar" }),
+      expect.objectContaining({ arrangementLength: "2bar" }),
+      expect.objectContaining({ arrangementLength: "4bar" }),
+    ]);
+  });
+
+  it("refuses an arrangementLength list that doesn't match the copies", async () => {
+    registerSourceClip({ length: 4, looping: 1, is_midi_clip: 1 });
+    setupLengthMocks();
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "2|1,4|1",
+        arrangementLength: "2bar,2bar,4bar",
+      }),
+    ).rejects.toThrow(
+      "this call names 2 copies but arrangementLength names 3 entries",
+    );
+  });
+
   it("returns the lengthened clip even when updateClip resolves asynchronously (regression for missing await)", async () => {
     registerSourceClip({
       length: 4,
@@ -156,7 +197,9 @@ describe("duplicate - arrangementLength functionality", () => {
       "arrangementLength unchanged: the audio file has no more content to show";
 
     updateClipMock.mockReturnValueOnce(
-      Promise.resolve([{ id: livePath.track(0).arrangementClip(0), reason }]),
+      Promise.resolve([
+        { id: livePath.track(0).arrangementClip(0), detail: reason },
+      ]),
     );
 
     const result = await duplicate({
@@ -169,7 +212,7 @@ describe("duplicate - arrangementLength functionality", () => {
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
       path: "t0[5|1]",
-      reason,
+      detail: reason,
     });
   });
 

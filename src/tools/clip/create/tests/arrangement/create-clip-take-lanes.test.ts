@@ -64,7 +64,7 @@ describe("createClip take lanes", () => {
       arrangementStart: "1|1",
       notes: "C3",
       takeLane: 1,
-    })) as { id: string; path?: string; reason?: string };
+    })) as { id: string; path?: string; detail?: string };
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
     expect(track.call).not.toHaveBeenCalledWith(
@@ -80,7 +80,7 @@ describe("createClip take lanes", () => {
     // result surfaces the lane the clip landed on and where it starts
     expect(result.path).toBe("t0/l0[1|1]");
     // Live hides take lanes behind an arrow, so the entry says where to look.
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "expand the take-lanes arrow on the track header in Live to see it",
     );
   });
@@ -94,9 +94,9 @@ describe("createClip take lanes", () => {
       trackIndex: 0,
       arrangementStart: "1|1",
       notes: "C3",
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toBeUndefined();
+    expect(result.detail).toBeUndefined();
   });
 
   it("creates neither a lane nor a clip when a later position won't parse", async () => {
@@ -326,10 +326,10 @@ describe("createClip take lane paths", () => {
     await expect(
       createClip({ path: "t0/l+[1|1]", notes: "C3" }),
     ).rejects.toThrow(
-      '"l+" adds a take lane, which only ppal-update-track does',
+      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
     );
     await expect(createClip({ path: "t0/l+", notes: "C3" })).rejects.toThrow(
-      '"l+" adds a take lane, which only ppal-update-track does',
+      '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do',
     );
   });
 
@@ -417,7 +417,7 @@ describe("createClip take lane paths", () => {
       path: `t0/l${MAX_TAKE_LANES},t1`,
       arrangementStart: "1|1",
       notes: "C3",
-    })) as Array<{ path?: string; ok?: false; reason?: string }>;
+    })) as Array<{ path?: string; ok?: false; detail?: string }>;
 
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     // The lane that didn't fit keeps its place, and says why there instead of
@@ -425,11 +425,97 @@ describe("createClip take lane paths", () => {
     expect(result[0]).toStrictEqual({
       path: `t0/l${MAX_TAKE_LANES}[1|1]`,
       ok: false,
-      reason: takeLaneCapacityMessage(MAX_TAKE_LANES),
+      detail: takeLaneCapacityMessage(MAX_TAKE_LANES),
     });
     expect(result[1]?.path).toBe("t1[1|1]");
     expect(consoleMock.warn).not.toHaveBeenCalledWith(
       expect.stringContaining("skipping"),
+    );
+  });
+
+  it("creates a clip on an existing lane past the cap", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 1 });
+
+    await createClip({
+      path: `t0/l${MAX_TAKE_LANES}[1|1]`,
+      notes: "C3",
+    });
+
+    expectTakeLaneMidiClip(MAX_TAKE_LANES, 0);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // Live can't delete a lane, so one made for a clip the track then refuses
+  // would be left behind for good.
+  it("creates no lane on a track that can't take the clip", async () => {
+    registerLiveSet();
+    const audioTrack = registerTakeLaneTrack({ hasMidiInput: 0 });
+    const midiTrack = registerTakeLaneTrack({ trackIndex: 1 });
+
+    const result = (await createClip({
+      path: "t0/l3,t1/l0",
+      arrangementStart: "1|1",
+      notes: "C3",
+    })) as Array<{ path?: string; ok?: false; detail?: string }>;
+
+    expect(audioTrack.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(midiTrack.call).toHaveBeenCalledWith("create_take_lane");
+    expect(result[0]).toStrictEqual({
+      path: "t0/l3[1|1]",
+      ok: false,
+      detail: expect.stringContaining("a MIDI clip needs a MIDI track"),
+    });
+    expect(result[1]?.path).toBe("t1/l0[1|1]");
+  });
+
+  it("creates no lane when the transforms won't parse", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack();
+
+    await expect(
+      createClip({
+        path: "t0/l2[1|1]",
+        notes: "C3 1|1",
+        transforms: "velocity += ((( bogus",
+      }),
+    ).rejects.toThrow("transform syntax error");
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // A group reports no MIDI input, so an audio clip passes the type check.
+  it("creates no lane on a group track", async () => {
+    registerLiveSet();
+    const audioTrack = registerTakeLaneTrack({
+      trackIndex: 1,
+      hasMidiInput: 0,
+    });
+    const group = registerTakeLaneTrack({
+      trackIndex: 5,
+      hasMidiInput: 0,
+      isFoldable: 1,
+    });
+
+    const result = (await createClip({
+      path: "t1/l2[1|1],t5/l0[1|1]",
+      sampleFile: "/samples/loop.wav",
+    })) as Array<{ path?: string; ok?: false; detail?: string }>;
+
+    expect(group.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(audioTrack.call).toHaveBeenCalledWith("create_take_lane");
+    expect(result[1]).toStrictEqual({
+      path: "t5/l0[1|1]",
+      ok: false,
+      detail: 'only regular tracks have take lanes; "t5" is a group track',
+    });
+  });
+
+  it("calls a group track a group, not an audio track", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ hasMidiInput: 0, isFoldable: 1 });
+
+    await expect(createClip({ path: "t0[1|1]", notes: "C3" })).rejects.toThrow(
+      "is a group track; it holds no clips",
     );
   });
 

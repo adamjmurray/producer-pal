@@ -16,6 +16,7 @@ import {
 import {
   isDrumPadSampleShortcut,
   resolveNestedParamTarget,
+  sayWhatWasLeft,
   splitForAdvice,
 } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import {
@@ -26,13 +27,13 @@ import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { refuseDuplicateParams } from "./helpers/params/param-entry-validation.ts";
 import {
   ambiguousNameReason,
   resolveParamById,
   resolveParamsByName,
 } from "./helpers/params/param-name-resolution.ts";
 import { setParamValue } from "./helpers/params/param-value-interpretation.ts";
+import { supersededParamReasons } from "./helpers/params/superseded-params.ts";
 import { type ParamWriteOutcome } from "./helpers/params/param-write-verification.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -45,6 +46,9 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * Every entry comes back as one result entry, in the order sent: what the write
  * landed on, or the reason nothing was written. Nothing here warns — the param's
  * own entry is where the caller reads what happened to it.
+ *
+ * When entries reach one param, only the last is written; each earlier one
+ * comes back skipped, naming the entry that overrides it.
  * @param device - LiveAPI device object to update
  * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
@@ -58,10 +62,7 @@ export function setParamValues(
   force = false,
   notes?: TargetNotes,
 ): ParamOutcome[] {
-  // Before the first write: two entries reaching one param can only report the
-  // last one's value for both, and the caller can retry with nothing to undo.
-  refuseDuplicateParams(device, params);
-
+  const skips = supersededParamReasons(device, params);
   const results: ParamOutcome[] = [];
   // Read once per device, not per param: it only names the device for the
   // recorded-unit lookup.
@@ -69,10 +70,18 @@ export function setParamValues(
     | string
     | undefined;
 
-  for (const entry of params) {
+  for (const [index, entry] of params.entries()) {
     // Malformed entries were refused up front, so both sides are non-empty.
     const { key, byId } = paramEntryKey(entry);
     const rawValue = entry.value.trim();
+    const skip = skips.get(index);
+
+    if (skip != null) {
+      results.push(
+        byId ? skippedParamById(key, skip) : skippedParam(key, skip),
+      );
+      continue;
+    }
 
     // An id names one parameter outright, so it skips the name lookups — a
     // param that happens to be named "1" can't shadow id 1.
@@ -302,11 +311,14 @@ function applyNestedParam(
   // worth of bare "Volume" entries would name nothing. A skip is named with the
   // key exactly as it arrived, spacing and all, since that is what the caller
   // has to match it on.
-  return setParamValues(
-    target.device,
-    [{ name: paramName, value: rawValue }],
-    force,
-    notes,
+  return sayWhatWasLeft(
+    target,
+    setParamValues(
+      target.device,
+      [{ name: paramName, value: rawValue }],
+      force,
+      notes,
+    ),
   ).map((result) =>
     "ok" in result
       ? { ...result, name: key }

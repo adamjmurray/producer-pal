@@ -10,14 +10,15 @@ import {
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
+  type ArrangementTrack,
   takeLaneLabel,
+  takeLanesBlocker,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
@@ -26,6 +27,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import {
+  destinationNamedLaterReason,
   skipEntry,
   type TargetSkip,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -36,6 +38,7 @@ import {
   type ArrangementPosition,
   type DestinationRef,
 } from "./create-clip-destinations.ts";
+import { type ClipPlan } from "./clip-plans.ts";
 import { processClipIteration } from "./clip-iteration.ts";
 import { type ClipResultObject } from "./created-clip-result.ts";
 import {
@@ -55,24 +58,15 @@ export interface CreateClipsParams {
   baseName: string | null;
   parsedNames: ListEntries | null;
   parsedColors: ListEntries | null;
-  initialClipLength: number;
+  /** What to build at each destination, in call order */
+  plans: ClipPlan[];
   liveSet: LiveAPI;
-  startBeats: number | null;
-  endBeats: number | null;
-  firstStartBeats: number | null;
   looping: boolean | null;
   color: string | null;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
-  /** The raw timeSignature argument, or null when the song's meter was used */
-  timeSignature: string | null;
   notationString: string | null;
-  notes: MidiNote[];
   transformString: string | null;
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
-  length: string | null;
-  sampleFile: string | null;
   deadline: number | null | undefined;
   code: string | null;
   /** Take lane per arrangement destination; no entry means the main lane */
@@ -102,20 +96,11 @@ export async function createClips(
 ): Promise<CreatedClipEntry[]> {
   const { order, deadline } = params;
   const entries: CreatedClipEntry[] = [];
-
-  // Constant transform inputs for the call; read the scale mask once (it is a
-  // Live Set global). Per-clip context (index/count/position) is applied below.
-  const transformInputs: ClipTransformInputs = {
-    notes: params.notes,
-    clipLength: params.initialClipLength,
-    transformString: params.transformString,
-    isAudio: params.sampleFile != null,
-    endBeats: params.endBeats,
-    timeSigNumerator: params.timeSigNumerator,
-    timeSigDenominator: params.timeSigDenominator,
-    scaleMask:
-      params.transformString != null ? readLiveSetScaleMask() : undefined,
-  };
+  // Read the scale mask once: it is a Live Set global, and the rest of a
+  // clip's transform inputs comes from its own plan.
+  const scaleMask =
+    params.transformString != null ? readLiveSetScaleMask() : undefined;
+  const lastNaming = lastNamingBySlot(params);
 
   for (const [index, ref] of order.entries()) {
     if (isDeadlineExceeded(deadline ?? null)) {
@@ -123,10 +108,59 @@ export async function createClips(
       break;
     }
 
-    entries.push(await createClipAtIndex(params, transformInputs, ref, index));
+    entries.push(
+      repeatedSlotSkip(params, ref, index, lastNaming) ??
+        (await createClipAtIndex(params, scaleMask, ref, index)),
+    );
   }
 
   return entries;
+}
+
+/**
+ * Says why a destination's track won't take the clip planned there.
+ * @param clipIsMidi - Whether the clip is MIDI
+ * @param destination - The track, and the take lane if one was named
+ * @param track - The destination track
+ * @returns The reason, or null when the track takes the clip
+ */
+export function createClipBlocker(
+  clipIsMidi: boolean,
+  destination: ArrangementTrack,
+  track: LiveAPI | undefined,
+): string | null {
+  const { trackIndex, takeLane } = destination;
+  const laneBlocker =
+    takeLane != null && track != null
+      ? takeLanesBlocker(track, trackIndex)
+      : null;
+
+  return laneBlocker ?? clipCopyBlocker(clipIsMidi, trackIndex, track);
+}
+
+/**
+ * The transform inputs for one clip: its own notes, meter and region, plus the
+ * Live Set scale the whole call shares.
+ * @param params - All parameters for clip creation
+ * @param plan - What this destination is being built from
+ * @param scaleMask - Live Set scale mask, or undefined when nothing transforms
+ * @returns The inputs for this clip's transform
+ */
+function transformInputsFor(
+  params: CreateClipsParams,
+  plan: ClipPlan,
+  scaleMask: number | undefined,
+): ClipTransformInputs {
+  return {
+    notes: plan.notes,
+    clipLength: plan.clipLength,
+    transformString: params.transformString,
+    isAudio: plan.sampleFile != null,
+    endBeats: plan.timing.endBeats,
+    timeSigNumerator: plan.timing.timeSigNumerator,
+    timeSigDenominator: plan.timing.timeSigDenominator,
+    scaleMask,
+  };
 }
 
 /**
@@ -155,6 +189,69 @@ function refuseUnreached(
     `Ran out of time after creating ${step} of ${params.order.length} clips. ` +
       `Re-run for the clips whose entries say so.`,
   );
+}
+
+/**
+ * Skips a clip slot a later destination in the call names again; the last one
+ * wins. Creating at both would replace this clip, and its entry would report a
+ * clip that no longer exists.
+ * @param params - All parameters for clip creation
+ * @param ref - Which destination it is
+ * @param index - Its place in the call
+ * @param lastNaming - The last place in the call that names each slot
+ * @returns The skip entry, or null when no later destination names the slot
+ */
+function repeatedSlotSkip(
+  params: CreateClipsParams,
+  ref: DestinationRef,
+  index: number,
+  lastNaming: Map<string, number>,
+): TargetSkip | null {
+  if (ref.view !== "session") {
+    return null;
+  }
+
+  const slot = destinationSlot(params, ref);
+
+  return lastNaming.get(slot) === index
+    ? null
+    : destinationSkip(
+        params,
+        ref,
+        `not created: ${destinationNamedLaterReason(slot)}`,
+      );
+}
+
+/**
+ * @param params - All parameters for clip creation
+ * @returns The last place in the call that names each clip slot
+ */
+function lastNamingBySlot(params: CreateClipsParams): Map<string, number> {
+  const lastNaming = new Map<string, number>();
+
+  for (const [index, ref] of params.order.entries()) {
+    if (ref.view === "session") {
+      lastNaming.set(destinationSlot(params, ref), index);
+    }
+  }
+
+  return lastNaming;
+}
+
+/**
+ * @param params - All parameters for clip creation
+ * @param ref - A session destination
+ * @returns Its clip slot, as a path
+ */
+function destinationSlot(
+  params: CreateClipsParams,
+  ref: DestinationRef,
+): string {
+  const { trackIndex, sceneIndex } = params.clipSlots[
+    ref.index
+  ] as ClipSlotPosition;
+
+  return slotPath(trackIndex, sceneIndex);
 }
 
 /**
@@ -189,19 +286,21 @@ interface IterationPosition {
  * Create the clip one destination asked for, keeping a failure for that
  * destination's own entry to report so the loop carries on.
  * @param params - All parameters for clip creation
- * @param transformInputs - Constant transform inputs for the call
+ * @param scaleMask - Live Set scale mask, or undefined when nothing transforms
  * @param ref - Which destination this is
  * @param index - The destination's place in the call
  * @returns The clip, or the skip entry standing in for it
  */
 async function createClipAtIndex(
   params: CreateClipsParams,
-  transformInputs: ClipTransformInputs,
+  scaleMask: number | undefined,
   ref: DestinationRef,
   index: number,
 ): Promise<CreatedClipEntry> {
   const { view } = ref;
   const { baseName, parsedNames, parsedColors, code } = params;
+  const plan = params.plans[index] as ClipPlan;
+  const transformInputs = transformInputsFor(params, plan, scaleMask);
 
   // clip.index/clip.count (transforms and code-exec) span the whole create
   // batch: the index is the destination's place in the call, the same place
@@ -243,9 +342,9 @@ async function createClipAtIndex(
     // the refusal as this position's failure.
     // Truthiness, not a null check: it is what picks the audio create below,
     // and an empty sampleFile makes a MIDI clip.
-    const blocker = clipCopyBlocker(
-      !params.sampleFile,
-      pos.trackIndex,
+    const blocker = createClipBlocker(
+      !plan.sampleFile,
+      pos,
       params.tracks.get(pos.trackIndex),
     );
 
@@ -260,18 +359,18 @@ async function createClipAtIndex(
       pos.arrangementStartBeats,
       clipLength,
       params.liveSet,
-      params.startBeats,
-      params.endBeats,
-      params.firstStartBeats,
+      plan.timing.startBeats,
+      plan.timing.endBeats,
+      plan.timing.firstStartBeats,
       params.looping,
       clipName,
       clipColor ?? null,
-      params.timeSigNumerator,
-      params.timeSigDenominator,
+      plan.timing.timeSigNumerator,
+      plan.timing.timeSigDenominator,
       params.notationString,
       clipNotes,
-      params.length,
-      params.sampleFile,
+      plan.length,
+      plan.sampleFile,
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
       takeLaneFor(params, pos),
@@ -281,14 +380,14 @@ async function createClipAtIndex(
         pitchShift: params.pitchShift,
         warpMode: params.warpMode,
       },
-      params.timeSignature,
+      plan.timeSignature,
       params.tracks.get(pos.trackIndex) ?? null,
     );
 
     // Live hides take lanes until the track's arrow is expanded, so a clip on
     // one looks missing. The entry's path already names the lane.
     if (pos.takeLane != null) {
-      appendReason(
+      appendDetail(
         clipResult,
         "expand the take-lanes arrow on the track header in Live to see it",
       );

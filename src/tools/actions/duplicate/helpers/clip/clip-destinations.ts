@@ -10,7 +10,6 @@
 // is created, so a bad destination fails instead of quietly landing the copy
 // somewhere else.
 
-import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
@@ -47,6 +46,17 @@ export interface DuplicateArrangementTarget extends Omit<
   trackIndex: number | null;
 }
 
+/** What the entries other sources took name, when sources split a toPath. */
+export interface BesideEntries {
+  /** Some entry lands on the arrangement, so a slot here is refused. */
+  arrangement: boolean;
+  /** Some entry carries a position, so a track here needs its own. */
+  position: boolean;
+}
+
+/** A source alone in its call: nothing beside it. */
+const ALONE: BesideEntries = { arrangement: false, position: false };
+
 export interface ClipDestinations {
   destination: "session" | "arrangement";
   /** Clip slots, in order. Empty for arrangement destinations. */
@@ -73,12 +83,14 @@ export interface ClipDestinations {
  * @param rawToPath - Destination path(s), comma-separated for multiple
  * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
  * @param hasArrangementParams - Whether arrangementStart was given
+ * @param beside - What other sources' toPath entries name
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
   hasArrangementParams: boolean,
+  beside: BesideEntries = ALONE,
 ): ClipDestinations {
   const { value: toPath, aliasValue: toSlot } = refuseDoubledSpelling({
     param: "toPath",
@@ -98,7 +110,7 @@ export function resolveClipDestinations(
   );
 
   if (hasArrangementParams) {
-    return arrangementDestinations(entries);
+    return arrangementDestinations(entries, beside);
   }
 
   if (entries.length === 0) {
@@ -118,15 +130,20 @@ export function resolveClipDestinations(
  * @param destinations - Where the copies go
  * @param count - Requested number of copies
  * @param arrangementLength - Requested arrangement length
+ * @param sourceCount - How many sources the call names
  */
 export function warnInapplicableClipParams(
   destinations: ClipDestinations,
   count: number,
   arrangementLength: string | undefined,
+  sourceCount = 1,
 ): void {
+  // Several sources take one destination each, so listing more is refused.
   if (count > 1) {
     console.warn(
-      "count ignored for clips: one copy per destination — list more in toPath",
+      sourceCount > 1
+        ? "count ignored for clips: one copy per destination — for more copies, send one call per source"
+        : "count ignored for clips: one copy per destination — list more in toPath",
     );
   }
 
@@ -139,8 +156,8 @@ export function warnInapplicableClipParams(
 
 /**
  * Warns for arrangement position params on a type that lands nowhere on the
- * timeline. A device or drum pad is copied inside its own chain, so these are
- * dropped — and every other inapplicable param on this tool warns.
+ * timeline. A device, drum pad or chain is copied inside a rack or track, so
+ * these are dropped — and every other inapplicable param on this tool warns.
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
  * @param arrangementLength - Requested arrangement length
@@ -150,7 +167,7 @@ export function warnUnusedArrangementParams(
   arrangementStart: string | undefined,
   arrangementLength: string | undefined,
 ): void {
-  if (type !== "device" && type !== "drum-pad") {
+  if (type !== "device" && type !== "drum-pad" && type !== "chain") {
     return;
   }
 
@@ -169,39 +186,19 @@ export function warnUnusedArrangementParams(
 }
 
 /**
- * Warns when a destination param was sent for a type that has no destination.
+ * Warns when the deprecated toSlot was sent for a type other than clip.
  * @param type - Type of object being duplicated
- * @param rawToPath - Destination path(s)
  * @param rawToSlot - Deprecated clip slot(s)
- * @param laneCopy - Whether the call copies clips lane to lane, where toPath
- *   names where they land
  */
 export function warnUnusedDestination(
   type: string,
-  rawToPath: string | undefined,
   rawToSlot: string | undefined,
-  laneCopy = false,
 ): void {
   if (type === "clip") {
     return;
   }
 
-  const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
-
-  if (
-    !laneCopy &&
-    type !== "device" &&
-    type !== "drum-pad" &&
-    type !== "chain" &&
-    toPath != null
-  ) {
-    console.warn(
-      `toPath ignored: only supported for clips, devices, drum pads and chains (type "${type}")`,
-    );
-  }
-
-  if (toSlot != null) {
+  if (namedHiddenPath(rawToSlot, "toSlot") != null) {
     console.warn(`toSlot ignored: only supported for clips (type "${type}")`);
   }
 }
@@ -253,15 +250,19 @@ function legacySlotDestinations(
  * comma-separated values from splitting at all — Live is then handed the whole
  * string, which fails the call after a copy has already landed.
  * @param entries - Parsed clip destinations, lane and position apart
+ * @param beside - What other sources' entries name: these slots are part of a
+ *   mixed list, or these tracks need positions of their own
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(
   entries: ClipDestinationPath[],
+  beside: BesideEntries,
 ): ClipDestinations {
-  // A coordinate is its own entry's position, so when any entry carries one
-  // every arrangement entry needs one of its own: arrangementStart was refused
-  // alongside them, and there is nothing else to fall back on.
-  const fromPath = entries.some((entry) => entry.position != null);
+  // A coordinate is its own entry's position, so when any entry — this
+  // source's or another's — carries one, every arrangement entry needs one of
+  // its own: arrangementStart was refused alongside them.
+  const fromPath =
+    beside.position || entries.some((entry) => entry.position != null);
   const slots: ClipSlotPosition[] = [];
   const arrangementTargets: (DuplicateArrangementTarget | null)[] = [];
   const arrangementRefusals: (TargetSkip | null)[] = [];
@@ -309,10 +310,13 @@ function arrangementDestinations(
     .join(", ");
 
   // toPath names where the copy goes; arrangementStart only says where on a
-  // track. With nothing but clip slots, the position has no track to apply
-  // to, so toPath is the one that survives. A coordinate can't reach here: a
-  // clip slot has no room for one, so a slot-only toPath names no position.
-  if (arrangementTargets.every((target) => target == null)) {
+  // track. With nothing but clip slots, across every source, the position has
+  // no track to apply to, so toPath is the one that survives. A coordinate
+  // can't reach here: a clip slot has no room for one.
+  if (
+    !beside.arrangement &&
+    arrangementTargets.every((target) => target == null)
+  ) {
     console.warn(
       `arrangementStart ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',

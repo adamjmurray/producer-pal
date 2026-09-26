@@ -85,7 +85,7 @@ export async function listPlugins(
       return {
         dbAvailable: false,
         plugins: [],
-        reason: "Live plugin database not found",
+        detail: "Live plugin database not found",
       };
     }
 
@@ -127,7 +127,7 @@ export async function listPlugins(
     return {
       dbAvailable: false,
       plugins: [],
-      reason: `Failed to read Live plugin database: ${
+      detail: `Failed to read Live plugin database: ${
         error instanceof Error ? error.message : String(error)
       }`,
     };

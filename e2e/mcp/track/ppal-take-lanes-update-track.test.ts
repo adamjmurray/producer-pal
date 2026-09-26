@@ -59,7 +59,7 @@ interface UpdateTakeLaneResult {
   /** The lanes the call made ("l0", or "l0-l2" when it filled a gap) */
   created?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -194,7 +194,7 @@ describe("take lanes as track-tool targets", () => {
     expect(lane.path).toBe(`t${EMPTY_MIDI_TRACK}/l2`);
     // The gap below the lane the path named is filled in, and named.
     expect(lane.created).toBe("l0-l2");
-    expect(lane.reason).toBe("a take lane takes only name; ignored color");
+    expect(lane.detail).toBe("a take lane takes only name; ignored color");
 
     await sleep(100);
     const track = parseToolResult<ReadTrackTakeLanesResult>(
@@ -215,7 +215,7 @@ describe("take lanes as track-tool targets", () => {
 
     expect(isToolError(refused)).toBe(true);
     expect(getToolErrorMessage(refused)).toContain(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
     expect(getToolErrorMessage(refused)).toContain("Nothing was created");
 
@@ -238,9 +238,9 @@ describe("take lanes as track-tool targets", () => {
     });
 
     expect(result[0]!.ok).toBe(false);
-    expect(result[0]!.reason).toContain("only regular tracks have take lanes");
+    expect(result[0]!.detail).toContain("only regular tracks have take lanes");
     expect(result[1]!.ok).toBe(false);
-    expect(result[1]!.reason).toBe(
+    expect(result[1]!.detail).toBe(
       'only regular tracks have take lanes; "t9" is a group track',
     );
     expect(result[2]).toStrictEqual({

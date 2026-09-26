@@ -16,7 +16,7 @@ const OFF_PALETTE = "#123456";
 /** What a scene write's entry says about the color it landed. */
 export interface SceneColorEntry {
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -34,7 +34,7 @@ export async function expectPaletteColorReported(
   // Not a Live swatch, so the entry carries what landed instead.
   expect(snapped.color).toMatch(/^#[\dA-F]{6}$/);
   expect(snapped.color).not.toBe(OFF_PALETTE);
-  expect(snapped.reason).toBe(
+  expect(snapped.detail).toBe(
     `color ${OFF_PALETTE} is not in Live's palette; landed as ${snapped.color}`,
   );
 
@@ -44,5 +44,5 @@ export async function expectPaletteColorReported(
   const exact = await writeExact(snapped.color!);
 
   expect(exact.color).toBeUndefined();
-  expect(exact.reason).toBeUndefined();
+  expect(exact.detail).toBeUndefined();
 }

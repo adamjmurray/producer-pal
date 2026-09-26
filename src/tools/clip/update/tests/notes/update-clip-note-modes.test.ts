@@ -112,7 +112,7 @@ describe("updateClip - Note updates", () => {
     const result = await updateClip({ id: "123, 456", notes: "C3 1|1" });
 
     expect(result).toStrictEqual([
-      { id: "123", ok: false, reason: "notes ignored: the clip is audio" },
+      { id: "123", ok: false, detail: "notes ignored: the clip is audio" },
       { id: "456", path: "t1/s1", noteCount: 1 },
     ]);
     expect(capturedWarnings()).toHaveLength(0);

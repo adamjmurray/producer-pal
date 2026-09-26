@@ -103,6 +103,29 @@ describe("validateListLengths", () => {
       ]),
     ).toThrow("id and path names 4 entries but name names 3 entries.");
   });
+
+  // One target reads every value whole, commas and all.
+  it.each([
+    ["a counted target", { param: "id", count: 1 }],
+    ["a target value", { param: "path", value: "t0", target: true }],
+  ])("compares nothing with %s naming one entry", (_, target) => {
+    expect(() =>
+      validateListLengths([
+        target,
+        { param: "name", value: "Bass, Sub" },
+        { param: "outputRoutingType", value: "Low, End, Bus" },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("still compares when a one-entry target is a list", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "path", value: "t0,", target: true },
+        { param: "name", value: "A,B" },
+      ]),
+    ).toThrow("path names 1 entry but name names 2 entries.");
+  });
 });
 
 describe("requireSameLength", () => {
@@ -142,23 +165,16 @@ describe("requireSameLength", () => {
 });
 
 describe("requireDestinationPerSource", () => {
-  it("takes one destination per source, and a whole number each", () => {
+  it("takes one destination per source", () => {
     expect(() =>
       requireDestinationPerSource(
         { param: "toPath", count: 3 },
         { param: "id", count: 3 },
       ),
     ).not.toThrow();
-
-    expect(() =>
-      requireDestinationPerSource(
-        { param: "toPath", count: 6 },
-        { param: "id", count: 3 },
-      ),
-    ).not.toThrow();
   });
 
-  // A destination holds one copy, so a lone one never broadcasts the way a
+  // A destination holds one object, so a lone one never broadcasts the way a
   // name does — that is the whole difference from requireSameLength.
   it("refuses a lone destination for several sources", () => {
     expect(() =>
@@ -168,17 +184,30 @@ describe("requireDestinationPerSource", () => {
       ),
     ).toThrow(
       "toPath names 1 destination but id/path names 2 sources. A destination " +
-        "holds one copy, so name one per source, or the same number for each.",
+        "holds one object, so toPath must name one per source, in order.",
     );
   });
 
-  it("refuses destinations that don't divide evenly", () => {
+  it("refuses a few destinations per source", () => {
     expect(() =>
       requireDestinationPerSource(
-        { param: "toSlot", count: 5 },
-        { param: "path", count: 2 },
+        { param: "toPath", count: 6 },
+        { param: "id", count: 3 },
       ),
-    ).toThrow("toSlot names 5 destinations but path names 2 sources.");
+    ).toThrow("toPath names 6 destinations but id names 3 sources.");
+  });
+
+  it("names what the sources are, and adds a hint", () => {
+    expect(() =>
+      requireDestinationPerSource(
+        { param: "toSlot", count: 1 },
+        { param: "the call", count: 2, noun: "clip" },
+        "Try again.",
+      ),
+    ).toThrow(
+      "toSlot names 1 destination but the call names 2 clips. A destination " +
+        "holds one object, so toSlot must name one per clip, in order. Try again.",
+    );
   });
 });
 
@@ -187,6 +216,26 @@ describe("countListEntries", () => {
     expect(countListEntries("a,b,c")).toBe(3);
     expect(countListEntries("a,b,")).toBe(2);
     expect(countListEntries("a")).toBe(1);
+  });
+
+  it("doesn't split a value list at an escaped comma", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "path", value: "t0/s0,t0/s1", target: true },
+        { param: "sampleFile", value: "/kick\\, hard.wav" },
+      ]),
+    ).not.toThrow();
+  });
+
+  // Target lists split at every comma, so the count must too.
+  it("counts every comma in a target list", () => {
+    expect(countListEntries("123\\,456")).toBe(2);
+    expect(() =>
+      validateListLengths([
+        { param: "arrangementStart", value: "1|1\\,2|1", target: true },
+        { param: "name", value: "A,B,C" },
+      ]),
+    ).toThrow("arrangementStart names 2 entries but name names 3 entries");
   });
 
   it("counts an unset or blank value as none", () => {

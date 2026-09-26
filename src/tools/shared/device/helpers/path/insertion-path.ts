@@ -13,7 +13,6 @@ import {
   requireDeviceContainer,
   trackSegmentPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { DEVICE_TYPE_FORMS } from "#src/tools/shared/validation/helpers/object-path-device-tail.ts";
 import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   objectPathForApi,
@@ -42,16 +41,6 @@ export {
   findDrumPad,
   resolveDrumPadFromPath,
 } from "./device-drumpad-navigation.ts";
-
-/**
- * A trailing device position, for a path the grammar couldn't parse. Spelled
- * from the grammar's own device forms so it can't fall behind them.
- */
-const TRAILING_POSITION = new RegExp(
-  `/(?:d\\d+|d\\+|(?:${Object.values(DEVICE_TYPE_FORMS)
-    .flatMap((form) => [form.segment, form.long])
-    .join("|")})\\d*)$`,
-);
 
 export interface InsertionPathResolution {
   container: LiveAPI | null;
@@ -135,38 +124,6 @@ export function resolveInsertionPath(
         : null) ??
       formatObjectPath({ kind: "device", root, segments: spelled }),
   };
-}
-
-/**
- * How a call spelled the container an insertion path names — the path itself,
- * or everything above a trailing `d<n>` position or `d+`. Parsing only, so a
- * result can echo the caller's own spelling without a Live read.
- *
- * A path that doesn't parse comes back trimmed lexically rather than throwing:
- * this only names what a result already has, so it must not turn a completed
- * operation into an error — but it must never hand back a path that still
- * names the object inside the container.
- * @param path - Device insertion path
- * @param label - Param name the path came from, for error messages
- * @returns The container's path (e.g. "t0/d0/pC1/c1" from "t0/d0/pC1/c1/d2")
- */
-export function insertionContainerPath(path: string, label = "path"): string {
-  try {
-    const parsed = requireDeviceContainer(parseObjectPath(path, label), label);
-
-    // A `c+` names the container itself, so there is nothing above it to trim
-    // — and the chain it makes has no index until it exists. A `d+` leaves its
-    // container in the segments, so formatting them drops it.
-    return parsed.appendsChain
-      ? path.trim()
-      : formatObjectPath({
-          kind: "device",
-          root: parsed.root,
-          segments: containerSegments(parsed.segments),
-        });
-  } catch {
-    return path.replace(TRAILING_POSITION, "");
-  }
 }
 
 // --- Helpers below main exports ---

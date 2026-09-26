@@ -52,7 +52,7 @@ describe("duplicate take lane to a main lane", () => {
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(result.clips.map((clip) => clip.path)).toStrictEqual(["t0[3|1]"]);
-    expect(result.reason).toBe(CLIPS_ONLY);
+    expect(result.detail).toBe(CLIPS_ONLY);
   });
 
   it("promotes a lane onto another track, keeping every position", async () => {
@@ -137,7 +137,7 @@ describe("duplicate take lane to a main lane", () => {
 
     expect(result.clips.map((clip) => clip.path)).toStrictEqual(["t1[3|1]"]);
     // An audio copy is rebuilt from the sample, which costs its warp markers.
-    expect(result.reason).toContain("warp markers reset");
+    expect(result.detail).toContain("warp markers reset");
   });
 
   it("marks the copy a second destination landed on top of", async () => {
@@ -151,7 +151,11 @@ describe("duplicate take lane to a main lane", () => {
 
     // Both entries name t1, so the second create cleared the first's clip.
     expect(result[0]?.clips).toStrictEqual([
-      { path: "t1[1|1]", overwritten: true },
+      {
+        path: "t1[1|1]",
+        deleted: true,
+        detail: "a later copy in this call landed on it",
+      },
     ]);
     expect(result[1]?.clips[0]).toHaveProperty("id");
   });
@@ -218,8 +222,9 @@ describe("duplicate take lane to a main lane", () => {
       toPath: "t1[5|1]",
     });
 
-    expect(capturedWarnings().join("\n")).toContain("toPath ignored");
-    expect(result).not.toHaveProperty("reason");
+    expect(result.detail).toBe(
+      'toPath "t1[5|1]" not honored; a track copy lands right after its source, or after a group\'s last member',
+    );
   });
 
   it("leaves a main-lane source with a bare toPath a new-track copy", async () => {
@@ -233,7 +238,8 @@ describe("duplicate take lane to a main lane", () => {
 
     // A track source still makes a track, and says the destination went
     // unused; a promote would have answered with the "clips only" reason.
-    expect(capturedWarnings().join("\n")).toContain("toPath ignored");
-    expect(result).not.toHaveProperty("reason");
+    expect(result.detail).toBe(
+      'toPath "t1" not honored; a track copy lands right after its source, or after a group\'s last member',
+    );
   });
 });

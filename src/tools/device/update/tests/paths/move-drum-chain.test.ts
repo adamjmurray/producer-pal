@@ -42,11 +42,12 @@ describe("moveDrumChainToPath", () => {
 
     const notes = newTargetNotes();
 
-    moveDrumChainToPath(LiveAPI.from(chain.path), "t0/afx0/pD1", false, notes);
+    moveDrumChainToPath([LiveAPI.from(chain.path)], "t0/afx0/pD1", notes);
 
     expect(notes).toStrictEqual({
       said: ['nothing at toPath "t0/afx0/pD1": t0 has no audio effects'],
       refused: ["toPath"],
+      unlanded: [],
     });
     expect(chain.set).not.toHaveBeenCalled();
   });
@@ -56,7 +57,7 @@ describe("moveDrumChainToPath", () => {
     const notes = newTargetNotes();
 
     // G9 is note 139, past MIDI's 127, so no pad answers to it.
-    moveDrumChainToPath(chainApi, "t0/d0/pG9", false, notes);
+    moveDrumChainToPath([chainApi], "t0/d0/pG9", notes);
 
     expect(notes.said).toContain('toPath "t0/d0/pG9" is not a drum pad path');
     expect(chain.set).not.toHaveBeenCalled();

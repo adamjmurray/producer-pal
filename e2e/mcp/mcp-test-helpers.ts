@@ -48,14 +48,7 @@ export function parseToolResult<T>(result: unknown): T {
     );
   }
 
-  const text = extractToolResultText(result);
-
-  try {
-    return JSON.parse(text) as T;
-  } catch (error) {
-    console.error("Failed to parse JSON response. Raw text:", text);
-    throw error;
-  }
+  return parseResultJson<T>(extractToolResultText(result));
 }
 
 /**
@@ -100,7 +93,7 @@ export function getToolErrorMessage(result: unknown): string {
  * with ENABLE_BUILD_STATS attaches one to every response. It is instrumentation,
  * not something a tool is telling us, so it never counts as a tool warning —
  * otherwise measuring against real Live would fail this whole suite on the first
- * parseToolResult(). See dev/Development-Tools.md.
+ * parseToolResult(). See dev/quality/development-tools/live-api-measurement.md.
  */
 const BUILD_STATS_WARNING = "WARNING: LiveAPI stats:";
 
@@ -142,17 +135,38 @@ export interface ToolResultWithWarnings<T> {
 export function parseToolResultWithWarnings<T>(
   result: unknown,
 ): ToolResultWithWarnings<T> {
-  const text = extractToolResultText(result);
+  return {
+    data: parseResultJson<T>(extractToolResultText(result)),
+    warnings: getToolWarnings(result),
+  };
+}
+
+/**
+ * Parse a tool result's JSON text, failing on a `reason` key at any depth:
+ * every explanation on a result entry is `detail` (ADR-0050).
+ * @param text - The result's JSON text
+ * @returns The parsed result
+ */
+function parseResultJson<T>(text: string): T {
+  let hasReason = false;
   let data: T;
 
   try {
-    data = JSON.parse(text) as T;
+    data = JSON.parse(text, (key, value: unknown) => {
+      hasReason ||= key === "reason";
+
+      return value;
+    }) as T;
   } catch (error) {
     console.error("Failed to parse JSON response. Raw text:", text);
     throw error;
   }
 
-  return { data, warnings: getToolWarnings(result) };
+  if (hasReason) {
+    throw new Error(`Tool result has a "reason" key, not "detail": ${text}`);
+  }
+
+  return data;
 }
 
 /**
@@ -235,6 +249,16 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
       await resetConfigAndSettle();
     }
   });
+
+  // A retry would rerun on the Set the failed attempt already changed, and
+  // could pass on its half-done work. So tests sharing one Set fail instead.
+  if (options?.once) {
+    beforeEach(({ task }) => {
+      if (task.result?.retryCount) {
+        throw new Error("no retry: this file shares one Live Set across tests");
+      }
+    });
+  }
 
   // Always reset config before each test (even when reusing connection)
   beforeEach(resetConfigAndSettle);
@@ -530,69 +554,6 @@ export async function fetchSkillOverrides(): Promise<SkillOverrides> {
   return { fragments, disabled };
 }
 
-/**
- * Ask Live which version it is, via ppal-connect.
- *
- * @param client - Connected MCP client
- * @returns The version string (e.g. "12.4.3")
- */
-export async function readLiveVersion(client: Client): Promise<string> {
-  const result = await client.callTool({ name: "ppal-connect", arguments: {} });
-
-  return parseToolResult<{ abletonLiveVersion: string }>(result)
-    .abletonLiveVersion;
-}
-
-/**
- * Whether this Live can load a sample into Simpler. Simpler's `replace_sample`
- * arrived in Live 12.4; on 12.3 a `sample` write warn-skips instead.
- *
- * @param client - Connected MCP client
- * @returns True on Live 12.4 and later
- */
-export async function supportsSampleLoading(client: Client): Promise<boolean> {
-  const [major = 0, minor = 0] = (await readLiveVersion(client))
-    .split(".")
-    .map(Number);
-
-  return major > 12 || (major === 12 && minor >= 4);
-}
-
-/**
- * Whether the SERVED build has code execution compiled in. The flag is baked in
- * at build time (`build:debug` forces it on), so this process's own
- * ENABLE_CODE_EXEC says nothing about the device under test. `ppal-create-clip`
- * publishes its `code` param only when the feature is on, which makes the
- * published schema the honest signal.
- *
- * @param client - Connected MCP client
- * @returns True when the running device was built with code exec enabled
- */
-export async function serverHasCodeExec(client: Client): Promise<boolean> {
-  const { tools } = await client.listTools();
-  const createClip = tools.find((tool) => tool.name === "ppal-create-clip");
-
-  return createClip?.inputSchema.properties?.code != null;
-}
-
-/**
- * Whether the Producer Pal remote script answers its ping. Only then can
- * ppal-create-device load plug-ins and Max devices, and only then do the skills
- * teach it.
- *
- * @returns True when GET /ping answered within a second
- */
-export async function remoteScriptAnswers(): Promise<boolean> {
-  const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
-
-  return await fetch(`http://127.0.0.1:${port}/ping`, {
-    signal: AbortSignal.timeout(1000),
-  }).then(
-    (response) => response.ok,
-    () => false,
-  );
-}
-
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================
@@ -605,7 +566,7 @@ export interface SkippedTargetResult {
   id?: string;
   path?: string;
   ok: false;
-  reason: string;
+  detail: string;
 }
 
 /** Result from ppal-create-clip tool */
@@ -621,7 +582,7 @@ export interface CreateClipResult {
   /** The scenes the destination had to make ("s8-s9"), when it made any */
   created?: string;
   /** What the call asked for that the clip didn't get */
-  reason?: string;
+  detail?: string;
 }
 
 /** Result from ppal-update-clip tool (single clip) */
@@ -635,7 +596,7 @@ export interface UpdateClipResult {
   /** How many `envelopes` lines landed, or why none could */
   envelopes?: number | string;
   /** What the call asked for that the clip didn't get */
-  reason?: string;
+  detail?: string;
 }
 
 /** Result from ppal-create-track tool */
@@ -644,7 +605,7 @@ export interface CreateTrackResult {
   path?: string;
   /** The name Live landed on, only when it isn't the one asked for */
   name?: string;
-  reason?: string;
+  detail?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
@@ -666,7 +627,7 @@ export interface ReadClipResult {
   /** Only on a clip a move was set to overwrite: whether it was cleared */
   deleted?: boolean;
   /** Why the update didn't go as asked, when something landed anyway */
-  reason?: string;
+  detail?: string;
   noteCount?: number;
   notes?: string;
   // Audio clip properties

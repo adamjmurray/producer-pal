@@ -26,7 +26,6 @@ describe("readOneDevice with a drum pad id", () => {
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chainCount: 0,
     });

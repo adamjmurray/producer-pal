@@ -3,85 +3,92 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  barBeatToAbletonBeats,
+  durationToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
+  destinationLane,
   refuseDoubledPosition,
-  requireClipDestinationPath,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   pathEntries,
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { requireDestinationPerSource } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
-/**
- * Refuses a call there is no reading of, before any clip is touched: a
- * whole-call param with no valid value, one position spelled two ways, or one
- * toPath that names a lane or slot for more than one clip.
- * @param timeSignature - Whole-call meter, if sent
- * @param quantizePitch - Whole-call quantize pitch, if sent
- * @param toPath - Destination path(s), if sent
- * @param arrangementStart - Deprecated destination position(s), if sent
- * @param targetCount - How many ids the call named
- */
-export function refuseUnreadableCall(
-  timeSignature: string | undefined,
-  quantizePitch: string | undefined,
-  toPath: string | undefined,
-  arrangementStart: string | undefined,
-  targetCount: number,
-): void {
-  validateWholeCallParams(timeSignature, quantizePitch);
-  refuseDoubledPosition(toPath, arrangementStart, "toPath");
-  refuseSharedClipDestination(toPath, targetCount);
+/** The update-clip params read before any clip is touched. */
+export interface UpfrontArgs {
+  timeSignature?: string;
+  quantizePitch?: string;
+  start?: string;
+  length?: string;
+  firstStart?: string;
+  toPath?: string;
+  toSlot?: string;
+  arrangementStart?: string;
 }
 
 /**
- * Refuse a single toPath that names a lane or slot (`t0`, `t0/l0`, `t0/s1`,
- * `t0[5|1]`) for more than one clip. One place holds one object, so it has to
- * be named once per target; a bare `[5|1]` is fine; it leaves each clip on its
- * own lane and only sets where on it they land.
+ * Refuses a call there is no reading of, before any clip is touched: a param
+ * with no valid value, one position spelled two ways, or one lane or slot for
+ * more than one clip.
+ * @param args - The call's value params, as sent
+ * @param targetCount - How many ids the call named
+ */
+export function refuseUnreadableCall(
+  args: UpfrontArgs,
+  targetCount: number,
+): void {
+  validateValueParams(args, targetCount);
+  refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
+  refuseSharedClipDestination(args.toPath, args.toSlot, targetCount);
+}
+
+/**
+ * Refuse one destination for several clips. A lane or slot (`t0`, `t0/s1`,
+ * `t0[5|1]`) holds one clip, so it has to be named once per clip. A bare
+ * `[5|1]` is fine: each clip stays on its own lane.
  * @param toPath - Destination path(s), if sent
+ * @param toSlot - Deprecated destination slot(s), if sent
  * @param targetCount - How many ids the call named
  */
 function refuseSharedClipDestination(
   toPath: string | undefined,
+  toSlot: string | undefined,
   targetCount: number,
 ): void {
-  if (!paramNamesSomething(toPath) || targetCount <= 1) {
+  if (targetCount <= 1) {
     return;
   }
 
-  const entries = pathEntries(toPath, "toPath");
+  // Sending both is refused where they're resolved.
+  const param = paramNamesSomething(toPath) ? "toPath" : "toSlot";
+  const value = param === "toPath" ? toPath : toSlot;
 
-  if (entries.length !== 1) {
+  if (!pathNamesSomething(value)) {
     return;
   }
 
-  let destination;
+  const entries = pathEntries(value, param);
 
-  try {
-    destination = requireClipDestinationPath(
-      parseObjectPath(entries[0] as string, "toPath"),
-      "toPath",
-    );
-  } catch {
-    // Not this function's job: the entry gets its own warning where toPath is
-    // actually resolved, once the call runs.
+  // toSlot only ever names a slot; a toPath entry may be a bare position.
+  if (
+    entries.length !== 1 ||
+    (param === "toPath" && destinationLane(entries[0] as string) == null)
+  ) {
     return;
   }
 
-  if (destination.lane == null) {
-    return;
-  }
-
-  const spot = destination.lane.kind === "slot" ? "slot" : "spot";
-
-  throw new Error(
-    `${targetCount} clips can't share one ${spot}; give one toPath per clip, ` +
-      `or a bare [pos] to keep each clip's own track`,
+  requireDestinationPerSource(
+    { param, count: 1 },
+    { param: "the call", count: targetCount, noun: "clip" },
+    param === "toPath" ? "A bare [5|1] keeps each clip on its own track." : "",
   );
 }
 
@@ -222,23 +229,48 @@ function namedSplitParam(
 }
 
 /**
- * Refuse a whole-call param the tool can't read, before any clip is touched.
+ * Refuse a value the tool can't read, before any clip is touched.
  *
- * These are one value for every clip in the call, so a per-clip skip would
- * repeat the same message down the list - and the per-clip warn-and-skip
- * wrapper would swallow a throw from inside the loop.
- * @param timeSignature - Time signature to apply, if given
- * @param quantizePitch - Pitch to limit quantization to, if given
+ * A value that won't parse is the whole call's problem whichever clip it was
+ * meant for, so every entry is checked here: a per-clip skip would repeat the
+ * same message down the list, and a clip's update throwing partway has already
+ * written to it by then.
+ * @param args - The call's value params, as sent
+ * @param args.timeSignature - Meter(s) to apply, if given
+ * @param args.quantizePitch - Pitch(es) to limit quantization to, if given
+ * @param args.start - Loop region start(s), if given
+ * @param args.length - Loop region length(s), if given
+ * @param args.firstStart - Playback start(s), if given
+ * @param targetCount - How many ids the call named
  */
-function validateWholeCallParams(
-  timeSignature: string | undefined,
-  quantizePitch: string | undefined,
+function validateValueParams(
+  { timeSignature, quantizePitch, start, length, firstStart }: UpfrontArgs,
+  targetCount: number,
 ): void {
-  if (timeSignature != null) {
-    parseTimeSignature(timeSignature);
+  for (const meter of everyEntry(timeSignature, targetCount, "timeSignature")) {
+    parseTimeSignature(meter);
   }
 
-  if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
-    throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
+  for (const pitch of everyEntry(quantizePitch, targetCount, "quantizePitch")) {
+    if (noteNameToMidi(pitch) == null) {
+      throw new Error(`invalid note name "${pitch}" for quantizePitch`);
+    }
+  }
+
+  for (const position of [
+    ...everyEntry(start, targetCount, "start"),
+    ...everyEntry(firstStart, targetCount, "firstStart"),
+  ]) {
+    validateBarBeatPosition(position);
+    barBeatToAbletonBeats(position, ANY_BEATS_PER_BAR, 4);
+  }
+
+  for (const duration of everyEntry(length, targetCount, "length")) {
+    durationToAbletonBeats(duration, 4, 4);
   }
 }
+
+// No parse error depends on the meter, so any meter finds them all. One this
+// wide keeps a beat past the bar from warning here: that warning is per clip,
+// in the clip's own meter.
+const ANY_BEATS_PER_BAR = Number.MAX_SAFE_INTEGER;

@@ -475,7 +475,7 @@ describe("ppal-playback", () => {
     expect(stopped.clips?.[0]).toStrictEqual({
       id: "999999",
       ok: false,
-      reason: 'id "999999" does not exist',
+      detail: 'id "999999" does not exist',
     });
     expect(stopped.clips?.[1]).toStrictEqual({
       id: clip,
@@ -641,7 +641,7 @@ interface PlaybackResult {
   playing: boolean;
   startTime?: string;
   scene?: { id: string; path?: string };
-  clips?: Array<{ id?: string; path?: string; ok?: false; reason?: string }>;
+  clips?: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;

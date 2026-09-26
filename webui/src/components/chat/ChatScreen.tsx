@@ -39,7 +39,11 @@ interface ChatScreenProps {
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
   handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
+  handleEdit: (
+    messageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
   handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;
   canUndoCompaction?: boolean;

@@ -17,7 +17,7 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   readFanOut,
@@ -305,14 +305,14 @@ function addDrumMapFromDevices(
 /**
  * Put what a part of the read couldn't do on the track's own entry.
  * @param result - The track's entry
- * @param reason - What to say, or undefined when there's nothing
+ * @param detail - What to say, or undefined when there's nothing
  */
-function addReason(
+function addDetail(
   result: Record<string, unknown>,
-  reason: string | undefined,
+  detail: string | undefined,
 ): void {
-  if (reason != null) {
-    appendReason(result, reason);
+  if (detail != null) {
+    appendDetail(result, detail);
   }
 }
 
@@ -380,10 +380,10 @@ export function readTrackGeneric({
   }
 
   if (includeMixer) {
-    const { reason, ...mixer } = readMixerProperties(track, returnTracks);
+    const { detail, ...mixer } = readMixerProperties(track, returnTracks);
 
     Object.assign(result, mixer);
-    addReason(result, reason);
+    addDetail(result, detail);
   }
 
   if (groupId) {
@@ -448,7 +448,7 @@ export function readTrackGeneric({
     const categorized = categorizeDevices(trackDevices, { chainsHidden: true });
 
     addDrumMapFromDevices(result, categorized, notation);
-    addReason(result, categorized.reason);
+    addDetail(result, categorized.detail);
   }
 
   addSlotIndices(result, track, category);

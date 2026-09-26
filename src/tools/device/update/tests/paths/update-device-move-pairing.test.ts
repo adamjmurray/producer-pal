@@ -12,6 +12,7 @@ import {
   type RegisteredMockObject,
   children,
   livePath,
+  mockNonExistentObjects,
   mockWorkingDeviceMoves,
   registerMockObject,
   updateDevice,
@@ -79,6 +80,153 @@ describe("updateDevice — pairing toPath with the targets", () => {
       "id track-1",
       1,
     );
+  });
+
+  // Every path resolves before the first move: resolved afterwards, t0/d1
+  // would name src-2, which slid up when src-0 left.
+  it("moves the devices the paths named before any of them moved", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { devices: children("src-0", "src-1", "src-2") },
+    });
+    registerMockObject("src-2", {
+      path: livePath.track(0).device(2),
+      type: "Device",
+    });
+
+    const result = updateDevice({
+      path: "t0/d0,t0/d1",
+      toPath: "t2/d+,t2/d+",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "src-0", path: "t2/d0" },
+      { id: "src-1", path: "t2/d1" },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+    expect(liveSet.call).toHaveBeenNthCalledWith(
+      2,
+      "move_device",
+      "id src-1",
+      "id track-2",
+      1,
+    );
+  });
+
+  // Each device is named once every move is done: src-1 lands ahead of src-0.
+  it("reports a device where a later move pushed it", () => {
+    const result = updateDevice({
+      id: "src-0,src-1",
+      toPath: "t1/d0,t1/d0",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "src-0", path: "t1/d1" },
+      { id: "src-1", path: "t1/d0" },
+    ]);
+  });
+
+  // A device whose move was refused can still be pushed along by a later one.
+  it("reports an unmoved device where a later move pushed it", () => {
+    mockNonExistentObjects();
+
+    const result = updateDevice({
+      id: "src-0,src-1",
+      toPath: "t9/d0,t0/d0",
+      name: "Kept,Moved",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "src-0",
+        path: "t0/d1",
+        detail: 'not moved: nothing at toPath "t9/d0"',
+      },
+      { id: "src-1", path: "t0/d0" },
+    ]);
+  });
+
+  // A whole-pad target is named again too: the rack holding it was pushed.
+  it("reports a pad where a later move pushed its rack", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { devices: children("drum-rack") },
+    });
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        chains: children("chain-0"),
+        can_have_drum_pads: 1,
+        drum_pads: children("pad-36"),
+      },
+    });
+    registerMockObject("pad-36", {
+      path: livePath.track(0).device(0).drumPad(36),
+      type: "DrumPad",
+      properties: { note: 36 },
+    });
+    registerMockObject("chain-0", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "DrumChain",
+      properties: { in_note: 36, devices: children() },
+    });
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("mover") },
+    });
+    registerMockObject("mover", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    // The mock re-paths only devices; Live carries the pad along with its rack.
+    const moveDevice = liveSet.methods.move_device;
+
+    liveSet.methods.move_device = (...args) => {
+      moveDevice?.(...args);
+      registerMockObject("pad-36", {
+        path: livePath.track(0).device(1).drumPad(36),
+        type: "DrumPad",
+        properties: { note: 36 },
+      });
+
+      return null;
+    };
+
+    const result = updateDevice({
+      path: "t0/d0/pC1,t1/d0",
+      toPath: "t0/d0/p*,t0/d0",
+      name: "Kick,Moved",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "pad-36",
+        path: "t0/d1/pC1",
+        chainIds: ["chain-0"],
+        detail: expect.stringContaining("catch-all pad"),
+      },
+      { id: "mover", path: "t0/d0" },
+    ]);
+  });
+
+  // A path that names nothing still gets its own entry, and the rest move.
+  it("reports a path that names nothing in its own slot", () => {
+    mockNonExistentObjects();
+
+    const result = updateDevice({
+      path: "t0/d0,t0/d5",
+      toPath: "t2/d+,t2/d+",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "src-0", path: "t2/d0" },
+      { path: "t0/d5", ok: false, detail: expect.stringContaining("t0/d5") },
+    ]);
   });
 
   it("refuses one destination for several devices, moving nothing", () => {

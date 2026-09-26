@@ -44,18 +44,24 @@ function registerSimplerCreationFixture(): RegisteredMockObject {
 /**
  * Register a freshly-created device at track 0 / device 2 holding a Threshold
  * param that displays -60 to 0 dB, plus the track that inserts it.
+ * @returns The track and the Threshold param mocks
  */
-function registerThresholdDevice(): void {
-  registerMockObject("track-0", {
+function registerThresholdDevice(): {
+  track: RegisteredMockObject;
+  threshold: RegisteredMockObject;
+} {
+  const track = registerMockObject("track-0", {
     path: livePath.track(0),
     methods: { insert_device: () => ["id", "comp-new"] },
   });
+
   registerMockObject("comp-new", {
     path: livePath.track(0).device(2),
     type: "Device",
     properties: { parameters: children("threshold") },
   });
-  registerMockObject("threshold", {
+
+  const threshold = registerMockObject("threshold", {
     properties: {
       name: "Threshold",
       original_name: "Threshold",
@@ -68,6 +74,8 @@ function registerThresholdDevice(): void {
       str_for_value: (v: unknown) => `${Math.round(Number(v) * 60) - 60} dB`,
     },
   });
+
+  return { track, threshold };
 }
 
 describe("createDevice params", () => {
@@ -135,7 +143,7 @@ describe("createDevice params", () => {
           {
             name: "nonexistent",
             ok: false,
-            reason: "not found on t0/d2 (id simpler-new)",
+            detail: "not found on t0/d2 (id simpler-new)",
           },
         ],
       });
@@ -164,13 +172,13 @@ describe("createDevice params", () => {
           {
             name: "nope",
             ok: false,
-            reason: "not found on t0/d2 (id comp-new)",
+            detail: "not found on t0/d2 (id comp-new)",
           },
           {
             id: "threshold",
             name: "Threshold",
             value: -60,
-            reason: expect.stringContaining(
+            detail: expect.stringContaining(
               "so -100 was set to the nearest valid value",
             ),
           },
@@ -190,6 +198,64 @@ describe("createDevice params", () => {
           params: [{ name: "Volume", value: "" }],
         }),
       ).rejects.toThrow('params entry "Volume" has an empty value');
+    });
+
+    it("writes only the last of the same name twice", async () => {
+      const { threshold } = registerThresholdDevice();
+
+      const result = await createDevice({
+        device: "Compressor",
+        path: "t0",
+        params: [
+          { name: "Threshold", value: "-20 dB" },
+          { name: "threshold", value: "-30 dB" },
+        ],
+      });
+
+      expect(threshold.set).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [
+          {
+            name: "Threshold",
+            ok: false,
+            detail: 'set again by "threshold" later in the list',
+          },
+          { id: "threshold", name: "Threshold", value: -30 },
+        ],
+      });
+    });
+
+    it("writes only the last of an id and a name reaching one param", async () => {
+      const { threshold } = registerThresholdDevice();
+
+      const result = await createDevice({
+        device: "Compressor",
+        path: "t0",
+        params: [
+          { id: "threshold", value: "-40 dB" },
+          { name: "Threshold", value: "-30 dB" },
+        ],
+      });
+
+      expect(threshold.set).toHaveBeenCalledTimes(1);
+      expect(threshold.set).toHaveBeenCalledWith(
+        "value",
+        expect.closeTo(0.5, 6),
+      );
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [
+          {
+            id: "threshold",
+            ok: false,
+            detail: 'set again by "Threshold" later in the list',
+          },
+          { id: "threshold", name: "Threshold", value: -30 },
+        ],
+      });
     });
 
     it("does not call replace_sample on a non-Simpler when sample is in params", async () => {

@@ -50,9 +50,16 @@ function renderAssistant(usage: TokenUsage, timing?: StepTiming) {
  * Render a user MessageRow, optionally in edit mode.
  * @param parts - The user message's UI parts
  * @param editingIndex - Index being edited, or null
+ * @param handleEdit - Edit callback
+ * @param editText - Text in the edit box
  * @returns The rendered container
  */
-function renderUser(parts: UIMessage["parts"], editingIndex: number | null) {
+function renderUser(
+  parts: UIMessage["parts"],
+  editingIndex: number | null,
+  handleEdit = vi.fn(),
+  editText = "match this",
+) {
   const message: UIMessage = {
     role: "user",
     parts,
@@ -69,12 +76,23 @@ function renderUser(parts: UIMessage["parts"], editingIndex: number | null) {
       showTimestamps={false}
       showTokenUsage={false}
       handleRetry={vi.fn()}
-      handleEdit={vi.fn()}
+      handleEdit={handleEdit}
       editingIndex={editingIndex}
       setEditingIndex={vi.fn()}
-      editText="match this"
+      editText={editText}
       setEditText={vi.fn()}
     />,
+  );
+}
+
+/**
+ * The data URLs of the images a render shows.
+ * @param container - Rendered container
+ * @returns Each image's src
+ */
+function imageSources(container: Element): Array<string | null> {
+  return [...container.querySelectorAll("img")].map((img) =>
+    img.getAttribute("src"),
   );
 }
 
@@ -98,6 +116,63 @@ describe("MessageRow user images", () => {
     const { container } = renderUser(parts, null);
 
     expect(container.textContent).toContain("match this");
+  });
+
+  it("offers no remove control while reading", () => {
+    renderUser(parts, null);
+
+    expect(screen.queryByLabelText("Remove attachment 1")).toBeNull();
+  });
+
+  describe("removing images while editing", () => {
+    const twoImages: UIMessage["parts"] = [
+      { type: "image", mediaType: "image/png", data: "AAA" },
+      { type: "image", mediaType: "image/png", data: "BBB" },
+      { type: "text", content: "match this" },
+    ];
+
+    it("sends without the removed image", () => {
+      const handleEdit = vi.fn();
+      const { container } = renderUser(twoImages, 0, handleEdit);
+
+      fireEvent.click(screen.getByLabelText("Remove attachment 1"));
+
+      expect(imageSources(container)).toStrictEqual([
+        "data:image/png;base64,BBB",
+      ]);
+
+      fireEvent.click(screen.getByTestId("edit-message-save"));
+
+      expect(handleEdit).toHaveBeenCalledExactlyOnceWith(0, "match this", [0]);
+    });
+
+    it("sends without any image once all are removed", () => {
+      const handleEdit = vi.fn();
+      const { container } = renderUser(twoImages, 0, handleEdit);
+
+      fireEvent.click(screen.getByLabelText("Remove attachment 1"));
+      fireEvent.click(screen.getByLabelText("Remove attachment 1"));
+
+      expect(imageSources(container)).toStrictEqual([]);
+
+      fireEvent.click(screen.getByTestId("edit-message-save"));
+
+      expect(handleEdit).toHaveBeenCalledExactlyOnceWith(
+        0,
+        "match this",
+        [0, 1],
+      );
+    });
+
+    it("can send an image-only message with one image fewer", () => {
+      const handleEdit = vi.fn();
+
+      renderUser(twoImages.slice(0, 2), 0, handleEdit, "");
+      fireEvent.click(screen.getByLabelText("Remove attachment 2"));
+      fireEvent.click(screen.getByTestId("edit-message-save"));
+
+      expect(handleEdit).toHaveBeenCalledExactlyOnceWith(0, "", [1]);
+    });
   });
 });
 

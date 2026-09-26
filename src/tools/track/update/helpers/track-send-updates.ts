@@ -21,6 +21,7 @@ import {
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import { pairParams } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
 export interface ResolvedSend extends IndexedSend {
@@ -35,12 +36,54 @@ export interface TrackSends extends DedupedSends<ResolvedSend> {
 }
 
 /**
- * Match every send the call asked for to a return track, once for the whole
- * call.
+ * The sends each track takes. sendReturn pairs per track, so the tracks naming
+ * the same return share one resolution.
+ * @param sendGainDb - Send level in dB, if given
+ * @param sendReturn - Return track(s), one for all or one per track, if given
+ * @param sends - The `sends` list, as the caller sent it
+ * @param count - How many targets the call named
+ * @returns The resolved sends for the target at an index
+ */
+export function trackSendsAt(
+  sendGainDb: number | undefined,
+  sendReturn: string | undefined,
+  sends: SendEntry[] | undefined,
+  count: number,
+): (index: number) => TrackSends {
+  const returnAt = pairParams(
+    { sendReturn },
+    {
+      sendReturn: {
+        param: "sendReturn",
+        noun: "return",
+        item: "track",
+        shortfall: "kept their sends",
+      },
+    },
+    count,
+  );
+  const resolved = new Map<string | undefined, TrackSends>();
+
+  return (index) => {
+    const own = returnAt(index).sendReturn;
+    let found = resolved.get(own);
+
+    if (found == null) {
+      found = resolveTrackSends(sendGainDb, own, sends);
+      resolved.set(own, found);
+    }
+
+    return found;
+  };
+}
+
+/**
+ * Match every send the call asked for to a return track.
  *
  * The return tracks belong to the Live Set, not to any track being updated, so
- * nothing about a track decides this. It is still resolved once and reported on
- * every track's entry, so no track is left without an answer (ADR-0042).
+ * only the sendReturn a track was given decides this. What matched nothing is
+ * reported on that track's entry, so no track is left without an answer
+ * (ADR-0042).
  *
  * The scalar pair is resolved first, so a call using both honors both. They
  * only collide when they name the same return, and then the list is the later

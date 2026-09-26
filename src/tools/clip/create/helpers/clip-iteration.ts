@@ -7,9 +7,8 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
-  prepareSessionClipSlot,
-  requireCreatedClip,
-  requireCreatedSessionClip,
+  createInSessionSlot,
+  requireCreatedArrangementClip,
   type MidiNote,
   type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
@@ -19,11 +18,7 @@ import {
   type LaneSnapshot,
   snapshotLane,
 } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
@@ -220,7 +215,7 @@ function noteSlotWork(clipResult: ClipResultObject, slotWork: SlotWork): void {
   }
 
   if (slotWork.overwrote != null) {
-    appendReason(clipResult, slotWork.overwrote);
+    appendDetail(clipResult, slotWork.overwrote);
   }
 }
 
@@ -273,7 +268,7 @@ function noteDisplaced(
       : arrangementWriteEffects(laneBefore, [clipId]);
 
   if (displaced != null) {
-    appendReason(clipResult, displaced);
+    appendDetail(clipResult, displaced);
   }
 
   return clipResult;
@@ -298,20 +293,14 @@ function createSessionClip(
   clipLength: number,
   liveSet: LiveAPI,
 ): SessionClipResult {
-  const { clipSlot, created, overwrote } = prepareSessionClipSlot(
+  const { clip, created, overwrote } = createInSessionSlot(
     trackIndex,
     sceneIndex,
     liveSet,
+    (clipSlot) => clipSlot.call("create_clip", clipLength),
   );
 
-  clipSlot.call("create_clip", clipLength);
-
-  return {
-    clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
-    sceneIndex,
-    created,
-    overwrote,
-  };
+  return { clip, sceneIndex, created, overwrote };
 }
 
 interface ArrangementClipResult {
@@ -341,9 +330,11 @@ function createArrangementClip(
     arrangementStartBeats,
     clipLength,
   ) as string;
-  const clip = requireCreatedClip(
-    LiveAPI.from(newClipResult),
-    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  const clip = requireCreatedArrangementClip(
+    newClipResult,
+    trackIndex,
+    takeLane?.takeLaneIndex ?? null,
+    arrangementStartBeats,
   );
 
   return { clip, arrangementStartBeats };

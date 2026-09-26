@@ -74,20 +74,7 @@ export function interpretMidiJson(
   input: string,
   options: MidiJsonInterpretOptions = {},
 ): NoteEvent[] {
-  if (!input.trim()) {
-    return [];
-  }
-
-  let parsed: MidiJsonRawNote[];
-
-  try {
-    parsed = parseMidiJson(input);
-  } catch (error) {
-    throw new Error(`Invalid MIDI JSON: ${errorMessage(error)}`, {
-      cause: error,
-    });
-  }
-
+  const parsed = parseMidiJsonNotes(input);
   const timeSigDenominator = options.timeSigDenominator ?? DEFAULT_DENOMINATOR;
   const events: NoteEvent[] = [];
   const dropped: string[] = [];
@@ -107,6 +94,25 @@ export function interpretMidiJson(
   warnDroppedNotes(dropped);
 
   return options.keepV0Deletes === true ? events : applyV0Deletions(events);
+}
+
+/**
+ * Parse a MIDI JSON array without checking its notes, so it warns nothing.
+ * @param input - MIDI JSON array string
+ * @returns The raw notes, unchecked
+ */
+export function parseMidiJsonNotes(input: string): MidiJsonRawNote[] {
+  if (!input.trim()) {
+    return [];
+  }
+
+  try {
+    return parseMidiJson(input);
+  } catch (error) {
+    throw new Error(`Invalid MIDI JSON: ${errorMessage(error)}`, {
+      cause: error,
+    });
+  }
 }
 
 // At most this many distinct reasons are named; the rest collapse into a count.

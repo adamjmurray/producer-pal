@@ -85,6 +85,7 @@ describe("read-device on nested racks", () => {
 
     for (const pad of kit.drumPads ?? []) {
       expect(pad.path).toBe(`${KIT}/p${pad.pitch}`);
+      expect(pad).not.toHaveProperty("note");
     }
 
     const subKit = await read(SUB_KIT, { include: ["drum-pads"] });
@@ -92,6 +93,7 @@ describe("read-device on nested racks", () => {
 
     expect(hat?.id).toBeUndefined();
     expect(hat?.path).toBe(`${SUB_KIT}/pC3`);
+    expect(hat).not.toHaveProperty("note");
   });
 
   // A path can pass through two drum pads. The segments after the first pad's

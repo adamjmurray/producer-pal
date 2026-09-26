@@ -121,12 +121,11 @@ describe("readOneDevice drum-map by target kind", () => {
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chains: expect.any(Array),
     });
     expect(result.chains).toHaveLength(1);
-    expect(result.reason).toBeUndefined();
+    expect(result.detail).toBeUndefined();
   });
 
   it("says on the pad's own entry that it has no drum map", () => {
@@ -135,7 +134,7 @@ describe("readOneDevice drum-map by target kind", () => {
     const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(result.reason).toBe(PAD_REASON);
+    expect(result.detail).toBe(PAD_REASON);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -154,7 +153,7 @@ describe("readOneDevice drum-map by target kind", () => {
     const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(result.reason).toBe(PAD_REASON);
+    expect(result.detail).toBe(PAD_REASON);
   });
 
   it("says on a drum chain's own entry that it has no drum map", () => {
@@ -166,7 +165,7 @@ describe("readOneDevice drum-map by target kind", () => {
     });
 
     expect(result.drumMap).toBeUndefined();
-    expect(result.reason).toBe(
+    expect(result.detail).toBe(
       "this is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
     );
   });
@@ -215,7 +214,6 @@ describe("readOneDevice drum-map by target kind", () => {
       // The kit is nested, so the pad's path runs through the outer rack.
       path: "t1/d0/c0/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chainCount: 1,
     });
@@ -271,13 +269,13 @@ describe("postProcessDrumMap", () => {
   it("leaves a kept pad alone when it carries no chains", () => {
     // Only the pads of a rack read for the map carry chains; a pad already
     // read without them takes no chainCount it never had.
-    const pad = { note: 36, pitch: "C1" };
+    const pad = { pitch: "C1" };
     const result = postProcessDrumMap(
       { type: "drum-rack", drumPads: [pad], chains: [] },
       { ...options, chainsForDrumMap: true, includeDrumPads: true },
     );
 
-    expect(result.drumPads).toStrictEqual([{ note: 36, pitch: "C1" }]);
+    expect(result.drumPads).toStrictEqual([{ pitch: "C1" }]);
     expect(result.chains).toBeUndefined();
   });
 });

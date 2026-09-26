@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date logged:** 2026-09-13
+- **Amended by:** [ADR-0050](0050-an-entry-explains-itself-in-detail.md) — the
+  entry's `reason` was renamed `detail`, on a skip too.
 
 ## Context
 
@@ -25,11 +27,11 @@ bar|beat spelling for a song position).
 - **Same value → silence.** Drift below that resolution is the same value: Live
   keeps a 32-bit float, so -6.333333 reads back -6.33 either way.
 - **A different value → the value read back off the object**, published the way
-  a read publishes it, plus a `reason` naming the fields it applies to: "gainDb,
+  a read publishes it, plus a `detail` naming the fields it applies to: "gainDb,
   pan read back as shown, not as sent". The wording is observational because the
   causes aren't distinguishable from here — Live clamps, snaps to a step, or
   ignores the write and leaves what was there. A device param keeps the clamp
-  and ladder reasons it already had, which do say which.
+  and ladder details it already had, which do say which.
 - **Not comparable → always report.** A value written as a display string — a
   unit, an enum label, a note name, `loc:Verse` — is a spelling, not a number to
   compare a read-back with, so the read-back is news. So is a read-back that
@@ -41,9 +43,9 @@ bar|beat spelling for a song position).
   stays unsaid. The loop fields were already conditional this way.
 - **A refusal about one target rides on that target's entry.** `leftPan`/
   `rightPan` in stereo mode, `pan` in split mode, and a mixer or send param a
-  rack macro owns are a `reason` on the track now instead of a warning — with
+  rack macro owns are a `detail` on the track now instead of a warning — with
   silence meaning "landed", a refusal that only warns reads as success. A
-  refused send keeps its slot as `{return, returnId, ok: false, reason}`.
+  refused send keeps its slot as `{return, returnId, ok: false, detail}`.
 - **`ppal-select` is unchanged.** The selection it reports is what the call
   produced, not an echo of an argument.
 
@@ -67,7 +69,7 @@ bar|beat spelling for a song position).
 
 ## Consequences
 
-- One comparison, one publisher and one reason, used by the mixer, send, tempo
+- One comparison, one publisher and one detail, used by the mixer, send, tempo
   and device-param write paths:
   [`read-back-comparison.ts`](../../src/tools/shared/helpers/read-back-comparison.ts).
   Reads still happen on every write — only the reporting is conditional. A

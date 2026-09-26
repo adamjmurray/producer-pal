@@ -6,13 +6,12 @@
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   type Insertion,
   planInsertions,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
-import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
@@ -41,13 +40,13 @@ interface CreatedTrackResult {
   id: string;
   path: string;
   /**
-   * The name the track ended up with, when it isn't the one asked for. `reason`
+   * The name the track ended up with, when it isn't the one asked for. `detail`
    * says why, and there is no `ok` — the track was made.
    */
   name?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
-  reason?: string;
+  detail?: string;
 }
 
 /**
@@ -71,12 +70,6 @@ export function createTrack(
 ): CreatedTrackResult | CreatedTrackResult[] {
   const { count, name, color, mute, solo, arm } = args;
   const targets = resolveCreateTrackTargets(args);
-
-  if (args.type === "return" && args.trackIndex != null) {
-    console.warn(
-      "trackIndex is ignored for return tracks (always added at end)",
-    );
-  }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const insertions = planTrackInsertions(liveSet, targets);
@@ -118,7 +111,7 @@ export function createTrack(
     });
 
     const landed = trackColor == null ? {} : landedColor(track, trackColor);
-    const reason = joinReasons([rename.landed.reason, landed.reason]);
+    const detail = joinDetails([rename.landed.detail, landed.detail]);
 
     created.push({
       id: trackId,
@@ -129,7 +122,7 @@ export function createTrack(
       ),
       ...rename.landed,
       ...landed,
-      ...(reason == null ? {} : { reason }),
+      ...(detail == null ? {} : { detail }),
     });
   }
 

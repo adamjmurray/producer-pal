@@ -129,6 +129,22 @@ describe("duplicate - chain", () => {
     expect(created.set).toHaveBeenCalledWith("name", "Layer B");
   });
 
+  it("warns once that arrangement params do not apply to a chain", async () => {
+    setupRack();
+
+    await duplicate({
+      type: "chain",
+      id: "chain-0",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'arrangementStart/arrangementLength ignored: a chain has no arrangement position (type "chain")',
+    );
+  });
+
   it("refuses a rack return chain, saying why", async () => {
     setupRack();
     registerMockObject("return-chain-0", {
@@ -140,6 +156,17 @@ describe("duplicate - chain", () => {
     await expect(
       duplicate({ type: "chain", id: "return-chain-0" }),
     ).rejects.toThrow("is a rack return chain, which cannot be copied");
+  });
+
+  it("refuses a chain holding the Producer Pal device, creating nothing", async () => {
+    const { rack } = setupRack();
+
+    registerMockObject("this_device", { path: `${RACK} chains 0 devices 0` });
+
+    await expect(duplicate({ type: "chain", id: "chain-0" })).rejects.toThrow(
+      "it holds the Producer Pal device",
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
   });
 
   // Live's class names ("AudioEffectGroupDevice") mean nothing to a caller, so
@@ -194,7 +221,7 @@ describe("duplicate - chain", () => {
       {
         path: "t1/d0",
         ok: false,
-        reason: expect.stringContaining(
+        detail: expect.stringContaining(
           "a rack only holds chains of its own kind",
         ),
       },
@@ -386,10 +413,10 @@ describe("duplicate - chain", () => {
     setupRack({ hasMacroMappings: 1 });
 
     const result = (await duplicate({ type: "chain", id: "chain-0" })) as {
-      reason?: string;
+      detail?: string;
     };
 
-    expect(result.reason).toContain("macro mappings");
+    expect(result.detail).toContain("macro mappings");
     // The entry carries it, so nothing warns about it.
     expect(vi.mocked(consoleMock.warn)).not.toHaveBeenCalled();
   });
@@ -399,7 +426,7 @@ describe("duplicate - chain", () => {
 
     const result = await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(result).not.toHaveProperty("reason");
+    expect(result).not.toHaveProperty("detail");
   });
 
   it("warns that count is ignored, since only one copy is made", async () => {
@@ -527,7 +554,7 @@ describe("duplicate - chain", () => {
 
     expect(result).toStrictEqual({
       id: "chain-new",
-      reason: expect.stringContaining("no addressable path"),
+      detail: expect.stringContaining("no addressable path"),
     });
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
       "no addressable path",
@@ -551,7 +578,7 @@ describe("duplicate - chain", () => {
     expect(result).toStrictEqual({
       id: "chain-new",
       path: "t0/d0/c1",
-      reason:
+      detail:
         "t0/d0/c0/d0 could not be copied into the new chain: no chain there",
     });
   });
@@ -570,7 +597,7 @@ describe("duplicate - chain", () => {
     expect(result).toStrictEqual({
       id: "chain-new",
       path: "t0/d0/c1",
-      reason:
+      detail:
         "t0/d0/c0/d0 could not be copied into the new chain: it is not on the temp track",
     });
     expect(moveDeviceToPathMock).not.toHaveBeenCalled();

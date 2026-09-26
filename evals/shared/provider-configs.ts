@@ -40,7 +40,7 @@ export const CLAUDE_CODE_CONFIG: ProviderConfig = {
 export const CODEX_CODE_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "",
   providerName: "Codex CLI",
-  defaultModel: "terra",
+  defaultModel: "luna",
   apiKeyOptional: true,
 };
 
@@ -55,7 +55,7 @@ export const GEMINI_CONFIG: ProviderConfig = {
 export const OPENAI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENAI_KEY",
   providerName: "OpenAI",
-  defaultModel: "gpt-5.6-terra",
+  defaultModel: "gpt-6-sol",
 };
 
 /** OpenRouter provider configuration */

@@ -11,6 +11,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
   registerSessionClipDuplication,
+  registerTrackCopySet,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   registerArrangementClip,
@@ -102,9 +103,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       type: "track",
       id: "track1",
       routeToSource: true,
-    })) as { reason?: string };
+    })) as { detail?: string };
 
-    expect(result.reason).toContain(
+    expect(result.detail).toContain(
       'not routed to the source: no output option named "NonExistentTrack"',
     );
     // The copy's entry carries it, so nothing warns about it.
@@ -232,21 +233,8 @@ describe("duplicate - focus functionality", () => {
 });
 
 describe("duplicate - comma-separated names", () => {
-  /**
-   * Set up source track and two new tracks for naming tests.
-   * @returns The two new track mocks
-   */
-  function setupTwoNewTracks() {
-    registerMockObject("track1", { path: livePath.track(0) });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    const newTrack1 = registerNewTrack(1);
-    const newTrack2 = registerNewTrack(2);
-
-    return { newTrack1, newTrack2 };
-  }
-
   it("should assign different names to each track when comma-separated", async () => {
-    const { newTrack1, newTrack2 } = setupTwoNewTracks();
+    const { tracks } = registerTrackCopySet(["track1"]);
 
     const result = await duplicate({
       type: "track",
@@ -255,13 +243,14 @@ describe("duplicate - comma-separated names", () => {
       name: "Lead,Pad",
     });
 
-    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
-    expect(newTrack2.set).toHaveBeenCalledWith("name", "Pad");
+    // Each copy lands right after the source, so the one made last sits first.
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "Lead");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "Pad");
     expect(result).toHaveLength(2);
   });
 
   it("should not set name for extras beyond the comma-separated list", async () => {
-    const { newTrack1, newTrack2 } = setupTwoNewTracks();
+    const { tracks } = registerTrackCopySet(["track1"]);
 
     await duplicate({
       type: "track",
@@ -271,8 +260,8 @@ describe("duplicate - comma-separated names", () => {
     });
 
     // Single name (no comma) applies to all
-    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
-    expect(newTrack2.set).toHaveBeenCalledWith("name", "Lead");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "Lead");
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "Lead");
   });
 });
 
@@ -349,13 +338,13 @@ function registerNewTrack(
 /**
  * Assert the result matches the expected track duplication shape.
  * @param result - The duplicate() return value
- * @param reason - What the copy's entry should say beyond its own fields
+ * @param detail - What the copy's entry should say beyond its own fields
  */
-function expectTrackResult(result: unknown, reason: string): void {
+function expectTrackResult(result: unknown, detail: string): void {
   expect(result).toStrictEqual({
     path: expect.any(String),
     id: expect.any(String),
     clips: expect.any(Array),
-    reason,
+    detail,
   });
 }

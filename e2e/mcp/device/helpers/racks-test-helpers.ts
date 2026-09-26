@@ -5,6 +5,9 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
+  getToolErrorMessage,
+  getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   sleep,
@@ -46,13 +49,12 @@ export interface ParamEntryResult {
   ok?: boolean;
   /** Why the write landed nowhere, or why the value that landed isn't the one
    * asked for */
-  reason?: string;
+  detail?: string;
 }
 
 export interface DrumPadInfo {
   id?: string;
   path?: string;
-  note: number;
   pitch: string;
   name: string;
   chainCount?: number;
@@ -75,6 +77,38 @@ export async function callWithWarnings(
   const result = await client.callTool({ name, arguments: args });
 
   await sleep(50);
+
+  return parseToolResultWithWarnings<Record<string, unknown>>(result);
+}
+
+/**
+ * Call a tool and return its payload and warnings, or its error message when
+ * the call was refused.
+ * @param client - MCP client
+ * @param name - Tool name
+ * @param args - Tool arguments
+ * @returns The parsed result or the refusal, and the warnings
+ */
+export async function callOrRefusal(
+  client: Client,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<{
+  data: Record<string, unknown>;
+  refusal?: string;
+  warnings: string[];
+}> {
+  const result = await client.callTool({ name, arguments: args });
+
+  await sleep(50);
+
+  if (isToolError(result)) {
+    return {
+      data: {},
+      refusal: getToolErrorMessage(result),
+      warnings: getToolWarnings(result),
+    };
+  }
 
   return parseToolResultWithWarnings<Record<string, unknown>>(result);
 }
@@ -121,21 +155,4 @@ export async function readReturnChains(client: Client): Promise<ChainInfo[]> {
   });
 
   return parseToolResult<DeviceInfo>(result).returnChains ?? [];
-}
-
-/**
- * Assert a warning names a parameter as disabled.
- *
- * Takes the label in pieces rather than whole, so a label that grows a chain
- * path between the name and the parameter still matches.
- * @param warnings - Warnings from the tool result
- * @param parts - How the warning names it, e.g. `chain "Kick"` and `pan`
- * @returns True when a matching warning is present
- */
-export function warnsDisabled(warnings: string[], ...parts: string[]): boolean {
-  return warnings.some(
-    (w) =>
-      parts.every((part) => w.includes(part)) &&
-      w.includes("is disabled and was not changed"),
-  );
 }

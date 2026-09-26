@@ -9,7 +9,12 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  collectHiddenParams,
+  hiddenParamWarnings,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
+import { toolDefCreateTrack } from "./create-track.def.ts";
 import { createTrack } from "./create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -177,5 +182,44 @@ describe("createTrack by path", () => {
     expect(console.warn).toHaveBeenCalledWith(
       'type "return" is deprecated and will be removed; use path "rt+" instead',
     );
+  });
+});
+
+// Read through the tool's own schema, so the example can't drift from the
+// param names create-track actually uses.
+describe("createTrack trackIndex deprecation example", () => {
+  const hidden = collectHiddenParams(
+    toolDefCreateTrack.toolOptions.inputSchema,
+  );
+
+  it.each([
+    [{ trackIndex: 2 }, "t2"],
+    [{ trackIndex: 2, type: "audio" }, "t2"],
+    [{ trackIndex: -1 }, "t+"],
+    [{ trackIndex: 2, type: "return" }, "rt+"],
+  ])("suggests path for %o as %s", (args, path) => {
+    expect(hiddenParamWarnings(["trackIndex"], hidden, args)).toStrictEqual([
+      `WARNING: param "trackIndex" is deprecated and will be removed; use "path" instead (e.g. path: "${path}")`,
+    ]);
+  });
+
+  // Both warnings name the path that makes the same three tracks at 2.
+  it("names every track a count made", () => {
+    const warnings = hiddenParamWarnings(["trackIndex", "count"], hidden, {
+      trackIndex: 2,
+      count: 3,
+    });
+
+    expect(warnings).toHaveLength(2);
+
+    for (const warning of warnings) {
+      expect(warning).toContain('(e.g. path: "t2,t2,t2")');
+    }
+  });
+
+  it("repeats the path a count was sent with", () => {
+    expect(
+      hiddenParamWarnings(["count"], hidden, { path: "rt+", count: 2 })[0],
+    ).toContain('(e.g. path: "rt+,rt+")');
   });
 });

@@ -41,7 +41,7 @@ interface MovedClip {
   /** Set only on a skip */
   ok?: false;
   /** Why the move didn't happen, on the clip's own entry */
-  reason?: string;
+  detail?: string;
 }
 
 describe("moving a row of arrangement clips", () => {
@@ -116,11 +116,11 @@ describe("moving a row of arrangement clips", () => {
     const { data } = await moveClips(row, ["405|1", "401|1"].map(destination));
 
     // Each clip's own entry says which move the call gave up on.
-    expect(data[0]?.reason).toContain(
+    expect(data[0]?.detail).toContain(
       `not moved: it would land on clip ` +
         `${second.path} (id ${second.id}), which this call can't move out of the way first`,
     );
-    expect(data[1]?.reason).toContain(
+    expect(data[1]?.detail).toContain(
       `not moved: it would land on clip ` +
         `${first.path} (id ${first.id}), which this call can't move out of the way first`,
     );
@@ -149,11 +149,11 @@ describe("moving a row of arrangement clips", () => {
       [destination("601|1"), "not-a-real-path"],
     );
 
-    expect(data[0]?.reason).toContain(
+    expect(data[0]?.detail).toContain(
       `not moved: it would land on clip ` +
         `${first.path} (id ${first.id}), which this call leaves where it is`,
     );
-    expect(data[1]?.reason).toContain(
+    expect(data[1]?.detail).toContain(
       'not moved: invalid toPath "not-a-real-path"',
     );
 
@@ -179,7 +179,7 @@ describe("moving a row of arrangement clips", () => {
       positions.map(laneDestination),
     );
     // Live can't delete a take-lane clip, so each source is emptied in place.
-    expect(data[0]?.reason).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
+    expect(data[0]?.detail).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
 
     // Both are really there, with the notes and names they were created with.
     for (const [index, position] of positions.entries()) {

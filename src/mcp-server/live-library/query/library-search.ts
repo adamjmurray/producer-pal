@@ -57,7 +57,7 @@ export async function librarySearch(
     return {
       dbAvailable: false,
       items: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     };
   }
 
@@ -84,7 +84,7 @@ export async function librarySearch(
         inFolder != null ? resolveFileIdForPath(db, inFolder) : undefined;
 
       // inFolder was provided but the path doesn't map to any known folder.
-      // Set a reason so the LLM can distinguish "no matches under this folder"
+      // Set a detail so the LLM can distinguish "no matches under this folder"
       // from "this folder doesn't exist". Note: segment lookups are
       // case-insensitive (COLLATE NOCASE), so a path with bad casing still
       // resolves on case-insensitive filesystems.
@@ -93,7 +93,7 @@ export async function librarySearch(
           dbAvailable: true,
           ...(stalenessRisk && { stalenessRisk }),
           items: [],
-          reason: `inFolder path not found: ${inFolder}`,
+          detail: `inFolder path not found: ${inFolder}`,
         };
       }
 
@@ -126,7 +126,7 @@ export async function librarySearch(
     return {
       dbAvailable: false,
       items: [],
-      reason: `Failed to read Live database: ${errorMessage(error)}`,
+      detail: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
 }

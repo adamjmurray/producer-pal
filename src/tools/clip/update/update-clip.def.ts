@@ -15,8 +15,11 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
-    default: "Update clip(s), MIDI notes, and warp settings (audio clips).",
-    smallModel: "Update clip(s) and MIDI notes",
+    default:
+      "Update clip(s), MIDI notes, and warp settings (audio clips). " +
+      "Params with no list form apply to every clip.",
+    smallModel:
+      "Update clip(s) and MIDI notes. Params with no list form apply to every clip",
   },
 
   annotations: {
@@ -41,27 +44,30 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
 
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per target named, in order",
+      default: "name, or comma-separated one per clip",
       smallModel: "clip name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per target named, in order",
+      default: "#RRGGBB, or comma-separated one per clip",
       smallModel: "#RRGGBB",
     }),
-    timeSignature: z.string().optional().describe("N/D (4/4)"),
+    timeSignature: z
+      .string()
+      .optional()
+      .describe("N/D (4/4), or comma-separated one per clip"),
 
     // Clip region and loop settings
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins (clip meter)"),
+      .describe(
+        "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per clip",
+      ),
     length: z
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter",
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter; or comma-separated one per clip",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
@@ -72,7 +78,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     firstStart: param(z.string().optional(), {
       default:
-        "bar|beat playback start (looping clips, when different from start; clip meter)",
+        "bar|beat playback start (looping clips, when different from start; clip meter); or comma-separated one per clip",
       smallModel: null,
     }),
     arrangementStart: deprecatedParam(z.coerce.string().optional(), {
@@ -83,15 +89,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration(s), comma-separated: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
-          "One length applies to every clip; a list pairs 1:1 with id/path in order. " +
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per clip. Arrangement clips only; song meter. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
     arrangementSplit: param(z.string().optional(), {
       default:
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
-        "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter. " +
+        "One list for every clip, not one per clip: each clip is cut wherever a position falls inside it, and a position outside it is ignored. Arrangement clips only; song meter. " +
         "Cannot be combined with toPath or arrangementLength: the cut makes new clips, so those would either miss the new pieces or apply to every one of them - cut in one call, then move/resize the pieces in the next",
       smallModel: null,
     }),
@@ -102,16 +107,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>' " +
+        "where to move the clip(s): a clip slot 't<track>/s<scene>' " +
           "(scenes are created up to that index), " +
           "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
           "loc:<locator name or id>), a take lane 't<track>/l<lane>' (lanes are created up to that " +
           "index), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation. One '[<position>]' moves every clip, each on its " +
-          "own lane; anything naming a lane pairs 1:1 with id/path in order, since a lane or slot " +
-          "holds one clip and the rest would land on top of it",
+          "take lane drops its automation. Comma-separated, one per clip; a lone " +
+          "'[<position>]' moves every clip, each on its own lane",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged
@@ -217,7 +221,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ),
 
     quantizePitch: param(z.string().optional(), {
-      default: "limit quantization to specific pitch (e.g., C3, D#4)",
+      default:
+        "limit quantization to one pitch (e.g. C3 or D#4), or comma-separated one per clip",
       smallModel: null,
     }),
 

@@ -3,11 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAudioClipInSession,
+  type CreatedClip,
   EPSILON,
   type TilingContext,
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
@@ -19,6 +21,7 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   clipReporterFor,
+  noteClipReason,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
@@ -109,48 +112,68 @@ export function handleArrangementLengthening({
     });
   }
 
-  // Branch: expose hidden content vs tiling (looped clips only)
-  if (arrangementLengthBeats < clipLength) {
-    // Expose hidden content by tiling with start_marker offsets
-    const currentOffset = clipStartMarker - clipLoopStart;
-    const remainingLength = arrangementLengthBeats - currentArrangementLength;
-    const tiledClips = tileClipToRange(
-      clip,
-      track,
-      currentEndTime,
-      remainingLength,
-      tilingContext,
-      {
-        adjustPreRoll: false,
-        startOffset: currentOffset + currentArrangementLength,
-        tileLength: currentArrangementLength,
-      },
+  // Tiles land one at a time, so a throw partway leaves some in the Set.
+  // Report those, with why the rest didn't land.
+  const placed: CreatedClip[] = [];
+  let tiledClips: ClipIdResult[];
+
+  try {
+    // Branch: expose hidden content vs tiling (looped clips only)
+    if (arrangementLengthBeats < clipLength) {
+      // Expose hidden content by tiling with start_marker offsets
+      const currentOffset = clipStartMarker - clipLoopStart;
+      const remainingLength = arrangementLengthBeats - currentArrangementLength;
+
+      tiledClips = tileClipToRange(
+        clip,
+        track,
+        currentEndTime,
+        remainingLength,
+        tilingContext,
+        {
+          adjustPreRoll: false,
+          startOffset: currentOffset + currentArrangementLength,
+          tileLength: currentArrangementLength,
+          placed,
+        },
+      );
+    } else {
+      const currentOffset = clipStartMarker - clipLoopStart;
+      // One pass is the whole loop plus any pre-roll: a start marker inside
+      // the loop doesn't shorten it, Live wraps to loop_start and plays out
+      // the rest.
+      const totalContentLength =
+        clipLoopEnd - Math.min(clipStartMarker, clipLoopStart);
+
+      tiledClips = createLoopedClipTiles({
+        clip,
+        isAudioClip,
+        arrangementLengthBeats,
+        currentArrangementLength,
+        currentStartTime,
+        currentEndTime,
+        totalContentLength,
+        currentOffset,
+        track,
+        context: tilingContext,
+        placed,
+      });
+    }
+  } catch (error) {
+    if (placed.length === 0) {
+      throw error;
+    }
+
+    noteClipReason(
+      reasons,
+      clip.id,
+      `arrangementLength didn't finish: ${errorMessage(error)}`,
     );
-
-    updatedClips.push({ id: clip.id });
-    updatedClips.push(...tiledClips);
-  } else {
-    const currentOffset = clipStartMarker - clipLoopStart;
-    // One pass is the whole loop plus any pre-roll: a start marker inside the
-    // loop doesn't shorten it, Live wraps to loop_start and plays out the rest.
-    const totalContentLength =
-      clipLoopEnd - Math.min(clipStartMarker, clipLoopStart);
-    const tiledClips = createLoopedClipTiles({
-      clip,
-      isAudioClip,
-      arrangementLengthBeats,
-      currentArrangementLength,
-      currentStartTime,
-      currentEndTime,
-      totalContentLength,
-      currentOffset,
-      track,
-      context: tilingContext,
-    });
-
-    updatedClips.push({ id: clip.id });
-    updatedClips.push(...tiledClips);
+    tiledClips = placed;
   }
+
+  updatedClips.push({ id: clip.id });
+  updatedClips.push(...tiledClips);
 
   return updatedClips;
 }
@@ -166,6 +189,8 @@ interface CreateLoopedClipTilesArgs {
   currentOffset: number;
   track: LiveAPI;
   context: TilingContext;
+  /** Collects each tile as it lands */
+  placed: CreatedClip[];
 }
 
 /**
@@ -181,6 +206,7 @@ interface CreateLoopedClipTilesArgs {
  * @param options.currentOffset - Current offset from loop start
  * @param options.track - The LiveAPI track object
  * @param options.context - Tool execution context
+ * @param options.placed - Collects each tile as it lands
  * @returns Array of tiled clip info
  */
 function createLoopedClipTiles({
@@ -194,6 +220,7 @@ function createLoopedClipTiles({
   currentOffset,
   track,
   context,
+  placed,
 }: CreateLoopedClipTilesArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
@@ -211,6 +238,7 @@ function createLoopedClipTiles({
         adjustPreRoll: true,
         startOffset: currentOffset + currentArrangementLength,
         tileLength: currentArrangementLength,
+        placed,
       },
     );
 
@@ -245,6 +273,7 @@ function createLoopedClipTiles({
       {
         adjustPreRoll: true,
         tileLength: firstTileLength,
+        placed,
       },
     );
 
@@ -267,6 +296,7 @@ function createLoopedClipTiles({
       adjustPreRoll: true,
       startOffset: Math.max(currentOffset, 0),
       tileLength: firstTileLength,
+      placed,
     },
   );
 

@@ -323,18 +323,18 @@ describe("readTrack on a take lane target", () => {
     >;
 
     expect(result).toStrictEqual([
-      { path: "t2/l5", ok: false, reason: 'nothing at path "t2/l5"' },
-      { path: "t9/l0", ok: false, reason: 'nothing at path "t9/l0"' },
+      { path: "t2/l5", ok: false, detail: 'nothing at path "t2/l5"' },
+      { path: "t9/l0", ok: false, detail: 'nothing at path "t9/l0"' },
       {
         path: "t3/l0",
         ok: false,
-        reason: 'only regular tracks have take lanes; "t3" is a group track',
+        detail: 'only regular tracks have take lanes; "t3" is a group track',
       },
       {
         path: "t2/l+",
         ok: false,
-        reason:
-          'invalid path "t2/l+" - "l+" adds a take lane, which only ppal-update-track does; read an existing lane as "t<track>/l<lane>"',
+        detail:
+          'invalid path "t2/l+" - "l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do; read an existing lane as "t<track>/l<lane>"',
       },
     ]);
   });

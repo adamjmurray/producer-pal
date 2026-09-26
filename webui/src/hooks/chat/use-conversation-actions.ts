@@ -54,7 +54,11 @@ interface ConversationActionsDeps<
 
 interface ConversationActionsReturn {
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
-  handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
+  handleEdit: (
+    mergedMessageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
 }
 
 /**
@@ -276,13 +280,18 @@ export function useConversationActions<
   );
 
   const handleEdit = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
+    async (
+      mergedMessageIndex: number,
+      newMessage: string,
+      removedImages: number[] = [],
+    ) => {
       const trimmed = newMessage.trim();
-      // Editing changes the text only; the original message's images ride
-      // along, so a fork doesn't silently drop what the model was shown.
+      // The original images ride along unless the user removed them — the way
+      // out when a text-only model rejects every turn that carries one.
       const rawMessage = rawEntryAt(mergedMessageIndex);
-      const images =
-        rawMessage == null ? undefined : adapter.extractUserImages(rawMessage);
+      const images = (
+        rawMessage == null ? undefined : adapter.extractUserImages(rawMessage)
+      )?.filter((_image, index) => !removedImages.includes(index));
 
       if (!trimmed && !images?.length) {
         return;

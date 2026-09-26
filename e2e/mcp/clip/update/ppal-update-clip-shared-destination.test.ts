@@ -6,7 +6,8 @@
 /**
  * E2E tests for refusing a single track-qualified toPath shared by several
  * clips. A lane or slot names one place, so it can't pair with more than one
- * id - and it used to pair silently wrong instead of refusing.
+ * id - and it used to pair silently wrong instead of refusing. A slot named
+ * once per clip goes to the last clip that names it.
  *
  * Uses: e2e-test-set - t8 is the empty MIDI track for dynamic clip creation.
  *
@@ -61,7 +62,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain(
-      "2 clips can't share one spot",
+      "toPath names 1 destination but the call names 2 clips",
     );
 
     await sleep(200);
@@ -96,8 +97,48 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain(
-      "2 clips can't share one slot",
+      "toPath names 1 destination but the call names 2 clips",
     );
+  });
+
+  // One slot holds one clip: moving both would overwrite the first. The last
+  // clip named wins, and the first stays put.
+  it("moves only the last clip when toPath names one slot twice", async () => {
+    const id1 = await createArrangementClip("461|1");
+    const id2 = await createArrangementClip("465|1");
+
+    await sleep(200);
+
+    const { data: entries } = parseToolResultWithWarnings<
+      Array<{ id?: string; path?: string; ok?: false; detail?: string }>
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: `${id1},${id2}`,
+          toPath: `t${EMPTY_MIDI_TRACK}/s6,t${EMPTY_MIDI_TRACK}/s6`,
+        },
+      }),
+    );
+
+    expect(entries[0]?.ok).toBe(false);
+    expect(entries[0]?.id).toBe(id1);
+    expect(entries[0]?.detail).toContain(
+      `not moved: t${EMPTY_MIDI_TRACK}/s6 is named again later in this call`,
+    );
+    expect(entries[1]?.ok).toBeUndefined();
+    expect(entries[1]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
+
+    await sleep(200);
+
+    const read1 = parseToolResult<{ path: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: id1 },
+      }),
+    );
+
+    expect(read1.path).toBe(`t${EMPTY_MIDI_TRACK}[461|1]`);
   });
 
   // The bare form still fans out: each clip keeps its own track and moves to

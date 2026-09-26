@@ -12,7 +12,7 @@ import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-n
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
@@ -40,7 +40,7 @@ interface ClipAddress {
 /**
  * Write one clip's automation, reporting what landed on its own entry.
  *
- * Nothing here throws: a line the remote script turned down becomes a reason on
+ * Nothing here throws: a line the remote script turned down becomes a detail on
  * the entry, and the lines after it still run.
  * @param entry - The clip's result entry, written to
  * @param lines - The `envelopes` param, already read into lines
@@ -105,7 +105,7 @@ async function writeEachLine(
       written += 1;
 
       if (outcome.note != null) {
-        appendReason(entry, `envelope "${line.target}": ${outcome.note}`);
+        appendDetail(entry, `envelope "${line.target}": ${outcome.note}`);
       }
 
       continue;
@@ -117,7 +117,7 @@ async function writeEachLine(
       return;
     }
 
-    appendReason(entry, `envelope "${line.target}": ${outcome.reason}`);
+    appendDetail(entry, `envelope "${line.target}": ${outcome.reason}`);
   }
 
   entry.envelopes = written;

@@ -184,7 +184,7 @@ export async function moveOffTakeLane(
 ): Promise<ReadClipResult> {
   const { data: moved } = await updateClip(client, source.id, { toPath });
 
-  expect(moved.reason).toContain("emptied instead of deleted");
+  expect(moved.detail).toContain("emptied instead of deleted");
 
   return readClipFully(client, { id: moved.id });
 }

@@ -7,7 +7,10 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+import {
+  newScenePathFromCount,
+  newScenePathFromIndex,
+} from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
@@ -15,7 +18,9 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   // with capture gone, path is required outright (the handler throws without
   // it) rather than conditionally.
   description: {
-    default: "Create empty scene(s) or capture playing session clips.",
+    default:
+      "Create empty scene(s) or capture playing session clips. Params with no " +
+      "list form apply to every scene.",
     smallModel: "Create an empty scene.",
   },
   annotations: {
@@ -32,12 +37,12 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
 
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
-      example: scenePathFromIndex,
+      example: newScenePathFromIndex,
     }),
 
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
-      example: "s+,s+",
+      example: newScenePathFromCount,
       note: "path names every scene, so repeat it once per scene instead of counting",
     }),
 
@@ -46,11 +51,11 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per scene, in order",
+      default: "name, or comma-separated one per scene",
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per scene, in order",
+      default: "#RRGGBB, or comma-separated one per scene",
       smallModel: "#RRGGBB",
     }),
     tempo: param(z.coerce.number().optional(), {
@@ -58,7 +63,8 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {
-      default: 'N/D (4/4) or "disabled" when capturing',
+      default:
+        'N/D (4/4) or "disabled" when capturing, or comma-separated one per scene',
       smallModel: null,
     }),
   },

@@ -89,7 +89,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      reason: "firstStart ignored: the clip is not looping",
+      detail: "firstStart ignored: the clip is not looping",
     });
   });
 
@@ -170,10 +170,10 @@ describe("updateClip - length alone on a non-looping clip", () => {
       setupMock(mocks.clip123, { looping: 0, start_marker: 0, ...props });
 
       const result = (await updateClip({ id: "123", length })) as {
-        reason?: string;
+        detail?: string;
       };
 
-      expect(result.reason).toBeUndefined();
+      expect(result.detail).toBeUndefined();
       expect(capturedWarnings()).toHaveLength(0);
     },
   );

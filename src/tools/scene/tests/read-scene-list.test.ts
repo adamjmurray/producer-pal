@@ -65,7 +65,7 @@ describe("readScene over a list of targets", () => {
   it("keeps a slot for a target it can't read, and says why", () => {
     expect(readScene({ path: "s0,s9" })).toStrictEqual([
       scene0,
-      { path: "s9", ok: false, reason: 'nothing at path "s9"' },
+      { path: "s9", ok: false, detail: 'nothing at path "s9"' },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -73,7 +73,7 @@ describe("readScene over a list of targets", () => {
   it("reports a miss by id the way the caller wrote it", () => {
     expect(readScene({ id: "123,789" })).toStrictEqual([
       scene0,
-      { id: "789", ok: false, reason: 'id "789" does not exist' },
+      { id: "789", ok: false, detail: 'id "789" does not exist' },
     ]);
   });
 

@@ -11,7 +11,7 @@
 // installer. version.py's version is rewritten to package.json's, so an
 // installed script reports the release that installed it.
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,8 +23,10 @@ const embeddedModule = join(
 );
 const packageJson = join(rootDir, "package.json");
 
+// Only Python sources ship; anything else in the folder is local junk.
+// Dot-names (AppleDouble `._x.py`, editor locks `.#x.py`) are junk too.
 const SKIP_DIR = "__pycache__";
-const SKIP_EXTENSION = ".pyc";
+const SOURCE_EXTENSION = ".py";
 const VERSION_LINE = /^VERSION = ".*"$/m;
 
 /**
@@ -43,16 +45,18 @@ export function embedRemoteScript() {
         );
       }
 
-      for (const file of [...sourceFiles(sourceDir), packageJson]) {
-        this.addWatchFile(file);
+      for (const relative of Object.keys(readScriptSource(sourceDir))) {
+        this.addWatchFile(join(sourceDir, relative));
       }
+
+      this.addWatchFile(packageJson);
     },
     load(id) {
       if (id !== embeddedModule) {
         return;
       }
 
-      const files = readSource(sourceDir, "");
+      const files = readScriptSource(sourceDir);
 
       files["version.py"] = withVersion(files["version.py"]);
 
@@ -66,21 +70,23 @@ export function embedRemoteScript() {
  *
  * @param dir - Folder to read
  * @param prefix - That folder's path relative to the script root
- * @returns Relative path to file contents, bytecode left out
+ * @returns Relative path to file contents, .py files only
  */
-function readSource(dir, prefix) {
+export function readScriptSource(dir, prefix = "") {
   const files = {};
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === SKIP_DIR || entry.name.endsWith(SKIP_EXTENSION)) {
+    if (entry.name.startsWith(".")) {
       continue;
     }
 
     const relative = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
 
     if (entry.isDirectory()) {
-      Object.assign(files, readSource(join(dir, entry.name), relative));
-    } else {
+      if (entry.name !== SKIP_DIR) {
+        Object.assign(files, readScriptSource(join(dir, entry.name), relative));
+      }
+    } else if (entry.name.endsWith(SOURCE_EXTENSION)) {
       files[relative] = readFileSync(join(dir, entry.name), "utf8");
     }
   }
@@ -110,26 +116,4 @@ function withVersion(source) {
   }
 
   return stamped;
-}
-
-/**
- * Every file the embedded map is built from, for rolldown's watch list.
- *
- * @param dir - Folder to walk
- * @returns Absolute paths
- */
-function sourceFiles(dir) {
-  const files = [];
-
-  for (const entry of readdirSync(dir)) {
-    const fullPath = join(dir, entry);
-
-    if (statSync(fullPath).isDirectory()) {
-      files.push(...sourceFiles(fullPath));
-    } else {
-      files.push(fullPath);
-    }
-  }
-
-  return files;
 }

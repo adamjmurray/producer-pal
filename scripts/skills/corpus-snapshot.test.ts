@@ -11,7 +11,7 @@ import {
   parseSnapshotArgs,
 } from "./corpus-snapshot.ts";
 
-const DEFAULT_DIR = "/repo/dev/skills-snapshots";
+const DEFAULT_DIR = "/repo/tmp/skills-snapshots";
 
 describe("parseSnapshotArgs", () => {
   it("defaults the output directory and asks for no comparison", () => {

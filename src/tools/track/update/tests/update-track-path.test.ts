@@ -74,7 +74,7 @@ describe("updateTrack by path", () => {
       {
         path: "s0",
         ok: false,
-        reason:
+        detail:
           'invalid path "s0" - names a scene, not a track; expected "t<index>", "rt<index>", or "mt"',
       },
       { id: "456", path: "t1" },
@@ -91,7 +91,7 @@ describe("updateTrack by path", () => {
       {
         path: "t9",
         ok: false,
-        reason: 'no track at path "t9"; ppal-create-track adds tracks',
+        detail: 'no track at path "t9"; ppal-create-track adds tracks',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

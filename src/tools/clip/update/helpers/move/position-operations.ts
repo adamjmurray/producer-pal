@@ -30,6 +30,8 @@ interface HandlePositionOperationsArgs {
   isAudioClip: boolean;
   destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
+  /** The param that named arrangementStartBeats. */
+  startParam: "toPath" | "arrangementStart";
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
   movedClipGroups: Map<string, MoveGroup>;
@@ -87,17 +89,15 @@ export function handlePositionOperations(
     }
   }
 
+  // A refused move leaves the clip where it is; any resize still runs.
+  const refused = refuseSessionClipMove(args);
+
   handleArrangementOperations({
     clip,
     isAudioClip: args.isAudioClip,
-    arrangementStartBeats,
+    arrangementStartBeats: refused ? null : arrangementStartBeats,
     arrangementLengthBeats,
-    destination: arrangementDestination(
-      clip,
-      destination,
-      destinationParam,
-      args.reasons,
-    ),
+    destination: refused ? null : arrangementDestination(destination),
     movedClipGroups: args.movedClipGroups,
     context: args.context,
     updatedClips: args.updatedClips,
@@ -108,35 +108,61 @@ export function handlePositionOperations(
 }
 
 /**
- * Reads a destination as an arrangement lane, or null when it isn't one.
+ * Refuse an arrangement move of a session clip, on the clip's own entry.
  *
- * A session clip can't move onto a lane: the arrangement move is copy-then-
- * delete through `duplicate_clip_to_arrangement`, which takes an arrangement
- * source only. Say so on the clip's entry and leave it in its slot.
- * @param clip - The clip being moved
+ * The move is copy-then-delete through `duplicate_clip_to_arrangement`, which
+ * takes an arrangement source only. The reason names the param the caller
+ * sent: a toPath `[...]` is a spelling of the start, not arrangementStart.
+ * @param args - The clip and where the call sends it
+ * @returns Whether the move was refused
+ */
+function refuseSessionClipMove(args: HandlePositionOperationsArgs): boolean {
+  const { clip, destination, arrangementStartBeats } = args;
+  const lane =
+    destination != null && destination.kind !== "slot" ? destination : null;
+
+  if (
+    (lane == null && arrangementStartBeats == null) ||
+    (clip.getProperty("is_arrangement_clip") as number) > 0
+  ) {
+    return false;
+  }
+
+  // The caller sent arrangementStart itself, so that's the param to name.
+  if (lane == null && args.startParam === "arrangementStart") {
+    refuseClipWork(
+      args.reasons,
+      clip.id,
+      "arrangementStart ignored: this is a session clip",
+    );
+
+    return true;
+  }
+
+  const named =
+    lane == null
+      ? "toPath names an arrangement position"
+      : `${args.destinationParam} "${formatObjectPath(lane)}" names an arrangement lane`;
+
+  refuseClipWork(
+    args.reasons,
+    clip.id,
+    `not moved: ${named} and this is a session clip; ` +
+      `name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
+  );
+
+  return true;
+}
+
+/**
+ * Reads a destination as an arrangement lane, or null when it isn't one.
  * @param destination - Where the call named it to go, if anywhere
- * @param destinationParam - The param the caller used, for the reason
- * @param reasons - What each clip has to say beyond its result, added to
  * @returns The destination track and lane, or null
  */
 function arrangementDestination(
-  clip: LiveAPI,
   destination: ClipPath | null | undefined,
-  destinationParam: "toPath" | "toSlot",
-  reasons: ClipReasons,
 ): ArrangementTrack | null {
   if (destination == null || destination.kind === "slot") {
-    return null;
-  }
-
-  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
-    refuseClipWork(
-      reasons,
-      clip.id,
-      `not moved: ${destinationParam} "${formatObjectPath(destination)}" names an arrangement lane and this is a session clip; ` +
-        `name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
-    );
-
     return null;
   }
 

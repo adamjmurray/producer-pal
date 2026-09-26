@@ -5,19 +5,26 @@
 
 """The remote script itself: the main-thread pump and Live's callback surface."""
 
+import math
 import queue
+import threading
+import time
 import traceback
 
 import Live
 
 from .http_server import BridgeHTTPServer
-from .routes import ROUTES, RouteError
+from .routes import POST_ONLY, ROUTES, RouteError
 
 PORT = 3349
 
-# How long an HTTP request waits for Live's main thread to run it. Walking a big
-# plugin folder for the first time is the slow case.
+# How long an HTTP request waits for Live's main thread to run it, unless the
+# request's `expires_in_ms` is sooner. Walking a big plugin folder for the first
+# time is the slow case.
 REQUEST_TIMEOUT = 30.0
+
+# Ends the error for a job Live skipped: it changed nothing, so a re-run is safe.
+_RERUN = "; nothing changed, re-run it"
 
 
 class ProducerPalBridge:
@@ -40,14 +47,20 @@ class ProducerPalBridge:
 
     # --- HTTP thread ---------------------------------------------------
 
-    def _dispatch(self, path, params):
+    def _dispatch(self, method, path, params):
         """Called on an HTTP worker thread. Hands the work to the main thread and waits."""
         handler = ROUTES.get(path)
         if handler is None:
             return 404, {"error": "unknown route: " + path, "routes": sorted(ROUTES)}
-        job = _Job(handler, self, params)
+        if path in POST_ONLY and method != "POST":
+            return 405, {"error": "%s needs POST" % path}
+        try:
+            expires_at = _expires_at(params.get("expires_in_ms"))
+        except ValueError as err:
+            return 400, {"error": str(err)}
+        job = _Job(handler, self, params, expires_at)
         self._jobs.put(job)
-        return job.wait(REQUEST_TIMEOUT)
+        return job.wait()
 
     # --- Live's main thread --------------------------------------------
 
@@ -120,18 +133,27 @@ class ProducerPalBridge:
 class _Job:
     """One HTTP request, waiting to be run on Live's main thread."""
 
-    def __init__(self, handler, bridge, params):
+    def __init__(self, handler, bridge, params, expires_at=None):
         self._handler = handler
         self._bridge = bridge
         self._params = params
+        # Monotonic time Live must start it by, or None for no limit.
+        self._expires_at = expires_at
         self._reply = queue.Queue(1)
+        # A job either starts or is given up on, never both.
+        self._lock = threading.Lock()
+        self._started = False
         self._abandoned = False
 
     def run(self):
-        # The HTTP side gave up: the caller may have torn down the track
-        # it named, so running now would land on whatever took its place.
-        if self._abandoned:
-            return
+        with self._lock:
+            # The client gave up, or has by its expiry: it may have torn down
+            # the track it named, so running now would land on whatever took
+            # its place.
+            if self._abandoned or self._expired():
+                self._abandoned = True
+                return
+            self._started = True
         try:
             self._reply.put((200, self._handler(self._bridge, self._params)))
         except RouteError as err:
@@ -148,9 +170,60 @@ class _Job:
                 )
             )
 
-    def wait(self, timeout):
+    def wait(self):
+        """The reply, or a 504 when Live didn't start the job in time."""
         try:
-            return self._reply.get(timeout=timeout)
+            return self._reply.get(timeout=self._wait_limit())
         except queue.Empty:
-            self._abandoned = True
-            return 504, {"error": "Live did not run the request within %ss" % timeout}
+            pass
+        with self._lock:
+            if not self._started:
+                self._abandoned = True
+                if self._expired():
+                    return 504, {
+                        "error": "the request expired before Live ran it" + _RERUN
+                    }
+                return 504, {
+                    "error": "Live did not run the request within %ss%s"
+                    % (REQUEST_TIMEOUT, _RERUN)
+                }
+        # It started in time, so wait for its reply. If it finishes after the
+        # client stopped waiting, the client reports a change that did happen.
+        try:
+            return self._reply.get(timeout=REQUEST_TIMEOUT)
+        except queue.Empty:
+            return 504, {
+                "error": "Live started the request but didn't finish it within %ss"
+                % REQUEST_TIMEOUT
+            }
+
+    def _wait_limit(self):
+        if self._expires_at is None:
+            return REQUEST_TIMEOUT
+        remaining = self._expires_at - time.monotonic()
+        return max(0.0, min(REQUEST_TIMEOUT, remaining))
+
+    def _expired(self):
+        return self._expires_at is not None and time.monotonic() >= self._expires_at
+
+
+def _expires_at(expires_in_ms):
+    """When a job must start by, on the monotonic clock, or None when not sent.
+
+    Clients send a bit less than how long they'll wait, so a job Live starts in
+    time can still reply before they give up.
+    """
+    if expires_in_ms is None or expires_in_ms == "":
+        return None
+    error = ValueError(
+        "expires_in_ms must be a number, 0 or more, got %r" % (expires_in_ms,)
+    )
+    if isinstance(expires_in_ms, bool):
+        raise error
+    try:
+        ms = float(str(expires_in_ms).strip())
+    except ValueError:
+        raise error
+    if not math.isfinite(ms) or ms < 0:
+        raise error
+    return time.monotonic() + ms / 1000.0

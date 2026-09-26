@@ -124,7 +124,7 @@ describe("a clip slot past the last scene", () => {
       }),
     );
 
-    expect(data.reason).toBeUndefined();
+    expect(data.detail).toBeUndefined();
   });
 
   it("is created by a ppal-duplicate toPath, which used to refuse it", async () => {

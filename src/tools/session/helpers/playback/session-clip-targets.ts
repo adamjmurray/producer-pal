@@ -9,7 +9,7 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
 import {
   loneRefusal,
-  namedEarlierReason,
+  namedLaterReason,
   skipEntry,
   type NamedTarget,
   type TargetSkip,
@@ -27,7 +27,7 @@ export type ClipSlotTarget = { named: NamedTarget } & (
 interface ActedSlot {
   id?: string;
   path: string;
-  reason?: string;
+  detail?: string;
 }
 
 /** What one target reports: the slot acted on, or why nothing happened. */
@@ -61,7 +61,8 @@ export function sessionClipTargets(
 
 /**
  * Acts on every slot the call named and says what happened at each. A slot
- * named twice is acted on once, and the repeat points at the entry that did it.
+ * named twice is acted on once, by the last target to name it; the earlier one
+ * points at it.
  * @param action - Action name, for the error when nothing named a slot
  * @param targets - The slots the call named, in call order
  * @param act - What the action does at one slot
@@ -77,9 +78,19 @@ export function sessionClipEntries(
     throw new Error(`id or path is required for action "${action}"`);
   }
 
-  const acted = new Map<string, { entry: ActedSlot; named: NamedTarget }>();
+  const lastNamedBy = new Map<string, NamedTarget>();
+
+  for (const { named, position } of targets) {
+    if (position != null) {
+      lastNamedBy.set(
+        slotPath(position.trackIndex, position.sceneIndex),
+        named,
+      );
+    }
+  }
+
   const entries = targets.map((target) =>
-    slotEntry(target, acted, act),
+    slotEntry(target, lastNamedBy, act),
   ) satisfies ClipSlotEntry[];
 
   const refused = loneRefusal(entries);
@@ -128,13 +139,13 @@ function idTarget(id: string): ClipSlotTarget {
 /**
  * One target's turn: act on its slot, or say why nothing happened there.
  * @param target - The slot, as the caller named it
- * @param acted - The slots already acted on, by path
+ * @param lastNamedBy - The last target to name each slot, by path
  * @param act - What the action does at one slot
  * @returns The target's entry
  */
 function slotEntry(
   target: ClipSlotTarget,
-  acted: Map<string, { entry: ActedSlot; named: NamedTarget }>,
+  lastNamedBy: Map<string, NamedTarget>,
   act: (slot: LiveAPI, position: ClipSlotPosition) => void,
 ): ClipSlotEntry {
   if (target.position == null) {
@@ -143,12 +154,6 @@ function slotEntry(
 
   const { trackIndex, sceneIndex } = target.position;
   const path = slotPath(trackIndex, sceneIndex);
-  const earlier = acted.get(path);
-
-  if (earlier != null) {
-    return { ...earlier.entry, reason: namedEarlierReason(earlier.named) };
-  }
-
   const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
 
   if (!slot.exists()) {
@@ -157,9 +162,13 @@ function slotEntry(
 
   const clip = slot.child("clip");
   const entry: ActedSlot = { ...(clip.exists() && { id: clip.id }), path };
+  const later = lastNamedBy.get(path) as NamedTarget;
+
+  if (later !== target.named) {
+    return { ...entry, detail: namedLaterReason(later) };
+  }
 
   act(slot, target.position);
-  acted.set(path, { entry, named: target.named });
 
   return entry;
 }

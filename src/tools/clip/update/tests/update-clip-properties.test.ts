@@ -95,7 +95,7 @@ describe("updateClip - Properties and ID handling", () => {
       {
         id: "nonexistent",
         ok: false,
-        reason: 'id "nonexistent" does not exist',
+        detail: 'id "nonexistent" does not exist',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -179,7 +179,7 @@ describe("updateClip - Properties and ID handling", () => {
         id: "123",
         path: "t0/s0",
         color: "#FF3636",
-        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });

@@ -91,6 +91,24 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ id: "pad-36" });
   });
 
+  it("gives each chain its own mappedPitch", () => {
+    const { chains } = registerDrumRack(2);
+
+    updateDevice({ id: "chain-0,chain-1", mappedPitch: "C3,D3" });
+
+    expect(chains[0]?.set).toHaveBeenCalledWith("out_note", 60);
+    expect(chains[1]?.set).toHaveBeenCalledWith("out_note", 62);
+  });
+
+  it("refuses an unreadable mappedPitch entry before touching a chain", () => {
+    const { chains } = registerDrumRack(2);
+
+    expect(() =>
+      updateDevice({ id: "chain-0,chain-1", mappedPitch: "C3,nope" }),
+    ).toThrow('invalid note name "nope" for mappedPitch');
+    expect(chains[0]?.set).not.toHaveBeenCalled();
+  });
+
   it("broadcasts chokeGroup and mappedPitch to every chain on the pad", () => {
     const { chains } = registerDrumRack(2);
 
@@ -147,7 +165,7 @@ describe("updateDevice - bare drum pad paths", () => {
       updateDevice({ path: "t0/d0/pC1", name: "Kick", mute: true }),
     ).toStrictEqual({
       id: "pad-36",
-      reason:
+      detail:
         "the pad has 2 layers, so per-layer settings (name) were skipped. " +
         "Set them on t0/d0/pC1/c0, t0/d0/pC1/c1.",
     });
@@ -169,7 +187,7 @@ describe("updateDevice - bare drum pad paths", () => {
       id: "pad-36",
       chainIds: ["chain-0"],
       gainDb: -6.02,
-      reason: "gainDb read back as shown, not as sent",
+      detail: "gainDb read back as shown, not as sent",
     });
   });
 
@@ -230,22 +248,17 @@ describe("updateDevice - bare drum pad paths", () => {
 
   // The rack's return chains belong to the rack, so a send naming none is a
   // fact about the pad the call named — its own entry says it (ADR-0042).
-  it("reports a send naming no return chain on the pad's entry", () => {
+  it("names a send naming no return chain in the pad's error", () => {
     registerDrumRack(1);
 
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      sends: [{ return: "Nope", gainDb: -6 }],
-    }) as { sends?: unknown[] };
-
-    expect(result.sends).toStrictEqual([
-      {
-        return: "Nope",
-        ok: false,
-        reason:
-          'no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
-      },
-    ]);
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1",
+        sends: [{ return: "Nope", gainDb: -6 }],
+      }),
+    ).toThrow(
+      'no send landed — "Nope": no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
+    );
     expect(capturedWarnings()).toStrictEqual([]);
   });
 

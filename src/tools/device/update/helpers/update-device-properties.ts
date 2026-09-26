@@ -7,13 +7,14 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamResult,
+  type UnresolvedParam,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { applyChainSampleParams } from "./chain-sample-params.ts";
 import {
   applyChainMixer,
   type ChainSend,
-} from "#src/tools/shared/device/helpers/chain-mixer.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
   chainMixerReport,
   type ChainMixerReport,
@@ -29,6 +30,7 @@ import {
 import {
   type TargetNotes,
   newTargetNotes,
+  refuseIfNoneLanded,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
   isChainType,
@@ -55,6 +57,8 @@ export interface UpdatePropertyOptions {
   chokeGroup?: number;
   mappedPitch?: string;
   force?: boolean;
+  /** Loaded before anything else; see updateDeviceWithPreset */
+  preset?: string;
 }
 
 export interface UpdateTargetOptions extends UpdatePropertyOptions {
@@ -146,7 +150,36 @@ export function updateDeviceProperties(
 
   refuseIgnoredParams(notes, ignored, type);
 
-  return { params: refreshParamValues(paramResults), actions: actionResults };
+  const paramsRead = refreshParamValues(paramResults);
+
+  refuseIfNoParamLanded(notes, paramsRead);
+  refuseIfNoneLanded(
+    notes,
+    ["actions"],
+    "action",
+    actionResults,
+    (result) => result.action,
+  );
+
+  return { params: paramsRead, actions: actionResults };
+}
+
+/**
+ * Refuse `params` on the target when none of them landed.
+ * @param notes - What the target's entry has to say, added to
+ * @param params - One entry per param the call sent
+ */
+export function refuseIfNoParamLanded(
+  notes: TargetNotes,
+  params: ParamResult[] = [],
+): void {
+  refuseIfNoneLanded(
+    notes,
+    ["params"],
+    "param",
+    params,
+    (param) => param.name ?? (param as UnresolvedParam).id ?? "",
+  );
 }
 
 /** What a chain or pad update wrote: its mixer, plus any params it took. */
@@ -161,6 +194,7 @@ export interface NonDeviceWrites extends ChainMixerReport {
  * @param options - Update options
  * @param notes - What this target's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
+ * @param chainsMade - How many chains this call made on the pad for its sample
  * @returns What the chain's mixer and sample writes didn't land as asked
  */
 export function updateNonDeviceProperties(
@@ -168,13 +202,21 @@ export function updateNonDeviceProperties(
   type: string,
   options: UpdatePropertyOptions,
   notes: TargetNotes = newTargetNotes(),
+  chainsMade = 0,
 ): NonDeviceWrites {
   // A drum pad owns its sample, so a `sample` param addressed to the pad takes
   // the same route the rack's `pC1/sample` shortcut does. Everything else in
   // `params` is still not applicable, and says so in its own entry.
-  const params = applyChainSampleParams(target, type, options, notes);
+  const params = applyChainSampleParams(
+    target,
+    type,
+    options,
+    notes,
+    chainsMade,
+  );
   const ignored: string[] = [];
 
+  noteIfSet(ignored, "preset", options.preset);
   noteIfSet(ignored, "actions", options.actions);
   noteIfSet(ignored, "macroVariation", options.macroVariation);
   noteIfSet(ignored, "macroVariationIndex", options.macroVariationIndex);

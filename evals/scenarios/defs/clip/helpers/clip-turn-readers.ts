@@ -18,6 +18,7 @@ import {
   getToolCalls,
   lastSuccessfulToolCall,
   parsedToolResult,
+  requireSuccessfulToolCall,
 } from "../../../assertions/index.ts";
 import { type EvalTurnResult, type ToolCall } from "../../../types.ts";
 import { TOOL_CREATE_CLIP } from "./clip-tool-constants.ts";
@@ -27,7 +28,7 @@ import { TOOL_CREATE_CLIP } from "./clip-tool-constants.ts";
  * turn. transforms is now a single newline-separated string; a legacy array
  * value is still tolerated and joined with newlines so selector/expression
  * parsing in callers sees the raw expression text.
- * Throws descriptive errors if the tool call or transforms parameter is missing.
+ * Throws descriptive errors if no call succeeded or transforms is missing.
  *
  * @param turns - All turn results
  * @param turn - Turn index to extract from
@@ -39,12 +40,7 @@ export function getTransforms(
   turn: number,
   toolName: string,
 ): string {
-  const updateCall = lastSuccessfulToolCall(turns, turn, toolName);
-
-  if (!updateCall) {
-    throw new Error(`${toolName} not found in turn ${turn}`);
-  }
-
+  const updateCall = requireSuccessfulToolCall(turns, turn, toolName);
   const raw = updateCall.args.transforms;
   const transforms = Array.isArray(raw) ? raw.join("\n") : argText(raw);
 
@@ -57,8 +53,8 @@ export function getTransforms(
 
 /**
  * Pull the raw `notes` string from a ppal-create-clip call in the given turn.
- * Throws (failing the calling assertion with a message) when the call or the
- * `notes` parameter is missing. Used by scenarios that grade HOW the model
+ * Throws (failing the calling assertion with a message) when no call succeeded
+ * or the `notes` parameter is missing. Used by scenarios that grade HOW the model
  * notated a clip — bracket cycling, stream zips — not just the resulting notes,
  * which read back identically however they were written.
  *
@@ -67,12 +63,7 @@ export function getTransforms(
  * @returns The raw notes string passed to ppal-create-clip
  */
 export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
-  const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
-
-  if (!call) {
-    throw new Error(`ppal-create-clip not found in turn ${turn}`);
-  }
-
+  const call = requireSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
   const notes = call.args.notes;
 
   if (typeof notes !== "string") {

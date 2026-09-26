@@ -18,7 +18,9 @@ import {
 import { createClip } from "../../create-clip.ts";
 import { createAudioArrangementClip } from "../../helpers/audio-clip-creation.ts";
 import {
+  audioClipProperties,
   expectNoTimingProperties,
+  mockScratchSwap,
   setupAudioArrangementClipMocks,
   setupMultiAudioArrangementClipMocks,
   setupMultiSessionAudioClipMocks,
@@ -218,14 +220,36 @@ describe("createClip - audio clips", () => {
 
     it("should replace the clip the slot already holds", async () => {
       const { clipSlot } = setupSessionAudioClipMocks({ hasClip: 1 });
+      const scratch = mockScratchSwap(0, 1, 0, {
+        id: "new_audio_clip",
+        properties: audioClipProperties(8),
+      });
 
       const result = (await createClip({
         slot: "0/0",
         sampleFile: "/path/to/audio.wav",
-      })) as { reason?: string };
+      })) as { detail?: string };
 
-      expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
-      expect(result.reason).toBe("overwrote the existing clip at t0/s0");
+      expect(scratch.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+      );
+      expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+      expect(result.detail).toBe("overwrote the existing clip at t0/s0");
+    });
+
+    it("keeps the slot's clip when the sample can't be loaded", async () => {
+      const { liveSet, clipSlot } = setupSessionAudioClipMocks({ hasClip: 1 });
+
+      mockScratchSwap(0, 1, 0, { id: "new_audio_clip", buildFails: true });
+
+      await expect(
+        createClip({ slot: "0/0", sampleFile: "/typo/kick.wav" }),
+      ).rejects.toThrow(
+        'Live created no clip at t0/s0 from sampleFile "/typo/kick.wav"; the clip at t0/s0 was not touched',
+      );
+      expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+      expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
     });
   });
 
@@ -381,12 +405,14 @@ describe("createClip - audio clips", () => {
         {
           path: "t0[1|1]",
           ok: false,
-          reason: "Live created no clip at t0",
+          detail:
+            'Live created no clip at t0[1|1] from sampleFile "/path/to/invalid.wav"',
         },
         {
           path: "t0[3|1]",
           ok: false,
-          reason: "Live created no clip at t0",
+          detail:
+            'Live created no clip at t0[3|1] from sampleFile "/path/to/invalid.wav"',
         },
       ]);
     });

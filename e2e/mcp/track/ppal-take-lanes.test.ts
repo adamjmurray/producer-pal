@@ -71,6 +71,7 @@ interface LiveSetTracksResult {
 interface DuplicateClipResult {
   id: string;
   path?: string;
+  detail?: string;
 }
 
 /**
@@ -317,21 +318,25 @@ describe("take lanes", () => {
 
     expect(overview.takeLaneCount).toBe(MAX_TAKE_LANES);
 
-    // Past the cap: the lane is warned and dropped, not fatal, so the
-    // destinations alongside it in the same call still land.
-    const outOfRange = parseToolResultWithWarnings<unknown[]>(
+    // Past the cap: that lane is skipped, not fatal, so the destination
+    // alongside it in the same call still lands.
+    const outOfRange = parseToolResultWithWarnings<
+      Array<{ path: string; ok?: false; detail?: string }>
+    >(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${EMPTY_MIDI_TRACK}/l${MAX_TAKE_LANES}[5|1]`,
+          path: `t${EMPTY_MIDI_TRACK}/l0[9|1],t${EMPTY_MIDI_TRACK}/l${MAX_TAKE_LANES}[5|1]`,
           notes: "C3 1|1",
         },
       }),
     );
 
-    expect(outOfRange.data).toStrictEqual([]);
-    expect(outOfRange.warnings.join(" ")).toContain(
-      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+    expect(outOfRange.data[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[9|1]`);
+    expect(outOfRange.data[0]!.ok).toBeUndefined();
+    expect(outOfRange.data[1]!.ok).toBe(false);
+    expect(outOfRange.data[1]!.detail).toContain(
+      `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
   });
 
@@ -493,7 +498,7 @@ describe("take lanes", () => {
     );
 
     expect(audioDup.data.path).toBe(`t${audioTrackIndex}/l0[5|1]`);
-    expect(audioDup.warnings.join(" ")).toContain(
+    expect(audioDup.data.detail).toContain(
       "warp markers reset to the sample's defaults",
     );
 
@@ -538,13 +543,10 @@ describe("take lanes", () => {
 
     // Main lane has no `l` segment, so the path is the track plus the position
     expect(promoted.data.path).toBe(`t${EMPTY_MIDI_TRACK}[5|1]`);
-    // Re-creating carries notes, and the response says so. This clip has no
-    // envelopes, so nothing was lost and the warning names no cost.
-    expect(promoted.warnings.join(" ")).toContain(
-      "was promoted to the main lane by re-creating it",
-    );
-    expect(promoted.warnings.join(" ")).not.toContain(
-      "automation envelopes aren't copied",
+    // Re-creating carries notes, and the copy's entry says so. This clip has no
+    // envelopes, so nothing was lost and the entry names no cost.
+    expect(promoted.data.detail).toBe(
+      "promoted to the main lane by re-creating it",
     );
 
     await sleep(100);
@@ -708,7 +710,7 @@ describe("take lanes", () => {
 
     expect(isToolError(plus)).toBe(true);
     expect(getToolErrorMessage(plus)).toContain(
-      '"l+" adds a take lane, which only ppal-update-track does',
+      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
     );
   });
 

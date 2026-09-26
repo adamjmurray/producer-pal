@@ -13,7 +13,10 @@ import {
   registerLiveSetWithThreeTracks,
   registerMockObject,
 } from "../duplicate-test-helpers.ts";
-import { duplicateTrack } from "../sources/duplicate-track.ts";
+import {
+  duplicateTrackCopies,
+  type TrackCopyEntry,
+} from "../sources/duplicate-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock getHostTrackIndex
@@ -23,6 +26,35 @@ vi.mock(
     getHostTrackIndex: vi.fn(() => 0),
   }),
 );
+
+/**
+ * One copy of a track, taking the positional args these cases were written for.
+ * @param trackIndex - The source track
+ * @param name - The copy's name
+ * @param color - The copy's color
+ * @param withoutClips - Whether the copy drops its clips
+ * @param withoutDevices - Whether the copy drops its devices
+ * @param routeToSource - Whether the copy feeds the source
+ * @returns The copy's entry
+ */
+function duplicateTrack(
+  trackIndex: number,
+  name?: string,
+  color?: string,
+  withoutClips?: boolean,
+  withoutDevices?: boolean,
+  routeToSource?: boolean,
+): TrackCopyEntry {
+  const [entry] = duplicateTrackCopies(
+    trackIndex,
+    { param: "id", value: "track" },
+    1,
+    () => ({ name, color }),
+    { withoutClips, withoutDevices, routeToSource },
+  );
+
+  return entry as TrackCopyEntry;
+}
 
 describe("duplicate-track", () => {
   beforeEach(() => {
@@ -112,7 +144,7 @@ describe("duplicate-track", () => {
         const result = duplicateTrack(0);
 
         expect(result.path).toBe("t1");
-        expect(result.reason).toBe(
+        expect(result.detail).toBe(
           "could not check the new track for the Producer Pal device",
         );
         expect(newTrack.call).not.toHaveBeenCalledWith(
@@ -160,7 +192,7 @@ describe("duplicate-track", () => {
         },
       });
 
-      duplicateTrack(0, undefined, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true);
 
       // Should arm source track
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
@@ -227,10 +259,9 @@ describe("duplicate-track", () => {
         false,
         false,
         true,
-        0,
       );
 
-      expect(result).not.toHaveProperty("reason");
+      expect(result).not.toHaveProperty("detail");
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
@@ -265,10 +296,9 @@ describe("duplicate-track", () => {
         false,
         false,
         true,
-        0,
       );
 
-      expect(result.reason).toBe(expectedReason);
+      expect(result.detail).toBe(expectedReason);
       // The copy's entry carries it, so nothing warns about it.
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -308,10 +338,9 @@ describe("duplicate-track", () => {
         false,
         false,
         true,
-        0,
       );
 
-      expect(result.reason).toBe(expectedReason);
+      expect(result.detail).toBe(expectedReason);
       expect(capturedWarnings()).toStrictEqual([]);
     });
 

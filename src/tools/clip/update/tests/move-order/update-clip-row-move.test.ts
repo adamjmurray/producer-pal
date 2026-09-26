@@ -169,14 +169,14 @@ describe("updateClip - moving a row of arrangement clips", () => {
       {
         id: "113",
         ok: false,
-        reason:
+        detail:
           "not moved: it would land on clip t0[5|1] (id 114), " +
           "which this call can't move out of the way first; move them in separate calls",
       },
       {
         id: "114",
         ok: false,
-        reason:
+        detail:
           "not moved: it would land on clip t0[1|1] (id 113), " +
           "which this call can't move out of the way first; move them in separate calls",
       },
@@ -196,14 +196,14 @@ describe("updateClip - moving a row of arrangement clips", () => {
       {
         id: "113",
         ok: false,
-        reason:
+        detail:
           'not moved: invalid toPath "not-a-real-path" - "not-a-real-path" is not ' +
           'a track or scene; expected "t<index>", "rt<index>", "mt", or "s<index>"',
       },
       {
         id: "114",
         ok: false,
-        reason:
+        detail:
           "not moved: it would land on clip t0[1|1] (id 113), which this call " +
           "leaves where it is; move that clip out of the way too, or use separate calls",
       },
@@ -216,8 +216,8 @@ describe("updateClip - moving a row of arrangement clips", () => {
     await expect(
       updateClip({ id: "114,113", toPath: "t0[1|1]" }),
     ).rejects.toThrow(
-      "2 clips can't share one spot; give one toPath per clip, or a bare " +
-        "[pos] to keep each clip's own track",
+      "toPath names 1 destination but the call names 2 clips. A destination " +
+        "holds one object, so toPath must name one per clip, in order.",
     );
 
     expect(movedTo()).toStrictEqual([]);
@@ -227,11 +227,11 @@ describe("updateClip - moving a row of arrangement clips", () => {
     const result = (await updateClip({
       id: "113,114",
       arrangementStart: "5|1,1|1",
-    })) as Array<{ reason?: string }>;
+    })) as Array<{ detail?: string }>;
 
     expect(movedTo()).toStrictEqual([]);
-    expect(result[0]?.reason).toContain("not moved:");
-    expect(result[1]?.reason).toContain("not moved:");
+    expect(result[0]?.detail).toContain("not moved:");
+    expect(result[1]?.detail).toContain("not moved:");
   });
 });
 
@@ -308,14 +308,14 @@ describe("updateClip - a move Live turns down at write time", () => {
       {
         id: "113",
         ok: false,
-        reason:
+        detail:
           "not moved: it would land on clip t0[5|1] (id 114), which Live wouldn't " +
           "move; move that clip first, or use separate calls",
       },
       {
         id: "114",
         ok: false,
-        reason:
+        detail:
           "not moved: track t1 (id track-1) is audio; a MIDI clip needs a MIDI track",
       },
     ]);
@@ -340,21 +340,21 @@ describe("updateClip - a move Live turns down at write time", () => {
       {
         id: "113",
         ok: false,
-        reason:
+        detail:
           "not moved: it would land on clip t0[5|1] (id 114), whose own move this " +
           "call gave up on; move that clip first, or use separate calls",
       },
       {
         id: "114",
         ok: false,
-        reason:
+        detail:
           "not moved: it would land on clip t0[9|1] (id 115), which Live wouldn't " +
           "move; move that clip first, or use separate calls",
       },
       {
         id: "115",
         ok: false,
-        reason:
+        detail:
           "not moved: track t1 (id track-1) is audio; a MIDI clip needs a MIDI track",
       },
     ]);
@@ -432,7 +432,7 @@ describe("updateClip - moving a row of take-lane clips", () => {
 
     for (const entry of result) {
       expect(entry.deleted).toBeUndefined();
-      expect(entry.reason).toContain("re-created on t0/l0");
+      expect(entry.detail).toContain("re-created on t0/l0");
     }
   });
 });

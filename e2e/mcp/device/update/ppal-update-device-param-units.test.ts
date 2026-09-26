@@ -20,7 +20,7 @@ import {
   createGlueCompressor,
   expectParamRefused,
   writeParam,
-} from "./update-device-param-test-helpers";
+} from "../helpers/update-device-param-test-helpers";
 import {
   createTestDevice,
   parseToolResult,
@@ -52,7 +52,7 @@ describe("ppal-update-device param units", () => {
       const deviceId = await createGlueCompressor(ctx.client!);
       // Dry/Wet is a percentage. The number alone is in range, so before the
       // unit was checked this wrote 50% and reported success.
-      const { data, warnings } = await writeParam(
+      const written = await writeParam(
         ctx.client!,
         deviceId,
         "Dry/Wet",
@@ -60,7 +60,7 @@ describe("ppal-update-device param units", () => {
       );
 
       expectParamRefused(
-        { data, warnings },
+        written,
         "Dry/Wet",
         'is measured in %, so "50 dB" was not written',
       );
@@ -108,7 +108,7 @@ describe("ppal-update-device param units", () => {
 
     it("still refuses a unit measuring something else", async () => {
       const deviceId = await createGlueCompressor(ctx.client!);
-      const { data, warnings } = await writeParam(
+      const written = await writeParam(
         ctx.client!,
         deviceId,
         "Release",
@@ -116,7 +116,7 @@ describe("ppal-update-device param units", () => {
       );
 
       expectParamRefused(
-        { data, warnings },
+        written,
         "Release",
         'is measured in s, so "50 %" was not written',
       );
@@ -176,18 +176,14 @@ describe("ppal-update-device param units", () => {
     // there is no unit to record.
     it("refuses a unit, since there is none to check against", async () => {
       const deviceId = await createGlueCompressor(ctx.client!);
-      const { data, warnings } = await writeParam(
+      const written = await writeParam(
         ctx.client!,
         deviceId,
         "S/C EQ Q",
         "5 dB",
       );
 
-      expectParamRefused(
-        { data, warnings },
-        "S/C EQ Q",
-        "never says what it measures",
-      );
+      expectParamRefused(written, "S/C EQ Q", "never says what it measures");
     });
 
     it("writes that same param when the unit is left off", async () => {

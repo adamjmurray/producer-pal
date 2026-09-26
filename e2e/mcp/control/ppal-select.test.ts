@@ -371,7 +371,7 @@ describe("ppal-select", () => {
 
     // It's about the one device, so the entry carries it, not a warning.
     expect(selected?.path).toBe("t3/d0");
-    expect(selected?.reason).toBe(
+    expect(selected?.detail).toBe(
       "openPluginWindow ignored: not a plug-in (VST/AU)",
     );
     expect(getToolWarnings(result)).toStrictEqual([]);
@@ -434,7 +434,7 @@ interface SelectResult {
   selectedDevice?: {
     id: string;
     path: string;
-    reason?: string;
+    detail?: string;
   };
   selectedDrumPad?: {
     id: string;

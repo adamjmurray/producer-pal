@@ -8,6 +8,11 @@ import {
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
+import { type PairLabels } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  type PairedParamLabels,
+  pairParams,
+} from "#src/tools/shared/validation/lists/paired-values.ts";
 
 interface RoutingInfo {
   display_name: string;
@@ -19,6 +24,62 @@ export interface RoutingParams {
   inputRoutingChannel?: string;
   outputRoutingType?: string;
   outputRoutingChannel?: string;
+}
+
+/** The routing params plus their deprecated aliases, as the caller sent them. */
+export interface RoutingArgs extends RoutingParams {
+  inputRoutingTypeId?: string;
+  inputRoutingChannelId?: string;
+  outputRoutingTypeId?: string;
+  outputRoutingChannelId?: string;
+}
+
+/**
+ * A routing param's label in a mismatch warning.
+ * @param param - The routing param
+ * @returns Its label
+ */
+function routingLabel(param: keyof RoutingParams): PairLabels {
+  return { param, noun: "routing", item: "track", shortfall: "kept theirs" };
+}
+
+const ROUTING_LABELS: PairedParamLabels<keyof RoutingParams> = {
+  inputRoutingType: routingLabel("inputRoutingType"),
+  inputRoutingChannel: routingLabel("inputRoutingChannel"),
+  outputRoutingType: routingLabel("outputRoutingType"),
+  outputRoutingChannel: routingLabel("outputRoutingChannel"),
+};
+
+/** The routing params that pair per target. */
+export const ROUTING_PARAMS = Object.keys(ROUTING_LABELS) as Array<
+  keyof RoutingParams
+>;
+
+/**
+ * Split the routing params against the targets, one per track or one for all.
+ * The deprecated aliases take one value for every track.
+ * @param args - The routing params and aliases, as the caller sent them
+ * @param count - How many targets the call named
+ * @returns The routing for the target at an index
+ */
+export function routingValuesAt(
+  args: RoutingArgs,
+  count: number,
+): (index: number) => RoutingParams {
+  const at = pairParams(args, ROUTING_LABELS, count);
+
+  return (index) => {
+    const own = at(index);
+
+    return {
+      inputRoutingType: own.inputRoutingType ?? args.inputRoutingTypeId,
+      inputRoutingChannel:
+        own.inputRoutingChannel ?? args.inputRoutingChannelId,
+      outputRoutingType: own.outputRoutingType ?? args.outputRoutingTypeId,
+      outputRoutingChannel:
+        own.outputRoutingChannel ?? args.outputRoutingChannelId,
+    };
+  };
 }
 
 /**

@@ -19,7 +19,9 @@
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   readIdAtPath,
@@ -44,7 +46,7 @@ const CLIPS_ONLY =
 interface SendEntry {
   return?: string;
   ok?: false;
-  reason?: string;
+  detail?: string;
 }
 
 /** One entry of a multi-target write result. */
@@ -55,8 +57,7 @@ interface TargetEntry {
   ok?: false;
   /** Clips only: true when another clip in the call was moved on top of it. */
   deleted?: boolean;
-  reason?: string;
-  params?: Array<{ reason?: string }>;
+  detail?: string;
   sends?: SendEntry[];
 }
 
@@ -180,7 +181,10 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(entries[0]).toStrictEqual(
-      expect.objectContaining({ deleted: true }),
+      expect.objectContaining({
+        deleted: true,
+        detail: "another clip in this call was moved onto it",
+      }),
     );
     expect(entries[1]?.path).toBe(`${SCRATCH}[21|1]`);
   });
@@ -188,7 +192,7 @@ describe("calls that report on the entry and warn about nothing", () => {
   it("says on each entry that a colour snapped to the palette", async () => {
     const snapped = {
       color: "#3C3C3C",
-      reason: expect.stringContaining(
+      detail: expect.stringContaining(
         `color ${OFF_PALETTE} is not in Live's palette; landed as #3C3C3C`,
       ),
     };
@@ -228,7 +232,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       name: "Moved",
     });
 
-    expect(refusedMove.reason).toBe(
+    expect(refusedMove.detail).toBe(
       `not moved: track ${await label("ppal-read-track", "t5")} is audio; a MIDI clip needs a MIDI track`,
     );
 
@@ -238,15 +242,16 @@ describe("calls that report on the entry and warn about nothing", () => {
       warpMode: "beats",
     });
 
-    expect(ignoredParam.reason).toBe("warpMode ignored: the clip is MIDI");
+    expect(ignoredParam.detail).toBe("warpMode ignored: the clip is MIDI");
 
-    const unknownParam = await entryFrom("ppal-update-device", {
+    // The param was all it asked, so a miss fails the call.
+    const unknownParam = await errorFrom("ppal-update-device", {
       path: "t0/d0",
       params: [{ name: "Nope", value: 1 }],
     });
 
-    expect(unknownParam.params![0]!.reason).toBe(
-      `not found on ${await label("ppal-read-device", "t0/d0")}`,
+    expect(unknownParam).toContain(
+      `no param landed — "Nope": not found on ${await label("ppal-read-device", "t0/d0")}`,
     );
   });
 
@@ -262,25 +267,21 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(ignoredArg[0]).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason: "gainDb not applicable to a device",
+      detail: "gainDb not applicable to a device",
     });
     // The chain it was sent alongside takes it, and keeps its own slot.
     expect(ignoredArg[1]?.path).toBe("t0/d0/pC1/c0");
 
     // A rack's return chains belong to the rack, so the pad the call named is
-    // what has nothing matching — its own entry says it.
-    const padSend = await entryFrom("ppal-update-device", {
+    // what has nothing matching. The send was all it asked, so the call fails.
+    const padSend = await errorFrom("ppal-update-device", {
       path: "t0/d0/pC1",
       sends: [{ return: "Nope", gainDb: -10 }],
     });
 
-    expect(padSend.sends).toStrictEqual([
-      {
-        return: "Nope",
-        ok: false,
-        reason: 'no return chain matching "Nope" (returns: a Saturator)',
-      },
-    ]);
+    expect(padSend).toContain(
+      'no send landed — "Nope": no return chain matching "Nope" (returns: a Saturator)',
+    );
 
     const rackLabel = await label("ppal-read-device", "t0/d0");
     const refusedCopy = await entriesFrom("ppal-duplicate", {
@@ -291,7 +292,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(refusedCopy[1]).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason:
+      detail:
         `the copy of ${rackLabel} could not be moved to "t0/d1": ` +
         "the destination already has an instrument, and only one is allowed",
     });
@@ -307,7 +308,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(onLane.path).toBe(`${SCRATCH}/l0[13|1]`);
-    expect(onLane.reason).toBe(
+    expect(onLane.detail).toBe(
       "expand the take-lanes arrow on the track header in Live to see it",
     );
 
@@ -317,7 +318,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       toPath: `${SCRATCH}/l0[17|1]`,
     });
 
-    expect(copied.reason).toBe(
+    expect(copied.detail).toBe(
       "re-created on the take lane; expand the take-lanes arrow on the track " +
         "header in Live to see it",
     );
@@ -336,7 +337,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     );
 
     expect(selected.warnings).toStrictEqual([]);
-    expect(selected.data.selectedDevice?.reason).toBe(
+    expect(selected.data.selectedDevice?.detail).toBe(
       "openPluginWindow ignored: not a plug-in (VST/AU)",
     );
   });
@@ -347,7 +348,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       toPath: "t1/s0",
     });
 
-    expect(moved.reason).toBe("overwrote the existing clip at t1/s0");
+    expect(moved.detail).toBe("overwrote the existing clip at t1/s0");
   });
 
   it("rounds a send, refuses one a track can't take, and skips an empty pad", async () => {
@@ -356,39 +357,36 @@ describe("calls that report on the entry and warn about nothing", () => {
       sends: [{ return: "A", gainDb: -12.345 }],
     });
 
-    expect(sendsOf(send)[0]?.reason).toBe(
+    expect(sendsOf(send)[0]?.detail).toBe(
       "gainDb read back as shown, not as sent",
     );
 
     // The main track has no sends at all, so the write has nowhere to land.
-    // The track's entry carries the refusal instead of the call warning and
-    // leaving no entry.
-    const mainSend = await entryFrom("ppal-update-track", {
+    // It was all the call asked, so the call fails instead of warning.
+    const mainSend = await errorFrom("ppal-update-track", {
       path: "mt",
       sends: [{ return: "A", gainDb: -10 }],
     });
 
-    expect(sendsOf(mainSend)).toStrictEqual([
-      expect.objectContaining({ ok: false, reason: "the track has no sends" }),
-    ]);
+    expect(mainSend).toContain("no send landed");
+    expect(mainSend).toContain("the track has no sends");
 
     // Which return tracks exist is a fact about the Set, so it is resolved once
-    // — and every track the call named still says it on its own entry.
+    // — and every track the call named still says it on its own entry, as a
+    // skip since the send was all it asked.
     const noReturn = await entriesFrom("ppal-update-track", {
       path: `t0,${SCRATCH}`,
       sends: [{ return: "Nope", gainDb: -10 }],
     });
 
-    for (const entry of noReturn) {
-      expect(entry.sends).toStrictEqual([
-        {
-          return: "Nope",
-          ok: false,
-          reason:
-            'no return track matching "Nope" (Available: A-Delay, B-Reverb)',
-        },
-      ]);
-    }
+    expect(noReturn).toStrictEqual(
+      ["t0", SCRATCH].map((path) => ({
+        path,
+        ok: false,
+        detail:
+          'no send landed — "Nope": no return track matching "Nope" (Available: A-Delay, B-Reverb)',
+      })),
+    );
 
     const pads = await entriesFrom("ppal-update-device", {
       path: "t0/d0/pC1,t0/d0/pC2",
@@ -396,7 +394,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(pads[1]!.path).toBe("t0/d0/pC2");
-    expect(pads[1]!.reason).toContain("has no chains");
+    expect(pads[1]!.detail).toContain("has no chains");
 
     const nothingThere = await entryFrom("ppal-delete", {
       type: "device",
@@ -405,7 +403,7 @@ describe("calls that report on the entry and warn about nothing", () => {
 
     expect(nothingThere).toStrictEqual({
       path: `${SCRATCH}/inst`,
-      reason: "nothing to delete",
+      detail: "nothing to delete",
     });
   });
 });
@@ -428,6 +426,25 @@ async function warningsFrom(
   await sleep(100);
 
   return raised;
+}
+
+/**
+ * One call's error message, asserted to have raised no warnings at all.
+ * @param tool - The tool to call
+ * @param args - The call's arguments
+ * @returns The error it answered with
+ */
+async function errorFrom(
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const result = await ctx.client!.callTool({ name: tool, arguments: args });
+
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(isToolError(result)).toBe(true);
+  await sleep(100);
+
+  return getToolErrorMessage(result);
 }
 
 /**

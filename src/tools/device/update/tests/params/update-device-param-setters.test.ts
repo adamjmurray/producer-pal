@@ -10,6 +10,7 @@ import {
   expectParamRefused,
   expectValueSet,
   livePath,
+  noParamLanded,
   paramsOf,
   registerDeviceWithParams,
   registerMockObject,
@@ -42,7 +43,7 @@ function volumeParamOptions() {
       min: 0,
       max: 1,
     },
-    methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+    methods: { str_for_value: (v: unknown) => `${Number(v).toFixed(2)} dB` },
   };
 }
 
@@ -223,7 +224,7 @@ describe("updateDevice - param value conversion", () => {
         methods: {
           // Min label is parseable but max label is not
           str_for_value: (v: unknown) =>
-            Number(v) < 0.5 ? `${Number(v)} Hz` : "custom",
+            Number(v) < 0.5 ? `${Number(v).toFixed(2)} Hz` : "custom",
         },
       });
     });
@@ -259,32 +260,31 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("reports and does not write a string input it can't interpret", () => {
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Mode", value: "custom-value" }],
-      });
-
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Mode", value: "custom-value" }],
+          }),
+        "Mode",
+        'could not interpret "custom-value"',
+      );
       expect(param.set).not.toHaveBeenCalled();
-      expect(paramsOf(result)).toStrictEqual([
-        {
-          name: "Mode",
-          ok: false,
-          reason: expect.stringContaining('could not interpret "custom-value"'),
-        },
-      ]);
-      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("reports and does not write a unit with no number in front of it", () => {
       // "-dB" once parsed to NaN, which fails every range check silently and
       // writes NaN (or walks a searched param to an end) reporting success.
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Mode", value: "-dB" }],
-      });
-
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Mode", value: "-dB" }],
+          }),
+        "Mode",
+        'could not interpret "-dB"',
+      );
       expect(param.set).not.toHaveBeenCalled();
-      expectParamRefused(result, "Mode", 'could not interpret "-dB"');
     });
   });
 
@@ -334,18 +334,11 @@ describe("updateDevice - param value conversion", () => {
         properties: { name: "my-set" },
       });
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "1", value: "5" }],
-      });
-
-      expect(result).toStrictEqual({
-        id: "dev1",
-        path: "t0/d0",
-        params: [
-          { name: "1", ok: false, reason: "not found on t0/d0 (id dev1)" },
-        ],
-      });
+      expect(
+        noParamLanded(() =>
+          updateDevice({ id: "dev1", params: [{ name: "1", value: "5" }] }),
+        ),
+      ).toBe('no param landed — "1": not found on t0/d0 (id dev1)');
       expect(capturedWarnings()).toHaveLength(0);
       expect(liveSet.set).not.toHaveBeenCalled();
     });
@@ -356,26 +349,16 @@ describe("updateDevice - param value conversion", () => {
       // reports a change to the addressed one that never happened there.
       const foreign = registerForeignParam();
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "143", value: "-12" }],
-      });
+      const message = noParamLanded(() =>
+        updateDevice({ id: "dev1", params: [{ name: "143", value: "-12" }] }),
+      );
 
       expect(foreign.set).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({
-        id: "dev1",
-        path: "t0/d0",
-        params: [
-          {
-            name: "143",
-            ok: false,
-            reason:
-              "id 143 is on t10/d0, not t0/d0 (id dev1), so it was not written",
-          },
-        ],
-      });
       // Named where it actually lives, so the call can be corrected in one
-      // step — and said once, in the entry the caller reads.
+      // step — and said once, in the error.
+      expect(message).toBe(
+        'no param landed — "143": id 143 is on t10/d0, not t0/d0 (id dev1), so it was not written',
+      );
       expect(capturedWarnings()).toHaveLength(0);
     });
 
@@ -412,7 +395,7 @@ describe("updateDevice - param value conversion", () => {
           max: 1,
         },
         methods: {
-          str_for_value: (v: unknown) => `${Number(v)} Hz`,
+          str_for_value: (v: unknown) => `${Number(v).toFixed(2)} Hz`,
         },
       });
 
@@ -453,14 +436,14 @@ describe("updateDevice - param value conversion", () => {
 
     it("reports a note name that is valid but out of MIDI range", () => {
       // C-3 is a valid note name but maps to MIDI note -12 (out of 0-127)
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "Pitch", value: "C-3" }],
-      });
-
-      expect(paramsOf(result)).toStrictEqual([
-        { name: "Pitch", ok: false, reason: 'invalid note name "C-3"' },
-      ]);
+      expect(
+        noParamLanded(() =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Pitch", value: "C-3" }],
+          }),
+        ),
+      ).toBe('no param landed — "Pitch": invalid note name "C-3"');
       expect(capturedWarnings()).toHaveLength(0);
     });
   });
@@ -579,25 +562,19 @@ describe("updateDevice - param value conversion", () => {
   });
 
   describe("a param name that matches nothing", () => {
-    it("comes back as an entry saying so, and nothing else", () => {
+    it("throws an error saying so, and warns nowhere", () => {
       registerDeviceWithParams();
 
-      const result = updateDevice({
-        id: "dev1",
-        params: [{ name: "NonExistentParam", value: "0.5" }],
-      });
-
-      expect(result).toStrictEqual({
-        id: "dev1",
-        path: "t0/d0",
-        params: [
-          {
-            name: "NonExistentParam",
-            ok: false,
-            reason: "not found on t0/d0 (id dev1)",
-          },
-        ],
-      });
+      expect(
+        noParamLanded(() =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "NonExistentParam", value: "0.5" }],
+          }),
+        ),
+      ).toBe(
+        'no param landed — "NonExistentParam": not found on t0/d0 (id dev1)',
+      );
       expect(capturedWarnings()).toHaveLength(0);
     });
   });
@@ -607,38 +584,35 @@ describe("updateDevice - sample pseudo-param", () => {
   it("loads a sample on a Simpler device via params", () => {
     const simpler = registerSimplerDevice();
 
-    const result = updateDevice({
-      id: "simpler-1",
-      params: [{ name: "sample", value: "/tmp/kick.wav" }],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "simpler-1",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      }),
+    );
 
     expect(simpler.call).toHaveBeenCalledWith(
       "replace_sample",
       "/tmp/kick.wav",
     );
-    // The call went through and nothing loaded, so the entry says the value
+    // The call went through and nothing loaded, so the error says the value
     // never arrived rather than leaving the write looking like it worked.
-    expect(result).toStrictEqual({
-      id: "simpler-1",
-      path: "t0/d0",
-      params: [
-        {
-          name: "sample",
-          ok: false,
-          reason: "written, but no value reads back",
-        },
-      ],
-    });
+    expect(message).toBe(
+      'no param landed — "sample": written, but no value reads back',
+    );
   });
 
   it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
     registerSimplerDevice();
 
-    updateDevice({
-      id: "simpler-1",
-      params: [{ name: "sample", value: "/tmp/kick.wav" }],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "simpler-1",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      }),
+    );
 
+    expect(message).not.toContain("not found");
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining('"sample" not found'),
     );
@@ -694,12 +668,12 @@ describe("updateDevice - actions arg", () => {
         {
           action: "nope",
           ok: false,
-          reason: "unknown action for this device",
+          detail: "unknown action for this device",
         },
         {
           action: "warpAs(x)",
           ok: false,
-          reason: "requires a numeric beats argument",
+          detail: "requires a numeric beats argument",
         },
       ],
     });
@@ -752,7 +726,7 @@ describe("updateDevice - actions arg", () => {
     expect(paramsOf(result)).toHaveLength(1);
     expect(actionsOf(result)).toStrictEqual([
       { action: "reverse" },
-      { action: "crop", ok: false, reason: "Live refused the crop" },
+      { action: "crop", ok: false, detail: "Live refused the crop" },
       { action: "warpHalf" },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

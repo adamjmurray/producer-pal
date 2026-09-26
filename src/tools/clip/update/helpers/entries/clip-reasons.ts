@@ -8,7 +8,7 @@
 // the helpers that find out collect it here and the update loop puts it on the
 // entry they wrote.
 //
-// A clip updated but not as asked keeps its entry and a reason; one whose only
+// A clip updated but not as asked keeps its entry and a detail; one whose only
 // work was refused keeps its slot as a skip — `refuseClipWork` marks that, and
 // so does `ignoreClipParams`, since an ignored param stops counting as work.
 // Everything is keyed by the clip's id as the call found it; a step writing
@@ -16,7 +16,7 @@
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
-import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { type LandedColor } from "#src/tools/shared/helpers/landed-color.ts";
 
@@ -89,8 +89,8 @@ export function noteClipColor(
   clipId: string,
   landed: LandedColor,
 ): void {
-  if (landed.reason != null) {
-    noteClipReason(reasons, clipId, landed.reason);
+  if (landed.detail != null) {
+    noteClipReason(reasons, clipId, landed.detail);
   }
 
   if (landed.color != null) {
@@ -272,6 +272,6 @@ export function reportClipReasons(
   }
 
   for (const reason of reasons.said.get(clipId) ?? []) {
-    appendReason(entry, reason);
+    appendDetail(entry, reason);
   }
 }

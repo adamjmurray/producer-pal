@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
+
 /**
  * Splits a target list — a param naming objects or places (`id`, `path`,
  * `toPath`, `arrangementStart`, `locator`) — into its entries, refusing a list
@@ -27,6 +29,20 @@ export function targetEntries(
   label: string,
 ): string[] {
   return entriesFrom(raw, (value) => value.split(","), label);
+}
+
+/**
+ * {@link targetEntries} for a list of names, where `\,` is a comma inside a
+ * name, as in every other text list.
+ * @param raw - The param as the caller sent it
+ * @param label - Param name for error messages
+ * @returns One trimmed name per target, in order
+ */
+export function nameEntries(
+  raw: string | null | undefined,
+  label: string,
+): string[] {
+  return entriesFrom(raw, splitEntries, label);
 }
 
 /**
