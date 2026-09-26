@@ -38,6 +38,7 @@ import {
   deferNonSurvivorDeletion,
   removeMovedSource,
 } from "./update-clip-deferred-deletion.ts";
+import { clipIsGone } from "../batch/buried-clips.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
 import {
   forgetLandedLength,
@@ -187,10 +188,9 @@ export function handleArrangementStartOperation({
     length: landedLength(newClip),
   });
 
-  // Clear the original to complete the move. For a self-overlapping move the
-  // holding placement already trimmed it (or fully replaced it on a zero-offset
-  // move), so guard with exists() — leaving a single clip at the new position.
-  if (clip.exists()) {
+  // Clear the original to complete the move. A self-overlapping move already
+  // deleted it. Check the path: a held clip's exists() stays true once it's gone.
+  if (!clipIsGone(clip)) {
     const leftover = removeMovedSource(clip, sourceTrack);
 
     if (leftover != null) {

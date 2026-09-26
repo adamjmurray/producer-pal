@@ -141,8 +141,9 @@ function addLaneClip(start: number, end: number): string {
 function removeLaneClip(id: string): void {
   const index = laneClips.indexOf(id);
 
+  // A held clip's id outlives the clip, so deleting by it twice is easy to miss.
   if (index < 0) {
-    return;
+    throw new Error(`delete_clip: ${id} is not on the track`);
   }
 
   deleteMockObject(id);
@@ -213,4 +214,12 @@ function setLaneClipSpan(id: string, start: number, end: number): void {
  */
 export function stackedLaneClips(): string[] {
   return [...laneClips];
+}
+
+/**
+ * Where the clips on the simulated track sit right now.
+ * @returns Each clip's [start, end] in beats, sorted by start
+ */
+export function stackedLaneSpans(): Array<[number, number]> {
+  return laneClips.map(laneClipSpan).toSorted((a, b) => a[0] - b[0]);
 }

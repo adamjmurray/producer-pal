@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
@@ -22,6 +23,11 @@ import {
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
+import {
+  registerStackingTrack,
+  stackedLaneClips,
+  stackedLaneSpans,
+} from "../batch/stacking-track-test-helpers.ts";
 
 /** What the clips had to say about the last operation run here. */
 let reasons: ClipReasons = newClipReasons();
@@ -63,7 +69,8 @@ function clipStub(
     getProperty: vi.fn((prop) =>
       prop === "is_arrangement_clip" ? isArrangementClip : null,
     ),
-    exists: () => true,
+    // Only a deleted clip reads an empty path.
+    path: `live_set tracks ${String(trackIndex ?? 0)} arrangement_clips 0`,
     trackIndex,
   } as unknown as LiveAPI;
 }
@@ -155,8 +162,8 @@ describe("arrangement-move", () => {
 
       // Real workaround, no mock: source [0,16] moved to 4 overlaps its own
       // target [4,20], so the move routes through holding — copy to holding,
-      // trim/overwrite the original, place a full copy — then deletes the
-      // original, leaving one full-length clip at the new position.
+      // delete the original, place a full copy — leaving one full-length clip
+      // at the new position.
       const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
         path: `live_set tracks ${trackIndex}`,
         properties: { arrangement_clips: ["id", "700"] },
@@ -348,8 +355,9 @@ describe("arrangement-move", () => {
         path: `live_set tracks ${trackIndex}`,
       });
 
-      // Unsafe move (self-overlap): the holding round-trip already trimmed/replaced
-      // the original, so clip.exists() is false and delete must be skipped.
+      // Unsafe move (self-overlap): the holding round-trip already deleted the
+      // original, so its path is empty and delete must be skipped — even though
+      // a held object's exists() still says true.
       const clearSpy = vi
         .spyOn(arrangementWorkaround, "clearClipAtDuplicateTarget")
         .mockReturnValue(false);
@@ -368,12 +376,12 @@ describe("arrangement-move", () => {
           prop === "is_arrangement_clip" ? 1 : null,
         ),
         trackIndex,
-        exists: () => false,
+        path: "",
+        exists: () => true,
       };
 
       const result = runStartOperation(mockClip as unknown as LiveAPI, 16);
 
-      // safeToMove(false) || clip.exists()(false) === false → no delete.
       expect(trackMock.call).not.toHaveBeenCalledWith(
         "delete_clip",
         expect.anything(),
@@ -479,6 +487,45 @@ describe("arrangement-move", () => {
   });
 });
 
+// A move that lands on part of its own span leaves one clip, either direction:
+// nothing of the source may survive past the copy.
+describe("moving a clip onto part of its own span", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("leaves no tail behind when it moves back less than its length", async () => {
+    const entry = await moveFourBarClip("2|1");
+
+    expect(stackedLaneSpans()).toStrictEqual([
+      [0, 4],
+      [4, 20],
+    ]);
+    expect(entry.path).toBe("t0[2|1]");
+    expect(stackedLaneClips()).toContain(entry.id);
+  });
+
+  it("leaves no head behind when it moves forward less than its length", async () => {
+    const entry = await moveFourBarClip("4|1");
+
+    expect(stackedLaneSpans()).toStrictEqual([
+      [0, 4],
+      [12, 28],
+    ]);
+    expect(entry.path).toBe("t0[4|1]");
+  });
+
+  it("leaves one clip when it moves onto its own start", async () => {
+    const entry = await moveFourBarClip("3|1");
+
+    expect(stackedLaneSpans()).toStrictEqual([
+      [0, 4],
+      [8, 24],
+    ]);
+    expect(stackedLaneClips()).toContain(entry.id);
+  });
+});
+
 /**
  * Sets up a non-survivor clip scenario and calls handleArrangementStartOperation.
  * @returns The result of handleArrangementStartOperation
@@ -557,4 +604,15 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
   });
 
   return { result, movedClipGroups, updatedClips };
+}
+
+/**
+ * Lay out a 1-bar clip then a 4-bar clip at beat 8, and move the 4-bar one.
+ * @param arrangementStart - Where it goes
+ * @returns The move's entry
+ */
+async function moveFourBarClip(arrangementStart: string): Promise<ClipResult> {
+  const [, fourBars] = registerStackingTrack([4, 16]);
+
+  return (await updateClip({ id: fourBars, arrangementStart })) as ClipResult;
 }
