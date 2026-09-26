@@ -7,13 +7,13 @@ import {
   enumParam,
   readBoolProp,
   writeBoolProp,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Roar (RoarDevice, class_name "Roar"). Exposes its processing-topology
 // selector and an envelope-audition toggle at the class level — neither is
 // reachable as a DeviceParameter. See
-// dev/specialized-devices/audio-effects.md.
+// dev/live-api/specialized-devices/audio-effects.md.
 //
 // This is the reference implementation for the simplest device shape:
 // stable enum + boolean pseudo-params, no actions/options/modulations.

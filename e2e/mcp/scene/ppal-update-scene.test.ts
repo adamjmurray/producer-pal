@@ -14,11 +14,15 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers";
+import { expectPaletteColorReported } from "./scene-color-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -31,7 +35,8 @@ describe("ppal-update-scene", () => {
     const created = parseToolResult<CreateSceneResult[]>(
       await ctx.client!.callTool({
         name: "ppal-create-scene",
-        arguments: { path: "s0", count: 2, name: "UpdateTest" },
+        // One path entry per scene: `count` is deprecated and warns.
+        arguments: { path: "s0,s0", name: "UpdateTest" },
       }),
     );
 
@@ -83,6 +88,33 @@ describe("ppal-update-scene", () => {
     expect(scene.color).toBeDefined();
   });
 
+  /**
+   * Write a color to a scene.
+   * @param id - The scene to recolor
+   * @param color - The color to ask for
+   * @returns What the call reported
+   */
+  async function updateSceneColor(
+    id: string,
+    color: string,
+  ): Promise<UpdateSceneResult> {
+    return parseToolResult<UpdateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-scene",
+        arguments: { id, color },
+      }),
+    );
+  }
+
+  it("reports the palette color Live snapped to, and says nothing when it didn't", async () => {
+    const [sceneId, secondSceneId] = await createScenes();
+
+    await expectPaletteColorReported(
+      (color) => updateSceneColor(sceneId!, color),
+      (color) => updateSceneColor(secondSceneId!, color),
+    );
+  });
+
   it("sets and disables the tempo override", async () => {
     const [sceneId] = await createScenes();
 
@@ -103,6 +135,36 @@ describe("ppal-update-scene", () => {
       (await updateAndRead(sceneId!, { timeSignature: "disabled" }))
         .timeSignature,
     ).toBeUndefined();
+  });
+
+  it("pairs one time signature per scene in one call", async () => {
+    const [sceneId, secondSceneId] = await createScenes();
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-scene",
+      arguments: {
+        id: `${sceneId},${secondSceneId}`,
+        timeSignature: "6/8,7/4",
+      },
+    });
+
+    parseBatchResult<UpdateSceneResult>(result, 2);
+
+    await sleep(100);
+
+    const meters = [];
+
+    for (const id of [sceneId!, secondSceneId!]) {
+      const scene = parseToolResult<ReadSceneResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-scene",
+          arguments: { id },
+        }),
+      );
+
+      meters.push(scene.timeSignature);
+    }
+
+    expect(meters).toStrictEqual(["6/8", "7/4"]);
   });
 
   it("updates several scenes in one call", async () => {
@@ -129,6 +191,52 @@ describe("ppal-update-scene", () => {
   });
 });
 
+describe("ppal-update-scene over a list with a target it can't reach", () => {
+  /**
+   * Call ppal-update-scene.
+   * @param args - The tool's arguments
+   * @returns The raw tool result
+   */
+  function updateScene(args: Record<string, unknown>): Promise<unknown> {
+    return ctx.client!.callTool({ name: "ppal-update-scene", arguments: args });
+  }
+
+  it("keeps a slot for a path that names no scene, and warns nowhere", async () => {
+    // parseBatchResult fails the test if anything warned: the entry carries it.
+    const entries = parseBatchResult<UpdateSceneResult | SkippedTargetResult>(
+      await updateScene({ path: "s0,s999", name: "ListSkip,Nowhere" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "s0" }),
+      {
+        path: "s999",
+        ok: false,
+        detail: 'no scene at path "s999"; ppal-create-scene makes one',
+      },
+    ]);
+
+    const scene = parseToolResult<ReadSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { path: "s0" },
+      }),
+    );
+
+    expect(scene.name).toBe("ListSkip");
+  });
+
+  it("throws when the one target it was given names no scene", async () => {
+    const result = await updateScene({ path: "s999", name: "Nowhere" });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no scene at path "s999"; ppal-create-scene makes one',
+    );
+  });
+});
+
 interface CreateSceneResult {
   id: string;
   path: string;
@@ -136,6 +244,9 @@ interface CreateSceneResult {
 
 interface UpdateSceneResult {
   id: string;
+  path?: string;
+  color?: string;
+  detail?: string;
 }
 
 interface ReadSceneResult {

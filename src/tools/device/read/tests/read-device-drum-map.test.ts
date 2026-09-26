@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "../read-device.ts";
+import { postProcessDrumMap } from "../helpers/drum-map-post-processing.ts";
+import { readOneDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -105,14 +106,14 @@ function setupInstrumentRackWithKit(): void {
   registerKit("kit", KIT);
 }
 
-const PAD_WARNING =
-  "t1/d0/pC1 (id pad-36) is a drum pad and has no drum map of its own — read its drum rack for the kit's map";
+const PAD_REASON =
+  "this is a drum pad and has no drum map of its own — read its drum rack for the kit's map";
 
-describe("readDevice drum-map by target kind", () => {
+describe("readOneDevice drum-map by target kind", () => {
   it('reads a drum pad with include: ["*"] instead of crashing', () => {
     setupKitPad();
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["*"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["*"] });
 
     // The pad's own fields are the subject here; the chain tree under it has
     // its own tests, so only its length is pinned.
@@ -120,21 +121,21 @@ describe("readDevice drum-map by target kind", () => {
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chains: expect.any(Array),
     });
     expect(result.chains).toHaveLength(1);
-    expect(capturedWarnings()).not.toContain(PAD_WARNING);
+    expect(result.detail).toBeUndefined();
   });
 
-  it("warns instead of mapping when drum-map is asked of a drum pad", () => {
+  it("says on the pad's own entry that it has no drum map", () => {
     setupKitPad();
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(capturedWarnings()).toContain(PAD_WARNING);
+    expect(result.detail).toBe(PAD_REASON);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // A kit behind a pad only plays through that pad's note, so its pitches
@@ -149,27 +150,30 @@ describe("readDevice drum-map by target kind", () => {
     });
     registerKit("sub", `${DEVICE} chains 0 devices 0`);
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(capturedWarnings()).toContain(PAD_WARNING);
+    expect(result.detail).toBe(PAD_REASON);
   });
 
-  it("warns instead of mapping when drum-map is asked of a drum chain", () => {
+  it("says on a drum chain's own entry that it has no drum map", () => {
     setupKitPad();
 
-    const result = readDevice({ path: "t1/d0/pC1/c0", include: ["drum-map"] });
+    const result = readOneDevice({
+      path: "t1/d0/pC1/c0",
+      include: ["drum-map"],
+    });
 
     expect(result.drumMap).toBeUndefined();
-    expect(capturedWarnings()).toContain(
-      "t1/d0/pC1/c0 (id chain-1) is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
+    expect(result.detail).toBe(
+      "this is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
     );
   });
 
   it("maps a kit inside a plain chain and strips the tree it walked", () => {
     setupInstrumentRackWithKit();
 
-    const result = readDevice({ path: "t1/d0/c0", include: ["drum-map"] });
+    const result = readOneDevice({ path: "t1/d0/c0", include: ["drum-map"] });
 
     expect(result.drumMap).toStrictEqual({ C1: "Kick" });
     // The kit is a device down from the chain that was read, so the map names
@@ -192,7 +196,7 @@ describe("readDevice drum-map by target kind", () => {
   it("keeps the pads when they were asked for alongside the map", () => {
     setupInstrumentRackWithKit();
 
-    const result = readDevice({
+    const result = readOneDevice({
       path: "t1/d0/c0",
       include: ["drum-map", "drum-pads"],
     });
@@ -210,7 +214,6 @@ describe("readDevice drum-map by target kind", () => {
       // The kit is nested, so the pad's path runs through the outer rack.
       path: "t1/d0/c0/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chainCount: 1,
     });
@@ -222,7 +225,7 @@ describe("readDevice drum-map by target kind", () => {
   it("points a pad path at the kit nested inside the rack it named", () => {
     setupInstrumentRackWithKit();
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c0/d0" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c0/d0" })).toThrow(
       'Drum pad C1 not found — the drum rack is nested; try "t1/d0/c0/d0/pC1/c0/d0"',
     );
   });
@@ -230,7 +233,7 @@ describe("readDevice drum-map by target kind", () => {
   it("keeps the chain tree when chains were asked for too", () => {
     setupInstrumentRackWithKit();
 
-    const result = readDevice({
+    const result = readOneDevice({
       path: "t1/d0/c0",
       include: ["drum-map", "chains", "drum-pads"],
     });
@@ -240,5 +243,39 @@ describe("readDevice drum-map by target kind", () => {
     const devices = result.devices as Record<string, unknown>[];
 
     expect(devices[0]?.drumPads).toHaveLength(1);
+  });
+});
+
+describe("postProcessDrumMap", () => {
+  const options = {
+    includeDrumMap: true,
+    drumMapExplicit: true,
+    chainsForDrumMap: false,
+    includeDrumPads: false,
+  };
+
+  it("maps nothing for a chain that holds no devices", () => {
+    // A chain read at the depth limit reports a device count instead of the
+    // devices, so the map has nothing to search and must not be built.
+    const result = postProcessDrumMap(
+      { type: "Chain", deviceCount: 2 },
+      options,
+    );
+
+    expect(result.drumMap).toBeUndefined();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("leaves a kept pad alone when it carries no chains", () => {
+    // Only the pads of a rack read for the map carry chains; a pad already
+    // read without them takes no chainCount it never had.
+    const pad = { pitch: "C1" };
+    const result = postProcessDrumMap(
+      { type: "drum-rack", drumPads: [pad], chains: [] },
+      { ...options, chainsForDrumMap: true, includeDrumPads: true },
+    );
+
+    expect(result.drumPads).toStrictEqual([{ pitch: "C1" }]);
+    expect(result.chains).toBeUndefined();
   });
 });

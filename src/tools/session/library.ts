@@ -23,7 +23,7 @@ import {
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { runSearchBatch } from "./library-search-batch-helpers.ts";
+import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
 
 // deviceKind doubles as the plugin category filter for listPlugins. Only the
@@ -87,6 +87,9 @@ export async function library(
 
   if (searches != null && action !== "search") {
     console.warn(`searches does not apply to action "${action}"; ignoring it`);
+  } else if (searches?.length === 0) {
+    // An empty list names no search at all, so there is nothing to guess at.
+    throw new Error("searches must name at least one search");
   }
 
   if (action === "listTags") {
@@ -146,14 +149,9 @@ export async function library(
   }
 
   // searches is the fan-out form of a search: each entry carries its own
-  // filters, so the top-level ones don't apply. An empty array says nothing
-  // about what to search for, so fall through to the single search.
-  if (searches != null && searches.length > 0) {
-    return await runSearchBatch(searches, toolContext, runSearch);
-  }
-
+  // filters, so the top-level ones don't apply.
   if (searches != null) {
-    console.warn("searches was empty; running a single search instead");
+    return await runSearchBatch(searches, toolContext, runSearch);
   }
 
   return await runSearch(args, toolContext);
@@ -205,10 +203,10 @@ export async function runSearch(
   const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
   const items = merged.slice(0, limit);
-  const reason = folderScan.reason ?? dbResult?.reason;
+  const detail = folderScan.detail ?? dbResult?.detail;
 
   if (dbResult == null) {
-    return reason == null ? { items } : { items, reason };
+    return detail == null ? { items } : { items, detail };
   }
 
   const base: LibrarySearchResult = {
@@ -218,7 +216,7 @@ export async function runSearch(
     items,
   };
 
-  return reason == null ? base : { ...base, reason };
+  return detail == null ? base : { ...base, detail };
 }
 
 /**
@@ -244,18 +242,18 @@ function resolveAction(action: string | undefined): string {
 interface FolderScan {
   items: LibraryItem[];
   /** Set when items is empty due to a discoverable cause */
-  reason?: string;
+  detail?: string;
 }
 
 /**
  * Scan the configured sample folder when filters allow it and
- * convert results to LibraryItem shape. Returns a reason string when
+ * convert results to LibraryItem shape. Returns a detail string when
  * the scan is skipped or fails for a user-actionable cause so callers
  * can surface diagnostics rather than reporting silent empty results.
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
- * @returns Folder scan result with items and optional reason
+ * @returns Folder scan result with items and optional detail
  */
 function scanFolderItems(
   args: LibraryArgs,
@@ -267,7 +265,7 @@ function scanFolderItems(
     if (args.source === "sampleFolder") {
       return {
         items: [],
-        reason:
+        detail:
           "sample folder not configured (set one in the Producer Pal Setup tab)",
       };
     }
@@ -309,7 +307,7 @@ function scanFolderItems(
   } catch (err) {
     return {
       items: [],
-      reason: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
+      detail: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 
@@ -342,10 +340,9 @@ function leafName(rel: string): string {
 }
 
 /**
- * Immediate parent folder display name for a sampleFolder item, mirroring
- * the `folder` field DB items carry. For a nested relative path the parent
- * is its last folder segment ("drums/kick.wav" → "drums"); for a top-level
- * file the parent is the configured sample folder's own basename.
+ * Immediate parent folder display name for a sampleFolder item, mirroring the
+ * `folder` field DB items carry: a nested path's last folder segment
+ * ("drums/kick.wav" → "drums"), else the sample folder's own basename.
  *
  * @param rel - Relative path like "drums/kick.wav"
  * @param sampleFolder - Absolute sample folder path (trailing slash)
@@ -358,11 +355,8 @@ function parentFolder(rel: string, sampleFolder: string): string {
     return leafName(rel.slice(0, idx));
   }
 
-  const trimmed = sampleFolder.endsWith("/")
-    ? sampleFolder.slice(0, -1)
-    : sampleFolder;
-
-  return leafName(trimmed);
+  // readSamples always hands back a trailing slash.
+  return leafName(sampleFolder.slice(0, -1));
 }
 
 /**
@@ -442,14 +436,23 @@ function candidateFilters(args: LibraryArgs): object {
 /**
  * Invoke a Node-side route and unwrap the response, throwing on failure
  * so the MCP error path renders a clean message instead of leaking the
- * RPC envelope shape to the LLM.
+ * RPC envelope shape to the LLM. Every route also gets the running Live
+ * version, which Node uses to pick that install's library database.
  *
  * @param route - Route name registered on Node side
  * @param routeArgs - Arguments to pass to the route
  * @returns Route's success payload
  */
 async function callRoute<T>(route: string, routeArgs: object): Promise<T> {
-  const response = await requestNode<T>(route, routeArgs);
+  // Node can't ask Live anything, and it needs the running major to pick the
+  // right Live database when two majors are installed (see live-db-path.ts).
+  // Read per call rather than caching: a LiveAPI object must not outlive the
+  // request, and the call is cheap.
+  // Live 12.4 returns "12.4", which V8 coerces to a number; force string.
+  const liveVersion = String(
+    LiveAPI.from("live_app").call("get_version_string"),
+  );
+  const response = await requestNode<T>(route, { ...routeArgs, liveVersion });
 
   if (!response.success || !response.result) {
     throw new Error(`${route} failed: ${response.error ?? "unknown error"}`);

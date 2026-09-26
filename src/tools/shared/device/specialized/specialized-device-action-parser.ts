@@ -8,7 +8,7 @@ import { type ParsedAction } from "./specialized-device-types.ts";
 // Parser for the `actions` arg on update-device. Each action is a function-call
 // string: a bare name (`reverse`) or `name(arg1, arg2, ...)`. Args are int,
 // float, or quoted strings (single or double quotes). Commas inside quotes are
-// respected. No nested calls. See dev/Specialized-Devices.md.
+// respected. No nested calls. See dev/live-api/specialized-devices/README.md.
 
 /**
  * Parse a single action string into a name and positional args.

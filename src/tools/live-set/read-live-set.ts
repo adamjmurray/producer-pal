@@ -8,8 +8,8 @@ import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
-import { readScene } from "#src/tools/scene/read-scene.ts";
-import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
+import { readOneScene } from "#src/tools/scene/read-scene.ts";
+import { readLocators } from "#src/tools/shared/locator/locators.ts";
 import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import {
   type IncludeFlags,
@@ -17,7 +17,11 @@ import {
   READ_SONG_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import {
-  readTrack,
+  round2dp,
+  roundDisplayValue,
+} from "#src/tools/shared/helpers/rounding.ts";
+import {
+  readOneTrack,
   readTrackGeneric,
 } from "#src/tools/track/read/read-track.ts";
 
@@ -47,25 +51,29 @@ export function readLiveSet(
   // Read the return tracks once for efficiency (used for sends in mixer data)
   const returnTracks = readReturnTrackInfo();
 
-  // One pass over the session grid, shared by the scenes and the tracks below.
-  // Each counts the same slots — scenes by column, tracks by row — so counting
-  // in both places built every clip in the Set twice.
+  // One pass over the session grid, shared by the scenes and the tracks below:
+  // each counts the same slots, so counting in both built every clip twice.
   const clipCounts =
     includeFlags.includeScenes || includeFlags.includeTracks
       ? sessionClipCounts(trackIds.length, sceneIds.length)
       : null;
 
   const liveSetName = liveSet.getName();
+  // Read once: the result's time signature and the locators spell the same meter.
+  const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
+  const timeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
-    tempo: liveSet.getProperty("tempo"),
-    timeSignature: liveSet.timeSignature,
+    tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
+    timeSignature: `${String(timeSigNumerator)}/${String(timeSigDenominator)}`,
   };
 
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
     result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
-      readScene(
+      readOneScene(
         {
           sceneIndex,
           include: trackInclude,
@@ -88,7 +96,7 @@ export function readLiveSet(
   // Tracks: full details or counts
   if (includeFlags.includeTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
-      readTrack(
+      readOneTrack(
         {
           trackIndex,
           include: trackInclude,
@@ -148,13 +156,6 @@ export function readLiveSet(
 
   // Include locators when requested
   if (includeFlags.includeLocators) {
-    const timeSigNumerator = liveSet.getProperty(
-      "signature_numerator",
-    ) as number;
-    const timeSigDenominator = liveSet.getProperty(
-      "signature_denominator",
-    ) as number;
-
     result.locators = readLocators(
       liveSet,
       timeSigNumerator,
@@ -207,7 +208,7 @@ function sessionClipCounts(
 /**
  * Build include array to propagate to track/scene readers
  * @param flags - Parsed include flags
- * @returns Array of include options recognized by readTrack/readScene
+ * @returns Array of include options recognized by readOneTrack/readOneScene
  */
 function buildTrackInclude(flags: IncludeFlags): string[] {
   const include: string[] = [];

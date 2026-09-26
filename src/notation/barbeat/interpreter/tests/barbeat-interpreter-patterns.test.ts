@@ -185,20 +185,16 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("uses default duration (quarter) when step is omitted and no duration set", () => {
       const result = interpretNotation("C1 1|1x3");
 
-      expect(result).toHaveLength(3);
-      expect(result[0]!.start_time).toBe(0); // 1|1
-      expect(result[1]!.start_time).toBe(1); // 1|2
-      expect(result[2]!.start_time).toBe(2); // 1|3
+      // 1|1, 1|2, 1|3
+      expect(result.map((note) => note.start_time)).toStrictEqual([0, 1, 2]);
       expect(result.every((note) => note.duration === 1)).toBe(true);
     });
 
     it("handles repeat pattern mixed with regular beats", () => {
       const result = interpretNotation("C1 1|1x2@n/4,3.5");
 
-      expect(result).toHaveLength(3);
-      expect(result[0]!.start_time).toBe(0); // 1|1
-      expect(result[1]!.start_time).toBe(1); // 1|2
-      expect(result[2]!.start_time).toBe(2.5); // 1|3.5
+      // 1|1, 1|2, 1|3.5
+      expect(result.map((note) => note.start_time)).toStrictEqual([0, 1, 2.5]);
     });
 
     it("handles multiple repeat patterns in same beat list", () => {

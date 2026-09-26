@@ -4,13 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 // Compressor (CompressorDevice). See
-// dev/specialized-devices/audio-effects.md.
+// dev/live-api/specialized-devices/audio-effects.md.
 // Sidechain input routing via Live's standard routing-dict shape. Routing
 // identifiers are NOT Live object IDs — they're a separate Live-internal
 // namespace; translation happens by matching track names to display_names.
@@ -32,7 +31,7 @@ const NO_INPUT_LABEL = "No Input";
 /**
  * Read available input routing types from the device. Falls back to an empty
  * array when the property is unset (getProperty returns null), so callers can
- * warn-and-skip rather than throw.
+ * refuse with a reason rather than throw.
  * @param device - LiveAPI device object
  * @returns Array of routing entries (empty when unavailable)
  */
@@ -44,7 +43,7 @@ function readAvailableTypes(device: LiveAPI): RoutingEntry[] {
 /**
  * Read available input routing channels from the device. Falls back to an empty
  * array when the property is unset (getProperty returns null), so callers can
- * warn-and-skip rather than throw.
+ * refuse with a reason rather than throw.
  * @param device - LiveAPI device object
  * @returns Array of routing entries (empty when unavailable)
  */
@@ -100,15 +99,15 @@ function readSidechainSourceTrackId(device: LiveAPI): string | null {
 
 /**
  * Write sidechainSourceTrackId. Clears to "No Input" when value is null/empty.
- * Warns and skips when the track doesn't exist or isn't a valid sidechain source.
+ * Refuses a track that doesn't exist or isn't a valid sidechain source.
  * @param device - LiveAPI device object
  * @param value - Track id string, "null", or ""
- * @returns True when the source was written, false when it was skipped
+ * @returns Why the source was refused, or null when it was written
  */
 function writeSidechainSourceTrackId(
   device: LiveAPI,
   value: string | number,
-): boolean {
+): string | null {
   const strValue = String(value).trim();
 
   if (strValue === "" || strValue === "null") {
@@ -118,11 +117,7 @@ function writeSidechainSourceTrackId(
   const track = LiveAPI.from(toLiveApiId(strValue));
 
   if (!track.exists()) {
-    console.warn(
-      `sidechainSourceTrackId — track id "${strValue}" does not exist`,
-    );
-
-    return false;
+    return `sidechainSourceTrackId — track id "${strValue}" does not exist`;
   }
 
   const trackName = track.getName();
@@ -130,43 +125,35 @@ function writeSidechainSourceTrackId(
   const entry = available.find((e) => e.display_name === trackName);
 
   if (entry == null) {
-    console.warn(
-      `track "${trackName}" ${targetLabel(track)} cannot be a sidechain source — it has no audio-bearing devices`,
-    );
-
-    return false;
+    return `track "${trackName}" ${targetLabel(track)} cannot be a sidechain source — it has no audio-bearing devices`;
   }
 
   device.setProperty("input_routing_type", {
     identifier: Number(entry.identifier),
   });
 
-  return true;
+  return null;
 }
 
 /**
- * Clear the sidechain source to "No Input". Warns and skips if "No Input" is
- * not in the available types list.
+ * Clear the sidechain source to "No Input". Refuses when "No Input" is not in
+ * the available types list.
  * @param device - LiveAPI device object
- * @returns True when the source was cleared, false when it was skipped
+ * @returns Why the source was not cleared, or null when it was
  */
-function clearSidechainSource(device: LiveAPI): boolean {
+function clearSidechainSource(device: LiveAPI): string | null {
   const available = readAvailableTypes(device);
   const noInput = available.find((e) => e.display_name === NO_INPUT_LABEL);
 
   if (noInput == null) {
-    console.warn(
-      `sidechainSourceTrackId — "No Input" entry not found in available routing types`,
-    );
-
-    return false;
+    return `sidechainSourceTrackId — "No Input" entry not found in available routing types`;
   }
 
   device.setProperty("input_routing_type", {
     identifier: Number(noInput.identifier),
   });
 
-  return true;
+  return null;
 }
 
 /**
@@ -185,16 +172,16 @@ function readSidechainChannel(device: LiveAPI): string | null {
 
 /**
  * Write sidechainChannel by matching the display_name in the available channels.
- * Warns and skips when the channel name is not available. Always re-reads the
- * channel list (identifiers are not stable across source changes).
+ * Refuses a channel name that is not available. Always re-reads the channel list
+ * (identifiers are not stable across source changes).
  * @param device - LiveAPI device object
  * @param value - Channel name (e.g. "Pre FX")
- * @returns True when the channel was written, false when it was skipped
+ * @returns Why the channel was refused, or null when it was written
  */
 function writeSidechainChannel(
   device: LiveAPI,
   value: string | number,
-): boolean {
+): string | null {
   const channelName = String(value).trim();
   const available = readAvailableChannels(device);
   const entry = available.find((e) => e.display_name === channelName);
@@ -202,18 +189,14 @@ function writeSidechainChannel(
   if (entry == null) {
     const names = available.map((e) => e.display_name).join(", ");
 
-    console.warn(
-      `"${channelName}" is not a valid sidechainChannel. Available: ${names}`,
-    );
-
-    return false;
+    return `"${channelName}" is not a valid sidechainChannel. Available: ${names}`;
   }
 
   device.setProperty("input_routing_channel", {
     identifier: Number(entry.identifier),
   });
 
-  return true;
+  return null;
 }
 
 /**

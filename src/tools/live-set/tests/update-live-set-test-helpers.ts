@@ -65,6 +65,13 @@ export function setupLocatorMocks(
     return [0];
   });
 
+  // The playhead goes where it's sent, so a locator write finds it there.
+  liveSetHandle.set.mockImplementation((prop: string, value: unknown) => {
+    if (prop === "current_song_time") {
+      liveSetProps.current_song_time = value;
+    }
+  });
+
   const handles = new Map<string, RegisteredMockObject>();
 
   for (const [index, cp] of cuePoints.entries()) {
@@ -111,8 +118,10 @@ export function setupLocatorCreationMocks(
 } {
   const { time = 0, isPlaying = 0, songLength = 1000 } = config;
   let locatorCreated = false;
+  let playhead = 0;
 
-  const newCue = registerMockObject("new_cue", {
+  // An ordinary Live object id, the way a real cue point reports one.
+  const newCue = registerMockObject("26", {
     path: livePath.cuePoint(0),
     properties: { time },
   });
@@ -135,10 +144,20 @@ export function setupLocatorCreationMocks(
     }
 
     if (prop === "cue_points") {
-      return locatorCreated ? children("new_cue") : children();
+      return locatorCreated ? children("26") : children();
+    }
+
+    if (prop === "current_song_time") {
+      return [playhead];
     }
 
     return [0];
+  });
+
+  liveSetHandle.set.mockImplementation((prop: string, value: unknown) => {
+    if (prop === "current_song_time") {
+      playhead = value as number;
+    }
   });
 
   liveSetHandle.call.mockImplementation((method: string) => {
@@ -186,4 +205,114 @@ export function setupRoutingTestMocks(
       ...masterTrackMockObject(),
     },
   });
+}
+
+export interface SimulatedLocator {
+  time: number;
+  name: string;
+}
+
+/** How the simulated Set misbehaves, and the meter it's in. */
+export interface SimulateLocatorOptions {
+  /** Time signature numerator and denominator (default 4/4) */
+  meter?: [number, number];
+  /** A time in beats the playhead never reaches */
+  stallAt?: number;
+  /** A time in beats where a cue toggle makes no locator */
+  noCueAt?: number;
+}
+
+/**
+ * A live_set whose cue points really come and go, so a call that creates or
+ * deletes several locators reads back what the earlier ones did.
+ * @param liveSetHandle - The live_set mock object handle
+ * @param initial - Locators already in the Set, in time order
+ * @param options - Meter and misbehavior
+ * @returns A reader for the locators the Set holds now
+ */
+export function simulateLocators(
+  liveSetHandle: RegisteredMockObject,
+  initial: SimulatedLocator[] = [],
+  { meter = [4, 4], stallAt, noCueAt }: SimulateLocatorOptions = {},
+): { locators: () => SimulatedLocator[] } {
+  const cues: Array<{ id: string; properties: Record<string, unknown> }> = [];
+  let playhead = 0;
+  // Live hands out ordinary object ids, assigned on creation.
+  let nextId = 26;
+
+  const register = (): void => {
+    for (const [index, cue] of cues.entries()) {
+      const handle = registerMockObject(cue.id, {
+        path: livePath.cuePoint(index),
+        properties: cue.properties,
+      });
+
+      // The default set mock only stores numbers, so a name write needs this to
+      // read back.
+      handle.set.mockImplementation((property: string, value: unknown) => {
+        cue.properties[property] = value;
+      });
+    }
+  };
+
+  const addCue = (time: number, name: string): void => {
+    cues.push({ id: String(nextId++), properties: { time, name } });
+    cues.sort(
+      (a, b) => (a.properties.time as number) - (b.properties.time as number),
+    );
+    register();
+  };
+
+  for (const locator of initial) {
+    addCue(locator.time, locator.name);
+  }
+
+  liveSetHandle.get.mockImplementation((prop: string) => {
+    switch (prop) {
+      case "signature_numerator":
+        return [meter[0]];
+      case "signature_denominator":
+        return [meter[1]];
+      case "song_length":
+        return [1000];
+      case "current_song_time":
+        return [playhead];
+      case "cue_points":
+        return children(...cues.map((cue) => cue.id));
+      default:
+        return [0];
+    }
+  });
+
+  liveSetHandle.set.mockImplementation((prop: string, value: unknown) => {
+    if (prop === "current_song_time" && value !== stallAt) {
+      playhead = value as number;
+    }
+  });
+
+  // set_or_delete_cue toggles a locator at the playhead, the way Live does.
+  liveSetHandle.call.mockImplementation((method: string) => {
+    if (method !== "set_or_delete_cue") {
+      return;
+    }
+
+    const index = cues.findIndex((cue) => cue.properties.time === playhead);
+
+    if (index === -1) {
+      if (playhead !== noCueAt) {
+        addCue(playhead, "");
+      }
+    } else {
+      cues.splice(index, 1);
+      register();
+    }
+  });
+
+  return {
+    locators: () =>
+      cues.map((cue) => ({
+        time: cue.properties.time as number,
+        name: cue.properties.name as string,
+      })),
+  };
 }

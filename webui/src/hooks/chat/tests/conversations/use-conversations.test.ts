@@ -613,9 +613,12 @@ describe("useConversations", () => {
       expect(props.clearConversation).toHaveBeenCalled();
     });
 
-    // Back/Forward tears the conversation down the same way the sidebar does,
-    // and the teardown stops the stream — so it has to ask the same question.
-    it("asks before back/forward cuts a streaming turn off, and stays put on no", async () => {
+    /**
+     * Save a conversation, then render the hook mid-response so a hash change
+     * has to pass the streaming-turn guard.
+     * @returns The saved conversation's id plus the rendered hook
+     */
+    const renderGuardedByStreamingTurn = async () => {
       const existingId = await saveTestConversation({
         messages: [{ role: "user", content: "from hash" }],
       });
@@ -625,6 +628,16 @@ describe("useConversations", () => {
       );
 
       await waitForEffects();
+
+      return { existingId, props, state, result };
+    };
+
+    // Back/Forward tears the conversation down the same way the sidebar does,
+    // and the teardown stops the stream — so it has to ask the same question.
+    it("asks before back/forward cuts a streaming turn off, and stays put on no", async () => {
+      const { existingId, props, state, result } =
+        await renderGuardedByStreamingTurn();
+
       await saveWithMessage(state, result);
 
       const activeId = result.current.activeConversationId;
@@ -642,16 +655,24 @@ describe("useConversations", () => {
       vi.unstubAllGlobals();
     });
 
-    it("goes through on yes", async () => {
-      const existingId = await saveTestConversation({
-        messages: [{ role: "user", content: "from hash" }],
-      });
-      const { props } = createProps();
-      const { result } = renderHook(() =>
-        useConversationsWithUndo({ ...props, isAssistantResponding: true }),
-      );
+    it("clears the hash entirely when the turn being guarded was never saved", async () => {
+      const { existingId, result } = await renderGuardedByStreamingTurn();
 
-      await waitForEffects();
+      expect(result.current.activeConversationId).toBeNull();
+
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+      window.location.hash = existingId;
+      await fireHashChange();
+
+      // Nothing to name in the URL, so the hash goes rather than pointing at
+      // the conversation the user declined to open.
+      expect(result.current.activeConversationId).toBeNull();
+      expect(window.location.hash).toBe("");
+      vi.unstubAllGlobals();
+    });
+
+    it("goes through on yes", async () => {
+      const { existingId, result } = await renderGuardedByStreamingTurn();
 
       vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
       window.location.hash = existingId;

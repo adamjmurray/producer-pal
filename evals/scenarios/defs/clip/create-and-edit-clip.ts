@@ -7,13 +7,14 @@
  * Scenario: Create a drum clip, add notes, and quantize
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
+import { requireToolCall } from "./helpers/clip-turn-readers.ts";
 import { type EvalScenario } from "../../types.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const createAndEditClip: EvalScenario = {
   id: "create-and-edit-clip",
+  tags: ["clips"],
   description: "Create a drum clip, add notes, and quantize",
   kind: "regression",
   liveSet: "basic-midi-4-track",
@@ -40,12 +41,7 @@ export const createAndEditClip: EvalScenario = {
       type: "custom",
       description: "ppal-create-clip uses bar|beat notation in notes",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 1);
-        const createCall = calls.find((c) => c.name === "ppal-create-clip");
-
-        if (!createCall) {
-          throw new Error("ppal-create-clip not found");
-        }
+        const createCall = requireToolCall(turns, 1, "ppal-create-clip");
 
         const notes = createCall.args.notes;
 
@@ -74,12 +70,7 @@ export const createAndEditClip: EvalScenario = {
       type: "custom",
       description: "ppal-update-clip uses quantize parameter",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 3);
-        const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
-
-        if (!updateCall) {
-          throw new Error("ppal-update-clip not found in turn 3");
-        }
+        const updateCall = requireToolCall(turns, 3, TOOL_UPDATE_CLIP, "last");
 
         if (updateCall.args.quantize == null) {
           throw new Error("Missing quantize parameter");

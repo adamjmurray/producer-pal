@@ -44,7 +44,7 @@ describe("listCategories", () => {
 
       expect(result.dbAvailable).toBe(false);
       expect(result.categories).toBeUndefined();
-      expect(result.reason).toContain("Failed to read Live database");
+      expect(result.detail).toContain("Failed to read Live database");
     } finally {
       broken.cleanup();
     }
@@ -54,10 +54,10 @@ describe("listCategories", () => {
     it("lists top-level categories sorted by vocabulary size desc", async () => {
       const result = await listCategories();
 
-      // Fixture paths: Drums has 2 distinct sub-paths, Sounds + Type have 1
+      // Fixture paths: Drums has 3 distinct sub-paths, Sounds + Type have 1
       // each. The bare "Core Library" value (no pipe) is excluded.
       expect(result.categories).toStrictEqual([
-        { name: "Drums", count: 2 },
+        { name: "Drums", count: 3 },
         { name: "Sounds", count: 1 },
         { name: "Type", count: 1 },
       ]);
@@ -72,7 +72,8 @@ describe("listCategories", () => {
 
       expect(result.category).toBe("Drums");
       // Leaves Kick + Snare Hit; counts come from the keywords table
-      // (Kick tags 2 files, Snare Hit tags 1), sorted by count desc.
+      // (Kick tags 2 files, Snare Hit tags 1), sorted by count desc. The
+      // fixture's trailing-pipe "Drums|" names no leaf, so it adds nothing.
       expect(result.tags).toStrictEqual([
         { name: "Kick", count: 2 },
         { name: "Snare Hit", count: 1 },
@@ -88,7 +89,7 @@ describe("listCategories", () => {
 
       expect(result.category).toBe("Sounds");
       expect(result.tags).toStrictEqual([]);
-      expect(result.reason).toBeUndefined();
+      expect(result.detail).toBeUndefined();
     });
 
     it("flags an unknown category with a not-found reason", async () => {
@@ -96,7 +97,7 @@ describe("listCategories", () => {
 
       expect(result.category).toBe("Nope");
       expect(result.tags).toStrictEqual([]);
-      expect(result.reason).toBe("category not found: Nope");
+      expect(result.detail).toBe("category not found: Nope");
     });
 
     it("escapes LIKE metacharacters in the category name", async () => {

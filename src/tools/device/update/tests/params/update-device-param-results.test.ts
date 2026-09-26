@@ -7,13 +7,36 @@ import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   livePath,
+  noParamLanded,
+  registerContinuousParam,
   registerDeviceWithParams,
+  registerDrumRackPadChain,
   registerMockObject,
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/**
+ * Register a Simpler at t0/d0 with a kick sample already loaded.
+ * @returns The Simpler and its sample mocks
+ */
+function registerSimplerWithSample(): {
+  simpler: RegisteredMockObject;
+  sample: RegisteredMockObject;
+} {
+  const simpler = registerSimplerDevice();
+  const sample = registerMockObject("kick-sample", {
+    type: "Sample",
+    properties: { file_path: "/Library/kick.aif", gain: 0.5 },
+  });
+
+  simpler.properties.sample = children("kick-sample");
+
+  return { simpler, sample };
+}
 
 // Glue Compressor's Attack: seven reachable values across a range that looks
 // continuous, so a request between steps lands on one of them.
@@ -66,32 +89,12 @@ describe("updateDevice - written param values", () => {
   });
 
   it("names a path-prefixed param by the path it was addressed with", () => {
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
-    });
-    registerMockObject("chain-c1", {
-      type: "DrumChain",
-      properties: { in_note: 36, devices: children("pad-dev") },
-    });
+    registerDrumRackPadChain(["pad-dev"]);
     registerMockObject("pad-dev", {
       type: "Device",
       properties: { parameters: children("pad-vol") },
     });
-    registerMockObject("pad-vol", {
-      properties: {
-        name: "Volume",
-        original_name: "Volume",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    registerContinuousParam("pad-vol", { name: "Volume" });
 
     const result = updateDevice({
       path: "t0/d0",
@@ -101,7 +104,7 @@ describe("updateDevice - written param values", () => {
     expect(result).toStrictEqual({
       id: "drum-rack",
       path: "t0/d0",
-      params: [{ id: "pad-vol", name: "pC1/d0/Volume", value: 50 }],
+      params: [{ id: "pad-vol", name: "pC1/d0/Volume" }],
     });
   });
 
@@ -122,7 +125,7 @@ describe("updateDevice - written param values", () => {
       id: "dev1",
       path: "t0/d0",
       params: [
-        { name: "Nope", reason: "not found on t0/d0 (id dev1)" },
+        { name: "Nope", ok: false, detail: "not found on t0/d0 (id dev1)" },
         { id: "attack", name: "Attack", value: 10 },
       ],
     });
@@ -131,57 +134,55 @@ describe("updateDevice - written param values", () => {
   // The entry sits in the rack's result, but the lookup happened on the pad's
   // own device, so "this device" would name the wrong one.
   it("names the device a path-prefixed miss was looked up on", () => {
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
-    });
-    registerMockObject("chain-c1", {
-      type: "DrumChain",
-      properties: { in_note: 36, devices: children("pad-dev") },
-    });
+    registerDrumRackPadChain(["pad-dev"]);
     registerMockObject("pad-dev", {
       path: `${livePath.track(0).device(0)} chains 0 devices 0`,
       type: "Device",
       properties: { parameters: children() },
     });
 
-    const result = updateDevice({
-      path: "t0/d0",
-      params: [{ name: "pC1/d0/Cutoff", value: "50" }],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0",
+          params: [{ name: "pC1/d0/Cutoff", value: "50" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "pC1/d0/Cutoff": not found on t0/d0/c0/d0 (id pad-dev)',
+    );
 
-    expect(result).toStrictEqual({
-      id: "drum-rack",
-      path: "t0/d0",
-      params: [
-        {
-          name: "pC1/d0/Cutoff",
-          reason: "not found on t0/d0/c0/d0 (id pad-dev)",
-        },
-      ],
-    });
+    // Named exactly as it arrived, spacing and all: that is what the caller has
+    // to match the error on.
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0",
+          params: [{ name: "pC1/d0/ Cutoff", value: "50" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "pC1/d0/ Cutoff": not found on t0/d0/c0/d0 (id pad-dev)',
+    );
   });
 
   it("reports every param when none of them named anything", () => {
     registerLadderParam();
 
-    const result = updateDevice({
-      id: "dev1",
-      params: [
-        { name: "Nope", value: "1" },
-        { name: "Also nope", value: "2" },
-      ],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "dev1",
+        params: [
+          { name: "Nope", value: "1" },
+          { name: "Also nope", value: "2" },
+        ],
+      }),
+    );
 
-    expect(result).toStrictEqual({
-      id: "dev1",
-      path: "t0/d0",
-      params: [
-        { name: "Nope", reason: "not found on t0/d0 (id dev1)" },
-        { name: "Also nope", reason: "not found on t0/d0 (id dev1)" },
-      ],
-    });
+    expect(message).toBe(
+      'no param landed — "Nope": not found on t0/d0 (id dev1); ' +
+        '"Also nope": not found on t0/d0 (id dev1)',
+    );
   });
 
   it("reports where an out-of-range value landed, not the one asked for", () => {
@@ -192,43 +193,43 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "Attack", value: "5000 ms" }],
     });
 
-    // The ladder tops out at 30 ms, and that is what the entry says.
+    // The ladder tops out at 30 ms, and that is what the entry says — plus why
+    // that isn't the value the call asked for.
     expect(result).toStrictEqual({
       id: "dev1",
       path: "t0/d0",
-      params: [{ id: "attack", name: "Attack", value: 30 }],
+      params: [
+        {
+          id: "attack",
+          name: "Attack",
+          value: 30,
+          detail:
+            "only goes from 0.01 ms to 30 ms, so 5000 was set to the nearest valid value",
+        },
+      ],
     });
   });
 
-  it("reports nothing for a write Live ignored", () => {
+  it("reports no value for a write Live ignored, and says so", () => {
     const param = registerLadderParam();
 
     // Live drops a value it doesn't like without saying so, leaving the old
     // one in place. An entry only ever reports a value that landed.
     param.set.mockImplementation(() => undefined);
 
-    const result = updateDevice({
-      id: "dev1",
-      params: [{ name: "Attack", value: "12 ms" }],
-    });
-
-    expect(result).toStrictEqual({ id: "dev1", path: "t0/d0" });
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Attack", value: "12 ms" }],
+        }),
+      "Attack",
+      "was not changed",
+    );
   });
 
   it("reads params back after a macro variation recall overwrites them", () => {
-    const macro = registerMockObject("macro-1", {
-      properties: {
-        name: "Macro 1",
-        original_name: "Macro 1",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    const macro = registerContinuousParam("macro-1", { name: "Macro 1" });
 
     registerMockObject("rack", {
       path: livePath.track(0).device(0),
@@ -254,22 +255,25 @@ describe("updateDevice - written param values", () => {
       macroVariationIndex: 0,
     });
 
-    // 50 is what the write landed; 90 is what the same call left behind.
+    // 50 is what the write landed; 90 is what the same call left behind, and
+    // the entry says the value isn't the one that was sent.
     expect(result).toStrictEqual({
       id: "rack",
       path: "t0/d0",
-      params: [{ id: "macro-1", name: "Macro 1", value: 90 }],
+      params: [
+        {
+          id: "macro-1",
+          name: "Macro 1",
+          value: 90,
+          detail: "value read back as shown, not as sent",
+        },
+      ],
     });
   });
 
   it("reports the value a pseudo-param reads back, not the one written", () => {
-    const simpler = registerSimplerDevice();
-    const sample = registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
+    const { simpler, sample } = registerSimplerWithSample();
 
-    simpler.properties.sample = children("kick-sample");
     // The device reports the file it resolved to, not the string it was
     // handed: an entry echoing the written value would not match.
     simpler.call.mockImplementation((method: string) => {
@@ -292,13 +296,8 @@ describe("updateDevice - written param values", () => {
   });
 
   it("reads a pseudo-param back after a later write in the call changes it", () => {
-    const simpler = registerSimplerDevice();
-    const sample = registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
+    const { simpler, sample } = registerSimplerWithSample();
 
-    simpler.properties.sample = children("kick-sample");
     sample.set.mockImplementation((property: string, value: unknown) => {
       sample.properties[property] = value;
     });
@@ -330,20 +329,22 @@ describe("updateDevice - written param values", () => {
     });
   });
 
-  it("reports no entry for a pseudo-param value the device refused", () => {
+  it("reports a pseudo-param value the device refused in the error", () => {
     registerSimplerDevice();
 
-    const result = updateDevice({
-      id: "simpler-1",
-      params: [{ name: "retrigger", value: "sometimes" }],
-    });
-
-    // Nothing was written, so nothing may report what `retrigger` reads as: an
-    // entry with no reason says the write landed.
-    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("is not a valid retrigger"),
+    // Nothing was written, so the error carries the reason rather than what
+    // `retrigger` reads as.
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "simpler-1",
+          params: [{ name: "retrigger", value: "sometimes" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "retrigger": "sometimes" is not a valid retrigger (expected true/false)',
     );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("reports a reason when a pseudo-param write leaves nothing to read", () => {
@@ -351,63 +352,45 @@ describe("updateDevice - written param values", () => {
 
     // An absolute path naming no file: Live takes `replace_sample` and loads
     // nothing, so the write reports success and the device stays empty.
-    const result = updateDevice({
-      id: "simpler-1",
-      params: [{ name: "sample", value: "/nowhere/missing.wav" }],
-    });
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "simpler-1",
+        params: [{ name: "sample", value: "/nowhere/missing.wav" }],
+      }),
+    );
 
     expect(simpler.call).toHaveBeenCalledWith(
       "replace_sample",
       "/nowhere/missing.wav",
     );
-    // read-device omits an empty Simpler's `sample` too, so an omitted entry
-    // here would leave the caller nothing anywhere that says it never landed.
-    expect(result).toStrictEqual({
-      id: "simpler-1",
-      path: "t0/d0",
-      params: [{ name: "sample", reason: "written, but no value reads back" }],
-    });
+    // read-device omits an empty Simpler's `sample` too, so without this the
+    // caller would have nothing anywhere that says it never landed.
+    expect(message).toBe(
+      'no param landed — "sample": written, but no value reads back',
+    );
   });
 
   it("reports a reason when a sample write leaves the old sample loaded", () => {
-    const simpler = registerSimplerDevice();
-
-    registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
-    simpler.properties.sample = children("kick-sample");
+    registerSimplerWithSample();
 
     // An absolute path naming no file: Live takes `replace_sample`, loads
     // nothing, and leaves the sample that was already there.
-    const result = updateDevice({
-      id: "simpler-1",
-      params: [{ name: "sample", value: "/nowhere/missing.wav" }],
-    });
-
     // Reporting the old path as the value would read as a write that landed —
     // the caller would have to diff it against what it sent to notice.
-    expect(result).toStrictEqual({
-      id: "simpler-1",
-      path: "t0/d0",
-      params: [
-        {
-          name: "sample",
-          reason:
-            'not loaded — check the path; "/Library/kick.aif" is still there',
-        },
-      ],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "simpler-1",
+          params: [{ name: "sample", value: "/nowhere/missing.wav" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "sample": not loaded — check the path; "/Library/kick.aif" is still there',
+    );
   });
 
   it("reports a sample reloaded from its own path as a value, not a failure", () => {
-    const simpler = registerSimplerDevice();
-
-    registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
-    simpler.properties.sample = children("kick-sample");
+    registerSimplerWithSample();
 
     // Reloading the loaded sample leaves the path where it was, so only the
     // value the call asked for tells this apart from a write that never landed.
@@ -426,15 +409,79 @@ describe("updateDevice - written param values", () => {
   it("reports a read-only pseudo-param with the reason in place of a value", () => {
     registerSimplerDevice();
 
-    const result = updateDevice({
-      id: "simpler-1",
-      params: [{ name: "multiSampleMode", value: "true" }],
-    });
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "simpler-1",
+          params: [{ name: "multiSampleMode", value: "true" }],
+        }),
+      ),
+    ).toBe('no param landed — "multiSampleMode": read-only');
+  });
+});
 
-    expect(result).toStrictEqual({
-      id: "simpler-1",
-      path: "t0/d0",
-      params: [{ name: "multiSampleMode", reason: "read-only" }],
+// A pseudo-param is a device property, so every kind of value a device spec
+// checks has its own refusal path. Each one lands in the error.
+describe("updateDevice - a pseudo-param value the device refused", () => {
+  /**
+   * Register a specialized device at t0/d0.
+   * @param displayName - The device's class_display_name
+   * @param properties - The class-level properties its pseudo-params read
+   */
+  function registerSpecialized(
+    displayName: string,
+    properties: Record<string, unknown>,
+  ): void {
+    registerMockObject("dev1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        class_display_name: displayName,
+        parameters: children(),
+        ...properties,
+      },
     });
+  }
+
+  it("reports an enum label the device has no option for", () => {
+    registerSpecialized("Roar", { routing_mode_index: 0 });
+
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "routingMode", value: "sideways" }],
+        }),
+      "routingMode",
+      '"sideways" is not a valid routingMode. Options: single, serial,',
+    );
+  });
+
+  it("reports a boolean it could not read as true or false", () => {
+    registerSpecialized("EQ Eight", { global_mode: 0, oversample: 0 });
+
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "oversample", value: "sometimes" }],
+        }),
+      "oversample",
+      '"sometimes" is not a valid oversample (expected true/false)',
+    );
+  });
+
+  it("reports an integer outside the range the device takes", () => {
+    registerSpecialized("Drift", { pitch_bend_range: 2 });
+
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "pitchBendRange", value: "13" }],
+        }),
+      "pitchBendRange",
+      'pitchBendRange must be an integer 0-12 (got "13")',
+    );
   });
 });

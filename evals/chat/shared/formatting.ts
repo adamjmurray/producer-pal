@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { inspect, styleText } from "node:util";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   calcNewContentTokens,
   compactNumber,
@@ -258,11 +258,13 @@ export function formatToolResult(
  * @param usage - Token usage for this step
  * @param prev - Previous step's usage (for new content calculation)
  * @param afterText - Whether this follows a text response (needs extra newline)
+ * @param timing - Generation speed for this step, when it was measurable
  */
 export function printStepUsage(
   usage: TokenUsage,
   prev: TokenUsage | undefined,
   afterText: boolean,
+  timing?: StepTiming,
 ): void {
   const input = usage.inputTokens ?? 0;
   const newContent = calcNewContentTokens(
@@ -278,10 +280,53 @@ export function printStepUsage(
       ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
       : "";
 
-  const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
+  const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}${formatStepTiming(timing)}`;
   const prefix = afterText ? "\n\n" : "\n";
 
   console.log(`${prefix}${styleText("gray", "  " + line)}\n`);
+}
+
+/**
+ * Format the generation-speed tail of a step's usage line.
+ *
+ * @param timing - Step timing, or undefined when nothing was measurable
+ * @returns Something like " · 42 tok/s · 1.2s to first token", or ""
+ */
+export function formatStepTiming(timing: StepTiming | undefined): string {
+  return stepTimingParts(timing)
+    .map((part) => ` · ${part}`)
+    .join("");
+}
+
+/**
+ * The readable pieces of a generation speed, for callers that join them their
+ * own way.
+ *
+ * @param timing - Step timing, or undefined when nothing was measurable
+ * @returns Something like ["42 tok/s", "1.2s to first token"], possibly empty
+ */
+export function stepTimingParts(timing: StepTiming | undefined): string[] {
+  const parts: string[] = [];
+
+  if (timing?.outputTokensPerSecond != null) {
+    parts.push(`${Math.round(timing.outputTokensPerSecond)} tok/s`);
+  }
+
+  if (timing?.timeToFirstTokenMs != null) {
+    parts.push(`${formatDuration(timing.timeToFirstTokenMs)} to first token`);
+  }
+
+  return parts;
+}
+
+/**
+ * Format a millisecond duration for a usage line.
+ *
+ * @param ms - Duration in milliseconds
+ * @returns Whole milliseconds under a second, else seconds to one decimal
+ */
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
 /**

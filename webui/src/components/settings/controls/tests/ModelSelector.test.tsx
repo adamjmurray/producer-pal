@@ -82,26 +82,24 @@ describe("ModelSelector", () => {
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.6-terra" });
+      renderModelSelector({ provider: "openai", model: "gpt-6-sol" });
+      expect(screen.getByRole("option", { name: /^GPT-6 Sol$/ })).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /^GPT-5\.6 Terra$/ }),
-      ).toBeDefined();
-      expect(
-        screen.getByRole("option", { name: /^GPT-5\.3 Codex$/ }),
+        screen.getByRole("option", { name: /^GPT-6 Luna$/ }),
       ).toBeDefined();
     });
 
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-5.6-terra",
+        model: "gpt-6-sol",
       });
 
-      expectModelSelected("gpt-5.3-codex", setModel);
+      expectModelSelected("gpt-6-luna", setModel);
     });
 
     it("includes the realtime (voice) model in the OpenAI dropdown", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.6-terra" });
+      renderModelSelector({ provider: "openai", model: "gpt-6-sol" });
       expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
     });
   });
@@ -182,7 +180,7 @@ describe("ModelSelector", () => {
     it("renders text input for lmstudio provider", () => {
       renderModelSelector({ provider: "lmstudio", model: "llama-3.1-70b" });
       expect(
-        screen.getByPlaceholderText(/e.g., qwen\/qwen3-coder/),
+        screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/),
       ).toBeDefined();
     });
 
@@ -192,7 +190,7 @@ describe("ModelSelector", () => {
         model: "llama-3.1-70b",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3-coder/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/), {
         target: { value: "qwen-2.5-72b" },
       });
       expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
@@ -226,7 +224,7 @@ describe("ModelSelector", () => {
         target: { value: "OTHER" },
       });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-2.5-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-3.8-flash/),
       ).toBeDefined();
     });
 
@@ -236,7 +234,7 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-2.5-flash/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-3.8-flash/), {
         target: { value: "custom-model-name" },
       });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
@@ -245,7 +243,7 @@ describe("ModelSelector", () => {
     it("shows custom input initially for non-preset models", () => {
       renderModelSelector({ model: "my-custom-model" });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-2.5-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-3.8-flash/),
       ).toBeDefined();
       expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
         "OTHER",
@@ -254,7 +252,7 @@ describe("ModelSelector", () => {
 
     it("shows provider-specific placeholders for OpenAI", () => {
       renderModelSelector({ provider: "openai", model: "my-custom-openai" });
-      expect(screen.getByPlaceholderText(/e.g., gpt-5.4-nano/)).toBeDefined();
+      expect(screen.getByPlaceholderText(/e.g., gpt-6-luna/)).toBeDefined();
     });
 
     it("shows provider-specific placeholders for Mistral", () => {
@@ -270,13 +268,13 @@ describe("ModelSelector", () => {
         model: "my-custom-openrouter",
       });
       expect(
-        screen.getByPlaceholderText(/e.g., bytedance-seed\/seed-1.6/),
+        screen.getByPlaceholderText(/e.g., openai\/gpt-6-luna/),
       ).toBeDefined();
     });
 
     it("shows provider-specific placeholders for Ollama", () => {
       renderModelSelector({ provider: "ollama", model: "my-custom-ollama" });
-      expect(screen.getByPlaceholderText(/e.g., qwen3:30b/)).toBeDefined();
+      expect(screen.getByPlaceholderText(/e.g., qwen3.8/)).toBeDefined();
     });
   });
 });

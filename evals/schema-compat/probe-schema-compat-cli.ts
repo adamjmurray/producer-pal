@@ -45,7 +45,7 @@ import {
   runProbeMatrix,
   truncate,
 } from "./probe-report.ts";
-import { VARIANTS, type Variant } from "./schema-compat-variants.ts";
+import { selectedVariants, type Variant } from "./schema-compat-variants.ts";
 
 /** One CLI turn is one tool call; a long budget would only buy a longer loop. */
 const STEP_BUDGET = 4;
@@ -128,31 +128,6 @@ function prepareRow(modelArg: string): Promise<Row> {
     transport: requireAgentCliTransport(provider),
     model,
   });
-}
-
-/**
- * Select the variants to probe, honouring any --variant=id flags.
- * @returns The variants to run
- * @throws Error when a --variant names nothing in the corpus
- */
-function selectedVariants(): Variant[] {
-  const wanted = process.argv
-    .filter((a) => a.startsWith("--variant="))
-    .map((a) => a.slice("--variant=".length));
-
-  if (wanted.length === 0) {
-    return VARIANTS;
-  }
-
-  const chosen = VARIANTS.filter((v) => wanted.includes(v.id));
-
-  if (chosen.length !== wanted.length) {
-    const known = VARIANTS.map((v) => v.id).join(", ");
-
-    throw new Error(`Unknown --variant. Known variants: ${known}`);
-  }
-
-  return chosen;
 }
 
 const models = process.argv.slice(2).filter((a) => !a.startsWith("--"));

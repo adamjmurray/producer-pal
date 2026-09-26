@@ -11,13 +11,15 @@
 #
 # The "Run Test Suite" workflow uses cancel-in-progress on a per-branch
 # concurrency group, so a second push while a build is running KILLS the first
-# one and that commit ends up with no build at all. These three rules keep the
+# one and that commit ends up with no build at all. These rules keep the
 # sequence one-commit-one-green-build:
 #
 #   1. one commit per push
 #   2. no push while a build is in flight
 #   3. no push when the latest build is red, or ran against something other
 #      than what is on the remote right now (a stale green proves nothing)
+#   4. no push while any other check on the remote head (CodeQL, the Netlify
+#      docs preview, ...) is running or red
 #
 # refs/heads/dev is always guarded. A feature branch normally isn't — its commits
 # get squashed, so only the tip ever needs a build, and waiting on CI per push
@@ -175,6 +177,51 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
 	if [ "$run_conclusion" != "success" ]; then
 		block "the $branch build is $run_conclusion" \
 			"Fix $run_short before stacking another commit on it."
+	fi
+
+	# --- 4. every other check on the remote head -------------------------
+	# CodeQL, the Netlify preview, and anything added later. Check runs come
+	# from Actions and apps; Netlify posts a commit status. Both lists keep only
+	# the latest result per name. Don't use the combined status's own state: it
+	# reads "pending" when there are no statuses at all.
+	checks_err=$(mktemp)
+	checks=$(
+		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/check-runs?per_page=100" \
+			--jq '.check_runs[] | (if .status != "completed" then "running"
+				elif (.conclusion | IN("success", "neutral", "skipped")) then "green"
+				else .conclusion end) + " " + .name' 2>>"$checks_err"
+		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/status?per_page=100" \
+			--jq '.statuses[] | (if .state == "pending" then "running"
+				elif .state == "success" then "green"
+				else .state end) + " " + .context' 2>>"$checks_err"
+	)
+	checks_stderr=$(cat "$checks_err")
+	rm -f "$checks_err"
+
+	if [ -n "$checks_stderr" ]; then
+		block "cannot read the checks on $remote_short" "$checks_stderr"
+	fi
+
+	# Step 2 already waited for a build, so none at all means GitHub hasn't
+	# listed them yet — not that everything passed.
+	if [ -z "$checks" ]; then
+		block "$remote_short has no checks reported yet" "Wait a moment and retry."
+	fi
+
+	red=$(echo "$checks" | awk '$1 != "green" && $1 != "running" {
+		state = $1; sub(/^[^ ]+ /, ""); print "    " $0 " (" state ")" }')
+	running=$(echo "$checks" | awk '$1 == "running" { sub(/^[^ ]+ /, ""); print "    " $0 }')
+
+	if [ -n "$red" ]; then
+		block "checks on $remote_short are red" \
+			"Fix or retry them before stacking another commit:
+$red"
+	fi
+
+	if [ -n "$running" ]; then
+		block "checks on $remote_short are still running" \
+			"Wait for them:
+$running"
 	fi
 done
 

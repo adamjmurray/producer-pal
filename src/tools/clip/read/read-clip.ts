@@ -10,35 +10,43 @@ import {
 import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  readFanOut,
+  type ReadResult,
+} from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import {
   clipRegionBeats,
-  isDrumRackTrack,
   processWarpMarkers,
+  WARP_MODE_MAPPING,
+} from "./helpers/clip-region-and-warp.ts";
+import {
+  isDrumRackTrack,
   resolveClip,
   resolveClipLocation,
-  WARP_MODE_MAPPING,
-} from "./helpers/read-clip-helpers.ts";
+} from "./helpers/clip-resolution.ts";
 
-interface ReadClipArgs {
+export interface ReadClipArgs {
   /** Clip slot, "t<track>/s<scene>" */
   path?: string | null;
+  /** Hidden alias for path */
+  paths?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
   id?: string | null;
   /** Hidden alias for id */
+  ids?: string | null;
+  /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
-  /** @internal Suppress warning for empty clip slots (used by batch readers) */
-  suppressEmptyWarning?: boolean;
   /** Hidden alias for path; also used by batch readers with parsed indices */
   trackIndex?: number | null;
   /** Hidden alias for path; also used by batch readers with parsed indices */
@@ -54,6 +62,12 @@ interface ReadClipArgs {
 interface WarpMarker {
   sampleTime: number;
   beatTime: number;
+}
+
+/** A clip's own meter, which spells both its positions and its notes. */
+interface ClipMeter {
+  numerator: number;
+  denominator: number;
 }
 
 /** Result returned by readClip */
@@ -82,6 +96,7 @@ export interface ReadClipResult {
   /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
    * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
+  /** Arrangement clips only: how far the clip runs, in song meter. */
   arrangementLength?: string;
 
   // MIDI clip properties
@@ -96,6 +111,56 @@ export interface ReadClipResult {
   warping?: boolean;
   warpMode?: string;
   warpMarkers?: WarpMarker[];
+
+  /** What the read couldn't produce for this clip */
+  detail?: string;
+}
+
+/**
+ * Read the MIDI or audio clip(s) a call names
+ * @param args - Arguments for the function
+ * @param args.path - Comma-separated clip locations (e.g., "t0/s3")
+ * @param args.paths - Hidden alias for path
+ * @param args.id - Comma-separated clip IDs
+ * @param args.ids - Hidden alias for id
+ * @param args.include - Array of data to include in response
+ * @param context - Context object (supplies the global notation setting)
+ * @returns One clip, or one entry per clip named
+ */
+export function readClip(
+  args: ReadClipArgs = {},
+  context: Partial<ToolContext> = {},
+): ReadResult<ReadClipResult> {
+  return readFanOut(
+    args,
+    {
+      object: "clip",
+      idAlias: "clipId",
+      oneTargetParams: ["trackIndex", "sceneIndex", "slot"],
+    },
+    (one) => readNamedClip(one, context),
+  );
+}
+
+/**
+ * Read one clip a call named. An empty slot is a miss: a lone target throws, a
+ * listed one gets the entry saying so. Only the batch readers take it.
+ * @param args - Arguments for one clip
+ * @param context - Context object
+ * @returns Result object with clip information
+ * @throws Error when the slot holds no clip
+ */
+function readNamedClip(
+  args: ReadClipArgs,
+  context: Partial<ToolContext>,
+): ReadClipResult {
+  const clip = readOneClip(args, context);
+
+  if (clip.id == null) {
+    throw new Error(`no clip at ${clip.path}`);
+  }
+
+  return clip;
 }
 
 /**
@@ -107,7 +172,7 @@ export interface ReadClipResult {
  * @param context - Context object (supplies the global notation setting)
  * @returns Result object with clip information
  */
-export function readClip(
+export function readOneClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadClipResult {
@@ -125,7 +190,6 @@ export function readClip(
     throw new Error("id or path is required");
   }
 
-  // Resolve clip from ID or location
   const resolved = resolveClip(
     clipId,
     trackIndex,
@@ -134,12 +198,6 @@ export function readClip(
   );
 
   if (!resolved.found) {
-    if (!args.suppressEmptyWarning) {
-      console.warn(
-        `no clip at ${slotPath(trackIndex as number, sceneIndex as number)}`,
-      );
-    }
-
     return resolved.emptySlotResponse;
   }
 
@@ -158,29 +216,27 @@ export function readClip(
     ...(includeColor && { color: clip.getColor() }),
   };
 
-  // Add boolean state properties
   addBooleanStateProperties(result, clip);
 
-  // Add location properties (arrangementLength gated behind timing)
-  addClipLocationProperties(result, clip, isArrangementClip, includeTiming);
+  addClipLocationProperties(result, clip, isArrangementClip);
 
-  // Add timing properties when requested
+  const clipMeter = clipMeterReader(clip);
+
   if (includeTiming) {
-    addTimingProperties(result, clip, result.type === "audio");
+    addTimingProperties(result, clip, result.type === "audio", clipMeter);
   }
 
-  // Process MIDI clip properties
   if (result.type === "midi") {
     processMidiClip(
       result,
       clip,
       includeClipNotes,
       context.notation ?? "barbeat",
+      clipMeter,
       args.drumMode,
     );
   }
 
-  // Process audio clip properties
   if (result.type === "audio" && (includeSample || includeWarp)) {
     processAudioClip(result, clip, includeSample, includeWarp);
   }
@@ -220,21 +276,38 @@ function addBooleanStateProperties(
 }
 
 /**
+ * Read the clip's meter once, and only if something asks: the timing block and
+ * the note formatting both spell positions in it, and a read with neither must
+ * not pay for it.
+ * @param clip - LiveAPI clip object
+ * @returns A getter for the clip's meter
+ */
+function clipMeterReader(clip: LiveAPI): () => ClipMeter {
+  let meter: ClipMeter | null = null;
+
+  return () =>
+    (meter ??= {
+      numerator: clip.getProperty("signature_numerator") as number,
+      denominator: clip.getProperty("signature_denominator") as number,
+    });
+}
+
+/**
  * Add timing properties (timeSignature, looping, start, end, length, firstStart)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isAudioClip - Whether the clip is an audio clip, whose marker
  *   properties are in seconds rather than beats when it is not warped
+ * @param clipMeter - Getter for the clip's meter
  */
 function addTimingProperties(
   result: ReadClipResult,
   clip: LiveAPI,
   isAudioClip: boolean,
+  clipMeter: () => ClipMeter,
 ): void {
-  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
-  const timeSigDenominator = clip.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    clipMeter();
   const isLooping = (clip.getProperty("looping") as number) > 0;
 
   const { startBeats, endBeats, startMarkerBeats } = clipRegionBeats(
@@ -243,7 +316,7 @@ function addTimingProperties(
     isLooping,
   );
 
-  result.timeSignature = clip.timeSignature;
+  result.timeSignature = `${String(timeSigNumerator)}/${String(timeSigDenominator)}`;
   result.looping = isLooping;
   result.start = abletonBeatsToBarBeat(
     startBeats,
@@ -276,6 +349,7 @@ function addTimingProperties(
  * @param clip - LiveAPI clip object
  * @param includeClipNotes - Whether to include formatted notes
  * @param notation - Notation for the returned notes (default barbeat)
+ * @param clipMeter - Getter for the clip's meter
  * @param precomputedDrumMode - Drum mode supplied by a batch reader; falls back
  *   to a device-tree walk when omitted (standalone reads)
  */
@@ -284,28 +358,20 @@ function processMidiClip(
   clip: LiveAPI,
   includeClipNotes: boolean,
   notation: Notation,
+  clipMeter: () => ClipMeter,
   precomputedDrumMode?: boolean,
 ): void {
   if (!includeClipNotes) {
     return;
   }
 
-  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
-  const timeSigDenominator = clip.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    clipMeter();
   const lengthBeats = clip.getProperty("length") as number;
 
-  // Read one clip-length of margin on each side of the playable region
-  // [0, lengthBeats], i.e. the window [-lengthBeats, 2*lengthBeats], so that
-  // authored notes outside the playable bounds round-trip on read instead of
-  // being silently dropped:
-  //   - before the start (negative start_time — e.g. a pickup `1|1-n/12`)
-  //   - after the end (overhang past lengthBeats)
-  // Live accepts negative note start times. The window is bounded (rather than
-  // unbounded) to keep the scan finite; notes more than a clip-length outside
-  // the region are still missed, which is the same finite-scan tradeoff made on
-  // the low end.
+  // Read the window [-lengthBeats, 2*lengthBeats] so a pickup before the start
+  // (Live allows negative start_time) and overhang past the end round-trip.
+  // Notes more than a clip-length outside the region are still missed.
   const notesDictionary = clip.call(
     "get_notes_extended",
     0,
@@ -313,8 +379,7 @@ function processMidiClip(
     -lengthBeats,
     lengthBeats * 3,
   ) as string;
-  // `?? []` because everything below is total on a missing key, the way
-  // formatNotation is: nothing to spell is not an error.
+  // `?? []` because nothing to spell is not an error, the way formatNotation is.
   const notes = JSON.parse(notesDictionary).notes ?? [];
 
   // Nothing to spell means the answer is never used, so an empty clip must not
@@ -385,43 +450,44 @@ function processAudioClip(
 
     // Warp markers are work-in-progress: debug builds only (build:debug)
     if (process.env.ENABLE_WARP_MARKERS === "true") {
-      const warpMarkers = processWarpMarkers(clip);
+      const { markers, detail } = processWarpMarkers(clip);
 
-      if (warpMarkers !== undefined) {
-        result.warpMarkers = warpMarkers;
+      if (markers !== undefined) {
+        result.warpMarkers = markers;
+      }
+
+      if (detail != null) {
+        appendDetail(result, detail);
       }
     }
   }
 }
 
 /**
- * Add clip location properties (path, plus arrangement timing)
+ * Add clip location properties (path, plus the arrangement span)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether clip is in arrangement view
- * @param includeTiming - Whether to include arrangementLength
  */
 function addClipLocationProperties(
   result: ReadClipResult,
   clip: LiveAPI,
   isArrangementClip: boolean,
-  includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    // The path carries where the clip starts, so nothing else reports it.
+    // Path and arrangementLength are both unconditional: without the length a
+    // reader guesses each clip's extent from the next clip's start.
     result.path = objectPathForApi(clip);
 
-    if (includeTiming) {
-      const startTimeBeats = clip.getProperty("start_time") as number;
-      const endTimeBeats = clip.getProperty("end_time") as number;
-      const { numerator, denominator } = songMeter();
+    const startTimeBeats = clip.getProperty("start_time") as number;
+    const endTimeBeats = clip.getProperty("end_time") as number;
+    const { numerator, denominator } = songMeter();
 
-      result.arrangementLength = abletonBeatsToDuration(
-        endTimeBeats - startTimeBeats,
-        numerator,
-        denominator,
-      );
-    }
+    result.arrangementLength = abletonBeatsToDuration(
+      endTimeBeats - startTimeBeats,
+      numerator,
+      denominator,
+    );
   } else {
     result.path = slotPath(
       clip.trackIndex as number,

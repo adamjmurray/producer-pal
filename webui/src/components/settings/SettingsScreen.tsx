@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
+import { getProviderName } from "#webui/components/chat/controls/header/provider-name";
 import {
   type McpStatus,
   type McpTool,
@@ -24,6 +24,7 @@ import {
 } from "./LockedSettingsNotice";
 import { PreferencesTab } from "./PreferencesTab";
 import { PresetsTab } from "./PresetsTab";
+import { RemoteScriptTab } from "./RemoteScriptTab";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
@@ -212,6 +213,8 @@ function SettingsTabContent(
           settingsConfigured={settings.settingsConfigured}
         />
       )}
+
+      {activeTab === "remote-script" && <RemoteScriptTab />}
 
       {activeTab === "preferences" && (
         <PreferencesTab

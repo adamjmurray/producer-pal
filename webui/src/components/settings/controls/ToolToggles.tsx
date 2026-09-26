@@ -18,7 +18,7 @@ import {
   type GroupedTools,
   groupTools,
   isAlwaysEnabled,
-} from "./helpers/tool-toggles-helpers";
+} from "./helpers/tool-groups";
 import { NotationSelector } from "./NotationSelector";
 import { Tooltip } from "./Tooltip";
 

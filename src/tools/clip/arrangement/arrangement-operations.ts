@@ -3,21 +3,30 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  arrangementWriteEffects,
+  snapshotLane,
+} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import {
+  noteClipReason,
+  refuseClipWork,
+  type ClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
   type ArrangementContext,
   type ClipIdResult,
-} from "./helpers/arrangement-operations-helpers.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+} from "./helpers/arrangement-length-changes.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
   arrangementLengthBeats: number;
   context: ArrangementContext;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 /**
@@ -27,6 +36,7 @@ interface HandleArrangementLengthOperationArgs {
  * @param args.isAudioClip - Whether the clip is an audio clip
  * @param args.arrangementLengthBeats - Target length in beats
  * @param args.context - Tool execution context
+ * @param args.reasons - What each clip has to say beyond its result
  * @returns Array of clip result objects to add to updatedClips
  */
 export function handleArrangementLengthOperation({
@@ -34,25 +44,30 @@ export function handleArrangementLengthOperation({
   isAudioClip,
   arrangementLengthBeats,
   context,
+  reasons,
 }: HandleArrangementLengthOperationArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
-    console.warn(
-      `arrangementLength parameter ignored for session clip ${targetLabel(clip)}`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "arrangementLength ignored: this is a session clip",
     );
 
     return updatedClips;
   }
 
   // The lengthening path uses duplicate_clip_to_arrangement (Track-only) and
-  // the shortening path uses a temp clip overlay that targets the main lane,
-  // so neither works on take-lane clips. Warn and skip.
+  // the shortening path uses a temp clip overlay that targets the main lane, so
+  // neither works on take-lane clips. The clip's own entry says so.
   if (isTakeLaneClip(clip)) {
-    console.warn(
-      `arrangementLength parameter ignored for take-lane clip ${targetLabel(clip)}; adjust it in Live's UI`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
     );
 
     return updatedClips;
@@ -65,7 +80,12 @@ export function handleArrangementLengthOperation({
 
   // Check if shortening, lengthening, or same
   if (arrangementLengthBeats > currentArrangementLength) {
-    // Lengthening via tiling or hidden content exposure
+    // Growing into the lane overwrites whatever sits after the clip, so
+    // photograph the lane first and say what the growth cost.
+    const laneBefore = snapshotLane({
+      kind: "track",
+      trackIndex: clip.trackIndex as number,
+    });
     const result = handleArrangementLengthening({
       clip,
       isAudioClip,
@@ -74,10 +94,26 @@ export function handleArrangementLengthOperation({
       currentStartTime,
       currentEndTime,
       context,
+      reasons,
     });
+    // The clip itself and every tile it laid describe themselves.
+    const displaced = arrangementWriteEffects(laneBefore, [
+      clip.id,
+      ...result.map(({ id }) => id),
+    ]);
+
+    if (displaced != null) {
+      noteClipReason(reasons, clip.id, displaced);
+    }
 
     updatedClips.push(...result);
-  } else if (arrangementLengthBeats < currentArrangementLength) {
+  } else if (
+    shortensArrangementClip(
+      currentStartTime,
+      currentEndTime,
+      arrangementLengthBeats,
+    )
+  ) {
     // Shortening: Use temp clip overlay pattern
     handleArrangementShortening({
       clip,
@@ -90,4 +126,19 @@ export function handleArrangementLengthOperation({
   }
 
   return updatedClips;
+}
+
+/**
+ * Whether an arrangementLength shortens a clip's arrangement span.
+ * @param startTime - The clip's start_time, in beats
+ * @param endTime - The clip's end_time, in beats
+ * @param arrangementLengthBeats - Target length in beats
+ * @returns True when the target is shorter than the clip is now
+ */
+export function shortensArrangementClip(
+  startTime: number,
+  endTime: number,
+  arrangementLengthBeats: number,
+): boolean {
+  return arrangementLengthBeats < endTime - startTime;
 }

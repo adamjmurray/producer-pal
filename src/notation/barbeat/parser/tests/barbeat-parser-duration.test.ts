@@ -129,19 +129,24 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
-  it("rejects the n-prefixed bar form with a targeted <count>bar steer", () => {
-    // `n1bar`/`n/1bar`/`n3/4bar` are a convergent model hallucination — bars are
-    // the bare `<count>bar` form, the `n` sigil is only for note-value fractions.
-    for (const bad of ["n1bar C3", "n/1bar C3", "n3/4bar C3"]) {
+  it("accepts a bare-count n<count>bar as an alias for <count>bar", () => {
+    // Untaught tolerance (ADR-0018): a model reaching for the n sigil out of
+    // habit gets the same result as the bare `<count>bar` form.
+    expect(parser.parse("n2bar C3")).toStrictEqual([
+      { bars: 2, duration: 0 },
+      { pitch: 60 },
+    ]);
+  });
+
+  it("rejects the n-fraction bar form with a targeted steer", () => {
+    // `n/1bar`/`n3/4bar` are a convergent model hallucination — bars are the
+    // bare `<count>bar` form, the `n` sigil is only for note-value fractions,
+    // and no bar count can be guessed from a fraction.
+    for (const bad of ["n/1bar C3", "n3/4bar C3"]) {
       expect(() => parser.parse(bad)).toThrow(
-        /bar durations don't use the "n" prefix/,
+        /an n fraction and a bar count are different things/,
       );
     }
-
-    // The suggested correction echoes the bar count.
-    expect(() => parser.parse("n2bar C3")).toThrow(
-      /write <count>bar \(e\.g\. 2bar\)/,
-    );
   });
 
   it("rejects bare-integer durations with denominator-required error", () => {

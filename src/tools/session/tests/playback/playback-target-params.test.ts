@@ -175,20 +175,18 @@ describe("playback ids that names no clip", () => {
     expect(clipSlot.call).toHaveBeenCalledExactlyOnceWith("fire");
   });
 
-  // Bad ids are warned and skipped, which is right until every one is skipped:
-  // the empty list left over read as "act on these zero clips", so the tool
-  // fired nothing and reported playing: true.
-  it("refuses the action when every id is skipped", () => {
+  // The lone target got nothing done and there is no list for its entry to
+  // hold a place in, so the reason comes back as the call's error.
+  it("throws the reason when the only id names no clip", () => {
     const warn = vi.spyOn(console, "warn");
 
     registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
 
     expect(() =>
       playback({ action: "play-session-clips", id: "scene3" }),
-    ).toThrow('id "scene3" named no clip for action "play-session-clips"');
-    expect(warn).toHaveBeenCalledWith(
-      "s3 (id scene3) is not a clip (found Scene)",
-    );
+    ).toThrow("s3 (id scene3) is not a clip (found scene)");
+    // The reason is the entry's, so nothing warns it too.
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("refuses stop-session-clips the same way", () => {
@@ -196,7 +194,7 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "stop-session-clips", id: "scene3" }),
-    ).toThrow('id "scene3" named no clip for action "stop-session-clips"');
+    ).toThrow("s3 (id scene3) is not a clip (found scene)");
   });
 
   // Nothing warned on this one at all: the entries were dropped before any id

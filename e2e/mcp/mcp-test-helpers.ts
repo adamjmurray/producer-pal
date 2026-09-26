@@ -48,23 +48,16 @@ export function parseToolResult<T>(result: unknown): T {
     );
   }
 
-  const text = extractToolResultText(result);
-
-  try {
-    return JSON.parse(text) as T;
-  } catch (error) {
-    console.error("Failed to parse JSON response. Raw text:", text);
-    throw error;
-  }
+  return parseResultJson<T>(extractToolResultText(result));
 }
 
 /**
- * Parse a batch create/update result and assert its shape. Every batch tool
- * answers with an array whatever it operates on, so the scene and track suites
- * share this check before their own per-domain assertions.
- * @param result - Raw tool result from a batch call
- * @param count - Expected number of items in the batch
- * @returns The parsed batch items
+ * Parse a multi-target result and assert its shape. A batch write and a list
+ * read both answer with an array, so the suites share this check before their
+ * own per-domain assertions.
+ * @param result - Raw tool result from a call naming several targets
+ * @param count - Expected number of entries
+ * @returns The parsed entries
  */
 export function parseBatchResult<T>(result: unknown, count: number): T[] {
   const batch = parseToolResult<T[]>(result);
@@ -100,7 +93,7 @@ export function getToolErrorMessage(result: unknown): string {
  * with ENABLE_BUILD_STATS attaches one to every response. It is instrumentation,
  * not something a tool is telling us, so it never counts as a tool warning —
  * otherwise measuring against real Live would fail this whole suite on the first
- * parseToolResult(). See dev/Development-Tools.md.
+ * parseToolResult(). See dev/quality/development-tools/live-api-measurement.md.
  */
 const BUILD_STATS_WARNING = "WARNING: LiveAPI stats:";
 
@@ -142,17 +135,38 @@ export interface ToolResultWithWarnings<T> {
 export function parseToolResultWithWarnings<T>(
   result: unknown,
 ): ToolResultWithWarnings<T> {
-  const text = extractToolResultText(result);
+  return {
+    data: parseResultJson<T>(extractToolResultText(result)),
+    warnings: getToolWarnings(result),
+  };
+}
+
+/**
+ * Parse a tool result's JSON text, failing on a `reason` key at any depth:
+ * every explanation on a result entry is `detail` (ADR-0050).
+ * @param text - The result's JSON text
+ * @returns The parsed result
+ */
+function parseResultJson<T>(text: string): T {
+  let hasReason = false;
   let data: T;
 
   try {
-    data = JSON.parse(text) as T;
+    data = JSON.parse(text, (key, value: unknown) => {
+      hasReason ||= key === "reason";
+
+      return value;
+    }) as T;
   } catch (error) {
     console.error("Failed to parse JSON response. Raw text:", text);
     throw error;
   }
 
-  return { data, warnings: getToolWarnings(result) };
+  if (hasReason) {
+    throw new Error(`Tool result has a "reason" key, not "detail": ${text}`);
+  }
+
+  return data;
 }
 
 /**
@@ -235,6 +249,16 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
       await resetConfigAndSettle();
     }
   });
+
+  // A retry would rerun on the Set the failed attempt already changed, and
+  // could pass on its half-done work. So tests sharing one Set fail instead.
+  if (options?.once) {
+    beforeEach(({ task }) => {
+      if (task.result?.retryCount) {
+        throw new Error("no retry: this file shares one Live Set across tests");
+      }
+    });
+  }
 
   // Always reset config before each test (even when reusing connection)
   beforeEach(resetConfigAndSettle);
@@ -332,7 +356,7 @@ async function createDevice(
 ): Promise<CreateDeviceResult> {
   const result = await client.callTool({
     name: "ppal-create-device",
-    arguments: { deviceName, path },
+    arguments: { device: deviceName, path },
   });
   const created = parseToolResult<CreateDeviceResult>(result);
 
@@ -364,6 +388,28 @@ export async function readDeviceCount(
   );
 
   return track.devices?.length ?? 0;
+}
+
+/**
+ * The id Live currently gives the object at a path, read through the tool that
+ * owns it. Read it per test: Live reassigns ids every time it opens a Set, so
+ * an id written into a test file names a different object on the next run.
+ *
+ * @param client - Connected MCP client
+ * @param tool - The read tool for that kind of object, e.g. "ppal-read-track"
+ * @param path - Producer Pal path to the object
+ * @returns The object's id
+ */
+export async function readIdAtPath(
+  client: Client,
+  tool: string,
+  path: string,
+): Promise<string> {
+  const object = parseToolResult<{ id: string }>(
+    await client.callTool({ name: tool, arguments: { path } }),
+  );
+
+  return object.id;
 }
 
 /**
@@ -415,7 +461,7 @@ export async function createTwoPadDrumRack(
     await client.callTool({
       name: "ppal-create-device",
       arguments: {
-        deviceName: "Drum Rack",
+        device: "Drum Rack",
         path,
         params: [
           { name: "pC1/sample", value: KICK_FILE },
@@ -444,6 +490,29 @@ export async function readClipWithNotes(
   });
 
   return parseToolResult<ReadClipResult>(result);
+}
+
+/** A locator as ppal-read-live-set reports it. */
+export interface LocatorInfo {
+  id: string;
+  name: string;
+  time: string;
+  position: string;
+}
+
+/**
+ * Reads the Set's locators. Their ids are Live's own, so they differ per Set
+ * and a test has to read one rather than hardcode it.
+ * @param client - The MCP client under test
+ * @returns Every locator in the Set, in time order
+ */
+export async function readLocators(client: Client): Promise<LocatorInfo[]> {
+  const result = await client.callTool({
+    name: "ppal-read-live-set",
+    arguments: { include: ["locators"] },
+  });
+
+  return parseToolResult<{ locators?: LocatorInfo[] }>(result).locators ?? [];
 }
 
 /**
@@ -530,9 +599,38 @@ export async function serverHasCodeExec(client: Client): Promise<boolean> {
   return createClip?.inputSchema.properties?.code != null;
 }
 
+/**
+ * Whether the Producer Pal remote script answers its ping. Only then can
+ * ppal-create-device load plug-ins and Max devices, and only then do the skills
+ * teach it.
+ *
+ * @returns True when GET /ping answered within a second
+ */
+export async function remoteScriptAnswers(): Promise<boolean> {
+  const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
+
+  return await fetch(`http://127.0.0.1:${port}/ping`, {
+    signal: AbortSignal.timeout(1000),
+  }).then(
+    (response) => response.ok,
+    () => false,
+  );
+}
+
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================
+
+/**
+ * The entry a call leaves where it couldn't carry out the target named, on a
+ * read or a write. `ok` marks only these.
+ */
+export interface SkippedTargetResult {
+  id?: string;
+  path?: string;
+  ok: false;
+  detail: string;
+}
 
 /** Result from ppal-create-clip tool */
 export interface CreateClipResult {
@@ -542,8 +640,12 @@ export interface CreateClipResult {
   length?: string;
   /** Where the clip landed: "t0/s3", "t0", or "t0/l1" */
   path?: string;
-  /** Audio clips only: whether Live is time-stretching the sample */
+  /** Audio clips only: the warp state Live settled on, when it isn't the one asked for */
   warping?: boolean;
+  /** The scenes the destination had to make ("s8-s9"), when it made any */
+  created?: string;
+  /** What the call asked for that the clip didn't get */
+  detail?: string;
 }
 
 /** Result from ppal-update-clip tool (single clip) */
@@ -552,12 +654,17 @@ export interface UpdateClipResult {
   noteCount?: number;
   transformed?: number;
   length?: string;
+  /** The scenes the destination had to make ("s8-s9"), when it made any */
+  created?: string;
 }
 
 /** Result from ppal-create-track tool */
 export interface CreateTrackResult {
   id: string;
   path?: string;
+  /** The name Live landed on, only when it isn't the one asked for */
+  name?: string;
+  detail?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
@@ -578,6 +685,8 @@ export interface ReadClipResult {
   arrangementLength?: string;
   /** Only on a clip a move was set to overwrite: whether it was cleared */
   deleted?: boolean;
+  /** Why the update didn't go as asked, when something landed anyway */
+  detail?: string;
   noteCount?: number;
   notes?: string;
   // Audio clip properties

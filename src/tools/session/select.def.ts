@@ -10,16 +10,21 @@ import {
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import {
+  scenePathFromIndex,
+  trackPathFromIndex,
+} from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
   description:
-    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state.',
+    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state. Selecting a clip, clip slot, or arrangement spot switches to its view (session/arrangement) unless view is given.',
 
-  // read-only on purpose, even though selecting changes view state and can
-  // show/hide/focus views. None of that touches the Live Set or its undo history,
-  // and a user who puts a client in read-only mode still expects "show me track
-  // 3" to work. Don't "correct" this to false.
+  // read-only on purpose, even though selecting changes view state, can
+  // show/hide/focus views, and moves the arrangement start marker. None of that
+  // touches the Live Set's contents or its undo history, and a user who puts a
+  // client in read-only mode still expects "show me track 3" to work. Don't
+  // "correct" this to false.
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -30,7 +35,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       .string()
       .optional()
       .describe(
-        "select by ID (auto-detects track/scene/clip/device/chain/drum pad)",
+        "select by ID (auto-detects track/scene/clip/device/chain/drum pad); one ID, not a list",
       ),
 
     // select is the one tool that takes every object type by id, so all four
@@ -60,14 +65,16 @@ export const toolDefSelect = defineTool("ppal-select", {
 
     trackIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: trackPathFromIndex,
     }),
     trackType: deprecatedParam(
       z.enum(["regular", "return", "master"]).optional(),
-      { replacedBy: "path" },
+      { replacedBy: "path", example: trackPathFromIndex },
     ),
 
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: scenePathFromIndex,
     }),
 
     path: z.coerce
@@ -76,7 +83,9 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe(
         "select by path, 0-based: 't0/s3' a clip slot, 't0' a track, 'rt0' a return track, " +
           "'mt' the main track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
-          "'t0/d0/pC1' a drum pad",
+          "'t0/d0/pC1' a drum pad, 't0[5|1]' (or 't0/l0[5|1]') a spot on the arrangement " +
+          "timeline, which moves the arrangement start marker there and selects the clip " +
+          "covering it, if any. One path, not a list - Live holds one selection",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {

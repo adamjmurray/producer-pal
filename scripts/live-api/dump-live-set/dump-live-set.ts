@@ -15,14 +15,15 @@
  * machine it came from or the samples on it.
  */
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { gzipSync } from "node:zlib";
 import { createBatchContext, runOperations } from "./live-api-batch.ts";
 import { type LiveSetDump } from "./dump-types.ts";
 import { walkLiveSet } from "./walk-live-set.ts";
 
 const DEFAULT_URL = "http://localhost:3350";
-const DEFAULT_OUTPUT = "dev/live-set-dump.json";
+const DEFAULT_OUTPUT = "tmp/live-set-dump.json";
 const DEFAULT_MAX_OBJECTS = 20_000;
 
 interface Args {
@@ -238,6 +239,7 @@ async function main(): Promise<void> {
   }\n`;
   const payload = args.gzip ? gzipSync(text, { level: 9 }) : text;
 
+  mkdirSync(dirname(args.outputPath), { recursive: true });
   writeFileSync(args.outputPath, payload);
   printSummary(dump, Buffer.byteLength(payload));
 

@@ -13,11 +13,13 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseBatchResult,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers";
 
@@ -175,6 +177,23 @@ describe("ppal-update-track", () => {
     await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
   });
 
+  it("reads back a tiny pan as a clean rounded number, not a noisy string", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![0]!.id;
+
+    // Live can serialize a value this small as an exponent-notation string
+    // (e.g. "9.999999747378752e-05" for 0.0001), and reads must still round it
+    // to a clean number rather than passing the noisy text through.
+    await updateTrack({ id: trackId, pan: 0.0001 });
+
+    const panTrack = await readTrackMixer(trackId);
+
+    expect(panTrack.pan).toBe(0);
+    expect(typeof panTrack.pan).toBe("number");
+
+    await updateTrack({ id: trackId, pan: 0 });
+  });
+
   it("updates multiple tracks in batch", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
@@ -300,6 +319,32 @@ describe("ppal-update-track", () => {
     expect(track.sends![1]!.gainDb).toBeCloseTo(-21, 1);
   });
 
+  // sendReturn is a string, so it pairs one per track like name does.
+  it("gives each track its own sendReturn", async () => {
+    const liveSet = await readTracks();
+    const ids = [liveSet.tracks![3]!.id, liveSet.tracks![4]!.id].join(",");
+    const [first, second] = liveSet.returnTracks!;
+
+    await updateTrack({
+      id: ids,
+      sends: [
+        { return: first!.id, gainDb: -40 },
+        { return: second!.id, gainDb: -40 },
+      ],
+    });
+    await updateTrack({
+      id: ids,
+      sendGainDb: -15,
+      sendReturn: `${first!.id},${second!.id}`,
+    });
+
+    const one = await readTrackMixer(liveSet.tracks![3]!.id);
+    const two = await readTrackMixer(liveSet.tracks![4]!.id);
+
+    expect(one.sends!.map((send) => send.gainDb)).toStrictEqual([-15, -40]);
+    expect(two.sends!.map((send) => send.gainDb)).toStrictEqual([-40, -15]);
+  });
+
   it("reports track and send gain at Live's display resolution", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![2]!.id;
@@ -318,13 +363,12 @@ describe("ppal-update-track", () => {
     expect(track.sends![0]!.gainDb).toBe(-9.55);
   });
 
-  // The write result says what landed. Asserted against a read of
-  // the same track rather than a hardcoded number, so no fader position has to
-  // be guessed. The values carry the discrimination: Live keeps a float32 of
-  // the 6-significant-digit value, so a result that echoed the argument would
-  // report -6.333333 where a read reports -6.33. A value like -6 or -0.3
-  // round-trips to itself and would pass either way.
-  it("reports the gain and pan it wrote, read back off the track", async () => {
+  // A write result says only what didn't land as asked, so a gain and pan Live
+  // kept are read back from the track instead. The values carry the
+  // discrimination: Live keeps a float32 of the 6-significant-digit value, so
+  // the read reports -6.33 for a -6.333333 request — the same value at the
+  // resolution reads publish, which is why the write says nothing.
+  it("says nothing about the gain and pan it wrote", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
@@ -335,35 +379,60 @@ describe("ppal-update-track", () => {
     });
 
     const data = parseToolResult<UpdateTrackResult>(result);
+
+    expect(data.gainDb).toBeUndefined();
+    expect(data.pan).toBeUndefined();
+    expect(data.detail).toBeUndefined();
+    // Stereo is the mode every caller assumes, so it goes unsaid.
+    expect(data.panningMode).toBeUndefined();
+
+    // The follow-up read is what proves both writes landed.
     const track = await readTrackMixer(trackId);
 
-    expect(data.gainDb).toBe(track.gainDb);
-    expect(data.pan).toBe(track.pan);
+    expect(track.gainDb).toBe(-6.33);
+    expect(track.pan).toBe(-0.33);
   });
 
-  it("reports the split pans it wrote, read back off the track", async () => {
+  it("says pan had no effect in split mode, and nothing about the pans", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
     try {
-      // Split mode writes two params and refuses `pan`, so a result carrying
-      // only the gain would read as "the pans did not land".
       const result = await updateTrack({
         id: trackId,
         panningMode: "split",
         gainDb: -12.333333,
         leftPan: -0.333333,
         rightPan: 0.666667,
+        pan: 0.5,
       });
 
       const data = parseToolResult<UpdateTrackResult>(result);
+
+      // Everything that landed goes unsaid; `pan` doesn't apply in split mode,
+      // and that is the track's own business, so it rides on its entry.
+      expect(data.gainDb).toBeUndefined();
+      expect(data.leftPan).toBeUndefined();
+      expect(data.rightPan).toBeUndefined();
+      expect(data.pan).toBeUndefined();
+      expect(data.detail).toContain("pan had no effect");
+      // The call set the mode itself, so it isn't reported back.
+      expect(data.panningMode).toBeUndefined();
+
       const track = await readTrackMixer(trackId);
 
-      expect(data.gainDb).toBe(track.gainDb);
-      expect(data.leftPan).toBe(track.leftPan);
-      expect(data.rightPan).toBe(track.rightPan);
-      // `pan` doesn't apply in split mode, so nothing may report as landed.
-      expect(data.pan).toBeUndefined();
+      expect(track.gainDb).toBe(-12.33);
+      expect(track.leftPan).toBe(-0.33);
+      expect(track.rightPan).toBe(0.67);
+
+      // A pan param written without naming the mode reports split: the state
+      // that decides which pan params apply, and one the caller may never
+      // have read.
+      const inSplit = parseToolResult<UpdateTrackResult>(
+        await updateTrack({ id: trackId, leftPan: -0.25 }),
+      );
+
+      expect(inSplit.panningMode).toBe("split");
     } finally {
       // In a finally so a failed assertion can't strand the track in split
       // mode for the rest of the file.
@@ -371,7 +440,23 @@ describe("ppal-update-track", () => {
     }
   });
 
-  it("reports the sends it wrote, read back at Live's display resolution", async () => {
+  it("refuses a lone pan on a split-mode track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    try {
+      await updateTrack({ id: trackId, panningMode: "split" });
+
+      const result = await updateTrack({ id: trackId, pan: 0.5 });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain("pan had no effect");
+    } finally {
+      await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
+    }
+  });
+
+  it("says nothing about a send that took the level asked for", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
     const returnTrack = liveSet.returnTracks![0]!;
@@ -381,52 +466,73 @@ describe("ppal-update-track", () => {
       sends: [{ return: returnTrack.id, gainDb: -6.333333 }],
     });
 
-    // Live hands back a 32-bit float, so an unrounded read reports
-    // -6.333000183105469. The id is the one a read reports, so the result
-    // round-trips straight back into `sends`.
-    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
-      {
-        return: returnTrack.name,
-        returnId: returnTrack.id,
-        gainDb: -6.33,
-      },
-    ]);
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toBeUndefined();
+
+    // Live hands back a 32-bit float, so the read rounds it to -6.33 — the
+    // level asked for, which is why the write had nothing to report.
+    const track = await readTrackMixer(trackId);
+
+    expect(track.sends![0]!.gainDb).toBe(-6.33);
   });
 
-  it("reports the sendGainDb/sendReturn pair under sends too", async () => {
+  it("says nothing about the sendGainDb/sendReturn pair either", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
     const returnTrack = liveSet.returnTracks![1]!;
 
-    // One send has one shape in the result, whichever param spelled it.
     const result = await updateTrack({
       id: trackId,
       sendGainDb: -18,
       sendReturn: returnTrack.id,
     });
 
-    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
-      { return: returnTrack.name, returnId: returnTrack.id, gainDb: -18 },
-    ]);
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toBeUndefined();
+
+    const track = await readTrackMixer(trackId);
+    const send = track.sends!.find((s) => s.returnId === returnTrack.id);
+
+    expect(send!.gainDb).toBe(-18);
   });
 
-  it("reports no send for a return name that matches none", async () => {
+  // Which return tracks exist is a fact about the Live Set, so it is resolved
+  // once for the call — but the track the call named still gets the answer,
+  // whichever param spelled the send.
+  it.each([
+    ["sends", { sends: [{ return: "ZZZ", gainDb: -6 }] }],
+    ["the scalar pair", { sendGainDb: -6, sendReturn: "ZZZ" }],
+  ])("refuses a return that matches none, named by %s", async (_how, args) => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
-    const result = await updateTrack({
-      id: trackId,
-      sends: [{ return: "ZZZ", gainDb: -6 }],
-    });
+    const result = await updateTrack({ id: trackId, ...args });
 
-    const { data, warnings } =
-      parseToolResultWithWarnings<UpdateTrackResult>(result);
-
-    expect(warnings).toContainEqual(
-      expect.stringContaining('sends entry "ZZZ" names no return track'),
+    // The send was all it asked, and nothing landed, so the call fails.
+    expect(getToolWarnings(result).join()).not.toContain(
+      "no return track matching",
     );
-    // Nothing was written, so nothing is reported as though it had been.
-    expect(data.sends).toBeUndefined();
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no send landed — "ZZZ": no return track matching "ZZZ"',
+    );
+  });
+
+  it("keeps a failed send on the entry when a name landed too", async () => {
+    const liveSet = await readTracks();
+    const track = liveSet.tracks![3]!;
+
+    const data = parseToolResult<UpdateTrackResult>(
+      await updateTrack({
+        id: track.id,
+        name: track.name,
+        sends: [{ return: "ZZZ", gainDb: -6 }],
+      }),
+    );
+
+    expect(data.sends).toContainEqual({
+      return: "ZZZ",
+      ok: false,
+      detail: expect.stringContaining('no return track matching "ZZZ"'),
+    });
   });
 
   it("lets a sends entry override the scalar pair naming the same return", async () => {
@@ -456,7 +562,7 @@ describe("ppal-update-track", () => {
   it("can never give a return track an all-digit name", async () => {
     // Checked here, rather than adding an all-digit-return-name send test:
     // Live prepends a return's own send letter to its name (see
-    // stripReturnTrackLetter) and re-asserts it even over an explicit rename,
+    // returnTrackRename) and re-asserts it even over an explicit rename,
     // so a return track's name can never read back as pure digits — the
     // numeric-name risk that hits locators, chains, and regular tracks
     // doesn't reach return-track sends at all.
@@ -484,6 +590,122 @@ describe("ppal-update-track", () => {
   });
 });
 
+describe("ppal-update-track over a list with a target it can't reach", () => {
+  it("keeps a slot for a path that names no track, and warns nowhere", async () => {
+    // parseToolResult fails the test if anything warned: the entry carries it.
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ path: "t0,t999", name: "ListSkip,Nowhere" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0" }),
+      {
+        path: "t999",
+        ok: false,
+        detail: 'no track at path "t999"; ppal-create-track adds tracks',
+      },
+    ]);
+
+    // The name went to t0, not to whatever followed the miss.
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "t0" },
+      }),
+    );
+
+    expect(track.name).toBe("ListSkip");
+  });
+
+  it("reports a dead id in its own slot", async () => {
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ id: "99999,99998", mute: false }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      { id: "99999", ok: false, detail: 'id "99999" does not exist' },
+      { id: "99998", ok: false, detail: 'id "99998" does not exist' },
+    ]);
+  });
+
+  it("throws when the one target it was given names no track", async () => {
+    const result = await updateTrack({ path: "t999", mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no track at path "t999"; ppal-create-track adds tracks',
+    );
+  });
+
+  it("sends a t+ path to the tool that takes it", async () => {
+    const result = await updateTrack({ path: "t+", mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"t+" adds a track, which only ppal-create-track does; ' +
+        'name an existing one as "t<index>", "rt<index>", or "mt"',
+    );
+  });
+
+  it("names a scene id in the words the tools publish", async () => {
+    const scene = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { path: "s0" },
+      }),
+    );
+    const result = await updateTrack({ id: scene.id, mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `s0 (id ${scene.id}) is not a track (found scene)`,
+    );
+  });
+
+  // A return track has no arm button, so it has no monitoring either. It used
+  // to warn and answer {id, path}, which reads as a success.
+  it("keeps a return track's slot when monitoringState was all it asked", async () => {
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ path: "t0,rt0", monitoringState: "in" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0" }),
+      {
+        path: "rt0",
+        ok: false,
+        detail:
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+      },
+    ]);
+  });
+
+  it("says so on the return track's entry when a name landed too", async () => {
+    const entries = parseBatchResult<UpdateTrackResult>(
+      await updateTrack({
+        path: "t0,rt0",
+        monitoringState: "in",
+        name: "MonA,MonB",
+      }),
+      2,
+    );
+
+    // The rename happened, so there is no `ok` — just the reason beside it.
+    expect(entries[1]).toStrictEqual(
+      expect.objectContaining({
+        path: "rt0",
+        detail: expect.stringContaining(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+        ),
+      }),
+    );
+    expect(entries[1]).not.toHaveProperty("ok");
+  });
+});
+
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
   returnTracks?: Array<{ id: string; name: string }>;
@@ -495,11 +717,19 @@ interface CreateTrackResult {
 
 interface UpdateTrackResult {
   id: string;
+  path?: string;
   gainDb?: number;
   pan?: number;
   leftPan?: number;
   rightPan?: number;
-  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
+  panningMode?: "stereo" | "split";
+  detail?: string;
+  sends?: Array<{
+    return: string;
+    returnId?: string;
+    gainDb: number;
+    detail?: string;
+  }>;
 }
 
 interface ReadTrackResult {
@@ -514,5 +744,5 @@ interface ReadTrackResult {
   state?: string;
   isArmed?: boolean;
   monitoringState?: string;
-  sends?: Array<{ return: string; gainDb: number }>;
+  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
 }

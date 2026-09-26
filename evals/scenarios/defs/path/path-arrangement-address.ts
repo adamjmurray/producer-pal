@@ -13,43 +13,14 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
-import {
-  MSG_CONNECT,
-  TOOL_CONNECT,
-  TOOL_CREATE_CLIP,
-  TOOL_UPDATE_CLIP,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertArrangementClipNamed } from "./path-scenario-helpers.ts";
-
-/** Lead is track 3 in basic-midi-4-track. */
-const LEAD_TRACK_INDEX = 3;
+import { arrangementRenameScenario } from "../helpers/arrangement-rename-scenario.ts";
 
 const CLIP_NAME = "Verse Lead";
 
-export const pathArrangementAddress: EvalScenario = {
+export const pathArrangementAddress: EvalScenario = arrangementRenameScenario({
   id: "path-arrangement-address",
   description: "Act on an arrangement clip by the id or path it reports",
-  kind: "capability",
-  liveSet: "basic-midi-4-track",
-
-  messages: [
-    MSG_CONNECT,
-    "Create a 4-bar clip in the arrangement on the Lead track, starting at bar 1.",
-    `Rename that arrangement clip to "${CLIP_NAME}".`,
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-
-    // The measurement: the rename actually landed. An id and a pasted-back
-    // `t3[1|1]` both name the clip, so either is a pass.
-    assertArrangementClipNamed({
-      trackIndex: LEAD_TRACK_INDEX,
-      name: CLIP_NAME,
-    }),
-
-    { type: "token_usage", maxTokens: 3_000 },
-  ],
-};
+  renameMessage: `Rename that arrangement clip to "${CLIP_NAME}".`,
+  name: CLIP_NAME,
+  maxTokens: 3_000,
+});

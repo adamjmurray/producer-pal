@@ -705,6 +705,8 @@ function runClearTargetOnTrimmableTrack(
 ): ReturnType<typeof setupTrack> {
   const { existingClip } = setupSourceAndExistingClips(opts);
 
+  setupClip("300", {});
+
   const trackMock = setupTrack(0, {
     properties: {
       arrangement_clips: ["id", existingClip.id],

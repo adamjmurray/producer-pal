@@ -19,7 +19,7 @@
  */
 
 import { type EvalProvider } from "#evals/scenarios/types.ts";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { type ToolCall } from "../shared/types.ts";
 
 export const DEFAULT_AGENT_CLI_SYSTEM_PROMPT =
@@ -54,6 +54,12 @@ export interface ParsedAgentTurn {
   /** The CLI's own conversation id, replayed to resume the next turn. */
   sessionId?: string;
   usage?: TokenUsage;
+  /**
+   * The turn's generation speed, when the CLI reports how long the model took.
+   * A transport that reports nothing leaves this unset, and the session times
+   * the subprocess instead.
+   */
+  timing?: StepTiming;
 }
 
 export interface AgentCliTransport {

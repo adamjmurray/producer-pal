@@ -172,8 +172,8 @@ export const STALENESS_RISK: StalenessRisk = {
  * @param runQuery - Runs the library query under test and returns its result
  */
 export async function expectQueryDegradesOnBrokenDb(
-  dbPathMod: { findLiveFilesDbPath: (...args: unknown[]) => unknown },
-  runQuery: () => Promise<{ dbAvailable?: boolean; reason?: string }>,
+  dbPathMod: { findLiveFilesDbPath: (...args: never[]) => unknown },
+  runQuery: () => Promise<{ dbAvailable?: boolean; detail?: string }>,
 ): Promise<void> {
   const broken = createBrokenLibraryDb();
 
@@ -183,10 +183,55 @@ export async function expectQueryDegradesOnBrokenDb(
     const result = await runQuery();
 
     expect(result.dbAvailable).toBe(false);
-    expect(result.reason).toContain("Failed to read Live database");
+    expect(result.detail).toContain("Failed to read Live database");
   } finally {
     broken.cleanup();
   }
+}
+
+/**
+ * Assert a `source: "sampleFolder"` query explains itself instead of returning
+ * a silently empty set. sampleFolder files aren't in Live's fe_values index, so
+ * the query can only ever match nothing.
+ *
+ * @param runQuery - Runs the library query under test and returns its result
+ * @param matches - Pulls the result's match list (groups, items, ...)
+ * @returns The query result, for any further assertions
+ */
+export async function expectSampleFolderExplained<
+  T extends { detail?: string },
+>(runQuery: () => Promise<T>, matches: (result: T) => unknown[]): Promise<T> {
+  const result = await runQuery();
+
+  expect(matches(result)).toStrictEqual([]);
+  expect(result.detail).toContain("sampleFolder");
+
+  return result;
+}
+
+/**
+ * Point the DB finder at nothing and assert the query degrades to
+ * `dbAvailable: false` with the standard reason rather than throwing.
+ *
+ * @param dbPathMod - The mocked `live-db-path` module
+ * @param dbPathMod.findLiveFilesDbPath - Mocked finder, pointed at nothing
+ * @param runQuery - Runs the library query under test and returns its result
+ * @returns The query result, for any further assertions
+ */
+export async function expectQueryDegradesWithoutDb<
+  T extends { dbAvailable?: boolean; detail?: string },
+>(
+  dbPathMod: { findLiveFilesDbPath: (...args: never[]) => unknown },
+  runQuery: () => Promise<T>,
+): Promise<T> {
+  vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
+
+  const result = await runQuery();
+
+  expect(result.dbAvailable).toBe(false);
+  expect(result.detail).toBe("Live database not found");
+
+  return result;
 }
 
 /**
@@ -197,7 +242,7 @@ export async function expectQueryDegradesOnBrokenDb(
  * @param dbPathMod.findLiveFilesDbPath - The mocked finder function whose mock is rebound each test
  */
 export function setupLibraryFixtureLifecycle(dbPathMod: {
-  findLiveFilesDbPath: (...args: unknown[]) => unknown;
+  findLiveFilesDbPath: (...args: never[]) => unknown;
 }): void {
   let fixture: LibraryFixture;
 
@@ -394,8 +439,9 @@ function insertKeywords(db: DatabaseSync): void {
  * Populate the metadata tables with a small `Category|Sub|Leaf` taxonomy for
  * listCategories tests. Leaf segments deliberately reuse existing keyword names
  * (Kick, Snare Hit, One Shot) so drill-down file counts resolve via the
- * keywords table; "Synth Bass" has no keyword (counts to nothing) and a bare
- * "Core Library" value (no pipe) must be excluded from the taxonomy.
+ * keywords table; "Synth Bass" has no keyword (counts to nothing), a bare
+ * "Core Library" value (no pipe) must be excluded from the taxonomy, and a
+ * trailing-pipe "Drums|" names no leaf to drill into.
  *
  * @param db - Open writable DB
  */
@@ -409,6 +455,7 @@ function insertMetadata(db: DatabaseSync): void {
   value.run(3, "Type|One Shot");
   value.run(4, "Core Library");
   value.run(5, "Sounds|Bass|Synth Bass");
+  value.run(6, "Drums|");
 
   const meta = db.prepare(
     "INSERT INTO metadata (file_id, key, value_id) VALUES (?, ?, ?)",
@@ -420,6 +467,7 @@ function insertMetadata(db: DatabaseSync): void {
   meta.run(2001, META_CKEY, 3); // Type|One Shot
   meta.run(2001, META_CKEY, 4); // Core Library (no pipe → excluded)
   meta.run(1001, META_CKEY, 5); // Sounds|Bass|Synth Bass (leaf has no keyword)
+  meta.run(1001, META_CKEY, 6); // Drums| (empty leaf → no tag to drill into)
 }
 
 /**

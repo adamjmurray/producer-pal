@@ -14,7 +14,7 @@ import { createClip } from "../create-clip.ts";
 import {
   buildClipProperties,
   buildClipResult,
-} from "../helpers/create-clip-result-helpers.ts";
+} from "../helpers/created-clip-result.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
@@ -125,6 +125,8 @@ describe("createClip - advanced features", () => {
     expect((arrayResult as object[])[1]).toStrictEqual({
       id: expect.any(String),
       path: "t0/s2",
+      // The Set had two scenes, so the second destination made the one it named
+      created: "s2",
     });
   });
 
@@ -240,6 +242,28 @@ describe("createClip - advanced features", () => {
       );
     });
 
+    // The focus guard (`lastClip != null` → dropped) would select a skip entry,
+    // which has no id.
+    it("selects nothing when no destination got a clip", async () => {
+      const { clipSlot } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      // Live refuses the create, so neither destination gets a clip.
+      overrideCall(clipSlot, (method) => {
+        if (method === "create_clip") {
+          throw new Error("boom");
+        }
+
+        return USE_CALL_FALLBACK;
+      });
+
+      const result = await createClip({ slot: "0/0,0/0", focus: true });
+
+      expect(result).toHaveLength(2);
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
     it("should not call select when focus=false", async () => {
       setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
@@ -314,6 +338,34 @@ describe("createClip - advanced features", () => {
         id: "arrangement_clip",
         path: "t0[1|1]",
       });
+    });
+
+    // N destinations named, N entries back, in the order named (ADR-0042) —
+    // not clip slots first and the arrangement after.
+    it("answers in the order path names the destinations", async () => {
+      setupDualMocks();
+
+      const result = await createClip({ path: "t0[1|1],t0/s0" });
+
+      expect(result).toStrictEqual([
+        { id: "arrangement_clip", path: "t0[1|1]" },
+        { id: "live_set/tracks/0/clip_slots/0/clip", path: "t0/s0" },
+      ]);
+    });
+
+    it("pairs name and color with the destination's place in the call", async () => {
+      const { sessionClip, arrangementClip } = setupDualMocks();
+
+      await createClip({
+        path: "t0[1|1],t0/s0",
+        name: "Arr,Session",
+        color: "#FF0000,#00FF00",
+      });
+
+      expect(arrangementClip.set).toHaveBeenCalledWith("name", "Arr");
+      expect(arrangementClip.set).toHaveBeenCalledWith("color", 16711680);
+      expect(sessionClip.set).toHaveBeenCalledWith("name", "Session");
+      expect(sessionClip.set).toHaveBeenCalledWith("color", 65280);
     });
 
     it("spans clip.index/clip.count across the full session+arrangement batch", async () => {
@@ -400,7 +452,7 @@ describe("createClip - advanced features", () => {
       // second note (index 1) to beat 1 — separating the pair. create-clip must
       // NOT dedupe before transforming: it has to feed both notes into the
       // transform and dedupe AFTER, so both survive. This matches update-clip's
-      // transform-then-dedupe order (update-clip-notes-helpers.ts). Before the
+      // transform-then-dedupe order (note-updates.ts). Before the
       // fix, prepareClipData dropped one note pre-transform and only 1 reached
       // add_new_notes — a silent create/update parity divergence.
       const { clip } = setupSessionMocks({
@@ -558,6 +610,8 @@ describe("buildClipResult (unit)", () => {
       "2bar",
       4,
       4,
+      null,
+      undefined,
       null,
     );
 

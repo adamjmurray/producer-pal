@@ -12,7 +12,7 @@
  * shape Live prints is Live's own answer, so a mock can only assert what we
  * already believed — the labels here come from real Live.
  *
- * See dev/Device-Param-Labels.md.
+ * See dev/live-api/device-param-labels.md.
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-device-ratio-and-sync-params
  */

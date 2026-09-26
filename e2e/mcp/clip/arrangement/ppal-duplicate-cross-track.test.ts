@@ -29,6 +29,7 @@ import {
   isToolError,
   type ReadClipResult,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers.ts";
 import {
@@ -92,7 +93,7 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.name).toBe("Source B");
   });
 
-  it("rejects the deprecated toSlot on an arrangement destination", async () => {
+  it("lets the deprecated toSlot win over arrangementStart", async () => {
     const position = "21|1";
     const source = await createArrClip(position, "Source C");
 
@@ -104,12 +105,16 @@ describe("cross-track arrangement clip duplicate", () => {
       name: "Cross Copy C",
     });
 
-    // toSlot only ever named clip slots, so it wins over arrangementStart —
-    // and then has nowhere to put an arrangement clip.
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      "cannot duplicate arrangement clips to the session",
-    );
+    // toSlot only ever named clip slots, so arrangementStart is dropped and the
+    // arrangement clip is re-created in that slot.
+    const { data: copy, warnings } = parseToolResultWithWarnings<{
+      id: string;
+      detail?: string;
+    }>(result);
+
+    expect(warnings.join("\n")).toContain("arrangementStart ignored");
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.detail).toContain("re-created from the arrangement clip");
 
     const survivor = await clipAt(EMPTY_MIDI_TRACK, position);
 
@@ -117,9 +122,9 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.name).toBe("Source C");
   });
 
-  // Skipped, not fatal: one bad entry in a comma-separated toPath must not cost
-  // the good ones.
-  it("skips a MIDI clip aimed at an audio track rather than silently no-opping", async () => {
+  // One destination, and it can't take the clip: nothing was made, so the reason
+  // comes back as the error rather than an entry with no list to sit in.
+  it("refuses a MIDI clip aimed at an audio track rather than silently no-opping", async () => {
     const position = "29|1";
     const source = await createArrClip(position, "Source D");
 
@@ -128,23 +133,44 @@ describe("cross-track arrangement clip duplicate", () => {
       id: source.id,
       toPath: `t${AUDIO_TRACK}[${position}]`,
     });
-    const { data, warnings } = parseToolResultWithWarnings<unknown[]>(result);
 
-    expect(data).toStrictEqual([]);
-
-    // The warning names the clip it skipped by both spellings, and says why.
-    const warningText = warnings.join(" ");
-
-    expect(warningText).toContain(
-      `clip t${EMPTY_MIDI_TRACK}[${position}] (id ${source.id})`,
-    );
+    expect(isToolError(result)).toBe(true);
     // The destination's id is Live-assigned, so match around it.
-    expect(warningText).toMatch(
+    expect(getToolErrorMessage(result)).toMatch(
       new RegExp(
-        `was not duplicated: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; ` +
-          `a MIDI clip needs a MIDI track`,
+        `track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track`,
       ),
     );
+    expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
+  });
+
+  // Two destinations, one of them refused: the refusal keeps its slot, so the
+  // entries pair against the toPath the call sent.
+  it("keeps the slot of a destination that can't take the copy", async () => {
+    const position = "33|1";
+    const source = await createArrClip(position, "Source D2");
+
+    const result = await callTool("ppal-duplicate", {
+      type: "clip",
+      id: source.id,
+      toPath: `t${RACKS_TRACK}[${position}],t${AUDIO_TRACK}[${position}]`,
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<Array<ReadClipResult | SkippedTargetResult>>(
+        result,
+      );
+    const [landed, refused] = data as [ReadClipResult, SkippedTargetResult];
+
+    expect(data).toHaveLength(2);
+    expect(landed.path).toBe(`t${RACKS_TRACK}[${position}]`);
+    expect(refused).toStrictEqual({
+      path: `t${AUDIO_TRACK}[${position}]`,
+      ok: false,
+      detail: expect.stringContaining(
+        "is audio; a MIDI clip needs a MIDI track",
+      ),
+    });
+    expect(warnings.join(" ")).not.toContain("not duplicated");
     expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
   });
 

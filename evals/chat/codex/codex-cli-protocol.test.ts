@@ -39,7 +39,7 @@ describe("codexTurnArgs", () => {
     instructions: "You are Producer Pal.",
     instructionsFile: "/tmp/instructions.md",
     mcpUrl: "http://localhost:3350/mcp",
-    model: "terra",
+    model: "sol",
   };
 
   it("builds a restricted initial MCP turn", () => {
@@ -47,7 +47,7 @@ describe("codexTurnArgs", () => {
 
     expect(args.slice(0, 3)).toStrictEqual(["exec", "--sandbox", "read-only"]);
     expect(args).toStrictEqual(
-      expect.arrayContaining(["--model", "gpt-5.6-terra"]),
+      expect.arrayContaining(["--model", "gpt-6-sol"]),
     );
     expectRestrictions(args);
     expect(args).toContain("mcp_servers.producer-pal.required=true");
@@ -77,7 +77,7 @@ describe("codexJudgeArgs", () => {
 
     expect(args).toContain("--ephemeral");
     expect(args).toStrictEqual(
-      expect.arrayContaining(["--model", "gpt-5.6-luna"]),
+      expect.arrayContaining(["--model", "gpt-6-luna"]),
     );
     expectRestrictions(args);
     expect(args.join(" ")).not.toContain("mcp_servers");
@@ -86,10 +86,9 @@ describe("codexJudgeArgs", () => {
 
 describe("resolveCodexModel", () => {
   it("resolves friendly aliases and preserves explicit model ids", () => {
-    expect(resolveCodexModel("sol")).toBe("gpt-5.6-sol");
-    expect(resolveCodexModel("terra")).toBe("gpt-5.6-terra");
-    expect(resolveCodexModel("luna")).toBe("gpt-5.6-luna");
-    expect(resolveCodexModel("gpt-5.6-terra")).toBe("gpt-5.6-terra");
+    expect(resolveCodexModel("sol")).toBe("gpt-6-sol");
+    expect(resolveCodexModel("luna")).toBe("gpt-6-luna");
+    expect(resolveCodexModel("gpt-6-astra")).toBe("gpt-6-astra");
   });
 });
 
@@ -166,6 +165,9 @@ describe("parseCodexStream", () => {
       cacheReadTokens: 80,
       reasoningTokens: 5,
     });
+    // `turn.completed` carries no duration, so the session falls back to the
+    // wall clock rather than the transport reporting a rate.
+    expect(parsed.timing).toBeUndefined();
   });
 
   it("pairs an id-less started/completed item into one call", () => {
@@ -295,7 +297,7 @@ describe("parseCodexStream", () => {
             { type: "text", text: '{"id":"device1"}' },
             {
               type: "text",
-              text: 'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
+              text: 'WARNING: move target at path "t9/d0" does not exist',
             },
           ],
         },
@@ -307,9 +309,7 @@ describe("parseCodexStream", () => {
         name: "ppal-update-device",
         args: {},
         result: '{"id":"device1"}',
-        warnings: [
-          'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
-        ],
+        warnings: ['WARNING: move target at path "t9/d0" does not exist'],
       },
     ]);
   });

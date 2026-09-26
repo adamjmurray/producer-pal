@@ -24,10 +24,42 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
  *
  * @param error - The message its path setter throws
  */
+/**
+ * Open a scope and build two track objects through `getChildren`, the path that
+ * creates LiveAPI objects the caller never asked for by name.
+ *
+ * @returns The two children `getChildren("tracks")` built
+ */
+function getChildrenInNewScope(): LiveAPI[] {
+  beginLiveApiScope();
+
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
+
+  return liveSet.getChildren("tracks");
+}
+
 function trackUnclearable(error: string): void {
   trackLiveApiObject({
     set path(_value: string) {
       throw new Error(error);
+    },
+  } as unknown as LiveAPI);
+}
+
+/**
+ * Track an object whose path setter throws an Error carrying no message at
+ * all, standing in for a host throw that isn't shaped like a JS Error.
+ */
+function trackUnclearableWithoutMessage(): void {
+  trackLiveApiObject({
+    set path(_value: string) {
+      const error = new Error("dropped");
+
+      Object.defineProperty(error, "message", { value: undefined });
+
+      throw error;
     },
   } as unknown as LiveAPI);
 }
@@ -110,13 +142,7 @@ describe("live-api release", () => {
   });
 
   it("tracks the objects getChildren builds", () => {
-    beginLiveApiScope();
-
-    const liveSet = LiveAPI.from(livePath.liveSet);
-
-    liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
-
-    const children = liveSet.getChildren("tracks");
+    const children = getChildrenInNewScope();
 
     expect(children.map((child) => child.path)).toStrictEqual(["id 1", "id 2"]);
 
@@ -235,6 +261,20 @@ describe("live-api release", () => {
     );
   });
 
+  // The count is the part the user can act on, so it still goes out — and
+  // without a message there is nothing to print in its place.
+  it("reports a failure whose error carries no message at all", () => {
+    beginLiveApiScope();
+
+    trackUnclearableWithoutMessage();
+
+    endLiveApiScope();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Failed to release 1 LiveAPI object(s): ",
+    );
+  });
+
   it("retargets a released object instead of building another", () => {
     beginLiveApiScope();
 
@@ -345,13 +385,7 @@ describe("live-api release", () => {
   });
 
   it("pools the objects getChildren built", () => {
-    beginLiveApiScope();
-
-    const liveSet = LiveAPI.from(livePath.liveSet);
-
-    liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
-
-    const children = liveSet.getChildren("tracks");
+    const children = getChildrenInNewScope();
 
     endLiveApiScope();
     beginLiveApiScope();

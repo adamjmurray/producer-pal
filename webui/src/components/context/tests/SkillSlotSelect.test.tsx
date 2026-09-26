@@ -9,7 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { SkillSlotSelect } from "#webui/components/context/skills/SkillSlotSelect";
-import { slot } from "./skill-slot-test-helpers";
+import { slot } from "./helpers/skill-slot-test-helpers";
 
 describe("SkillSlotSelect", () => {
   it("labels options by filename and glyph-marks drifted, customized, and tracking slots", () => {

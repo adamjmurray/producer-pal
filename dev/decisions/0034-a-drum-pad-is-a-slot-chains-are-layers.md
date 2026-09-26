@@ -80,8 +80,8 @@ and skips.
 - Results give the pad-relative chain path (`pC1/c0`), not Live's rack-relative
   one, because the layer index shifts only when that pad's own layers change.
 
-Implemented across
-`src/tools/shared/device/helpers/device-reader-drum-helpers.ts`,
-`src/tools/device/update/helpers/update-device-drum-pad-helpers.ts`, and the
-path rules in [dev/Object-Paths.md](../Object-Paths.md). The Live API quirks
-behind it are in [dev/Coding-Standards.md](../Coding-Standards.md).
+Implemented across `src/tools/shared/device/helpers/drum-pads-from-chains.ts`,
+`src/tools/device/update/helpers/update-drum-pad-group.ts`, and the path rules
+in [dev/tools/object-paths/README.md](../tools/object-paths/README.md). The Live
+API quirks behind it are in
+[dev/coding-standards/live-api-behavior.md](../coding-standards/live-api-behavior.md).

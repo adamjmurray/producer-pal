@@ -6,9 +6,15 @@
 import {
   type SemanticEagerness,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
-export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
+export type ReasoningEffort =
+  | "none"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
 
 export type RealtimeReasoningEffort =
   | "minimal"
@@ -157,12 +163,11 @@ export function mapThinkingToOpenRouterEffort(
 
 /**
  * Extracts the GPT version number from a model name.
- * @param {string} model - Model identifier (e.g., "gpt-5.2-2025-12-11")
- * @returns {number | null} - Version number (e.g., 5.2) or null if not a GPT model with decimal version
+ * @param {string} model - Model identifier (e.g., "gpt-5.2-2025-12-11", "gpt-6-sol")
+ * @returns {number | null} - Version number (e.g., 5.2, 6) or null if not a versioned GPT model
  */
 export function extractGptVersion(model: string): number | null {
-  // Match gpt-X.Y where X.Y is a decimal version (e.g., gpt-5.1, gpt-5.2)
-  const match = model.match(/^gpt-(\d+\.\d+)/);
+  const match = model.match(/^gpt-(\d+(?:\.\d+)?)/);
 
   return match?.[1] ? Number.parseFloat(match[1]) : null;
 }
@@ -180,12 +185,14 @@ export function isO1O3Model(model: string): boolean {
  * Checks if an OpenAI model is a reasoning model (emits reasoning tokens and
  * rejects a non-default sampling temperature). Gates the reasoning-summary
  * request in the adapter.
- * Covers GPT-5 family (gpt-5, gpt-5.4-mini, gpt-5.2, gpt-5.3-codex, etc.) and o-series.
+ * Covers GPT-5 and later (gpt-5, gpt-5.4-mini, gpt-6-sol, etc.) and o-series.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if reasoning model
  */
 export function isOpenAIReasoningModel(model: string): boolean {
-  return model.startsWith("gpt-5") || isO1O3Model(model);
+  const version = extractGptVersion(model);
+
+  return (version != null && version >= 5) || isO1O3Model(model);
 }
 
 /**
@@ -213,6 +220,7 @@ function supportsXHigh(model: string): boolean {
  * Maps thinking UI setting to OpenAI reasoning_effort parameter based on model.
  * - o1/o3: low, medium, high
  * - gpt-5.1+: low, medium, high (xhigh for 5.2+ or codex-max)
+ * - gpt-6+: none, low, medium, high, xhigh, max
  * - Other models: undefined (no reasoning_effort sent)
  * @param {string} thinking - Thinking mode setting from UI
  * @param {string} model - Model identifier
@@ -243,12 +251,38 @@ export function mapThinkingToReasoningEffort(
     }
   }
 
+  if (gptVersion != null && gptVersion >= 6) {
+    return mapThinkingToGpt6Effort(thinking, model);
+  }
+
   // gpt-5.1+: supports low, medium, high, (xhigh for 5.2+ or codex-max)
   switch (thinking) {
     case "Max":
       return supportsXHigh(model) ? "xhigh" : "high";
     case "Off":
       return undefined;
+    default:
+      return "medium";
+  }
+}
+
+/**
+ * Maps a thinking UI value to a GPT-6 reasoning effort. Off must send an
+ * explicit effort: omitting it reasons at the default (medium).
+ * @param {string} thinking - Thinking mode setting from UI
+ * @param {string} model - Model identifier
+ * @returns {ReasoningEffort} - reasoning_effort value
+ */
+function mapThinkingToGpt6Effort(
+  thinking: string,
+  model: string,
+): ReasoningEffort {
+  switch (thinking) {
+    case "Max":
+      return "max";
+    case "Off":
+      // Astra rejects "none" with a 400, so low is its floor
+      return model.includes("-astra") ? "low" : "none";
     default:
       return "medium";
   }

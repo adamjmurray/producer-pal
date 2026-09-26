@@ -18,6 +18,7 @@ import {
   beginLiveApiBuildStats,
   liveApiBuildStats,
 } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -56,15 +57,6 @@ function setupTrack(): void {
     "id",
     id,
   ]);
-}
-
-/**
- * How many times the call resolved a target of this shape.
- * @param shape - Target shape, indices replaced with `*`
- * @returns Resolution count
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
 }
 
 describe("arrangement splitting build budget", () => {

@@ -276,7 +276,8 @@ describe("Behavioral splitting tests", () => {
     expect(clip.name).toBe("Split Section");
   });
 
-  it("returns session clip unchanged with warning", async () => {
+  // A lone target with nothing else to do is refused outright.
+  it("refuses to split a session clip, leaving it whole", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -289,9 +290,15 @@ describe("Behavioral splitting tests", () => {
 
     await sleep(200);
     const result = await splitClip(ctx.client!, clipId, "2|1");
-    const splitClips = parseSplitResult(result);
 
-    expect(splitClips[0]?.id).toBe(clipId);
+    expect(getToolErrorMessage(result)).toContain(
+      "arrangementSplit ignored: this is a session clip",
+    );
+
+    await sleep(100);
+    const clip = await readClip(ctx.client!, clipId, ["*"]);
+
+    expect(clip.length).toBe("2bar");
   });
 
   it("splits multiple clips in one call", async () => {

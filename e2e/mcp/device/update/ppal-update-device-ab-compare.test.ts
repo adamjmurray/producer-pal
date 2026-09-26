@@ -15,6 +15,8 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   setConfig,
@@ -80,9 +82,16 @@ describe("ppal-update-device abCompare", () => {
     expect(await usingPresetB()).toBe(0);
   });
 
-  it("warns instead of failing on a device with no A/B", async () => {
-    const warnings = await abCompare("t0/d0", "b");
+  it("refuses a device with no A/B", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: "t0/d0", abCompare: "b" },
+    });
 
-    expect(warnings.join("\n")).toContain("A/B Compare not available");
+    // abCompare was the whole call, so the lone device throws its reason.
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "A/B Compare is not available",
+    );
   });
 });

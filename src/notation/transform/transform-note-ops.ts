@@ -5,17 +5,20 @@
 
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "./transform-warning-label.ts";
 import {
   GRID_EPSILON,
   MAX_NOTE_PIECES,
   splitNoteAtCuts,
   splitNotes,
-} from "./helpers/note-cut-helpers.ts";
-import { evaluateExpression } from "./helpers/transform-evaluator-helpers.ts";
-import { repeatNotes } from "./helpers/transform-repeat-helpers.ts";
-import { noteInTimeRange } from "./helpers/transform-time-range-helpers.ts";
+} from "./helpers/note-ops/note-cuts.ts";
+import { numericOpArg } from "./helpers/note-ops/numeric-op-arg.ts";
+import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
+import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
+import {
+  constantEvalContext,
+  evaluateExpression,
+} from "./helpers/transform-evaluation.ts";
 import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
 
 /**
@@ -244,38 +247,15 @@ function resolveRatchetPlan(
     typeof arg === "object" &&
     (arg.type === "nDuration" || arg.type === "barDuration");
 
-  // A bare top-level pitch literal (`ratchet(C2)`) is nonsensical as a count and
-  // would silently coerce to its MIDI number. Warn-and-skip it, mirroring the
-  // audio evaluator's pitch-as-value guard. A pitch literal nested in arithmetic
-  // is still resolved to a number below.
-  if (typeof arg === "object" && arg.type === "pitchLiteral") {
-    console.warn(
-      `pitch name "${arg.name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${arg.name}).`,
-    );
+  const value = numericOpArg(arg, numerator, denominator, {
+    pitchLiteral: (name) =>
+      `pitch name "${name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${name}).`,
+    unevaluable: (reason) =>
+      `ratchet() argument could not be evaluated (${reason}); skipping`,
+    notFinite: "ratchet() argument is not a number; skipping",
+  });
 
-    return null;
-  }
-
-  let value: number;
-
-  try {
-    // Args are constants (no per-note context). nDuration/barDuration evaluate
-    // to musical beats; a count evaluates to a number.
-    value = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
-  } catch (error) {
-    console.warn(
-      `ratchet() argument could not be evaluated (${errorMessage(error)}); skipping`,
-    );
-
-    return null;
-  }
-
-  if (!Number.isFinite(value)) {
-    console.warn("ratchet() argument is not a number; skipping");
-
+  if (value == null) {
     return null;
   }
 
@@ -444,10 +424,10 @@ function resolveMergeTolerance(
 
   if (typeof arg === "object" && arg.type === "nDuration") {
     // A note value is a pure constant — evaluates to musical beats, total.
-    const musicalBeats = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
+    const musicalBeats = evaluateExpression(
+      arg,
+      constantEvalContext(numerator, denominator),
+    );
 
     return musicalBeats * (4 / denominator); // musical -> Ableton beats
   }

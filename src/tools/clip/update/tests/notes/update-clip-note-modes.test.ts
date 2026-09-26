@@ -102,21 +102,32 @@ describe("updateClip - Note updates", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
-  it("warns and skips notes on audio clips instead of throwing", async () => {
+  it("skips notes on an audio clip without stopping the batch", async () => {
     setupAudioClipMock(mocks.clip123, { length: 8 });
+    setupMidiClipMock(mocks.clip456);
 
-    // Audio clips can't hold MIDI notes; writing them would throw and abort a
-    // multi-clip batch. Warn-and-skip instead (mirrors create-clip's guard).
-    await expect(
-      updateClip({ id: "123", notes: "C3 1|1" }),
-    ).resolves.toBeDefined();
+    // Audio clips can't hold MIDI notes; writing them would throw and abort the
+    // batch. The audio clip keeps its slot and says why (mirrors create-clip's
+    // guard), and the MIDI clip beside it still gets its notes.
+    const result = await updateClip({ id: "123, 456", notes: "C3 1|1" });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("notes parameter ignored for audio clip"),
-    );
+    expect(result).toStrictEqual([
+      { id: "123", ok: false, detail: "notes ignored: the clip is audio" },
+      { id: "456", path: "t1/s1", noteCount: 1 },
+    ]);
+    expect(capturedWarnings()).toHaveLength(0);
     expect(mocks.clip123.call).not.toHaveBeenCalledWith(
       "add_new_notes",
       expect.anything(),
+    );
+  });
+
+  it("refuses a lone audio clip sent nothing but notes", async () => {
+    setupAudioClipMock(mocks.clip123, { length: 8 });
+
+    // One target, nothing landed: the reason comes back as the error.
+    await expect(updateClip({ id: "123", notes: "C3 1|1" })).rejects.toThrow(
+      "notes ignored: the clip is audio",
     );
   });
 
@@ -134,24 +145,7 @@ describe("updateClip - Note updates", () => {
   it("should overlay new notes onto a clip (default merge)", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    // Mock empty existing notes, then return added notes on subsequent calls
-    let addedNotes: unknown[] = [];
-
-    mocks.clip123.call.mockImplementation(
-      (method: string, ...args: unknown[]) => {
-        if (method === "add_new_notes") {
-          const arg = args[0] as { notes?: unknown[] } | undefined;
-
-          addedNotes = arg?.notes ?? [];
-        } else if (method === "get_notes_extended") {
-          return JSON.stringify({
-            notes: addedNotes,
-          });
-        }
-
-        return {};
-      },
-    );
+    mockMergeNoteTracking(mocks.clip123);
 
     const result = await updateClip({
       id: "123",
@@ -166,23 +160,9 @@ describe("updateClip - Note updates", () => {
   it("merges midi-json notes onto existing notes", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    // Seed with an existing C3; capture the merged write so the post-merge
+    // Seed with an existing C3; the merged write is captured, so the post-merge
     // note count reads back the combined set.
-    let currentNotes: unknown[] = [DEFAULT_C3_NOTE];
-
-    mocks.clip123.call.mockImplementation(
-      (method: string, ...args: unknown[]) => {
-        if (method === "add_new_notes") {
-          const arg = args[0] as { notes?: unknown[] } | undefined;
-
-          currentNotes = arg?.notes ?? [];
-        } else if (method === "get_notes_extended") {
-          return JSON.stringify({ notes: currentNotes });
-        }
-
-        return {};
-      },
-    );
+    mockMergeNoteTracking(mocks.clip123, [DEFAULT_C3_NOTE]);
 
     const result = await updateClip(
       {

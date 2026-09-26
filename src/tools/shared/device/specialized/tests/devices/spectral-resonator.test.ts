@@ -6,40 +6,31 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
-/**
- * Register a mock Spectral Resonator device and return its LiveAPI.
- * @param properties - Property overrides (merged onto Spectral Resonator defaults)
- * @returns The Spectral Resonator LiveAPI object
- */
-function registerSpectralResonator(
-  properties: Record<string, unknown> = {},
-): LiveAPI {
-  registerMockObject("spectral-resonator-1", {
-    type: "SpectralResonatorDevice",
-    properties: {
-      class_display_name: "Spectral Resonator",
-      midi_gate: 0,
-      mono_poly: 0,
-      pitch_bend_range: 0,
-      mod_mode: 0,
-      pitch_mode: 0,
-      polyphony: 0,
-      ...properties,
-    },
-  });
-
-  return LiveAPI.from("id spectral-resonator-1");
-}
+const registerSpectralResonator = specializedDeviceMock(
+  "spectral-resonator-1",
+  "SpectralResonatorDevice",
+  {
+    class_display_name: "Spectral Resonator",
+    midi_gate: 0,
+    mono_poly: 0,
+    pitch_bend_range: 0,
+    mod_mode: 0,
+    pitch_mode: 0,
+    polyphony: 0,
+  },
+);
 
 describe("Spectral Resonator pseudo-params", () => {
   describe("read", () => {
@@ -154,15 +145,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("midi_gate", 1);
     });
 
-    it("warns and skips an invalid midiGate value", () => {
+    it("refuses an invalid midiGate value", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "midiGate", "maybe");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "midiGate", "maybe"),
+        "midiGate",
+        "midiGate",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("midiGate"),
-      );
     });
   });
 
@@ -193,37 +185,40 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 24);
     });
 
-    it("warns and skips when pitchBendRange is above range (25)", () => {
+    it("refuses when pitchBendRange is above range (25)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 25);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", 25),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
 
-    it("warns and skips when pitchBendRange is below range (-1)", () => {
+    it("refuses when pitchBendRange is below range (-1)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchBendRange", -1);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", -1),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
 
-    it("warns and skips when pitchBendRange is a non-integer", () => {
+    it("refuses when pitchBendRange is a non-integer", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 1.5);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", 1.5),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
   });
 
@@ -252,15 +247,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("mod_mode", 3);
     });
 
-    it("warns and skips an invalid modMode label", () => {
+    it("refuses an invalid modMode label", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "modMode", "Reverb");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "modMode", "Reverb"),
+        "modMode",
+        "not a valid modMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid modMode"),
-      );
     });
   });
 
@@ -281,15 +277,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("pitch_mode", 1);
     });
 
-    it("warns and skips an invalid pitchMode label", () => {
+    it("refuses an invalid pitchMode label", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchMode", "Cents");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchMode", "Cents"),
+        "pitchMode",
+        "not a valid pitchMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid pitchMode"),
-      );
     });
   });
 
@@ -318,15 +315,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("polyphony", 3);
     });
 
-    it("warns and skips a count not in the set (e.g. 3)", () => {
+    it("refuses a count not in the set (e.g. 3)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "polyphony", 3);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "polyphony", 3),
+        "polyphony",
+        "polyphony",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("polyphony"),
-      );
     });
   });
 });
@@ -335,39 +333,24 @@ describe("Spectral Resonator pseudo-params", () => {
 // the `parameters` output and that Spectral Resonator contributes no
 // modulations/options.
 describe("Spectral Resonator via read-device", () => {
-  /**
-   * Register a fully-readable mock Spectral Resonator audio effect by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableSpectralResonator(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("spectral-resonator-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Spectral Resonator",
-        class_display_name: "Spectral Resonator",
-        type: 2,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        midi_gate: 1,
-        mono_poly: 1,
-        pitch_bend_range: 12,
-        mod_mode: 2,
-        pitch_mode: 1,
-        polyphony: 3,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableSpectralResonator = readableDeviceMock(
+    "spectral-resonator-1",
+    "Spectral Resonator",
+    2,
+    {
+      midi_gate: 1,
+      mono_poly: 1,
+      pitch_bend_range: 12,
+      mod_mode: 2,
+      pitch_mode: 1,
+      polyphony: 3,
+    },
+  );
 
   it("includes all six pseudo-params in parameters and omits modulations", () => {
     registerReadableSpectralResonator();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "spectral-resonator-1",
       include: ["params"],
     });
@@ -386,7 +369,7 @@ describe("Spectral Resonator via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableSpectralResonator();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "spectral-resonator-1",
       include: ["options"],
     });

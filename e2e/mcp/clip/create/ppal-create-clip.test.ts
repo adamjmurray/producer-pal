@@ -15,7 +15,10 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
+  KICK_FILE,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -222,25 +225,58 @@ describe("ppal-create-clip", () => {
     expect(arrangementStartOf(arrangementClip)).toBe("41|1");
   });
 
+  it("accepts n<count>bar as an alias for <count>bar in the length field", async () => {
+    // Untaught tolerance (ADR-0018): a model reaching for the n sigil out of
+    // habit gets the bar length it asked for.
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
+        length: "n2bar",
+      },
+    });
+    const clip = parseToolResult<CreateClipResult>(result);
+
+    await sleep(100);
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: clip.id, include: ["timing"] },
+    });
+    const readClip = parseToolResult<ReadClipResult>(verify);
+
+    expect(readClip.length).toBe("2bar");
+  });
+
+  it("refuses an n-fraction bar length (fraction and bar count are different things)", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s7`,
+        length: "n3/4bar",
+      },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain(
+      "an n fraction and a bar count are different things",
+    );
+  });
+
   it("refuses a clip the track cannot hold", async () => {
     // Live declines a create it can't do without raising, and the arrangement
     // create calls answer with another object — the Live Set (id 1). Reported
     // as created, that id aimed every follow-up call at the Live Set. So the
-    // track is checked before the create, and the warning names it.
+    // track is checked before the create. One destination, so the refusal comes
+    // back as the call's error rather than an entry (ADR-0042).
     const midiOnAudio = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: { path: `t${AUDIO_TRACK}[61|1]`, name: "empty" },
     });
 
-    const midiResult =
-      parseToolResultWithWarnings<CreateClipResult[]>(midiOnAudio);
-
-    expect(midiResult.data).toStrictEqual([]);
-    expect(midiResult.warnings).toContainEqual(
-      expect.stringMatching(
-        new RegExp(
-          `^WARNING: Failed to create clip at t${AUDIO_TRACK}\\[61\\|1\\]: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
-        ),
+    expect(isToolError(midiOnAudio)).toBe(true);
+    expect(getToolErrorMessage(midiOnAudio)).toMatch(
+      new RegExp(
+        `track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track`,
       ),
     );
 
@@ -252,15 +288,10 @@ describe("ppal-create-clip", () => {
       },
     });
 
-    const audioResult =
-      parseToolResultWithWarnings<CreateClipResult[]>(audioOnMidi);
-
-    expect(audioResult.data).toStrictEqual([]);
-    expect(audioResult.warnings).toContainEqual(
-      expect.stringMatching(
-        new RegExp(
-          `^WARNING: Failed to create clip at t${EMPTY_MIDI_TRACK}\\[61\\|1\\]: track t${EMPTY_MIDI_TRACK} \\(id \\d+\\) is MIDI; an audio clip needs an audio track$`,
-        ),
+    expect(isToolError(audioOnMidi)).toBe(true);
+    expect(getToolErrorMessage(audioOnMidi)).toMatch(
+      new RegExp(
+        `track t${EMPTY_MIDI_TRACK} \\(id \\d+\\) is MIDI; an audio clip needs an audio track`,
       ),
     );
 
@@ -271,15 +302,10 @@ describe("ppal-create-clip", () => {
       arguments: { path: `t${AUDIO_TRACK}/s2` },
     });
 
-    const slotResult =
-      parseToolResultWithWarnings<CreateClipResult[]>(midiOnAudioSlot);
-
-    expect(slotResult.data).toStrictEqual([]);
-    expect(slotResult.warnings).toContainEqual(
-      expect.stringMatching(
-        new RegExp(
-          `^WARNING: Failed to create clip at t${AUDIO_TRACK}/s2: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
-        ),
+    expect(isToolError(midiOnAudioSlot)).toBe(true);
+    expect(getToolErrorMessage(midiOnAudioSlot)).toMatch(
+      new RegExp(
+        `track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track`,
       ),
     );
   });
@@ -362,6 +388,26 @@ describe("ppal-create-clip", () => {
     const audioSession = parseToolResult<CreateClipResult>(audioSessionResult);
 
     expect(audioSession.id).toBeDefined();
+    // Nothing asked for a warp state, so the one Live chose comes back.
+    expect(audioSession.warping).toBeDefined();
+
+    await sleep(100);
+
+    // A warp state the call asked for and got is an echo, so it says nothing.
+    const askedWarping = parseToolResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${audioTrack.path}/s8`,
+          sampleFile: SAMPLE_FILE,
+          warping: true,
+        },
+      }),
+    );
+
+    expect(askedWarping.warping).toBeUndefined();
+    // The region comes from the sample, so it is still reported.
+    expect(askedWarping.length).toBeDefined();
 
     await sleep(100);
     const verifyAudioSession = await ctx.client!.callTool({
@@ -441,7 +487,7 @@ describe("ppal-create-clip audio warping", () => {
       warping: false,
     });
 
-    expect(created.warping).toBe(false);
+    // Asked for and got, so the result says nothing; the read shows it.
     expect(clip.type).toBe("audio");
     expect(clip.warping).toBe(false);
 
@@ -468,13 +514,13 @@ describe("ppal-create-clip audio warping", () => {
 
   it("lands a warped clip when warping is requested", async () => {
     const song = await readSongTiming(ctx.client!);
-    const { created, clip } = await createAndRead(ctx.client!, {
+    const { clip } = await createAndRead(ctx.client!, {
       path: `t${AUDIO_TRACK}/s7`,
       name: "warped",
       warping: true,
     });
 
-    expect(created.warping).toBe(true);
+    // Asked for and got, so the result says nothing; the read shows it.
     expect(clip.warping).toBe(true);
 
     // Live maps every marker from seconds into beats when warp goes on, so the
@@ -482,5 +528,79 @@ describe("ppal-create-clip audio warping", () => {
     // "not empty" check would pass on a region Live had stretched or truncated.
     expect(clip.start).toBe("1|1");
     expect(clip.length).toBe(expectedSampleLength(clip, song));
+  });
+});
+
+// ============================================================================
+// sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
+// positions path names, the way name and color do.
+// ============================================================================
+
+describe("ppal-create-clip per-position params", () => {
+  /** Read back every clip a create call made, in the order it made them. */
+  async function readCreated(
+    created: CreateClipResult[],
+  ): Promise<ReadClipResult[]> {
+    await sleep(100);
+
+    const clips: ReadClipResult[] = [];
+
+    for (const clip of created) {
+      clips.push(
+        parseToolResult<ReadClipResult>(
+          await ctx.client!.callTool({
+            name: "ppal-read-clip",
+            arguments: { id: clip.id, include: ["timing"] },
+          }),
+        ),
+      );
+    }
+
+    return clips;
+  }
+
+  it("creates two audio clips from two different samples in one call", async () => {
+    const created = parseToolResult<CreateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${AUDIO_TRACK}/s4,t${AUDIO_TRACK}/s5`,
+          sampleFile: `${SAMPLE_FILE},${KICK_FILE}`,
+          name: "paired sample,paired kick",
+        },
+      }),
+    );
+
+    expect(created).toHaveLength(2);
+
+    const clips = await readCreated(created);
+
+    expect(clips.map((clip) => clip.type)).toStrictEqual(["audio", "audio"]);
+    expect(clips[0]?.name).toBe("paired sample");
+    expect(clips[1]?.name).toBe("paired kick");
+    // Different files, so the two clips can't be the same length.
+    expect(clips[0]?.length).not.toBe(clips[1]?.length);
+  });
+
+  it("gives each MIDI clip its own time signature and length", async () => {
+    const created = parseToolResult<CreateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}/s20,t${EMPTY_MIDI_TRACK}/s21`,
+          timeSignature: "4/4,3/4",
+          length: "2bar,4bar",
+        },
+      }),
+    );
+
+    expect(created).toHaveLength(2);
+
+    const clips = await readCreated(created);
+
+    expect(clips[0]?.timeSignature).toBe("4/4");
+    expect(clips[1]?.timeSignature).toBe("3/4");
+    expect(clips[0]?.length).toBe("2bar");
+    expect(clips[1]?.length).toBe("4bar");
   });
 });

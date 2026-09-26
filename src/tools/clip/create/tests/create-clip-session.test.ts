@@ -16,6 +16,7 @@ import {
 import { createNote } from "#src/test/test-data-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "../create-clip.ts";
+import { mockScratchSwap } from "./create-clip-test-helpers.ts";
 
 interface SessionClipSetupOptions {
   hasClip?: number;
@@ -159,31 +160,27 @@ describe("createClip - session view", () => {
   // Regression: Live declines a create without raising, and the clip that isn't
   // there reads back as id "0". Reported as created, that id poisoned every
   // follow-up call. The track holds the clip's own kind here, so the pre-flight
-  // below passes and this is the backstop firing on its own.
+  // below passes and this is the backstop firing on its own. One destination
+  // throws rather than reporting, since there is no list to hold its entry.
   it.each([
     ["a MIDI clip", {}, {}],
     ["an audio clip", { sampleFile: "/tmp/kick.wav" }, { has_midi_input: 0 }],
-  ])(
-    "warns and skips %s Live declined to create",
-    async (_what, extra, trackProps) => {
-      const warn = vi.spyOn(console, "warn");
+  ])("refuses %s Live declined to create", async (_what, extra, trackProps) => {
+    const warn = vi.spyOn(console, "warn");
 
-      mockNonExistentObjects();
-      setupLiveSet();
-      setupTrack(0, trackProps);
-      registerMockObject("clip-slot-0-0", {
-        path: livePath.track(0).clipSlot(0),
-        properties: { has_clip: 0 },
-      });
+    mockNonExistentObjects();
+    setupLiveSet();
+    setupTrack(0, trackProps);
+    registerMockObject("clip-slot-0-0", {
+      path: livePath.track(0).clipSlot(0),
+      properties: { has_clip: 0 },
+    });
 
-      const result = await createClip({ path: "t0/s0", ...extra });
-
-      expect(result).toStrictEqual([]);
-      expect(warn).toHaveBeenCalledWith(
-        "Failed to create clip at t0/s0: Live created no clip at t0/s0",
-      );
-    },
-  );
+    await expect(createClip({ path: "t0/s0", ...extra })).rejects.toThrow(
+      "Live created no clip at t0/s0",
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
 
   // Live refuses these without reporting anything, so create-clip checks the
   // destination track first and words the refusal itself.
@@ -200,26 +197,21 @@ describe("createClip - session view", () => {
       {},
       "track t0 (id track-0) is MIDI; an audio clip needs an audio track",
     ],
-  ])(
-    "warns and skips a clip aimed at %s",
-    async (_what, extra, trackProps, reason) => {
-      const warn = vi.spyOn(console, "warn");
+  ])("refuses a clip aimed at %s", async (_what, extra, trackProps, reason) => {
+    const warn = vi.spyOn(console, "warn");
 
-      setupLiveSet();
-      setupTrack(0, trackProps);
-      const { clipSlot } = setupSessionClip(0, 0, {
-        clipProperties: { length: 4 },
-      });
+    setupLiveSet();
+    setupTrack(0, trackProps);
+    const { clipSlot } = setupSessionClip(0, 0, {
+      clipProperties: { length: 4 },
+    });
 
-      const result = await createClip({ path: "t0/s0", ...extra });
-
-      expect(result).toStrictEqual([]);
-      expect(warn).toHaveBeenCalledWith(
-        `Failed to create clip at t0/s0: ${reason}`,
-      );
-      expect(clipSlot.call).not.toHaveBeenCalled();
-    },
-  );
+    await expect(createClip({ path: "t0/s0", ...extra })).rejects.toThrow(
+      reason,
+    );
+    expect(warn).not.toHaveBeenCalled();
+    expect(clipSlot.call).not.toHaveBeenCalled();
+  });
 
   it("should create a single clip with notes", async () => {
     const { clipSlot, clip } = setupDefaultSessionClip();
@@ -251,6 +243,32 @@ describe("createClip - session view", () => {
       path: "t0/s0",
       noteCount: 3,
       length: "1bar",
+    });
+  });
+
+  it("reports the palette color Live snapped to on the clip's entry", async () => {
+    const { clip } = setupDefaultSessionClip();
+
+    clip.get.mockImplementation((prop: string) =>
+      prop === "color" ? [16725558] : [0],
+    );
+
+    const result = await createClip({ slot: "0/0", color: "#FF0000" });
+
+    expect(result).toStrictEqual({
+      id: "clip_0_0",
+      path: "t0/s0",
+      color: "#FF3636",
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+  });
+
+  it("says nothing about color when the clip took the one asked for", async () => {
+    setupDefaultSessionClip();
+
+    expect(await createClip({ slot: "0/0", color: "#FF0000" })).toStrictEqual({
+      id: "clip_0_0",
+      path: "t0/s0",
     });
   });
 
@@ -319,7 +337,7 @@ describe("createClip - session view", () => {
     setupLiveSet();
 
     await expect(createClip({ slot: "99/0", notes: "C3 1|1" })).rejects.toThrow(
-      "track 99 does not exist",
+      'no track at path "t99"; ppal-create-track adds tracks',
     );
   });
 
@@ -389,10 +407,11 @@ describe("createClip - session view", () => {
     expect(clip2.set).toHaveBeenCalledWith("name", "Loop");
     expect(clip3.set).toHaveBeenCalledWith("name", "Loop");
 
+    // One scene existed, so each destination reports the scene it made.
     expect(result).toStrictEqual([
-      { id: "clip_0_1", path: "t0/s1" },
-      { id: "clip_0_2", path: "t0/s2" },
-      { id: "clip_0_3", path: "t0/s3" },
+      { id: "clip_0_1", path: "t0/s1", created: "s1" },
+      { id: "clip_0_2", path: "t0/s2", created: "s2" },
+      { id: "clip_0_3", path: "t0/s3", created: "s3" },
     ]);
   });
 
@@ -417,46 +436,114 @@ describe("createClip - session view", () => {
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
   });
 
-  it("should emit warning and return empty array if clip already exists", async () => {
+  it("names the scenes it made when Live then created no clip", async () => {
+    mockNonExistentObjects();
     setupLiveSet();
+    setupTrack(0);
+    registerMockObject("clip-slot-0-2", {
+      path: livePath.track(0).clipSlot(2),
+      properties: { has_clip: 0 },
+    });
+
+    await expect(createClip({ path: "t0/s2" })).rejects.toThrow(
+      "Live created no clip at t0/s2; created s1-s2 to reach it",
+    );
+  });
+
+  it("replaces the clip an occupied slot already holds", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    const { clipSlot } = setupSessionClip(0, 0, {
+      hasClip: 1,
+      clipId: "clip_0_0",
+      clipProperties: { length: 4 },
+    });
+    const scratch = mockScratchSwap(0, 1, 0, { id: "new_clip" });
+
+    const result = await createClip({ slot: "0/0", name: "Replacement" });
+
+    // Built in a temp scene and copied over; the old clip is never deleted.
+    expect(scratch.call).toHaveBeenCalledWith("create_clip", expect.anything());
+    expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+    expect(result).toStrictEqual({
+      id: "new_clip",
+      path: "t0/s0",
+      detail: "overwrote the existing clip at t0/s0",
+    });
+  });
+
+  it("keeps the old clip when the create in its place fails", async () => {
+    const liveSet = setupLiveSet();
+
     setupTrack(0);
     const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
 
-    const result = await createClip({
-      slot: "0/0",
-      name: "This Should Fail",
-    });
+    mockScratchSwap(0, 1, 0, { id: "new_clip", buildFails: true });
 
-    expect(clipSlot.call).not.toHaveBeenCalledWith(
-      "create_clip",
-      expect.anything(),
+    await expect(createClip({ slot: "0/0" })).rejects.toThrow(
+      "Live created no clip at t0/s0; the clip at t0/s0 was not touched",
     );
-    expect(result).toStrictEqual([]);
+    expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+    expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
   });
 
-  it("should emit warning and return empty array if sceneIndex exceeds maximum", async () => {
-    setupLiveSet();
+  it("replaces an occupied slot's clip and creates the rest", async () => {
+    setupLiveSet({ scenes: children("scene0") });
     setupTrack(0);
-
-    const result = await createClip({
-      slot: `0/${MAX_AUTO_CREATED_SCENES}`,
-      name: "This Should Fail",
+    setupSessionClip(0, 0, { hasClip: 1, clipProperties: { length: 4 } });
+    const { clip } = setupSessionClip(0, 1, {
+      clipId: "clip_0_1",
+      clipProperties: { length: 4 },
     });
 
-    expect(result).toStrictEqual([]);
+    // t0/s1 is made first, so the temp scene for t0/s0 is s2.
+    mockScratchSwap(0, 2, 0, { id: "new_clip" });
+
+    const result = await createClip({ path: "t0/s1,t0/s0" });
+
+    expect(result).toStrictEqual([
+      { id: clip.id, path: "t0/s1", created: "s1" },
+      {
+        id: "new_clip",
+        path: "t0/s0",
+        detail: "overwrote the existing clip at t0/s0",
+      },
+    ]);
   });
 
-  it("returns an empty array (does not select) when focus=true but no clips are created", async () => {
-    // The existing clip makes creation warn-and-skip, so 0 clips are created.
-    // The focus guard `createdClips.length > 0` (→ true / → >= 0 mutants) would
-    // then select createdClips.at(-1) — which is undefined — and throw.
+  it("creates a slot named twice once, as the last naming asks", async () => {
     setupLiveSet();
     setupTrack(0);
-    setupSessionClip(0, 0, { hasClip: 1 });
+    const { clipSlot, clip } = setupSessionClip(0, 0, {
+      clipId: "clip_0_0",
+      clipProperties: { length: 4 },
+    });
 
-    const result = await createClip({ slot: "0/0", focus: true });
+    const result = await createClip({ path: "t0/s0,t0/s0", name: "A,B" });
 
-    expect(result).toStrictEqual([]);
+    expect(clipSlot.call).toHaveBeenCalledTimes(1);
+    expect(clip.set).toHaveBeenCalledWith("name", "B");
+    expect(clip.set).not.toHaveBeenCalledWith("name", "A");
+    expect(result).toStrictEqual([
+      {
+        ok: false,
+        path: "t0/s0",
+        detail: "not created: t0/s0 is named again later in this call",
+      },
+      { id: "clip_0_0", path: "t0/s0" },
+    ]);
+  });
+
+  it("throws when sceneIndex exceeds the auto-create maximum", async () => {
+    setupLiveSet();
+    setupTrack(0);
+
+    await expect(
+      createClip({
+        slot: `0/${MAX_AUTO_CREATED_SCENES}`,
+        name: "This Should Fail",
+      }),
+    ).rejects.toThrow("out of range");
   });
 });
 
@@ -486,6 +573,7 @@ describe("createClip - session view - per-clip transforms", () => {
       {
         id: "clip_0_1",
         path: "t0/s1",
+        created: "s1",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -493,6 +581,7 @@ describe("createClip - session view - per-clip transforms", () => {
       {
         id: "clip_0_2",
         path: "t0/s2",
+        created: "s2",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -500,6 +589,7 @@ describe("createClip - session view - per-clip transforms", () => {
       {
         id: "clip_0_3",
         path: "t0/s3",
+        created: "s3",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -550,5 +640,61 @@ describe("createClip - session view - per-clip transforms", () => {
       transformed: 1,
       length: "1bar",
     });
+  });
+});
+
+describe("createClip - session view - auto", () => {
+  const frozen = "track t1 (id track-1) is frozen; unfreeze it first";
+
+  it("play-clip fires only the slots that got a clip", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    setupTrack(1, { is_frozen: 1 });
+    const made = setupSessionClip(0, 0, { clipProperties: { length: 4 } });
+    const skipped = setupSessionClip(1, 0);
+
+    const result = await createClip({ path: "t0/s0,t1/s0", auto: "play-clip" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t0/s0" }),
+      { ok: false, path: "t1/s0", detail: frozen },
+    ]);
+    expect(made.clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(skipped.clipSlot.call).not.toHaveBeenCalledWith("fire");
+  });
+
+  it("play-scene fires the scene of the first slot that got a clip", async () => {
+    setupLiveSet({ scenes: children("scene0", "scene1") });
+    setupTrack(0);
+    setupTrack(1, { is_frozen: 1 });
+    setupSessionClip(1, 0);
+    setupSessionClip(0, 1, { clipProperties: { length: 4 } });
+    const scene0 = registerMockObject("scene0", { path: livePath.scene(0) });
+    const scene1 = registerMockObject("scene1", { path: livePath.scene(1) });
+
+    await createClip({ path: "t1/s0,t0/s1", auto: "play-scene" });
+
+    expect(scene0.call).not.toHaveBeenCalledWith("fire");
+    expect(scene1.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("launches nothing when no slot got a clip", async () => {
+    setupLiveSet();
+    setupTrack(0, { is_frozen: 1 });
+    setupTrack(1, { is_frozen: 1 });
+    setupSessionClip(0, 0);
+    setupSessionClip(1, 0);
+    const scene0 = registerMockObject("scene0", { path: livePath.scene(0) });
+
+    const result = await createClip({
+      path: "t0/s0,t1/s0",
+      auto: "play-scene",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ ok: false, path: "t0/s0" }),
+      { ok: false, path: "t1/s0", detail: frozen },
+    ]);
+    expect(scene0.call).not.toHaveBeenCalledWith("fire");
   });
 });

@@ -29,13 +29,13 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
-  getTransforms,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import { getTransforms } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -123,6 +123,7 @@ function recordDurationReach(turn: number): EvalAssertion {
  */
 export const durationReachForQuarter: EvalScenario = {
   id: "duration-reach-for-quarter",
+  tags: ["notation", "transforms"],
   description:
     "`make it a quarter note` → n/4 (absolute), not bare 1/4 (a 16th in 4/4)",
   kind: "capability",

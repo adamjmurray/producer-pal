@@ -99,6 +99,18 @@ describe("makeContextIoHandlers", () => {
     expect(downloadTextFile.mock.calls[0]?.[1]).toBe("# The shipped default");
   });
 
+  it("onExport writes an empty file when there is nothing to fall back on", () => {
+    const { editor } = makeEditor("");
+    const { onExport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "producer-pal-global",
+    });
+
+    onExport();
+
+    expect(downloadTextFile.mock.calls[0]?.[1]).toBe("");
+  });
+
   it("onExport prefers the user's own content over the built-in", () => {
     const { editor } = makeEditor("# my fork");
     const { onExport } = makeContextIoHandlers({

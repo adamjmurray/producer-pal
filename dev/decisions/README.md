@@ -5,7 +5,7 @@ from the code or git history — especially the things we deliberately chose not
 to do.
 
 The codebase already documents its rules (`AGENTS.md`,
-`dev/Coding-Standards.md`) and its intended work (`dev/plans/`, the
+`dev/coding-standards/README.md`) and its intended work (`dev/plans/`, the
 [roadmap](https://producer-pal.org/roadmap)). What neither captures is the
 reasoning behind a settled decision, particularly a rejection. That's the most
 expensive knowledge to reconstruct and the easiest to lose. If a future
@@ -17,8 +17,8 @@ answer belongs here.
 - **ADR** — a decision already made, with lasting consequences, that isn't
   self-evident from the code. Includes "won't fix" calls.
 - **Not an ADR** — proposals still being weighed (→ `dev/plans/`), coding rules
-  (→ `dev/Coding-Standards.md`), or anything the code and tests already make
-  obvious.
+  (→ `dev/coding-standards/README.md`), or anything the code and tests already
+  make obvious.
 
 ## Conventions
 
@@ -66,41 +66,53 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 
 ## Index
 
-| ADR                                                      | Decision                                                              |
-| -------------------------------------------------------- | --------------------------------------------------------------------- |
-| [0003](0003-notation-grammar-duplication.md)             | Deliberately duplicate the note-value grammar                         |
-| [0004](0004-tool-input-schema-shapes.md)                 | Arrays over `string \| array` unions in tool schemas                  |
-| [0005](0005-automation-via-live-api.md)                  | Automation goes through the Live API, not offline `.als` rewriting    |
-| [0006](0006-encrypted-keys-no-backend-proxy.md)          | Provider keys encrypted at rest in the browser; no backend proxy      |
-| [0007](0007-no-native-ableton-extension.md)              | Do not build a native Ableton extension                               |
-| [0008](0008-device-disable-not-a-kill-switch.md)         | Disabling the M4L device is not a server kill switch (won't fix)      |
-| [0009](0009-warn-and-skip-error-handling.md)             | Update tools warn-and-skip instead of throwing                        |
-| [0010](0010-user-content-overrides-layer.md)             | `~/.producer-pal` is a content-override layer, not a settings mirror  |
-| [0011](0011-dotted-triplet-note-value-suffixes.md)       | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`     |
-| [0012](0012-no-chord-symbols-in-bar-beat.md)             | No chord symbols in bar\|beat; they stay Stark-only                   |
-| [0013](0013-config-override-gate.md)                     | Config-override env vars are opt-in (gated), not opt-out (superseded) |
-| [0014](0014-subagent-resume-from-transcript.md)          | A subagent resumes from its recorded transcript, not a live session   |
-| [0015](0015-project-context-param-rename.md)             | Rename the project-context device parameter in 2.1.0, while it's free |
-| [0016](0016-notation-head-gating-granularity.md)         | One fragment per notation is the tool-gating floor (superseded)       |
-| [0017](0017-oxlint-category-baseline.md)                 | oxlint runs on categories, with an opt-out list                       |
-| [0018](0018-tolerated-but-untaught-syntax.md)            | Accept the syntax models already write, without teaching it           |
-| [0019](0019-notation-head-read-write-split.md)           | A notation head may split off a `-write` sibling                      |
-| [0020](0020-looping-preserves-the-region.md)             | `looping` changes the loop flag and nothing else                      |
-| [0021](0021-string-caps-stay-out-of-the-schema.md)       | String caps over 2000 never reach the JSON Schema                     |
-| [0022](0022-audio-work-lives-in-companion-skills.md)     | Audio generation and analysis live in companion skills                |
-| [0023](0023-live-api-objects-are-pooled-per-request.md)  | LiveAPI objects are released and pooled, never held across requests   |
-| [0024](0024-fetch-stalls-are-a-harness-problem.md)       | The ~2s `fetch` stall is fixed in the harness, not the portal         |
-| [0025](0025-object-path-grammar.md)                      | One object-path grammar, scoped to clips and devices                  |
-| [0026](0026-small-model-read-output-trims-by-include.md) | Small-model read output trims by `include`, not by a second shape     |
-| [0027](0027-setproperty-stays-out-of-ppal-live-api.md)   | `setProperty` stays out of ppal-live-api                              |
-| [0029](0029-an-empty-param-is-dropped-from-the-args.md)  | An empty param is dropped from the args                               |
-| [0030](0030-leaving-a-conversation-stops-the-turn.md)    | Leaving a conversation stops the turn, with a warning                 |
-| [0031](0031-list-params-broadcast-or-pair-exactly.md)    | A comma-separated param broadcasts one value or pairs exactly         |
-| [0032](0032-warnings-ride-inside-the-response-json.md)   | Warnings ride inside the response JSON, not as trailing Max atoms     |
-| [0033](0033-portal-settings-are-per-client.md)           | Portal settings are per-client, so the override gate is gone          |
-| [0034](0034-a-drum-pad-is-a-slot-chains-are-layers.md)   | A drum pad is a slot, and chains are the layers on it                 |
-| [0035](0035-malformed-calls-are-refused-up-front.md)     | A malformed call is refused up front, not warned mid-flight           |
-| [0036](0036-paths-address-tracks-and-scenes.md)          | Paths address tracks and scenes too                                   |
-| [0037](0037-arrangement-time-is-part-of-the-path.md)     | Arrangement time is part of the path                                  |
-| [0038](0038-l-equals-names-the-lane-l-plus-made.md)      | `l=` names the lane the `l+` before it appended (reversed)            |
-| [0039](0039-the-arrangement-timeline-is-state.md)        | The arrangement timeline is state, the playhead is not                |
+| ADR                                                                | Decision                                                              |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [0003](0003-notation-grammar-duplication.md)                       | Deliberately duplicate the note-value grammar                         |
+| [0004](0004-tool-input-schema-shapes.md)                           | Arrays over `string \| array` unions in tool schemas                  |
+| [0005](0005-automation-via-live-api.md)                            | Automation goes through the Live API, not offline `.als` rewriting    |
+| [0006](0006-encrypted-keys-no-backend-proxy.md)                    | Provider keys encrypted at rest in the browser; no backend proxy      |
+| [0007](0007-no-native-ableton-extension.md)                        | Do not build a native Ableton extension                               |
+| [0008](0008-device-disable-not-a-kill-switch.md)                   | Disabling the M4L device is not a server kill switch (won't fix)      |
+| [0009](0009-warn-and-skip-error-handling.md)                       | Update tools warn-and-skip instead of throwing                        |
+| [0010](0010-user-content-overrides-layer.md)                       | `~/.producer-pal` is a content-override layer, not a settings mirror  |
+| [0011](0011-dotted-triplet-note-value-suffixes.md)                 | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`     |
+| [0012](0012-no-chord-symbols-in-bar-beat.md)                       | No chord symbols in bar\|beat; they stay Stark-only                   |
+| [0013](0013-config-override-gate.md)                               | Config-override env vars are opt-in (gated), not opt-out (superseded) |
+| [0014](0014-subagent-resume-from-transcript.md)                    | A subagent resumes from its recorded transcript, not a live session   |
+| [0015](0015-project-context-param-rename.md)                       | Rename the project-context device parameter in 2.1.0, while it's free |
+| [0016](0016-notation-head-gating-granularity.md)                   | One fragment per notation is the tool-gating floor (superseded)       |
+| [0017](0017-oxlint-category-baseline.md)                           | oxlint runs on categories, with an opt-out list                       |
+| [0018](0018-tolerated-but-untaught-syntax.md)                      | Accept the syntax models already write, without teaching it           |
+| [0019](0019-notation-head-read-write-split.md)                     | A notation head may split off a `-write` sibling                      |
+| [0020](0020-looping-preserves-the-region.md)                       | `looping` changes the loop flag and nothing else                      |
+| [0021](0021-string-caps-stay-out-of-the-schema.md)                 | String caps over 2000 never reach the JSON Schema                     |
+| [0022](0022-audio-work-lives-in-companion-skills.md)               | Audio generation and analysis live in companion skills                |
+| [0023](0023-live-api-objects-are-pooled-per-request.md)            | LiveAPI objects are released and pooled, never held across requests   |
+| [0024](0024-fetch-stalls-are-a-harness-problem.md)                 | The ~2s `fetch` stall is fixed in the harness, not the portal         |
+| [0025](0025-object-path-grammar.md)                                | One object-path grammar, scoped to clips and devices                  |
+| [0026](0026-small-model-read-output-trims-by-include.md)           | Small-model read output trims by `include`, not by a second shape     |
+| [0027](0027-setproperty-stays-out-of-ppal-live-api.md)             | `setProperty` stays out of ppal-live-api                              |
+| [0029](0029-an-empty-param-is-dropped-from-the-args.md)            | An empty param is dropped from the args                               |
+| [0030](0030-leaving-a-conversation-stops-the-turn.md)              | Leaving a conversation stops the turn, with a warning                 |
+| [0031](0031-list-params-broadcast-or-pair-exactly.md)              | A comma-separated param broadcasts one value or pairs exactly         |
+| [0032](0032-warnings-ride-inside-the-response-json.md)             | Warnings ride inside the response JSON, not as trailing Max atoms     |
+| [0033](0033-portal-settings-are-per-client.md)                     | Portal settings are per-client, so the override gate is gone          |
+| [0034](0034-a-drum-pad-is-a-slot-chains-are-layers.md)             | A drum pad is a slot, and chains are the layers on it                 |
+| [0035](0035-malformed-calls-are-refused-up-front.md)               | A malformed call is refused up front, not warned mid-flight           |
+| [0036](0036-paths-address-tracks-and-scenes.md)                    | Paths address tracks and scenes too                                   |
+| [0037](0037-arrangement-time-is-part-of-the-path.md)               | Arrangement time is part of the path                                  |
+| [0038](0038-l-equals-names-the-lane-l-plus-made.md)                | `l=` names the lane the `l+` before it appended (reversed)            |
+| [0039](0039-the-arrangement-timeline-is-state.md)                  | The arrangement timeline is state, the playhead is not                |
+| [0040](0040-duplicate-loop-does-not-take-a-region.md)              | `duplicateLoop` does not take a region                                |
+| [0041](0041-device-type-segments-are-input-only.md)                | `inst`/`mfx<n>`/`afx<n>` are input only; results keep `d<n>`          |
+| [0042](0042-a-skipped-target-keeps-its-slot.md)                    | A skipped target keeps its slot: `ok: false` and a reason             |
+| [0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md) | A `+` belongs to the tool that creates that kind of object            |
+| [0044](0044-write-results-report-only-what-changed.md)             | A write result reports only what didn't land as asked                 |
+| [0045](0045-c-plus-appends-a-rack-chain.md)                        | `c+` appends a rack chain; nothing ever inserts one                   |
+| [0046](0046-d-plus-appends-a-device.md)                            | `d+` appends a device; `d<n>` still inserts at n                      |
+| [0047](0047-an-arrangement-write-overwrites-and-says-so.md)        | An arrangement write overwrites, and says so on the entry             |
+| [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target  |
+| [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |
+| [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                  |
+| [0051](0051-a-write-that-did-nothing-says-so.md)                   | A write that did nothing says so                                      |

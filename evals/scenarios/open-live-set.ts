@@ -36,12 +36,16 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
+import { nextReadyStreak } from "./helpers/open-live-set/open-live-set-ready.ts";
 
 // For `open -a`. Override to test against a differently-named bundle
 // (e.g. a side-by-side older version).
 const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
 const ABLETON_PROCESS = "Live"; // For System Events
 const POLL_INTERVAL_MS = 250;
+// Consecutive successful probes required before the server counts as up. See
+// nextReadyStreak() for why one success alone isn't enough.
+const READY_STREAK_REQUIRED = 2;
 // A swap takes ~1.5s once nothing is in its way. The headroom is for the
 // dialogs, which hold Live at the old Set until the watcher clicks them.
 const SERVER_STOP_TIMEOUT_MS = 20000;
@@ -250,6 +254,7 @@ async function waitForServerToStop(): Promise<void> {
  */
 async function waitForServerToStart(): Promise<void> {
   const start = Date.now();
+  let readyStreak = 0;
 
   while (Date.now() - start < SERVER_START_TIMEOUT_MS) {
     const refusal = await dismissUnsupportedVersionAlert();
@@ -263,7 +268,9 @@ async function waitForServerToStart(): Promise<void> {
       );
     }
 
-    if (await mcpServerIsReady()) {
+    readyStreak = nextReadyStreak(readyStreak, await mcpServerIsReady());
+
+    if (readyStreak >= READY_STREAK_REQUIRED) {
       return;
     }
 

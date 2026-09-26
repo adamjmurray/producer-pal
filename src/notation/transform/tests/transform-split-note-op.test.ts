@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
-import { splitNotes } from "#src/notation/transform/helpers/note-cut-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
+import { splitNotes } from "#src/notation/transform/helpers/note-ops/note-cuts.ts";
 import { type NoteOp } from "#src/notation/transform/parser/transform-parser.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";

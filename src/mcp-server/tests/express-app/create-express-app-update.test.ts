@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Server } from "node:http";
-import { type AddressInfo } from "node:net";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { withExpressApp } from "../express-app-test-helpers.ts";
 
 // Only GitHub itself is mocked — the memo in update-check.ts is the real one, so
 // the call counts below are the end-to-end guarantee, not a restatement of it.
@@ -26,18 +25,11 @@ vi.mock(import("#src/shared/version-check.ts"), () => ({
 async function getUpdateTimes(
   times: number,
 ): Promise<{ status: number; cacheControl: string | null; body: unknown }[]> {
-  const { createExpressApp } = await import("../../create-express-app.ts");
-  const app = createExpressApp();
-  const server = await new Promise<Server>((resolve) => {
-    const s = app.listen(0, () => resolve(s));
-  });
-  const url = `http://localhost:${(server.address() as AddressInfo).port}/update`;
-
-  try {
+  return await withExpressApp(async (baseUrl) => {
     const responses = [];
 
     for (let i = 0; i < times; i++) {
-      const response = await fetch(url);
+      const response = await fetch(`${baseUrl}/update`);
 
       responses.push({
         status: response.status,
@@ -47,9 +39,7 @@ async function getUpdateTimes(
     }
 
     return responses;
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  });
 }
 
 describe("GET /update", () => {

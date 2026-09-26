@@ -14,7 +14,7 @@ import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import {
   loadSubagentPresetId,
   saveSubagentPresetId,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/chat-settings-storage";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { flushLoad } from "./use-settings-test-helpers";
 
@@ -499,7 +499,7 @@ describe("useSettings", () => {
     expect(result.current).toStrictEqual(
       expect.objectContaining({
         apiKey: "",
-        model: "gpt-5.6-terra",
+        model: "gpt-6-sol",
         thinking: "Default",
       }),
     );

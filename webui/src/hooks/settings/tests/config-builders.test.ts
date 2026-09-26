@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
   isAlwaysOnThinkingModel,
+  isOpenAIReasoningModel,
   isLegacyNonThinkingModel,
   mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
@@ -17,7 +18,7 @@ import {
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 describe("config-builders", () => {
   describe("isAlwaysOnThinkingModel", () => {
@@ -45,7 +46,7 @@ describe("config-builders", () => {
     it("is false for 3.7+ and modern named-tier ids (they support thinking)", () => {
       expect(isLegacyNonThinkingModel("claude-3-7-sonnet")).toBe(false);
       expect(isLegacyNonThinkingModel("claude-sonnet-5")).toBe(false);
-      expect(isLegacyNonThinkingModel("claude-opus-5")).toBe(false);
+      expect(isLegacyNonThinkingModel("claude-opus-5-5")).toBe(false);
       expect(isLegacyNonThinkingModel("claude-haiku-4-5")).toBe(false);
     });
   });
@@ -98,9 +99,10 @@ describe("config-builders", () => {
       expect(extractGptVersion("gpt-5.1-codex-max")).toBe(5.1);
     });
 
-    it("should return null for gpt-5 without decimal", () => {
-      expect(extractGptVersion("gpt-5-2025-08-07")).toBeNull();
-      expect(extractGptVersion("gpt-5-mini-2025-08-07")).toBeNull();
+    it("should extract whole-number versions", () => {
+      expect(extractGptVersion("gpt-5-2025-08-07")).toBe(5);
+      expect(extractGptVersion("gpt-5-mini-2025-08-07")).toBe(5);
+      expect(extractGptVersion("gpt-6-sol")).toBe(6);
     });
 
     it("should return null for non-gpt models", () => {
@@ -160,6 +162,26 @@ describe("config-builders", () => {
       });
     });
 
+    describe("gpt-6 models", () => {
+      it("should map Max to max", () => {
+        expect(mapThinkingToReasoningEffort("Max", "gpt-6-sol")).toBe("max");
+      });
+
+      it("should map Off to none", () => {
+        expect(mapThinkingToReasoningEffort("Off", "gpt-6-luna")).toBe("none");
+      });
+
+      it("should map Off to low for Astra, which rejects none", () => {
+        expect(mapThinkingToReasoningEffort("Off", "gpt-6-astra")).toBe("low");
+      });
+
+      it("should map Default to medium", () => {
+        expect(mapThinkingToReasoningEffort("Default", "gpt-6-luna")).toBe(
+          "medium",
+        );
+      });
+    });
+
     describe("gpt-5.2+ models", () => {
       it("should map Max to xhigh", () => {
         expect(mapThinkingToReasoningEffort("Max", "gpt-5.2-2025-12-11")).toBe(
@@ -172,6 +194,20 @@ describe("config-builders", () => {
           mapThinkingToReasoningEffort("Default", "gpt-5.2-2025-12-11"),
         ).toBe("medium");
       });
+    });
+  });
+
+  describe("isOpenAIReasoningModel", () => {
+    it("should detect GPT-5+ and o-series models", () => {
+      expect(isOpenAIReasoningModel("gpt-5-mini")).toBe(true);
+      expect(isOpenAIReasoningModel("gpt-5.2-2025-12-11")).toBe(true);
+      expect(isOpenAIReasoningModel("gpt-6-astra")).toBe(true);
+      expect(isOpenAIReasoningModel("o3-mini")).toBe(true);
+    });
+
+    it("should reject older and unversioned models", () => {
+      expect(isOpenAIReasoningModel("gpt-4.1")).toBe(false);
+      expect(isOpenAIReasoningModel("gpt-realtime")).toBe(false);
     });
   });
 

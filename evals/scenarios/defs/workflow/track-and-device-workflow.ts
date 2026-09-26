@@ -59,6 +59,7 @@ function assertDelaySend(): EvalAssertion {
 
 export const trackAndDeviceWorkflow: EvalScenario = {
   id: "track-and-device-workflow",
+  tags: ["workflow"],
   description:
     "Create track, add device, update properties, route sends to a new and an existing return",
   kind: "regression",

@@ -9,18 +9,25 @@
 // `p<note>` is the only exception, because Live indexes drum pads by MIDI note.
 //
 // Parsing only: nothing here touches the Live API, so a bad path fails before
-// anything is created or moved. See dev/Object-Paths.md.
+// anything is created or moved. See dev/tools/object-paths/README.md.
 
 import {
+  NEW_CHAIN,
+  NEW_DEVICE,
   parseLegacyPath,
   pathError,
   splitCoord,
 } from "./helpers/object-path-lexer.ts";
-import { parseDeviceTail } from "./helpers/object-path-device-tail.ts";
+import {
+  DEVICE_TYPE_FORMS,
+  deviceTailNoun,
+  parseDeviceTail,
+  type DeviceTail,
+} from "./helpers/object-path-device-tail.ts";
 import {
   arrangementPosition,
   type ArrangementPosition,
-} from "./helpers/object-path-coord.ts";
+} from "./helpers/object-path-position.ts";
 
 /** A path root naming a track. */
 export type TrackSegment =
@@ -28,15 +35,37 @@ export type TrackSegment =
   | { kind: "return-track"; returnIndex: number }
   | { kind: "master-track" };
 
-/** A segment below a track root, down the device chain. */
+/** A kind of device, for a segment that addresses one by type. */
+export type DeviceTypeName = "instrument" | "midi-effect" | "audio-effect";
+
+/**
+ * A segment below a track root, down the device chain. `device-by-type` names
+ * a device by what it is (`inst`, `mfx0`, `afx1`) rather than by its position,
+ * counting only devices of that type; its index is 0 for an instrument, which
+ * a container holds at most one of.
+ */
 export type DeviceSegment =
   | { kind: "device"; index: number }
+  | { kind: "device-by-type"; deviceType: DeviceTypeName; index: number }
   | { kind: "chain"; index: number }
   | { kind: "return-chain"; index: number }
   | { kind: "drum-pad"; note: string };
 
+/**
+ * A device-chain segment that already names its target by position. Every
+ * resolver takes these: a `device-by-type` segment is substituted for the
+ * `d<n>` it resolves to before anything walks the path.
+ */
+export type CanonicalDeviceSegment = Exclude<
+  DeviceSegment,
+  { kind: "device-by-type" }
+>;
+
 /** A device-chain segment that indexes into a Live API collection. */
-export type IndexedSegment = Exclude<DeviceSegment, { kind: "drum-pad" }>;
+export type IndexedSegment = Exclude<
+  CanonicalDeviceSegment,
+  { kind: "drum-pad" }
+>;
 
 /** A path naming a place to create something rather than a thing that exists. */
 export type NewObjectSegment =
@@ -51,16 +80,19 @@ export type ObjectPath =
   | { kind: "scene"; sceneIndex: number }
   | { kind: "slot"; trackIndex: number; sceneIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
+  | { kind: "new-take-lane"; trackIndex: number }
   | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
+  | { kind: "new-chain"; root: TrackSegment; segments: DeviceSegment[] }
+  | { kind: "new-device"; root: TrackSegment; segments: DeviceSegment[] }
   | ArrangementPosition;
 
 const TRACK_ROOT = /^t(\d+)$/;
 const RETURN_TRACK_ROOT = /^rt(\d+)$/;
 const SCENE = /^s(\d+)$/;
 const TAKE_LANE = /^l(\d+)$/;
-// An early spelling for "append a lane". Still recognized so it gets the
-// take-lane error rather than a device one: a "+" now only ever roots a path.
-const RETIRED_TAKE_LANE = "l+";
+// Appends a lane. A "+" is accepted only by the tool that creates that kind of
+// object, and a take lane is part of its track, so ppal-update-track owns it.
+const NEW_TAKE_LANE = "l+";
 const NEW_TRACK = "t+";
 const NEW_RETURN_TRACK = "rt+";
 const NEW_SCENE = "s+";
@@ -84,6 +116,16 @@ export const NEW_OBJECT_NOUNS: Record<NewObjectSegment["kind"], string> = {
   "new-return-track": "a new return track",
   "new-scene": "a new scene",
 };
+
+/** Why a tool that only reaches existing objects can't take each "+" root. */
+export const NEW_OBJECT_ADVICE: Record<NewObjectSegment["kind"], string> = {
+  "new-track": `"${NEW_TRACK}" adds a track, which only ppal-create-track does`,
+  "new-return-track": `"${NEW_RETURN_TRACK}" adds a return track, which only ppal-create-track does`,
+  "new-scene": `"${NEW_SCENE}" adds a scene, which only ppal-create-scene does`,
+};
+
+/** Where to send a caller whose track path names a spot past the last track. */
+export const CREATE_TRACK_ADVICE = "ppal-create-track adds tracks";
 
 const LIVE_API_COLLECTION = {
   device: "devices",
@@ -157,6 +199,8 @@ export function formatObjectPath(path: ObjectPath): string {
       return `t${path.trackIndex}/s${path.sceneIndex}`;
     case "take-lane":
       return `t${path.trackIndex}/l${path.laneIndex}`;
+    case "new-take-lane":
+      return `t${path.trackIndex}/${NEW_TAKE_LANE}`;
     case "new-track":
       return NEW_TRACK;
     case "new-return-track":
@@ -164,10 +208,11 @@ export function formatObjectPath(path: ObjectPath): string {
     case "new-scene":
       return NEW_SCENE;
     case "device":
-      return [
-        formatTrackSegment(path.root),
-        ...path.segments.map(formatDeviceSegment),
-      ].join("/");
+      return deviceChainPath(path.root, path.segments);
+    case "new-chain":
+      return `${deviceChainPath(path.root, path.segments)}/${NEW_CHAIN}`;
+    case "new-device":
+      return `${deviceChainPath(path.root, path.segments)}/${NEW_DEVICE}`;
     case "arrangement-position":
       return `${path.lane == null ? "" : formatObjectPath(path.lane)}[${path.position}]`;
     default:
@@ -193,6 +238,13 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
   switch (segment.kind) {
     case "device":
       return `d${segment.index}`;
+
+    case "device-by-type": {
+      const form = DEVICE_TYPE_FORMS[segment.deviceType];
+
+      return form.indexed ? `${form.segment}${segment.index}` : form.segment;
+    }
+
     case "chain":
       return `c${segment.index}`;
     case "return-chain":
@@ -209,6 +261,17 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
  */
 export function liveApiCollection(segment: IndexedSegment): string {
   return LIVE_API_COLLECTION[segment.kind];
+}
+
+/**
+ * Whether a trailing segment names a device rather than a container. Both
+ * spellings count, so an insertion path ending in `afx0` names a position the
+ * same way one ending in `d2` does.
+ * @param segment - The last device-chain segment, or undefined for none
+ * @returns True when the segment names a device
+ */
+export function namesDevice(segment: DeviceSegment | undefined): boolean {
+  return segment?.kind === "device" || segment?.kind === "device-by-type";
 }
 
 // --- Helpers below main exports ---
@@ -293,25 +356,62 @@ function parseTail(
 
   const first = tail[0] as string;
 
-  // A scene or take lane anywhere but right after the track is a misplaced
-  // coordinate, not a device — say so instead of blaming a device segment.
-  const misplaced = tail.findIndex(
-    (segment, i) => i > 0 && isTrackChild(segment),
-  );
+  if (isTrackChild(first)) {
+    return parseTrackChild(root, tail, label, input);
+  }
+
+  // A scene or take lane in a device chain is misplaced; check the chain
+  // before it first, so a bad segment there is blamed for itself.
+  const misplaced = tail.findIndex(isTrackChild);
 
   if (misplaced !== -1) {
-    throw trackChildError(label, input, tail[misplaced] as string);
+    const owner =
+      root.kind === "track"
+        ? misplacedOwner(
+            parseDeviceTail(tail.slice(0, misplaced), label, input),
+          )
+        : undefined;
+
+    throw trackChildError(label, input, tail[misplaced] as string, owner);
   }
 
-  if (isTrackChild(first)) {
-    return parseTrackChild(root, first, tail.length, label, input);
+  const { segments, appendsChain, appendsDevice } = parseDeviceTail(
+    tail,
+    label,
+    input,
+  );
+
+  return { kind: deviceTailKind(appendsChain, appendsDevice), root, segments };
+}
+
+/**
+ * What a scene or take lane was put under instead of a track.
+ * @param tail - The device chain before it
+ * @returns A noun phrase, e.g. "a device"
+ */
+function misplacedOwner(tail: DeviceTail): string {
+  if (tail.appendsDevice) {
+    return "a new device";
   }
 
-  return {
-    kind: "device",
-    root,
-    segments: parseDeviceTail(tail, label, input),
-  };
+  return tail.appendsChain ? "a new chain" : deviceTailNoun(tail.segments);
+}
+
+/**
+ * What a device chain names: a place for something new, or what is there.
+ * @param appendsChain - Whether the tail ended in `c+`
+ * @param appendsDevice - Whether it ended in `d+`
+ * @returns The path kind
+ */
+function deviceTailKind(
+  appendsChain: boolean,
+  appendsDevice: boolean,
+): "new-chain" | "new-device" | "device" {
+  if (appendsChain) {
+    return "new-chain";
+  }
+
+  return appendsDevice ? "new-device" : "device";
 }
 
 /**
@@ -321,34 +421,36 @@ function parseTail(
  */
 function isTrackChild(segment: string): boolean {
   return (
-    SCENE.test(segment) ||
-    TAKE_LANE.test(segment) ||
-    segment === RETIRED_TAKE_LANE
+    SCENE.test(segment) || TAKE_LANE.test(segment) || segment === NEW_TAKE_LANE
   );
 }
 
 /**
  * Builds the clip slot or take lane a track child names.
  * @param root - The parsed root segment
- * @param segment - The child segment
- * @param tailLength - How many segments follow the root
+ * @param tail - Segments after the root; the first is the child
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @returns The slot or take lane
  */
 function parseTrackChild(
   root: TrackSegment,
-  segment: string,
-  tailLength: number,
+  tail: string[],
   label: string,
   input: string,
 ): ObjectPath {
-  if (
-    root.kind !== "track" ||
-    tailLength !== 1 ||
-    segment === RETIRED_TAKE_LANE
-  ) {
+  const segment = tail[0] as string;
+
+  if (root.kind !== "track") {
     throw trackChildError(label, input, segment);
+  }
+
+  if (tail.length > 1) {
+    throw trackChildTailError(label, input, segment, tail[1] as string);
+  }
+
+  if (segment === NEW_TAKE_LANE) {
+    return { kind: "new-take-lane", trackIndex: root.trackIndex };
   }
 
   const scene = SCENE.exec(segment);
@@ -375,20 +477,70 @@ function parseTrackChild(
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @param segment - The offending segment
+ * @param owner - What it came after on a regular track, e.g. "a device"
  * @returns The error to throw
  */
-function trackChildError(label: string, input: string, segment: string): Error {
-  return SCENE.test(segment)
-    ? pathError(
-        label,
-        input,
-        `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes`,
-      )
-    : pathError(
-        label,
-        input,
-        `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes`,
-      );
+function trackChildError(
+  label: string,
+  input: string,
+  segment: string,
+  owner?: string,
+): Error {
+  const scene = SCENE.test(segment);
+  const shape = scene
+    ? `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1")`
+    : `a take lane is "t<track>/l<lane>" (e.g. "t0/l0")`;
+  const children = scene ? "clip slots" : "take lanes";
+  const why =
+    owner == null
+      ? `only regular tracks have ${scene ? "scenes" : "take lanes"}`
+      : `${children} belong to a track, not ${owner}`;
+
+  return pathError(label, input, `${shape}; ${why}`);
+}
+
+/**
+ * Explains a segment after a clip slot or take lane, which have no parts.
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @param child - The slot or lane segment
+ * @param next - The segment after it
+ * @returns The error to throw
+ */
+function trackChildTailError(
+  label: string,
+  input: string,
+  child: string,
+  next: string,
+): Error {
+  if (child === NEW_TAKE_LANE) {
+    return pathError(
+      label,
+      input,
+      `"${child}" appends a take lane, so nothing can follow it`,
+    );
+  }
+
+  const problem = SCENE.test(child)
+    ? "can't follow a clip slot; a path ends at the slot"
+    : "can't follow a take lane; a path ends at the lane";
+
+  return pathError(label, input, `"${next}" ${problem}`);
+}
+
+/**
+ * Renders a track root and the device chain below it.
+ * @param root - A parsed track root
+ * @param segments - The device-chain segments below it
+ * @returns The canonical path string
+ */
+function deviceChainPath(
+  root: TrackSegment,
+  segments: DeviceSegment[],
+): string {
+  return [formatTrackSegment(root), ...segments.map(formatDeviceSegment)].join(
+    "/",
+  );
 }
 
 /**

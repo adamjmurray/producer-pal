@@ -17,17 +17,26 @@ function createMockChat() {
   };
 }
 
+/**
+ * Render the hook over a fresh mock chat.
+ * @returns The mock chat and the hook result
+ */
+function setup() {
+  const chat = createMockChat();
+  const { result } = renderHook(() => useConversationLock({ chat }));
+
+  return { chat, result };
+}
+
 describe("useConversationLock", () => {
   it("returns the provided chat", () => {
-    const chat = createMockChat();
-    const { result } = renderHook(() => useConversationLock({ chat }));
+    const { chat, result } = setup();
 
     expect(result.current.chat).toBe(chat);
   });
 
   it("delegates handleSend to chat", async () => {
-    const chat = createMockChat();
-    const { result } = renderHook(() => useConversationLock({ chat }));
+    const { chat, result } = setup();
 
     await act(async () => {
       await result.current.wrappedHandleSend("Hello");
@@ -36,8 +45,7 @@ describe("useConversationLock", () => {
   });
 
   it("delegates clearConversation to chat", async () => {
-    const chat = createMockChat();
-    const { result } = renderHook(() => useConversationLock({ chat }));
+    const { chat, result } = setup();
 
     await act(async () => {
       await result.current.wrappedHandleSend("Hello");
@@ -50,8 +58,7 @@ describe("useConversationLock", () => {
   });
 
   it("passes message options to handleSend", async () => {
-    const chat = createMockChat();
-    const { result } = renderHook(() => useConversationLock({ chat }));
+    const { chat, result } = setup();
     const options = { thinking: "Max" };
 
     await act(async () => {

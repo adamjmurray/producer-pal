@@ -10,22 +10,20 @@
  * Bypasses MCP and Ableton entirely. Feeds hand-written JSON Schema straight to
  * the AI SDK via jsonSchema() (the same wire format evals/chat/mcp.ts sends),
  * using tools with NO execute so each model emits exactly one tool call and
- * stops. For each model x schema-variant we record whether the provider:
- *   ACCEPTED the schema (no API/schema error), and
- *   FILLED it in a structurally correct shape (per-variant check()).
- *
+ * stops. Each model x variant cell records whether the provider ACCEPTED the
+ * schema and FILLED it in a structurally correct shape (per-variant check()).
  * The variant corpus lives in ./schema-compat-variants.ts.
  *
  * Run: node --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
  *   models: provider/model or prefix-inferred (e.g. gemini-3.5-flash,
  *           mistral/mistral-small-latest, openrouter/anthropic/claude-haiku-4.5).
- *           Defaults to the supported providers (Gemini, OpenAI, Mistral,
- *           OpenRouter). Models whose API key is missing are skipped.
- *   flags:  --repeat=N  draws per cell (default 3; controls for sampling noise)
- *           --temp=N    sampling temperature (default: provider default; forcing
- *                       0 breaks some reasoning models, so repeats — not temp 0 —
- *                       are how this probe controls for noise)
- *           --auto      let the model decide whether to call (see TOOL_CHOICE)
+ *           Defaults to one per supported provider; a missing API key skips it.
+ *   flags:  --repeat=N   draws per cell (default 3; controls for sampling noise)
+ *           --temp=N     sampling temperature (default: provider default; forcing
+ *                        0 breaks some reasoning models, so repeats — not temp 0
+ *                        — are how this probe controls for noise)
+ *           --auto       let the model decide whether to call (see TOOL_CHOICE)
+ *           --variant=id probe only this variant (repeatable)
  *
  * See README.md in this directory for a checked-in results snapshot.
  */
@@ -45,7 +43,11 @@ import {
   runProbeMatrix,
   truncate,
 } from "./probe-report.ts";
-import { VARIANTS, type Args, type Variant } from "./schema-compat-variants.ts";
+import {
+  type Args,
+  selectedVariants,
+  type Variant,
+} from "./schema-compat-variants.ts";
 
 /** Per-call wall-clock cap so a hung/rate-limited model can't stall the run. */
 const PROBE_TIMEOUT_MS = 60_000;
@@ -67,7 +69,7 @@ const TOOL_CHOICE: "auto" | "required" = process.argv.includes("--auto")
 const REPEATS = Math.max(1, Math.floor(numArg("--repeat=") ?? 3));
 /**
  * Sampling temperature. Left unset (provider default) by default: forcing 0 on
- * reasoning models (e.g. gpt-5-nano) gets rejected by some endpoints, which
+ * reasoning models (e.g. gpt-5.6-luna) gets rejected by some endpoints, which
  * would show as false `rejected` cells. Repeats — not temp 0 — are how this
  * probe controls for noise. Override with --temp=N when the model allows it.
  */
@@ -152,7 +154,7 @@ const models = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 
 await runProbeMatrix<LanguageModel>({
   modelArgs: models.length > 0 ? models : defaultModels(),
-  variants: VARIANTS,
+  variants: selectedVariants(),
   repeats: REPEATS,
   settings: [
     `Tool choice: ${TOOL_CHOICE} | repeats: ${REPEATS} | temperature: ` +

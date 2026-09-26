@@ -3,77 +3,33 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-optimizer.ts";
-import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
-import {
-  emitArrangementWarnings,
-  type MoveGroup,
-} from "./helpers/arrangement/update-clip-move-groups.ts";
-import { trackMoveSkips } from "./helpers/arrangement/update-clip-move-skip.ts";
-import {
-  planClipUpdate,
-  type ClipUpdatePlan,
-} from "./helpers/update-clip-prep-helpers.ts";
+  type ClipEntry,
+  clipEntriesInCallOrder,
+  type ClipTargets,
+  resolveClipTargets,
+} from "./helpers/entries/clip-targets.ts";
+import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { planClipUpdate, warnBlankArgs } from "./helpers/plan-clip-update.ts";
 import {
   refuseRegionWithDuplicateLoop,
   refuseUnreadableCall,
-} from "./helpers/update-clip-refusal-helpers.ts";
+} from "./helpers/update-clip-refusals.ts";
 import {
-  type ClipAudioWarpQuantizeParams,
-  type ProcessSingleClipUpdateParams,
-  processSingleClipUpdate,
-} from "./helpers/update-clip-helpers.ts";
-import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+  type ClipUpdateArgs,
+  runClipBatch,
+} from "./helpers/batch/run-clip-batch.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,
-  targetIds,
+  targetParamLabel,
   warnBlankTarget,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-
-interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
-  id?: string;
-  /** Hidden alias for id */
-  ids?: string;
-  path?: string;
-  /** Hidden alias for path */
-  paths?: string;
-  notes?: string;
-  transforms?: string;
-  preTransforms?: string;
-  name?: string;
-  color?: string;
-  timeSignature?: string;
-  start?: string;
-  length?: string;
-  firstStart?: string;
-  looping?: boolean;
-  duplicateLoop?: boolean;
-  arrangementStart?: string;
-  arrangementLength?: string;
-  toSlot?: string;
-  toPath?: string;
-  arrangementSplit?: string;
-  split?: string;
-  code?: string;
-  focus?: boolean;
-}
 
 /**
  * Updates properties of existing clips
@@ -88,10 +44,10 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
- * @param args.timeSignature - Time signature in format "4/4"
- * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction>. end = start + length
- * @param args.firstStart - Bar|beat position for initial playback start
+ * @param args.timeSignature - Time signature in format "4/4", one per clip
+ * @param args.start - Bar|beat position where loop/clip region begins, one per clip
+ * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction> (end = start + length), one per clip
+ * @param args.firstStart - Bar|beat position for initial playback start, one per clip
  * @param args.looping - Enable looping for the clip
  * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
@@ -114,13 +70,13 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
  * @param args.code - JavaScript code to transform notes (broadcast across the clips; use context.clip.{index,count} for per-clip variation)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Per-request context
- * @returns Single clip object or array of clip objects
+ * @returns The clip when one was named, otherwise one entry per target named
  */
 export async function updateClip(
-  args: UpdateClipArgs = {},
+  args: ClipUpdateArgs = {},
   context: Partial<ToolContext> = {},
-): Promise<ClipResult | ClipResult[]> {
-  const { id, ids, path, paths, name, color, toPath, toSlot } = args;
+): Promise<ClipEntry | ClipEntry[]> {
+  const { id, ids, path, paths, toPath, toSlot } = args;
   const { arrangementStart, arrangementLength, arrangementSplit, split } = args;
   // Set once per request by the V8 adapter, so a nested call (duplicate ->
   // updateClip) spends the caller's remaining budget instead of restarting it.
@@ -128,179 +84,56 @@ export async function updateClip(
 
   // Refuses a call whose lists disagree, or that names no clip at all, before
   // resolving anything.
-  const requestedIds = resolveClipTargets(
-    { id, ids, path, paths },
-    { name, color, arrangementStart, arrangementLength, toPath, toSlot },
-  );
+  const targets = clipTargets({ id, ids, path, paths }, args);
 
-  refuseUnreadableCall(
-    args.timeSignature,
-    args.quantizePitch,
-    toPath,
-    arrangementStart,
-  );
+  refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 
+  // Paired with the targets named, not the clips found, so name[k] lands on
+  // target k and every piece of a split takes its target's name. Done before
+  // the plan, which may split: a bad color or a gap in the names must be
+  // refused before anything is cut.
+  const labels = pairLabels({
+    noun: "clip",
+    count: targets.named.length,
+    name: args.name,
+    color: args.color,
+  });
+
+  // What the clips the call did reach have to say beyond their own results.
+  const reasons = newClipReasons();
   const plan = planClipUpdate({
-    requestedIds,
+    targets,
     toPath,
     toSlot,
     arrangementStart,
     arrangementLength,
     arrangementSplit,
     split,
+    reasons,
     context,
   });
 
-  // Said here, not where the args are read: it claims what the call did, so a
-  // call refused above — or one whose paths found no clip — must not carry it.
+  // Said here, not where the args are read: they claim what the call did, so a
+  // call refused above — or one whose paths found no clip — must not carry them.
   warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
+  warnBlankArgs(args);
 
-  const movedClipGroups = new Map<string, MoveGroup>();
-  const updated = await runClipBatch({
+  const resultsPerSlot = await runClipBatch({
     args,
     plan,
+    targets,
+    labels,
+    reasons,
     context,
     deadline,
-    movedClipGroups,
   });
 
-  return finishUpdate(movedClipGroups, plan.overwrites, updated, args.focus);
-}
-
-interface RunClipBatchArgs {
-  args: UpdateClipArgs;
-  plan: ClipUpdatePlan;
-  context: Partial<ToolContext>;
-  deadline: number | null;
-  movedClipGroups: Map<string, MoveGroup>;
-}
-
-/**
- * Update the clips one at a time, in the plan's order, and hand the results
- * back in the order the caller named them.
- * @param batch - The call's args, the plan, and the per-call collectors
- * @param batch.args - The tool arguments as received
- * @param batch.plan - What the call does to which clips
- * @param batch.context - Per-request context
- * @param batch.deadline - The request deadline
- * @param batch.movedClipGroups - Tally of clips landing on each lane and position
- * @returns One entry per clip written, in call order
- */
-async function runClipBatch({
-  args,
-  plan,
-  context,
-  deadline,
-  movedClipGroups,
-}: RunClipBatchArgs): Promise<ClipResult[]> {
-  const { clips, moveOrder, destinationById } = plan;
-  const { name, color } = args;
-  const parsedNames = parseNames(name, clips.length, "clip");
-  const parsedColors = parseColors(color, clips.length, "clip");
-  const updatedClips: ClipResult[] = [];
-  // The clips can be processed out of call order, so each one's results are
-  // kept at its own place and the response is put back together at the end.
-  const resultsPerClip: ClipResult[][] = clips.map(() => []);
-  // The tracks the moves resolve, so a batch moving into one track resolves it
-  // once; what makes reusing one safe is spelled out at destinationTrack() in
-  // the slot-move helpers. Lives and dies with this call.
-  const destinationTracks = new Map<number, LiveAPI>();
-  // The order above assumes every move lands. This watches what actually
-  // happened and calls off the moves that were counting on one that didn't.
-  const skips = trackMoveSkips({
-    clips,
-    dependencies: plan.dependencies,
-    vacates: plan.vacates,
-    refuseMove: plan.refuseMove,
+  return finishUpdate({
+    targets,
+    resultsPerSlot,
+    focus: args.focus,
   });
-
-  for (const [step, i] of moveOrder.entries()) {
-    const clip = clips[i] as LiveAPI;
-
-    if (stopBatch(deadline, clips, moveOrder, step)) {
-      break;
-    }
-
-    const written = updatedClips.length;
-
-    await processClipUpdateStep({
-      clip,
-      clipIndex: i,
-      clipCount: clips.length,
-      notationString: args.notes,
-      transformString: args.transforms,
-      preTransformString: args.preTransforms,
-      name: getNameForIndex(name, i, parsedNames),
-      color: getColorForIndex(color, i, parsedColors),
-      timeSignature: args.timeSignature,
-      start: args.start,
-      length: args.length,
-      firstStart: args.firstStart,
-      looping: args.looping,
-      duplicateLoop: args.duplicateLoop,
-      gainDb: args.gainDb,
-      pitchShift: args.pitchShift,
-      warpMode: args.warpMode,
-      warping: args.warping,
-      warpOp: args.warpOp,
-      warpBeatTime: args.warpBeatTime,
-      warpSampleTime: args.warpSampleTime,
-      warpDistance: args.warpDistance,
-      quantize: args.quantize,
-      quantizeGrid: args.quantizeGrid,
-      quantizePitch: args.quantizePitch,
-      arrangementLengthBeats: plan.lengthBeatsFor(clip),
-      arrangementStartBeats: plan.startBeatsFor(clip),
-      destination: destinationById.get(clip.id) ?? null,
-      destinationParam: plan.destinationParam,
-      nonSurvivorClipIds: plan.overwrites?.nonSurvivorIds,
-      destinationTracks,
-      context,
-      updatedClips,
-      movedClipGroups,
-      code: args.code,
-    });
-
-    resultsPerClip[i] = updatedClips.slice(written);
-    skips.settle(i, resultsPerClip[i]);
-  }
-
-  return resultsPerClip.flat();
-}
-
-/**
- * Whether the batch should stop here, naming the clips it didn't reach.
- *
- * Without them the caller knows the batch was cut short but not where the gap
- * is. Named in call order, not the order the loop would have reached them in.
- * @param deadline - The request deadline
- * @param clips - Every clip in the batch
- * @param order - Positions in `clips`, in processing order
- * @param step - How far the loop got
- * @returns true when time is up
- */
-function stopBatch(
-  deadline: number | null,
-  clips: LiveAPI[],
-  order: number[],
-  step: number,
-): boolean {
-  if (!isDeadlineExceeded(deadline)) {
-    return false;
-  }
-
-  const skipped = order
-    .slice(step)
-    .toSorted((a, b) => a - b)
-    .map((index) => targetLabel(clips[index] as LiveAPI));
-
-  console.warn(
-    `Ran out of time after updating ${step} of ${clips.length} clips. ` +
-      `Not updated: ${skipped.join(", ")}. Re-run for those clips.`,
-  );
-
-  return true;
 }
 
 /**
@@ -312,25 +145,23 @@ function stopBatch(
  * different clips and add up, so the target count is their sum — comparing the
  * two to each other would refuse a call naming two of each.
  * @param targets - The call's id/ids and path/paths params
- * @param values - The lists paired against the clips those params name
- * @returns The clip ids the call names, null where a path held no clip
+ * @param values - The tool arguments as received, for the lists paired against
+ *   the clips those params name
+ * @returns The targets the call names, and the clips they found
  */
-function resolveClipTargets(
-  targets: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">,
-  values: Pick<
-    UpdateClipArgs,
-    | "name"
-    | "color"
-    | "arrangementStart"
-    | "arrangementLength"
-    | "toPath"
-    | "toSlot"
-  >,
-): Array<string | null> {
+function clipTargets(
+  targets: Pick<ClipUpdateArgs, "id" | "ids" | "path" | "paths">,
+  values: ClipUpdateArgs,
+): ClipTargets {
   validateListLengths([
-    { param: "id and path", count: targetCount(targets) },
+    { param: targetParamLabel(targets), count: targetCount(targets) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
+    { param: "timeSignature", value: values.timeSignature },
+    { param: "start", value: values.start },
+    { param: "length", value: values.length },
+    { param: "firstStart", value: values.firstStart },
+    { param: "quantizePitch", value: values.quantizePitch },
     { param: "arrangementStart", value: values.arrangementStart },
     { param: "arrangementLength", value: values.arrangementLength },
     {
@@ -340,111 +171,67 @@ function resolveClipTargets(
     },
   ]);
 
-  const requestedIds = targetIds(targets, clipIdPerPath);
+  const resolved = resolveClipTargets(targets);
 
-  if (requestedIds.length === 0) {
+  if (resolved.named.length === 0) {
     throw new Error("id or path is required");
   }
 
-  return requestedIds;
+  return resolved;
 }
 
 /**
- * Select the last updated clip and show the clip detail view, when focus is set.
- * @param updatedClips - The clips updated this call
- * @param focus - Whether to focus the last updated clip
+ * Select the last clip the call wrote and show the clip detail view, when focus
+ * is set.
+ * @param entries - The call's result entries, in call order
+ * @param focus - Whether to focus the last clip written
  */
 function focusLastUpdatedClip(
-  updatedClips: ClipResult[],
+  entries: ClipEntry[],
   focus: boolean | undefined,
 ): void {
-  if (focus && updatedClips.length > 0) {
-    const lastClip = updatedClips.at(-1) as ClipResult;
+  // A skip names a target, not a clip, so there is nothing there to select.
+  const lastClip = entries.findLast((entry) => !("ok" in entry));
 
-    focusSelect({ id: lastClip.id, detailView: "clip" });
+  if (focus && lastClip != null) {
+    focusSelect({ id: (lastClip as ClipResult).id, detailView: "clip" });
   }
 }
 
-/**
- * Process one clip update + per-clip code-exec, warn-and-continue on failure.
- * @param params - Per-clip update params plus optional code to apply
- */
-async function processClipUpdateStep(
-  params: ProcessSingleClipUpdateParams & { code?: string },
-): Promise<void> {
-  const { code, clipIndex, clipCount, ...processParams } = params;
-  const prevLen = params.updatedClips.length;
-
-  try {
-    processSingleClipUpdate({ ...processParams, clipIndex, clipCount });
-    await applyCodeExecToNewClips(
-      params.updatedClips,
-      prevLen,
-      clipIndex,
-      clipCount,
-      code,
-    );
-  } catch (error) {
-    console.warn(
-      `Failed to update clip ${targetLabel(params.clip)}: ${errorMessage(error)}`,
-    );
-  }
+interface FinishUpdateArgs {
+  targets: ClipTargets;
+  resultsPerSlot: Map<number, ClipResult[]>;
+  focus: boolean | undefined;
 }
 
 /**
- * Apply code exec to newly added clip results
- * @param updatedClips - Array of clip results
- * @param prevLen - Length before new clips were added
- * @param clipIndex - 0-based position in the user's id batch (for clip.index in user code)
- * @param clipCount - Total ids in the user's batch (for clip.count in user code)
- * @param code - JavaScript code to execute
+ * Focuses the last clip written and shapes the result.
+ * @param finish - The call's targets and what it wrote
+ * @param finish.targets - The targets the call named
+ * @param finish.resultsPerSlot - Each target's results, by its place in the call
+ * @param finish.focus - Whether to select the last one in Live
+ * @returns The single result, or one entry per target named
+ * @throws Error when the call named one target and it got nothing done
  */
-async function applyCodeExecToNewClips(
-  updatedClips: ClipResult[],
-  prevLen: number,
-  clipIndex: number,
-  clipCount: number,
-  code?: string,
-): Promise<void> {
-  if (code == null) {
-    return;
+function finishUpdate({
+  targets,
+  resultsPerSlot,
+  focus,
+}: FinishUpdateArgs): ClipEntry | ClipEntry[] {
+  const entries = clipEntriesInCallOrder(
+    targets.named,
+    targets.unused,
+    resultsPerSlot,
+  );
+  // A lone target that got nothing done has no list for an entry to hold a
+  // place in, so its reason goes back as the error it would have been.
+  const refusal = loneRefusal(entries);
+
+  if (refusal != null) {
+    throw new Error(refusal);
   }
 
-  for (let j = prevLen; j < updatedClips.length; j++) {
-    const clipResult = updatedClips[j] as ClipResult;
-    const noteCount = await applyCodeToSingleClip(
-      clipResult.id,
-      code,
-      clipIndex,
-      clipCount,
-    );
+  focusLastUpdatedClip(entries, focus);
 
-    if (noteCount != null) {
-      clipResult.noteCount = noteCount;
-    }
-  }
-}
-
-/**
- * Settles the clips the moves held back, says what the batch's moves collided
- * over, focuses the last clip written, and shapes the result.
- * @param movedClipGroups - Tally of clips landing on each lane and position
- * @param overwrites - Which clips the moves were set to land on top of
- * @param updatedClips - The clips this call wrote
- * @param focus - Whether to select the last one in Live
- * @returns The single result, or the list
- */
-function finishUpdate(
-  movedClipGroups: Map<string, MoveGroup>,
-  overwrites: OverwritePlan | null,
-  updatedClips: ClipResult[],
-  focus: boolean | undefined,
-): ClipResult | ClipResult[] {
-  // Before the warnings: a clip cleared here counts toward the group the
-  // "same position" warning names.
-  flushDeferredDeletions(movedClipGroups, overwrites);
-  emitArrangementWarnings(movedClipGroups);
-  focusLastUpdatedClip(updatedClips, focus);
-
-  return unwrapSingleResult(updatedClips);
+  return unwrapSingleResult(entries);
 }

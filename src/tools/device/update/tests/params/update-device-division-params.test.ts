@@ -10,6 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../../update-device.ts";
+import { noParamLanded } from "../update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -81,16 +82,16 @@ describe("updateDevice - division params", () => {
     });
   });
 
-  it("should log error for invalid division value", () => {
-    const result = updateDevice({
-      id: "123",
-      params: [{ name: "793", value: "1/128" }],
-    });
-
-    expect(capturedWarnings()).toContain(
-      't0/d0 (id 123) param "Rate" (id 793): "1/128" is not a valid division option',
-    );
+  it("reports an invalid division value in the error", () => {
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "123",
+          params: [{ name: "793", value: "1/128" }],
+        }),
+      ),
+    ).toBe('no param landed — "793": "1/128" is not a valid division option');
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

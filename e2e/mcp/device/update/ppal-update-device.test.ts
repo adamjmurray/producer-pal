@@ -12,13 +12,55 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  createTestDeviceAt,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
+import {
+  callForParams,
+  expectSkipThenValue,
+} from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
+
+/**
+ * An Audio Effect Rack on track 0, wrapped around one device.
+ * @returns The rack's id
+ */
+async function rackWithOneChain(): Promise<string> {
+  const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+  const wrapped = parseToolResult<WrapResult>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: deviceId, wrapInRack: true },
+    }),
+  );
+
+  await sleep(150);
+
+  return wrapped.id;
+}
+
+/**
+ * Read a rack's macros and variations back from Live, once it has settled.
+ * @param rackId - The rack's id
+ * @returns The rack
+ */
+async function readRackParams(rackId: string): Promise<ReadDeviceResult> {
+  await sleep(150);
+
+  return parseToolResult<ReadDeviceResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { id: rackId, include: ["params"] },
+    }),
+  );
+}
 
 describe("ppal-update-device", () => {
   it("updates device name and collapsed state", async () => {
@@ -125,24 +167,15 @@ describe("ppal-update-device", () => {
   // own request to work out which entry vanished.
   it("reports a param name that matched nothing, beside one that landed", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
-    const updated = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          id: deviceId,
-          params: [
-            { name: "Nope", value: "1" },
-            { name: "Ratio", value: "4" },
-          ],
-        },
-      }),
-    );
+    const updated = await callForParams(ctx.client!, "ppal-update-device", {
+      id: deviceId,
+      params: [
+        { name: "Nope", value: "1" },
+        { name: "Ratio", value: "4" },
+      ],
+    });
 
-    expect(updated.data.params).toStrictEqual([
-      { name: "Nope", reason: expect.stringContaining("not found on") },
-      { id: expect.any(String), name: "Ratio", value: 4 },
-    ]);
-    expect(updated.warnings.join("\n")).toContain('param "Nope" not found');
+    expectSkipThenValue(updated, "Nope", { name: "Ratio" });
   });
 
   it("updates multiple devices in batch", async () => {
@@ -160,19 +193,73 @@ describe("ppal-update-device", () => {
     expect(Array.isArray(batch)).toBe(true);
     expect(batch).toHaveLength(2);
 
-    // Test 2: Update non-existent device - should return empty with warning
+    // Test 2: the only target named isn't there, so the call is refused
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { id: "99999", name: "Won't Work" },
     });
-    const { data: nonExistent, warnings } =
-      parseToolResultWithWarnings<UpdateDeviceResult[]>(nonExistentResult);
 
-    // Should be empty array (device not found, no error thrown)
-    expect(Array.isArray(nonExistent)).toBe(true);
-    expect(nonExistent).toHaveLength(0);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("target not found");
+    expect(isToolError(nonExistentResult)).toBe(true);
+    expect(getToolErrorMessage(nonExistentResult)).toContain(
+      'id "99999" does not exist',
+    );
+  });
+
+  /**
+   * Update every target named and parse the entries, which must not warn: a
+   * target's own entry is where anything about it belongs.
+   * @param args - ppal-update-device arguments
+   * @returns One entry per target named
+   */
+  async function updateTargets(
+    args: Record<string, unknown>,
+  ): Promise<Array<UpdateDeviceResult | SkippedTargetResult>> {
+    return parseToolResult<Array<UpdateDeviceResult | SkippedTargetResult>>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: args,
+      }),
+    );
+  }
+
+  // Every target named gets an entry, in order, so a paired name list can't
+  // slide onto the wrong device when one of them is missing.
+  it("keeps a slot for a device it couldn't reach, and warns nowhere", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    const entries = await updateTargets({
+      id: `${deviceId},99999`,
+      name: "Reached,Nowhere",
+    });
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ id: deviceId }),
+      { id: "99999", ok: false, detail: 'id "99999" does not exist' },
+    ]);
+
+    await sleep(100);
+    const device = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { id: deviceId },
+      }),
+    );
+
+    expect(device.name).toBe("Reached");
+  });
+
+  it("reports a path that names no device in its own slot", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    // One name for both targets, so only the one it reaches is renamed.
+    const entries = await updateTargets({
+      id: deviceId,
+      path: "t99/d99",
+      name: "Reached By Id",
+    });
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ id: deviceId }),
+      { path: "t99/d99", ok: false, detail: 'nothing at path "t99/d99"' },
+    ]);
   });
 
   it("wraps a device in a rack and manages macros and variations", async () => {
@@ -266,6 +353,103 @@ describe("ppal-update-device", () => {
 
     expect(afterDelete.variations?.count).toBe(1);
   });
+
+  // The macro count comes back from Live's own `visible_macro_count`, after it
+  // has rounded an odd count up to the next even one.
+  it("rounds an odd macroCount up and says so on the rack's entry", async () => {
+    const rackId = await rackWithOneChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 1 },
+    });
+
+    // The count landed, just not the one asked for, so there is no `ok`.
+    expect(parseToolResult<UpdateDeviceResult>(result).detail).toBe(
+      "macroCount rounded from 1 to 2 (macros come in pairs)",
+    );
+
+    expect((await readRackParams(rackId)).macros?.count).toBe(2);
+  });
+
+  // The pair says nothing about any one device, so a reading it can't be given
+  // is refused before any target is touched.
+  it.each([
+    [
+      { macroVariationIndex: 0 },
+      "macroVariationIndex requires macroVariation 'load' or 'delete'",
+    ],
+    [
+      { macroVariation: "load" },
+      "macroVariation 'load' requires macroVariationIndex",
+    ],
+    [
+      { macroVariation: "create", macroVariationIndex: 0 },
+      "macroVariationIndex does nothing for macroVariation 'create'",
+    ],
+  ])("refuses the contradictory macro variation args %o", async (args, why) => {
+    const rackId = await rackWithOneChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, ...args },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(why);
+
+    // Nothing was written, so no variation was stored on the way to the error.
+    expect((await readRackParams(rackId)).variations?.count ?? 0).toBe(0);
+  });
+
+  // The count comes back off Live's own `visible_macro_count`. This rack has no
+  // mappings, so both writes land exactly and the entry says nothing.
+  it("raises and lowers macroCount with nothing to report", async () => {
+    const rackId = await rackWithOneChain();
+
+    for (const macroCount of [8, 2]) {
+      const written = parseToolResultWithWarnings<UpdateDeviceResult>(
+        await ctx.client!.callTool({
+          name: "ppal-update-device",
+          arguments: { id: rackId, macroCount },
+        }),
+      );
+
+      expect(written.data.detail).toBeUndefined();
+      expect(written.warnings).toStrictEqual([]);
+      expect((await readRackParams(rackId)).macros?.count).toBe(macroCount);
+    }
+  });
+
+  // A reason names the object the way the tools publish it, never by Live's
+  // class name.
+  it("says a rack-only param is not applicable to a chain", async () => {
+    const written = parseToolResultWithWarnings<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { path: "t6/d0/c0", name: "Chain One", macroCount: 4 },
+      }),
+    );
+
+    // The name landed, so the refused param rides along as a reason.
+    expect(written.data.detail).toBe("macroCount not applicable to a chain");
+    expect(written.warnings).toStrictEqual([]);
+  });
+
+  it("names path, not id, when a path-only call's lists disagree", async () => {
+    const pathA = await createTestDeviceAt(ctx.client!, "Compressor", "t0");
+    const pathB = await createTestDeviceAt(ctx.client!, "Compressor", "t1");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${pathA},${pathB}`, name: "A,B,C" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path names 2 entries but name names 3 entries.",
+    );
+  });
 });
 
 interface ReadDeviceResult {
@@ -285,11 +469,12 @@ interface ReadDeviceResult {
 
 interface UpdateDeviceResult {
   id: string;
+  detail?: string;
   params?: Array<{
     id?: string;
     name: string;
     value?: number | string;
-    reason?: string;
+    detail?: string;
   }>;
 }
 

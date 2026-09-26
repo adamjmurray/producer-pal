@@ -3,11 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { expect } from "vitest";
 import {
   type NoteOp,
   parse,
   type ParseOptions,
   type TransformAssignment,
+  type TransformStatement,
 } from "#src/notation/transform/parser/transform-parser.ts";
 
 /**
@@ -51,4 +53,29 @@ export function noteOp(
   overrides: Partial<NoteOp> & Pick<NoteOp, "name" | "args">,
 ): NoteOp {
   return { kind: "noteOp", pitchRange: null, timeRange: null, ...overrides };
+}
+
+/**
+ * Assert the first statement's time-range bounds. Beats compare with float
+ * tolerance so a note-value offset (n/12 = 1/3 beat) can be written as a
+ * decimal in the test.
+ *
+ * @param statements - The parsed statements
+ * @param bounds - Expected [startBar, startBeat, endBar, endBeat]
+ */
+export function expectTimeRangeBounds(
+  statements: TransformStatement[],
+  bounds: [
+    startBar: number,
+    startBeat: number,
+    endBar: number,
+    endBeat: number,
+  ],
+): void {
+  const range = statements[0]?.timeRange;
+
+  expect(range?.startBar).toBe(bounds[0]);
+  expect(range?.startBeat).toBeCloseTo(bounds[1]);
+  expect(range?.endBar).toBe(bounds[2]);
+  expect(range?.endBeat).toBeCloseTo(bounds[3]);
 }

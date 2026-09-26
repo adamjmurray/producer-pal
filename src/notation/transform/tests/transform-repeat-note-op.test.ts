@@ -10,7 +10,12 @@ import {
   createTestNotes,
   testNote,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
-import { warnSpyWithNote, warnSpyWithNotes } from "./transform-test-helpers.ts";
+import {
+  TOUCHING_C3_PAIR,
+  TOUCHING_C3_TRIO,
+  warnSpyWithNote,
+  warnSpyWithNotes,
+} from "./transform-test-helpers.ts";
 
 // Asserts a repeat is rejected: the lone note passes through unchanged and a
 // warning containing `message` is emitted.
@@ -192,10 +197,7 @@ describe("note-count operation: repeat", () => {
 
   describe("onset-collision warning", () => {
     it("warns when a copy lands on an existing same-pitch onset", () => {
-      const { warn, notes } = warnSpyWithNotes([
-        { pitch: 60, start_time: 0, duration: 1 },
-        { pitch: 60, start_time: 1, duration: 1 },
-      ]);
+      const { warn, notes } = warnSpyWithNotes(TOUCHING_C3_PAIR);
 
       // The copy of the beat-0 note lands at beat 1, colliding with the
       // existing beat-1 note (the write path collapses it keep-last).
@@ -234,11 +236,7 @@ describe("note-count operation: repeat", () => {
     });
 
     it("pluralizes the count when multiple collisions collapse", () => {
-      const { warn, notes } = warnSpyWithNotes([
-        { pitch: 60, start_time: 0, duration: 1 },
-        { pitch: 60, start_time: 1, duration: 1 },
-        { pitch: 60, start_time: 2, duration: 1 },
-      ]);
+      const { warn, notes } = warnSpyWithNotes(TOUCHING_C3_TRIO);
 
       // Each copy lands a quarter later: 0->1, 1->2, 2->3. The first two copies
       // collide with the existing beat-1 and beat-2 notes (2 collisions).

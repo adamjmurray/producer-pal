@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   mockNonExistentObjects,
@@ -17,12 +17,15 @@ import {
   setupSongViewMock,
 } from "./select-test-helpers.ts";
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { selectSharedUtilsMockBody } =
-    await import("./select-test-helpers.ts");
+vi.mock(
+  import("#src/tools/shared/helpers/live-api-values.ts"),
+  async (importOriginal) => {
+    const { selectLiveApiValuesMockBody } =
+      await import("./select-test-helpers.ts");
 
-  return selectSharedUtilsMockBody(await importOriginal());
-});
+    return selectLiveApiValuesMockBody(await importOriginal());
+  },
+);
 
 // select takes every object type by id, so trackId/sceneId/clipId/deviceId are
 // all names a model reaches for here. Each is a target of its own, type-detected
@@ -208,12 +211,14 @@ describe("select id aliases", () => {
     ).toThrow("clipId and deviceId name different tracks");
   });
 
-  it("takes a clip and a device on the same track", () => {
+  /**
+   * Select a clip and a track-0 device together by id.
+   * @param clipPath - The clip's path, or undefined for a clip with no path
+   * @returns The select() result
+   */
+  const selectClipAndDevice = (clipPath?: PathLike) => {
     registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
-    registerMockObject("clip_123", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-    });
+    registerMockObject("clip_123", { path: clipPath, type: "Clip" });
     registerMockObject("device_123", {
       path: livePath.track(0).device(0),
       type: "Device",
@@ -221,9 +226,18 @@ describe("select id aliases", () => {
     setupSongViewMock();
     setupAppViewMock();
 
+    return select({ clipId: "id clip_123", deviceId: "id device_123" });
+  };
+
+  // An id can resolve to an object whose path names no track at all. There is
+  // no track to disagree about, so the pair goes through.
+  it("takes a clip whose path names no track alongside a device", () => {
+    expect(selectClipAndDevice().selectedDevice).toBeDefined();
+  });
+
+  it("takes a clip and a device on the same track", () => {
     expect(
-      select({ clipId: "id clip_123", deviceId: "id device_123" })
-        .selectedDevice,
+      selectClipAndDevice(livePath.track(0).clipSlot(0).clip()).selectedDevice,
     ).toBeDefined();
   });
 
@@ -304,6 +318,26 @@ describe("select id aliases", () => {
     expect(() =>
       select({ id: "id track_123", trackId: "id track_456" }),
     ).toThrow("id and trackId name different tracks; send one");
+  });
+
+  // Every other tool takes a comma-separated list, so a model sends one here.
+  it("refuses a list of ids, under any spelling", () => {
+    expect(() => select({ id: "id track_123,id track_456" })).toThrow(
+      'invalid id "id track_123,id track_456" - select takes one target per ' +
+        "call (Live holds one selection)",
+    );
+    expect(() => select({ trackId: "1,2" })).toThrow(
+      'invalid trackId "1,2" - select takes one target per call ' +
+        "(Live holds one selection)",
+    );
+    expect(() => select({ clipId: "1,2" })).toThrow(
+      'invalid clipId "1,2" - select takes one target per call ' +
+        "(Live holds one selection)",
+    );
+    // Brackets don't shield a comma in an id; only a path has them.
+    expect(() => select({ id: "[1,2]" })).toThrow(
+      'invalid id "[1,2]" - select takes one target per call',
+    );
   });
 
   it("takes the same object under two spellings", () => {

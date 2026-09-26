@@ -176,6 +176,18 @@ export function defaultMockCall(
     // every fractional one.
     case "str_for_value":
       return Number(Number(args[0]).toPrecision(6));
+    // Live returns ["id", N] from these on success. A blanket null here would
+    // put every uncovered test on the failure branch by accident.
+    case "create_scene":
+    case "insert_chain":
+    case "create_midi_clip":
+      return ["id", "999"];
+    case "guess_playback_length":
+      return 4;
+    case "duplicate_track":
+      insertMockTrackCopy(path, Number(args[0]));
+
+      return null;
     default:
       if (_simulateDeletes) {
         applyMockDelete(method, args, path);
@@ -183,6 +195,35 @@ export function defaultMockCall(
 
       return null;
   }
+}
+
+let mockTrackCopies = 0;
+
+/**
+ * Add a track id right after the duplicated one, the way Live does for a track
+ * that isn't a group. A test that lists fewer tracks gets filler ids up to the
+ * source, so the copy still lands at index + 1.
+ * @param path - The calling object's path
+ * @param index - The duplicated track's index
+ */
+function insertMockTrackCopy(path: string, index: number): void {
+  const liveSet = lookupMockObject(undefined, path);
+  const tracks = liveSet?.properties.tracks ?? [];
+
+  if (liveSet == null || !Array.isArray(tracks)) {
+    return;
+  }
+
+  // children() interleaves "id" with each child ID.
+  const ids = tracks.filter((_, i) => i % 2 === 1).map(String);
+
+  while (ids.length <= index) {
+    ids.push(`mock-track-${ids.length}`);
+  }
+
+  mockTrackCopies++;
+  ids.splice(index + 1, 0, `mock-track-copy-${mockTrackCopies}`);
+  liveSet.properties.tracks = ids.flatMap((id) => ["id", id]);
 }
 
 /** Collection each `delete_*` method removes from, relative to the caller. */
@@ -264,9 +305,13 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
  * A fresh lookup misses it, but anything already holding it keeps the stale id
  * — only its path clears and its property reads dry up. `confirmDeleted` in
  * `tools/actions/delete/delete.ts` depends on that split.
+ *
+ * Exported for the fixtures whose own `call` implementations destroy something
+ * — an arrangement create clears the range it writes to — since those never
+ * reach {@link defaultMockCall} and so aren't covered by simulateMockDeletes.
  * @param idOrPath - The object's ID or path
  */
-function deleteMockObject(idOrPath: string): void {
+export function deleteMockObject(idOrPath: string): void {
   const mock = lookupMockObject(idOrPath, idOrPath);
 
   if (!mock) {
@@ -317,4 +362,5 @@ export function clearMockRegistry(): void {
   deletedIds.clear();
   _simulateDeletes = false;
   _nonExistentByDefault = false;
+  mockTrackCopies = 0;
 }

@@ -25,9 +25,8 @@ import {
 } from "../agent-cli/agent-cli-transport.ts";
 
 export const CODEX_MODEL_ALIASES: Record<string, string> = {
-  luna: "gpt-5.6-luna",
-  sol: "gpt-5.6-sol",
-  terra: "gpt-5.6-terra",
+  luna: "gpt-6-luna",
+  sol: "gpt-6-sol",
 };
 
 export const CODEX_CLI_TRANSPORT: AgentCliTransport = {
@@ -87,7 +86,7 @@ export function codexJudgeArgs(input: AgentCliArgsInput): string[] {
 }
 
 /**
- * Resolve a friendly Sol, Terra, or Luna alias to its Codex model ID.
+ * Resolve a friendly Sol or Luna alias to its Codex model ID.
  * @param model - Friendly alias or explicit model ID
  * @returns Resolved model ID
  */

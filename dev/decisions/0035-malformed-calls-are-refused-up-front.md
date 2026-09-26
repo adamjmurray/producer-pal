@@ -95,9 +95,10 @@ either way.
 - **Value lists** are properties applied to targets: `name`, `color`.
 
 The distinction settles broadcasting, and nothing else: a lone value covers
-every item, while a lone destination does not, because a slot holds one clip and
-the rest would overwrite each other. Holes and lengths follow the same rule on
-both sides.
+every item, while a lone destination does not, because a lane or slot holds one
+object and the rest would overwrite each other. A bare arrangement position is
+the one exception: each clip lands at it on its own track (ADR-0031). Holes and
+lengths follow the same rule on both sides.
 
 ### 3. An empty entry never carries meaning
 
@@ -112,13 +113,14 @@ both sides.
 
 ### 4. Multi-valued lists must agree
 
-Two or more args with commas in them must name the same number of entries;
-otherwise the call is refused. An item count the call worked out for itself
-counts as one of them — `count: 3` on create-track, the copies duplicate is
-about to make — so a value list has something to disagree with even on a tool
-with no target list. ADR-0031's other rules stand: a single value still
-broadcasts to every item, nothing cycles, and destinations still never
-broadcast, because a slot holds one clip.
+When the call names more than one target, two or more args with commas in them
+must name the same number of entries; otherwise the call is refused. With one
+target, every value is read whole, commas and all. An item count the call worked
+out for itself counts as one of them — `count: 3` on create-track, the copies
+duplicate is about to make — so a value list has something to disagree with even
+on a tool with no target list. ADR-0031's other rules stand: a single value
+still broadcasts to every item, nothing cycles, and destinations still never
+broadcast, because a slot holds one clip — bar a bare arrangement position.
 
 ### 5. A blank string on a non-string param is an error
 
@@ -190,11 +192,16 @@ survives on a text param, where clearing a name is a real request.
   one entry, but it is still a list: an arg counts as one when it has a comma in
   it, not when it survives with two entries. Otherwise the short list would read
   as a single value covering both items.
-- **Two tools can't check their raw args.** update-clip's `id` and `path` name
+- **Three tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the
   sources before pairing, so the counts that have to agree are the per-source
   ones — its check runs where the copies are planned, still before any is made.
+  create-clip's `arrangementStart` pairs with the path's tracks, not its clip
+  slots, and one track takes every position — so its per-clip lists are checked
+  against the clips its destinations make, once those are resolved — still
+  before any clip is made. A call making one clip still compares the raw args,
+  since a count of 1 is never a list and a trailing comma must still count.
 - **Rule 1's third bullet is one tool wide today.** Only `duplicate` has both
   halves — checkable targets and unrepeatable work. `create-*` tools have no
   target list to pre-check, and `delete` fails safe in the other direction, so

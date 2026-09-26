@@ -22,14 +22,14 @@ import {
 
 // The source/test line is drawn in a dozen places that cannot import one
 // another: .oxlintrc.json, the jscpd configs, vitest.config.ts, the meta-test
-// file finders, and dev/Testing.md. They drifted apart once already, leaving
+// file finders, and dev/quality/testing.md. They drifted apart once already, leaving
 // files that were tests for one budget and source for another. These tests hold
 // every one of them in step with src/test/helpers/test-file-classification.ts.
 
 const OXLINT_CONFIG = ".oxlintrc.json";
 const JSCPD_TESTS_CONFIG = "config/.jscpd-tests.json";
 const VITEST_CONFIG = "vitest.config.ts";
-const CLASSIFICATION_DOC = "dev/Testing.md";
+const CLASSIFICATION_DOC = "dev/quality/testing.md";
 
 /** Every jscpd scan that measures source code, so must ignore every test file. */
 const JSCPD_SOURCE_CONFIGS = [
@@ -88,10 +88,10 @@ interface OxlintOverride {
 
 describe("test file classification", () => {
   it("should give oxlint's relaxed line budget to exactly the test suites", () => {
-    // Helpers and fixtures keep the 325-line source budget on purpose: only a
+    // Helpers and fixtures keep the 375-line source budget on purpose: only a
     // whole suite has a reason to run long.
     const relaxed = oxlintOverridesWithRule("max-lines").filter(
-      (block) => (lineLimitOf(block) ?? 0) > 325,
+      (block) => (lineLimitOf(block) ?? 0) > 375,
     );
 
     expect(relaxed).toHaveLength(1);
@@ -243,7 +243,7 @@ describe("test file classification", () => {
     ).toStrictEqual([]);
   });
 
-  it("should be the classification dev/Testing.md documents", () => {
+  it("should be the classification dev/quality/testing.md documents", () => {
     const doc = readText(CLASSIFICATION_DOC);
     const tokens = [
       ...TEST_FILE_SUFFIXES.map((suffix) => `\`*${suffix}\``),

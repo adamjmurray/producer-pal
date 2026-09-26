@@ -335,7 +335,7 @@ describe("mock-registry", () => {
 });
 
 // The mock's staleness model, measured against Live 12.4.3 and written up in
-// `dev/LiveAPI-Object-Reuse.md`. A held object reads through to its target
+// `dev/live-api/object-reuse.md`. A held object reads through to its target
 // rather than answering from a snapshot, and when that target dies the handle
 // only half-notices. Get this wrong and the unit suite stops being evidence
 // about object reuse either way: too strict fails a correct refactor, too loose

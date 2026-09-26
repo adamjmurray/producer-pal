@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { paramsInputSchema } from "../../device-params-schema.ts";
+import {
+  paramEntryKey,
+  paramsInputSchema,
+} from "../../device-params-schema.ts";
 
 describe("paramsInputSchema", () => {
   it("parses a JSON-stringified array of entries", () => {
@@ -46,12 +49,50 @@ describe("paramsInputSchema", () => {
     expect(result).toStrictEqual([{ name: '{"oops":1}', value: '["a"]' }]);
   });
 
-  it("rejects a missing or null field", () => {
-    expect(() => paramsInputSchema.parse([{ name: null, value: "1" }])).toThrow(
-      "Invalid input: expected string, received null",
-    );
-    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow(
+  it("reads a null name or id as left out", () => {
+    // A model may send null for the addressing field it doesn't use.
+    const result = paramsInputSchema.parse([
+      { name: null, id: "42", value: "1" },
+      { name: "Freq", id: null, value: "2" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { name: undefined, id: "42", value: "1" },
+      { name: "Freq", id: undefined, value: "2" },
+    ]);
+  });
+
+  it("rejects a null or missing value", () => {
+    expect(() =>
+      paramsInputSchema.parse([{ name: "Freq", value: null }]),
+    ).toThrow("Invalid input: expected string, received null");
+    expect(() => paramsInputSchema.parse([{ name: "Freq" }])).toThrow(
       "Invalid input: expected string, received undefined",
     );
+  });
+});
+
+describe("paramEntryKey", () => {
+  it("addresses by id when the entry carries one", () => {
+    expect(paramEntryKey({ id: "42", value: "1" })).toStrictEqual({
+      key: "42",
+      byId: true,
+    });
+  });
+
+  it("addresses by name when the entry carries one", () => {
+    expect(paramEntryKey({ name: "Volume", value: "1" })).toStrictEqual({
+      key: "Volume",
+      byId: false,
+    });
+  });
+
+  it("keys an entry with neither field as a blank name", () => {
+    // validateParamEntries refuses this shape, so the fallback only guards
+    // callers that key an entry before it has been validated.
+    expect(paramEntryKey({ value: "1" })).toStrictEqual({
+      key: "",
+      byId: false,
+    });
   });
 });

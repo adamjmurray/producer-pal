@@ -16,9 +16,11 @@ import {
   MAX_AUTO_CREATED_SCENES,
 } from "#src/tools/constants.ts";
 import { createClip } from "../../create-clip.ts";
-import { createAudioArrangementClip } from "../../helpers/create-clip-audio-helpers.ts";
+import { createAudioArrangementClip } from "../../helpers/audio-clip-creation.ts";
 import {
+  audioClipProperties,
   expectNoTimingProperties,
+  mockScratchSwap,
   setupAudioArrangementClipMocks,
   setupMultiAudioArrangementClipMocks,
   setupMultiSessionAudioClipMocks,
@@ -27,13 +29,21 @@ import {
 } from "../create-clip-test-helpers.ts";
 
 /** The floor every case here needs: a 4/4 Live Set and an empty track 0. */
-function registerLiveSetAndTrack(): void {
+function registerLiveSetAndTrack(
+  trackProperties: Record<string, unknown> = {},
+): void {
   registerMockObject("live-set", {
     path: livePath.liveSet,
     properties: { signature_numerator: 4, signature_denominator: 4 },
   });
-  registerMockObject("track-0", { path: livePath.track(0) });
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: trackProperties,
+  });
 }
+
+/** has_midi_input: 0 makes the track audio, so an audio clip can land on it. */
+const AUDIO_TRACK = { has_midi_input: 0 };
 
 describe("createClip - audio clips", () => {
   describe("validation", () => {
@@ -195,30 +205,51 @@ describe("createClip - audio clips", () => {
       );
     });
 
-    it("should emit warning and return empty array when scene index exceeds maximum", async () => {
-      registerLiveSetAndTrack();
+    // A lone destination that got no clip throws, since there is no list for
+    // its entry to hold a place in (ADR-0042).
+    it("should throw when the scene index exceeds the maximum", async () => {
+      registerLiveSetAndTrack(AUDIO_TRACK);
 
-      // Runtime errors during clip creation are now warnings, not fatal errors
-      const result = await createClip({
-        slot: `0/${MAX_AUTO_CREATED_SCENES}`,
-        sampleFile: "/path/to/audio.wav",
-      });
-
-      // Should return empty array (no clips created)
-      expect(result).toStrictEqual([]);
+      await expect(
+        createClip({
+          slot: `0/${MAX_AUTO_CREATED_SCENES}`,
+          sampleFile: "/path/to/audio.wav",
+        }),
+      ).rejects.toThrow("out of range");
     });
 
-    it("should emit warning and return empty array when clip already exists", async () => {
-      setupSessionAudioClipMocks({ hasClip: 1 });
-
-      // Runtime errors during clip creation are now warnings, not fatal errors
-      const result = await createClip({
-        slot: "0/0",
-        sampleFile: "/path/to/audio.wav",
+    it("should replace the clip the slot already holds", async () => {
+      const { clipSlot } = setupSessionAudioClipMocks({ hasClip: 1 });
+      const scratch = mockScratchSwap(0, 1, 0, {
+        id: "new_audio_clip",
+        properties: audioClipProperties(8),
       });
 
-      // Should return empty array (no clips created)
-      expect(result).toStrictEqual([]);
+      const result = (await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+      })) as { detail?: string };
+
+      expect(scratch.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+      );
+      expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+      expect(result.detail).toBe("overwrote the existing clip at t0/s0");
+    });
+
+    it("keeps the slot's clip when the sample can't be loaded", async () => {
+      const { liveSet, clipSlot } = setupSessionAudioClipMocks({ hasClip: 1 });
+
+      mockScratchSwap(0, 1, 0, { id: "new_audio_clip", buildFails: true });
+
+      await expect(
+        createClip({ slot: "0/0", sampleFile: "/typo/kick.wav" }),
+      ).rejects.toThrow(
+        'Live created no clip at t0/s0 from sampleFile "/typo/kick.wav"; the clip at t0/s0 was not touched',
+      );
+      expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
+      expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
     });
   });
 
@@ -318,19 +349,17 @@ describe("createClip - audio clips", () => {
       ]);
     });
 
-    it("should emit warning and return empty array when arrangement position exceeds maximum", async () => {
-      registerLiveSetAndTrack();
+    it("should throw when the arrangement position exceeds the maximum", async () => {
+      registerLiveSetAndTrack(AUDIO_TRACK);
 
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
-      // Runtime errors during clip creation are now warnings, not fatal errors
-      const result = await createClip({
-        trackIndex: 0,
-        arrangementStart: "394202|1",
-        sampleFile: "/path/to/audio.wav",
-      });
-
-      // Should return empty array (no clips created)
-      expect(result).toStrictEqual([]);
+      await expect(
+        createClip({
+          trackIndex: 0,
+          arrangementStart: "394202|1",
+          sampleFile: "/path/to/audio.wav",
+        }),
+      ).rejects.toThrow("exceeds");
     });
 
     it("should throw error when track does not exist", async () => {
@@ -347,16 +376,20 @@ describe("createClip - audio clips", () => {
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).rejects.toThrow("track 99 does not exist");
+      ).rejects.toThrow(
+        'no track at path "t99"; ppal-create-track adds tracks',
+      );
     });
 
-    it("should emit warning and return empty array when audio clip creation fails", async () => {
+    // Two positions, so each keeps its place rather than the call throwing.
+    it("refuses each position in its own entry when the create fails", async () => {
       registerMockObject("live-set", {
         path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
       registerMockObject("track-0", {
         path: livePath.track(0),
+        properties: AUDIO_TRACK,
         methods: {
           create_audio_clip: () => ["id", "0"], // Return invalid clip reference
         },
@@ -364,12 +397,24 @@ describe("createClip - audio clips", () => {
 
       const result = await createClip({
         trackIndex: 0,
-        arrangementStart: "1|1",
+        arrangementStart: "1|1,3|1",
         sampleFile: "/path/to/invalid.wav",
       });
 
-      // Should return empty array (no clips created)
-      expect(result).toStrictEqual([]);
+      expect(result).toStrictEqual([
+        {
+          path: "t0[1|1]",
+          ok: false,
+          detail:
+            'Live created no clip at t0[1|1] from sampleFile "/path/to/invalid.wav"',
+        },
+        {
+          path: "t0[3|1]",
+          ok: false,
+          detail:
+            'Live created no clip at t0[3|1] from sampleFile "/path/to/invalid.wav"',
+        },
+      ]);
     });
   });
 
@@ -602,6 +647,23 @@ describe("createClip - audio clip warping", () => {
     });
 
     expect(clip.set).toHaveBeenCalledWith("warping", 1);
+  });
+
+  it("says nothing about a warp state that landed as asked", async () => {
+    setupStretchedAudioClip(2.7, 4);
+
+    const result = await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: true,
+    });
+
+    // The region comes from the sample, so it is still reported.
+    expect(result).toStrictEqual({
+      id: "audio_clip_0_0",
+      path: "t0/s0",
+      length: "1bar",
+    });
   });
 
   it("reports the warp state Live settled on without warning about it", async () => {

@@ -15,9 +15,10 @@ import {
   getToolErrorMessage,
   parseAliasedToolResult,
   isToolError,
+  parseBatchResult,
   parseToolResult,
-  parseToolResultWithWarnings,
   type ReadClipResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 import { arrangementStartOf } from "./helpers/arrangement-start-test-helpers.ts";
@@ -139,16 +140,23 @@ describe("ppal-read-clip", () => {
     expect(track.arrangementClips).toBeDefined();
     expect(track.arrangementClips!.length).toBeGreaterThan(0);
 
+    // Every listed clip says how far it runs, with no timing include
+    for (const clip of track.arrangementClips!) {
+      expect(clip.arrangementLength).toBeDefined();
+    }
+
     const arrClipId = track.arrangementClips![0]!.id;
     const arrResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { id: arrClipId, include: ["timing"] },
+      arguments: { id: arrClipId },
     });
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 
     expect(arrClip.view).toBe("arrangement");
     expect(arrangementStartOf(arrClip)).toBe("1|1");
+    // The span comes without the timing include; the clip's own length needs it
     expect(arrClip.arrangementLength).toBeDefined();
+    expect(arrClip.length).toBeUndefined();
   });
 
   it("reads clips with offset loops", async () => {
@@ -178,21 +186,15 @@ describe("ppal-read-clip", () => {
   });
 
   it("handles empty slots and errors correctly", async () => {
-    // Test 1: Read empty slot (t8 is empty track with no clips)
+    // Test 1: A lone empty slot is a read that got nothing — it errors, with
+    // no entry to carry the reason (t8 is an empty track).
     const emptyResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { path: "t8/s0" },
     });
-    const { data: emptyClip, warnings } =
-      parseToolResultWithWarnings<ReadClipResult>(emptyResult);
 
-    expect(emptyClip.id).toBeNull();
-    expect(emptyClip.type).toBeNull();
-    expect(emptyClip.path).toBe("t8/s0");
-
-    // Verify warning is emitted for empty slot
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toBe("WARNING: no clip at t8/s0");
+    expect(isToolError(emptyResult)).toBe(true);
+    expect(getToolErrorMessage(emptyResult)).toContain("no clip at t8/s0");
 
     // Test 2: Non-existent scene throws error
     const invalidSceneResult = await ctx.client!.callTool({
@@ -295,10 +297,71 @@ describe("ppal-read-clip drum spelling", () => {
   });
 });
 
+describe("ppal-read-clip over a list of targets", () => {
+  const readClips = (args: Record<string, unknown>) =>
+    ctx.client!.callTool({ name: "ppal-read-clip", arguments: args });
+
+  it("returns one entry per path, in the order named", async () => {
+    const clips = parseBatchResult<ReadClipResult>(
+      await readClips({ path: "t2/s0,t0/s0,t1/s0" }),
+      3,
+    );
+
+    expect(clips.map((clip) => clip.path)).toStrictEqual([
+      "t2/s0",
+      "t0/s0",
+      "t1/s0",
+    ]);
+    expect(clips.map((clip) => clip.name)).toStrictEqual([
+      "Chords",
+      "Beat",
+      "Bassline",
+    ]);
+  });
+
+  it("reads ids and paths together, ids first", async () => {
+    const beat = parseToolResult<ReadClipResult>(
+      await readClips({ path: "t0/s0" }),
+    );
+    const clips = parseBatchResult<ReadClipResult>(
+      await readClips({ id: beat.id!, path: "t2/s0" }),
+      2,
+    );
+
+    expect(clips[0]!.id).toBe(beat.id);
+    expect(clips[1]!.path).toBe("t2/s0");
+    expect(clips.map((clip) => clip.name)).toStrictEqual(["Beat", "Chords"]);
+  });
+
+  it("keeps a slot for an empty clip slot and reads the rest", async () => {
+    // t8 holds no clips. The entry carries the reason and nothing is warned —
+    // parseBatchResult throws on any warning.
+    const entries = parseBatchResult<ReadClipResult | SkippedTargetResult>(
+      await readClips({ path: "t0/s0,t8/s0,t1/s0" }),
+      3,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0/s0", name: "Beat" }),
+      { path: "t8/s0", ok: false, detail: "no clip at t8/s0" },
+      expect.objectContaining({ path: "t1/s0", name: "Bassline" }),
+    ]);
+  });
+
+  it("unwraps a single target", async () => {
+    const clip = parseToolResult<ReadClipResult>(
+      await readClips({ path: "t0/s0" }),
+    );
+
+    expect(Array.isArray(clip)).toBe(false);
+    expect(clip.path).toBe("t0/s0");
+  });
+});
+
 interface SceneWithClipNotes {
   clips?: Array<{ path?: string; notes?: string }>;
 }
 
 interface TrackWithClips {
-  arrangementClips?: Array<{ id: string; position: string; length: string }>;
+  arrangementClips?: ReadClipResult[];
 }

@@ -1,0 +1,696 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * E2E tests for ppal-create-device tool
+ * Creates devices in the Live Set - these modifications persist within the session.
+ *
+ * Uses: e2e-test-set
+ * See: e2e/live-sets/e2e-test-set-spec.md
+ *
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device
+ */
+import { describe, expect, it } from "vitest";
+import {
+  createTestDeviceAt,
+  extractToolResultText,
+  getToolErrorMessage,
+  isToolError,
+  parseToolResult,
+  parseToolResultWithWarnings,
+  readDeviceCount,
+  setupMcpTestContext,
+  sleep,
+  trackIndexFromPath,
+} from "../../mcp-test-helpers";
+import { createLayeredPad } from "../drum/drum-pad-test-helpers.ts";
+import {
+  callForParams,
+  expectSkipThenValue,
+} from "../helpers/device-param-test-helpers.ts";
+
+const ctx = setupMcpTestContext();
+
+describe("ppal-create-device", () => {
+  /**
+   * Create a device and parse the result.
+   * @param deviceName - Device to create
+   * @param path - Insertion path
+   * @returns The new device
+   */
+  async function createDevice(
+    deviceName: string,
+    path: string,
+  ): Promise<CreateDeviceResult> {
+    return parseToolResult<CreateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { device: deviceName, path },
+      }),
+    );
+  }
+
+  /**
+   * A fresh track to build on, so the Set's own tracks stay intact.
+   * @param type - Track type
+   * @returns The new track's index
+   */
+  async function createTrack(type: "midi" | "audio"): Promise<number> {
+    const track = parseToolResult<{ id: string; path: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { type },
+      }),
+    );
+
+    await sleep(100);
+
+    return trackIndexFromPath(track.path);
+  }
+
+  /**
+   * The index a created device landed at, so nothing hardcodes one.
+   * @param device - A create-device result
+   * @returns The device's index in its container
+   */
+  function deviceIndexOf(device: CreateDeviceResult): number {
+    const index = Number(device.path.match(/\/d(\d+)$/)?.[1]);
+
+    if (Number.isNaN(index)) {
+      throw new Error(`no device index in "${device.path}"`);
+    }
+
+    return index;
+  }
+
+  /**
+   * Read a device back by id.
+   * @param id - Device id
+   * @returns The device
+   */
+  async function readDevice(id: string): Promise<ReadDeviceResult> {
+    await sleep(100);
+
+    return parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { id },
+      }),
+    );
+  }
+
+  /**
+   * Read a device back by path, to check the path a result handed out works.
+   * @param path - Producer Pal path to the device
+   * @returns The device
+   */
+  async function readDeviceAt(path: string): Promise<ReadDeviceResult> {
+    await sleep(100);
+
+    return parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path },
+      }),
+    );
+  }
+
+  // A path naming a chain past the rack's last one makes the chains below it
+  // too, so the entry says which ones it left behind.
+  it("names the rack chains a device path had to make first", async () => {
+    const trackIndex = await createTrack("audio");
+    const devicePath = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${trackIndex}`,
+    );
+    const rack = parseToolResult<WrapResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { path: devicePath, wrapInRack: true },
+      }),
+    );
+
+    await sleep(150);
+
+    // A wrap makes one chain; aim one past the next, so the gap fills too.
+    const firstNew = 1;
+    const target = firstNew + 1;
+    const created = await createDevice(
+      "Compressor",
+      `${rack.path}/c${target}/d+`,
+    );
+
+    expect(created.created).toBe(`c${firstNew}-c${target}`);
+    expect(created.path).toBe(`${rack.path}/c${target}/d0`);
+  });
+
+  it("lists the devices it can create when given no name", async () => {
+    const list = parseToolResult<ListDevicesResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {},
+      }),
+    );
+
+    expect(Array.isArray(list.instruments)).toBe(true);
+    expect(list.audioEffects).toContain("Compressor");
+    expect(list.midiEffects).toContain("Arpeggiator");
+  });
+
+  it("creates a device at position 0 on a track", async () => {
+    // A default track preset may already have put devices here, so this is an
+    // insert at 0 on some machines and the append fallback on others. Index 0
+    // is the answer either way; the empty-rack-chain test covers the append on
+    // a chain that is reliably empty.
+    const trackIndex = await createTrack("midi");
+    const eq = await createDevice("EQ Eight", `t${trackIndex}/d0`);
+
+    expect(eq.id).toBeDefined();
+    expect(eq.path).toBe(`t${trackIndex}/d0`);
+  });
+
+  it("appends an audio effect and a MIDI effect to a track", async () => {
+    const comp = await createDevice("Compressor", "t0");
+
+    expect(comp.path).toMatch(/^t0\/d\d+$/);
+    expect((await readDevice(comp.id)).type).toContain("Compressor");
+
+    const arp = await createDevice("Arpeggiator", "t0");
+
+    expect((await readDevice(arp.id)).type).toContain("Arpeggiator");
+  });
+
+  // `device` pairs with `path` the way `name` does, so one call builds two
+  // different devices in two places.
+  it("pairs a device list with the paths, in order", async () => {
+    const first = await createTrack("midi");
+    const second = await createTrack("midi");
+    const results = parseToolResult<CreateDeviceResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Compressor,Reverb",
+          path: `t${first}/d+,t${second}/d+`,
+        },
+      }),
+    );
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.path).toMatch(new RegExp(`^t${first}/d\\d+$`));
+    expect(results[1]?.path).toMatch(new RegExp(`^t${second}/d\\d+$`));
+    expect((await readDevice(results[0]!.id)).type).toContain("Compressor");
+    expect((await readDevice(results[1]!.id)).type).toContain("Reverb");
+  });
+
+  it("creates a device on the master track", async () => {
+    expect((await createDevice("Limiter", "mt")).id).toBeDefined();
+  });
+
+  it("refuses a device name Live doesn't have", async () => {
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { device: "InvalidDeviceName123", path: "t0" },
+      }),
+    );
+
+    expect(text).toContain("InvalidDeviceName123");
+    expect(text.toLowerCase()).toContain("invalid");
+  });
+
+  it("refuses an audio effect before a track's instrument", async () => {
+    // t1 has an instrument, so nothing audio can go in front of it
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { device: "Compressor", path: "t1/d0" },
+      }),
+    );
+
+    expect(text).toContain("could not insert");
+    expect(text).toContain("Compressor");
+    expect(text).toContain("t1/d0");
+  });
+
+  // The list used to come back one entry short with the failure in a warning,
+  // which reads as a call that did everything it was asked.
+  it("keeps a failed path's slot in a path list", async () => {
+    const trackIndex = await createTrack("midi");
+    const { data: results, warnings } = parseToolResultWithWarnings<
+      Array<CreateDeviceResult & Partial<TargetSkip>>
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Compressor",
+          path: `t99/d+,t${trackIndex}/d+`,
+        },
+      }),
+    );
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.path).toBe("t99/d+");
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.detail).toContain("t99");
+    expect(results[1]?.id).toBeDefined();
+    expect(results[1]?.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
+    expect(warnings).toHaveLength(0);
+  });
+
+  // Live turns the insert down without saying why, so the refusal has to name
+  // the cause or the model has nothing to act on.
+  it("names the instrument already there when Live refuses a second one", async () => {
+    // t1 has an instrument, and Live allows one per chain.
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { device: "Operator", path: "t1/d+" },
+      }),
+    );
+
+    expect(text).toContain("could not insert");
+    expect(text).toContain("already has an instrument");
+  });
+
+  // Aiming two devices at d1 and d2 used to land both at d1 and d2 and push
+  // the two originals past them, so the second entry never went where it was
+  // named. Refused up front now, before either one is created.
+  it("refuses a path list spelled through its own insert", async () => {
+    const trackIndex = await createTrack("midi");
+
+    await createDevice("Compressor", `t${trackIndex}`);
+    await createDevice("Reverb", `t${trackIndex}`);
+
+    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Utility",
+          path: `t${trackIndex}/d0,t${trackIndex}/d1`,
+        },
+      }),
+    );
+
+    expect(text).toContain("is spelled through");
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before);
+  });
+
+  // A position past the end of a chain appends, and an appended audio effect
+  // goes last, so the entry after it still names the slot it named. This used
+  // to be read as two positioned inserts in one chain and refused.
+  it("allows a path list whose first entry is past the end of the chain", async () => {
+    const trackIndex = await createTrack("audio");
+    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        device: "Utility",
+        path: `t${trackIndex}/d${before + 5},t${trackIndex}/d0`,
+      },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(extractToolResultText(result)).not.toContain("is spelled through");
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 2);
+  });
+
+  // Two entries both past the end of the same chain both just append, in the
+  // order named — an audio effect never re-sorts, so nothing about the first
+  // append moves what the second one lands after.
+  it("allows two past-the-end entries into the same chain, in order", async () => {
+    const trackIndex = await createTrack("audio");
+    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const { data: results, warnings } = parseToolResultWithWarnings<
+      CreateDeviceResult[]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Utility",
+          path: `t${trackIndex}/d${before + 99},t${trackIndex}/d${before + 98}`,
+          name: "First,Second",
+        },
+      }),
+    );
+
+    // Each past-the-end entry warns that it appended instead.
+    expect(warnings).toHaveLength(2);
+    expect(results).toHaveLength(2);
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 2);
+    expect(results[0]?.path).toBe(`t${trackIndex}/d${before}`);
+    expect(results[1]?.path).toBe(`t${trackIndex}/d${before + 1}`);
+  });
+
+  // pD1/c0 and the rack's c1 are one chain, so the first insert renumbers what
+  // the second entry names. Comparing the spellings would miss it.
+  it("refuses two spellings of one drum chain in a path list", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Utility",
+          path: `${rackPath}/pD1/c0/d0,${rackPath}/c1/d0`,
+        },
+      }),
+    );
+
+    expect(text).toContain("is spelled through");
+    expect(text).toContain(`${rackPath}/pD1/c0`);
+  });
+
+  it("allows a MIDI effect before a track's instrument", async () => {
+    const device = await createDevice("Arpeggiator", "t1/d0");
+
+    expect(device.path).toBe("t1/d0");
+  });
+
+  it("appends and warns for a position past the end of the chain", async () => {
+    // Live rejects an out-of-range insert position. Valid positions run
+    // 0..count, so count + 1 is past the end wherever the track started —
+    // hardcoding d1 only tests this on a machine whose default preset is empty.
+    const trackIndex = await createTrack("midi");
+    const startingDevices = await readDeviceCount(ctx.client!, trackIndex);
+    const result = parseToolResultWithWarnings<CreateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Compressor",
+          path: `t${trackIndex}/d${startingDevices + 1}`,
+        },
+      }),
+    );
+
+    expect(result.data.path).toBe(`t${trackIndex}/d${startingDevices}`);
+    expect(result.warnings.join("\n")).toContain(
+      "past the end of the device chain",
+    );
+  });
+
+  // A drum chain answers to a pad-relative path and a rack-relative one, and
+  // once a pad is layered the two number the rack differently: D1 holds two
+  // layers here, so pD1/c1 is the rack's chain 2 while the rack's chain 1 is
+  // pD1/c0. A result that answered in the other spelling would hand the model
+  // two numberings for one rack with nothing saying so.
+  it("echoes the pad spelling a call used for a layered drum chain", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const device = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c1`);
+
+    expect(device.path).toMatch(new RegExp(`^${rackPath}/pD1/c1/d\\d+$`));
+    expect((await readDeviceAt(device.path)).id).toBe(device.id);
+  });
+
+  it("resolves the rack-relative spelling, but reports it pad-relative and warns", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const { data: byRack, warnings } =
+      parseToolResultWithWarnings<CreateDeviceResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-device",
+          arguments: { device: "Chorus-Ensemble", path: `${rackPath}/c1` },
+        }),
+      );
+
+    // Rack chain 1 is D1's first layer, so the result names it pD1/c0.
+    expect(byRack.path).toMatch(new RegExp(`^${rackPath}/pD1/c0/d\\d+$`));
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain(`${rackPath}/pD1/c0`);
+
+    const byPad = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c1`);
+
+    // Rack chain 1 is D1's first layer; pD1/c1 is its second — still two
+    // different chains, however either one gets addressed.
+    expect(byPad.id).not.toBe(byRack.id);
+    expect(byPad.path).toContain(`${rackPath}/pD1/c1/`);
+    expect((await readDeviceAt(byRack.path)).id).toBe(byRack.id);
+    expect((await readDeviceAt(byPad.path)).id).toBe(byPad.id);
+  });
+
+  // A params list that came back a name short leaves the caller diffing its
+  // own request to work out which entry vanished.
+  it("reports a param name that matched nothing, beside one that landed", async () => {
+    const created = await callForParams(ctx.client!, "ppal-create-device", {
+      device: "Compressor",
+      path: "t0",
+      params: [
+        { name: "Nope", value: "1" },
+        { name: "Ratio", value: "4" },
+      ],
+    });
+
+    expectSkipThenValue(created, "Nope", { name: "Ratio" });
+  });
+
+  it("creates a device at position 0 in an empty rack chain", async () => {
+    const trackIndex = await createTrack("audio");
+    // An Audio Effect Rack arrives with one empty chain
+    const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+
+    await sleep(100);
+
+    const chainDevice = await createDevice("Compressor", `${rack.path}/c0/d0`);
+
+    expect(chainDevice.path).toBe(`${rack.path}/c0/d0`);
+  });
+
+  // Only real Live says where an append really lands: it sorts a chain by
+  // device type, and a default track preset may already have put devices there.
+  it("appends a device with d+ on a track", async () => {
+    const trackIndex = await createTrack("audio");
+
+    const first = await createDevice("Compressor", `t${trackIndex}/d+`);
+    const second = await createDevice("Compressor", `t${trackIndex}/d+`);
+
+    // Both are audio effects, so the second lands one past the first wherever
+    // the track's own preset left the end of that section.
+    expect(second.path).toBe(`t${trackIndex}/d${deviceIndexOf(first) + 1}`);
+    expect((await readDeviceAt(second.path)).id).toBe(second.id);
+  });
+
+  it("appends a device with d+ inside a rack chain", async () => {
+    const trackIndex = await createTrack("audio");
+    const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+
+    await sleep(100);
+
+    const first = await createDevice("Compressor", `${rack.path}/c0/d+`);
+    const second = await createDevice("Compressor", `${rack.path}/c0/d+`);
+
+    expect(second.path).toBe(`${rack.path}/c0/d${deviceIndexOf(first) + 1}`);
+  });
+
+  // Nothing reads a device that isn't there yet, and the refusal has to say
+  // which tools do take a `d+`.
+  it("refuses d+ as a read target, naming the tools that take it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d+" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    );
+  });
+
+  // Only real Live says which index insert_chain actually landed on, which is
+  // the whole point of `c+`: the caller never counted the rack's chains.
+  it("appends a chain with c+ and reports the index it landed at", async () => {
+    const trackIndex = await createTrack("audio");
+    const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+
+    await sleep(100);
+
+    // How many chains a fresh rack arrives with is a per-machine default.
+    const chains =
+      parseToolResult<{ chains?: unknown[] }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-device",
+          arguments: { path: rack.path, include: ["chains"] },
+        }),
+      ).chains?.length ?? 0;
+
+    const first = await createDevice("Compressor", `${rack.path}/c+`);
+
+    expect(first.path).toBe(`${rack.path}/c${chains}/d0`);
+    expect((await readDeviceAt(first.path)).id).toBe(first.id);
+
+    // The second goes past the first rather than back into it.
+    const second = await createDevice("Compressor", `${rack.path}/c+`);
+
+    expect(second.path).toBe(`${rack.path}/c${chains + 1}/d0`);
+  });
+
+  // A new chain has no note, so Live would put it on the catch-all pad, where
+  // it would sound on every note no pad claims.
+  it("refuses c+ on a Drum Rack and names the pad spelling", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { device: "Chorus-Ensemble", path: `${rackPath}/c+` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "every chain belongs to a pad",
+    );
+  });
+
+  it("adds a layer to a drum pad with c+, on that pad's note", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    // D1 already holds two layers, so c+ makes a third.
+    const device = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c+`);
+
+    expect(device.path).toMatch(new RegExp(`^${rackPath}/pD1/c2/d\\d+$`));
+    expect((await readDeviceAt(device.path)).id).toBe(device.id);
+  });
+
+  // Nothing reads or writes a chain that doesn't exist yet, and the refusal has
+  // to say which tools do take a `c+`.
+  it("refuses c+ as a read target, naming the tools that take it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d0/c+" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    );
+  });
+
+  // Live keeps a chain sorted by device type, so appending an instrument to a
+  // chain that already holds an audio effect pushes that effect down a slot.
+  // The path cache shares one container walk across a batch, and this is the
+  // mutation that moves an object out from under a path it cached. Both halves
+  // are checked: the effect really did move, and the batch still wrote to the
+  // devices it named rather than to whatever took their old slots.
+  it("keeps paths straight when an appended instrument re-sorts the chain", async () => {
+    const trackIndex = await createTrack("midi");
+    const effect = await createDevice("Auto Filter", `t${trackIndex}`);
+    // Not d0: a default track preset may have put devices here first.
+    const effectSlot = Number(effect.path?.match(/\/d(\d+)$/)?.[1]);
+
+    expect(effectSlot).toBeGreaterThanOrEqual(0);
+
+    await sleep(100);
+
+    const instrument = await createDevice("Operator", `t${trackIndex}`);
+
+    // Live sorted the instrument ahead of the audio effect it appended after.
+    expect(
+      Number(instrument.path?.match(/\/d(\d+)$/)?.[1]),
+    ).toBeLessThanOrEqual(effectSlot);
+
+    // The effect kept its identity and moved down a slot, rather than the path
+    // keeping its occupant. Reading by id asks "where did this device go".
+    const movedEffect = await readDevice(effect.id);
+
+    expect(movedEffect.id).toBe(effect.id);
+    expect(movedEffect.path).toBe(`t${trackIndex}/d${effectSlot + 1}`);
+
+    // And the path the instrument reported really names the instrument.
+    const atInstrumentSlot = await readDeviceAt(instrument.path!);
+
+    expect(atInstrumentSlot.id).toBe(instrument.id);
+  });
+
+  it("refuses a list-mode call carrying create-only args", async () => {
+    // Without a device the call lists the catalog; path and params used to be
+    // dropped without a word, so the catalog came back looking like a success.
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        path: "t0",
+        params: [{ name: "Dry/Wet", value: "50%" }],
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path, params require device",
+    );
+  });
+
+  it("uses singular grammar when only one create-only arg was sent", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { path: "t0" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path requires device; omit it to list available devices",
+    );
+  });
+
+  // `deviceName` became `device`. The old name still creates the device so a
+  // caller mid-migration keeps working, and the warning names the new one.
+  it("creates a device from the deprecated deviceName", async () => {
+    const trackIndex = await createTrack("midi");
+    const { data, warnings } = parseToolResultWithWarnings<CreateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "Operator", path: `t${trackIndex}/d+` },
+      }),
+    );
+
+    expect((await readDevice(data.id)).type).toContain("Operator");
+    expect(warnings.join("\n")).toContain(
+      'param "deviceName" is deprecated and will be removed; use "device" instead',
+    );
+  });
+
+  it("still lists devices when no create-only args come with it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {},
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(extractToolResultText(result)).toContain("Wavetable");
+  });
+});
+
+interface ListDevicesResult {
+  instruments: string[];
+  midiEffects: string[];
+  audioEffects: string[];
+}
+
+/** The entry a target the call couldn't act on leaves in its place. */
+interface TargetSkip {
+  path: string;
+  ok: false;
+  detail: string;
+}
+
+interface CreateDeviceResult {
+  id: string;
+  path: string;
+  /** The rack chains the path had to make first, when it made any */
+  created?: string;
+  params?: Array<{
+    id?: string;
+    name: string;
+    value?: number | string;
+    detail?: string;
+  }>;
+}
+
+interface ReadDeviceResult {
+  id: string;
+  type: string;
+  path?: string;
+  name?: string;
+}
+
+/** What a wrapInRack answers with. */
+interface WrapResult {
+  id: string;
+  path: string;
+}

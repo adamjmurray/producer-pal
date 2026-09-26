@@ -5,9 +5,16 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
-import { parseToolResult } from "../../mcp-test-helpers.ts";
+import {
+  getToolErrorMessage,
+  getToolWarnings,
+  isToolError,
+  parseToolResult,
+  parseToolResultWithWarnings,
+} from "../../mcp-test-helpers.ts";
 
 export interface ParamInfo {
+  id?: string;
   name: string;
   value?: number | string;
   min?: number;
@@ -43,4 +50,81 @@ export async function readParam(
   expect(found, `no parameter named "${name}"`).toBeDefined();
 
   return found as ParamInfo;
+}
+
+/** One `params` entry, as create-device and update-device report it. */
+export interface ParamResultEntry {
+  id?: string;
+  /** Absent on a skip for a param the call addressed by id. */
+  name?: string;
+  value?: unknown;
+  /** False only on a param nothing was written to */
+  ok?: boolean;
+  detail?: string;
+}
+
+/**
+ * Send one device-tool call and read back the `params` it reports.
+ * @param client - Connected MCP client
+ * @param tool - The tool to call (ppal-update-device or ppal-create-device)
+ * @param args - The tool arguments
+ * @returns One entry per param sent, and the warnings the call raised
+ */
+export async function callForParams(
+  client: Client,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<{ entries: ParamResultEntry[]; warnings: string[] }> {
+  const { data, warnings } = parseToolResultWithWarnings<{
+    params?: ParamResultEntry[];
+  }>(await client.callTool({ name: tool, arguments: args }));
+
+  return { entries: data.params ?? [], warnings };
+}
+
+/**
+ * Send one device-tool call expected to fail, as it does when no param landed
+ * and nothing else was asked. Asserts it warned nothing.
+ * @param client - Connected MCP client
+ * @param tool - The tool to call
+ * @param args - The tool arguments
+ * @returns The error message
+ */
+export async function callForParamError(
+  client: Client,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const result = await client.callTool({ name: tool, arguments: args });
+
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(isToolError(result)).toBe(true);
+
+  return getToolErrorMessage(result);
+}
+
+/**
+ * Assert a two-param write answered with one entry each: the name that reached
+ * nothing as a skip, the one that was written, and no warning. The written one
+ * carries a `value` only where Live kept a different one, so pass `value` only
+ * then.
+ * @param result - What callForParams returned
+ * @param missing - The name that was to reach nothing
+ * @param landed - The param that was written, and the value Live kept if it
+ *   isn't the one asked for
+ */
+export function expectSkipThenValue(
+  result: { entries: ParamResultEntry[]; warnings: string[] },
+  missing: string,
+  landed: { name: string; value?: unknown },
+): void {
+  expect(result.entries).toStrictEqual([
+    {
+      name: missing,
+      ok: false,
+      detail: expect.stringContaining("not found on"),
+    },
+    { id: expect.any(String), ...landed },
+  ]);
+  expect(result.warnings).toStrictEqual([]);
 }

@@ -24,10 +24,16 @@ export default defineConfig({
     // This one only swaps in a sane fetch dispatcher; see the file for why.
     setupFiles: [
       join(__dirname, "../evals/shared/install-fetch-dispatcher.ts"),
+      join(__dirname, "../evals/shared/log-e2e-retries.ts"),
     ],
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 30000, // Longer timeout for MCP connections
+    // One retry covers a dropped MCP connection (device restarted mid-test).
+    // log-e2e-retries.ts prints every pass that needed it. Tests sharing one
+    // Live Set (setupMcpTestContext's `once`) fail the retry on purpose: it
+    // would start from the failed attempt's leftovers.
+    retry: 1,
     // beforeAll opens Ableton and waits for the Set to serve MCP. Has to clear
     // open-live-set.ts's own stop+start budget so its error wins over a bare
     // hook timeout, which says nothing about what Live was doing.

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Eval CLI - delegates to TypeScript implementation in evals/scenarios/
 # Usage: ./scripts/eval [options]
+# The provider can be omitted for claude-*, gpt-* and gemini-* models.
 #
 # Examples:
 #   ./scripts/eval -l                                              # List available scenarios
-#   ./scripts/eval -m gemini/gemini-3.5-flash -t create-drum-beat  # Run specific scenario
-#   ./scripts/eval -m local/qwen3-8b -t create-drum-beat --small-model  # Small-model mode
-#   ./scripts/eval -m openai/gpt-5.5 -s                            # Skip Live Set setup
+#   ./scripts/eval -m google/gemini-3.8-flash -t create-drum-beat  # Run specific scenario
+#   ./scripts/eval -m claude-code/sonnet -t create-drum-beat       # Claude Code subscription CLI
+#   ./scripts/eval -m local/qwen3.8 -t create-drum-beat --small-model  # Small-model mode
+#   ./scripts/eval -m openai/gpt-6-sol -s                            # Skip Live Set setup
 #
 # Local OpenAI-compatible servers (use the local/ provider + -b base URL):
 #   ./scripts/eval -b http://localhost:1234/v1 -m local/google/gemma-4-e4b -t create-drum-beat  # LM Studio

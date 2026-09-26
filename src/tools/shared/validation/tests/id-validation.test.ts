@@ -44,10 +44,10 @@ describe("validateIdType", () => {
     // Tool-level types must be exact lowercase
     expect(() => validateIdType(id, "track")).not.toThrow();
     expect(() => validateIdType(id, "Track")).toThrow(
-      "is not a Track (found Track)",
+      "is not a Track (found track)",
     );
     expect(() => validateIdType(id, "TRACK")).toThrow(
-      "is not a TRACK (found Track)",
+      "is not a TRACK (found track)",
     );
   });
 
@@ -70,8 +70,31 @@ describe("validateIdType", () => {
     });
 
     expect(() => validateIdType(id, "track")).toThrow(
-      "s0 (id scene_1) is not a track (found Scene)",
+      "s0 (id scene_1) is not a track (found scene)",
     );
+  });
+
+  it("names what it found in the tools' words, not Live's class names", () => {
+    registerMockObject("chain_1", {
+      path: "live_set tracks 0 devices 0 chains 0",
+      type: "DrumChain",
+    });
+
+    expect(() => validateIdType("chain_1", "track")).toThrow(
+      "is not a track (found chain)",
+    );
+  });
+
+  it("says only that the type is wrong for a class the tools never name", () => {
+    registerMockObject("groove_1", {
+      path: "live_set grooves 0",
+      type: "Groove",
+    });
+
+    expect(() => validateIdType("groove_1", "track")).toThrow(
+      "id groove_1 is not a track",
+    );
+    expect(() => validateIdType("groove_1", "track")).not.toThrow("(found");
   });
 
   it("should match device subclasses to device type", () => {
@@ -130,7 +153,7 @@ describe("validateIdType", () => {
       "mystery-type",
     ]) {
       expect(() => validateIdType("track_1", expectedType)).toThrow(
-        `t0 (id track_1) is not a ${expectedType} (found Track)`,
+        `t0 (id track_1) is not a ${expectedType} (found track)`,
       );
     }
   });
@@ -190,7 +213,7 @@ describe("validateIdTypes", () => {
       const ids = registerMixedTrackAndSceneMocks();
 
       expect(() => validateIdTypes(ids, "track")).toThrow(
-        "s0 (id scene_1) is not a track (found Scene)",
+        "s0 (id scene_1) is not a track (found scene)",
       );
     });
   });
@@ -207,7 +230,7 @@ describe("validateIdTypes", () => {
       expect(result[0]!.id).toBe("track_1");
       expect(result[1]!.id).toBe("track_3");
       expect(capturedWarnings()).toContain(
-        "s0 (id scene_1) is not a track (found Scene)",
+        "s0 (id scene_1) is not a track (found scene)",
       );
     });
 
@@ -267,7 +290,7 @@ describe("validateIdTypes", () => {
       expect(result[0]!.id).toBe("track_1");
       expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
       expect(capturedWarnings()).toContain(
-        "s0 (id scene_1) is not a track (found Scene)",
+        "s0 (id scene_1) is not a track (found scene)",
       );
     });
 

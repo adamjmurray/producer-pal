@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   beginGeminiHalfDuplexMute,
   endGeminiHalfDuplexMute,
-} from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+} from "#webui/hooks/voice/gemini/gemini-half-duplex-mute";
 import { handleGeminiMessage } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import {
   makeMessageDeps,

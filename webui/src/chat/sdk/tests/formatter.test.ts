@@ -8,7 +8,7 @@ import {
   expectValidTimestamps,
   stripTimestamps,
 } from "#webui/test-utils/message-test-helpers";
-import { type ChatMessage } from "#webui/chat/sdk/types";
+import { type ChatMessage, type StepTiming } from "#webui/chat/sdk/types";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 
 /**
@@ -27,6 +27,38 @@ function completedToolCall(): ChatMessage[] {
     },
   ];
 }
+
+/**
+ * A tool step followed by a text step, the shape that merges into one message.
+ * @param timings - Per-step generation speed, when the test needs it
+ * @param timings.tool - Timing for the tool step
+ * @param timings.text - Timing for the text step
+ * @returns The history to format
+ */
+function toolStepThenTextStep(timings: {
+  tool?: StepTiming;
+  text?: StepTiming;
+}): ChatMessage[] {
+  return [
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{ id: "1", name: "ppal-connect", args: {} }],
+      toolResults: [{ id: "1", name: "ppal-connect", args: {}, result: "ok" }],
+      usage: TOOL_STEP_USAGE,
+      ...(timings.tool && { timing: timings.tool }),
+    },
+    {
+      role: "assistant",
+      content: "Connected!",
+      usage: TEXT_STEP_USAGE,
+      ...(timings.text && { timing: timings.text }),
+    },
+  ];
+}
+
+const TOOL_STEP_USAGE = { inputTokens: 6078, outputTokens: 33 };
+const TEXT_STEP_USAGE = { inputTokens: 9496, outputTokens: 195 };
 
 describe("formatChatMessages", () => {
   it("returns empty array for empty history", () => {
@@ -311,30 +343,45 @@ describe("formatChatMessages", () => {
   });
 
   it("inserts step-usage part when merging tool step into text step", () => {
-    const toolUsage = { inputTokens: 6078, outputTokens: 33 };
-    const textUsage = { inputTokens: 9496, outputTokens: 195 };
-    const history: ChatMessage[] = [
-      {
-        role: "assistant",
-        content: "",
-        toolCalls: [{ id: "1", name: "ppal-connect", args: {} }],
-        toolResults: [
-          { id: "1", name: "ppal-connect", args: {}, result: "ok" },
-        ],
-        usage: toolUsage,
-      },
-      { role: "assistant", content: "Connected!", usage: textUsage },
-    ];
-    const result = formatChatMessages(history);
+    const result = formatChatMessages(toolStepThenTextStep({}));
 
     expect(result).toHaveLength(1);
 
-    const parts = result[0]!.parts;
-    const stepUsagePart = parts.find((p) => p.type === "step-usage");
+    const stepUsagePart = result[0]!.parts.find((p) => p.type === "step-usage");
 
     expect(stepUsagePart).toBeDefined();
-    expect(stepUsagePart).toHaveProperty("usage", toolUsage);
-    expect(result[0]!.usage).toStrictEqual(textUsage);
+    expect(stepUsagePart).toHaveProperty("usage", TOOL_STEP_USAGE);
+    expect(stepUsagePart).not.toHaveProperty("timing");
+    expect(result[0]!.usage).toStrictEqual(TEXT_STEP_USAGE);
+    expect(result[0]!.timing).toBeUndefined();
+  });
+
+  it("carries each step's timing onto its own usage", () => {
+    const tool = { timeToFirstTokenMs: 840, outputTokensPerSecond: 38 };
+    const text = { timeToFirstTokenMs: 1240, outputTokensPerSecond: 42 };
+    const result = formatChatMessages(toolStepThenTextStep({ tool, text }));
+    const stepUsagePart = result[0]!.parts.find((p) => p.type === "step-usage");
+
+    expect(stepUsagePart).toHaveProperty("timing", tool);
+    expect(result[0]!.timing).toStrictEqual(text);
+  });
+
+  it("drops a merged-away step's timing when the next step has none", () => {
+    // Merging without a tool part keeps no step-usage part, so the untimed
+    // step's usage must not inherit the timed step's speed.
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "Thinking",
+        usage: TOOL_STEP_USAGE,
+        timing: { timeToFirstTokenMs: 840, outputTokensPerSecond: 38 },
+      },
+      { role: "assistant", content: "Connected!", usage: TEXT_STEP_USAGE },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result[0]!.usage).toStrictEqual(TEXT_STEP_USAGE);
+    expect(result[0]!.timing).toBeUndefined();
   });
 
   it("formats error messages as error parts", () => {
@@ -401,6 +448,40 @@ describe("formatChatMessages", () => {
 
     expect(result[0]!.parts).toStrictEqual([
       { type: "compaction", content: "Earlier summary" },
+    ]);
+  });
+
+  it("puts a user message's images ahead of its text", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "user",
+        content: "like this",
+        images: [
+          { mediaType: "image/png", data: "AAA" },
+          { mediaType: "image/webp", data: "BBB" },
+        ],
+      },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result[0]!.parts).toStrictEqual([
+      { type: "image", mediaType: "image/png", data: "AAA" },
+      { type: "image", mediaType: "image/webp", data: "BBB" },
+      { type: "text", content: "like this" },
+    ]);
+  });
+
+  it("formats an image-only message with no text part", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "user",
+        content: "",
+        images: [{ mediaType: "image/png", data: "AAA" }],
+      },
+    ];
+
+    expect(formatChatMessages(history)[0]!.parts).toStrictEqual([
+      { type: "image", mediaType: "image/png", data: "AAA" },
     ]);
   });
 });

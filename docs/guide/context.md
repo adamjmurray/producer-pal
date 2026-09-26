@@ -58,17 +58,16 @@ Notes about the Live Set you're working on: its genre and tempo, how the
 arrangement is laid out, which track does what, and the rules you want followed.
 
 Project context is saved in this project's Producer Pal device, so it travels
-with the Live Set and is gone if you delete the device. This is the same text as
-the device's [Context tab](/guide/device#context-tab); the device shows it in a
+with the Live Set. It's also mirrored to a file in your Live Project folder, so
+it survives deleting or upgrading the device. This is the same text as the
+device's [Context tab](/guide/device#context-tab); the device shows it in a
 small box, the editor gives it room.
 
-Because a device upgrade starts you on a fresh, empty device, Producer Pal also
-mirrors this context to a `Producer Pal Project Context.md` file saved in your
-Live Project folder (one file, shared by every Set in it) and restores it the
-first time the AI uses a tool after upgrading. It's a backup, not the source of
-truth: you normally never touch it, and it's safe to delete. (Unlike the two
-layers below, this is the one context file that lives with your project rather
-than under `~/.producer-pal`.) See
+That mirror is a `Producer Pal Project Context.md` file (one file, shared by
+every Set in the folder), restored the first time the AI uses a tool on a new
+device. It's a backup, not the source of truth: you normally never touch it, and
+it's safe to delete. (Unlike the two layers below, this is the one context file
+that lives with your project rather than under `~/.producer-pal`.) See
 [when an upgrade can still lose it](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices).
 
 Keep it about the project, not about you. "Kick stays four-on-the-floor" belongs

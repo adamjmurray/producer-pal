@@ -9,7 +9,7 @@
  *
  * Requires Ableton (agentic — drives a live model against Live).
  *
- * The kit grammar is a single create-device with `deviceName: "Drum Rack"` and
+ * The kit grammar is a single create-device with `device: "Drum Rack"` and
  * `params` whose names are pad-path prefixed — `{name: "pC1/sample", value:
  * "<abs file path>"}` loads a sample into pad C1, auto-creating that pad's
  * Simpler. The capability is "one call, many pads", NOT pad-by-pad add-device
@@ -23,7 +23,10 @@
 
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
+import {
+  SAMPLE_FOLDER_CONFIG,
+  sampleBrowseAssertionHead,
+} from "../helpers/sample-browse-setup.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
 
 /**
@@ -38,14 +41,13 @@ const PAD_SAMPLE_PARAM = /^p[^/]+(?:\/c\d+)?(?:\/d\d+)?\/sample$/i;
 
 export const deviceDrumKit: EvalScenario = {
   id: "device-drum-kit",
+  tags: ["devices"],
   description:
     "Build a Drum Rack in one call with path-prefixed per-pad sample params",
   kind: "capability",
   liveSet: "basic-midi-4-track",
 
-  config: {
-    sampleFolder: resolveSamplesPath("samples"),
-  },
+  config: SAMPLE_FOLDER_CONFIG,
 
   messages: [
     "Connect to Ableton Live",
@@ -54,9 +56,7 @@ export const deviceDrumKit: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
-    { type: "tool_called", tool: "ppal-create-track", turn: 2 },
+    ...sampleBrowseAssertionHead(),
     { type: "tool_called", tool: "ppal-create-device", turn: 2 },
 
     // One device call must carry >= 2 distinct pad-path sample params, accepted.

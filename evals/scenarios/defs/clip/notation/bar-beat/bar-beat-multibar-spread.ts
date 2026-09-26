@@ -23,7 +23,7 @@
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type EvalScenario } from "../../../../types.ts";
-import { clipStateAssertion } from "../../helpers/clip-scenario-helpers.ts";
+import { clipStateAssertion } from "../../helpers/clip-note-assertions.ts";
 import {
   createClipScenario,
   LEAD_SLOT_1,

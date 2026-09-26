@@ -151,6 +151,8 @@ Live, or make sure your standalone Max is up to date. See
 - Create multiple copies at once
 - Copy clips anywhere in the Session, Arrangement, or from Session to
   Arrangement
+  - A clip slot past the last scene creates the scenes up to it, reported as
+    `created`
   - Position in the Arrangement by bar|beat or locator
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
@@ -158,6 +160,12 @@ Live, or make sure your standalone Max is up to date. See
 - Stack variations on [take lanes](/features#take-lanes): naming one lane twice
   in `toPath`, `toPath: "t2/l0[9|1],t2/l0[13|1]"`, stacks both takes on it. A
   lane per copy is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`
+- Copy a whole lane onto another lane with `type: "track"` and a lane `toPath`:
+  every clip at the position it already has, clips only (no devices, routing,
+  mixer settings, or session clips). The source is a track (its main lane) or a
+  take lane, by path (`t2/l0`) or by the lane's id
+- Promote a whole take lane with a bare track `toPath` (`t2`): a take-lane
+  source's clips land on that track's main lane, over the clips already there
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
@@ -196,7 +204,7 @@ limitation).
 ### Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
-- Create, rename, or delete arrangement locators
+- Create, rename, or delete arrangement locators, several per call
 
 <!--@include: ../_generated/ppal-update-live-set-schema.md-->
 
@@ -219,8 +227,11 @@ limitation).
 - Get detailed track information
 - View all clips in Session and Arrangement
 - List [take lanes](/features#take-lanes) and their clips (with the
-  `arrangement-clips` include)
+  `arrangement-clips` include), or read one lane on its own from a lane path
+  (`t2/l0`)
 - See devices, routing options, and drum pad mappings
+- See which instrument plays the track, including what's inside an Instrument
+  Rack: `Instrument Rack (Operator, Wavetable)`
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
 
@@ -235,6 +246,9 @@ limitation).
   letter)
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
+- Add and name [take lanes](/features#take-lanes) from a lane path: `t2/l+`
+  appends one, `t2/l2` names an existing lane (adding the lanes up to it), and
+  `name` is the only param a lane takes
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->
@@ -296,7 +310,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether
   Live warps it with `warping` (see [Audio Clips](#audio-clips))
-- Auto-create scenes as needed
+- Create the scenes up to a clip slot past the last one, reporting them as
+  `created`
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
 
@@ -323,11 +338,12 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Change audio clip gain, pitch shift, and warp settings (see
   [Audio Clips](#audio-clips))
 - Move clips and change their length in the Arrangement, addressing a clip by
-  where it starts (`t0[5|1]`, or `t0[loc:Chorus]`)
+  any position it covers (`t0[5|1]`, or `t0[loc:Chorus]`)
 - Move a clip with `toPath`: along its own track, to another track, onto or off
   a [take lane](/features#take-lanes), or back into a session slot. A move Live
   has no API for re-creates the clip, which costs its automation envelopes; the
-  result says when that applied
+  result says when that applied. A slot past the last scene creates the scenes
+  up to it, reported as `created`
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 
@@ -356,7 +372,7 @@ underneath. Two consequences on Update Clip:
 - It erases a `start`/`length` sent in the same call. Reshape the region in a
   follow-up call.
 - `looping: true` forces warping back on, so it vetoes a `warping: false` sent
-  alongside it, and warns that it did.
+  alongside it, and says so in that clip's `detail`.
 
 **Unwarped clips are measured against the sample.** Live switches a clip's
 markers from beats to seconds when warping is off, and reports an unwarped
@@ -375,6 +391,8 @@ sounding.
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
+- Create a device or rack from a preset (needs the
+  [remote script](/guide/remote-script))
 - Load a sample into a Simpler instrument via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
   `{name: "gainDb", value: <dB>}` (new in Live 12.4)
@@ -411,6 +429,7 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
+- Swap a preset onto a device (needs the [remote script](/guide/remote-script))
 
 <!--@include: ../_generated/ppal-update-device-schema.md-->
 

@@ -56,11 +56,11 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
 }));
 
 import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
-import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
+import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/helpers/voice-settings-storage";
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 
@@ -179,23 +179,29 @@ describe("useVoiceSession turn-detection config", () => {
   });
 });
 
+/**
+ * The output speed the session was constructed with.
+ * @returns The configured speed, or undefined when none was set
+ */
+function constructedOutputSpeed(): number | undefined {
+  const { config } = realtime.constructed[0]!.options as {
+    config: { audio: { output?: { speed?: number } } };
+  };
+
+  return config.audio.output?.speed;
+}
+
 describe("useVoiceSession session config wiring", () => {
   it("passes the output speed into the session config", async () => {
     await connectAndReadAudio({ ...PARAMS, speed: 1.25 });
-    const { config } = realtime.constructed[0]!.options as {
-      config: { audio: { output?: { speed?: number } } };
-    };
 
-    expect(config.audio.output?.speed).toBe(1.25);
+    expect(constructedOutputSpeed()).toBe(1.25);
   });
 
   it("defaults the output speed when none is provided", async () => {
     await connectAndReadAudio(PARAMS);
-    const { config } = realtime.constructed[0]!.options as {
-      config: { audio: { output?: { speed?: number } } };
-    };
 
-    expect(config.audio.output?.speed).toBe(VOICE_SPEED_DEFAULT);
+    expect(constructedOutputSpeed()).toBe(VOICE_SPEED_DEFAULT);
   });
 
   it("maps thinking into reasoning.effort", async () => {

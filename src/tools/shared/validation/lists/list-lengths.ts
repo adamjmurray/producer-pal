@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { splitPathEntries } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { splitEntries } from "./split-entries.ts";
+import { plural } from "./plural.ts";
 
 /**
  * The whole-call check that two comma-separated params agree on how many
@@ -26,6 +28,12 @@ export interface ListArg {
    * other would refuse a call naming two of each.
    */
   count?: number;
+  /**
+   * Whether this arg names what the call acts on. An arg with a `count` always
+   * does. When no target arg is a list, the call has one target, so every other
+   * value is read whole, commas and all, and never conflicts.
+   */
+  target?: boolean;
   /** What this arg counts, when "entries" doesn't fit: "track", "copy". */
   noun?: string;
   /**
@@ -39,14 +47,21 @@ export interface ListArg {
  * Refuse a call whose comma-separated params name different numbers of entries.
  *
  * A param naming one entry covers every item and never conflicts, so only lists
- * of 2 or more are compared. Between two real lists a length mismatch has no
- * reading that isn't a mistake: the shorter one leaves items unset and the
- * longer one names items that aren't there. Nothing has run yet, so the model
- * retries with a corrected call and loses no work.
+ * of 2 or more are compared. Between two real lists a mismatch has no reading
+ * that isn't a mistake: one leaves items unset, the other names items that
+ * aren't there. Nothing has run yet, so a corrected retry loses no work.
  * @param args - The list params this call accepts, in the order to report them
  * @throws Error when two comma-bearing params name different counts
  */
 export function validateListLengths(args: ListArg[]): void {
+  const targets = args.filter(
+    (arg) => arg.target === true || arg.count != null,
+  );
+
+  if (targets.length > 0 && !targets.some(isList)) {
+    return;
+  }
+
   const lists = args
     .map((arg) => ({
       param: arg.param,
@@ -81,8 +96,7 @@ export function validateListLengths(args: ListArg[]): void {
  *
  * For the lists a whole-call check can't reach: duplicate shares its
  * destinations out across the sources first, so the counts that have to agree
- * are the per-source ones, not the raw params. Still pre-flight — it runs while
- * the copies are being planned, before any is made.
+ * are the per-source ones, not the raw params. Still before any copy is made.
  * @param a - The first list's param name and entry count
  * @param b - The second list's param name and entry count
  * @throws Error when both name more than one entry and the counts differ
@@ -103,10 +117,38 @@ export function requireSameLength(
 }
 
 /**
- * Whether an arg is a list at all. A value with no comma in it covers every
- * item and never conflicts. One with a comma is a list even when a trailing
- * comma leaves it a single entry — "A," against two items is a short list, not
- * one value covering both.
+ * Refuse a destination list that doesn't name one destination per source. A
+ * destination holds one object, so a lone one never covers several sources the
+ * way a name does, and a longer list is never dealt out a few per source.
+ * @param destinations - The destination param's name and entry count
+ * @param sources - What named the sources, how many there are, and what one is
+ * called ("source" by default)
+ * @param hint - A sentence to add, naming another way out
+ * @throws Error when the counts differ
+ */
+export function requireDestinationPerSource(
+  destinations: { param: string; count: number },
+  sources: { param: string; count: number; noun?: string },
+  hint = "",
+): void {
+  if (destinations.count === sources.count) {
+    return;
+  }
+
+  const noun = sources.noun ?? "source";
+  const message =
+    `${destinations.param} names ${plural(destinations.count, "destination")} ` +
+    `but ${sources.param} names ${plural(sources.count, noun)}. A ` +
+    `destination holds one object, so ${destinations.param} must name one ` +
+    `per ${noun}, in order.`;
+
+  throw new Error(hint === "" ? message : `${message} ${hint}`);
+}
+
+/**
+ * Whether an arg is a list at all. A value with no comma covers every item and
+ * never conflicts. One with a comma is a list even when a trailing comma leaves
+ * it a single entry — "A," against two items is a short list, not one value.
  * @param arg - The list param
  * @returns True when the arg has to agree with the other lists
  */
@@ -120,11 +162,32 @@ function isList(arg: ListArg): boolean {
   }
 
   // A comma makes it a list even when it names one entry — "A," is a malformed
-  // list, and dropping it here would let it pass unchallenged. A path's comma
-  // has to be at bracket depth 0 to count.
-  return arg.isPath
-    ? splitPathEntries(arg.value).length > 1
-    : arg.value.includes(",");
+  // list, and dropping it here would let it pass unchallenged.
+  return splitterFor(arg)(arg.value).length > 1;
+}
+
+/**
+ * How an arg's entries split, the same way its own splitter does: a path at
+ * bracket depth 0, any other target list at every comma, and a value list at
+ * every comma not written `\,`.
+ * @param arg - The list param
+ * @returns The split function
+ */
+function splitterFor(arg: ListArg): (value: string) => string[] {
+  if (arg.isPath === true) {
+    return splitPathEntries;
+  }
+
+  return arg.target === true ? splitTargetEntries : splitEntries;
+}
+
+/**
+ * Split a target list at every comma, as `targetEntries` does.
+ * @param value - The raw param value
+ * @returns The untrimmed entries
+ */
+function splitTargetEntries(value: string): string[] {
+  return value.split(",");
 }
 
 /**
@@ -138,18 +201,20 @@ function entryCount(arg: ListArg): number {
     return arg.count;
   }
 
-  return arg.value == null ? 1 : countEntries(arg.value, arg.isPath);
+  return arg.value == null ? 1 : countEntries(arg.value, splitterFor(arg));
 }
 
 /**
- * How many entries a comma-separated value names, reading one trailing comma
- * as a typo rather than an entry — the same way both splitters do. An unset
- * value names none.
+ * How many entries a comma-separated target list (`id`) names, reading one
+ * trailing comma as a typo rather than an entry — the same way both splitters
+ * do. An unset value names none.
  * @param value - The raw param value
  * @returns The entry count
  */
 export function countListEntries(value: string | null | undefined): number {
-  return value == null || value.trim() === "" ? 0 : countEntries(value);
+  return value == null || value.trim() === ""
+    ? 0
+    : countEntries(value, splitTargetEntries);
 }
 
 /**
@@ -159,38 +224,27 @@ export function countListEntries(value: string | null | undefined): number {
  * @returns The entry count
  */
 export function countPathEntries(value: string | null | undefined): number {
-  return value == null || value.trim() === "" ? 0 : countEntries(value, true);
+  return value == null || value.trim() === ""
+    ? 0
+    : countEntries(value, splitPathEntries);
 }
 
 /**
  * How many entries a comma-separated value names, reading one trailing comma
  * as a typo rather than an entry — the same way both splitters do.
  * @param value - The raw param value
- * @param isPath - Split at bracket depth 0, for a path param
+ * @param split - How the param splits into entries
  * @returns The entry count
  */
-function countEntries(value: string, isPath = false): number {
-  const entries = isPath ? splitPathEntries(value) : value.split(",");
+function countEntries(
+  value: string,
+  split: (value: string) => string[],
+): number {
+  const entries = split(value);
 
   if ((entries.at(-1) ?? "").trim() === "") {
     entries.pop();
   }
 
   return entries.length;
-}
-
-/**
- * "1 entry", "3 copies", "2 tracks" — a trailing y becomes -ies.
- * @param count - How many
- * @param noun - The singular noun
- * @returns The counted phrase
- */
-function plural(count: number, noun: string): string {
-  if (count === 1) {
-    return `${count} ${noun}`;
-  }
-
-  const plur = noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`;
-
-  return `${count} ${plur}`;
 }

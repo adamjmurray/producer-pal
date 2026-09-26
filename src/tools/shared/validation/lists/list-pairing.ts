@@ -7,15 +7,22 @@
 // acts on: one value covers them all, or exactly N pair 1:1 in order, and no
 // entry may be empty. A length mismatch is refused before any work runs, and a
 // hole is refused here. Nothing cycles — a caller can't predict where a cycled
-// value lands.
+// value lands. A comma splits only when the call names more than one item:
+// with one item every comma is part of the value (dev/PRINCIPLES.md,
+// Multi-target). With any count, `\,` is a comma inside a value, so a file
+// path or routing name can hold one in a list. No other backslash is touched
+// (Windows paths come through as-is), so a value can't end in a backslash
+// right before a separating comma.
 //
-// Destinations are the exception, in one direction only: a clip slot holds one
-// clip, so broadcasting a lone slot to three clips would destroy two of them.
-// Those pair exactly (pairExact). Values broadcast (pairValues, valueForIndex)
-// because an arrangement position holds any number of clips, and a name or a
-// color is a property, not a place.
+// Destinations are the exception: a lane or slot holds one object, so a lone
+// one sent to three clips would bury two of them. Those pair exactly
+// (pairExact). A bare arrangement position still broadcasts (pairValues), since
+// each clip lands on its own track, and so does a name or a color: a property,
+// not a place.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { plural } from "./plural.ts";
+import { splitEntries, unescapeCommas } from "./split-entries.ts";
 
 /** How a mismatched list is described in the warning. */
 export interface PairLabels {
@@ -36,7 +43,7 @@ export type ListEntries = string[];
  * Split a comma-separated param into one entry per item.
  *
  * Returns null when there's nothing to pair — a single item, or a value with
- * no comma in it — which the index lookups read as "this value covers
+ * no separating comma — which the index lookups read as "this value covers
  * everything".
  * @param value - The raw param, as the caller sent it
  * @param count - How many items the call acts on
@@ -49,11 +56,15 @@ export function splitList(
   count: number,
   param: string,
 ): ListEntries | null {
-  if (count <= 1 || !value?.includes(",")) {
+  if (count <= 1 || value == null) {
     return null;
   }
 
-  const entries = value.split(",").map((v) => v.trim());
+  const entries = splitEntries(value).map((v) => v.trim());
+
+  if (entries.length === 1) {
+    return null;
+  }
 
   // One trailing comma isn't an entry, the way most languages read a list
   // literal. Without this, "A,B," over three items clears the third name.
@@ -75,6 +86,27 @@ export function splitList(
 }
 
 /**
+ * Every value a param names, for checking each one before any item is touched:
+ * its list entries, or the whole value.
+ * @param value - The raw param, if sent
+ * @param count - How many items the call acts on
+ * @param param - The param's name, for the error message
+ * @returns The values, empty when the param wasn't sent
+ * @throws Error when an entry inside the list is empty
+ */
+export function everyEntry(
+  value: string | undefined,
+  count: number,
+  param: string,
+): string[] {
+  if (value == null) {
+    return [];
+  }
+
+  return splitList(value, count, param) ?? [unescapeCommas(value)];
+}
+
+/**
  * The value for one item: the whole param when the call named one, else the
  * entry in that position.
  * @param value - The raw param, as the caller sent it
@@ -93,7 +125,7 @@ export function valueForIndex(
 
   // A list too short for the items is refused up front, so past the last entry
   // only happens where nothing checked — and there the item keeps what it had.
-  return parsed == null ? value : parsed[index];
+  return parsed == null ? unescapeCommas(value) : parsed[index];
 }
 
 /**
@@ -168,14 +200,4 @@ export function warnPairingMismatch(
       ? `${head}; the extra ${noun}s went unused`
       : `${head}; the ${item}s past the last ${noun} ${shortfall}`,
   );
-}
-
-/**
- * "1 name", "3 names" — every noun the pairing labels use takes a plain -s.
- * @param count - How many
- * @param noun - The singular noun
- * @returns The counted phrase
- */
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

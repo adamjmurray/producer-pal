@@ -15,12 +15,16 @@ import {
   CONFIG_URL,
   fetchSkillOverrides,
   parseToolResult,
+  remoteScriptAnswers,
   serverHasCodeExec,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
+
+/** The section the skills add only while the remote script answers. */
+const PLUGINS_HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
 /** Helper to call ppal-connect and return the raw MCP result. */
 async function callConnectRaw(): Promise<unknown> {
@@ -78,6 +82,10 @@ function expectConnected(result: unknown): ConnectResult {
 }
 
 describe("ppal-connect", () => {
+  // Whether the server pings the remote script successfully, which adds the
+  // plug-ins section to standard skills. Asked the same way the server asks.
+  let remoteScript = false;
+
   // buildSkills() below reads ENABLE_CODE_EXEC from THIS process, but the device
   // bakes the flag in at build time — and `build:debug` forces it on. Left alone
   // the two disagree on every debug build, so take the answer from the server.
@@ -86,6 +94,7 @@ describe("ppal-connect", () => {
       "ENABLE_CODE_EXEC",
       (await serverHasCodeExec(ctx.client!)) ? "true" : "false",
     );
+    remoteScript = await remoteScriptAnswers();
   });
 
   afterAll(() => {
@@ -121,9 +130,15 @@ describe("ppal-connect", () => {
     // automatically — this test can never silently drift out of sync with the
     // skills. The dev machine's own ~/.producer-pal overrides go in too: e2e
     // runs against a live config dir, so they're part of what the server serves.
-    expect(extractSkills(result)).toBe(
-      buildSkills({ notation: "barbeat" }, await fetchSkillOverrides()),
+    const skills = extractSkills(result);
+
+    expect(skills).toBe(
+      buildSkills(
+        { notation: "barbeat", remoteScript },
+        await fetchSkillOverrides(),
+      ),
     );
+    expect(skills.includes(PLUGINS_HEADING)).toBe(remoteScript);
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {
@@ -144,7 +159,11 @@ describe("ppal-connect", () => {
     expect(skills).toBe(
       buildSkills({ notation: "barbeat", smallModelMode: true }, overrides),
     );
-    expect(skills).not.toBe(buildSkills({ notation: "barbeat" }, overrides));
+    expect(skills).not.toBe(
+      buildSkills({ notation: "barbeat", remoteScript }, overrides),
+    );
+    // Small-model mode never teaches loading plug-ins, remote script or not.
+    expect(skills).not.toContain(PLUGINS_HEADING);
   });
 
   describe("project context", () => {

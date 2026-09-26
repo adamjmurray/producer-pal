@@ -4,21 +4,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { createClip } from "../create-clip.ts";
-import { convertTimingParameters } from "../helpers/create-clip-helpers.ts";
+import { convertTimingParameters } from "../helpers/timing-parameters.ts";
 import {
   calculateClipLength,
   handleAutoPlayback,
-} from "../helpers/create-clip-validation-helpers.ts";
+} from "../helpers/create-clip-validation.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
+  mockScratchSwap,
   note,
+  registerEmptyClipSlot,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when nothing names a destination", async () => {
@@ -253,23 +258,109 @@ describe("createClip - basic validation and time signatures", () => {
     expectClipCreated(clipSlot, 8); // Rounds up to 2 bars = 8 Ableton beats
   });
 
-  it("warns when firstStart is used with non-looping clips", async () => {
+  // `looping` unset means the clip won't loop, so firstStart is dropped there
+  // too — the entry has to say so, not just for an explicit `looping: false`.
+  it.each([
+    ["looping is off", { looping: false }],
+    ["looping is unset", {}],
+  ])(
+    "reports an ignored firstStart on the clip's own entry when %s",
+    async (_case, args) => {
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        clip: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      const result = await createClip({
+        slot: "0/0",
+        notes: "C4 1|1",
+        firstStart: "1|2",
+        ...args,
+      });
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          detail: "firstStart ignored: set looping: true to use it",
+        }),
+      );
+      expect(capturedWarnings().join(" ")).not.toContain("firstStart");
+    },
+  );
+
+  it("puts the reason on every clip the call made", async () => {
     setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { signature_numerator: 4, signature_denominator: 4 },
     });
+    registerEmptyClipSlot(1);
 
-    await createClip({
+    const result = (await createClip({
+      slot: "0/0,0/1",
+      notes: "C4 1|1",
+      firstStart: "1|2",
+      looping: false,
+    })) as Array<{ detail?: string }>;
+
+    expect(result).toHaveLength(2);
+    expect(result.map((clip) => clip.detail)).toStrictEqual([
+      "firstStart ignored: set looping: true to use it",
+      "firstStart ignored: set looping: true to use it",
+    ]);
+  });
+
+  // A destination that got no clip already says why, so the firstStart note
+  // must not overwrite its reason.
+  it("leaves a skipped destination's own reason alone", async () => {
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerEmptyClipSlot(1);
+    // An audio track takes no MIDI clip, so t1/s0 gets none.
+    registerMockObject("7", {
+      path: livePath.track(1),
+      properties: { has_midi_input: 0 },
+    });
+
+    const result = (await createClip({
+      path: "t1/s0,t0/s1",
+      notes: "C4 1|1",
+      firstStart: "1|2",
+      looping: false,
+    })) as Array<{ detail?: string }>;
+
+    expect(result.map((entry) => entry.detail)).toStrictEqual([
+      "track t1 (id 7) is audio; a MIDI clip needs a MIDI track",
+      "firstStart ignored: set looping: true to use it",
+    ]);
+  });
+
+  // Both are the clip's own news, so neither note replaces the other.
+  it("keeps the note about the clip it replaced beside the firstStart note", async () => {
+    setupSessionMocks({
+      liveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children("scene0"),
+      },
+      clip: { signature_numerator: 4, signature_denominator: 4 },
+      clipSlot: { has_clip: 1 },
+    });
+    mockScratchSwap(0, 1, 0, {
+      id: "new_clip",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const result = (await createClip({
       slot: "0/0",
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
-    });
+    })) as { detail?: string };
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "firstStart parameter ignored for non-looping clips",
-      ),
+    expect(result.detail).toBe(
+      "overwrote the existing clip at t0/s0; " +
+        "firstStart ignored: set looping: true to use it",
     );
   });
 
@@ -292,32 +383,27 @@ describe("createClip - basic validation and time signatures", () => {
 });
 
 describe("convertTimingParameters (unit)", () => {
-  it("warns when firstStart is used with a non-looping clip", () => {
-    convertTimingParameters(null, null, "1|2", null, false, 4, 4, 4, 4);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("firstStart parameter ignored"),
+  // `firstStart != null && !looping`, one case per way it can go. Sending no
+  // firstStart is what kills the && → || mutant.
+  it.each([
+    ["firstStart on a non-looping clip is ignored", "1|2", false, true],
+    ["firstStart with looping unset is ignored", "1|2", null, true],
+    ["firstStart on a looping clip is used", "1|2", true, false],
+    ["no firstStart is nothing to ignore", null, false, false],
+  ])("%s", (_case, firstStart, looping, ignored) => {
+    const result = convertTimingParameters(
+      null,
+      null,
+      firstStart,
+      null,
+      looping,
+      4,
+      4,
+      4,
+      4,
     );
-  });
 
-  it("does NOT warn when firstStart is used with a looping clip", () => {
-    // looping === true: the firstStart-ignored warning must not fire. Kills the
-    // `looping === false` → true and whole-condition → true / && → || mutants.
-    convertTimingParameters(null, null, "1|2", null, true, 4, 4, 4, 4);
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("firstStart parameter ignored"),
-    );
-  });
-
-  it("does NOT warn when firstStart is set but looping is unset (null)", () => {
-    // looping is null (not false), so `firstStart != null && looping === false`
-    // is false; the && → || mutant would make it warn.
-    convertTimingParameters(null, null, "1|2", null, null, 4, 4, 4, 4);
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("firstStart parameter ignored"),
-    );
+    expect(result.firstStartIgnored).toBe(ignored);
   });
 
   it("adds startBeats to the length when computing endBeats (?? 0 fallback)", () => {

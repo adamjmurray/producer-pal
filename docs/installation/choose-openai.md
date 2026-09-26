@@ -20,5 +20,5 @@ you prefer pay-as-you-go API pricing.
 
 ## Model Notes
 
-- GPT-5.6 Terra recommended by default, GPT-5.6 Sol for complex tasks
-- Also available: GPT-5.6 Luna, GPT-5.5, GPT-5.3 Codex, GPT-5.4 Mini
+- GPT-6 Sol recommended by default
+- Also available: GPT-6 Luna, GPT-6 Astra

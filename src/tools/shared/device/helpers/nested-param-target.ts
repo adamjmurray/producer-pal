@@ -3,13 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
+import {
+  type TargetNotes,
+  noteSetAltered,
+  noteTarget,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import {
   DEVICE_CLASS,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
-import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
+import {
+  type CreatedChains,
+  resolveOrCreateDrumPadChain,
+} from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import { type ParamOutcome } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   ambiguousLayerReason,
   isSampleParam,
@@ -23,8 +31,12 @@ import {
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { createdCount } from "#src/tools/shared/helpers/created-range.ts";
 
 interface DrumPadSlot {
+  /** Segments from the addressed device down to the rack the pad sits on.
+   * Empty when the pad is on that device itself. */
+  under: string[];
   padNote: string;
   chainIndex: number;
   /** Whether the caller wrote a `cN` segment, rather than defaulting to 0. */
@@ -35,10 +47,9 @@ interface DrumPadSlot {
 
 /**
  * Whether a path-prefixed param name is the drum-pad `sample` shortcut — the
- * only path-prefixed param form that isn't deprecated. Every other prefixed
- * name is redundant with addressing the nested device by its own `path`; the
- * pad shortcut isn't, because the Simpler a sample write needs may not exist
- * yet to have a path.
+ * only path-prefixed form that isn't deprecated. Every other prefixed name is
+ * redundant with addressing the nested device by its own `path`; the pad
+ * shortcut isn't, because the Simpler a sample write needs may not exist yet.
  * @param prefix - The path segments before the param name, as the caller wrote them
  * @param paramName - The trailing param name
  * @returns Whether the prefix names a drum pad slot for a `sample` write
@@ -80,10 +91,11 @@ export function splitForAdvice(key: string): { path: string; name: string } {
   const segments = key.split("/");
   let index = 0;
 
-  while (
-    index < segments.length - 1 &&
-    PATH_SEGMENT.test(segments[index] ?? "")
-  ) {
+  for (const segment of segments.slice(0, -1)) {
+    if (!PATH_SEGMENT.test(segment)) {
+      break;
+    }
+
     index++;
   }
 
@@ -101,25 +113,25 @@ export function splitForAdvice(key: string): { path: string; name: string } {
  *
  * For a `sample` write addressing a drum pad, the pad-property model applies:
  * the pad (always addressable) gets a Simpler to hold the sample, created or
- * replaced per the policy below. Every other case — including a `sample` write
- * to an explicit non-pad device path — is plain read-only navigation to an
- * existing device.
+ * replaced per the policy below. Every other case is read-only navigation to an
+ * existing device, including a `sample` write to a non-pad device path.
  *
  * The pad is addressed as `pC1` (one layer) or `pC1/cN` (several); a `dN` is
  * accepted but must name the instrument the search found. Both a stacked pad
- * with no layer named and a `dN` that isn't the instrument skip and warn.
+ * with no layer named and a `dN` that isn't the instrument skip with a reason.
+ * A prefix may cross into a rack nested in a pad (`pC1/c0/d0/pD1`).
  *
- * | Pad instrument           | Behavior                                      |
- * | ------------------------ | --------------------------------------------- |
- * | none                     | create a Simpler                              |
- * | Simpler (single-sample)  | reuse it (caller's sample write replaces)     |
- * | Simpler (multi-sample)   | skip and warn; `force` swaps in a Simpler     |
- * | any other instrument     | skip and warn; `force` swaps in a Simpler     |
+ * | Pad instrument          | Behavior                                    |
+ * | ----------------------- | ------------------------------------------- |
+ * | none                    | create a Simpler                            |
+ * | Simpler (single-sample) | reuse it (the sample write replaces it)     |
+ * | anything else           | skip; `force` swaps in a Simpler and says so|
  *
  * @param rack - The device being created/updated (the path prefix is relative to it)
  * @param prefix - The path segments before the param name (e.g. "pC1")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
+ * @param notes - The target's entry notes; left out where there is no entry
  * @returns The target device, or the reason nothing can be targeted
  */
 export function resolveNestedParamTarget(
@@ -127,6 +139,7 @@ export function resolveNestedParamTarget(
   prefix: string,
   paramName: string,
   force = false,
+  notes?: TargetNotes,
 ): NestedParamTarget {
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
@@ -140,7 +153,7 @@ export function resolveNestedParamTarget(
 
   // Pad-property model: a `sample` write to a drum pad.
   if (slot) {
-    return resolveDrumPadSampleTarget(rack, slot, force);
+    return resolveDrumPadSampleTarget(rack, slot, force, notes);
   }
 
   // General case: read-only navigation to an existing device.
@@ -161,65 +174,111 @@ export function resolveNestedParamTarget(
 
 /**
  * Resolve (and, per policy, create/replace) the Simpler that holds one drum
- * chain's sample, for a `sample` write addressed to the pad itself rather than
- * to its rack. Same policy as the rack's `pC1/sample` shortcut — the pad is the
- * address, whichever way the caller spells it.
- *
- * Layer ambiguity is the caller's to settle: a chain names one layer already,
- * and a bare pad path is refused before it gets here.
+ * chain's sample, for a `sample` write addressed to the pad rather than to its
+ * rack. Same policy as the rack's `pC1/sample` shortcut — the pad is the
+ * address either way. Layer ambiguity is already settled here: a chain names
+ * one layer, and a bare pad path is refused before it gets this far.
  * @param chain - The DrumChain the write addressed
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
+ * @param notes - What the target's entry has to say, added to; left out where
+ *   the caller keeps no entry for this write
+ * @param chainsMade - How many chains this call made on the pad for the write
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 export function resolveDrumChainSampleTarget(
   chain: LiveAPI,
   force: boolean,
+  notes?: TargetNotes,
+  chainsMade = 0,
 ): NestedParamTarget {
   const instrument = findChainInstrument(chain);
+  const chainLabel = pathPrefix(chain);
+  // What a failed write left is named by the pad, the way the rack's
+  // `pC1/sample` shortcut names it.
+  const made = { padLabel: padOf(chainLabel), chainsMade };
 
   return instrument == null
-    ? createSimplerInChain(chain)
-    : applyPadInstrumentPolicy(chain, instrument, pathPrefix(chain), force);
+    ? createSimplerInChain(chain, notes, made)
+    : applyPadInstrumentPolicy(chain, instrument, chainLabel, force, notes);
 }
 
-/** The device a nested param write lands on, or why it lands on nothing. */
-export type NestedParamTarget = { device: LiveAPI } | { reason: string };
+/**
+ * The device a nested param write lands on, or why it lands on nothing. `made`
+ * names what the call made to hold the write, for a write that then fails.
+ */
+export type NestedParamTarget =
+  | { device: LiveAPI; made?: string }
+  | { reason: string };
 
 /**
- * Say why a write landed nowhere, in both channels at once: the reason goes in
- * the param's own result entry, and the warning stays until every way a param
- * write can fail has an entry of its own.
+ * Add what the call made for a write to each entry that then didn't land.
+ * Nothing made is undone — the call may already have force-removed an
+ * instrument that can't be put back — so the entry has to say it's there.
+ * @param target - The device the write went to
+ * @param outcomes - The write's entries
+ * @returns The entries, a failed one naming what was left behind
+ */
+export function sayWhatWasLeft(
+  target: { device: LiveAPI; made?: string },
+  outcomes: ParamOutcome[],
+): ParamOutcome[] {
+  const { made } = target;
+
+  if (made == null) {
+    return outcomes;
+  }
+
+  // A pseudo-param only finds out it didn't land when its value is read back,
+  // at the end of the call, so it carries the note until then.
+  return outcomes.map((outcome) => {
+    if ("ok" in outcome) {
+      return { ...outcome, detail: `${outcome.detail}; ${made}` };
+    }
+
+    return "read" in outcome ? { ...outcome, made } : outcome;
+  });
+}
+
+/** The pad a Simpler is made on, and how many chains the call made there. */
+interface MadeOnPad {
+  padLabel: string;
+  chainsMade: number;
+}
+
+/**
+ * Say why a write landed nowhere. The caller puts this in the param's own result
+ * entry, which is where it is read — it warns nowhere.
  * @param reason - Why nothing was written
  * @returns The reason, as a resolution result
  */
 function skip(reason: string): NestedParamTarget {
-  console.warn(reason);
-
   return { reason };
 }
 
 /**
- * Parse a relative path prefix as a drum pad (`p<note>[/c<chain>][/d<device>]`).
- * The chain index defaults to 0, which the caller only accepts on a pad holding
- * one layer. Returns null for non-drum-pad prefixes, malformed indices, or
- * deeper nesting (handled by the general resolver instead).
+ * Parse a relative path prefix as a drum pad
+ * (`[<walk>/]p<note>[/c<chain>][/d<device>]`). The pad is the last one on the
+ * path; anything before it walks down to the rack holding it, so a rack nested
+ * in an outer pad addresses its own pads the same way. The chain index defaults
+ * to 0, which the caller only accepts on a one-layer pad. Null for a prefix
+ * that names no pad, and for a malformed index.
  * @param segments - Non-empty path segments
  * @returns The parsed slot, or null
  */
 function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
-  const first = assertDefined(segments[0], "pad segment");
+  const padIndex = segments.findLastIndex((segment) => segment.startsWith("p"));
 
-  if (!first.startsWith("p")) {
+  if (padIndex < 0) {
     return null;
   }
 
-  const padNote = first.slice(1);
+  const padNote = assertDefined(segments[padIndex], "pad segment").slice(1);
 
   if (padNote.length === 0) {
     return null;
   }
 
-  let index = 1;
+  let index = padIndex + 1;
   let chainIndex = 0;
   let chainNamed = false;
   const chainSegment = segments[index];
@@ -237,8 +296,8 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
   }
 
   // A `d<N>` segment is accepted so read and write paths stay interchangeable.
-  // It never locates the instrument — that is found by device type — but it is
-  // checked against the one found, so a wrong index can't silently "work".
+  // It never locates the instrument (device type does) but is checked against
+  // the one found, so a wrong index can't silently "work".
   let deviceIndex: number | undefined;
   const deviceSegment = segments[index];
 
@@ -253,56 +312,86 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     index++;
   }
 
-  // Deeper nesting (e.g. a nested drum rack) is not part of the pad-property
-  // shortcut — defer to the general resolver.
+  // Anything after the device segment names something inside the pad's
+  // instrument, which the pad-property shortcut has no place for.
   if (index < segments.length) {
     return null;
   }
 
-  return { padNote, chainIndex, chainNamed, deviceIndex };
+  return {
+    under: segments.slice(0, padIndex),
+    padNote,
+    chainIndex,
+    chainNamed,
+    deviceIndex,
+  };
 }
 
 /**
  * Resolve (and, per policy, create/replace) the Simpler that holds a drum pad's
- * sample. The pad's chain auto-creates when missing.
- * @param rack - Drum Rack device
+ * sample. The pad's chain auto-creates when missing, on a rack nested inside an
+ * outer pad exactly as on the addressed rack itself.
+ * @param rack - The device the prefix is relative to
  * @param slot - Parsed drum pad slot
  * @param force - Allow the instrument-to-Simpler swap
+ * @param notes - What the target's entry has to say, added to
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 function resolveDrumPadSampleTarget(
   rack: LiveAPI,
   slot: DrumPadSlot,
   force: boolean,
+  notes: TargetNotes | undefined,
 ): NestedParamTarget {
-  const { padNote, chainIndex, chainNamed, deviceIndex } = slot;
-  const padLabel = `${pathPrefix(rack)}/p${padNote}`;
+  const { under, padNote, chainIndex, chainNamed, deviceIndex } = slot;
+  // The pad's name relative to the addressed device, so every retry this hands
+  // back is a param name the caller can resend as-is.
+  const padName = [...under, `p${padNote}`].join("/");
+  const padLabel = `${pathPrefix(rack)}/${padName}`;
+  const holder = padHolderRack(rack, under);
+
+  if ("reason" in holder) {
+    return holder;
+  }
+
   const ambiguous = chainNamed
     ? null
-    : ambiguousLayerSkip(rack, padNote, padLabel);
+    : ambiguousLayerSkip(holder.device, padNote, padLabel, padName);
 
   if (ambiguous) {
     return ambiguous;
   }
 
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
-  const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
+  const created: CreatedChains = [];
+  const chain = resolveOrCreateDrumPadChain(
+    holder.device,
+    padNote,
+    chainSegments,
+    created,
+  );
 
   if (!chain?.exists()) {
     return skip(`could not resolve or create drum pad "${padLabel}"`);
+  }
+
+  const chainsMade = createdCount(created);
+
+  if (chainsMade > 0) {
+    noteSetAltered(notes);
   }
 
   const instrument = findChainInstrument(chain);
 
   // Nothing to hold the sample yet, so a `dN` names nothing to disagree with.
   if (!instrument) {
-    return createSimplerInChain(chain);
+    return createSimplerInChain(chain, notes, { padLabel, chainsMade });
   }
 
   if (deviceIndex != null && deviceIndex !== instrument.index) {
     const retry = chainNamed
-      ? `p${padNote}/c${chainIndex}/sample`
-      : `p${padNote}/sample`;
+      ? `${padName}/c${chainIndex}/sample`
+      : `${padName}/sample`;
 
     return skip(
       `sample write SKIPPED on pad ${padLabel} — d${deviceIndex} ` +
@@ -311,7 +400,7 @@ function resolveDrumPadSampleTarget(
     );
   }
 
-  return applyPadInstrumentPolicy(chain, instrument, padLabel, force);
+  return applyPadInstrumentPolicy(chain, instrument, padLabel, force, notes);
 }
 
 /**
@@ -322,6 +411,7 @@ function resolveDrumPadSampleTarget(
  * @param instrument - The instrument the chain holds, and its index in it
  * @param padLabel - How to name the pad
  * @param force - Allow the instrument-to-Simpler swap
+ * @param notes - What the target's entry has to say, added to
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 function applyPadInstrumentPolicy(
@@ -329,6 +419,7 @@ function applyPadInstrumentPolicy(
   instrument: { device: LiveAPI; index: number },
   padLabel: string,
   force: boolean,
+  notes: TargetNotes | undefined,
 ): NestedParamTarget {
   const className = instrument.device.getProperty(
     "class_display_name",
@@ -351,15 +442,44 @@ function applyPadInstrumentPolicy(
   }
 
   chain.call("delete_device", instrument.index);
+  noteSetAltered(notes);
   // A delete renumbers the chain's remaining devices, and the path cache's
   // contract says nothing cached survives that. createSimplerInChain invalidates
   // again after its insert; this one keeps the invariant true in between.
   invalidateDevicePathCache();
-  console.warn(
-    `force:true — replaced ${held} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
+  const pad = padOf(padLabel);
+
+  noteTarget(
+    notes,
+    `force:true — replaced ${held} on pad ${pad} with a Simpler to load the sample. Its settings are gone.`,
   );
 
-  return createSimplerInChain(chain);
+  // The instrument's chain was there already, so the call made none.
+  return createSimplerInChain(chain, notes, {
+    padLabel: pad,
+    chainsMade: 0,
+  });
+}
+
+/**
+ * The rack the pad sits on: the addressed device, or a rack nested below it.
+ * The walk is read-only — a rack inside a pad is only reachable through a chain
+ * that already holds it, so the pad's own chain is the only thing a sample
+ * write can be left to create.
+ * @param rack - The device the prefix is relative to
+ * @param under - Segments from that device down to the rack holding the pad
+ * @returns The rack, or the reason the walk found none
+ */
+function padHolderRack(rack: LiveAPI, under: string[]): NestedParamTarget {
+  if (under.length === 0) {
+    return { device: rack };
+  }
+
+  const { target, targetType } = navigateRemainingSegments(rack, under);
+
+  return target?.exists() && targetType === "device"
+    ? { device: target }
+    : skip(`no device at "${pathPrefix(rack)}/${under.join("/")}"`);
 }
 
 /**
@@ -367,15 +487,17 @@ function applyPadInstrumentPolicy(
  * sample belongs to one layer, so writing "the pad" used to load the first one
  * silently — and with `force` that replaces an instrument nobody named. Matches
  * the pad-property path, which skips its per-layer settings the same way.
- * @param rack - Drum Rack device
+ * @param rack - The Drum Rack the pad sits on
  * @param padNote - The pad's note, as the caller spelled it
  * @param padLabel - The pad's full path, for naming it in the warning
+ * @param padName - The pad's name relative to the addressed device
  * @returns The skip, or null when the pad holds at most one layer
  */
 function ambiguousLayerSkip(
   rack: LiveAPI,
   padNote: string,
   padLabel: string,
+  padName: string,
 ): NestedParamTarget | null {
   const layers = resolveDrumPadGroup(rack.path, padNote)?.chains.length ?? 0;
 
@@ -387,7 +509,7 @@ function ambiguousLayerSkip(
   // the caller re-sends — not the pad's full path.
   const retries = Array.from(
     { length: layers },
-    (_, index) => `p${padNote}/c${index}/sample`,
+    (_, index) => `${padName}/c${index}/sample`,
   );
 
   return skip(ambiguousLayerReason(padLabel, retries));
@@ -419,9 +541,17 @@ function findChainInstrument(
  * re-sorts a chain by device type, so the Simpler lands after any MIDI effects
  * and before any audio effects on its own.
  * @param chain - Chain LiveAPI object
+ * @param notes - What the target's entry has to say, marked when the Simpler
+ *   is made
+ * @param pad - The pad, and the chains the call made there, for naming what a
+ *   failed write left
  * @returns The created Simpler, or the reason there is none
  */
-function createSimplerInChain(chain: LiveAPI): NestedParamTarget {
+function createSimplerInChain(
+  chain: LiveAPI,
+  notes: TargetNotes | undefined,
+  pad: MadeOnPad,
+): NestedParamTarget {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
     | undefined;
@@ -433,12 +563,56 @@ function createSimplerInChain(chain: LiveAPI): NestedParamTarget {
   const id = rawId ? String(rawId) : null;
 
   if (!id) {
-    return skip(`failed to create a Simpler on the drum pad`);
+    const failed = "failed to create a Simpler on the drum pad";
+
+    return skip(
+      pad.chainsMade > 0
+        ? `${failed}; ${leftOnPad(pad.padLabel, false, pad.chainsMade)}`
+        : failed,
+    );
   }
 
   const device = LiveAPI.from(`id ${id}`);
 
+  noteSetAltered(notes);
+
   return device.exists()
-    ? { device }
+    ? {
+        device,
+        // The Simpler fills the last chain made; any before it stay empty.
+        made: leftOnPad(pad.padLabel, true, Math.max(pad.chainsMade - 1, 0)),
+      }
     : skip(`the Simpler created on the drum pad could not be read back`);
+}
+
+/**
+ * The pad a label names, without the chain a pad path may end in.
+ * @param label - A pad's label, or one of its chains' ("t0/d0/pC1/c0")
+ * @returns The pad's label ("t0/d0/pC1")
+ */
+function padOf(label: string): string {
+  return label.replace(/\/c\d+$/, "");
+}
+
+/**
+ * What a failed pad sample write left on the pad.
+ * @param padLabel - How to name the pad
+ * @param simpler - Whether it left an empty Simpler
+ * @param emptyChains - How many empty chains it left
+ * @returns e.g. "left an empty Simpler and 2 empty chains on pad t0/d0/pC1"
+ */
+function leftOnPad(
+  padLabel: string,
+  simpler: boolean,
+  emptyChains: number,
+): string {
+  const left = simpler ? ["an empty Simpler"] : [];
+
+  if (emptyChains === 1) {
+    left.push("an empty chain");
+  } else if (emptyChains > 1) {
+    left.push(`${emptyChains} empty chains`);
+  }
+
+  return `left ${left.join(" and ")} on pad ${padLabel}`;
 }

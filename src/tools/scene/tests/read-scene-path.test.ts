@@ -56,11 +56,10 @@ describe("readScene by path", () => {
     );
   });
 
-  it.each([
-    ["id", { id: "456" }],
-    ["sceneIndex", { sceneIndex: 0 }],
-  ])("refuses a path sent with %s", (_name, other) => {
-    expect(() => readScene({ path: "s1", ...other })).toThrow(
+  // An id beside a path names a second scene, and both get read. An index is
+  // the same scene said another way, which has no reading that isn't a mistake.
+  it("refuses a path sent with sceneIndex", () => {
+    expect(() => readScene({ path: "s1", sceneIndex: 0 })).toThrow(
       "path names the scene on its own",
     );
   });

@@ -26,6 +26,9 @@
 //   import { listTools, callTool, setConfig } from "./ppal.mjs";
 //   const { result, warnings } = await callTool("ppal-read-live-set");
 
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 const DEFAULT_BASE_URL = "http://localhost:3350";
 
 // Three of the per-request headers. Unlike --set-config these change nothing on
@@ -250,7 +253,7 @@ async function main(argv) {
 }
 
 // Run main() when invoked as CLI (not when imported as a library)
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isEntryPoint()) {
   try {
     await main(process.argv.slice(2));
   } catch (err) {
@@ -262,5 +265,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error(err.message ?? err);
     }
     process.exit(1);
+  }
+}
+
+// Compare real paths: argv[1] may go through a symlink, and a file URL is
+// percent-encoded (and /C:/... on Windows).
+function isEntryPoint() {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
   }
 }

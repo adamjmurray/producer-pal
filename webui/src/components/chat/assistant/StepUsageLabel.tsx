@@ -3,12 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 import { compactNumber } from "#webui/lib/utils/compact-number";
+import { formatStepTiming } from "./helpers/step-usage";
 
 interface StepUsageLabelProps {
   usage: TokenUsage;
   newContentTokens: number | null;
+  timing?: StepTiming;
 }
 
 /**
@@ -16,11 +18,13 @@ interface StepUsageLabelProps {
  * @param props - Component props
  * @param props.usage - Token usage for this step
  * @param props.newContentTokens - New content tokens (null if not calculable)
+ * @param props.timing - Generation speed for this step, when measurable
  * @returns Label element
  */
 export function StepUsageLabel({
   usage,
   newContentTokens,
+  timing,
 }: StepUsageLabelProps) {
   return (
     <div className="-mt-1 text-right text-xs text-zinc-400 dark:text-zinc-500">
@@ -31,6 +35,7 @@ export function StepUsageLabel({
       → {compactNumber(usage.outputTokens ?? 0)}
       {(usage.reasoningTokens ?? 0) > 0 &&
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
+      {formatStepTiming(timing)}
     </div>
   );
 }

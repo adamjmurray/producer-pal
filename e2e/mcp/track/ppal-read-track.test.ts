@@ -15,7 +15,9 @@ import {
   getToolErrorMessage,
   parseAliasedToolResult,
   isToolError,
+  parseBatchResult,
   parseToolResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -127,7 +129,7 @@ describe("ppal-read-track", () => {
 
     expect(isToolError(nonExistentResult)).toBe(true);
     expect(getToolErrorMessage(nonExistentResult)).toContain(
-      'nothing at path "t999"',
+      'nothing at path "t999"; ppal-create-track adds tracks',
     );
 
     // Test 10: Verify first 4 tracks are MIDI type (Drums, Bass, Keys, Lead)
@@ -259,6 +261,73 @@ describe("ppal-read-track", () => {
         expect(send.returnId).toBe(returnTracks[i]!.id);
       }
     }
+  });
+});
+
+describe("ppal-read-track over a list of targets", () => {
+  const readTracks = (args: Record<string, unknown>) =>
+    ctx.client!.callTool({ name: "ppal-read-track", arguments: args });
+
+  it("returns one entry per path, in the order named", async () => {
+    const tracks = parseBatchResult<ReadTrackResult>(
+      await readTracks({ path: "t2,t0,t4" }),
+      3,
+    );
+
+    expect(tracks.map((track) => track.path)).toStrictEqual(["t2", "t0", "t4"]);
+    expect(tracks.map((track) => track.name)).toStrictEqual([
+      "Keys",
+      "Drums",
+      "Audio 1",
+    ]);
+    expect(tracks.map((track) => track.type)).toStrictEqual([
+      "midi",
+      "midi",
+      "audio",
+    ]);
+  });
+
+  it("reads ids and paths together, ids first", async () => {
+    const drums = parseToolResult<ReadTrackResult>(
+      await readTracks({ path: "t0" }),
+    );
+    const tracks = parseBatchResult<ReadTrackResult>(
+      await readTracks({ id: drums.id!, path: "t4" }),
+      2,
+    );
+
+    expect(tracks[0]!.id).toBe(drums.id);
+    expect(tracks[1]!.path).toBe("t4");
+    expect(tracks.map((track) => track.name)).toStrictEqual([
+      "Drums",
+      "Audio 1",
+    ]);
+  });
+
+  it("keeps a slot for a track that isn't there and reads the rest", async () => {
+    const entries = parseBatchResult<ReadTrackResult | SkippedTargetResult>(
+      await readTracks({ path: "t0,t999,t4" }),
+      3,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0", name: "Drums" }),
+      {
+        path: "t999",
+        ok: false,
+        detail: 'nothing at path "t999"; ppal-create-track adds tracks',
+      },
+      expect.objectContaining({ path: "t4", name: "Audio 1" }),
+    ]);
+  });
+
+  it("unwraps a single target", async () => {
+    const track = parseToolResult<ReadTrackResult>(
+      await readTracks({ path: "t0" }),
+    );
+
+    expect(Array.isArray(track)).toBe(false);
+    expect(track.path).toBe("t0");
   });
 });
 

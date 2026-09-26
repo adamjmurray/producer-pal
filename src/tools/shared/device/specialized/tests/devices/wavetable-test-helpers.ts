@@ -7,10 +7,11 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { expect } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type ActionResult } from "../../specialized-device-types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Shared mock data + builders for the Wavetable specs (wavetable.test.ts and
-// wavetable-modulation-helpers.test.ts).
+// wavetable-modulation.test.ts).
 
 export const OSC_CATEGORIES = ["Basic Shapes", "Bass", "Pads"];
 export const OSC1_WAVETABLES = ["Saw Dual 1", "Saw Dual 2", "Pulse"];
@@ -94,13 +95,16 @@ export function registerWavetable(
 }
 
 /**
- * Assert that no modulation value was written and a warning was emitted.
+ * Assert that no modulation value was written and the action's own entry says
+ * why, rather than a warning.
  * @param device - The mock device to inspect (the returned LiveAPI from registerWavetable)
- * @param warningSubstring - Substring expected in the warning message
+ * @param results - What applySpecializedActions answered
+ * @param reasonSubstring - Substring expected in the entry's reason
  */
 export function expectModulationNotSet(
   device: LiveAPI,
-  warningSubstring: string,
+  results: ActionResult[],
+  reasonSubstring: string,
 ): void {
   expect(device.call).not.toHaveBeenCalledWith(
     "set_modulation_value",
@@ -108,7 +112,32 @@ export function expectModulationNotSet(
     expect.anything(),
     expect.anything(),
   );
-  expect(capturedWarnings()).toContainEqual(
-    expect.stringContaining(warningSubstring),
+  expect(results).toStrictEqual([
+    expect.objectContaining({
+      ok: false,
+      detail: expect.stringContaining(reasonSubstring),
+    }),
+  ]);
+  expect(capturedWarnings()).toStrictEqual([]);
+}
+
+/**
+ * A Wavetable whose modulation matrix starts empty and gains "Osc 1 Pos" once
+ * the action adds it, so the post-add re-resolve finds it in slot 0.
+ * @returns The Wavetable LiveAPI object
+ */
+export function registerWavetableAddingTarget(): LiveAPI {
+  const targets: string[] = [];
+
+  return registerWavetable(
+    {},
+    {
+      ...buildModMethods(targets),
+      add_parameter_to_modulation_matrix: () => {
+        targets.push("Osc 1 Pos");
+
+        return null;
+      },
+    },
   );
 }

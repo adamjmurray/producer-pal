@@ -8,7 +8,7 @@
  */
 import { act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming/connect-client";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import {
   clearConversation,
@@ -44,12 +44,25 @@ import {
 import { openGate, waitUntil } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } =
-    await import("./helpers/use-chat-test-helpers");
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming/run-chat-turn"),
+  async () => {
+    const { runChatTurnMockBody } =
+      await import("./helpers/use-chat-test-helpers");
 
-  return await streamingHelpersMockBody();
-});
+    return await runChatTurnMockBody();
+  },
+);
+
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming/connect-client"),
+  async () => {
+    const { connectClientMockBody } =
+      await import("./helpers/use-chat-test-helpers");
+
+    return await connectClientMockBody();
+  },
+);
 
 // Shrink retry backoff so tests don't sit through real seconds-long delays.
 // Most tests want it over as fast as possible; the ones that stop the retry

@@ -21,8 +21,8 @@ import { type EvalScenario } from "../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertCallResult } from "./path-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
+import { assertCallResult } from "./path-assertions.ts";
 
 const TOOL_SELECT = "ppal-select";
 
@@ -39,6 +39,7 @@ function selectedTrackPath(result: Record<string, unknown>): string {
 
 export const pathUncommonRoots: EvalScenario = {
   id: "path-uncommon-roots",
+  tags: ["paths"],
   description: "Navigate to a return track, the main track, and a drum pad",
   kind: "capability",
   liveSet: "basic-midi-4-track",

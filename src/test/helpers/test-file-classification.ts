@@ -7,7 +7,7 @@
 // source/test line reads it from here: the meta-test file finders, the LOC
 // stats, and — through src/test/meta/test-file-classification.test.ts —
 // .oxlintrc.json, all five config/.jscpd*.json scans, vitest.config.ts, and
-// dev/Testing.md's documented rules.
+// dev/quality/testing.md's documented rules.
 //
 // These used to be a handful of independent definitions that agreed by
 // accident, so a file could be a test for the line limit and source for the
@@ -23,7 +23,7 @@ export const PLAYWRIGHT_SUITE_SUFFIXES = [".spec.ts", ".spec.tsx"];
 /**
  * Suffixes naming a whole test suite, or the case table one iterates. These are
  * the files that get the relaxed 650-line budget; the rest of the
- * classification keeps the standard 325.
+ * classification keeps the standard 375.
  */
 export const TEST_SUITE_SUFFIXES = [
   ...VITEST_SUITE_SUFFIXES,

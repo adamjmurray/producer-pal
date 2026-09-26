@@ -14,7 +14,7 @@
  * Read-only: SELECT statements only.
  */
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
@@ -48,7 +48,7 @@ export async function listTags(
     return {
       dbAvailable: false,
       tags: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     };
   }
 
@@ -88,7 +88,7 @@ export async function listTags(
     return {
       dbAvailable: false,
       tags: [],
-      reason: `Failed to read Live database: ${errorMessage(error)}`,
+      detail: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
 }

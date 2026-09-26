@@ -50,14 +50,12 @@ describe("arrangement clip moved into a session slot", () => {
     // own color is what the copy has to match, not the one asked for.
     const before = await readClipFully(ctx.client!, { id: source.id });
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${EMPTY_MIDI_TRACK}/s1`,
     });
 
     expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
-    expect(warnings.join(" ")).toContain(
-      `arrangement clip ${source.path} (id ${source.id}) was re-created at t${EMPTY_MIDI_TRACK}/s1`,
-    );
+    expect(moved.detail).toContain(`re-created at t${EMPTY_MIDI_TRACK}/s1`);
 
     const clip = await readClipFully(ctx.client!, {
       path: `t${EMPTY_MIDI_TRACK}/s1`,
@@ -152,7 +150,7 @@ describe("arrangement clip moved into a session slot", () => {
     ).toBeUndefined();
   });
 
-  it("warns before overwriting the clip already in the slot", async () => {
+  it("says on the moved clip's entry that it overwrote the one there", async () => {
     const occupant = await createClip({
       path: `t${EMPTY_MIDI_TRACK}/s4`,
       name: "In The Way",
@@ -169,9 +167,10 @@ describe("arrangement clip moved into a session slot", () => {
       toPath: `t${EMPTY_MIDI_TRACK}/s4`,
     });
 
-    expect(warnings.join(" ")).toContain(
+    expect(moved.detail).toContain(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
     );
+    expect(warnings).toStrictEqual([]);
     expect(moved.id).not.toBe(occupant.id);
     expect(
       (await readClipFully(ctx.client!, { path: `t${EMPTY_MIDI_TRACK}/s4` }))
@@ -218,13 +217,58 @@ describe("arrangement clip moved into a session slot", () => {
       source.id,
       { toPath: `t${AUDIO_TRACK}/s3` },
       [
-        `clip ${source.path} (id ${source.id}) was not moved: track t${AUDIO_TRACK} (id `,
+        `not moved: track t${AUDIO_TRACK} (id `,
         ") is audio; a MIDI clip needs a MIDI track",
       ],
     );
 
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "25|1"))?.id,
+    ).toBe(source.id);
+  });
+});
+
+// ppal-duplicate re-creates the same way, but leaves the original in place.
+describe("arrangement clip duplicated into a session slot", () => {
+  it("re-creates the copy in the slot and keeps the original", async () => {
+    const source = await createClip({
+      path: `t${EMPTY_MIDI_TRACK}[29|1]`,
+      name: "Copy Home",
+      notes: "C3 D3 E3 1|1",
+      length: "1bar",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        toPath: `t${EMPTY_MIDI_TRACK}/s6`,
+        name: "Copied",
+      },
+    });
+    const { data: copy } = parseToolResultWithWarnings<{
+      id: string;
+      path: string;
+      detail?: string;
+    }>(result);
+
+    expect(copy.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
+    expect(copy.detail).toContain("re-created from the arrangement clip");
+
+    await sleep(100);
+
+    const clip = await readClipFully(ctx.client!, {
+      path: `t${EMPTY_MIDI_TRACK}/s6`,
+    });
+
+    expect(clip.id).toBe(copy.id);
+    expect(clip.view).toBe("session");
+    expect(clip.name).toBe("Copied");
+    expect(clip.length).toBe("1bar");
+    expect(clip.notes).toContain("E3");
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "29|1"))?.id,
     ).toBe(source.id);
   });
 });

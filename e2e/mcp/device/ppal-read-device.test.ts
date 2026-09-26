@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -12,7 +13,9 @@
 import { describe, expect, it } from "vitest";
 import {
   parseAliasedToolResult,
+  parseBatchResult,
   parseToolResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -140,6 +143,12 @@ describe("ppal-read-device", () => {
 
     expect(audioRack.type).toBe("audio-effect-rack");
     expect(audioRack.chains!.length).toBe(2); // Dry, Reverb
+
+    // A chain's type is the word the tools publish, not Live's class name.
+    expect(rack.chains!.map((chain) => chain.type)).toStrictEqual([
+      "chain",
+      "chain",
+    ]);
   });
 
   it("reads Drum Rack with pads and return chains", async () => {
@@ -153,6 +162,11 @@ describe("ppal-read-device", () => {
     expect(drumRack.type).toBe("drum-rack");
     expect(drumRack.drumPads).toBeDefined();
     expect(drumRack.drumPads!.length).toBeGreaterThanOrEqual(4); // C1, D1, Eb1, Gb1
+
+    // `pitch` names the pad; the MIDI number would only repeat it.
+    for (const drumPad of drumRack.drumPads!) {
+      expect(drumPad).not.toHaveProperty("note");
+    }
 
     // Test 2: Read drum pad by path (t0/d0/pC1 - Kick)
     const padResult = await ctx.client!.callTool({
@@ -172,6 +186,17 @@ describe("ppal-read-device", () => {
     const returnChain = parseToolResult<ReadDeviceResult>(returnChainResult);
 
     expect(returnChain.id).toBeDefined();
+
+    // Test 4: a pad's own chains are drum chains, said the tools' way
+    const padChainsResult = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d0/pC1", include: ["chains"] },
+    });
+    const padChains = parseToolResult<ReadDeviceResult>(padChainsResult);
+
+    expect(padChains.chains!.map((chain) => chain.type)).toStrictEqual([
+      "drum-chain",
+    ]);
   });
 
   it("reads nested racks with deep paths", async () => {
@@ -210,8 +235,73 @@ describe("ppal-read-device", () => {
   });
 });
 
+describe("ppal-read-device over a list of targets", () => {
+  const readDevices = (args: Record<string, unknown>) =>
+    ctx.client!.callTool({ name: "ppal-read-device", arguments: args });
+
+  it("returns one entry per path, in the order named", async () => {
+    const devices = parseBatchResult<ReadDeviceResult>(
+      await readDevices({ path: "t1/d0,t3/d1,t0/d0" }),
+      3,
+    );
+
+    expect(devices.map((device) => device.path)).toStrictEqual([
+      "t1/d0",
+      "t3/d1",
+      "t0/d0",
+    ]);
+    expect(devices[0]!.type).toBe("instrument-rack");
+    expect(devices[1]!.type).toContain("Compressor");
+    expect(devices[2]!.type).toBe("drum-rack");
+  });
+
+  it("reads ids and paths together, ids first", async () => {
+    const compressor = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t3/d1" }),
+    );
+    const devices = parseBatchResult<ReadDeviceResult>(
+      await readDevices({ id: String(compressor.id), path: "t1/d0" }),
+      2,
+    );
+
+    expect(String(devices[0]!.id)).toBe(String(compressor.id));
+    expect(devices[0]!.type).toContain("Compressor");
+    expect(devices[1]!.path).toBe("t1/d0");
+    expect(devices[1]!.type).toBe("instrument-rack");
+  });
+
+  it("keeps a slot for a device that isn't there and reads the rest", async () => {
+    // t8 is the empty track, so t8/d0 names nothing. The reason carries the
+    // Live API path, which says which object was missing.
+    const entries = parseBatchResult<ReadDeviceResult | SkippedTargetResult>(
+      await readDevices({ path: "t3/d1,t8/d0,t1/d0" }),
+      3,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t3/d1" }),
+      {
+        path: "t8/d0",
+        ok: false,
+        detail: 'nothing at path "t8/d0"',
+      },
+      expect.objectContaining({ path: "t1/d0" }),
+    ]);
+  });
+
+  it("unwraps a single target", async () => {
+    const device = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t1/d0" }),
+    );
+
+    expect(Array.isArray(device)).toBe(false);
+    expect(device.path).toBe("t1/d0");
+  });
+});
+
 interface ReadDeviceResult {
   id: string | number | null;
+  path?: string;
   type?: string;
   name?: string;
   collapsed?: boolean;
@@ -227,10 +317,10 @@ interface ReadDeviceResult {
   chains?: Array<{
     id: string;
     name: string;
+    type: string;
   }>;
   drumPads?: Array<{
     id: string;
     name: string;
-    note: string;
   }>;
 }

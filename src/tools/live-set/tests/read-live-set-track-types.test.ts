@@ -15,23 +15,30 @@ import {
   setupLiveSetPathMappedMocks,
 } from "./read-live-set-path-mapped-test-helpers.ts";
 
+/** The one regular track and two return tracks these cases read. */
+const TRACK_AND_RETURN_IDS = {
+  [String(livePath.track(0))]: "track1",
+  [String(livePath.returnTrack(0))]: "return1",
+  [String(livePath.returnTrack(1))]: "return2",
+};
+
+const TRACK_TYPES_LIVE_SET = {
+  name: "Track Types Test Set",
+  tracks: children("track1"),
+  return_tracks: children("return1", "return2"),
+  scenes: [],
+};
+
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        [String(livePath.track(0))]: "track1",
-        [String(livePath.returnTrack(0))]: "return1",
-        [String(livePath.returnTrack(1))]: "return2",
+        ...TRACK_AND_RETURN_IDS,
         [String(livePath.masterTrack())]: "master1",
       },
       objects: {
-        LiveSet: {
-          name: "Track Types Test Set",
-          tracks: children("track1"),
-          return_tracks: children("return1", "return2"),
-          scenes: [],
-        },
+        LiveSet: TRACK_TYPES_LIVE_SET,
         [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Regular Track",
@@ -97,18 +104,9 @@ describe("readLiveSet - track types", () => {
   it("returns counts when tracks not included", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
-      pathIdMap: {
-        [String(livePath.track(0))]: "track1",
-        [String(livePath.returnTrack(0))]: "return1",
-        [String(livePath.returnTrack(1))]: "return2",
-      },
+      pathIdMap: TRACK_AND_RETURN_IDS,
       objects: {
-        LiveSet: {
-          name: "Track Types Test Set",
-          tracks: children("track1"),
-          return_tracks: children("return1", "return2"),
-          scenes: [],
-        },
+        LiveSet: TRACK_TYPES_LIVE_SET,
         ...returnTrackMockObjects(),
       },
     });

@@ -5,35 +5,32 @@
 
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
+import { applyTransformResult } from "./helpers/apply-transform-result.ts";
+import {
+  buildNoteContext,
+  selectAssignmentNotes,
+} from "./helpers/assignment-note-selection.ts";
+import {
+  rejectsPitchLiteralValue,
+  warnShortRamp,
+} from "./helpers/assignment-warnings.ts";
+import { buildNoteProperties } from "./helpers/note-properties.ts";
+import { timeRangeBoundsInMusicalBeats } from "./helpers/time-range-bounds.ts";
 import {
   type ClipContext,
-  evaluateExpression,
-  evaluateTransformAST,
-  isNoteOp,
   type NoteContext,
   type NoteProperties,
   type TimeRange,
   type TransformResult,
-} from "./helpers/transform-evaluator-helpers.ts";
+} from "./helpers/transform-context.ts";
 import {
-  type DeferredWrite,
-  applyTransformResult,
-  commitWaveformWrites,
-} from "./helpers/transform-apply-helpers.ts";
-import { findWaveformName } from "./helpers/transform-flat-waveform-helpers.ts";
-import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
-import {
-  buildNoteContext,
-  selectAssignmentNotes,
-} from "./helpers/transform-evaluator-selection-helpers.ts";
-import {
-  rejectsPitchLiteralValue,
-  warnShortRamp,
-} from "./helpers/transform-assignment-warning-helpers.ts";
-import { timeRangeBoundsInMusicalBeats } from "./helpers/transform-time-range-helpers.ts";
+  evaluateExpression,
+  evaluateTransformAST,
+  isNoteOp,
+} from "./helpers/transform-evaluation.ts";
 import {
   type PitchRange,
   type TransformAssignment,
@@ -251,12 +248,6 @@ function applyAssignmentToNotes(
   // single malformed line doesn't relay N copies of the same WARNING.
   const warnedFailures = new Set<string>();
 
-  // A waveform that lands on one phase for every note is a mistake whatever it
-  // was aiming at, so its writes are held back until the whole selection has
-  // been evaluated and the flat case can be ruled out. Only waveforms defer;
-  // everything else applies as it goes, which is what lets transforms stack.
-  const waveformName = findWaveformName(assignment.expression);
-  const deferred: DeferredWrite[] = [];
   // transformedIndices is cumulative across the whole transform, so it can't
   // tell whether THIS assignment applied anything. Count what this one wrote.
   let appliedCount = 0;
@@ -294,19 +285,14 @@ function applyAssignmentToNotes(
     );
 
     try {
-      const value = evaluateExpression(
-        assignment.expression,
-        noteContext.position,
+      const value = evaluateExpression(assignment.expression, {
+        position: noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
-        evalTimeRange,
+        timeRange: evalTimeRange,
         noteProperties,
-      );
-
-      if (waveformName != null) {
-        deferred.push({ note, index: i, value });
-        continue;
-      }
+        evaluateExpression,
+      });
 
       // Apply transform immediately (enables stacked transforms)
       applyTransformResult(
@@ -327,16 +313,6 @@ function applyAssignmentToNotes(
         console.warn(message);
       }
     }
-  }
-
-  if (waveformName != null) {
-    appliedCount = commitWaveformWrites(
-      waveformName,
-      deferred,
-      assignment,
-      timeSigDenominator,
-      transformedIndices,
-    );
   }
 
   if (appliedCount > 0) {
@@ -386,7 +362,7 @@ export function evaluateTransform(
  * @returns Parsed AST
  * @throws Error with formatted message if parsing fails
  */
-function tryParseTransform(
+export function tryParseTransform(
   transformString: string,
   timeSigDenominator: number,
   timeSigNumerator: number,

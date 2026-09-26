@@ -14,7 +14,7 @@
  */
 
 import { VERSION } from "#src/shared/config";
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
 
 /** Tool name mapping for demo mode (mirrors real MCP tool display names) */
@@ -67,7 +67,9 @@ function userMsg(text: string): UIMessage {
  * @param config.textAfter - Optional text after tool calls
  * @param config.responseModel - Optional model ID from API response
  * @param config.toolUsage - Optional usage for the tool call step
+ * @param config.toolTiming - Optional generation speed for the tool call step
  * @param config.usage - Optional token usage for the final step
+ * @param config.timing - Optional generation speed for the final step
  * @returns UIMessage for model
  */
 function modelMsg(config: {
@@ -83,7 +85,9 @@ function modelMsg(config: {
   textAfter?: string;
   responseModel?: string;
   toolUsage?: TokenUsage;
+  toolTiming?: StepTiming;
   usage?: TokenUsage;
+  timing?: StepTiming;
 }): UIMessage {
   const parts: UIMessage["parts"] = [];
 
@@ -107,7 +111,11 @@ function modelMsg(config: {
     }
 
     if (config.toolUsage) {
-      parts.push({ type: "step-usage", usage: config.toolUsage });
+      parts.push({
+        type: "step-usage",
+        usage: config.toolUsage,
+        timing: config.toolTiming,
+      });
     }
   }
 
@@ -126,6 +134,7 @@ function modelMsg(config: {
     timestamp: Date.now() - 60000 * (20 - idx),
     responseModel: config.responseModel,
     usage: config.usage,
+    timing: config.timing,
   };
 }
 
@@ -176,7 +185,7 @@ const UPDATE_CLIP_RESULT = { id: "44", path: "t4/s0" };
 
 // Quantization is MIDI-only, so an audio clip warns and skips it
 const QUANTIZE_WARNING =
-  "WARNING: quantize/quantizeGrid ignored for audio clip (id 44): quantization is MIDI-only";
+  "WARNING: quantize/quantizeGrid ignored for audio clip t4/s0 (id 44): quantization is MIDI-only";
 
 // Tool name constants to avoid duplicate string violations
 const TOOL_READ_TRACK = "ppal-read-track";
@@ -272,7 +281,7 @@ export const demoMessages: UIMessage[] = [
         },
         result: toolResult(
           UPDATE_CLIP_RESULT,
-          "WARNING: Requested clip id 44 color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+          "WARNING: Requested clip t4/s0 (id 44) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
           QUANTIZE_WARNING,
         ),
       },
@@ -372,9 +381,11 @@ export const demoMessages: UIMessage[] = [
       },
     ],
     toolUsage: { inputTokens: 10365, outputTokens: 135, reasoningTokens: 94 },
+    toolTiming: { timeToFirstTokenMs: 840, outputTokensPerSecond: 38.2 },
     textAfter:
       "The **Beat** clip is a 1-bar looping MIDI pattern with kick on beats 1 and 3, and snare on beats 2 and 4. The **Bass** track has an Instrument Rack with 1 session clip.",
     usage: { inputTokens: 12632, outputTokens: 845, reasoningTokens: 125 },
+    timing: { timeToFirstTokenMs: 1240, outputTokensPerSecond: 42.4 },
   }),
 
   // --- Scenario 12: Connection-level error (UIErrorPart) ---

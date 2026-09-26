@@ -15,10 +15,10 @@ import {
 import {
   exactMatch,
   formatExpectedCount,
-  getToolCalls,
   normalizeCount,
   stringifyArgs,
-} from "./helpers.ts";
+} from "./helpers/argument-matching.ts";
+import { getToolCalls } from "./helpers/turn-tool-calls.ts";
 
 /**
  * Assert that a tool was called with expected arguments

@@ -8,7 +8,7 @@
 // setMcpResponder() instead of building its own Max.outlet.
 
 import { vi } from "vitest";
-import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
 
 /** One `mcp_request` the mock saw, as V8 would have received it. */
 export interface McpRequest {

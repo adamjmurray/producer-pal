@@ -5,13 +5,14 @@
 
 import {
   enumParam,
+  readNumberProp,
   writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Meld (MeldDevice, class_name "InstrumentMeld"). Exposes its polyphony mode
 // and voice-count controls at the class level — none are reachable as
-// DeviceParameters. See dev/specialized-devices/instruments.md.
+// DeviceParameters. See dev/live-api/specialized-devices/instruments.md.
 //
 // selected_engine is deliberately NOT exposed — it is a UI-only display
 // selector. Both A and B engine parameters are always addressable via A * / B *
@@ -23,24 +24,6 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // User-facing monophony/polyphony labels in internal-index order.
 const MONO_POLY_LABELS = ["mono", "poly"] as const;
 
-/**
- * Read poly_voices from the device.
- * @param device - LiveAPI device object
- * @returns The poly voice count
- */
-function readPolyVoices(device: LiveAPI): number {
-  return device.getProperty("poly_voices") as number;
-}
-
-/**
- * Read unison_voices from the device.
- * @param device - LiveAPI device object
- * @returns The unison voice count
- */
-function readUnisonVoices(device: LiveAPI): number {
-  return device.getProperty("unison_voices") as number;
-}
-
 export const meldSpec: SpecializedDeviceSpec = {
   displayNames: ["Meld"],
   params: [
@@ -48,14 +31,14 @@ export const meldSpec: SpecializedDeviceSpec = {
     {
       name: "polyVoices",
       options: "1-6",
-      read: readPolyVoices,
+      read: (device) => readNumberProp(device, "poly_voices"),
       write: (device, value) =>
         writeIntInRange(device, "poly_voices", value, 1, 6, "polyVoices"),
     },
     {
       name: "unisonVoices",
       options: "0-2",
-      read: readUnisonVoices,
+      read: (device) => readNumberProp(device, "unison_voices"),
       write: (device, value) =>
         writeIntInRange(device, "unison_voices", value, 0, 2, "unisonVoices"),
     },

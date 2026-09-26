@@ -63,5 +63,6 @@ describe("ppal-read-device with a drum pad id", () => {
 
     expect(pad.path).toBe(`${rackPath}/pD1`);
     expect(pad.pitch).toBe("D1");
+    expect(pad).not.toHaveProperty("note");
   });
 });

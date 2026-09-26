@@ -18,6 +18,11 @@ NODE_VERSION = "24"
 [context.branch-deploy]
 command = "npm run docs:build"
 
+# TEMPORARY: skip PR previews while Netlify's deploy API returns a 500 on every
+# preview upload. Remove this block before the next release.
+[context.deploy-preview]
+ignore = "exit 0"
+
 [[redirects]]
 from = "/*"
 to = "/index.html"

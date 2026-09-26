@@ -17,7 +17,7 @@
  */
 
 import { getToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario-helpers.ts";
+import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -109,6 +109,7 @@ function assertLibraryArgs(
 export const libraryKindMidi: EvalScenario = {
   ...LIBRARY_SCENARIO,
   id: "library-kind-midi",
+  tags: ["workflow"],
   description: "Ask for MIDI content and get kind off its audio default",
 
   messages: [
@@ -138,6 +139,7 @@ export const libraryKindMidi: EvalScenario = {
 export const libraryTypeOneshot: EvalScenario = {
   ...LIBRARY_SCENARIO,
   id: "library-type-oneshot",
+  tags: ["workflow"],
   description: "Ask for a one-shot and get the playback-type filter sent",
 
   messages: [
@@ -164,6 +166,7 @@ export const libraryTypeOneshot: EvalScenario = {
 export const libraryTagDiscovery: EvalScenario = {
   ...LIBRARY_SCENARIO,
   id: "library-tag-discovery",
+  tags: ["workflow"],
   description: "Ask what tags exist and get listTags rather than a search",
 
   messages: [
@@ -191,6 +194,7 @@ export const libraryTagDiscovery: EvalScenario = {
 export const libraryDiscoveryActions: EvalScenario = {
   ...LIBRARY_SCENARIO,
   id: "library-discovery-actions",
+  tags: ["workflow"],
   description:
     "Reach the browse and duplicate-finding actions, not just search",
   // listCategories and findDuplicates are trimmed from the small-model enum.

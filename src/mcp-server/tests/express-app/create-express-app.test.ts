@@ -174,7 +174,7 @@ describe("MCP Express App", () => {
         "Create track(s)",
       );
       expect(paramsOf("ppal-create-track")).toStrictEqual(
-        expect.arrayContaining(["path", "count"]),
+        expect.arrayContaining(["path", "type"]),
       );
       expect(toolsByName["ppal-update-track"]!.description).toContain(
         "Update track(s)",

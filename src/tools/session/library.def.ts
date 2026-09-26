@@ -75,7 +75,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     searches: param(searchesInputSchema, {
       default:
-        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Each entry takes the same filters as a single search, plus an optional label; results come back in order, grouped per query (max 20)",
+        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Each entry takes the same filters as a single search, plus an optional label; results come back in order, grouped per query (max 20). One entry answers like a plain search, ungrouped",
       smallModel: null,
     }),
 
@@ -91,7 +91,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler, the rest are discovery-only). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sampleFolder)",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler; a preset or device-group result's path loads as `preset` on ppal-create-device/ppal-update-device; the rest are discovery-only). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sampleFolder)",
       smallModel: {
         description:
           "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
@@ -160,7 +160,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     inFolder: param(z.coerce.string().optional(), {
       default:
-        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `reason` explaining the path wasn't found.",
+        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `detail` explaining the path wasn't found.",
       smallModel: "absolute folder path; returns immediate children only",
     }),
 

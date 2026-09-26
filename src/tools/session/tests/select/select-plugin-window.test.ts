@@ -5,20 +5,27 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   resetSelectTestState,
   setupSongViewMock,
 } from "./select-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { selectSharedUtilsMockBody } =
-    await import("./select-test-helpers.ts");
+vi.mock(
+  import("#src/tools/shared/helpers/live-api-values.ts"),
+  async (importOriginal) => {
+    const { selectLiveApiValuesMockBody } =
+      await import("./select-test-helpers.ts");
 
-  return selectSharedUtilsMockBody(await importOriginal());
-});
+    return selectLiveApiValuesMockBody(await importOriginal());
+  },
+);
 
 describe("select - plugin editor window", () => {
   beforeEach(() => {
@@ -27,12 +34,7 @@ describe("select - plugin editor window", () => {
   });
 
   it("opens a plug-in's editor window via devicePath", () => {
-    const device = registerMockObject("plugin_0", {
-      path: String(livePath.track(0)) + " devices 0",
-      type: "PluginDevice",
-    });
-
-    setupSongViewMock();
+    const device = registerDeviceAtT0D0("plugin_0", "PluginDevice");
 
     const result = select({ devicePath: "t0/d0", openPluginWindow: true });
 
@@ -45,12 +47,7 @@ describe("select - plugin editor window", () => {
   });
 
   it("closes a plug-in's editor window when openPluginWindow is false", () => {
-    const device = registerMockObject("plugin_0", {
-      path: String(livePath.track(0)) + " devices 0",
-      type: "PluginDevice",
-    });
-
-    setupSongViewMock();
+    const device = registerDeviceAtT0D0("plugin_0", "PluginDevice");
 
     const result = select({ devicePath: "t0/d0", openPluginWindow: false });
 
@@ -71,13 +68,8 @@ describe("select - plugin editor window", () => {
     expect(device.set).toHaveBeenCalledWith("is_editor_open", 1);
   });
 
-  it("warns and skips when the targeted device is not a plug-in", () => {
-    const device = registerMockObject("device_0", {
-      path: String(livePath.track(0)) + " devices 0",
-      type: "Eq8Device",
-    });
-
-    setupSongViewMock();
+  it("says so on the device's entry when it is not a plug-in", () => {
+    const device = registerDeviceAtT0D0("device_0", "Eq8Device");
 
     const result = select({ devicePath: "t0/d0", openPluginWindow: true });
 
@@ -85,10 +77,13 @@ describe("select - plugin editor window", () => {
       "is_editor_open",
       expect.anything(),
     );
-    expect(result.selectedDevice?.pluginWindowOpen).toBeUndefined();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a plug-in"),
-    );
+    // The entry already names the device, so the reason says only what happened.
+    expect(result.selectedDevice).toStrictEqual({
+      id: "device_0",
+      path: "t0/d0",
+      detail: "openPluginWindow ignored: not a plug-in (VST/AU)",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("warns and skips when no device target is provided", () => {
@@ -102,3 +97,23 @@ describe("select - plugin editor window", () => {
     );
   });
 });
+
+/**
+ * A device at `t0/d0`, with the song view a selection writes to.
+ * @param id - The device's id
+ * @param type - Its Live object type
+ * @returns The device mock
+ */
+function registerDeviceAtT0D0(
+  id: string,
+  type: LiveObjectType,
+): RegisteredMockObject {
+  const device = registerMockObject(id, {
+    path: String(livePath.track(0)) + " devices 0",
+    type,
+  });
+
+  setupSongViewMock();
+
+  return device;
+}

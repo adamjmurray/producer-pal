@@ -25,7 +25,7 @@ export interface ProviderConfig {
 export const ANTHROPIC_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "ANTHROPIC_KEY",
   providerName: "Anthropic",
-  defaultModel: "claude-sonnet-4-5-20250929",
+  defaultModel: "claude-sonnet-5",
 };
 
 /** Claude Code CLI subscription provider configuration */
@@ -40,7 +40,7 @@ export const CLAUDE_CODE_CONFIG: ProviderConfig = {
 export const CODEX_CODE_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "",
   providerName: "Codex CLI",
-  defaultModel: "terra",
+  defaultModel: "luna",
   apiKeyOptional: true,
 };
 
@@ -48,21 +48,21 @@ export const CODEX_CODE_CONFIG: ProviderConfig = {
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-3.6-flash",
+  defaultModel: "gemini-3.8-flash",
 };
 
 /** OpenAI provider configuration */
 export const OPENAI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENAI_KEY",
   providerName: "OpenAI",
-  defaultModel: "gpt-5-nano",
+  defaultModel: "gpt-6-sol",
 };
 
 /** OpenRouter provider configuration */
 export const OPENROUTER_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENROUTER_KEY",
   providerName: "OpenRouter",
-  defaultModel: "anthropic/claude-haiku-4.5",
+  defaultModel: "google/gemini-3.8-flash",
 };
 
 /** Local OpenAI-compatible server configuration (Ollama, LM Studio, etc.) */

@@ -15,6 +15,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { expectSceneSetToRed34 } from "./scene-assertions.ts";
 import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -63,13 +64,7 @@ describe("createScene", () => {
     });
 
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 1);
-    expect(scene1.set).toHaveBeenCalledWith("name", "New Scene");
-    expect(scene1.set).toHaveBeenCalledWith("color", 16711680);
-    expect(scene1.set).toHaveBeenCalledWith("tempo", 120);
-    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
+    expectSceneSetToRed34(scene1, "New Scene", 120);
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",
@@ -188,6 +183,22 @@ describe("createScene", () => {
         count: 5,
       }),
     ).toThrow(/would exceed the maximum allowed scenes/);
+  });
+
+  // s+ after the last allowed index would land one past the cap.
+  it("counts an s+ entry against the maximum", () => {
+    expect(() =>
+      createScene({ path: `s${MAX_AUTO_CREATED_SCENES - 1},s+` }),
+    ).toThrow(/would exceed the maximum allowed scenes/);
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  // Refused before the plan fills a gap that size with empty scenes.
+  it("refuses a huge index before planning", () => {
+    expect(() => createScene({ path: "s+,s1000000000" })).toThrow(
+      `creating 2 scenes at index 1000000000 would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("allows creating scenes up to exactly the maximum", () => {
@@ -350,6 +361,28 @@ describe("createScene", () => {
     });
   });
 
+  describe("color", () => {
+    it("reports the palette color Live snapped to on the scene's entry", () => {
+      scene1.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/1",
+        path: "s1",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
+    it("says nothing when the color lands as asked", () => {
+      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/1",
+        path: "s1",
+      });
+    });
+  });
+
   describe("capture mode", () => {
     let captureLiveSet: RegisteredMockObject;
     let capturedScene: RegisteredMockObject;
@@ -416,6 +449,20 @@ describe("createScene", () => {
       ).toThrow('invalid color "not-a-hex-color" - expected "#RRGGBB"');
 
       expect(captureLiveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("reports the palette color Live snapped to on the captured scene", () => {
+      capturedScene.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createScene({ capture: true, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
     });
 
     it("should apply additional properties after capture", () => {

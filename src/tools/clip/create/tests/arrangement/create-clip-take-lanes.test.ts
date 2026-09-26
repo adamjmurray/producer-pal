@@ -9,8 +9,10 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { takeLaneCapacityMessage } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
+  expectOneLaneWithClipsAt,
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,
 } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
@@ -24,7 +26,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
-import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/create-clip-prep-helpers.ts";
+import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
@@ -62,7 +64,7 @@ describe("createClip take lanes", () => {
       arrangementStart: "1|1",
       notes: "C3",
       takeLane: 1,
-    })) as { id: string; path?: string };
+    })) as { id: string; path?: string; detail?: string };
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
     expect(track.call).not.toHaveBeenCalledWith(
@@ -77,6 +79,24 @@ describe("createClip take lanes", () => {
     expect(result.id).toMatch(/^tl_clip_/);
     // result surfaces the lane the clip landed on and where it starts
     expect(result.path).toBe("t0/l0[1|1]");
+    // Live hides take lanes behind an arrow, so the entry says where to look.
+    expect(result.detail).toBe(
+      "expand the take-lanes arrow on the track header in Live to see it",
+    );
+  });
+
+  // A clip on the main lane is visible, so nothing is added to its entry.
+  it("says nothing about take lanes for a main-lane clip", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = (await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1",
+      notes: "C3",
+    })) as { detail?: string };
+
+    expect(result.detail).toBeUndefined();
   });
 
   it("creates neither a lane nor a clip when a later position won't parse", async () => {
@@ -294,9 +314,9 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(0, 16);
   });
 
-  // "l=" and "l+" once appended a lane or named the appended one. Both are
-  // gone: a "+" only ever roots a path, and a lane is named by its index.
-  it("refuses the retired l= and l+ in the path", async () => {
+  // A clip goes on a lane that exists; ppal-update-track is what adds one. The
+  // retired "l=" named the lane an "l+" before it appended, and never shipped.
+  it("refuses l+ and the retired l= in the path", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
 
@@ -305,7 +325,12 @@ describe("createClip take lane paths", () => {
     ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
     await expect(
       createClip({ path: "t0/l+[1|1]", notes: "C3" }),
-    ).rejects.toThrow('a take lane is "t<track>/l<lane>" (e.g. "t0/l0")');
+    ).rejects.toThrow(
+      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+    );
+    await expect(createClip({ path: "t0/l+", notes: "C3" })).rejects.toThrow(
+      '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do',
+    );
   });
 
   // One written lane covers all three positions, the way any single value
@@ -320,13 +345,7 @@ describe("createClip take lane paths", () => {
       notes: "C3",
     });
 
-    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-
-    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
-
-    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 4, 4);
-    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+    expectOneLaneWithClipsAt(track, [0, 4, 8]);
   });
 
   // Impossible with the takeLane param, which named one lane for the whole
@@ -398,16 +417,105 @@ describe("createClip take lane paths", () => {
       path: `t0/l${MAX_TAKE_LANES},t1`,
       arrangementStart: "1|1",
       notes: "C3",
-    })) as { path?: string };
+    })) as Array<{ path?: string; ok?: false; detail?: string }>;
 
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    // Only t1's clip was made, so the result collapses to that one object.
-    expect(result.path).toBe("t1[1|1]");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
+    // The lane that didn't fit keeps its place, and says why there instead of
+    // in a warning (ADR-0042).
+    expect(result[0]).toStrictEqual({
+      path: `t0/l${MAX_TAKE_LANES}[1|1]`,
+      ok: false,
+      detail: takeLaneCapacityMessage(MAX_TAKE_LANES),
+    });
+    expect(result[1]?.path).toBe("t1[1|1]");
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("skipping"),
     );
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`take lane "t0/l${MAX_TAKE_LANES}" was skipped`),
+  });
+
+  it("creates a clip on an existing lane past the cap", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES + 1 });
+
+    await createClip({
+      path: `t0/l${MAX_TAKE_LANES}[1|1]`,
+      notes: "C3",
+    });
+
+    expectTakeLaneMidiClip(MAX_TAKE_LANES, 0);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // Live can't delete a lane, so one made for a clip the track then refuses
+  // would be left behind for good.
+  it("creates no lane on a track that can't take the clip", async () => {
+    registerLiveSet();
+    const audioTrack = registerTakeLaneTrack({ hasMidiInput: 0 });
+    const midiTrack = registerTakeLaneTrack({ trackIndex: 1 });
+
+    const result = (await createClip({
+      path: "t0/l3,t1/l0",
+      arrangementStart: "1|1",
+      notes: "C3",
+    })) as Array<{ path?: string; ok?: false; detail?: string }>;
+
+    expect(audioTrack.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(midiTrack.call).toHaveBeenCalledWith("create_take_lane");
+    expect(result[0]).toStrictEqual({
+      path: "t0/l3[1|1]",
+      ok: false,
+      detail: expect.stringContaining("a MIDI clip needs a MIDI track"),
+    });
+    expect(result[1]?.path).toBe("t1/l0[1|1]");
+  });
+
+  it("creates no lane when the transforms won't parse", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack();
+
+    await expect(
+      createClip({
+        path: "t0/l2[1|1]",
+        notes: "C3 1|1",
+        transforms: "velocity += ((( bogus",
+      }),
+    ).rejects.toThrow("transform syntax error");
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // A group reports no MIDI input, so an audio clip passes the type check.
+  it("creates no lane on a group track", async () => {
+    registerLiveSet();
+    const audioTrack = registerTakeLaneTrack({
+      trackIndex: 1,
+      hasMidiInput: 0,
+    });
+    const group = registerTakeLaneTrack({
+      trackIndex: 5,
+      hasMidiInput: 0,
+      isFoldable: 1,
+    });
+
+    const result = (await createClip({
+      path: "t1/l2[1|1],t5/l0[1|1]",
+      sampleFile: "/samples/loop.wav",
+    })) as Array<{ path?: string; ok?: false; detail?: string }>;
+
+    expect(group.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(audioTrack.call).toHaveBeenCalledWith("create_take_lane");
+    expect(result[1]).toStrictEqual({
+      path: "t5/l0[1|1]",
+      ok: false,
+      detail: 'only regular tracks have take lanes; "t5" is a group track',
+    });
+  });
+
+  it("calls a group track a group, not an audio track", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ hasMidiInput: 0, isFoldable: 1 });
+
+    await expect(createClip({ path: "t0[1|1]", notes: "C3" })).rejects.toThrow(
+      "is a group track; it holds no clips",
     );
   });
 
@@ -438,25 +546,24 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     // path would resolve a real lane instead of returning an empty map.
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: null },
     ]);
 
-    expect(result.size).toBe(0);
+    expect(lanes.size).toBe(0);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   it("resolves a lane per destination and reports it as a path", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
     ]);
 
-    expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('targeting take lane "t0/l0"'),
-    );
+    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
+    // Which lane a clip landed on rides on that clip's entry, not a warning.
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   // One lane named twice keys the same, so both its positions land on the one
@@ -465,13 +572,13 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     const track0 = registerTakeLaneTrack({ initialLanes: 0 });
     const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
       { trackIndex: 1, arrangementStart: "2|1", takeLane: 0 },
       { trackIndex: 0, arrangementStart: "3|1", takeLane: 0 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
+    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
     // The keys alone can't catch a lost dedup — Map.set on a key that's already
     // there adds no key. The append count is what proves t0's second position
     // reused the lane its first one made.
@@ -483,30 +590,27 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("creates one lane when the path names it twice", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
       { trackIndex: 0, arrangementStart: "5|1", takeLane: 0 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l0"]);
+    expect([...lanes.keys()]).toStrictEqual(["t0/l0"]);
     expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('targeting take lane "t0/l0"'),
-    );
   });
 
   // Two destinations naming different lanes on one track each get their own.
   it("keeps distinct lanes on the same track apart", () => {
     registerTakeLaneTrack({ initialLanes: 3 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
       { trackIndex: 0, arrangementStart: "2|1", takeLane: 2 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
-    expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    expect(result.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
+    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
+    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
+    expect(lanes.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
   });
 
   // A destination past the cap is dropped, and the ones alongside it still
@@ -514,14 +618,18 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("skips the destination past the cap and keeps the others", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes, dropped } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: MAX_TAKE_LANES - 1 },
       { trackIndex: 0, arrangementStart: "2|1", takeLane: MAX_TAKE_LANES },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l7"]);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
+    expect([...lanes.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES - 1}`]);
+    // Handed back rather than warned: the destination's own entry reports it.
+    expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toStrictEqual(
+      expect.stringContaining(`${MAX_TAKE_LANES}`),
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("skipping"),
     );
   });
 });

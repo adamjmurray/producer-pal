@@ -5,7 +5,7 @@
 
 import { type LiveServerMessage, type Session } from "@google/genai";
 import { expect, vi } from "vitest";
-import { type MutableMic } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+import { type MutableMic } from "#webui/hooks/voice/gemini/gemini-half-duplex-mute";
 import { type GeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";

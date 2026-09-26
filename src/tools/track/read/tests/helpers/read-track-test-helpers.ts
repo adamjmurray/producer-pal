@@ -10,6 +10,7 @@ import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type RoutingMockProperties } from "#src/test/mocks/routing-test-helpers.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
   createDrumChainMock,
@@ -51,18 +52,6 @@ interface MockTrackOverrides {
   [key: string]: unknown;
 }
 
-interface RoutingMockOverrides {
-  available_input_routing_channels?: string[];
-  available_input_routing_types?: string[];
-  available_output_routing_channels?: string[];
-  available_output_routing_types?: string[];
-  input_routing_channel?: string[];
-  input_routing_type?: string[];
-  output_routing_channel?: string[];
-  output_routing_type?: string[];
-  [key: string]: unknown;
-}
-
 /**
  * Creates a mock track object with default properties
  * @param overrides - Properties to override the defaults
@@ -98,8 +87,8 @@ export const mockTrackProperties = (
  * @returns Routing properties for mockTrackProperties
  */
 export function createRoutingMockProperties(
-  overrides: RoutingMockOverrides = {},
-): RoutingMockOverrides {
+  overrides: RoutingMockProperties = {},
+): RoutingMockProperties {
   return {
     available_input_routing_channels: [
       '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',

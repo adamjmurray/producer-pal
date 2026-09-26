@@ -9,7 +9,7 @@ import {
 } from "#webui/components/AppShell";
 import { type ModeAppProps } from "#webui/components/mode-context";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
-import { resolvePanelNotification } from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+import { resolvePanelNotification } from "#webui/hooks/chat/helpers/conversations/panel-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";

@@ -3,78 +3,44 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
-import { validateParamEntries } from "#src/tools/device/update/helpers/param-entry-validation.ts";
-import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
-import {
-  type ParamResult,
-  refreshParamValues,
-} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import {
-  invalidateDevicePathCache,
-  withDevicePathCache,
-} from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
-import { targetEntries, unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import { validateParamEntries } from "#src/tools/device/update/helpers/params/param-entry-validation.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
+  splitList,
+  valueForIndex,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { resolveBrowserDevice } from "./helpers/browser-devices.ts";
 import {
-  requireDeviceContainer,
-  type DeviceContainerPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+  presetScopeForDevice,
+  resolveBrowserPreset,
+} from "./helpers/browser-presets.ts";
 import {
-  type DeviceSegment,
-  formatObjectPath,
-  parseObjectPath,
-} from "#src/tools/shared/validation/object-path.ts";
+  type DevicePlan,
+  createDevicesAtPaths,
+} from "./helpers/create-devices-at-paths.ts";
+import { type CreateDeviceResult } from "./helpers/device-creation.ts";
 
 interface CreateDeviceArgs {
+  device?: string;
+  /** Deprecated spelling of `device`. */
   deviceName?: string;
+  preset?: string;
   path?: string;
   name?: string;
   params?: ParamEntry[];
   focus?: boolean;
 }
 
-interface CreateDeviceResult {
-  id: string;
-  path?: string;
-  params?: ParamResult[];
-}
-
-/**
- * Validate device name and throw error with valid options if invalid
- * @param deviceName - Device name to validate
- */
-function validateDeviceName(deviceName: string): void {
-  if (ALL_VALID_DEVICES.includes(deviceName)) {
-    return;
-  }
-
-  const validList =
-    `Instruments: ${VALID_DEVICES.instruments.join(", ")} | ` +
-    `MIDI Effects: ${VALID_DEVICES.midiEffects.join(", ")} | ` +
-    `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
-
-  throw new Error(
-    `invalid deviceName "${deviceName}". Valid devices - ${validList}`,
-  );
-}
-
 /**
  * Refuse a list-mode call that also carries create-only args.
  *
- * Without deviceName the call lists the catalog and creates nothing, so a path
+ * Without a device the call lists the catalog and creates nothing, so a path
  * or params sent alongside it are dropped — and the catalog comes back looking
  * like the call worked. The args say a create was meant, so answer the create
  * that can't run rather than the list that wasn't asked for.
@@ -90,314 +56,236 @@ function validateListModeArgs(args: {
   );
 
   if (sent.length > 0) {
+    const verb = sent.length === 1 ? "requires" : "require";
+    const pronoun = sent.length === 1 ? "it" : "them";
+
     throw new Error(
-      `${sent.join(", ")} require deviceName; omit them to list available devices`,
+      `${sent.join(", ")} ${verb} device; omit ${pronoun} to list available devices`,
     );
   }
 }
 
 /**
- * Creates a native Live device on a track or chain, or lists available devices
+ * Creates a Live device on a track or chain, or lists the native devices. A
+ * device that isn't native (plug-ins, Max for Live devices), and any preset, is
+ * loaded from Live's browser when the Producer Pal remote script is running.
  * @param args - The device parameters
- * @param args.deviceName - Device name, omit to list available devices
- * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
+ * @param args.device - Device for all, or comma-separated one per path, in
+ *   order; omit this and preset to list available devices
+ * @param args.deviceName - Deprecated spelling of `device`
+ * @param args.preset - Preset for all, or comma-separated one per path: a name
+ *   looked up among the device's presets (all presets with no device), or a
+ *   file path
+ * @param args.path - Device path(s), comma-separated for multiple (required when device provided)
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object, for the request deadline
  * @returns Device list, or object(s) naming each created device
  */
-export function createDevice(
-  { deviceName, path, name, params, focus }: CreateDeviceArgs = {},
-  _context: Partial<ToolContext> = {},
-): typeof VALID_DEVICES | CreateDeviceResult | CreateDeviceResult[] {
-  // List mode: return valid devices when deviceName is omitted
-  if (deviceName == null) {
+export async function createDevice(
+  {
+    device,
+    deviceName: deprecatedDeviceName,
+    preset,
+    path,
+    name,
+    params,
+    focus,
+  }: CreateDeviceArgs = {},
+  context: Partial<ToolContext> = {},
+): Promise<typeof VALID_DEVICES | WriteResult<CreateDeviceResult>> {
+  const deviceArg = device ?? deprecatedDeviceName;
+  const { deadline, timeoutMs } = context;
+
+  // List mode: return valid devices when no device is named
+  if (deviceArg == null && preset == null) {
     validateListModeArgs({ path, name, params });
 
     return VALID_DEVICES;
   }
 
-  validateDeviceName(deviceName);
-
   if (path == null || path.trim() === "") {
+    // A name Live doesn't have is the mistake to report first, as it always
+    // was; with no path there is nothing to pair a list against.
+    if (deviceArg != null && preset == null) {
+      await findBrowserItem(deviceArg, deadline);
+    }
+
     throw new Error("path is required when creating a device");
   }
 
-  validateParamEntries(params);
+  const paramEntries = validateParamEntries(params);
 
   validateListLengths([
-    { param: "path", value: path },
+    { param: "path", value: path, target: true },
+    { param: "device", value: deviceArg },
+    { param: "preset", value: preset },
     { param: "name", value: name },
   ]);
 
-  const paths = targetEntries(path, "path");
-
-  validateInsertionOrder(paths, deviceName);
-
-  const parsedNames = parseNames(name, paths.length, "device");
-
-  // Every path in the batch climbs the same prefix — sixteen `t0/d0/c<n>`
-  // paths share track 0 and the rack. Resolve each one once for the whole call.
-  const results = withDevicePathCache(() =>
-    createDevicesAtPaths(deviceName, paths, name, parsedNames, params),
+  const plans = await devicePlans(
+    { device: deviceArg, preset },
+    targetEntries(path, "path"),
+    deadline,
   );
+  const result = await createDevicesAtPaths({
+    plans,
+    name,
+    params: paramEntries,
+    timing: { deadline, timeoutMs },
+  });
 
-  if (focus && results.length > 0) {
-    const lastResult = results.at(-1) as CreateDeviceResult;
+  if (focus) {
+    // Focus follows the call, not a target, so it lands on the last device the
+    // call actually created — a skip has no device to select.
+    const lastCreated = createdEntries(result).at(-1);
 
-    focusSelect({ id: lastResult.id, detailView: "device" });
+    if (lastCreated != null) {
+      focusSelect({ id: lastCreated.id, detailView: "device" });
+    }
   }
 
-  return unwrapSingleResult(results);
+  return result;
 }
 
-/** Where one path entry inserts, and whether it names a slot in that chain. */
-interface InsertionTarget {
-  /** How the container is spelled back to the caller. */
-  display: string;
-  /** The same container with pad notes resolved, so "pC1" and "pc1" match. */
-  key: string;
-  positioned: boolean;
-}
+// What each path creates: its device, and the browser item to load when that
+// device isn't native or comes from a preset. A name is looked up once however
+// many paths want it.
+async function devicePlans(
+  args: { device: string | undefined; preset: string | undefined },
+  paths: string[],
+  deadline: number | null | undefined,
+): Promise<DevicePlan[]> {
+  const devices = perPath(args.device, paths, "device");
+  const presets = perPath(args.preset, paths, "preset");
+  const found = new Map<string, BrowserItem | null>();
+  const plans: DevicePlan[] = [];
 
-/**
- * Refuse a path list whose later entries are spelled through a chain an earlier
- * entry has renumbered.
- *
- * An insert shifts every later device down a slot, so a `d<n>` written after it
- * — in that chain, or anywhere below it — names something that has already
- * moved. An append renumbers too when Live re-sorts the chain around it, which
- * is every device but an audio effect. Nothing has run yet, so refusing costs
- * the caller only a retry (ADR-0035).
- * @param paths - The path entries, in order
- * @param deviceName - The device every entry inserts
- * @throws Error when an entry is spelled through a renumbered chain
- */
-function validateInsertionOrder(paths: string[], deviceName: string): void {
-  const appendRenumbers = !(
-    VALID_DEVICES.audioEffects as readonly string[]
-  ).includes(deviceName);
-  const renumbered: InsertionTarget[] = [];
+  const cached = async (
+    key: string,
+    look: () => Promise<BrowserItem | null>,
+  ): Promise<BrowserItem | null> => {
+    if (!found.has(key)) {
+      found.set(key, await look());
+    }
 
-  for (const p of paths) {
-    const target = insertionTarget(p);
+    return found.get(key) as BrowserItem | null;
+  };
 
-    if (target == null) {
+  for (const [index, path] of paths.entries()) {
+    const deviceName = devices[index];
+    const presetName = presets[index];
+    const deviceItem =
+      deviceName == null
+        ? null
+        : await cached(deviceName, () => findBrowserItem(deviceName, deadline));
+
+    if (presetName == null) {
+      plans.push({ path, device: deviceName as string, item: deviceItem });
       continue;
     }
 
-    const stale = renumbered.find(
-      (earlier) =>
-        target.key.startsWith(`${earlier.key}/`) ||
-        (target.positioned && target.key === earlier.key),
+    const scope =
+      deviceName == null
+        ? undefined
+        : presetScopeForDevice(deviceName, deviceItem);
+    const item = await cached(`${deviceName ?? ""}\n${presetName}`, () =>
+      resolveBrowserPreset(presetName, scope, deadline),
     );
 
-    if (stale != null) {
-      throw new Error(
-        `path entry "${p}" is spelled through "${stale.display}", ` +
-          `which an earlier entry renumbers by inserting into it. Make these calls ` +
-          `separately, or name where the device should land after that insert.`,
-      );
-    }
-
-    if (target.positioned || appendRenumbers) {
-      renumbered.push(target);
-    }
+    plans.push({ path, device: presetName, item });
   }
+
+  return plans;
 }
 
 /**
- * The chain a path inserts into, and whether it names a position in it. A path
- * that doesn't parse has no target — the insert loop reports it, one entry at a
- * time, the way it always has.
- * @param path - One path entry
- * @returns The container and whether the insert is positioned, or null
+ * One value per path from a list arg. The lists agreed before anything ran, so
+ * a split names one per path.
+ * @param value - The arg, or undefined when the call didn't send it
+ * @param paths - The paths
+ * @param param - The arg's name, for errors
+ * @returns Each path's value
  */
-function insertionTarget(path: string): InsertionTarget | null {
-  let parsed: DeviceContainerPath;
+function perPath(
+  value: string | undefined,
+  paths: string[],
+  param: string,
+): Array<string | undefined> {
+  const parsed = splitList(value, paths.length, param);
 
-  try {
-    parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
-  } catch {
+  return paths.map((_path, i) => valueForIndex(value, i, parsed));
+}
+
+/**
+ * The devices a call created, dropping the targets it skipped.
+ * @param result - What the fan-out returned
+ * @returns The created devices, in the order the call named them
+ */
+function createdEntries(
+  result: WriteResult<CreateDeviceResult>,
+): CreateDeviceResult[] {
+  const entries = Array.isArray(result) ? result : [result];
+
+  return entries.filter(
+    (entry): entry is CreateDeviceResult => !("ok" in entry),
+  );
+}
+
+/**
+ * Look up a device that isn't native in Live's browser.
+ * @param deviceName - Device name
+ * @param deadline - The request deadline
+ * @returns The browser item, or null for a native device
+ * @throws Error listing the native devices when the remote script isn't
+ *   answering, since without it they are all there is
+ * @throws Error when the item is Producer Pal itself
+ */
+async function findBrowserItem(
+  deviceName: string,
+  deadline: number | null | undefined,
+): Promise<BrowserItem | null> {
+  if (ALL_VALID_DEVICES.includes(deviceName)) {
     return null;
   }
 
-  const positioned = parsed.segments.at(-1)?.kind === "device";
-  const segments = positioned ? parsed.segments.slice(0, -1) : parsed.segments;
-  const container = { kind: "device", root: parsed.root, segments } as const;
+  const item = await resolveBrowserDevice(deviceName, deadline);
 
-  return {
-    display: formatObjectPath(container),
-    key: formatObjectPath({ ...container, segments: segments.map(padByNote) }),
-    positioned,
-  };
-}
-
-/**
- * Spell a drum pad by its MIDI note, so two spellings of one pad compare equal.
- * Note names are case-insensitive and enharmonic, so "pC1", "pc1" and "pB#0"
- * all name the same pad and only the number says so.
- * @param segment - One parsed device-path segment
- * @returns The segment, with a pad's note replaced by its MIDI number
- */
-function padByNote(segment: DeviceSegment): DeviceSegment {
-  if (segment.kind !== "drum-pad") {
-    return segment;
-  }
-
-  const midi = noteNameToMidi(segment.note);
-
-  return midi == null ? segment : { ...segment, note: String(midi) };
-}
-
-/**
- * Create device at multiple paths, collecting results
- * @param deviceName - Device name
- * @param paths - Array of device paths
- * @param baseName - Base display name
- * @param parsedNames - Comma-separated display names, or null
- * @param params - {name, value} entries applied to each created device
- * @returns Array of results for successfully created devices
- */
-function createDevicesAtPaths(
-  deviceName: string,
-  paths: string[],
-  baseName: string | undefined,
-  parsedNames: ListEntries | null,
-  params: ParamEntry[] | undefined,
-): CreateDeviceResult[] {
-  const results: CreateDeviceResult[] = [];
-
-  for (let i = 0; i < paths.length; i++) {
-    const p = paths[i] as string;
-
-    try {
-      const { device, ...result } = createDeviceAtPath(deviceName, p);
-      const displayName = getNameForIndex(baseName, i, parsedNames);
-
-      if (displayName != null) {
-        device.set("name", displayName);
-      }
-
-      if (params != null) {
-        // Every param the call named comes back, written or not.
-        const outcomes = setParamValues(device, params);
-
-        if (outcomes.length > 0) {
-          result.params = refreshParamValues(outcomes);
-        }
-      }
-
-      results.push(result);
-    } catch (error) {
-      if (paths.length === 1) {
-        throw error;
-      }
-
-      console.warn(
-        `Failed to create "${deviceName}" at path "${p}": ${errorMessage(error)}`,
-      );
-    }
-  }
-
-  if (results.length === 0) {
+  if (item != null && isProducerPalBrowserItem(item)) {
     throw new Error(
-      `could not create "${deviceName}" at any of the specified paths`,
+      "cannot create the Producer Pal device: it is already running in this " +
+        "Set, and a second copy would break the connection this tool runs on",
     );
   }
 
-  return results;
-}
+  if (item == null) {
+    const validList =
+      `Instruments: ${VALID_DEVICES.instruments.join(", ")} | ` +
+      `MIDI Effects: ${VALID_DEVICES.midiEffects.join(", ")} | ` +
+      `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
 
-/**
- * Create device at a path (track or chain)
- * @param deviceName - Device name
- * @param path - Device path
- * @returns Object with the device's id and path, and the device itself
- */
-function createDeviceAtPath(
-  deviceName: string,
-  path: string,
-): CreateDeviceResult & { device: LiveAPI } {
-  const { container, position, containerPath } = resolveInsertionPath(path);
-
-  if (!container?.exists()) {
-    throw new Error(`container at path "${path}" does not exist`);
-  }
-
-  // Live rejects any position past the end of the chain, including position 0
-  // on an empty one. Append instead of failing.
-  const deviceCount = container.getChildCount("devices");
-  const pastEnd = position != null && position > deviceCount;
-
-  if (pastEnd) {
-    console.warn(
-      `path "${path}" is past the end of the device chain ` +
-        `(${deviceCount} device${deviceCount === 1 ? "" : "s"}), appending "${deviceName}" instead`,
-    );
-  }
-
-  const effectivePosition =
-    pastEnd || (position === 0 && deviceCount === 0) ? null : position;
-
-  const result =
-    effectivePosition != null
-      ? (container.call("insert_device", deviceName, effectivePosition) as [
-          string,
-          string | number,
-        ])
-      : (container.call("insert_device", deviceName) as [
-          string,
-          string | number,
-        ]);
-
-  // A positioned insert shifts every later device down a slot; an append can
-  // too, when Live re-sorts the chain around it.
-  if (
-    effectivePosition != null ||
-    appendMovesSiblings(deviceName, deviceCount)
-  ) {
-    invalidateDevicePathCache();
-  }
-
-  const rawId = result[1];
-  const id = rawId ? String(rawId) : null;
-  const device = id ? LiveAPI.from(`id ${id}`) : null;
-
-  if (!id || !device?.exists()) {
-    const positionDesc = position != null ? `position ${position}` : "end";
-
-    // Live refuses a second instrument in a chain that already has one, and
-    // this is how that arrives: no id back, no device. Re-running a drum kit
-    // build fails every pad this way. That's Live, not a bug — an audio effect
-    // on the same chains succeeds.
     throw new Error(
-      `could not insert "${deviceName}" at ${positionDesc} in path "${path}"`,
+      `invalid device "${deviceName}". Valid devices - ${validList}`,
     );
   }
 
-  return {
-    id,
-    ...pathField(device, { container: () => container, path: containerPath }),
-    device,
-  };
+  return item;
 }
 
 /**
- * Whether appending this device can renumber the ones already there.
+ * Whether a browser item is the Producer Pal device.
  *
- * Live keeps a chain sorted by device type, so an instrument lands ahead of the
- * audio effects and a MIDI effect ahead of everything: both push siblings down
- * a slot, and paths cached before the insert stop naming what they named. Only
- * an audio effect is guaranteed to land at the end.
- * @param deviceName - Device being inserted
- * @param deviceCount - Devices in the chain before the insert
- * @returns True when the append can move a sibling
+ * The browser reports the name with or without the file extension, and a
+ * renamed entry still sits at the .amxd, so check both.
+ * @param item - The item the browser lookup resolved
+ * @returns True when loading it would add a second Producer Pal
  */
-function appendMovesSiblings(deviceName: string, deviceCount: number): boolean {
+function isProducerPalBrowserItem(item: BrowserItem): boolean {
+  const name = item.name.replace(/\.amxd$/i, "").toLowerCase();
+
   return (
-    deviceCount > 0 &&
-    !(VALID_DEVICES.audioEffects as readonly string[]).includes(deviceName)
+    name === "producer_pal" ||
+    item.path.toLowerCase().endsWith("producer_pal.amxd")
   );
 }

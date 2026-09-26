@@ -19,6 +19,10 @@ g.LiveAPI = LiveAPI;
 g.Folder = Folder;
 await import("#src/live-api-adapter/live-api-extensions.ts");
 
+// Nothing answers on port 0, so no unit test reaches a real Producer Pal
+// remote script, even with Live running on this machine.
+process.env.PPAL_REMOTE_SCRIPT_PORT = "0";
+
 g.Task = Task;
 g.outlet = vi.fn();
 // Max V8 outlet-configuration globals used at module load by live-api-adapter.ts

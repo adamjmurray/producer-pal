@@ -3,20 +3,24 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
-import { type NoteEvent } from "#src/notation/types.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
+  requireCreatedArrangementClip,
   requireCreatedClip,
   requireCreatedSessionClip,
-} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { rawNotesToNoteEvents, readAllClipNotes } from "./clip-notes.ts";
+import {
+  type CopiedNote,
+  rawNotesToCopiedNotes,
+  readAllClipNotes,
+} from "./clip-notes.ts";
 
 /**
- * Thrown when the clip itself was created but a later step — writing notes,
- * properties, or color — failed. Unlike a straight refusal, a real clip is
- * now sitting at the destination; {@link partialClip} is it, so a caller that
- * cares can report and count it instead of treating the move as a no-op.
+ * Thrown when the clip was created but a later step — notes, properties, color
+ * — failed. A real clip is now sitting at the destination, and
+ * {@link partialClip} is it, so a caller can report it instead of treating the
+ * move as a no-op.
  */
 export class PartialRecreateError extends Error {
   // Assigned in the body, not as a parameter property: Node's strip-only
@@ -37,7 +41,7 @@ export class PartialRecreateError extends Error {
 /** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
   length: number;
-  notes: NoteEvent[];
+  notes: CopiedNote[];
   /** The source's own color, read only when there is no override to use. */
   color: unknown;
   properties: Record<string, unknown>;
@@ -60,16 +64,17 @@ interface RecreateTarget {
  * Re-create a clip in the arrangement, somewhere Live's own duplicate can't
  * reach: a MIDI clip from its notes, an audio clip from its sample.
  *
- * Used for both directions a take lane is involved in, because
- * `duplicate_clip_to_arrangement` handles neither: a TakeLane has no duplicate
- * API at all, and the Track-scoped one silently no-ops when the SOURCE is a
- * take-lane clip. Both destinations answer `create_midi_clip` and
- * `create_audio_clip`, so one function covers both.
+ * Used for both take-lane directions, because `duplicate_clip_to_arrangement`
+ * handles neither: a TakeLane has no duplicate API, and the Track-scoped one
+ * silently no-ops when the SOURCE is a take-lane clip. Both destinations answer
+ * `create_midi_clip` and `create_audio_clip`.
  * @param sourceClip - The clip being copied
  * @param destination - Where to create it: a TakeLane, or a Track for the main lane
  * @param startBeats - Arrangement start position in Ableton beats
  * @param name - Name for the new clip
  * @param color - Color for the new clip
+ * @param losses - Collects what the copy turned out to lose, on top of what
+ *   {@link recreatedClipLosses} knew up front
  * @returns The created clip
  */
 export function recreateClip(
@@ -78,17 +83,21 @@ export function recreateClip(
   startBeats: number,
   name: string | undefined,
   color: string | undefined,
+  losses: string[],
 ): LiveAPI {
-  return recreateInto(sourceClip, name, color, {
+  return recreateInto(sourceClip, name, color, losses, {
     createMidi: (length) =>
       createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
         destination,
+        startBeats,
       ),
     createAudio: (filePath) =>
       createdArrangementClip(
         destination.call("create_audio_clip", filePath, startBeats) as string,
         destination,
+        startBeats,
+        filePath,
       ),
   });
 }
@@ -103,6 +112,8 @@ export function recreateClip(
  * @param clipSlot - The empty ClipSlot to create in
  * @param name - Name for the new clip
  * @param color - Color for the new clip
+ * @param losses - Collects what the copy turned out to lose, on top of what
+ *   {@link recreatedClipLosses} knew up front
  * @returns The created clip
  */
 export function recreateClipInSlot(
@@ -110,10 +121,11 @@ export function recreateClipInSlot(
   clipSlot: LiveAPI,
   name: string | undefined,
   color: string | undefined,
+  losses: string[],
 ): LiveAPI {
   const position = pathPrefix(clipSlot);
 
-  return recreateInto(sourceClip, name, color, {
+  return recreateInto(sourceClip, name, color, losses, {
     createMidi: (length) => {
       clipSlot.call("create_clip", length);
 
@@ -144,8 +156,8 @@ export function canRecreateClip(clip: LiveAPI): boolean {
 }
 
 /**
- * What re-creating this clip loses, as a warning parenthetical, or "" when it
- * loses nothing.
+ * What re-creating this clip is known to lose before the copy exists. The
+ * re-create appends anything it finds to the same list, so pass it along.
  *
  * Envelopes: `has_envelopes` covers clip envelopes and automation alike, and
  * neither can be read back out without naming a specific DeviceParameter.
@@ -154,10 +166,13 @@ export function canRecreateClip(clip: LiveAPI): boolean {
  * default markers. Live reports success for `add_warp_marker` and
  * `move_warp_marker` and then does nothing, so hand-edited markers can't be put
  * back. Defaults do come across unchanged, hence "reset", not "lost".
+ *
+ * Clip scale is missing on purpose: Live 12.4 puts no scale property on a Clip
+ * at all, so there is nothing to copy or report.
  * @param sourceClip - The clip being copied
- * @returns The losses, joined, or "" when there are none
+ * @returns The losses, empty when there are none
  */
-export function recreatedClipLosses(sourceClip: LiveAPI): string {
+export function recreatedClipLosses(sourceClip: LiveAPI): string[] {
   const losses: string[] = [];
 
   if (sourceClip.getProperty("has_envelopes") === 1) {
@@ -171,7 +186,17 @@ export function recreatedClipLosses(sourceClip: LiveAPI): string {
     losses.push("warp markers reset to the sample's defaults");
   }
 
-  return losses.join("; ");
+  return losses;
+}
+
+/**
+ * The losses as a parenthetical for the clip's own entry, or "" when the copy
+ * cost nothing.
+ * @param losses - What the re-create lost
+ * @returns " (a; b)", or ""
+ */
+export function recreateLossesNote(losses: string[]): string {
+  return losses.length > 0 ? ` (${losses.join("; ")})` : "";
 }
 
 // --- Helpers below main exports ---
@@ -179,18 +204,17 @@ export function recreatedClipLosses(sourceClip: LiveAPI): string {
 /**
  * Read the source, make the new clip, and pour the source's state into it.
  *
- * Re-creating over an existing arrangement clip truncates the one already there
- * and lands intact itself. That existing clip can be the source (copying a take
- * onto its own lane), which is why everything is read off the source first;
- * reading after would copy the truncation, or nothing at all.
+ * Everything is read off the source FIRST: a create truncates whatever it lands
+ * on, and that can be the source itself (copying a take onto its own lane), so
+ * reading after would copy the truncation or nothing at all.
  *
- * The create itself either lands a real clip or throws (see
- * {@link createdArrangementClip}), so once it returns, everything after is
- * wrapped: a failure there still leaves that clip behind, which
- * {@link PartialRecreateError} carries out to the caller.
+ * The create either lands a real clip or throws, so once it returns, a failure
+ * in a later step still leaves that clip behind — hence
+ * {@link PartialRecreateError}.
  * @param sourceClip - The clip being copied
  * @param name - Name override, or undefined to keep the source's
  * @param color - Color override, or undefined to keep the source's
+ * @param losses - Collects what the copy turned out to lose
  * @param target - How the destination makes the empty clip
  * @returns The created clip
  */
@@ -198,6 +222,7 @@ function recreateInto(
   sourceClip: LiveAPI,
   name: string | undefined,
   color: string | undefined,
+  losses: string[],
   target: RecreateTarget,
 ): LiveAPI {
   if (sourceClip.getProperty("is_midi_clip") === 1) {
@@ -211,6 +236,7 @@ function recreateInto(
 
       newClip.setAll(snapshot.properties);
       applyColor(newClip, color, snapshot.color);
+      noteGrooveLoss(newClip, snapshot.properties.groove, losses);
     } catch (error) {
       throw new PartialRecreateError(errorMessage(error), newClip);
     }
@@ -224,6 +250,7 @@ function recreateInto(
   try {
     newClip.setAll(snapshot.properties);
     applyColor(newClip, color, snapshot.color);
+    noteGrooveLoss(newClip, snapshot.properties.groove, losses);
   } catch (error) {
     throw new PartialRecreateError(errorMessage(error), newClip);
   }
@@ -237,15 +264,32 @@ function recreateInto(
  * this goes through the same guard the create-clip paths use.
  * @param createResult - What `create_midi_clip`/`create_audio_clip` returned
  * @param destination - The lane it was asked for, to name in the error
+ * @param startBeats - Where it was asked to start, in Ableton beats
+ * @param sampleFile - The file an audio create loaded, or undefined
  * @returns The new clip
  */
 function createdArrangementClip(
   createResult: string,
   destination: LiveAPI,
+  startBeats: number,
+  sampleFile?: string,
 ): LiveAPI {
-  return requireCreatedClip(
-    LiveAPI.from(createResult),
-    pathPrefix(destination),
+  const trackIndex = destination.trackIndex;
+
+  if (trackIndex == null) {
+    return requireCreatedClip(
+      LiveAPI.from(createResult),
+      pathPrefix(destination),
+      sampleFile,
+    );
+  }
+
+  return requireCreatedArrangementClip(
+    createResult,
+    trackIndex,
+    destination.takeLaneIndex,
+    startBeats,
+    sampleFile,
   );
 }
 
@@ -281,10 +325,9 @@ function snapshotClip(
 ): ClipSnapshot {
   // readAllClipNotes reads the full [-length, 2*length] window, so a pickup
   // (negative start_time) before the clip start and any overhang past the end
-  // come along. Strip Live's extra note properties (note_id, mute,
-  // release_velocity) so stale ids aren't re-fed when copying one source to
-  // multiple positions.
-  const notes = rawNotesToNoteEvents(readAllClipNotes(sourceClip));
+  // come along. Only note_id is stripped, so a stale id isn't re-fed when
+  // copying one source to several positions.
+  const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
 
   return {
     length: sourceClip.getProperty("length") as number,
@@ -306,6 +349,7 @@ function snapshotClip(
       // re-muted by hand in Live.
       muted: sourceClip.getProperty("muted"),
       name: name ?? sourceClip.getProperty("name"),
+      groove: sourceGroove(sourceClip),
     },
   };
 }
@@ -354,6 +398,38 @@ function snapshotAudioClip(
       pitch_fine: sourceClip.getProperty("pitch_fine"),
       muted: sourceClip.getProperty("muted"),
       name: name ?? sourceClip.getProperty("name"),
+      groove: sourceGroove(sourceClip),
     },
   };
+}
+
+/**
+ * The source's groove as the "id N" string `set` wants, or undefined when it
+ * has none (setAll skips that). getChildIds gives the id without building the
+ * Groove object.
+ * @param sourceClip - The clip being copied
+ * @returns The groove's id, or undefined
+ */
+/**
+ * Say so when a groove the source had didn't take. Live answers a `set` the
+ * same way whether or not it landed, so the copy is read back; the groove pool
+ * can't be filled through the API, so no test can prove the write works.
+ * @param newClip - The clip just created
+ * @param groove - The source's groove id, or undefined when it had none
+ * @param losses - What the re-create lost, added to
+ */
+function noteGrooveLoss(
+  newClip: LiveAPI,
+  groove: unknown,
+  losses: string[],
+): void {
+  if (groove != null && newClip.getProperty("has_groove") !== 1) {
+    losses.push("groove isn't copied");
+  }
+}
+
+function sourceGroove(sourceClip: LiveAPI): string | undefined {
+  return sourceClip.getProperty("has_groove") === 1
+    ? sourceClip.getChildIds("groove")[0]
+    : undefined;
 }

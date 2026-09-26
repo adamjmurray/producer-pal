@@ -17,6 +17,7 @@ import {
   setupTileClip,
   setupTrackWithQueuedMethods,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
+import { recordClipReports } from "./helpers/clip-report-recorder.ts";
 import { createPartialTile, tileClipToRange } from "../arrangement-tiling.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -50,11 +51,16 @@ describe("createPartialTile", () => {
         ["id", "200"],
         ["id", "400"],
       ],
-      create_midi_clip: [["id", "300"]],
+      create_midi_clip: [
+        ["id", "300"],
+        ["id", "301"],
+      ],
       delete_clip: [null, null],
     });
 
     setupClip("200", { properties: { end_time: opts.holdingEndTime } });
+    setupClip("300", {});
+    setupClip("301", {});
 
     if (opts.finalClipProps) {
       setupClip("400", { properties: opts.finalClipProps });
@@ -218,6 +224,7 @@ describe("tileClipToRange", () => {
     setupTileClip("200");
     setupTileClip("201");
     setupClip("300", { properties: { end_time: 1004 } });
+    setupClip("301", {});
     setupTileClip("302");
 
     const result = tileClipToRange(sourceClip, track, 100, 10, mockContext);
@@ -390,6 +397,8 @@ describe("tileClipToRange", () => {
       end_time: 100,
     });
 
+    setupClip("300", {});
+
     tileClipToRange(sourceClip, track, 100, 4, mockContext);
 
     expect(tile.set).toHaveBeenCalledWith("start_marker", 4);
@@ -535,7 +544,7 @@ describe("tileClipToRange", () => {
     expect(tile2.set).toHaveBeenCalledWith("start_marker", 2);
   });
 
-  it("warns and skips a tile when its dup silently fails, advancing position", () => {
+  it("notes on the source clip and skips a tile whose dup silently fails", () => {
     // Middle dup returns ["id", 0] — that tile is skipped, the next tile
     // is created at the correct downstream position, and no phantom id is
     // pushed into the result.
@@ -551,13 +560,20 @@ describe("tileClipToRange", () => {
     setupTileClip("200");
     setupTileClip("202");
 
-    const result = tileClipToRange(sourceClip, track, 100, 12, mockContext);
+    const { reports, reportClip } = recordClipReports();
+    const result = tileClipToRange(sourceClip, track, 100, 12, {
+      ...mockContext,
+      reportClip,
+    });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Failed to duplicate source clip for tile at 104",
-      ),
-    );
+    expect(reports).toStrictEqual([
+      {
+        kind: "note",
+        clipId: "100",
+        reason: "Live refused a copy, so the tile at 104 beats was skipped",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(result).toStrictEqual([{ id: "200" }, { id: "202" }]);
     // Third tile must be at position 108 (offset advanced over the skip)
     expect(track.call).toHaveBeenNthCalledWith(
@@ -591,6 +607,7 @@ function tilePartialOnlyMidiSource() {
 
   setupClip("300", { properties: { end_time: 1008 } });
   setupTileClip("301");
+  setupClip("302", {});
 
   const result = tileClipToRange(sourceClip, track, 100, 3, mockContext);
 

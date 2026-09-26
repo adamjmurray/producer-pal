@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { expectTimeRangeBounds } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - half-open range bounds", () => {
   it("expands a whole-bar wildcard N|* to a half-open range", () => {
@@ -57,10 +58,7 @@ describe("Transform Parser - half-open range bounds", () => {
     // offset: `1|1.5+n/12` is the offset start, then `-<2|1` is the half-open end.
     const result = parser.parse("1|1.5+n/12-<2|1: velocity = 0");
 
-    expect(result[0]!.timeRange!.startBar).toBe(1);
-    expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.8333);
-    expect(result[0]!.timeRange!.endBar).toBe(2);
-    expect(result[0]!.timeRange!.endBeat).toBe(1);
+    expectTimeRangeBounds(result, [1, 1.8333, 2, 1]);
     expect(result[0]!.timeRange!.endExclusive).toBe(true);
   });
 

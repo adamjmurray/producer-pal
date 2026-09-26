@@ -4,31 +4,32 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   applyArrangementTimeline,
   foldLocatorParams,
   handlePlayArrangement,
-  handlePlayScene,
   PLAY_ARRANGEMENT,
   readStartTime,
   reportArrangementLoop,
   resolveArrangementParams,
+  type TimelineWrites,
+} from "./helpers/playback/arrangement-playback.ts";
+import {
+  handlePlayScene,
   type FiredScene,
   type PlaybackState,
-  type TimelineWrites,
-} from "./helpers/playback-helpers.ts";
+} from "./helpers/playback/scene-playback.ts";
+import { resolvePlaybackTarget } from "./helpers/playback/playback-target.ts";
 import {
-  resolveClipSlotPositions,
-  resolvePlaybackTarget,
-} from "./helpers/playback-target-helpers.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+  sessionClipEntries,
+  type ClipSlotEntry,
+  type ClipSlotTarget,
+} from "./helpers/playback/session-clip-targets.ts";
 import { select } from "./select.ts";
 
 interface PlaybackActionParams {
   sceneIndex?: number;
-  ids?: string;
-  slotPositions: ClipSlotPosition[] | null;
+  clips: ClipSlotTarget[];
 }
 
 interface PlaybackArgs {
@@ -58,6 +59,7 @@ interface PlaybackResult {
   loopStart?: string;
   loopEnd?: string;
   scene?: FiredScene;
+  clips?: ClipSlotEntry[];
 }
 
 /**
@@ -105,11 +107,7 @@ export function playback(
     throw new Error("action is required");
   }
 
-  const {
-    sceneIndex: sceneTarget,
-    slotPositions,
-    ids: namedIds,
-  } = resolvePlaybackTarget(action, {
+  const { sceneIndex: sceneTarget, clips } = resolvePlaybackTarget(action, {
     id,
     ids,
     path,
@@ -119,8 +117,8 @@ export function playback(
   });
 
   // Dropped before anything reads them, so a session action can't write the
-  // arrangement. Dropping runs before the fold, so a session action refuses
-  // nothing, looks up no locator, and warns by the names the caller sent.
+  // arrangement — and before the fold, so it looks up no locator and warns by
+  // the names the caller sent.
   const timeline = foldLocatorParams(
     resolveArrangementParams(action, {
       startTime,
@@ -135,44 +133,25 @@ export function playback(
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
-  // Get song time signature for bar|beat conversions
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
-
   // The timeline is written before the action, except on stop: Live's own
-  // second stop sends the start position to the top, so a position written
-  // first would be wiped by the stop that was supposed to park it.
+  // second stop sends the start position to the top, wiping one written first.
   const writeTimeline = (): TimelineWrites =>
-    applyArrangementTimeline(
-      liveSet,
-      timeline,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+    applyArrangementTimeline(liveSet, timeline);
   const timelineFollowsAction = action === "stop";
   let writes: TimelineWrites = timelineFollowsAction
     ? { wroteLoop: false }
     : writeTimeline();
 
-  // Read before the action, because an action that starts or stops the
-  // transport can't read it after: Live updates is_playing asynchronously, so a
-  // read in the same request still answers the old state. Those actions predict
-  // the new one instead; the ones that leave the transport alone pass this
-  // through. The playhead has the same problem, which is why it isn't reported.
+  // Read before the action: Live updates is_playing asynchronously, so an
+  // action that starts or stops the transport can't read it after, and predicts
+  // the new state instead. The playhead has the same problem, so it isn't
+  // reported at all.
   const isPlayingBefore = (liveSet.getProperty("is_playing") as number) > 0;
 
   const playbackState: PlaybackState = handlePlaybackAction(
     action,
     liveSet,
-    {
-      sceneIndex: sceneTarget ?? undefined,
-      ids: namedIds,
-      slotPositions,
-    },
+    { sceneIndex: sceneTarget ?? undefined, clips },
     { isPlaying: isPlayingBefore },
   );
 
@@ -182,13 +161,10 @@ export function playback(
 
   // Where the next play begins. Not the playhead: writing this leaves the
   // playhead where it was, and starting playback jumps it here.
-  const startTimePosition = readStartTime(
-    liveSet,
-    action,
-    writes.startTimeBeats != null,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
+  const startTimePosition = readStartTime(liveSet, action, {
+    ...writes,
+    startTime: timeline.startTime,
+  });
 
   handleFocus(action, focus);
 
@@ -197,14 +173,9 @@ export function playback(
     ...(startTimePosition != null && { startTime: startTimePosition }),
     // Which scene fired, since a scene id or a clip in it can name it
     ...(playbackState.scene && { scene: playbackState.scene }),
-    ...reportArrangementLoop(
-      liveSet,
-      action,
-      timeline,
-      writes.wroteLoop,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
+    // One entry per clip slot the call named, in the order it named them
+    ...(playbackState.clips && { clips: playbackState.clips }),
+    ...reportArrangementLoop(liveSet, action, timeline, writes.wroteLoop),
   };
 }
 
@@ -244,78 +215,59 @@ function stopTransport(liveSet: LiveAPI): PlaybackState {
  *
  * @param action - Action name for error messages
  * @param liveSet - LiveAPI instance for live_set
- * @param ids - Comma-separated clip IDs
- * @param slotPositions - Resolved clip slots, or null when none given
+ * @param clips - The clip slots the call named
+ * @param state - Current playback state
  * @returns Updated playback state
  */
 function handlePlaySessionClips(
   action: string,
   liveSet: LiveAPI,
-  ids: string | undefined,
-  slotPositions: ClipSlotPosition[] | null,
+  clips: ClipSlotTarget[],
+  state: PlaybackState,
 ): PlaybackState {
-  const resolvedSlots = resolveClipSlotPositions(ids, slotPositions, action);
-
-  for (const { trackIndex, sceneIndex } of resolvedSlots) {
-    const clipSlot = LiveAPI.from(
-      livePath.track(trackIndex).clipSlot(sceneIndex),
-    );
-
-    if (!clipSlot.exists()) {
-      throw new Error(
-        `${action} action failed: no clip slot at ${slotPath(trackIndex, sceneIndex)}`,
-      );
-    }
-
+  let fired = 0;
+  const entries = sessionClipEntries(action, clips, (clipSlot) => {
     clipSlot.call("fire");
-  }
+    fired++;
+  });
 
   // Fix launch quantization: when playing multiple clips, stop and restart transport
   // to ensure in-sync playback (clips fired after the first are subject to quantization)
-  if (resolvedSlots.length > 1) {
+  if (fired > 1) {
     liveSet.call("stop_playing");
     liveSet.call("start_playing");
   }
 
-  return { isPlaying: true };
+  // Nothing fired leaves the transport where it was, so don't claim a launch.
+  return { isPlaying: fired > 0 || state.isPlaying, clips: entries };
 }
 
 /**
  * Handle stopping specific session clips
  *
  * @param action - Action name for error messages
- * @param ids - Comma-separated clip IDs
- * @param slotPositions - Resolved clip slots, or null when none given
+ * @param clips - The clip slots the call named
  * @param state - Current playback state
  * @returns Updated playback state
  */
 function handleStopSessionClips(
   action: string,
-  ids: string | undefined,
-  slotPositions: ClipSlotPosition[] | null,
+  clips: ClipSlotTarget[],
   state: PlaybackState,
 ): PlaybackState {
-  const resolvedSlots = resolveClipSlotPositions(ids, slotPositions, action);
-  const tracksToStop = new Set<number>();
-
-  for (const { trackIndex } of resolvedSlots) {
-    tracksToStop.add(trackIndex);
-  }
-
-  for (const trackIndex of tracksToStop) {
-    const track = LiveAPI.from(livePath.track(trackIndex));
-
-    if (!track.exists()) {
-      throw new Error(
-        `${action} action failed: track at index ${trackIndex} does not exist`,
-      );
+  // A track stops all its clips at once, so two slots on it are one Live call.
+  const stopped = new Set<number>();
+  const entries = sessionClipEntries(action, clips, (_slot, { trackIndex }) => {
+    if (stopped.has(trackIndex)) {
+      return;
     }
 
-    track.call("stop_all_clips");
-  }
+    stopped.add(trackIndex);
+    LiveAPI.from(livePath.track(trackIndex)).call("stop_all_clips");
+  });
 
   // this doesn't affect the isPlaying state
-  return state;
+  return { ...state, clips: entries };
 }
 
 /**
@@ -333,7 +285,7 @@ function handlePlaybackAction(
   params: PlaybackActionParams,
   state: PlaybackState,
 ): PlaybackState {
-  const { sceneIndex, ids, slotPositions } = params;
+  const { sceneIndex, clips } = params;
 
   switch (action) {
     case PLAY_ARRANGEMENT:
@@ -347,10 +299,10 @@ function handlePlaybackAction(
       return handlePlayScene(sceneIndex);
 
     case "play-session-clips":
-      return handlePlaySessionClips(action, liveSet, ids, slotPositions);
+      return handlePlaySessionClips(action, liveSet, clips, state);
 
     case "stop-session-clips":
-      return handleStopSessionClips(action, ids, slotPositions, state);
+      return handleStopSessionClips(action, clips, state);
 
     case "stop-all-session-clips":
       liveSet.call("stop_all_clips");

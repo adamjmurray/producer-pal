@@ -5,6 +5,10 @@
 
 import { type LanguageModel } from "ai";
 import { describe, expect, it, vi } from "vitest";
+import {
+  MAX_REQUEST_IMAGES,
+  MISTRAL_MAX_REQUEST_IMAGES,
+} from "#webui/chat/sdk/build-model-messages";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 
@@ -74,6 +78,15 @@ describe("chatAdapter", () => {
       apiKey: "test-key",
       baseUrl: undefined,
     };
+
+    it("caps request images at Mistral's limit for Mistral only", () => {
+      expect(buildForProvider("mistral").maxRequestImages).toBe(
+        MISTRAL_MAX_REQUEST_IMAGES,
+      );
+      expect(buildForProvider("anthropic").maxRequestImages).toBe(
+        MAX_REQUEST_IMAGES,
+      );
+    });
 
     it("carries smallModelMode from extraParams onto the config", () => {
       const on = chatAdapter.buildConfig("gpt-4o", "default", {}, undefined, {
@@ -266,6 +279,14 @@ describe("chatAdapter", () => {
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
+      });
+    });
+
+    it("sends none and no summary for gpt-6 with Off thinking", () => {
+      const config = buildForProvider("openai", "Off", "gpt-6-sol");
+
+      expect(config.providerOptions).toStrictEqual({
+        openai: { reasoningEffort: "none" },
       });
     });
 
@@ -629,11 +650,40 @@ describe("chatAdapter", () => {
     });
   });
 
+  describe("extractUserImages", () => {
+    it("returns a user message's attached images", () => {
+      const images = [{ mediaType: "image/png", data: "AAA" }];
+      const msg: ChatMessage = { role: "user", content: "Hi", images };
+
+      expect(chatAdapter.extractUserImages(msg)).toStrictEqual(images);
+    });
+
+    it("returns undefined for assistant messages", () => {
+      const msg: ChatMessage = { role: "assistant", content: "Hi" };
+
+      expect(chatAdapter.extractUserImages(msg)).toBeUndefined();
+    });
+  });
+
   describe("createUserMessage", () => {
     it("creates a user message with the given text", () => {
       const msg = chatAdapter.createUserMessage("Hello");
 
       expect(msg).toStrictEqual({ role: "user", content: "Hello" });
+    });
+
+    it("carries attached images, and omits the key when there are none", () => {
+      const images = [{ mediaType: "image/png", data: "AAA" }];
+
+      expect(chatAdapter.createUserMessage("Hello", images)).toStrictEqual({
+        role: "user",
+        content: "Hello",
+        images,
+      });
+      expect(chatAdapter.createUserMessage("Hello", [])).toStrictEqual({
+        role: "user",
+        content: "Hello",
+      });
     });
   });
 

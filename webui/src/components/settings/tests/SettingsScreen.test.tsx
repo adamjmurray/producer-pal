@@ -12,7 +12,7 @@ import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
@@ -639,6 +639,39 @@ describe("SettingsScreen", () => {
     it("does not show models link for custom provider", () => {
       render(<SettingsScreen {...defaultProps} settings={customSettings} />);
       expect(screen.queryByText(/models$/)).toBeNull();
+    });
+  });
+  describe("dialog chrome and the remaining tabs", () => {
+    it("shakes the dialog when a blocked close asks for attention", () => {
+      const { container } = render(
+        <SettingsScreen {...defaultProps} shake={true} />,
+      );
+
+      expect(container.querySelector(".settings-dialog-shake")).not.toBeNull();
+    });
+
+    it("blocks Save while a new preset is half-created", () => {
+      render(<SettingsScreen {...defaultProps} presetDraftOpen={true} />);
+
+      expect(screen.getByTestId("settings-save-blocked").textContent).toBe(
+        "Create or cancel the new preset first.",
+      );
+      expect(
+        (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+    });
+
+    it("renders the presets tab", () => {
+      render(<SettingsScreen {...defaultProps} activeTab="presets" />);
+
+      expect(screen.getByText("Presets")).toBeDefined();
+    });
+
+    it("renders the remote script tab", async () => {
+      render(<SettingsScreen {...defaultProps} activeTab="remote-script" />);
+
+      expect(await screen.findByTestId("remote-script-tab")).toBeDefined();
     });
   });
 });

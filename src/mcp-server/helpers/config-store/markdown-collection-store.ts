@@ -6,13 +6,14 @@
 // The shared "loadable markdown collection" store: a dynamic set of frontmatter'd
 // entries under ~/.producer-pal/<subdir>/<slug>.md plus a DERIVED index the
 // backend regenerates on every mutation. The memory store and the custom-skills
-// store are thin bindings over this factory (see dev/Memory-System.md → "The
-// loadable-collection primitive"); the CRUD, the filesystem-safe slugging + path
-// traversal guard, and the reserved-index-slug protection all live here ONCE so a
-// fix reaches every collection. Callers supply only what genuinely differs: the
-// subdir/index names, how a file parses into an entry (toEntry), how entries are
-// ordered (sortEntries), how the index body renders (renderIndexSections), and
-// any type-specific create-time validation + frontmatter (buildStored).
+// store are thin bindings over this factory (see
+// dev/tools/memory-system/loadable-collections.md); the CRUD, the filesystem-safe
+// slugging + path traversal guard, and the reserved-index-slug protection all
+// live here ONCE so a fix reaches every collection. Callers supply only what
+// genuinely differs: the subdir/index names, how a file parses into an entry
+// (toEntry), how entries are ordered (sortEntries), how the index body renders
+// (renderIndexSections), and any type-specific create-time validation +
+// frontmatter (buildStored).
 
 import {
   deleteConfigMarkdown,
@@ -142,6 +143,19 @@ export function slugifyCollectionName(name: string): string {
     .toLowerCase()
     .replaceAll(/[^\da-z]+/g, "-")
     .replaceAll(/^-+|-+$/g, "");
+}
+
+/**
+ * Order entries alphabetically by name — every collection's order today, and the
+ * one a new collection should reach for.
+ *
+ * @param entries - The freshly-read entries to sort
+ * @returns A new array, sorted by name
+ */
+export function sortByName<Entry extends CollectionEntry>(
+  entries: Entry[],
+): Entry[] {
+  return entries.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

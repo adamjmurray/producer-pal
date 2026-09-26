@@ -42,6 +42,26 @@ async function createClip(path: string): Promise<string> {
   return parseToolResult<{ id: string }>(result).id;
 }
 
+/**
+ * The arrangement start marker, which only a play-arrangement reports back.
+ * @returns Where the next play would begin, in bar|beat
+ */
+async function arrangementStartTime(): Promise<string | undefined> {
+  const playing = parseToolResult<{ startTime?: string }>(
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-arrangement" },
+    }),
+  );
+
+  await ctx.client!.callTool({
+    name: "ppal-playback",
+    arguments: { action: "stop" },
+  });
+
+  return playing.startTime;
+}
+
 async function expectRefusal(
   args: Record<string, unknown>,
   message: string,
@@ -201,17 +221,89 @@ describe("ppal-select", () => {
     expect(bySlot.selectedClip!.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
   });
 
-  it("warns when the view asked for can't hold the selected clip", async () => {
-    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
-    const result = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: `id ${clipId}`, view: "arrangement" },
-    });
-    const warnings = getToolWarnings(result);
+  it("infers the view from a clip's own location when none is requested", async () => {
+    const sessionClipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+    const arrangementClipId = await createClip(`t${EMPTY_MIDI_TRACK}[5|1]`);
 
-    expect(warnings.length).toBe(1);
-    expect(warnings[0]).toContain("ignoring view");
-    expect(warnings[0]).toContain("requires session view");
+    await select({ view: "arrangement" });
+    expect((await select({ id: `id ${sessionClipId}` })).view).toBe("session");
+
+    await select({ view: "session" });
+    expect((await select({ id: `id ${arrangementClipId}` })).view).toBe(
+      "arrangement",
+    );
+  });
+
+  it("keeps an explicit view even when it conflicts with the clip's own", async () => {
+    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+
+    const result = await select({ id: `id ${clipId}`, view: "arrangement" });
+
+    expect(result.view).toBe("arrangement");
+    expect(result.selectedClip!.id).toBe(clipId);
+  });
+
+  // A spot on the timeline is a target of its own: the start marker goes there,
+  // and the clip covering it comes along.
+  it("selects an arrangement position and the clip covering it", async () => {
+    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}[5|1]`);
+
+    await select({ view: "session" });
+
+    const result = await select({ path: `t${EMPTY_MIDI_TRACK}[5|1]` });
+
+    expect(result.view).toBe("arrangement");
+    expect(result.selectedTrack!.path).toBe(`t${EMPTY_MIDI_TRACK}`);
+    expect(result.selectedClip).toStrictEqual({
+      id: clipId,
+      path: `t${EMPTY_MIDI_TRACK}[5|1]`,
+    });
+    expect(await arrangementStartTime()).toBe("5|1");
+
+    // The clip covers bar 5 beat 3 too, so the same clip answers from inside it.
+    const inside = await select({ path: `t${EMPTY_MIDI_TRACK}[5|3]` });
+
+    expect(inside.selectedClip!.id).toBe(clipId);
+  });
+
+  // An empty spot is a success, not a near miss — the marker is the point of
+  // the call. parseToolResult throws on any warning, so this also proves none.
+  it("moves the start marker where no clip is, and reports no clip", async () => {
+    const result = await select({ path: `t${EMPTY_MIDI_TRACK}[33|1]` });
+
+    expect(result.view).toBe("arrangement");
+    expect(result.selectedTrack!.path).toBe(`t${EMPTY_MIDI_TRACK}`);
+    expect(result.selectedClip).toBeUndefined();
+    expect(await arrangementStartTime()).toBe("33|1");
+  });
+
+  // A lane the track doesn't have holds no clip, so the empty result would
+  // otherwise read as "nothing recorded there". The spot itself is still a
+  // target, so the call lands and the warning says what it couldn't reach.
+  it("warns for a take lane the track doesn't have, and still moves the marker", async () => {
+    const { data, warnings } = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}/l9[17|1]` },
+      }),
+    );
+
+    expect(data.view).toBe("arrangement");
+    expect(data.selectedTrack!.path).toBe(`t${EMPTY_MIDI_TRACK}`);
+    expect(data.selectedClip).toBeUndefined();
+    expect(warnings).toStrictEqual([
+      `WARNING: take lane "l9" does not exist on track "t${EMPTY_MIDI_TRACK}"; ` +
+        "selected the track and moved the start marker to 17|1",
+    ]);
+    expect(await arrangementStartTime()).toBe("17|1");
+  });
+
+  it("refuses a position that names no lane, and a lane with no position", async () => {
+    await expectRefusal({ path: "[5|1]" }, "a song position with no lane");
+    await expectRefusal(
+      { path: `t${EMPTY_MIDI_TRACK}/l0` },
+      "a take lane is not selectable",
+    );
   });
 
   it("selects a device by id and by path", async () => {
@@ -270,14 +362,55 @@ describe("ppal-select", () => {
     );
   });
 
-  it("warns that openPluginWindow does nothing for a stock device", async () => {
+  it("says on the device's entry that openPluginWindow did nothing", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { path: "t3/d0", openPluginWindow: true },
     });
-    const warnings = getToolWarnings(result);
+    const selected = parseToolResult<SelectResult>(result).selectedDevice;
 
-    expect(warnings.join("\n")).toContain("not a plug-in");
+    // It's about the one device, so the entry carries it, not a warning.
+    expect(selected?.path).toBe("t3/d0");
+    expect(selected?.detail).toBe(
+      "openPluginWindow ignored: not a plug-in (VST/AU)",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  // Every other tool takes a comma-separated list, so a model sends one here.
+  it("refuses a list of paths, saying select takes one target", async () => {
+    await expectRefusal(
+      { path: `t${EMPTY_MIDI_TRACK},t0` },
+      "select takes one target per call (Live holds one selection)",
+    );
+  });
+
+  it("refuses a list of ids the same way, under any spelling", async () => {
+    const first = (await select({ path: "t0" })).selectedTrack!.id;
+    const second = (await select({ path: `t${EMPTY_MIDI_TRACK}` }))
+      .selectedTrack!.id;
+
+    await expectRefusal(
+      { id: `id ${first},id ${second}` },
+      "select takes one target per call (Live holds one selection)",
+    );
+    await expectRefusal(
+      { trackId: `id ${first},id ${second}` },
+      "select takes one target per call (Live holds one selection)",
+    );
+  });
+
+  it("sends an s+ path to the tool that takes it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { path: "s+" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"s+" adds a scene, which only ppal-create-scene does; ' +
+        "select names something that exists",
+    );
   });
 });
 
@@ -301,6 +434,7 @@ interface SelectResult {
   selectedDevice?: {
     id: string;
     path: string;
+    detail?: string;
   };
   selectedDrumPad?: {
     id: string;

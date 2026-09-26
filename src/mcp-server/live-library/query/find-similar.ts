@@ -5,7 +5,7 @@
 
 /**
  * Rank library samples by audio similarity to a seed sample, using Live's
- * `fe_values` feature vectors (see fe-values-helpers.ts / the spike).
+ * `fe_values` feature vectors (see feature-vectors.ts / the spike).
  *
  * findSimilar is `search` re-ranked by cosine distance to the seed instead of
  * by use_count: the same filters (tags, kind, type, source, inFolder) constrain
@@ -37,7 +37,7 @@ import {
   cosineSimilarity,
   decodeFeatureVector,
   vectorNorm,
-} from "./fe-values-helpers.ts";
+} from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
 
 /** Default top-K for findSimilar — a focused shortlist, not search's broad 50. */
@@ -50,7 +50,7 @@ type CandidateRow = SearchRow & { data: Uint8Array | null };
  * Find library samples whose audio most resembles the seed at `args.similarTo`.
  *
  * @param args - Seed path (similarTo) plus the search filters constraining candidates
- * @returns Ranked similar items, or a graceful reason when the seed/DB is unusable
+ * @returns Ranked similar items, or why there are none when the seed/DB is unusable
  */
 export function findSimilar(
   args: FindSimilarArgs = {},
@@ -62,13 +62,13 @@ export function findSimilar(
       dbAvailable: false,
       seed: { path: seedPath, found: false },
       items: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     }),
     onError: (message) => ({
       dbAvailable: false,
       seed: { path: seedPath, found: false },
       items: [],
-      reason: `Failed to read Live database: ${message}`,
+      detail: `Failed to read Live database: ${message}`,
     }),
     run: (db, stalenessRisk) =>
       runFindSimilar(db, stalenessRisk, args, seedPath),
@@ -77,7 +77,7 @@ export function findSimilar(
 
 /**
  * Resolve the seed vector, score the filtered candidates by cosine, and return
- * the top-K. Each early return carries a reason so the LLM knows why a query
+ * the top-K. Each early return carries a detail so the LLM knows why a query
  * produced no ranked items (missing seed arg, un-indexed seed, un-analyzed
  * seed, or an unresolvable inFolder).
  *
@@ -97,11 +97,11 @@ function runFindSimilar(
     dbAvailable: true as const,
     ...(stalenessRisk && { stalenessRisk }),
   };
-  const miss = (found: boolean, reason: string): LibraryFindSimilarResult => ({
+  const miss = (found: boolean, detail: string): LibraryFindSimilarResult => ({
     ...base,
     seed: { path: seedPath, found },
     items: [],
-    reason,
+    detail,
   });
 
   if (seedPath === "") {
@@ -165,13 +165,13 @@ function rankCandidates(
   parentId: number | undefined,
 ): LibrarySimilarItem[] {
   const { where, params } = buildCandidateWhere(args, parentId);
-  // Assumes one fe_values row per file (the spike found this holds across
-  // the library); a file with multiple rows would be scored/ranked once per row.
-  // The seed side guards this with LIMIT 1 (see loadVector).
+  // Assumes one fe_values row per file; a second row would be scored and
+  // ranked again. The seed side guards this with LIMIT 1 (see loadVector).
+  // buildCandidateWhere always emits at least the file_type filter.
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data
                FROM ${CANDIDATE_FROM}
                JOIN fe_values fv ON fv.file_id = f.file_id
-               ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}`;
+               WHERE ${where.join(" AND ")}`;
   const rows = db.prepare(sql).all(...params) as unknown as CandidateRow[];
   const seedNorm = vectorNorm(seedVector);
 

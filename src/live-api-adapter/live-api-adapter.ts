@@ -15,7 +15,7 @@ import {
   END_OF_CHUNKS,
   planChunks,
   reassembleChunks,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
@@ -41,7 +41,7 @@ import { connect } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
-import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import { updateDeviceWithPreset } from "#src/tools/device/update/update-device-with-preset.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
@@ -147,7 +147,7 @@ const toolDispatch: Record<
   "ppal-update-clip": (args, ctx) => updateClip(args as any, ctx),
   "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
   "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
-  "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
+  "ppal-update-device": (args, ctx) => updateDeviceWithPreset(args as any, ctx),
   "ppal-playback": (args, ctx) => playback(args as any, ctx),
   "ppal-select": (args, ctx) => select(args as any, ctx),
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
@@ -238,7 +238,7 @@ export function notation(value: unknown): void {
  *     changes nothing is never an edit (see the guard in projectContext()).
  *
  * Without this, opening an older Set in a Live Project backs its stale blob up
- * over the folder's newer shared sidecar. See dev/memory-system/ppal-context-tool.md.
+ * over the folder's newer shared sidecar. See dev/tools/memory-system/ppal-context-tool.md.
  */
 let expectLoadEcho = true;
 
@@ -402,7 +402,7 @@ function sendResponse(
   // as one atom: a multi-target call that overflows is exactly the case that
   // also warns per item (up to MAX_CAPTURED_WARNINGS), so the error-plus-
   // warnings payload can itself need several chunks. Dropping the warnings
-  // here would destroy the only copy of what they carried (see Principles.md
+  // here would destroy the only copy of what they carried (see PRINCIPLES.md
   // on warnings).
   const fallbackTooLargeError = sendChunked(
     requestId,

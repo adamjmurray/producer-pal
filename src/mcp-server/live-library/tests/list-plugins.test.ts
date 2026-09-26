@@ -74,7 +74,7 @@ describe("listPlugins — DB selection", () => {
 
     expect(result.dbAvailable).toBe(false);
     expect(result.plugins).toHaveLength(0);
-    expect(result.reason).toContain("Live plugin database not found");
+    expect(result.detail).toContain("Live plugin database not found");
   });
 
   it("reads from a separate Live-plugins DB when present", async () => {
@@ -128,7 +128,7 @@ describe("listPlugins — DB selection", () => {
 
     expect(result.dbAvailable).toBe(false);
     expect(result.plugins).toHaveLength(0);
-    expect(result.reason).toContain("Failed to read Live plugin database");
+    expect(result.detail).toContain("Failed to read Live plugin database");
   });
 });
 
@@ -337,7 +337,7 @@ describe("listPlugins — error handling", () => {
 
       expect(result.dbAvailable).toBe(false);
       expect(result.plugins).toHaveLength(0);
-      expect(result.reason).toContain("Failed to read Live plugin database");
+      expect(result.detail).toContain("Failed to read Live plugin database");
     } finally {
       fixture.cleanup();
     }
@@ -401,7 +401,7 @@ describe("listPlugins — dev_identifier / vendor branch coverage", () => {
     const result = await listPlugins();
 
     expect(result.dbAvailable).toBe(false);
-    expect(result.reason).toContain("boom");
+    expect(result.detail).toContain("boom");
   });
 });
 

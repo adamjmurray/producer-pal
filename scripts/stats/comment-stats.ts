@@ -5,9 +5,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Print comment-volume statistics for the non-test TypeScript sources: comment
- * lines, code lines, their ratio, and the longest comment block per tree, each
- * against the cap the ratchet holds it under.
+ * Print comment statistics for the non-test TypeScript sources: comment lines,
+ * code lines, and comment density per tree against the cap the ratchet holds it
+ * under, plus the longest comment blocks.
  *
  * The license header and lint directives are not counted — see
  * src/test/helpers/comment-scan-helpers.ts, which src/test/comment-limits.test.ts
@@ -20,26 +20,27 @@
  */
 
 import {
-  COMMENT_LINE_LIMITS,
-  LONG_BLOCK_FILE_LIMITS,
-  LONGEST_BLOCK_LIMITS,
+  COMMENT_DENSITY_LIMITS,
+  LONG_BLOCK_ALLOWANCES,
+  MAX_BLOCK_LINES,
+  MAX_LONG_BLOCK_ALLOWANCES,
 } from "#src/test/helpers/comment-limits.ts";
 import {
   type CommentSummary,
   type CommentTree,
   type FileCommentStats,
   COMMENT_TREES,
-  LONG_BLOCK_LINES,
+  commentDensity,
   scanCommentTree,
   summarizeComments,
 } from "#src/test/helpers/comment-scan-helpers.ts";
 import {
   type Row,
   fmt,
+  printCliNote,
   printCliTable,
   printCliTitle,
   printMarkdownTable,
-  ratio,
 } from "./stats-tables.ts";
 
 /** How many files each worst-offenders table lists. */
@@ -48,29 +49,20 @@ const WORST_COUNT = 10;
 /** How many files the markdown longest-block table lists. */
 const MARKDOWN_WORST_COUNT = 5;
 
-const BLOCKS_LABEL = `Blocks ≥${LONG_BLOCK_LINES}`;
-
 const SUMMARY_HEADERS = [
   "Tree",
   "Files",
   "Code",
   "Comment",
-  "Comment (max)",
-  "Ratio",
+  "Density",
+  "Density (max)",
   "Longest",
-  "Longest (max)",
-  BLOCKS_LABEL,
-  `${BLOCKS_LABEL} (max)`,
 ];
 
-const FILE_HEADERS = ["File", "Comment", "Code", "Ratio", "Longest"];
+const FILE_HEADERS = ["File", "Comment", "Code", "Density", "Longest"];
 
-/** The three caps that apply to one tree, or to the repo as a whole. */
-interface Caps {
-  commentLines: number;
-  longestBlock: number;
-  longBlockFiles: number;
-}
+/** The totals row has no density cap of its own. */
+const NO_CAP = "—";
 
 /**
  * Scan every tree and print the tables.
@@ -87,11 +79,12 @@ function main(): void {
     return;
   }
 
-  printCliTitle("Comment Lines by Tree");
+  printCliTitle("Comments by Tree");
 
   const rows = summaryRows(byTree);
 
   printCliTable(SUMMARY_HEADERS, rows, rows.length - 1);
+  printCliNote(blockNote());
 
   if (process.argv.includes("--all")) {
     printCliTitle("Every File");
@@ -129,8 +122,9 @@ function printMarkdownReport(
 ): void {
   const rows = summaryRows(byTree);
 
-  console.log("\n## Comment Volume\n");
+  console.log("\n## Comments\n");
   printMarkdownTable(SUMMARY_HEADERS, rows, rows.length - 1);
+  console.log(`${blockNote()}\n`);
 
   console.log("<details><summary>Longest comment blocks</summary>\n");
   printMarkdownTable(
@@ -149,32 +143,16 @@ function printMarkdownReport(
  * @returns One row per tree, then the totals
  */
 function summaryRows(byTree: Map<CommentTree, FileCommentStats[]>): Row[] {
-  const rows: Row[] = [];
-  const totalCaps: Caps = {
-    commentLines: 0,
-    longestBlock: 0,
-    longBlockFiles: 0,
-  };
-
-  for (const [tree, stats] of byTree) {
-    const caps = treeCaps(tree);
-
-    totalCaps.commentLines += caps.commentLines;
-    totalCaps.longBlockFiles += caps.longBlockFiles;
-    totalCaps.longestBlock = Math.max(
-      totalCaps.longestBlock,
-      caps.longestBlock,
-    );
-
-    rows.push(summaryRow(tree, summarizeComments(stats), caps));
-  }
+  const rows = [...byTree].map(([tree, stats]) =>
+    summaryRow(
+      tree,
+      summarizeComments(stats),
+      COMMENT_DENSITY_LIMITS[tree].toFixed(3),
+    ),
+  );
 
   rows.push(
-    summaryRow(
-      "total",
-      summarizeComments([...byTree.values()].flat()),
-      totalCaps,
-    ),
+    summaryRow("total", summarizeComments([...byTree.values()].flat()), NO_CAP),
   );
 
   return rows;
@@ -184,35 +162,42 @@ function summaryRows(byTree: Map<CommentTree, FileCommentStats[]>): Row[] {
  * Format one summary line as a table row.
  * @param label - Tree name, or "total"
  * @param s - The line's totals
- * @param caps - The caps those totals are held under
+ * @param cap - The density cap those totals are held under
  * @returns Display row
  */
-function summaryRow(label: string, s: CommentSummary, caps: Caps): Row {
+function summaryRow(label: string, s: CommentSummary, cap: string): Row {
   return [
     label,
     fmt(s.files),
     fmt(s.codeLines),
     fmt(s.commentLines),
-    fmt(caps.commentLines),
-    ratio(s.commentLines, s.codeLines),
+    density(s),
+    cap,
     fmt(s.longestBlock),
-    fmt(caps.longestBlock),
-    fmt(s.longBlockFiles),
-    fmt(caps.longBlockFiles),
   ];
 }
 
 /**
- * Collect one tree's three caps.
- * @param tree - Tree name
- * @returns The tree's caps
+ * Describe the block cap and how many files hold an allowance over it.
+ * @returns A one-line note
  */
-function treeCaps(tree: CommentTree): Caps {
-  return {
-    commentLines: COMMENT_LINE_LIMITS[tree],
-    longestBlock: LONGEST_BLOCK_LIMITS[tree],
-    longBlockFiles: LONG_BLOCK_FILE_LIMITS[tree],
-  };
+function blockNote(): string {
+  const allowances = Object.keys(LONG_BLOCK_ALLOWANCES).length;
+
+  return (
+    `Comment blocks: ${MAX_BLOCK_LINES} lines max, ` +
+    `with ${allowances}/${MAX_LONG_BLOCK_ALLOWANCES} files allowed to keep a ` +
+    "longer one they already had."
+  );
+}
+
+/**
+ * Format comment lines per code line.
+ * @param counts - Any comment and code line counts
+ * @returns The density to 3 decimals
+ */
+function density(counts: FileCommentStats | CommentSummary): string {
+  return commentDensity(counts).toFixed(3);
 }
 
 /**
@@ -249,7 +234,7 @@ function fileRow(f: FileCommentStats): Row {
     f.file,
     fmt(f.commentLines),
     fmt(f.codeLines),
-    ratio(f.commentLines, f.codeLines),
+    density(f),
     fmt(f.longestBlock),
   ];
 }

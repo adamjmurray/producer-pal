@@ -229,7 +229,28 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 0);
   });
 
-  it("warns that looping: true wins over warping: false", async () => {
+  /**
+   * Switch warping off and looping on in one call — looping wins.
+   * @returns The updateClip response
+   */
+  async function vetoWarpingWithLooping(): Promise<unknown> {
+    return await updateClip({ id: "123", warping: false, looping: true });
+  }
+
+  /**
+   * The veto lands on the clip's own entry, not on a warning.
+   * @param result - The updateClip response
+   */
+  function expectWarpingVetoed(result: unknown): void {
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: "warping ignored: looping forces warping on",
+    });
+    expect(capturedWarnings()).toHaveLength(0);
+  }
+
+  it("reports that looping: true wins over warping: false", async () => {
     setTempo(120);
     statefulAudioClip({
       warping: 0,
@@ -238,11 +259,9 @@ describe("updateClip - unwarped audio clip region", () => {
       end_marker: 1.0909,
     });
 
-    await updateClip({ id: "123", warping: false, looping: true });
+    const result = await vetoWarpingWithLooping();
 
-    expect(capturedWarnings()).toContain(
-      "warping: false ignored for clip t0/s0 (id 123) - looping: true forces warping on",
-    );
+    expectWarpingVetoed(result);
     expect(mocks.clip123.set).toHaveBeenCalledWith("warping", 1);
   });
 
@@ -255,15 +274,13 @@ describe("updateClip - unwarped audio clip region", () => {
       end_marker: 4, // beats — the clip's content boundary
     });
 
-    await updateClip({ id: "123", warping: false, looping: true });
+    const result = await vetoWarpingWithLooping();
 
     // The veto has to happen BEFORE the unwarp, not after: unwarping resets
     // end_marker to the whole sample (1.09 s), and re-warping reads that back
     // as 1.09 beats — the region collapses even though `warping` ends up
     // exactly where it started.
-    expect(capturedWarnings()).toContain(
-      "warping: false ignored for clip t0/s0 (id 123) - looping: true forces warping on",
-    );
+    expectWarpingVetoed(result);
     expect(mocks.clip123.set).not.toHaveBeenCalledWith("warping", 0);
     expect(mocks.clip123.set).not.toHaveBeenCalledWith(
       "end_marker",

@@ -18,12 +18,15 @@ import {
   setupTrackViewMock,
 } from "./select-test-helpers.ts";
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { selectSharedUtilsMockBody } =
-    await import("./select-test-helpers.ts");
+vi.mock(
+  import("#src/tools/shared/helpers/live-api-values.ts"),
+  async (importOriginal) => {
+    const { selectLiveApiValuesMockBody } =
+      await import("./select-test-helpers.ts");
 
-  return selectSharedUtilsMockBody(await importOriginal());
-});
+    return selectLiveApiValuesMockBody(await importOriginal());
+  },
+);
 
 /**
  * Assert whether select() emitted the "ignoring view=" conflict warning.
@@ -308,23 +311,24 @@ describe("view", () => {
     });
   });
 
-  describe("clip selection - view conflict", () => {
-    it("warns and reports the clip's required view when the requested view conflicts", () => {
+  describe("clip selection - explicit view wins", () => {
+    it("keeps an explicit view even when it conflicts with the clip's view", () => {
       const { clip } = setupSessionClipMock("session_clip_456", 1, 2);
+      const appView = setupAppViewMock();
 
       setupSongViewMock();
 
       const result = select({ id: `id ${clip.id}`, view: "arrangement" });
 
-      expectViewConflictWarning(true);
-      // Live switches to the clip's required (session) view, so the response
-      // must report that — not the overridden requested "arrangement" view.
-      expect(result.view).toBe("session");
+      // The explicit view wins: Live stays on arrangement, and the response
+      // reports the requested view, not the clip's own (session).
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(appView.call).not.toHaveBeenCalledWith("show_view", "Session");
+      expect(result.view).toBe("arrangement");
+      expectViewConflictWarning(false);
     });
 
     it("does not warn when the requested view already matches the clip's required view", () => {
-      // Negative control for the conflict warn: a session clip requested with
-      // view="session" agrees with its required view, so no warning fires.
       const { clip } = setupSessionClipMock("session_clip_match", 1, 2);
 
       setupSongViewMock();

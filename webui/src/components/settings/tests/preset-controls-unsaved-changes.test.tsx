@@ -12,11 +12,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { PresetControls } from "#webui/components/settings/PresetControls";
 import { savePresets } from "#webui/hooks/settings/presets/preset-storage";
 import { usePresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
+import { saveSubagentPresetId } from "#webui/hooks/settings/helpers/chat-settings-storage";
 import {
   DEFAULT_SETTINGS,
   loadCurrentProvider,
-  saveSubagentPresetId,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/provider-settings";
 import {
   type AppearanceSettings,
   useHasUnsavedChanges,

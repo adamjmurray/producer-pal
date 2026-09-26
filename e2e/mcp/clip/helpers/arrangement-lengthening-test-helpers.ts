@@ -10,6 +10,8 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type CreateClipResult,
@@ -80,8 +82,8 @@ export function parseLengthenResult(result: unknown): {
   clips: Array<{ id: string }>;
   warnings: string[];
 } {
-  // Use parseToolResultWithWarnings since lengthening operations emit expected warnings
-  // (e.g. "no additional file content", "capped at file boundary")
+  // Warnings are kept so the tests can hold them empty: what a lengthening has
+  // to say now rides on the clip's own entry.
   try {
     const { data: asArray, warnings } =
       parseToolResultWithWarnings<CreateClipResult[]>(result);
@@ -179,23 +181,32 @@ export function assertClipDetails(
   );
 }
 
+/** The tail every "the file ran out" reason ends with. */
+export const NO_MORE_CONTENT = "the audio file has no more content to show";
+
 export type LengthenResult = {
   trackType: "midi" | "audio";
   initialClips: ReadClipResult[];
   resultClips: ReadClipResult[];
+  /** What the update's own entries said, in the order they came back. */
+  reasons: string[];
   warnings: string[];
+  /** Whether the call failed: nothing landed on its one clip. */
+  failed: boolean;
 };
 
 /**
  * Assert a lengthening that tiles to a full 4-bar arrangement length.
- * Used by looped clip types (MIDI looped, audio looped warped): the operation
- * emits no warnings and the resulting clips span exactly 4 bars (±EPSILON).
+ * Used by looped clip types (MIDI looped, audio looped warped): it got what it
+ * asked for, so no entry has anything to say and the clips span exactly 4 bars
+ * (±EPSILON).
  */
 export function assertLengthenedToFullLength(
-  { resultClips, warnings }: LengthenResult,
+  { resultClips, reasons, warnings }: LengthenResult,
   expectedClips: ExpectedClip[],
 ): void {
   expect(warnings).toHaveLength(0);
+  expect(reasons).toStrictEqual([]);
 
   const totalLength = calculateTotalLengthInBars(resultClips);
 
@@ -207,18 +218,22 @@ export function assertLengthenedToFullLength(
 /**
  * Assert a lengthening that extends a single clip in place (no tiles).
  * Used by unlooped clip types: the clip keeps its ID and stays a single clip.
- * `expectWarnings` selects whether warnings are required (capped/skipped audio)
- * or forbidden (MIDI unlooped, which extends cleanly via loop_end).
+ * `reason` is what the clip's own entry must say — null for MIDI unlooped,
+ * which reaches the full length via loop_end and has nothing to report.
  */
 export function assertLengthenedInPlace(
-  { initialClips, resultClips, warnings }: LengthenResult,
+  { initialClips, resultClips, reasons, warnings }: LengthenResult,
   expectedClips: ExpectedClip[],
-  expectWarnings: boolean,
+  reason: string | RegExp | null,
 ): void {
-  if (expectWarnings) {
-    expect(warnings.length).toBeGreaterThanOrEqual(1);
+  // Anything about a clip belongs on that clip's entry, never in a warning.
+  expect(warnings).toHaveLength(0);
+
+  if (reason == null) {
+    expect(reasons).toStrictEqual([]);
   } else {
-    expect(warnings).toHaveLength(0);
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toMatch(reason);
   }
 
   expect(resultClips).toHaveLength(1);
@@ -236,12 +251,7 @@ export async function testLengthenClipTo4Bars(
   options: {
     sleepMs?: number;
   } = {},
-): Promise<{
-  trackType: "midi" | "audio";
-  initialClips: ReadClipResult[];
-  resultClips: ReadClipResult[];
-  warnings: string[];
-}> {
+): Promise<LengthenResult> {
   const sleepMs = options.sleepMs ?? 100;
 
   // Get initial clip
@@ -262,7 +272,30 @@ export async function testLengthenClipTo4Bars(
     client,
     trackIndex,
   );
-  const { warnings } = parseLengthenResult(result);
 
-  return { trackType, initialClips: initial.clips, resultClips, warnings };
+  // A lone clip where nothing landed fails the call, and says why there.
+  if (isToolError(result)) {
+    return {
+      trackType,
+      initialClips: initial.clips,
+      resultClips,
+      reasons: [getToolErrorMessage(result).replace(/^Error: /, "")],
+      warnings: [],
+      failed: true,
+    };
+  }
+
+  const { clips, warnings } = parseLengthenResult(result);
+  const reasons = clips
+    .map((clip) => (clip as { detail?: string }).detail)
+    .filter((reason): reason is string => reason != null);
+
+  return {
+    trackType,
+    initialClips: initial.clips,
+    resultClips,
+    reasons,
+    warnings,
+    failed: false,
+  };
 }

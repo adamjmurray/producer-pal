@@ -185,7 +185,7 @@ export interface LibrarySearchResult {
    * pending WAL). Omitted when there's no detectable risk. */
   stalenessRisk?: StalenessRisk;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
-  reason?: string;
+  detail?: string;
 }
 
 /** findSimilar args: the search filter set (candidate constraints) plus the
@@ -207,7 +207,7 @@ export interface LibrarySimilarItem extends LibraryItem {
 
 export interface LibraryFindSimilarResult {
   /** Echo of the requested seed path and whether it resolved to an analyzed
-   * sample (false ⇒ items is empty and reason explains why). */
+   * sample (false ⇒ items is empty and detail explains why). */
   seed: { path: string; found: boolean };
   /** Candidates ranked by descending similarity, seed excluded. */
   items: LibrarySimilarItem[];
@@ -217,7 +217,7 @@ export interface LibraryFindSimilarResult {
   stalenessRisk?: StalenessRisk;
   /** Set when items is empty due to a discoverable cause (seed not in the
    * library, seed not analyzed, or DB missing). */
-  reason?: string;
+  detail?: string;
 }
 
 /** A set of library files sharing one audio fingerprint — a byte-identical
@@ -236,7 +236,7 @@ export interface LibraryFindDuplicatesResult {
   /** Set when the served snapshot may be stale (pending WAL). */
   stalenessRisk?: StalenessRisk;
   /** Set when groups is empty due to a discoverable cause (DB missing). */
-  reason?: string;
+  detail?: string;
 }
 
 /** One query in a `searches` fan-out: the single-search filter set plus an
@@ -252,7 +252,7 @@ export interface LibraryBatchEntry {
   label: string;
   items: LibraryItem[];
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
-  reason?: string;
+  detail?: string;
 }
 
 export interface LibraryBatchResult {
@@ -282,7 +282,7 @@ export interface LibraryListTagsResult {
    * pending WAL). Omitted when there's no detectable risk. */
   stalenessRisk?: StalenessRisk;
   /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
-  reason?: string;
+  detail?: string;
 }
 
 export interface LibraryListCategoriesResult {
@@ -303,7 +303,7 @@ export interface LibraryListCategoriesResult {
    * pending WAL). */
   stalenessRisk?: StalenessRisk;
   /** Set when the result is empty due to a discoverable failure (DB missing). */
-  reason?: string;
+  detail?: string;
 }
 
 /** Plugin binary format, derived from the `dev_identifier` URI scheme. */
@@ -356,5 +356,5 @@ export interface ListPluginsResult {
    * pending WAL). Omitted when there's no detectable risk. */
   stalenessRisk?: StalenessRisk;
   /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
-  reason?: string;
+  detail?: string;
 }

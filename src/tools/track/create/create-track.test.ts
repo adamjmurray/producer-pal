@@ -366,7 +366,9 @@ describe("createTrack", () => {
       expect(track.set).toHaveBeenCalledWith("color", 255);
     });
 
-    it("should warn when trackIndex provided for return track", () => {
+    // The trackIndex and type deprecations both already say to use "rt+", so a
+    // third warning about the ignored index only repeats them.
+    it("warns once for a return track sent with a trackIndex", () => {
       registerMockObject("return_track_0", {});
 
       const result = createTrack({
@@ -375,8 +377,8 @@ describe("createTrack", () => {
         name: "Ignored Index",
       });
 
-      expect(console.warn).toHaveBeenCalledWith(
-        "trackIndex is ignored for return tracks (always added at end)",
+      expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+        'type "return" is deprecated and will be removed; use path "rt+" instead',
       );
       // Should still create the track
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
@@ -384,6 +386,49 @@ describe("createTrack", () => {
       // track is always appended, so its index is the existing return count
       // (2), never the passed-in 5.
       expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
+    });
+
+    it("strips the slot letter Live will put back on the new track", () => {
+      const track = registerMockObject("return_track_0", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = createTrack({ path: "rt+", name: "C-Delay" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "Delay");
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
+    });
+
+    it("reports the name Live lands on when it prefixes the letter", () => {
+      const track = registerMockObject("return_track_0", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = createTrack({ path: "rt+", name: "Delay" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "Delay");
+      expect(result).toStrictEqual({
+        id: "return_track_0",
+        path: "rt2",
+        name: "C-Delay",
+        detail: "Live prefixes a return track's name with its send letter",
+      });
+    });
+
+    it("keeps another return's letter, and says the name doubled it", () => {
+      const track = registerMockObject("return_track_0", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = createTrack({ path: "rt+", name: "B-Side" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "B-Side");
+      expect(result).toStrictEqual({
+        id: "return_track_0",
+        path: "rt2",
+        name: "C-B-Side",
+        detail: "Live prefixes a return track's name with its send letter",
+      });
     });
 
     it("should index a return track by the return-track count, not the total track count", () => {
@@ -465,6 +510,36 @@ describe("createTrack", () => {
       });
 
       expectTrackNames(tracks, ["kick", "snare", "hat"]);
+    });
+  });
+
+  describe("color", () => {
+    it("reports the palette color Live snapped to on the track's entry", () => {
+      const track = registerMockObject("midi_track_1", {});
+
+      track.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createTrack({ trackIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "midi_track_1",
+        path: "t1",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
+    it("says nothing when the color lands as asked", () => {
+      const track = registerMockObject("midi_track_1", {});
+
+      track.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16711680] : [0],
+      );
+
+      expect(createTrack({ trackIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "midi_track_1",
+        path: "t1",
+      });
     });
   });
 

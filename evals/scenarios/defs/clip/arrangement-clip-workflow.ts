@@ -15,7 +15,8 @@ import {
   asArrangementTrack,
   callNamesArrangementPosition,
   clipStarts,
-} from "../arrangement-helpers.ts";
+} from "../arrangement-readback.ts";
+import { requireToolCall } from "./helpers/clip-turn-readers.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;
@@ -98,6 +99,7 @@ function assertSplitInSongTime(turn: number): EvalAssertion {
 
 export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
+  tags: ["clips"],
   description:
     "Create arrangement clip, duplicate, and cut at song-timeline positions",
   kind: "regression",
@@ -128,12 +130,7 @@ export const arrangementClipWorkflow: EvalScenario = {
       type: "custom",
       description: "ppal-create-clip names an arrangement position",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 1);
-        const createCall = calls.find((c) => c.name === "ppal-create-clip");
-
-        if (!createCall) {
-          throw new Error("ppal-create-clip not found");
-        }
+        const createCall = requireToolCall(turns, 1, "ppal-create-clip");
 
         if (!callNamesArrangementPosition(createCall.args, "path")) {
           throw new Error(

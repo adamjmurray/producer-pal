@@ -8,7 +8,7 @@ import {
   applyTransforms,
   evaluateTransform,
 } from "#src/notation/transform/transform-evaluator.ts";
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import {
   createContext,
   createTestNotes,

@@ -160,6 +160,7 @@ export function App() {
   const {
     contextOpen,
     contextClosing,
+    contextTab,
     openContext,
     closeContext,
     contextBackdrop,
@@ -224,7 +225,10 @@ export function App() {
     onOpenToolsSettings: () => openSettings("tools"),
     onOpenConnectionSettings: () => openSettings("connection"),
     /* v8 ignore stop */
-    onOpenContext: openContext,
+    // Wrapped like onOpenSettings: a bare handler would hand openContext the
+    // click event as its tab argument.
+    onOpenContext: () => openContext(),
+    onOpenInstructions: () => openContext("instructions"),
     onForeignRecord,
     clearViewingMode,
     setModeContext,
@@ -269,6 +273,7 @@ export function App() {
               panel fades once on open (matching the Settings overlay). */}
           <div>
             <ContextTabs
+              initialTab={contextTab}
               onClose={closeContext}
               confirmLeaveRef={contextConfirmLeaveRef}
             />

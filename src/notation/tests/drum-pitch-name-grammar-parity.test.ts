@@ -22,7 +22,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 /**

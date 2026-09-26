@@ -21,7 +21,7 @@ const routingProperties = {
     '{"available_input_routing_channels": [{"display_name": "1", "identifier": 1}, {"display_name": "2", "identifier": 2}]}',
   ],
   available_output_routing_types: [
-    '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Bass", "identifier": 30}, {"display_name": "Bass", "identifier": 31}]}',
+    '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Bass", "identifier": 30}, {"display_name": "Bass", "identifier": 31}, {"display_name": "Bus A, B", "identifier": 32}]}',
   ],
   available_output_routing_channels: [
     '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
@@ -65,6 +65,59 @@ describe("updateTrack routing by name", () => {
     );
   });
 
+  it("gives each track its own routing", () => {
+    const other = registerMockObject("456", {
+      path: livePath.track(1),
+      properties: routingProperties,
+    });
+
+    updateTrack({
+      id: "123,456",
+      inputRoutingChannel: "1,2",
+      inputRoutingType: "Ext. In",
+    });
+
+    expect(track.set).toHaveBeenCalledWith(
+      "input_routing_channel",
+      '{"input_routing_channel":{"identifier":1}}',
+    );
+    expect(other.set).toHaveBeenCalledWith(
+      "input_routing_channel",
+      '{"input_routing_channel":{"identifier":2}}',
+    );
+    expect(other.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      '{"input_routing_type":{"identifier":17}}',
+    );
+  });
+
+  it("reads \\, as a comma in a routing name", () => {
+    const other = registerMockObject("456", {
+      path: livePath.track(1),
+      properties: routingProperties,
+    });
+
+    updateTrack({ id: "123,456", outputRoutingType: "Bus A\\, B,Track Out" });
+
+    expect(track.set).toHaveBeenCalledWith(
+      "output_routing_type",
+      '{"output_routing_type":{"identifier":32}}',
+    );
+    expect(other.set).toHaveBeenCalledWith(
+      "output_routing_type",
+      '{"output_routing_type":{"identifier":25}}',
+    );
+  });
+
+  it("refuses a routing list that doesn't match the tracks", () => {
+    registerMockObject("456", { path: livePath.track(1) });
+
+    expect(() =>
+      updateTrack({ id: "123,456", outputRoutingChannel: "Master,A,A" }),
+    ).toThrow("outputRoutingChannel names 3 entries");
+    expect(track.set).not.toHaveBeenCalled();
+  });
+
   it("matches names case-insensitively and ignores surrounding space", () => {
     updateTrack({ id: "123", inputRoutingType: "  ext. in  " });
 
@@ -83,30 +136,35 @@ describe("updateTrack routing by name", () => {
     );
   });
 
-  it("uses the first of several options sharing a name, and warns", () => {
-    updateTrack({ id: "123", outputRoutingType: "Bass" });
+  it("uses the first of several options sharing a name, and says so", () => {
+    const result = updateTrack({ id: "123", outputRoutingType: "Bass" });
 
     expect(track.set).toHaveBeenCalledWith(
       "output_routing_type",
       '{"output_routing_type":{"identifier":30}}',
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        'track t0 (id 123) has 2 output_routing_type options named "Bass"',
-      ),
-    );
+    // The routing landed, just not necessarily on the one meant, so no `ok`.
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0",
+      detail:
+        '2 output_routing_type options are named "Bass"; used the first — ' +
+        "send the identifier (30, 31) to pick another",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns and skips an unknown name", () => {
-    updateTrack({ id: "123", outputRoutingType: "Nowhere" });
+  it("refuses an unknown name", () => {
+    // The routing was the whole call, so nothing landed on the lone track.
+    expect(() =>
+      updateTrack({ id: "123", outputRoutingType: "Nowhere" }),
+    ).toThrow('the track has no output_routing_type named "Nowhere"');
 
     expect(track.set).not.toHaveBeenCalledWith(
       "output_routing_type",
       expect.anything(),
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('no output_routing_type named "Nowhere"'),
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("falls back to the identifier when the available list is empty", () => {
@@ -123,11 +181,9 @@ describe("updateTrack routing by name", () => {
   it("says none rather than an empty list when nothing is available", () => {
     registerMockObject("456", { path: livePath.track(1) });
 
-    updateTrack({ id: "456", outputRoutingType: "Nowhere" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("available: none"),
-    );
+    expect(() =>
+      updateTrack({ id: "456", outputRoutingType: "Nowhere" }),
+    ).toThrow("available: none");
   });
 
   describe("deprecated *Id params", () => {

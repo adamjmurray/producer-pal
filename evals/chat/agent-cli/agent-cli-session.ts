@@ -7,8 +7,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EvalSession } from "#evals/scenarios/eval-session.ts";
-import { logTurnStart } from "#evals/scenarios/helpers/eval-session-base.ts";
-import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
+import { logTurnStart } from "#evals/scenarios/helpers/turn-logging.ts";
+import { isQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { PROVIDER_CONFIGS } from "#evals/shared/provider-configs.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
@@ -16,6 +16,7 @@ import { connectMcp } from "../mcp.ts";
 import { printStepUsage } from "../shared/formatting.ts";
 import { type TurnResult } from "../shared/types.ts";
 import { spawnAgentCli } from "./agent-cli-spawn.ts";
+import { turnTiming } from "./agent-cli-stream.ts";
 import {
   type AgentCliTransport,
   DEFAULT_AGENT_CLI_SYSTEM_PROMPT,
@@ -28,6 +29,12 @@ export interface AgentCliSessionOptions {
   model?: string;
   /** Print per-turn token usage (the CLI's -u/--usage flag). */
   usage?: boolean;
+  /**
+   * Print the turn preamble — header, user message, assistant label. Defaults
+   * to true. The chat CLI turns it off because it prints its own, and printing
+   * both would echo every prompt twice.
+   */
+  logTurns?: boolean;
 }
 
 /**
@@ -71,7 +78,10 @@ export async function createAgentCliSession(
       message: string,
       turnNumber: number,
     ): Promise<TurnResult> => {
-      logTurnStart(turnNumber, message);
+      if (options.logTurns !== false) {
+        logTurnStart(turnNumber, message);
+      }
+
       const args = transport.buildTurnArgs({
         instructions,
         instructionsFile,
@@ -79,9 +89,17 @@ export async function createAgentCliSession(
         model,
         ...(sessionId != null ? { resumeSessionId: sessionId } : {}),
       });
-      const parsed = transport.parseStream(
-        await spawnAgentCli(transport, args, message, { cwd: sessionDir }),
-      );
+      const startedAt = performance.now();
+      const stdout = await spawnAgentCli(transport, args, message, {
+        cwd: sessionDir,
+      });
+      const elapsedMs = performance.now() - startedAt;
+      const parsed = transport.parseStream(stdout);
+      // A transport that reports its own model time wins. Otherwise fall back
+      // to the wall clock, which also covers CLI startup and tool execution, so
+      // it reads lower than the model actually generated.
+      const timing =
+        parsed.timing ?? turnTiming(parsed.usage?.outputTokens, elapsedMs);
 
       // eslint-disable-next-line require-atomic-updates -- turns run sequentially
       if (parsed.sessionId != null) {
@@ -97,14 +115,16 @@ export async function createAgentCliSession(
       if (usage != null) {
         // These CLIs report usage once per turn, not per step, so there is one
         // line per turn rather than one per tool round-trip.
-        printStepUsage(usage, prevUsage, true);
+        printStepUsage(usage, prevUsage, true, timing);
         prevUsage = usage;
       }
 
       return {
         text: parsed.text,
         toolCalls: parsed.toolCalls,
-        ...(parsed.usage != null ? { stepUsages: [parsed.usage] } : {}),
+        ...(parsed.usage != null
+          ? { stepUsages: [parsed.usage], stepTimings: [timing ?? {}] }
+          : {}),
       };
     },
     close: async () => {

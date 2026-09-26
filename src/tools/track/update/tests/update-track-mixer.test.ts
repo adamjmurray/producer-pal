@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -12,8 +12,8 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+const CHANGED_GAIN = "gainDb read back as shown, not as sent";
 
 describe("updateTrack - mixer properties", () => {
   let track123: RegisteredMockObject;
@@ -206,51 +206,6 @@ describe("updateTrack - mixer properties", () => {
     expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 0.5);
   });
 
-  it("should warn when setting pan in split mode", () => {
-    const errorSpy = vi.spyOn(console, "warn");
-
-    mixer1.get.mockImplementation((prop: string) => {
-      if (prop === "panning_mode") {
-        return [1];
-      } // Split mode
-
-      return [0];
-    });
-
-    updateTrack({
-      id: "123",
-      pan: 0.5,
-    });
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "track t0 (id 123) is in split panning mode, so pan had no effect",
-      ),
-    );
-
-    errorSpy.mockRestore();
-  });
-
-  it("should warn when setting leftPan/rightPan in stereo mode", () => {
-    const errorSpy = vi.spyOn(console, "warn");
-
-    // Default panning_mode is 0 (stereo) from createGetMock fallback
-
-    updateTrack({
-      id: "123",
-      leftPan: -0.5,
-      rightPan: 0.5,
-    });
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "track t0 (id 123) is in stereo panning mode, so leftPan/rightPan had no effect",
-      ),
-    );
-
-    errorSpy.mockRestore();
-  });
-
   it("should switch mode and update panning in one call", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
@@ -315,49 +270,67 @@ describe("updateTrack - mixer properties", () => {
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
   });
 
-  // The result says what landed. Live clamps and snaps both, so
-  // these can only match by reading the parameters back after the write.
+  // The result says only what Live didn't keep. Live clamps and snaps both, so
+  // this can only be told apart by reading the parameters back after the write.
   it("reports the gain and pan Live kept, not the ones asked for", () => {
     keepsParamValue(volumeParam1, -6.02);
     keepsParamValue(panningParam1, 0.26);
 
     const result = updateTrack({ id: "123", gainDb: -6, pan: 0.25 });
 
+    // Stereo is the mode every caller assumes, so it goes unsaid.
     expect(result).toStrictEqual({
       id: "123",
       path: "t0",
       gainDb: -6.02,
       pan: 0.26,
+      detail: "gainDb, pan read back as shown, not as sent",
     });
   });
 
-  it("rounds the raw float32 to Live's display resolution", () => {
-    // Live snapped both requests to a nearby step and handed back its raw
-    // float32, which carries noise past the resolution a read reports.
+  it("says nothing about a gain and pan that landed as asked", () => {
+    keepsParamValue(volumeParam1, -6);
+    keepsParamValue(panningParam1, 0.25);
+
+    expect(updateTrack({ id: "123", gainDb: -6, pan: 0.25 })).toStrictEqual({
+      id: "123",
+      path: "t0",
+    });
+  });
+
+  it("counts the raw float32 as the value asked for", () => {
+    // Live keeps a float32 of the request and hands back noise past the
+    // resolution a read reports — the same value, so nothing to report.
     keepsParamValue(volumeParam1, -6.333000183105469);
     keepsParamValue(panningParam1, -0.30000001192092896);
 
-    const result = updateTrack({ id: "123", gainDb: -6.333333, pan: -0.3 });
-
-    expect(result).toStrictEqual({
-      id: "123",
-      path: "t0",
-      gainDb: -6.33,
-      pan: -0.3,
-    });
+    expect(
+      updateTrack({ id: "123", gainDb: -6.333333, pan: -0.3 }),
+    ).toStrictEqual({ id: "123", path: "t0" });
   });
 
-  // Max serializes an exponent-notation float as a string. Nothing came back to
-  // read, so the argument stands in rather than vanishing from the result, and
-  // it is rounded the way a read-back would be — reporting the centered pan the
-  // argument amounts to, not the sub-1% number the caller wrote.
-  it("falls back to the written pan when Live answers with a string", () => {
+  // Max serializes an exponent-notation float as a string, so nothing comes
+  // back to read. The argument stands in, and a sub-1% pan rounds to the
+  // centered value it amounts to — which is what was asked for, so it is silent.
+  it("says nothing when Live answers with a string for the pan it kept", () => {
     keepsParamValue(panningParam1, "9.999999747378752e-05");
 
     expect(updateTrack({ id: "123", pan: 0.0001 })).toStrictEqual({
       id: "123",
       path: "t0",
-      pan: 0,
+    });
+  });
+
+  // A fader at the bottom of its range reads "-inf", which is no number to
+  // compare -70 with — so it reports, the way a read publishes it.
+  it("reports a gain that reads back as a label instead of a number", () => {
+    keepsParamValue(volumeParam1, "-inf");
+
+    expect(updateTrack({ id: "123", gainDb: -70 })).toStrictEqual({
+      id: "123",
+      path: "t0",
+      gainDb: "-inf",
+      detail: CHANGED_GAIN,
     });
   });
 
@@ -366,23 +339,24 @@ describe("updateTrack - mixer properties", () => {
     keepsParamValue(volumeParam2, -5.98);
 
     expect(updateTrack({ id: "123,456", gainDb: -6 })).toStrictEqual([
-      { id: "123", path: "t0", gainDb: -6.02 },
-      { id: "456", path: "t1", gainDb: -5.98 },
+      { id: "123", path: "t0", gainDb: -6.02, detail: CHANGED_GAIN },
+      { id: "456", path: "t1", gainDb: -5.98, detail: CHANGED_GAIN },
     ]);
   });
 
   it("reports nothing for a mixer value the call never wrote", () => {
     keepsParamValue(volumeParam1, -6.02);
 
-    // pan wasn't asked for, so it stays out of the result.
+    // pan wasn't asked for, so neither it nor the panning mode is reported.
     expect(updateTrack({ id: "123", gainDb: -6 })).toStrictEqual({
       id: "123",
       path: "t0",
       gainDb: -6.02,
+      detail: CHANGED_GAIN,
     });
   });
 
-  it("reports the split pans it wrote, read back off the track", () => {
+  it("reports the split pans Live kept, not the ones asked for", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
     splitMode();
@@ -396,12 +370,39 @@ describe("updateTrack - mixer properties", () => {
       path: "t0",
       leftPan: -0.74,
       rightPan: 0.51,
+      panningMode: "split",
+      detail: "leftPan, rightPan read back as shown, not as sent",
     });
   });
 
-  // A split-mode call used to report the gain and nothing else, which reads as
-  // "the pans did not land" for two writes that did.
-  it("reports the split pans alongside the gain in one call", () => {
+  it("says nothing about split pans that landed as asked", () => {
+    const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
+
+    splitMode();
+    keepsParamValue(leftSplitParam1, -0.75);
+    keepsParamValue(rightSplitParam1, 0.5);
+
+    expect(
+      updateTrack({ id: "123", leftPan: -0.75, rightPan: 0.5 }),
+    ).toStrictEqual({ id: "123", path: "t0", panningMode: "split" });
+  });
+
+  // Split is the mode a caller doesn't expect, so it is reported whichever of
+  // the three pan params reached for it — rightPan alone included.
+  it("reports split mode for a call that sent rightPan alone", () => {
+    const { rightSplitParam1 } = registerSplitPanParams();
+
+    splitMode();
+    keepsParamValue(rightSplitParam1, 0.5);
+
+    expect(updateTrack({ id: "123", rightPan: 0.5 })).toStrictEqual({
+      id: "123",
+      path: "t0",
+      panningMode: "split",
+    });
+  });
+
+  it("reports the gain Live changed beside split pans that landed", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
     splitMode();
@@ -415,18 +416,19 @@ describe("updateTrack - mixer properties", () => {
       id: "123",
       path: "t0",
       gainDb: -6.02,
-      leftPan: -1,
-      rightPan: 1,
+      panningMode: "split",
+      detail: CHANGED_GAIN,
     });
   });
 
-  it("reports the split pans after switching mode in the same call", () => {
+  it("writes the split pans after switching mode in the same call", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
     // Starts in stereo, so only the panningMode write puts the pans in reach.
     keepsParamValue(leftSplitParam1, -1);
     keepsParamValue(rightSplitParam1, 1);
 
+    // The caller set the mode, so it isn't reported back, and both pans landed.
     expect(
       updateTrack({
         id: "123",
@@ -434,7 +436,10 @@ describe("updateTrack - mixer properties", () => {
         leftPan: -1,
         rightPan: 1,
       }),
-    ).toStrictEqual({ id: "123", path: "t0", leftPan: -1, rightPan: 1 });
+    ).toStrictEqual({ id: "123", path: "t0" });
+
+    expect(leftSplitParam1.set).toHaveBeenCalledWith("value", -1);
+    expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 1);
   });
 
   it("reports pan after switching back to stereo in the same call", () => {
@@ -448,25 +453,17 @@ describe("updateTrack - mixer properties", () => {
 
     expect(
       updateTrack({ id: "123", panningMode: "stereo", pan: 0.5 }),
-    ).toStrictEqual({ id: "123", path: "t0", pan: 0.51 });
+    ).toStrictEqual({
+      id: "123",
+      path: "t0",
+      pan: 0.51,
+      detail: "pan read back as shown, not as sent",
+    });
 
     expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 0);
     // The split params belong to the mode the call left, so they stay untouched.
     expect(leftSplitParam1.set).not.toHaveBeenCalled();
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
-  });
-
-  it("omits leftPan/rightPan when the track is in stereo panning mode", () => {
-    const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
-
-    keepsParamValue(leftSplitParam1, -1);
-    keepsParamValue(rightSplitParam1, 1);
-
-    // The writes were refused with a warning, so nothing may report as landed.
-    expect(updateTrack({ id: "123", leftPan: -1, rightPan: 1 })).toStrictEqual({
-      id: "123",
-      path: "t0",
-    });
   });
 
   it("omits a split pan when its parameter does not exist", () => {
@@ -478,42 +475,15 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
-    keepsParamValue(rightSplitParam1, 1);
+    keepsParamValue(rightSplitParam1, 0.98);
 
     expect(updateTrack({ id: "123", leftPan: -1, rightPan: 1 })).toStrictEqual({
       id: "123",
       path: "t0",
-      rightPan: 1,
+      rightPan: 0.98,
+      panningMode: "split",
+      detail: "rightPan read back as shown, not as sent",
     });
-  });
-
-  it("omits pan when the track is in split panning mode", () => {
-    splitMode();
-    keepsParamValue(panningParam1, -0.5);
-
-    // The write was refused with a warning, so nothing may report as landed.
-    expect(updateTrack({ id: "123", pan: 0.5 })).toStrictEqual({
-      id: "123",
-      path: "t0",
-    });
-  });
-
-  // Live accepts a set on a disabled parameter and ignores it. A track mixer
-  // is harder to disable than a rack chain's, but the guard is the same.
-  it("should warn and skip a disabled volume", () => {
-    volumeParam1 = registerMockObject("volume_param_1", {
-      path: `${livePath.track(0).mixerDevice()} volume`,
-      properties: { is_enabled: 0 },
-    });
-
-    const result = updateTrack({ id: "123", gainDb: -6 });
-
-    expect(volumeParam1.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("gainDb is disabled"),
-    );
-    // Nothing was written, so nothing is reported as though it had been.
-    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 });
 

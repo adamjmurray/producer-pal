@@ -41,6 +41,7 @@ export const FRAGMENT_REQUIRES: Record<string, readonly string[]> = {
   [TRANSFORMS_CORE]: [TIME_AND_VALUES],
 
   "devices-write": ["devices"],
+  "plugins-and-max-devices": ["devices"],
   "specialized-devices": ["devices"],
   // Not a cross-reference but the same failure: pad paths are written `pC1`, and
   // with no notation head in a device-only toolset, time-and-values is the only

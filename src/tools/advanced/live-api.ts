@@ -7,7 +7,7 @@ import {
   clearLiveApiMemo,
   untrackLiveApiObject,
 } from "#src/live-api-adapter/live-api-release.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   MAX_OPERATIONS,
   type OperationType,

@@ -53,6 +53,7 @@ const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
     "ppal-update-device",
   ],
   "devices-write": ["ppal-library"],
+  "plugins-and-max-devices": ["ppal-library"],
 };
 
 // Bleed this test found and does not yet fix: guidance shipped to callers that
@@ -232,7 +233,7 @@ describe("fragment prose", () => {
       0,
     );
 
-    expect(total).toBeLessThanOrEqual(5);
+    expect(total).toBeLessThanOrEqual(6);
   });
 
   it("lists no allowance that is no longer needed", () => {

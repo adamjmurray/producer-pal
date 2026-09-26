@@ -26,7 +26,9 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
     path: z.coerce
       .string()
       .optional()
-      .describe("Optional LiveAPI path (e.g., 'live_set tracks 0')"),
+      .describe(
+        "Optional LiveAPI path (e.g., 'live_set tracks 0'); one object, not a list",
+      ),
     operations: z
       .array(
         z.object({

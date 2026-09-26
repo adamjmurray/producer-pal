@@ -134,4 +134,30 @@ describe("QueuedMessages", () => {
 
     expect(remove).toHaveBeenCalledExactlyOnceWith(5);
   });
+
+  it.each([
+    { count: 1, label: "queued · 1 image" },
+    { count: 2, label: "queued · 2 images" },
+  ])("labels a queued message carrying $count image(s)", ({ count, label }) => {
+    const messages = [
+      {
+        id: 1,
+        text: "like this",
+        images: Array.from({ length: count }, () => ({
+          mediaType: "image/png",
+          data: "AAA",
+        })),
+      },
+    ];
+
+    render(
+      <QueuedMessages
+        queuedMessages={messages}
+        onRemove={vi.fn()}
+        scrollRef={scrollRef as never}
+      />,
+    );
+
+    expect(screen.getByText(label)).toBeDefined();
+  });
 });

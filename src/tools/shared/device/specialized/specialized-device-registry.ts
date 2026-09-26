@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { compressorSpec } from "./devices/compressor.ts";
 import { driftSpec } from "./devices/drift.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
@@ -21,11 +21,13 @@ import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
   type WrittenPseudoParam,
-} from "../helpers/device-display-helpers.ts";
+  skippedParam,
+} from "../helpers/param-reading.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
   type ActionDef,
+  type ActionResult,
   type PseudoParam,
   type SpecializedDeviceSpec,
 } from "./specialized-device-types.ts";
@@ -33,7 +35,7 @@ import {
 // Central registry of specialized-device specs and the dispatch entry points
 // used by the device read/update plumbing. Devices are matched by
 // `class_display_name` (consistent with the existing Simpler handling). See
-// dev/Specialized-Devices.md.
+// dev/live-api/specialized-devices/README.md.
 
 const SPECS: SpecializedDeviceSpec[] = [
   // Instruments
@@ -78,9 +80,8 @@ export function getSpecForDevice(
  * the key is not a pseudo-param, so the caller falls through to DeviceParameter
  * resolution. Otherwise the return is what the key contributes to the `params`
  * result: how to read the written value back (and, for a param a device can
- * silently ignore, how to tell that read-back from the value it replaced), why
- * nothing was written, or nothing at all when a refused write left no value to
- * report.
+ * silently ignore, how to tell that read-back from the value it replaced), or
+ * why nothing was written.
  * @param device - LiveAPI device object
  * @param key - Param name from the `params` input
  * @param value - Coerced value
@@ -104,12 +105,10 @@ export function applySpecializedParamWrite(
   }
 
   if (!param.write) {
-    console.warn(`"${param.name}" is read-only`);
-
-    // Said twice on purpose, like the param-not-found reasons: the entry is
-    // where the caller reads what happened to this param, and the warning
-    // stays until every way a param write can fail has an entry of its own.
-    return [{ name: param.name, reason: "read-only" }];
+    // Named as the call spelled it, since matching is case-insensitive: that is
+    // what the caller has to match the entry on. The entry is where they read
+    // what happened to this param, so it warns nowhere.
+    return [skippedParam(key, "read-only")];
   }
 
   const { writeFailed } = param;
@@ -117,11 +116,13 @@ export function applySpecializedParamWrite(
   // it has to be read before the write overwrites it.
   const before = writeFailed ? param.read(device) : undefined;
 
-  // A refused write names nothing, the way a DeviceParameter write Live
-  // ignored does: an entry is only ever a value that landed. Reporting one
-  // here would report the unchanged value as the value the call wrote.
-  if (!param.write(device, value)) {
-    return [];
+  // A refused write reports the reason in place of a value: reporting one here
+  // would report the unchanged value as the value the call wrote. Named as the
+  // call spelled it, like the read-only skip above.
+  const refused = param.write(device, value);
+
+  if (refused != null) {
+    return [skippedParam(key, refused)];
   }
 
   // Read at the end of the call, not here: a later write in the same call can
@@ -136,6 +137,20 @@ export function applySpecializedParamWrite(
       }),
     },
   ];
+}
+
+/**
+ * Whether a `params` key names a pseudo-param of this device. A pseudo-param is
+ * a device property, so it has no DeviceParameter and no id — a caller that
+ * needs to know which parameter a key reaches has to leave these out.
+ * @param device - LiveAPI device object
+ * @param key - Param name from the `params` input
+ * @returns True when the key is one of this device's pseudo-params
+ */
+export function isSpecializedParamKey(device: LiveAPI, key: string): boolean {
+  const spec = getSpecForDevice(device);
+
+  return spec?.params != null && findParam(spec.params, key) != null;
 }
 
 /**
@@ -172,34 +187,47 @@ export function readSpecializedParams(
 }
 
 /**
- * Parse and dispatch the `actions` arg for a specialized device. Unknown or
- * malformed actions warn-and-skip.
+ * Parse and dispatch the `actions` arg for a specialized device. Every action
+ * keeps its slot, and nothing warns: its entry is where the caller reads what
+ * happened to it.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
+ * @returns One entry per action sent, in order
  */
 export function applySpecializedActions(
   device: LiveAPI,
   actions: string[],
-): void {
+): ActionResult[] {
   const spec = getSpecForDevice(device);
 
-  for (const raw of actions) {
+  return actions.map((raw): ActionResult => {
     const parsed = parseAction(raw);
 
     if (!parsed) {
-      console.warn(`could not parse action "${raw}"`);
-      continue;
+      return refusedAction(raw, "could not parse: expected name or name(args)");
     }
 
     const action = findAction(spec, parsed.name);
 
     if (!action) {
-      console.warn(`unknown action "${parsed.name}" for this device`);
-      continue;
+      return refusedAction(raw, "unknown action for this device");
     }
 
-    action.handler(device, parsed.args);
-  }
+    // Isolate each action: a throw in one handler must not abort the rest of
+    // the call, so it becomes that action's own skip entry.
+    try {
+      const outcome = action.handler(device, parsed.args);
+
+      if (typeof outcome === "string") {
+        return refusedAction(raw, outcome);
+      }
+
+      // A no-op ran, so it keeps a normal entry rather than a skip.
+      return outcome == null ? { action: raw } : { action: raw, ...outcome };
+    } catch (e) {
+      return refusedAction(raw, errorMessage(e));
+    }
+  });
 }
 
 /**
@@ -319,6 +347,16 @@ function findParam(
   const keyLower = key.toLowerCase();
 
   return params.find((p) => p.name.toLowerCase() === keyLower);
+}
+
+/**
+ * The entry for an action nothing was done for.
+ * @param action - The action as the call wrote it
+ * @param detail - Why nothing was done
+ * @returns The skip entry
+ */
+function refusedAction(action: string, detail: string): ActionResult {
+  return { action, ok: false, detail };
 }
 
 /**

@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
-import { processDeviceChains } from "../device-reader-helpers.ts";
+import { processDeviceChains } from "../device-reading.ts";
 
 // A chain with no mixer device, so buildChainInfo adds no mixer fields.
 const noMixer = { exists: () => false };
@@ -31,6 +31,7 @@ type ReadDeviceFn = (
 
 type ChainCallOverrides = {
   includeChains?: boolean;
+  chainsHidden?: boolean;
   includeDrumPads?: boolean;
   depth?: number;
   maxDepth?: number;
@@ -201,14 +202,14 @@ describe("processDeviceChains", () => {
     expect(chains[0]).toStrictEqual({
       devices: [],
       path: "t0/d0/rc0",
-      type: "Chain",
+      type: "chain",
       id: "chain-Return A",
       name: "Return A",
     });
     expect(chains[1]).toStrictEqual({
       devices: [],
       path: "t0/d0/rc1",
-      type: "Chain",
+      type: "chain",
       id: "chain-Return B",
       name: "Return B",
     });
@@ -340,7 +341,7 @@ describe("processDeviceChains", () => {
     expect(chains).toHaveLength(1);
     expect(chains[0]).toStrictEqual({
       path: "t0/d0/c0",
-      type: "Chain",
+      type: "chain",
       id: "chain-A",
       name: "Chain A",
       deviceCount: 2,
@@ -444,5 +445,45 @@ describe("processDeviceChains", () => {
     });
 
     expect(deviceInfo.chains).toBeUndefined();
+  });
+
+  /**
+   * Read an audio-effect rack holding one chain with one device, chains hidden.
+   * @param overrides - Options for the processDeviceChains call
+   * @returns The populated deviceInfo
+   */
+  const readHiddenChain = (overrides: ChainCallOverrides) => {
+    const mockChain = createMockChain("Chain A", {
+      devices: [{ id: "dev-1" }],
+    });
+    const deviceInfo: Record<string, unknown> = {};
+
+    callWithChains(
+      createMockRackDevice([mockChain]),
+      deviceInfo,
+      DEVICE_TYPE.AUDIO_EFFECT_RACK,
+      { chainsHidden: true, maxDepth: 2, ...overrides },
+    );
+
+    return deviceInfo;
+  };
+
+  it("gives a hidden chain only its devices", () => {
+    const deviceInfo = readHiddenChain({
+      readDeviceFn: (device) => ({ id: device.id }),
+    });
+
+    expect(deviceInfo.chains).toStrictEqual([{ devices: [{ id: "dev-1" }] }]);
+  });
+
+  it("gives a hidden chain nothing at the depth limit", () => {
+    // The caller throws the chain away either way, so at the limit it is not
+    // worth reading the devices the search would have descended into.
+    const readDeviceFn = vi.fn(() => ({}));
+
+    const deviceInfo = readHiddenChain({ depth: 2, readDeviceFn });
+
+    expect(deviceInfo.chains).toStrictEqual([{}]);
+    expect(readDeviceFn).not.toHaveBeenCalled();
   });
 });

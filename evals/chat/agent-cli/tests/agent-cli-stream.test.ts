@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { recordToolResult } from "../agent-cli-stream.ts";
+import { recordToolResult, turnTiming } from "../agent-cli-stream.ts";
 import { type ToolCall } from "../../shared/types.ts";
 
 /**
@@ -58,5 +58,20 @@ describe("recordToolResult — isError", () => {
     recordToolResult(call, "no track at index 9");
 
     expect(call).not.toHaveProperty("isError");
+  });
+});
+
+describe("turnTiming", () => {
+  it("divides tokens by the duration in seconds", () => {
+    expect(turnTiming(14, 2000)).toStrictEqual({ outputTokensPerSecond: 7 });
+  });
+
+  it.each([
+    ["no tokens", undefined, 2000],
+    ["zero tokens", 0, 2000],
+    ["no duration", 14, undefined],
+    ["a zero duration", 14, 0],
+  ])("reports nothing for %s", (_label, outputTokens, durationMs) => {
+    expect(turnTiming(outputTokens, durationMs)).toBeUndefined();
   });
 });

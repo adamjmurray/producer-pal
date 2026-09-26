@@ -4,12 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useRef, useState } from "preact/hooks";
+import {
+  type ChatImage,
+  type UserMessage,
+  type UserMessageInput,
+  normalizeUserMessage,
+} from "#webui/chat/sdk/types";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 
 /** A message waiting to be sent to the AI. */
 export interface QueuedMessage {
   id: number;
   text: string;
+  /** Images attached to this message, carried through the coalesced turn. */
+  images?: ChatImage[];
 }
 
 /** A drained queue: the coalesced messages plus the turn-level overrides. */
@@ -40,14 +48,16 @@ export function useMessageQueue() {
   const queueOverridesRef = useRef<MessageOverrides | undefined>(undefined);
 
   const enqueueMessage = useCallback(
-    (text: string, overrides?: MessageOverrides) => {
+    (message: UserMessage, overrides?: MessageOverrides) => {
       if (queueRef.current.length === 0) {
         queueOverridesRef.current = overrides;
       }
 
+      const { text, images } = normalizeUserMessage(message);
       const msg: QueuedMessage = {
         id: nextIdRef.current++,
         text,
+        ...(images?.length ? { images } : {}),
       };
 
       queueRef.current = [...queueRef.current, msg];
@@ -91,5 +101,26 @@ export function useMessageQueue() {
     removeMessage,
     drainQueue,
     clearQueue,
+  };
+}
+
+/**
+ * Coalesce drained queue entries into the single user turn that is actually
+ * sent: texts joined by blank lines (blank ones dropped, so an image-only
+ * message adds no gap) and every image kept, in queue order.
+ * @param queued - The drained queue entries, oldest first
+ * @returns The merged message
+ */
+export function coalesceQueuedMessages(
+  queued: QueuedMessage[],
+): UserMessageInput {
+  const images = queued.flatMap((m) => m.images ?? []);
+
+  return {
+    text: queued
+      .map((m) => m.text)
+      .filter(Boolean)
+      .join("\n\n"),
+    ...(images.length > 0 ? { images } : {}),
   };
 }

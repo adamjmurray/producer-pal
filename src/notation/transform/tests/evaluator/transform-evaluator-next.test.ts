@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { createTestNotes } from "./transform-evaluator-test-helpers.ts";

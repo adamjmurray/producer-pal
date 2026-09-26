@@ -16,12 +16,16 @@
  * Run with: npm run e2e:mcp -- ppal-update-device-chain-send-by-id
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import {
+  getToolErrorMessage,
+  getToolWarnings,
+  setupMcpTestContext,
+} from "../../mcp-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
   callWithWarnings,
   KIT,
   padChain,
-  RACKS_TEST_PATH,
   readKitPads,
   readReturnChains,
 } from "../helpers/racks-test-helpers.ts";
@@ -53,19 +57,16 @@ describe("update-device sendReturn by id", () => {
     expect(written?.gainDb).toBeCloseTo(-14, 1);
   });
 
-  it("warns and skips an id that is not one of the rack's return chains", async () => {
+  it("refuses an id that is not one of the rack's return chains", async () => {
     // The rack's own id: a real Live object, and not a return chain of it.
     const kit = await readKitPads(ctx.client!);
 
-    const { warnings } = await callWithWarnings(
-      ctx.client!,
-      "ppal-update-device",
-      { path: CLAP, sendGainDb: -3, sendReturn: kit.id },
-    );
+    // The send was all the call asked, so nothing landed and it fails.
+    const message = await sendRefusal({ sendGainDb: -3, sendReturn: kit.id });
 
-    expect(
-      warnings.some((w) => w.includes(`no return chain matching "${kit.id}"`)),
-    ).toBe(true);
+    expect(message).toContain(
+      `no send landed — "${kit.id}": no return chain matching "${kit.id}"`,
+    );
 
     const sends = padChain(await readKitPads(ctx.client!), "Clap").sends ?? [];
 
@@ -75,56 +76,100 @@ describe("update-device sendReturn by id", () => {
     );
   });
 
-  // The write result says what landed. Live clamps and snaps the
-  // level, so the argument alone doesn't say what the send ends up holding.
-  it("reports the sends it wrote, read back at Live's display resolution", async () => {
+  /**
+   * Write the Clap pad's sends, expecting the call to be refused.
+   * @param args - The update-device args that write the send
+   * @returns The error message
+   */
+  async function sendRefusal(args: Record<string, unknown>): Promise<string> {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: CLAP, ...args },
+    });
+
+    expect(getToolWarnings(result)).toStrictEqual([]);
+
+    return getToolErrorMessage(result);
+  }
+
+  /**
+   * Write the Clap pad's sends and read the levels back off it.
+   * @param args - The update-device args that write the send
+   * @returns What the write reported under `sends`, and the Clap's levels after
+   */
+  async function writeClapSends(args: Record<string, unknown>): Promise<{
+    reported: unknown;
+    after: Array<{ return: string; gainDb?: number }>;
+  }> {
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-update-device",
+      { path: CLAP, ...args },
+    );
+
+    expect(warnings).toStrictEqual([]);
+
+    return {
+      reported: data.sends,
+      after: padChain(await readKitPads(ctx.client!), "Clap").sends ?? [],
+    };
+  }
+
+  // A send that took the level asked for has nothing to say, so the write is
+  // silent and a read is what proves it landed. Live hands the level back as a
+  // 32-bit float, which reads as -6.33 — the level asked for, at the
+  // resolution reads publish.
+  it("says nothing about a send that took the level asked for", async () => {
     const returns = await readReturnChains(ctx.client!);
     const saturator = returns.find((rc) => rc.name === "A Saturator");
+    const { reported, after } = await writeClapSends({
+      sends: [{ return: saturator!.id, gainDb: -6.333333 }],
+    });
 
-    const { data, warnings } = await callWithWarnings(
-      ctx.client!,
-      "ppal-update-device",
-      { path: CLAP, sends: [{ return: saturator!.id, gainDb: -6.333333 }] },
-    );
-
-    expect(warnings).toStrictEqual([]);
-    // Live hands back a 32-bit float, so an unrounded read reports
-    // -6.333000183105469. The id is the one a read reports, so the result
-    // round-trips straight back into `sends`.
-    expect(data.sends).toStrictEqual([
-      { return: "A Saturator", returnId: saturator!.id, gainDb: -6.33 },
-    ]);
+    expect(reported).toBeUndefined();
+    expect(after.find((s) => s.return === "A Saturator")?.gainDb).toBe(-6.33);
   });
 
-  it("reports the sendGainDb/sendReturn pair under sends too", async () => {
+  // One send has one shape in the result, whichever param spelled it — here,
+  // no shape at all.
+  it("says nothing about the sendGainDb/sendReturn pair either", async () => {
     const returns = await readReturnChains(ctx.client!);
     const reverb = returns.find((rc) => rc.name === "B Reverb");
+    const { reported, after } = await writeClapSends({
+      sendGainDb: -11,
+      sendReturn: reverb!.id,
+    });
 
-    // One send has one shape in the result, whichever param spelled it.
-    const { data, warnings } = await callWithWarnings(
-      ctx.client!,
-      "ppal-update-device",
-      { path: CLAP, sendGainDb: -11, sendReturn: reverb!.id },
-    );
-
-    expect(warnings).toStrictEqual([]);
-    expect(data.sends).toStrictEqual([
-      { return: "B Reverb", returnId: reverb!.id, gainDb: -11 },
-    ]);
+    expect(reported).toBeUndefined();
+    expect(after.find((s) => s.return === "B Reverb")?.gainDb).toBe(-11);
   });
 
-  it("reports no send for a return name that matches none", async () => {
+  it("refuses a lone send whose return name matches none", async () => {
+    const message = await sendRefusal({
+      sends: [{ return: "ZZZ", gainDb: -6 }],
+    });
+
+    expect(message).toContain(
+      'no send landed — "ZZZ": no return chain matching "ZZZ"',
+    );
+  });
+
+  it("keeps a failed send on the entry when a name landed too", async () => {
     const { data, warnings } = await callWithWarnings(
       ctx.client!,
       "ppal-update-device",
-      { path: CLAP, sends: [{ return: "ZZZ", gainDb: -6 }] },
+      { path: CLAP, name: "Clap", sends: [{ return: "ZZZ", gainDb: -6 }] },
     );
 
-    expect(
-      warnings.some((w) => w.includes('no return chain matching "ZZZ"')),
-    ).toBe(true);
-    // Nothing was written, so nothing is reported as though it had been.
-    expect(data.sends).toBeUndefined();
+    // Nothing was written, so the send carries the reason in place of a level.
+    expect(data.sends).toStrictEqual([
+      expect.objectContaining({
+        return: "ZZZ",
+        ok: false,
+        detail: expect.stringContaining('no return chain matching "ZZZ"'),
+      }),
+    ]);
+    expect(warnings).toStrictEqual([]);
   });
 
   // The multi-send write, and the round trip that makes it usable: what a read

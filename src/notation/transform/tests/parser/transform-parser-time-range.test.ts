@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { expectTimeRangeBounds } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - time range selectors", () => {
   it("parses bar|beat-bar|beat range", () => {
@@ -41,19 +42,13 @@ describe("Transform Parser - time range selectors", () => {
     const result = parser.parse("1|1.5+n/12-2|1: velocity += 10");
 
     // 4/4 default: 1.5 + n/12 (1/3 beat) = 1.8333
-    expect(result[0]!.timeRange!.startBar).toBe(1);
-    expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.8333);
-    expect(result[0]!.timeRange!.endBar).toBe(2);
-    expect(result[0]!.timeRange!.endBeat).toBe(1);
+    expectTimeRangeBounds(result, [1, 1.8333, 2, 1]);
   });
 
   it("parses a decimal-base offset on the end bound (1|1-2|1.5+n/12)", () => {
     const result = parser.parse("1|1-2|1.5+n/12: velocity += 10");
 
-    expect(result[0]!.timeRange!.startBar).toBe(1);
-    expect(result[0]!.timeRange!.startBeat).toBe(1);
-    expect(result[0]!.timeRange!.endBar).toBe(2);
-    expect(result[0]!.timeRange!.endBeat).toBeCloseTo(1.8333);
+    expectTimeRangeBounds(result, [1, 1, 2, 1.8333]);
   });
 
   it("resolves n offsets meter-relative to timeSigDenominator", () => {

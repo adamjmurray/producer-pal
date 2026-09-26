@@ -8,7 +8,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { expect } from "vitest";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -165,10 +168,67 @@ function bareId(arg: unknown): string {
   return String(arg).replace(/^id /, "");
 }
 
+export interface ContinuousParamSpec {
+  /** What Live reports as `name`; an all-digit name comes back as a number */
+  name?: unknown;
+  /** Live's unrenamed name, defaulting to `name` */
+  originalName?: unknown;
+  /** Register no `original_name` at all, the way some params read back */
+  omitOriginalName?: boolean;
+  /** The param's position on the device at t0/d0, when it needs a path */
+  index?: number;
+  value?: number;
+  min?: number;
+  max?: number;
+  /** What `str_for_value` answers; the default is Live's rounded percent */
+  display?: (value: unknown) => string;
+}
+
+/**
+ * Register a continuous (non-quantized) DeviceParameter mock.
+ *
+ * Giving an `index` also gives it a path under the device at t0/d0: a param's
+ * path names its device, so the write path can tell a param of the addressed
+ * device from one of some other device's.
+ * @param id - Mock object ID
+ * @param spec - What the param reports, over the defaults
+ * @returns The registered mock object
+ */
+export function registerContinuousParam(
+  id: string,
+  spec: ContinuousParamSpec = {},
+): RegisteredMockObject {
+  const name = spec.name ?? `Param ${id}`;
+  const properties: Record<string, unknown> = {
+    name,
+    is_quantized: 0,
+    value: spec.value ?? 0,
+    min: spec.min ?? 0,
+    max: spec.max ?? 1,
+  };
+
+  if (!spec.omitOriginalName) {
+    properties.original_name = spec.originalName ?? name;
+  }
+
+  return registerMockObject(id, {
+    path:
+      spec.index == null
+        ? undefined
+        : livePath.track(0).device(0).parameter(spec.index),
+    type: spec.index == null ? undefined : "DeviceParameter",
+    properties,
+    methods: {
+      str_for_value:
+        spec.display ??
+        ((value: unknown) => `${Math.round(Number(value) * 100)} %`),
+    },
+  });
+}
+
 /**
  * Register a continuous parameter mock with default properties, on the device
- * at t0/d0. A param's path names its device, so the write path can tell a param
- * of the addressed device from one of some other device's.
+ * at t0/d0.
  * @param id - Mock object ID
  * @param index - The param's position on the device
  * @returns The registered mock object
@@ -177,24 +237,35 @@ export function registerParamMock(
   id: string,
   index: number,
 ): RegisteredMockObject {
-  const name = `Param ${id}`;
-
-  return registerMockObject(id, {
-    path: livePath.track(0).device(0).parameter(index),
-    type: "DeviceParameter",
-    properties: {
-      name,
-      original_name: name,
-      is_quantized: 0,
-      value: 0.5,
-      min: 0,
-      max: 1,
-    },
+  return registerContinuousParam(id, {
+    index,
+    value: 0.5,
     // Two decimals, like a real display: a label carries far less precision
     // than the raw value, which is what makes a write verifiable at all.
-    methods: {
-      str_for_value: (_value: unknown) => Number(_value).toFixed(2),
-    },
+    display: (value: unknown) => Number(value).toFixed(2),
+  });
+}
+
+/**
+ * Register a Drum Rack at t0/d0 whose one pad chain sits on C1 (MIDI 36).
+ * @param padDeviceIds - Ids of the devices already on the pad chain
+ * @param chainMethods - Methods the chain answers, such as `insert_device`
+ * @returns The pad chain mock
+ */
+export function registerDrumRackPadChain(
+  padDeviceIds: string[] = [],
+  chainMethods?: Record<string, (...args: unknown[]) => unknown>,
+): RegisteredMockObject {
+  registerMockObject("drum-rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
+  });
+
+  return registerMockObject("chain-c1", {
+    type: "DrumChain",
+    properties: { in_note: 36, devices: children(...padDeviceIds) },
+    methods: chainMethods,
   });
 }
 
@@ -233,6 +304,55 @@ export function registerSimplerDevice(
 }
 
 /**
+ * The `params` entries one target's result came back with. updateDevice's return
+ * type covers a whole list of targets, so reading one target's params narrows it.
+ * @param result - What updateDevice returned
+ * @returns The entries, or [] when the result reported none
+ */
+export function paramsOf(result: unknown): ParamResult[] {
+  return (result as { params?: ParamResult[] }).params ?? [];
+}
+
+/**
+ * Assert the one param a call named came back refused, with the reason why and
+ * no warning. Nothing else was asked of the lone target, so nothing landed and
+ * the call throws, naming the param.
+ * @param call - Runs the updateDevice call
+ * @param name - The param as the call spelled it
+ * @param reason - Substring the reason must contain
+ */
+export function expectParamRefused(
+  call: () => unknown,
+  name: string,
+  reason: string,
+): void {
+  const message = noParamLanded(call);
+
+  expect(message).toContain(`"${name}": `);
+  expect(message).toContain(reason);
+  expect(capturedWarnings()).toHaveLength(0);
+}
+
+/**
+ * The error a lone target throws when none of its params landed.
+ * @param call - Runs the updateDevice call
+ * @returns The error message, which names each param and why it failed
+ */
+export function noParamLanded(call: () => unknown): string {
+  let message: string | undefined;
+
+  try {
+    call();
+  } catch (error) {
+    message = errorMessage(error);
+  }
+
+  expect(message).toMatch(/^no param landed — /);
+
+  return message as string;
+}
+
+/**
  * Extract the raw value passed to `param.set("value", ...)` and assert the call occurred.
  * @param param - The parameter mock to inspect
  * @returns The raw numeric value that was set
@@ -245,4 +365,51 @@ export function expectValueSet(param: RegisteredMockObject): number {
   expect(setCall).toBeDefined();
 
   return setCall[1];
+}
+
+/** What a registered rack does with its macros. */
+export interface MacroRackSpec {
+  /** The macros it shows to begin with */
+  count: number;
+  /** Whether one of its macros is mapped */
+  mapped?: boolean;
+  /** The fewest macros it will hide down to, for a rack that keeps some */
+  floor?: number;
+}
+
+/**
+ * Register a rack at t0/d0 whose add_macro/remove_macro move the visible count,
+ * so a test reads back what the write landed on rather than what it asked for.
+ * @param id - Mock object ID
+ * @param spec - What the rack shows, and how far it will go
+ * @param spec.count - The macros it shows to begin with
+ * @param spec.mapped - Whether one of its macros is mapped
+ * @param spec.floor - The fewest macros it will hide down to
+ * @returns The registered rack mock
+ */
+export function registerMacroRack(
+  id: string,
+  { count, mapped = false, floor = 0 }: MacroRackSpec,
+): RegisteredMockObject {
+  const properties: Record<string, unknown> = {
+    can_have_chains: 1,
+    visible_macro_count: count,
+    has_macro_mappings: mapped ? 1 : 0,
+  };
+
+  // Live moves macros a pair at a time.
+  const move = (by: number) => (): null => {
+    const now = properties.visible_macro_count as number;
+
+    properties.visible_macro_count = Math.max(floor, now + by);
+
+    return null;
+  };
+
+  return registerMockObject(id, {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties,
+    methods: { add_macro: move(2), remove_macro: move(-2) },
+  });
 }

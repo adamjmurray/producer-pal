@@ -7,12 +7,12 @@ import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   expectValueSet,
   livePath,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Some of Live's stock params display a bare number and nothing else, so what
 // they measure is recorded in known-param-units.ts. Glue Compressor is the
@@ -129,15 +129,17 @@ describe("updateDevice - recorded param units", () => {
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerRelease();
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Release", value: "50 %" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Release", value: "50 %" }],
+          }),
+        "Release",
+        'is measured in s, so "50 %" was not written',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('is measured in s, so "50 %" was not written'),
-      );
     });
   });
 
@@ -209,31 +211,33 @@ describe("updateDevice - recorded param units", () => {
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerFilterWidth();
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 Hz" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 Hz" }],
+          }),
+        "Filter Width",
+        'is measured in octaves, so "1.5 Hz" was not written',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          'is measured in octaves, so "1.5 Hz" was not written',
-        ),
-      );
     });
 
     it("refuses an unrecognized spelling", () => {
       const param = registerFilterWidth();
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 wobbles" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 wobbles" }],
+          }),
+        "Filter Width",
+        'could not interpret "1.5 wobbles"',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('could not interpret "1.5 wobbles"'),
-      );
     });
 
     // The range no longer matching drops the recorded entry (the range guard
@@ -243,15 +247,17 @@ describe("updateDevice - recorded param units", () => {
     it("refuses the recorded unit when the param's range no longer matches", () => {
       const param = registerBareParam("Erosion", "Filter Width", 0.1, 3);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 octaves" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 octaves" }],
+          }),
+        "Filter Width",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("never says what it measures"),
-      );
     });
   });
 
@@ -261,12 +267,17 @@ describe("updateDevice - recorded param units", () => {
   it("leaves a blend ratio unitless", () => {
     const param = registerBareParam("Hybrid Reverb", "Blend", 100, 0);
 
-    updateDevice({ id: "dev1", params: [{ name: "Blend", value: "50 %" }] });
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Blend", value: "50 %" }],
+        }),
+      "Blend",
+      "never says what it measures",
+    );
 
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("never says what it measures"),
-    );
   });
 
   describe("the range guard", () => {
@@ -276,24 +287,31 @@ describe("updateDevice - recorded param units", () => {
     it("drops the entry when the param's range no longer matches", () => {
       const param = registerBareParam("Glue Compressor", "Attack", 0.01, 60);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Attack", value: "10 ms" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Attack", value: "10 ms" }],
+          }),
+        "Attack",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("never says what it measures"),
-      );
     });
 
     it("leaves a param on another device alone", () => {
       const param = registerBareParam("Compressor", "Attack", 0.01, 30);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Attack", value: "10 ms" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Attack", value: "10 ms" }],
+          }),
+        "Attack",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });

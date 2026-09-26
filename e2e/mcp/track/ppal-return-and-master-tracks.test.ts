@@ -15,8 +15,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -90,7 +91,7 @@ describe("return and master tracks", () => {
     const created = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Compressor", path: "rt1" },
+        arguments: { device: "Compressor", path: "rt1" },
       }),
     );
 
@@ -165,17 +166,78 @@ describe("return and master tracks", () => {
     expect((await readReturnTracks())[0]!.name).toBe("A-Tape");
   });
 
-  it("skips input routing on a return track instead of failing", async () => {
-    const rt0 = (await readReturnTracks())[0]!;
-    const { warnings } = parseToolResultWithWarnings<unknown>(
+  it("reports the name Live landed on when it prefixed the send letter", async () => {
+    const rt1 = (await readReturnTracks())[1]!;
+
+    // "A-List" isn't return B's own letter, so it survives the strip and Live
+    // puts "B-" in front of it. The entry says so instead of leaving the
+    // caller thinking the name landed as asked.
+    const renamed = parseToolResult<{ name?: string; detail?: string }>(
       await ctx.client!.callTool({
         name: "ppal-update-track",
-        arguments: { id: rt0.id, inputRoutingType: "17" },
+        arguments: { id: rt1.id, name: "A-List" },
       }),
     );
 
-    expect(warnings.join("\n")).toContain(
+    expect(renamed.name).toBe("B-A-List");
+    expect(renamed.detail).toBe(
+      "Live prefixes a return track's name with its send letter",
+    );
+
+    await sleep(100);
+    expect((await readReturnTracks())[1]!.name).toBe("B-A-List");
+
+    // Put the name back, and check a name that lands as asked says nothing.
+    const restored = parseToolResult<{ name?: string; detail?: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-track",
+        arguments: { id: rt1.id, name: "B-Reverb" },
+      }),
+    );
+
+    expect(restored.name).toBeUndefined();
+    expect(restored.detail).toBeUndefined();
+
+    await sleep(100);
+    expect((await readReturnTracks())[1]!.name).toBe("B-Reverb");
+  });
+
+  // Input routing was the only thing asked, so the refusal is the call's error.
+  it("refuses input routing on a return track", async () => {
+    const rt0 = (await readReturnTracks())[0]!;
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: rt0.id, inputRoutingType: "17" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
       "input routing is only available on regular non-group tracks",
+    );
+  });
+
+  // Both are refused before anything is written, so nothing needs restoring.
+  it("refuses arm on a return track", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: "rt0", arm: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "arm had no effect: return, main and group tracks can't be armed",
+    );
+  });
+
+  it("refuses mute on the master track", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: "mt", mute: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "mute had no effect: the main track has no mute or solo",
     );
   });
 

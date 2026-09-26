@@ -11,7 +11,7 @@ import {
   type EvalTurnResult,
   type EvalAssertionResult,
 } from "../types.ts";
-import { getTargetTurns } from "./helpers.ts";
+import { getTargetTurns } from "./helpers/turn-tool-calls.ts";
 
 /**
  * Assert that the response contains (or doesn't contain) a pattern

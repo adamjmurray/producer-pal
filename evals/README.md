@@ -21,9 +21,9 @@ Four CLI tools for testing LLM behavior with Producer Pal's MCP tools:
 All but `probe:skills` require Ableton Live running with the Producer Pal device
 loaded.
 
-`dev/Eval-Findings.md` records what past runs established — including fixes that
-were tried and measured as not working. Read it before attacking a scenario that
-has been failing for a while.
+`dev/quality/eval-findings/README.md` records what past runs established —
+including fixes that were tried and measured as not working. Read it before
+attacking a scenario that has been failing for a while.
 
 ## Measuring a context change
 
@@ -90,48 +90,49 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                   | Description                                       |
-| ---------------------- | ------------------------------------------------- |
-| `-m, --model <model>`  | Model to test (required, repeatable)              |
-| `-t, --test <id>`      | Run specific scenario by ID (repeatable)          |
-| `-a, --all`            | Run all scenarios                                 |
-| `--small-model`        | Enable small-model mode (basic skills + schemas)  |
-| `--json`               | JSON tool-result output (default: compact)        |
-| `--tools <list>`       | Tool subset, comma-separated (default: all)       |
-| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`) |
-| `-j, --judge <model>`  | Judge model (default: `gemini-3-flash-preview`)   |
-| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)   |
-| `--skip-judge`         | Skip the LLM-as-judge step (checks only)          |
-| `--skip-reflection`    | Skip the self-reflection turn after a failure     |
-| `--no-seed-connect`    | Let the model run the opening connect turn        |
-| `-q, --quiet`          | Suppress detailed AI and judge responses          |
-| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)         |
-| `-u, --usage`          | Show token usage per turn                         |
-| `--no-save`            | Skip writing JSON result files to disk            |
-| `-b, --base-url <url>` | Base URL for the `local` provider                 |
-| `-l, --list`           | List available scenarios                          |
+| Flag                   | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `-m, --model <model>`  | Model to test (required, repeatable)               |
+| `-t, --test <id>`      | Run specific scenario by ID (repeatable)           |
+| `--tag <name>`         | Run scenarios by tag (repeatable, comma-separated) |
+| `-a, --all`            | Run all scenarios                                  |
+| `--small-model`        | Enable small-model mode (basic skills + schemas)   |
+| `--json`               | JSON tool-result output (default: compact)         |
+| `--tools <list>`       | Tool subset, comma-separated (default: all)        |
+| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
+| `-j, --judge <model>`  | Judge model (default: `gemini-3.8-flash`)          |
+| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)    |
+| `--skip-judge`         | Skip the LLM-as-judge step (checks only)           |
+| `--skip-reflection`    | Skip the self-reflection turn after a failure      |
+| `--no-seed-connect`    | Let the model run the opening connect turn         |
+| `-q, --quiet`          | Suppress detailed AI and judge responses           |
+| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)          |
+| `-u, --usage`          | Show token usage per turn                          |
+| `--no-save`            | Skip writing JSON result files to disk             |
+| `-b, --base-url <url>` | Base URL for the `local` provider                  |
+| `-l, --list`           | List available scenarios                           |
+| `--list-tags`          | List scenario tags with their counts               |
 
 ### Model format
 
 Models use `provider/model` format, or just the model name if the provider can
 be inferred from the prefix:
 
-| Format                          | Provider    |
-| ------------------------------- | ----------- |
-| `gemini-3-flash-preview`        | google      |
-| `claude-sonnet-4-5`             | anthropic   |
-| `gpt-5-nano`                    | openai      |
-| `google/gemini-3-flash-preview` | google      |
-| `anthropic/claude-sonnet-4-5`   | anthropic   |
-| `codex-code/sol`                | codex-code  |
-| `codex-code/terra`              | codex-code  |
-| `codex-code/luna`               | codex-code  |
-| `claude-code/sonnet`            | claude-code |
-| `claude-code/opus`              | claude-code |
-| `claude-code/haiku`             | claude-code |
-| `claude-code/fable`             | claude-code |
-| `openrouter/some-model`         | openrouter  |
-| `local/model-name`              | local       |
+| Format                      | Provider    |
+| --------------------------- | ----------- |
+| `gemini-3.8-flash`          | google      |
+| `claude-sonnet-5`           | anthropic   |
+| `gpt-6-sol`                 | openai      |
+| `google/gemini-3.8-flash`   | google      |
+| `anthropic/claude-sonnet-5` | anthropic   |
+| `codex-code/sol`            | codex-code  |
+| `codex-code/luna`           | codex-code  |
+| `claude-code/sonnet`        | claude-code |
+| `claude-code/opus`          | claude-code |
+| `claude-code/haiku`         | claude-code |
+| `claude-code/fable`         | claude-code |
+| `openrouter/some-model`     | openrouter  |
+| `local/model-name`          | local       |
 
 Only the first `/` splits provider from model, so a model name can contain
 slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
@@ -141,17 +142,26 @@ the `local` provider.
 
 ```bash
 # Run all scenarios with a specific model
-scripts/eval -a -m gemini-3-flash-preview
+scripts/eval -a -m gemini-3.8-flash
 
 # Compare two models on one scenario
-scripts/eval -t connect-to-ableton -m gemini-3-flash-preview -m claude-sonnet-4-5
+scripts/eval -t connect-to-ableton -m gemini-3.8-flash -m claude-sonnet-5
 
 # Compare Codex subscription models (requires `codex login`)
 scripts/eval -t connect-to-ableton \
-  -m codex-code/sol -m codex-code/terra -m codex-code/luna
+  -m codex-code/sol -m codex-code/luna
 
 # Compare subscription CLIs against each other (requires `codex` and `claude`)
-scripts/eval -t connect-to-ableton -m codex-code/terra -m claude-code/sonnet
+scripts/eval -t connect-to-ableton -m codex-code/luna -m claude-code/sonnet
+
+# Run one family instead of the whole suite
+scripts/eval --tag notation -m gemini-3.8-flash
+
+# Two families at once (repeat the flag or comma-separate)
+scripts/eval --tag paths,clips -m gemini-3.8-flash
+
+# Narrow a family to named scenarios (both filters must match)
+scripts/eval --tag paths -t path-session-slot -m gemini-3.8-flash
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
@@ -170,7 +180,7 @@ Local models (Ollama, LM Studio, etc.) need special handling:
 scripts/eval -m local/glm-4.7-flash -t connect-to-ableton --small-model
 
 # Test a different local model
-scripts/eval -m local/qwen3-8b -t duplicate --small-model
+scripts/eval -m local/qwen3.8 -t duplicate --small-model
 ```
 
 The local provider connects to `http://localhost:11434/v1` by default (Ollama).
@@ -195,7 +205,7 @@ is a fresh process that resumes the previous turn's session id.
 scripts/eval -m claude-code/sonnet -t connect-to-ableton
 
 # Requires `codex` on PATH and `codex login`
-scripts/eval -m codex-code/terra -t connect-to-ableton
+scripts/eval -m codex-code/luna -t connect-to-ableton
 ```
 
 Both transports strip the vendor's API-key environment variables before
@@ -240,7 +250,7 @@ takes a step limit we can rely on, so the transports count the model's actions
 the turn goes past the shared budget in `evals/shared/step-budget.ts`. The run
 then fails as a blown budget in seconds rather than as a five-minute timeout.
 
-Two caveats when comparing a subscription-CLI run against anything else:
+Three caveats when comparing a subscription-CLI run against anything else:
 
 - **Token counts are not comparable across transports.** Each vendor defines
   `input_tokens` differently: Codex reports the total (its `cached_input_tokens`
@@ -249,6 +259,11 @@ Two caveats when comparing a subscription-CLI run against anything else:
   `claude-code` turn that processed ~38k tokens prints `tokens: 18` — everything
   else was a cache read. The mapping deliberately matches the `anthropic` AI SDK
   path so the two Anthropic routes agree; it does NOT line up with `codex-code`.
+- **Generation speed is one figure per turn.** Claude Code reports the time it
+  spent in model calls, so its `tok/s` excludes tool execution. Codex reports no
+  duration, so its rate is the whole turn on the wall clock — CLI startup and
+  tool execution included — and reads lower than the model actually generated.
+  Neither reports a time to first token.
 - **Session files outlive the run.** Claude Code keys its on-disk session store
   by working directory, and each eval session uses a fresh temp directory that
   `close()` removes. The transcript under `~/.claude/projects/` stays behind,
@@ -295,13 +310,13 @@ three scenarios in a row fail to start.
 
 ```bash
 # Default environment
-scripts/eval -t connect-to-ableton -m gemini-3-flash-preview
+scripts/eval -t connect-to-ableton -m gemini-3.8-flash
 
 # Small-model mode (transforms/bracket scenarios will skip)
-scripts/eval -a -m local/qwen3-8b --small-model
+scripts/eval -a -m local/qwen3.8 --small-model
 
 # A restricted toolset (scenarios needing other tools will skip)
-scripts/eval -a -m gemini-3-flash-preview --tools connect,read-track,create-clip
+scripts/eval -a -m gemini-3.8-flash --tools connect,read-track,create-clip
 ```
 
 **Know what an environment grades before you pay for the run.** `--list` takes
@@ -318,15 +333,19 @@ it as "of what a small model was given", never as comparable to a default score.
 
 ### Scenarios
 
-List available scenarios:
+List available scenarios, and the tags you can run a subset by:
 
 ```bash
-scripts/eval -l
+scripts/eval -l           # every scenario, with its kind and tags
+scripts/eval --list-tags  # every tag, with how many scenarios carry it
 ```
 
-Run `scripts/eval -l` for the current list. Scenarios are tagged as
-**regression** (should always pass) or **capability** (improvement targets, may
-have low pass rates).
+Each scenario is **regression** (should always pass) or **capability**
+(improvement target, may have low pass rates), and carries one or more subset
+tags — `notation`, `transforms`, `paths`, `context`, `clips`, `devices`,
+`workflow`, `pairing`, `results`. A whole-suite run costs hours, so `--tag` is
+how most runs are scoped; `-t` and `--tag` together narrow to scenarios matching
+both.
 
 ### The seeded connect turn
 
@@ -418,7 +437,7 @@ model is tested.
 
 ```bash
 # 2 scenarios x 2 models = 4 runs, one table
-scripts/eval -a -m gemini-3-flash-preview -m claude-sonnet-4-5
+scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-5
 ```
 
 To compare environments (e.g. default vs `--small-model`), do a run per
@@ -439,40 +458,45 @@ Interactive chat for manual testing and debugging.
 scripts/chat [options] [text...]
 ```
 
-Every provider except `claude-code` and `codex-code` is supported: those two run
-through an agent-CLI transport (a spawned `claude` / `codex` subprocess), which
-only the eval CLI drives.
+Every provider is supported. `claude-code` and `codex-code` run through an
+agent-CLI transport (a spawned `claude` / `codex` subprocess) instead of the AI
+SDK, so `-t/--thinking`, `-r/--randomness`, `-o/--output-tokens` and
+`-b/--base-url` do not reach them — passing one prints a warning and is ignored.
+Without `-i` they use the agent-CLI system prompt, not the built-in one.
 
 ### Options
 
-| Flag                             | Description                                  |
-| -------------------------------- | -------------------------------------------- |
-| `-m, --model <model>` (required) | Model in `provider/model` format             |
-| `-1, --once`                     | Exit after one response                      |
-| `-t, --thinking <level>`         | Thinking/reasoning level (provider-specific) |
-| `-r, --randomness <number>`      | Temperature (0.0-1.0)                        |
-| `-o, --output-tokens <number>`   | Max output tokens                            |
-| `-i, --instructions <text>`      | System instructions                          |
-| `-s, --sequence <messages...>`   | Multiple messages to send in sequence        |
-| `-f, --file <path>`              | File containing messages (one per line)      |
-| `-b, --base-url <url>`           | Base URL for local provider                  |
-| `-n, --no-stream`                | Disable streaming                            |
-| `-d, --debug`                    | Log all API responses                        |
+| Flag                             | Description                                                        |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `-m, --model <model>` (required) | `provider/model`, or a bare `claude-*`, `gpt-*` or `gemini-*` name |
+| `-1, --once`                     | Exit after one response                                            |
+| `-t, --thinking <level>`         | Thinking/reasoning level (provider-specific)                       |
+| `-r, --randomness <number>`      | Temperature (0.0-1.0)                                              |
+| `-o, --output-tokens <number>`   | Max output tokens                                                  |
+| `-i, --instructions <text>`      | System instructions                                                |
+| `-s, --sequence <messages...>`   | Multiple messages to send in sequence                              |
+| `-f, --file <path>`              | File containing messages (one per line)                            |
+| `-u, --usage`                    | Show per-step token usage                                          |
+| `-b, --base-url <url>`           | Base URL for local provider                                        |
 
 ### Examples
 
 ```bash
 # Quick one-shot test with Gemini
-scripts/chat -m gemini-3-flash-preview -1 "list tracks in the set"
+scripts/chat -m gemini-3.8-flash -1 "list tracks in the set"
 
 # Interactive session with Claude
-scripts/chat -m claude-sonnet-4-5
+scripts/chat -m claude-sonnet-5
 
 # Test a local model
 scripts/chat -m local/glm-4.7-flash -1 "connect to Ableton"
 
 # Local model with custom server URL
 scripts/chat -m local/some-model -b http://localhost:1234/v1 -1 "list tracks"
+
+# Subscription CLIs (requires `claude` / `codex` installed and logged in)
+scripts/chat -m claude-code/sonnet -1 -u "list tracks in the set"
+scripts/chat -m codex-code/luna -1 "list tracks in the set"
 ```
 
 ## Environment variables
@@ -515,6 +539,7 @@ export const myScenario: EvalScenario = {
   id: "my-scenario",
   description: "What this tests",
   kind: "regression",
+  tags: ["workflow"], // one or more; see SCENARIO_TAGS
   liveSet: "basic-midi-4-track", // from evals/live-sets/
   messages: ["Connect to Ableton Live", "Do something specific"],
   assertions: [
@@ -532,7 +557,7 @@ export const myScenario: EvalScenario = {
 ```
 
 Register new scenarios in `evals/scenarios/defs/index.ts` and
-`evals/scenarios/load-scenarios.ts`.
+`evals/scenarios/load-scenarios/load-scenarios.ts`.
 
 ### Design guidelines
 
@@ -558,8 +583,12 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
   same mistake one level down, which is why `response_contains` never gates.
 - **Keep messages unambiguous.** Vague prompts create flaky evals. If a scenario
   fails at 0%, suspect the prompt before the model.
-- **Regression vs capability:** Tag scenarios as `kind: "regression"` when they
-  should always pass (use these to catch regressions). Tag as
+- **Tag it with the family it belongs to.** `tags` is what lets someone run your
+  scenario without naming it — a new tag goes in `SCENARIO_TAGS`
+  (`evals/scenarios/load-scenarios/scenario-tags.ts`) first, and a scenario gets
+  a second tag only when it really grades both families.
+- **Regression vs capability:** Mark scenarios `kind: "regression"` when they
+  should always pass (use these to catch regressions). Mark them
   `kind: "capability"` for aspirational tests that target difficult tasks —
   these start with low pass rates and graduate to regression once stable.
 - **Use `-r N` to diagnose flakiness.** If a regression eval fails

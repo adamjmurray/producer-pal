@@ -8,10 +8,10 @@
 // is what the caller needs to write to the pad afterward.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readDevice } from "../read-device.ts";
+import { readOneDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
-describe("readDevice with a drum pad id", () => {
+describe("readOneDevice with a drum pad id", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -22,11 +22,10 @@ describe("readDevice with a drum pad id", () => {
       padProperties: { "pad-36": { note: 36, name: "Kick" } },
     });
 
-    expect(readDevice({ id: "pad-36" })).toStrictEqual({
+    expect(readOneDevice({ id: "pad-36" })).toStrictEqual({
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chainCount: 0,
     });
@@ -40,8 +39,8 @@ describe("readDevice with a drum pad id", () => {
       padProperties: { "pad-42": { note: 42, name: "Hat", solo: 1 } },
     });
 
-    expect(readDevice({ id: "pad-42" })).toStrictEqual(
-      readDevice({ path: "t1/d0/pGb1" }),
+    expect(readOneDevice({ id: "pad-42" })).toStrictEqual(
+      readOneDevice({ path: "t1/d0/pGb1" }),
     );
   });
 
@@ -57,14 +56,14 @@ describe("readDevice with a drum pad id", () => {
       },
     });
 
-    const result = readDevice({ id: "pad-36", include: ["chains"] });
+    const result = readOneDevice({ id: "pad-36", include: ["chains"] });
 
     expect(result.chains).toStrictEqual([
       {
         id: "chain-1",
         path: "t1/d0/pC1/c0",
         name: "Layer 1",
-        type: "DrumChain",
+        type: "drum-chain",
         mappedPitch: "C1",
         devices: [],
       },
@@ -72,7 +71,7 @@ describe("readDevice with a drum pad id", () => {
         id: "chain-2",
         path: "t1/d0/pC1/c1",
         name: "Layer 2",
-        type: "DrumChain",
+        type: "drum-chain",
         mappedPitch: "C1",
         devices: [],
       },

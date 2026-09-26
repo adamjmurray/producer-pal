@@ -6,6 +6,10 @@
 
 import { Command } from "commander";
 import "#evals/shared/install-fetch-dispatcher.ts";
+import {
+  type AgentCliChatOptions,
+  runAgentCliChat,
+} from "#evals/chat/agent-cli/agent-cli-chat.ts";
 import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {
@@ -33,15 +37,12 @@ program
   .showHelpAfterError(true)
   .option(
     "-m, --model [model]",
-    "Model (e.g., claude-sonnet-4-5, google/gemini-2.0-flash)",
+    "Model as provider/model (e.g., google/gemini-3.8-flash). The provider can be omitted for claude-*, gpt-* and gemini-* models (e.g., claude-sonnet-5)",
   )
   .option(
     "--list-models [provider]",
     "List models for a provider (omit to list providers), then exit without chatting",
   )
-  .option("-a, --api <api>", "(deprecated, ignored) API style")
-  .option("-n, --no-stream", "Disable streaming mode")
-  .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
     "-t, --thinking <level>",
     "Thinking/reasoning level (provider-specific)",
@@ -101,30 +102,27 @@ program
     const { provider, model } = parseModelArgOrExit(program, modelArg);
 
     // The agent-CLI providers run through a spawned subprocess, not the AI SDK
-    // this CLI streams from. Without this the provider factory throws past
-    // commander's handler as a raw stack trace.
-    if (getAgentCliTransport(provider) != null) {
-      program.error(
-        `Provider "${provider}" is only supported by the eval CLI, which drives ` +
-          `a spawned agent CLI instead of the AI SDK. ` +
-          `Try: scripts/eval -m ${provider}/${model} -t <scenario>`,
-      );
-
-      return;
-    }
-
-    const instructions = rawOptions.instructions ?? SYSTEM_INSTRUCTION;
-    const options: ChatOptions = {
+    // this CLI streams from, so they get their own loop.
+    const isAgentCli = getAgentCliTransport(provider) != null;
+    // Undefined lets the agent-CLI session use its own prompt, written for a
+    // CLI that replaces its agent prompt with it. An explicit -i still wins,
+    // including -i "" to disable.
+    const instructions = isAgentCli
+      ? rawOptions.instructions
+      : (rawOptions.instructions ?? SYSTEM_INSTRUCTION);
+    // Typed wider than ChatOptions so the agent-CLI loop can see --base-url
+    // and name it among the flags it ignores.
+    const options: AgentCliChatOptions = {
       ...rawOptions,
       provider,
       model,
       instructions,
     };
 
-    if (options.api) {
-      console.warn(
-        "Warning: --api flag is deprecated (AI SDK handles API selection internally)",
-      );
+    if (isAgentCli) {
+      await runAgentCliChat(initialText, options);
+
+      return;
     }
 
     await runChat(initialText, options);

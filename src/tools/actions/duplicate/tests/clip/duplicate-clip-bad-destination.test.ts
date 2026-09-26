@@ -55,13 +55,16 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       toPath: "t0/s1,t0/s9",
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/0/clip_slots/1/clip",
-      path: "t0/s1",
-    });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("was not duplicated: no clip slot at t0/s9"),
-    );
+    // Both slots keep their place, so the caller can pair the entries against
+    // the toPath it sent.
+    expect(result).toStrictEqual([
+      { id: "live_set/tracks/0/clip_slots/1/clip", path: "t0/s1" },
+      {
+        path: "t0/s9",
+        ok: false,
+        detail: "no clip slot there; created s2-s9 to reach it",
+      },
+    ]);
   });
 
   it("keeps the arrangement copy that landed when a later track is missing", async () => {
@@ -85,11 +88,12 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       "id clip1",
       8,
     );
-    expect(result).toStrictEqual({
-      id: livePath.track(2).arrangementClip(0),
-      path: "t2[3|1]",
-    });
-    expect(capturedWarnings()).toContain('no track at toPath "t99"');
+    // The missing track keeps its slot, so the entries pair against the toPath.
+    expect(result).toStrictEqual([
+      { id: livePath.track(2).arrangementClip(0), path: "t2[3|1]" },
+      { path: "t99[3|1]", ok: false, detail: 'no track at toPath "t99"' },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("copies nowhere, without failing, when every track is missing", async () => {
@@ -104,7 +108,11 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       toPath: "t98,t99",
     });
 
-    expect(result).toStrictEqual([]);
+    // Two destinations, two entries: neither copy was made, and each says why.
+    expect(result).toStrictEqual([
+      { path: "t98[3|1]", ok: false, detail: 'no track at toPath "t98"' },
+      { path: "t99[3|1]", ok: false, detail: 'no track at toPath "t99"' },
+    ]);
   });
 });
 
@@ -124,21 +132,20 @@ describe("duplicate clip - a copy Live refuses", () => {
     });
   }
 
-  it("warns and reports no copy", async () => {
+  // One copy asked for and not made: there is no list for its entry to hold a
+  // place in, so the reason comes back as the error.
+  it("throws when the one copy it asked for was refused", async () => {
     registerMidiSource();
     registerRefusingTrack(2);
 
-    const result = await duplicate({
-      type: "clip",
-      id: "clip1",
-      arrangementStart: "3|1",
-      toPath: "t2",
-    });
-
-    expect(result).toStrictEqual({ path: "t2", clips: [] });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to duplicate clip"),
-    );
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath: "t2",
+      }),
+    ).rejects.toThrow("Live made no copy there");
   });
 
   it("still reports the copy that landed", async () => {
@@ -163,7 +170,7 @@ describe("duplicate clip - a copy Live refuses", () => {
     );
     expect(result).toStrictEqual([
       { id: livePath.track(1).arrangementClip(0), path: "t1[3|1]" },
-      { path: "t2", clips: [] },
+      { path: "t2[3|1]", ok: false, detail: "Live made no copy there" },
     ]);
   });
 });
