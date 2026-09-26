@@ -52,8 +52,10 @@ This adds a MIDI track with the Producer Pal device to the user's Set, so ask
 first unless they already asked for Producer Pal. It does nothing if Producer
 Pal is already running. It needs the
 [Producer Pal remote script](https://producer-pal.org/guide/remote-script)
-installed and selected in Live; if it isn't, the error says how to fix it.
-Prints
+installed and selected in Live, and the Producer Pal device installed in the
+User Library's Max MIDI Effect folder
+([install guide](https://producer-pal.org/installation#install-the-device)). If
+either is missing, the error says how to fix it. Prints
 `{"producerPal": true, "addedProducerPal": {"trackIndex": 4, "trackName": "5-MIDI"}}`
 once the device answers (up to 30 seconds).
 

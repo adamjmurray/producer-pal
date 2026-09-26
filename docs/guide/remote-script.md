@@ -26,7 +26,10 @@ Install it if you want AI to:
   device, or a rack, replaces the device, and its automation is lost.
 - **Add Producer Pal to a Live Set** from a coding agent: to the open Set with
   the `producer-pal` [Agent Skill](/guide/skills), or while opening or creating
-  one with `ableton-open-live-set`.
+  one with `ableton-open-live-set`. This needs the device installed in your User
+  Library's Max MIDI Effect folder (see
+  [installing](/installation#install-the-device) or
+  [upgrading](/installation/upgrading)).
 
 ::: warning Prototype
 

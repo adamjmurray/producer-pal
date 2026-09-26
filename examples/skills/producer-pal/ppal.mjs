@@ -202,7 +202,7 @@ export async function addToLiveSet(options = {}) {
 /** Explain a failed remote script /load. */
 function loadFailure(status, body, baseUrl) {
   if (status === 404) {
-    return "Live's browser has no Producer_Pal device. Put Producer_Pal.amxd where the browser's Max for Live section lists it, e.g. the User Library.";
+    return "Live's browser has no Producer_Pal device. Install Producer_Pal.amxd in the User Library's Presets/MIDI Effects/Max MIDI Effect folder: https://producer-pal.org/installation#install-the-device";
   }
   if (status === 409 && body.candidates != null) {
     return `Live's browser has more than one Producer_Pal device: ${body.candidates.join(", ")}. Keep only one device named Producer_Pal there.`;
