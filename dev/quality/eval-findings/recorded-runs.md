@@ -24,6 +24,7 @@ fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
 | 11  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m |
 | 12  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m |
 | 13  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m |
+| 14  | gpt-5.6-luna    | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -33,11 +34,11 @@ See
 [Where a fragment sits can cost more than what it says](wording-changes.md#where-a-fragment-sits-can-cost-more-than-what-it-says).
 Do not compare its percentage to any full run.
 
-Runs 1-9 are `--skip-judge`, so they are deterministic checks only. Runs 10-13
-ran the judge, but no trial failed on the judge alone, so their numbers compare.
-Gemma and qwen run local (LM Studio, `-b http://localhost:1234/v1`) and cost
-nothing, but their token totals measure the same thing. Small-model mode skips
-34 of the 93 scenarios (36 of 101 by run 11).
+Runs 1-9 and 14 are `--skip-judge`, so they are deterministic checks only. Runs
+10-13 ran the judge, but no trial failed on the judge alone, so their numbers
+compare. Gemma and qwen run local (LM Studio, `-b http://localhost:1234/v1`) and
+cost nothing, but their token totals measure the same thing. Small-model mode
+skips 34 of the 93 scenarios (36 of 101 by run 11).
 
 **Run 10 was stitched from four segments.** Codex refused luna three times in
 three hours ("Selected model is at capacity"), and the harness stops after three
@@ -45,6 +46,12 @@ scenarios in a row never start. Each restart re-ran only the scenarios still
 short of three real trials, and a scenario's three trials always come from one
 segment. Its 2h52m is scenario time; the wall clock was ~4.5h. The abort message
 now says when the provider, not Live, is the cause.
+
+**Run 14 is n=2**, so a single failed trial moves a cell further than in a ×3
+run. Its two `path-topath-devices` trials are regraded: they failed only on a
+grader that predated the `d+` append path, fixed in the commit that recorded the
+run; as run, the total was 171 (86%). The 0/2 scenarios were re-run at ×2; those
+extra trials are not in its totals.
 
 **Input tokens are the number to move** when trimming tool and param
 descriptions. That is why a run records its totals and not only its failures.

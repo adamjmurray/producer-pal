@@ -154,3 +154,33 @@ the tempo it was told to leave alone every run (to 70, 50, 70);
 before turn 4 said to; `duration-reach-for-quarter` is the `transforms`-missing
 signature above. `path-topath-clips` failed the same way twice — kept only the
 second of two `toPath` targets — which reads as a real multi-target weakness.
+
+## What moved between runs 10 and 14
+
+254 commits apart, same model and flags, but run 14 is ×2 instead of ×3. A 1/2
+cell is one trial and reads as noise. Run 14's 0/2 scenarios were re-run at ×2;
+the scores below are over all four trials.
+
+Red, and consistent enough to be real:
+
+- `context-memory-update-not-duplicate` 2/3 to 0/4. Told "I've switched from
+  Serum to Vital", it agrees in prose and never updates the `favorite-synth`
+  memory. It writes the update only when the failure-reflection turn asks why.
+- `melody-pitch-midi-json` 3/3 (run 9) to 1/4. Every failure writes the whole
+  melody an octave low: C3 as MIDI 48, not the C3 = 60 the Skills state.
+- `create-and-edit-clip` 1/4, its first red in any run. The failures differ
+  trial to trial: twice no `quantize` on the update, once no bar|beat `notes`
+  string on the create.
+
+`path-topath-devices` went 0/4 on the grader, not the model: all four trials
+copied the device with `toPath: "t1/d+"` and it landed, but the check predated
+`d+` appending. With the check fixed, a ×2 re-run passed 2/2.
+
+Green: `bar-beat-zip-streams`, `synced-lfo-meter-invariance` and
+`context-write-layer-global` from 1/3, `legato-transforms` and
+`bar-beat-melodic-legato-run` from 2/3, all to 2/2. `rack-pad-ops` 0/3 to 2/2
+after its grader fix.
+
+Still red: `drum-transforms` and `note-ops-repeat` 1/4; `note-ops-merge`,
+`note-ops-split` and `transform-random-baked-or-replayed` 0/4. The note-ops
+fails are still "`transforms` parameter missing in turn 2".
