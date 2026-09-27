@@ -24,7 +24,7 @@ fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
 | 11  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m |
 | 12  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m |
 | 13  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m |
-| 14  | gpt-5.6-luna    | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m |
+| 14  | gpt-6-luna      | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -47,11 +47,13 @@ short of three real trials, and a scenario's three trials always come from one
 segment. Its 2h52m is scenario time; the wall clock was ~4.5h. The abort message
 now says when the provider, not Live, is the cause.
 
-**Run 14 is n=2**, so a single failed trial moves a cell further than in a ×3
-run. Its two `path-topath-devices` trials are regraded: they failed only on a
-grader that predated the `d+` append path, fixed in the commit that recorded the
-run; as run, the total was 171 (86%). The 0/2 scenarios were re-run at ×2; those
-extra trials are not in its totals.
+**Run 14 is a different model.** The eval's `luna` alias moved from
+`gpt-5.6-luna` to `gpt-6-luna` on 2026-09-22, so compare it to runs 1-10 as a
+model change, not a code change. Run 14 is also n=2, so a single failed trial
+moves a cell further than in a ×3 run. Its two `path-topath-devices` trials are
+regraded: they failed only on a grader that predated the `d+` append path, fixed
+in the commit that recorded the run; as run, the total was 171 (86%). The 0/2
+scenarios were re-run at ×2; those extra trials are not in its totals.
 
 **Input tokens are the number to move** when trimming tool and param
 descriptions. That is why a run records its totals and not only its failures.

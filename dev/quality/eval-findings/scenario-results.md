@@ -157,20 +157,29 @@ second of two `toPath` targets — which reads as a real multi-target weakness.
 
 ## What moved between runs 10 and 14
 
-254 commits apart, same model and flags, but run 14 is ×2 instead of ×3. A 1/2
-cell is one trial and reads as noise. Run 14's 0/2 scenarios were re-run at ×2;
-the scores below are over all four trials.
+A model change: run 10 is `gpt-5.6-luna`, run 14 `gpt-6-luna`. They are also 254
+commits apart, and run 14 is ×2 instead of ×3, so a 1/2 cell is one trial and
+reads as noise. Run 14's 0/2 scenarios were re-run at ×2; the scores below are
+over all four trials.
 
-Red, and consistent enough to be real:
+Red on gpt-6-luna, and consistent enough to be real:
 
 - `context-memory-update-not-duplicate` 2/3 to 0/4. Told "I've switched from
   Serum to Vital", it agrees in prose and never updates the `favorite-synth`
   memory. It writes the update only when the failure-reflection turn asks why.
 - `melody-pitch-midi-json` 3/3 (run 9) to 1/4. Every failure writes the whole
-  melody an octave low: C3 as MIDI 48, not the C3 = 60 the Skills state.
-- `create-and-edit-clip` 1/4, its first red in any run. The failures differ
-  trial to trial: twice no `quantize` on the update, once no bar|beat `notes`
-  string on the create.
+  melody an octave low: the user's C3 as MIDI 48, not the C3 = 60 the Skills
+  state.
+
+Both are the model, not the code. The Skills and tool text they depend on are
+unchanged since 2.3.0, and `gpt-5.6-luna` at the same commit (`3a468481c`)
+passed both 3/3.
+
+`create-and-edit-clip` 1/4 is mostly the grader. It requires the `quantize`
+param, but `quantizeGrid` alone quantizes at full strength (as its description
+says), and a `quant()` transform does the same job; each took one failure. The
+third created the clip empty and wrote the notes in a second call.
+`gpt-5.6-luna` went 2/3 at the same commit, failing on the same grid-only call.
 
 `path-topath-devices` went 0/4 on the grader, not the model: all four trials
 copied the device with `toPath: "t1/d+"` and it landed, but the check predated
