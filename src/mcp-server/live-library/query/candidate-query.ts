@@ -58,6 +58,24 @@ export const CANDIDATE_COLUMNS = `f.file_id, f.parent_id, f.name, f.use_count,
 export const CANDIDATE_FROM = `files f
   LEFT JOIN places p ON p.file_id = f.place_id`;
 
+/** SQL condition on files `f`: the file is (or sits in) a browser Place, not
+ * (for example) inside another installed Live version. A Place's root folder
+ * has place_id 0, so it's matched by its own file_id. */
+export const IN_A_PLACE = `(f.place_id IN (SELECT file_id FROM places)
+  OR f.file_id IN (SELECT file_id FROM places))`;
+
+/** SQL condition on files `f`: Live's library-wide views (All, categories)
+ * list it. They hide files with the lowest flags bit clear, such as packs' raw
+ * multisample sources and reverb IRs; searching a Place still shows those. */
+export const IN_LIBRARY_VIEWS = "(f.flags & 1) = 1";
+
+/** Live's tag for reverb IRs, most of which IN_LIBRARY_VIEWS would hide. */
+const IR_TAG = "Impulse Response";
+
+/** SQL condition for per-tag counts (keyword files `kw`, tagged files `f`):
+ * count what a search for that tag returns, which keeps hidden IRs. */
+export const COUNTED_FOR_TAG = `(${IN_LIBRARY_VIEWS} OR kw.name = '${IR_TAG}')`;
+
 /** A WHERE clause as accumulated conditions plus their positional params. */
 export interface CandidateWhere {
   where: string[];
@@ -101,6 +119,17 @@ export function buildCandidateWhere(
   } else {
     where.push(`f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})`);
     params.push(...fileTypeCodes);
+  }
+
+  // List what Live's browser lists. Browsing a folder shows everything, so
+  // inFolder skips both rules. A source filter works like searching a Place,
+  // and an IR search asks for exactly the files the flags rule hides.
+  if (parentId == null) {
+    where.push(IN_A_PLACE);
+
+    if (args.source == null && !asksForIRs(args)) {
+      where.push(IN_LIBRARY_VIEWS);
+    }
   }
 
   if (args.deviceKind) {
@@ -419,4 +448,17 @@ function parseTags(tags: string | undefined): string[] {
     .filter((t) => t.length > 0);
 
   return [...new Set(parts)];
+}
+
+/**
+ * Whether a search asks for reverb IRs, by type or by tag.
+ *
+ * @param args - Filter parameters
+ * @returns True for type impulse-response or an "Impulse Response" tag
+ */
+function asksForIRs(args: LibrarySearchArgs): boolean {
+  return (
+    args.type === "impulse-response" ||
+    parseTags(args.tags).some((t) => t.toLowerCase() === IR_TAG.toLowerCase())
+  );
 }

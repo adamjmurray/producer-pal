@@ -109,7 +109,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     type: param(z.enum(LIBRARY_TYPE_VALUES).optional(), {
       default:
-        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
+        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=reverb IRs, including ones other searches hide. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
       smallModel:
         "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),

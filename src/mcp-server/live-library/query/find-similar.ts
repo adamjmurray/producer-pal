@@ -166,14 +166,9 @@ function rankCandidates(
 ): LibrarySimilarItem[] {
   const { where, params } = buildCandidateWhere(args, parentId);
 
-  // Live's list leaves out files with the lowest flags bit clear (they're also
-  // missing from its library search) and files outside every browser Place,
-  // such as copies inside other installed Live versions.
+  // CAST hash to TEXT: it's a full 64-bit int that a JS number can't hold.
   // Assumes one fe_values row per file; a second row with another hash would
   // list the file twice.
-  where.push("(f.flags & 1) = 1", "p.file_id IS NOT NULL");
-
-  // CAST hash to TEXT: it's a full 64-bit int that a JS number can't hold.
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data,
                       CAST(fv.hash AS TEXT) AS hash
                FROM ${CANDIDATE_FROM}

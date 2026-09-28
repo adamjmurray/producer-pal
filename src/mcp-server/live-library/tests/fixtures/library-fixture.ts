@@ -327,10 +327,11 @@ function insertFiles(db: DatabaseSync): void {
   insert.run(2003, 200, MIDI, 1, "pack_riff.mid", 30, 1_700_000_400, 0, 200);
 
   // Pack Live clips (.alc): one MIDI (alcM), one audio (alcA). The audio clip
-  // has place_id=null so it only surfaces in kind:live-clip (keeps source-filter
-  // tests stable). Subtypes set below via UPDATE.
+  // sits in the Current Project place (no source) so it only surfaces in
+  // kind:live-clip (keeps source-filter tests stable). Subtypes set below via
+  // UPDATE.
   insert.run(2004, 200, ALC, 2, "pack_loop.alc", 12, 1_700_000_450, 0, 200);
-  insert.run(2007, 200, ALC, 2, "pack_audio.alc", 6, 1_700_000_455, 0, null);
+  insert.run(2007, 200, ALC, 2, "pack_audio.alc", 6, 1_700_000_455, 0, 5);
 
   // Pack Ableton device group (.adg) — kind=device-group
   insert.run(2005, 200, ADG, 32, "pack_chain.adg", 8, 1_700_000_460, 0, 200);
@@ -364,11 +365,12 @@ function insertFiles(db: DatabaseSync): void {
     300,
   );
 
-  // Live sets (.als) under root Ableton folder, no place_id → null source.
+  // Live sets (.als) in the Current Project place (root Ableton folder), which
+  // maps to no source.
   // All have use_count=0 with distinct mod_date values for tiebreaker tests.
-  insert.run(4001, 5, ALS, 8, "set_oldest.als", 0, 1_700_000_700, 0, null);
-  insert.run(4002, 5, ALS, 8, "set_newest.als", 0, 1_700_000_900, 0, null);
-  insert.run(4003, 5, ALS, 8, "set_middle.als", 0, 1_700_000_800, 0, null);
+  insert.run(4001, 5, ALS, 8, "set_oldest.als", 0, 1_700_000_700, 0, 5);
+  insert.run(4002, 5, ALS, 8, "set_newest.als", 0, 1_700_000_900, 0, 5);
+  insert.run(4003, 5, ALS, 8, "set_middle.als", 0, 1_700_000_800, 0, 5);
 
   // Subfolder hierarchy for inFolder tests:
   //   /Users/test/Music/Ableton/Pack One/SubA/  (file_id 210)
@@ -415,6 +417,7 @@ function insertPlaces(db: DatabaseSync): void {
   insert.run(100, 1, "User Library");
   insert.run(200, 0, "Pack One");
   insert.run(300, 8, "Built-in");
+  insert.run(5, 4, "Current Project");
 }
 
 /**
