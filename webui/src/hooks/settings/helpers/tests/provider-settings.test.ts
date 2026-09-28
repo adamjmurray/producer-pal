@@ -210,7 +210,7 @@ describe("provider-settings", () => {
       const settings = loadProviderSettings("anthropic");
 
       expect(settings.apiKey).toBe("");
-      expect(settings.model).toBe("claude-sonnet-5");
+      expect(settings.model).toBe("claude-sonnet-5-5");
     });
   });
 

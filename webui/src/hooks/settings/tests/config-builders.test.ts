@@ -28,7 +28,7 @@ describe("config-builders", () => {
     });
 
     it("is false for other models", () => {
-      expect(isAlwaysOnThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isAlwaysOnThinkingModel("claude-sonnet-5-5")).toBe(false);
       expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
     });
   });
@@ -45,7 +45,7 @@ describe("config-builders", () => {
 
     it("is false for 3.7+ and modern named-tier ids (they support thinking)", () => {
       expect(isLegacyNonThinkingModel("claude-3-7-sonnet")).toBe(false);
-      expect(isLegacyNonThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isLegacyNonThinkingModel("claude-sonnet-5-5")).toBe(false);
       expect(isLegacyNonThinkingModel("claude-opus-5-5")).toBe(false);
       expect(isLegacyNonThinkingModel("claude-haiku-4-5")).toBe(false);
     });

@@ -8,7 +8,7 @@
  *
  * Supports two formats:
  * - provider/model: explicit provider (e.g., "google/gemini-3.8-flash")
- * - model: infer provider from prefix (e.g., "claude-sonnet-5" → anthropic)
+ * - model: infer provider from prefix (e.g., "claude-sonnet-5-5" → anthropic)
  */
 
 import { type Command } from "commander";
@@ -27,7 +27,7 @@ export const LIST_MODELS_HINT =
 /**
  * Parse a model argument into provider and model
  *
- * @param arg - Model argument (e.g., "claude-sonnet-5" or "google/gemini-3.8-flash")
+ * @param arg - Model argument (e.g., "claude-sonnet-5-5" or "google/gemini-3.8-flash")
  * @returns Parsed provider and model
  * @throws Error if provider-only, unknown prefix, or invalid provider
  */

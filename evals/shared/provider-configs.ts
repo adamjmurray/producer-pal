@@ -25,7 +25,7 @@ export interface ProviderConfig {
 export const ANTHROPIC_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "ANTHROPIC_KEY",
   providerName: "Anthropic",
-  defaultModel: "claude-sonnet-5",
+  defaultModel: "claude-sonnet-5-5",
 };
 
 /** Claude Code CLI subscription provider configuration */
