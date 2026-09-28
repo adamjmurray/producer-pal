@@ -49,19 +49,30 @@ it is installed and what it does may change.
 3. Click **Install**. The script is written to
    `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
 
+<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Remote Script tab before installing, showing Not installed, the User Library path, and the Install button" width="500"/>
+
 ## Enable it in Live
+
+Once installed, the tab says the script is **not running** yet and lists the
+steps to enable it:
+
+<img src="/img/producer-pal-chat-settings-remote-script-post-install.png" alt="The Remote Script tab after installing, showing Installed (not running) and the Enable it in Live steps" width="500"/>
 
 1. **Restart Live.** It only scans Remote Scripts at startup, so a freshly
    installed script is invisible until then.
 2. Go to **Settings → Tempo & MIDI**, and set an unused **Control Surface** slot
-   to **Producer_Pal**. Leave **Input** and **Output** as **None**. The script
+   to **Producer Pal**. Leave **Input** and **Output** as **None**. The script
    doesn't use MIDI.
+
+<img src="/img/producer-pal-remote-script-control-surface-setup.png" alt="Live's Settings, Tempo & MIDI tab, with Control Surface 1 set to Producer Pal and Input and Output set to None" width="500"/>
 
 ## Check it's working
 
-The Remote Script tab shows whether the script is installed, its version, and
-whether it is running. After restarting Live, click **Refresh**. "Running" means
-Live loaded it and it is answering on port 3349.
+After restarting Live, click **Refresh** in the Remote Script tab. It shows the
+installed version and whether Live is running it. "Running" means Live loaded it
+and it is answering on port 3349:
+
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Remote Script tab showing Installed v2.4.0, running in Live" width="500"/>
 
 If it says installed but not running, you either skipped the restart or the
 Control Surface slot isn't set.

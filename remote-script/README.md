@@ -27,7 +27,7 @@ npm run remote-script:install
 ```
 
 Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
-Live** (it only scans Remote Scripts at startup), then pick **Producer_Pal**
+Live** (it only scans Remote Scripts at startup), then pick **Producer Pal**
 under Settings → Tempo & MIDI → Control Surface. Leave Input and Output as None.
 
 The folder name must be a valid Python name: Live runs `import <folder>`, so a

@@ -535,6 +535,18 @@ notation it has been using all along, and reopening an old conversation resumes
 in whatever notation its notes were written in. The AI is never taught one
 notation and then handed notes in another.
 
+### Remote Script
+
+The Remote Script tab installs the optional Producer Pal
+[remote script](/guide/remote-script), which lets the AI load plug-ins, Max for
+Live devices, and presets. It shows whether the script is installed and whether
+Live is running it, and offers an update when your Producer Pal build has a
+newer one.
+
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Remote Script tab" width="500"/>
+
+See the [remote script guide](/guide/remote-script) to install and enable it.
+
 ### Preferences
 
 The Preferences tab controls visual preferences and conversation management:
