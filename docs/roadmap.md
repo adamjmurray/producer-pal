@@ -32,6 +32,7 @@ and keeps going with the rest.
 - `t0[5|1]` finds the clip playing at bar 5, even if it started earlier
 - Attach images in the built-in chat, so a sketch of a song can become MIDI
   clips
+- Library searches, including similar samples, show what Live's browser shows
 
 The new Producer Pal remote script (experimental) does what the Live API alone
 can't:

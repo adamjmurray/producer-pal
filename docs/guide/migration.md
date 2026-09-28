@@ -358,13 +358,17 @@ which read as a success. It is now an error, raised before anything in the call
 is written, naming the roots and scale names Live accepts. `tempo` in the same
 tool has always worked this way.
 
-## Two reads changed in 2.4
+## Reads changed in 2.4
 
 - **`instrument` names what an Instrument Rack holds.** `ppal-read-track` and
   `ppal-read-live-set` report `Instrument Rack (Operator, Wavetable)`, not
   `Instrument Rack`. Match on the start of the string.
 - **Reads round to Live's display precision.** Tempo, pan and sends are rounded
   like gain, and a tiny value no longer arrives as a numeric string.
+- **`ppal-library` shows what Live's browser shows.** `findSimilar` results
+  carry `distance` (lower = closer, no fixed range) instead of `similarity`.
+  Library-wide searches leave out copies inside other installed Live versions
+  and files Live's All search hides; pass `inFolder` or `source` to reach them.
 
 ## Explanations are `detail` in 2.4
 
