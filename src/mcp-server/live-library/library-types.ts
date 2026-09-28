@@ -198,18 +198,18 @@ export interface FindSimilarArgs extends LibrarySearchArgs {
 /** findDuplicates args: the search filter set scopes which files are checked. */
 export type FindDuplicatesArgs = LibrarySearchArgs;
 
-/** findSimilar result item: a normal library item plus its similarity score. */
+/** findSimilar result item: a normal library item plus its distance to the seed. */
 export interface LibrarySimilarItem extends LibraryItem {
-  /** Cosine similarity to the seed (−1..1, higher = more alike; typically near 1
-   * for audio that resembles the seed; 3 decimals). */
-  similarity: number;
+  /** Euclidean distance to the seed's feature vector (lower = more alike;
+   * only meaningful relative to other results; 2 decimals). */
+  distance: number;
 }
 
 export interface LibraryFindSimilarResult {
   /** Echo of the requested seed path and whether it resolved to an analyzed
    * sample (false ⇒ items is empty and detail explains why). */
   seed: { path: string; found: boolean };
-  /** Candidates ranked by descending similarity, seed excluded. */
+  /** Candidates nearest first; the seed and its duplicate copies excluded. */
   items: LibrarySimilarItem[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;

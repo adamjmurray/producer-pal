@@ -5,9 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  cosineSimilarity,
   decodeFeatureVector,
-  vectorNorm,
+  euclideanDistance,
 } from "../../query/feature-vectors.ts";
 
 /**
@@ -80,71 +79,25 @@ describe("decodeFeatureVector", () => {
   });
 });
 
-describe("vectorNorm", () => {
-  it("computes the Euclidean norm", () => {
-    const v = new Float32Array(64);
-
-    v[0] = 3;
-    v[1] = 4;
-
-    expect(vectorNorm(v)).toBeCloseTo(5, 5);
-  });
-
-  it("is 0 for the all-zero vector", () => {
-    expect(vectorNorm(new Float32Array(64))).toBe(0);
-  });
-});
-
-describe("cosineSimilarity", () => {
-  it("is 1 for parallel vectors", () => {
-    const a = new Float32Array([1, 2, 3]);
-    const b = new Float32Array([2, 4, 6]);
-
-    expect(cosineSimilarity(a, b, vectorNorm(a), vectorNorm(b))).toBeCloseTo(
-      1,
-      6,
-    );
-  });
-
-  it("is 0 for orthogonal vectors", () => {
-    const a = new Float32Array([1, 0]);
-    const b = new Float32Array([0, 1]);
-
-    expect(cosineSimilarity(a, b, vectorNorm(a), vectorNorm(b))).toBeCloseTo(
-      0,
-      6,
-    );
-  });
-
-  it("is -1 for opposite vectors", () => {
+describe("euclideanDistance", () => {
+  it("computes the straight-line distance", () => {
     const a = new Float32Array([1, 2]);
-    const b = new Float32Array([-1, -2]);
+    const b = new Float32Array([4, 6]);
 
-    expect(cosineSimilarity(a, b, vectorNorm(a), vectorNorm(b))).toBeCloseTo(
-      -1,
-      6,
-    );
+    expect(euclideanDistance(a, b)).toBeCloseTo(5, 6);
   });
 
-  it("returns 0 when either norm is 0 (degenerate vector)", () => {
-    const a = new Float32Array([1, 1]);
+  it("is 0 for identical vectors", () => {
+    const a = new Float32Array([1, 2, 3]);
 
-    expect(cosineSimilarity(a, a, 0, vectorNorm(a))).toBe(0);
-    expect(cosineSimilarity(a, a, vectorNorm(a), 0)).toBe(0);
+    expect(euclideanDistance(a, a)).toBe(0);
   });
 
-  it("bounds the dot product by the shorter vector (no read past the end)", () => {
-    // The loop runs to `Math.min(a.length, b.length)`, never the max — a read
-    // past the shorter array would be `undefined`, poisoning the dot product to
-    // NaN. Feed mismatched lengths (the extra `b` component is ignored, not
-    // multiplied by a missing `a` component).
+  it("only compares up to the shorter vector's length", () => {
+    // A read past the shorter array would be undefined and turn the sum into NaN.
     const a = new Float32Array([1, 0]);
     const b = new Float32Array([1, 0, 999]);
 
-    const sim = cosineSimilarity(a, b, vectorNorm(a), vectorNorm(b));
-
-    expect(Number.isNaN(sim)).toBe(false);
-    // dot = 1*1 + 0*0 = 1; norms = 1 and sqrt(1+0+999^2).
-    expect(sim).toBeCloseTo(1 / Math.sqrt(1 + 999 * 999), 6);
+    expect(euclideanDistance(a, b)).toBe(0);
   });
 });

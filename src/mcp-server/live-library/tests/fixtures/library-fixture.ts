@@ -29,9 +29,12 @@ export interface LibraryFixture {
 /**
  * Create a temp DB pre-populated with a synthetic Live library.
  *
+ * @param extend - Adds suite-specific rows before the DB is closed
  * @returns Fixture handle with the DB path and a cleanup function.
  */
-export function createLibraryFixture(): LibraryFixture {
+export function createLibraryFixture(
+  extend?: (db: DatabaseSync) => void,
+): LibraryFixture {
   const dir = mkdtempSync(join(tmpdir(), "ppal-lib-fixture-"));
   const dbPath = join(dir, "Live-files-12300.db");
   const db = new DatabaseSync(dbPath);
@@ -47,7 +50,8 @@ export function createLibraryFixture(): LibraryFixture {
       mod_date INTEGER DEFAULT 0,
       device_type INTEGER DEFAULT 0,
       place_id INTEGER,
-      subtype INTEGER
+      subtype INTEGER,
+      flags INTEGER DEFAULT 1027
     );
     CREATE TABLE places (
       file_id INTEGER PRIMARY KEY,
@@ -81,6 +85,7 @@ export function createLibraryFixture(): LibraryFixture {
   insertKeywords(db);
   insertMetadata(db);
   insertFeatureVectors(db);
+  extend?.(db);
 
   db.close();
 
@@ -240,14 +245,18 @@ export async function expectQueryDegradesWithoutDb<
  *
  * @param dbPathMod - The mocked `live-db-path` module
  * @param dbPathMod.findLiveFilesDbPath - The mocked finder function whose mock is rebound each test
+ * @param extend - Adds suite-specific rows to the fixture
  */
-export function setupLibraryFixtureLifecycle(dbPathMod: {
-  findLiveFilesDbPath: (...args: never[]) => unknown;
-}): void {
+export function setupLibraryFixtureLifecycle(
+  dbPathMod: {
+    findLiveFilesDbPath: (...args: never[]) => unknown;
+  },
+  extend?: (db: DatabaseSync) => void,
+): void {
   let fixture: LibraryFixture;
 
   beforeAll(() => {
-    fixture = createLibraryFixture();
+    fixture = createLibraryFixture(extend);
   });
 
   beforeEach(() => {
@@ -476,8 +485,8 @@ function insertMetadata(db: DatabaseSync): void {
  * group-ordering path run:
  *
  *  - user_kick.aif (1001) and pack_kick.wav (2001) get an IDENTICAL vector and
- *    hash → 2001 is the top similarity match for a 1001 seed (cosine 1.0) AND
- *    they form duplicate group B (size 2).
+ *    hash → duplicate group B (size 2). 1001 is the findSimilar seed, so 2001
+ *    is skipped there as the seed's own copy.
  *  - pack_clap.aif (2002), subfolder_x.wav (211), subfolder_z.wav (221) share
  *    one vector and hash → duplicate group A (size 3, the larger group).
  *  - subfolder_y.wav (212) shares group A's hash but stores an INVALID header
@@ -490,7 +499,6 @@ function insertMetadata(db: DatabaseSync): void {
  * @param db - Open writable DB
  */
 function insertFeatureVectors(db: DatabaseSync): void {
-  const kick = makeVector((i) => Math.sin(i * 0.3) + 1.5);
   const snare = makeVector((i) => Math.cos(i * 1.9) - 0.4);
   const dup = makeVector((i) => ((i % 6) - 2.5) * 0.7);
 
@@ -498,9 +506,9 @@ function insertFeatureVectors(db: DatabaseSync): void {
     "INSERT INTO fe_values (file_id, data, hash) VALUES (?, ?, ?)",
   );
 
-  // Group B (size 2): identical kick → also the similarity seed + top match.
-  insert.run(1001, featureBlob(kick), 700n);
-  insert.run(2001, featureBlob(kick), 700n);
+  // Group B (size 2): identical kick; 1001 is also the findSimilar seed.
+  insert.run(1001, featureBlob(KICK_VECTOR), 700n);
+  insert.run(2001, featureBlob(KICK_VECTOR), 700n);
   // Unique near-max hash for the CAST-precision test (never grouped).
   insert.run(1002, featureBlob(snare), 9223372036854775806n);
   // Group A (size 3): identical dup vector + hash.
@@ -510,6 +518,9 @@ function insertFeatureVectors(db: DatabaseSync): void {
   insert.run(212, featureBlob(dup, 99), 9223372036854775807n); // invalid header
   // pack_riff.mid (2003): intentionally no row — an un-analyzed sample.
 }
+
+/** The seed kick's feature values (user_kick.aif and pack_kick.wav). */
+export const KICK_VECTOR = makeVector((i) => Math.sin(i * 0.3) + 1.5);
 
 /**
  * Build a 64-element vector from an index→value function.
@@ -530,7 +541,7 @@ function makeVector(fn: (i: number) => number): number[] {
  *   unknown future format the decoder must reject)
  * @returns The 268-byte BLOB
  */
-function featureBlob(floats: number[], version = 18): Uint8Array {
+export function featureBlob(floats: number[], version = 18): Uint8Array {
   const buffer = new ArrayBuffer(268);
   const view = new DataView(buffer);
 

@@ -57,7 +57,7 @@ interface LibraryListTagsResult {
 }
 
 interface LibrarySimilarItem extends LibraryItem {
-  similarity: number;
+  distance: number;
 }
 
 interface LibraryFindSimilarResult {
@@ -389,11 +389,12 @@ describe("ppal-library", () => {
   });
 
   describe("findSimilar (audio similarity)", () => {
-    it("ranks candidates by similarity to a fingerprinted seed", async () => {
+    it("ranks candidates by distance to a fingerprinted seed", async () => {
       // Any file in a duplicate group is guaranteed to have a fingerprint, so
       // it's a reliable seed regardless of which Library.db this machine has.
       const dups = await findDuplicates();
-      const seedPath = dups.groups[0]?.items[0]?.path;
+      const seedCopies = dups.groups[0]?.items.map((i) => i.path) ?? [];
+      const seedPath = seedCopies[0];
 
       if (seedPath == null) {
         // No duplicate samples on this machine — nothing to seed from.
@@ -405,19 +406,12 @@ describe("ppal-library", () => {
       expect(result.dbAvailable).toBe(true);
       expect(result.seed).toStrictEqual({ path: seedPath, found: true });
 
-      const sims = result.items.map((i) => i.similarity);
+      const distances = result.items.map((i) => i.distance);
 
-      // Scores are valid cosines and returned in descending order.
-      for (const s of sims) {
-        expect(s).toBeGreaterThanOrEqual(-1.0001);
-        expect(s).toBeLessThanOrEqual(1.0001);
-      }
-
-      expect(sims).toStrictEqual(sims.toSorted((a, b) => b - a));
-      // The seed itself is never in its own results.
-      expect(result.items.every((i) => i.path !== seedPath)).toBe(true);
-      // The seed's byte-identical duplicate twin is a ~1.0 top match.
-      expect(result.items[0]?.similarity).toBeGreaterThan(0.99);
+      expect(distances.every((d) => d >= 0)).toBe(true);
+      expect(distances).toStrictEqual(distances.toSorted((a, b) => a - b));
+      // Neither the seed nor its identical copies are in its own results.
+      expect(result.items.some((i) => seedCopies.includes(i.path))).toBe(false);
     });
 
     it("reports a seed that isn't in the library without throwing", async () => {

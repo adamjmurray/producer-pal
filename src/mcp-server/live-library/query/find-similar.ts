@@ -7,9 +7,11 @@
  * Rank library samples by audio similarity to a seed sample, using Live's
  * `fe_values` feature vectors (see feature-vectors.ts / the spike).
  *
- * findSimilar is `search` re-ranked by cosine distance to the seed instead of
- * by use_count: the same filters (tags, kind, type, source, inFolder) constrain
- * the candidate set, so "find more kicks like this one" is similarTo + tags:Kick.
+ * findSimilar is `search` re-ranked by Euclidean distance to the seed instead
+ * of by use_count: the same filters (tags, kind, type, source, inFolder)
+ * constrain the candidate set, so "find more kicks like this one" is
+ * similarTo + tags:Kick. The distance metric, candidate rules, and duplicate
+ * collapsing match Live's own View → Show Similar Files list.
  *
  * Read-only: SELECT statements only.
  */
@@ -33,18 +35,20 @@ import {
   resolveInFolder,
   type SearchRow,
 } from "./candidate-query.ts";
-import {
-  cosineSimilarity,
-  decodeFeatureVector,
-  vectorNorm,
-} from "./feature-vectors.ts";
+import { decodeFeatureVector, euclideanDistance } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
 
 /** Default top-K for findSimilar — a focused shortlist, not search's broad 50. */
 const DEFAULT_FIND_SIMILAR_LIMIT = 20;
 
-/** Candidate row plus its raw feature-vector BLOB. */
-type CandidateRow = SearchRow & { data: Uint8Array | null };
+/** Candidate row plus its raw feature-vector BLOB and fingerprint hash. */
+type CandidateRow = SearchRow & { data: Uint8Array | null; hash: string };
+
+/** The seed's decoded vector and fingerprint hash. */
+interface Seed {
+  vector: Float32Array;
+  hash: string;
+}
 
 /**
  * Find library samples whose audio most resembles the seed at `args.similarTo`.
@@ -76,7 +80,7 @@ export function findSimilar(
 }
 
 /**
- * Resolve the seed vector, score the filtered candidates by cosine, and return
+ * Resolve the seed vector, score the filtered candidates by distance, and return
  * the top-K. Each early return carries a detail so the LLM knows why a query
  * produced no ranked items (missing seed arg, un-indexed seed, un-analyzed
  * seed, or an unresolvable inFolder).
@@ -124,10 +128,10 @@ function runFindSimilar(
     return miss(false, "seed not in Live's library (can't fingerprint it)");
   }
 
-  const seedVector = loadVector(db, seedFileId);
+  const seed = loadSeed(db, seedFileId);
 
-  if (seedVector == null) {
-    return miss(false, "Live hasn't analyzed this sample's audio yet");
+  if (seed == null) {
+    return miss(false, "Live has no audio analysis for this sample");
   }
 
   const resolved = resolveInFolder(db, args.inFolder);
@@ -136,13 +140,7 @@ function runFindSimilar(
     return miss(true, resolved.reason);
   }
 
-  const ranked = rankCandidates(
-    db,
-    args,
-    seedFileId,
-    seedVector,
-    resolved.parentId,
-  );
+  const ranked = rankCandidates(db, args, seed, resolved.parentId);
 
   return { ...base, seed: { path: seedPath, found: true }, items: ranked };
 }
@@ -150,57 +148,59 @@ function runFindSimilar(
 /**
  * Score every filtered candidate against the seed and build the top-K items.
  *
+ * Like Live's list, each audio fingerprint appears once (lowest file_id wins)
+ * so copies of one sample can't crowd the top. The seed's own copies are
+ * skipped.
+ *
  * @param db - Open database handle
  * @param args - Candidate filters (plus limit)
- * @param seedFileId - file_id of the seed (excluded from results)
- * @param seedVector - Decoded seed feature vector
+ * @param seed - The resolved seed
  * @param parentId - Resolved inFolder parent, or undefined when no inFolder
- * @returns Ranked similar items (descending similarity)
+ * @returns Ranked similar items (nearest first)
  */
 function rankCandidates(
   db: DatabaseSync,
   args: FindSimilarArgs,
-  seedFileId: number,
-  seedVector: Float32Array,
+  seed: Seed,
   parentId: number | undefined,
 ): LibrarySimilarItem[] {
   const { where, params } = buildCandidateWhere(args, parentId);
-  // Assumes one fe_values row per file; a second row would be scored and
-  // ranked again. The seed side guards this with LIMIT 1 (see loadVector).
-  // buildCandidateWhere always emits at least the file_type filter.
-  const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data
+
+  // Live's list leaves out files with the lowest flags bit clear (they're also
+  // missing from its library search) and files outside every browser Place,
+  // such as copies inside other installed Live versions.
+  // Assumes one fe_values row per file; a second row with another hash would
+  // list the file twice.
+  where.push("(f.flags & 1) = 1", "p.file_id IS NOT NULL");
+
+  // CAST hash to TEXT: it's a full 64-bit int that a JS number can't hold.
+  const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data,
+                      CAST(fv.hash AS TEXT) AS hash
                FROM ${CANDIDATE_FROM}
                JOIN fe_values fv ON fv.file_id = f.file_id
-               WHERE ${where.join(" AND ")}`;
+               WHERE ${where.join(" AND ")}
+               ORDER BY f.file_id`;
   const rows = db.prepare(sql).all(...params) as unknown as CandidateRow[];
-  const seedNorm = vectorNorm(seedVector);
-
-  const scored: Array<{ row: SearchRow; similarity: number }> = [];
+  const seenHashes = new Set([seed.hash]);
+  const scored: Array<{ row: SearchRow; distance: number }> = [];
 
   for (const row of rows) {
-    // Exclude the seed itself; skip rows whose format we don't recognize.
-    if (row.file_id === seedFileId) {
+    if (seenHashes.has(row.hash)) {
       continue;
     }
 
+    // Skip rows whose format we don't recognize.
     const vector = decodeFeatureVector(row.data);
 
     if (vector == null) {
       continue;
     }
 
-    scored.push({
-      row,
-      similarity: cosineSimilarity(
-        seedVector,
-        vector,
-        seedNorm,
-        vectorNorm(vector),
-      ),
-    });
+    seenHashes.add(row.hash);
+    scored.push({ row, distance: euclideanDistance(seed.vector, vector) });
   }
 
-  scored.sort((a, b) => b.similarity - a.similarity);
+  scored.sort((a, b) => a.distance - b.distance);
   const top = scored.slice(
     0,
     clampLibraryLimit(args.limit, DEFAULT_FIND_SIMILAR_LIMIT),
@@ -211,22 +211,32 @@ function rankCandidates(
 
   return top.map((s) => ({
     ...buildLibraryItem(s.row, paths, tagsByFile),
-    similarity: Math.round(s.similarity * 1000) / 1000,
+    distance: Math.round(s.distance * 100) / 100,
   }));
 }
 
 /**
- * Load and decode one file's feature vector, or null when the file has no
- * `fe_values` row (Live hasn't analyzed it) or the row's format is unknown.
+ * Load and decode the seed's feature vector and hash, or null when the file
+ * has no `fe_values` row (Live hasn't analyzed it, and greys out its Find
+ * Similar) or the row's format is unknown.
  *
  * @param db - Open database handle
- * @param fileId - file_id to load
- * @returns The decoded vector, or null
+ * @param fileId - The seed's file_id
+ * @returns The seed, or null
  */
-function loadVector(db: DatabaseSync, fileId: number): Float32Array | null {
+function loadSeed(db: DatabaseSync, fileId: number): Seed | null {
   const row = db
-    .prepare("SELECT data FROM fe_values WHERE file_id = ? LIMIT 1")
-    .get(fileId) as { data: Uint8Array | null } | undefined;
+    .prepare(
+      `SELECT data, CAST(hash AS TEXT) AS hash
+       FROM fe_values WHERE file_id = ? LIMIT 1`,
+    )
+    .get(fileId) as { data: Uint8Array | null; hash: string } | undefined;
 
-  return row == null ? null : decodeFeatureVector(row.data);
+  if (row == null) {
+    return null;
+  }
+
+  const vector = decodeFeatureVector(row.data);
+
+  return vector == null ? null : { vector, hash: row.hash };
 }
