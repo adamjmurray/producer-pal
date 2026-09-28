@@ -9,7 +9,8 @@
  * Each `fe_values.data` BLOB is 268 bytes: a 12-byte header
  * `[uint32 version=18][uint32 floatCount=64][uint32 reserved=0]` followed by
  * `floatCount` little-endian float32s. The vectors are NOT unit-normalized
- * (norms ~3.9–16.4), so similarity is cosine — normalize at compare time.
+ * (norms ~3.9–16.4), and the length carries meaning: Euclidean distance
+ * reproduces Live's Show Similar Files order, cosine doesn't.
  *
  * Format reverse-engineered in the spike
  * (scratchpad/Live-DB-Spike-Report.md): 100% uniform across 51,450 rows,
@@ -72,52 +73,22 @@ export function decodeFeatureVector(
 }
 
 /**
- * Euclidean (L2) norm of a vector. Precompute once per vector and pass into
- * `cosineSimilarity` so the seed's norm isn't recomputed per comparison.
- *
- * @param v - Vector
- * @returns The vector's magnitude (0 only for the all-zero vector)
- */
-export function vectorNorm(v: Float32Array): number {
-  let sum = 0;
-
-  for (const x of v) {
-    sum += x * x;
-  }
-
-  return Math.sqrt(sum);
-}
-
-/**
- * Cosine similarity of two equal-length vectors given their precomputed norms.
- * Returns 0 when either norm is 0 (a degenerate all-zero vector has no
- * direction to compare).
+ * Euclidean (L2) distance between two equal-length vectors.
  *
  * @param a - First vector
  * @param b - Second vector
- * @param normA - Precomputed norm of `a`
- * @param normB - Precomputed norm of `b`
- * @returns Cosine similarity in [-1, 1] (1 = identical direction)
+ * @returns The distance (0 = identical)
  */
-export function cosineSimilarity(
-  a: Float32Array,
-  b: Float32Array,
-  normA: number,
-  normB: number,
-): number {
-  if (normA === 0 || normB === 0) {
-    return 0;
-  }
-
-  let dot = 0;
+export function euclideanDistance(a: Float32Array, b: Float32Array): number {
+  let sum = 0;
   const n = Math.min(a.length, b.length);
 
   for (let i = 0; i < n; i += 1) {
-    // i < n ≤ both lengths, so both reads are defined. The `as number` casts
-    // satisfy noUncheckedIndexedAccess without a runtime guard (which would be
-    // an unreachable branch).
-    dot += (a[i] as number) * (b[i] as number);
+    // i < n ≤ both lengths, so both reads are defined.
+    const d = (a[i] as number) - (b[i] as number);
+
+    sum += d * d;
   }
 
-  return dot / (normA * normB);
+  return Math.sqrt(sum);
 }

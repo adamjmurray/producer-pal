@@ -25,6 +25,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
+import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
 import { createDevice } from "../create-device.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -257,6 +258,10 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     await expect(
       createDevice({ device: "Pro-Q 4", path: "t0" }),
     ).rejects.toThrow(/^invalid device "Pro-Q 4"\. Valid devices - /);
+    // And says how to get plug-ins and Max for Live devices.
+    await expect(
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
+    ).rejects.toThrow(REMOTE_SCRIPT_SETUP);
     // Ahead of the path check, as it always was.
     await expect(createDevice({ device: "Pro-Q 4" })).rejects.toThrow(
       /^invalid device "Pro-Q 4"\. Valid devices - /,

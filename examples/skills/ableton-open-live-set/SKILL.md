@@ -3,9 +3,9 @@ name: ableton-open-live-set
 description: >-
   Open an Ableton Live Set (.als) by path, or create a new Set, and wait until
   it has loaded, answering the dialogs in the way. Can add Producer Pal to the
-  Set, and can quit and relaunch Live first. Use when the user wants to open,
-  switch to, load, revert to, or start a new Set, or restart Live. macOS only.
-  Opening needs no Producer Pal device.
+  new Set or to the one open now, and can quit and relaunch Live first. Use when
+  the user wants to open, switch to, load, revert to, or start a new Set, or
+  restart Live. macOS only. Opening needs no Producer Pal device.
 ---
 
 # Ableton: Open a Live Set
@@ -39,7 +39,8 @@ the same rule applies — ask first.
 
 `--add-producer-pal` changes the Set: it adds a MIDI track with the Producer Pal
 device, so the Set then has unsaved changes. Use it when the user asked for
-Producer Pal in the Set. Without the flag nothing is added.
+Producer Pal in the Set. Without the flag nothing is added. With no path and no
+`--new`, it adds Producer Pal to the Set that's open now and opens nothing.
 
 ## Prerequisites
 
@@ -52,8 +53,9 @@ Producer Pal in the Set. Without the flag nothing is added.
 - For `--add-producer-pal` only: the
   [Producer Pal remote script](https://github.com/adamjmurray/producer-pal/tree/main/remote-script)
   selected as a Control Surface (Live Settings → Tempo & MIDI; port 3349,
-  `PPAL_REMOTE_SCRIPT_PORT` to override), and the `Producer_Pal` device in
-  Live's browser (e.g. the User Library).
+  `PPAL_REMOTE_SCRIPT_PORT` to override), and the `Producer_Pal` device
+  installed in the User Library's Max MIDI Effect folder
+  ([install guide](https://producer-pal.org/installation#install-the-device)).
 
 ## Usage
 
@@ -61,6 +63,7 @@ Producer Pal in the Set. Without the flag nothing is added.
 node open-live-set.mjs "My Song Project/My Song.als"
 node open-live-set.mjs --new                        # new Untitled Set
 node open-live-set.mjs song.als --add-producer-pal  # add it if not running
+node open-live-set.mjs --add-producer-pal           # add it to the open Set
 node open-live-set.mjs song.als --discard-unsaved   # only after the user agreed
 node open-live-set.mjs song.als --restart           # quit Live, relaunch, open
 node open-live-set.mjs song.als --app "Ableton Live 12 Suite"
@@ -74,6 +77,7 @@ Output on stdout:
 ```
 
 - `opened` — the Set's absolute path. With `--new`: `"new": true` instead.
+  Neither when only adding Producer Pal to the open Set.
 - `producerPal` — whether the Producer Pal device answered after the load (REST
   on port 3350, `PPAL_PORT` to override).
 - `addedProducerPal` — only when `--add-producer-pal` added the device:

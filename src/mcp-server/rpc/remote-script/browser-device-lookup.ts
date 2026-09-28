@@ -9,6 +9,7 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { type BrowserItemResolution } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { pathSegment } from "../../live-library/reconstruct-path.ts";
 import {
   type RemoteScriptAnswer,
   remoteScriptRequest,
@@ -164,12 +165,14 @@ export function listedItems(reply: RemoteScriptAnswer): ListedItem[] {
 
 /**
  * A name compared the way the remote script compares it: trimmed, any case,
- * and without a filename suffix.
+ * accents composed, in path form, and without a filename suffix.
  * @param name - A browser name or the name the call used
  * @returns The comparable name
  */
 export function normalizedName(name: string): string {
-  return name.trim().toLowerCase().replace(FILE_SUFFIX, "");
+  return pathSegment(name.trim().normalize("NFC"))
+    .toLowerCase()
+    .replace(FILE_SUFFIX, "");
 }
 
 /**

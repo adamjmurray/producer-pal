@@ -190,11 +190,14 @@ export function storedParamValue(raw: number): number {
   return Math.fround(Number(raw.toPrecision(6)));
 }
 
+// Set by simulateMockWrites(); cleared with the registry.
+let keepAllWrites = false;
+
 /**
  * Create a set() mock. Writes to `value`, `display_value` and `color` land in
  * `properties` so a later get() sees them: code that reads a value back to
  * check the write took would otherwise see every write as rejected. Every other
- * property stays a pure spy.
+ * property stays a pure spy unless simulateMockWrites() is on.
  *
  * `value` is quantized the way Live quantizes a DeviceParameter write: rounded
  * to six significant digits, then snapped to a 32-bit float. A raw 0.8 reads
@@ -210,18 +213,33 @@ export function storedParamValue(raw: number): number {
  */
 function createSetMock(mock: RegisteredMockObject): Mock {
   return vi.fn().mockImplementation((property: string, ...args: unknown[]) => {
-    if (args.length !== 1 || typeof args[0] !== "number") {
+    const [written] = args;
+
+    if (args.length !== 1) {
       return;
     }
 
-    if (property === "value") {
-      mock.properties.value = storedParamValue(args[0]);
-    } else if (property === "display_value") {
-      mock.properties.display_value = args[0];
-    } else if (property === "color") {
-      mock.properties.color = args[0];
+    const keptVerbatim =
+      typeof written === "number" &&
+      (property === "display_value" || property === "color");
+    const keptByOptIn =
+      keepAllWrites &&
+      (typeof written === "number" || typeof written === "string");
+
+    if (typeof written === "number" && property === "value") {
+      mock.properties.value = storedParamValue(written);
+    } else if (keptVerbatim || keptByOptIn) {
+      mock.properties[property] = written;
     }
   }) as Mock;
+}
+
+/**
+ * Turn keeping every one-value write on or off (see simulateMockWrites).
+ * @param on - Whether set() keeps a write to any property
+ */
+export function setKeepAllMockWrites(on: boolean): void {
+  keepAllWrites = on;
 }
 
 /**

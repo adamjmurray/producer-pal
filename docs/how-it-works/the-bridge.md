@@ -100,9 +100,8 @@ large" error instead. (You can find the chunking logic in
 ## Problem 2: getting warnings onto the right response
 
 The second problem is subtler. While a tool runs, the V8 code may want to warn
-the AI about something, like _"quantize parameter ignored for audio clip,"_ for
-example. Producer Pal uses warn-and-skip rather than hard failures, so these
-warnings need to reach the AI as part of the response.
+the AI about something, like a deprecated param it still accepted. A warning
+doesn't fail the call, so it needs to reach the AI as part of the response.
 
 But there's a catch: **a runtime's log and error output doesn't travel down
 patch cables.** When the `v8` object prints to the Max console, that text goes

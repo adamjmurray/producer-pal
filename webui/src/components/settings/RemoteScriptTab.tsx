@@ -277,7 +277,7 @@ function EnableSteps({
         <li>Restart Live — it only scans Remote Scripts at startup.</li>
         <li>In Live, open Settings → Tempo &amp; MIDI.</li>
         <li>
-          Under Control Surface pick Producer_Pal. Leave Input and Output as
+          Under Control Surface pick Producer Pal. Leave Input and Output as
           None.
         </li>
       </ol>

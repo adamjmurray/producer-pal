@@ -154,3 +154,42 @@ the tempo it was told to leave alone every run (to 70, 50, 70);
 before turn 4 said to; `duration-reach-for-quarter` is the `transforms`-missing
 signature above. `path-topath-clips` failed the same way twice — kept only the
 second of two `toPath` targets — which reads as a real multi-target weakness.
+
+## What moved between runs 10 and 14
+
+A model change: run 10 is `gpt-5.6-luna`, run 14 `gpt-6-luna`. They are also 254
+commits apart, and run 14 is ×2 instead of ×3, so a 1/2 cell is one trial and
+reads as noise. Run 14's 0/2 scenarios were re-run at ×2; the scores below are
+over all four trials.
+
+Red on gpt-6-luna, and consistent enough to be real:
+
+- `context-memory-update-not-duplicate` 2/3 to 0/4. Told "I've switched from
+  Serum to Vital", it agrees in prose and never updates the `favorite-synth`
+  memory. It writes the update only when the failure-reflection turn asks why.
+- `melody-pitch-midi-json` 3/3 (run 9) to 1/4. Every failure writes the whole
+  melody an octave low: the user's C3 as MIDI 48, not the C3 = 60 the Skills
+  state.
+
+Both are the model, not the code. The Skills and tool text they depend on are
+unchanged since 2.3.0, and `gpt-5.6-luna` at the same commit (`3a468481c`)
+passed both 3/3.
+
+`create-and-edit-clip` 1/4 is mostly the grader. It requires the `quantize`
+param, but `quantizeGrid` alone quantizes at full strength (as its description
+says), and a `quant()` transform does the same job; each took one failure. The
+third created the clip empty and wrote the notes in a second call.
+`gpt-5.6-luna` went 2/3 at the same commit, failing on the same grid-only call.
+
+`path-topath-devices` went 0/4 on the grader, not the model: all four trials
+copied the device with `toPath: "t1/d+"` and it landed, but the check predated
+`d+` appending. With the check fixed, a ×2 re-run passed 2/2.
+
+Green: `bar-beat-zip-streams`, `synced-lfo-meter-invariance` and
+`context-write-layer-global` from 1/3, `legato-transforms` and
+`bar-beat-melodic-legato-run` from 2/3, all to 2/2. `rack-pad-ops` 0/3 to 2/2
+after its grader fix.
+
+Still red: `drum-transforms` and `note-ops-repeat` 1/4; `note-ops-merge`,
+`note-ops-split` and `transform-random-baked-or-replayed` 0/4. The note-ops
+fails are still "`transforms` parameter missing in turn 2".

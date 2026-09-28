@@ -15,7 +15,10 @@ import {
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import { resolveBrowserDevice } from "./helpers/browser-devices.ts";
+import {
+  REMOTE_SCRIPT_SETUP,
+  resolveBrowserDevice,
+} from "./helpers/browser-devices.ts";
 import {
   presetScopeForDevice,
   resolveBrowserPreset,
@@ -266,7 +269,9 @@ async function findBrowserItem(
       `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
 
     throw new Error(
-      `invalid device "${deviceName}". Valid devices - ${validList}`,
+      `invalid device "${deviceName}". Valid devices - ${validList}. ` +
+        "A plug-in or Max for Live device loads only with the Producer Pal " +
+        `remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
     );
   }
 

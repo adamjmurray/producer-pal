@@ -23,6 +23,7 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import { COUNTED_FOR_TAG, IN_A_PLACE } from "./query/candidate-query.ts";
 
 export interface ListTagsArgs {
   limit?: number;
@@ -69,6 +70,8 @@ export async function listTags(
           `SELECT kw.name AS name, COUNT(*) AS cnt
            FROM keywords k
            JOIN files kw ON kw.file_id = k.keyw_id
+           JOIN files f ON f.file_id = k.file_id
+           WHERE ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
            GROUP BY k.keyw_id
            ORDER BY cnt DESC, kw.name ASC
            LIMIT ?`,

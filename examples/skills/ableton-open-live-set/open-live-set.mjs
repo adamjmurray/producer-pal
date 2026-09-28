@@ -16,7 +16,8 @@
 // server went away (if one was up), then a window shows the new name.
 //
 // --add-producer-pal loads the Producer_Pal device through the Producer Pal
-// remote script when the Set has no running Producer Pal.
+// remote script when the Set has no running Producer Pal. With no path and no
+// --new, it adds it to the Set that's open now and opens nothing.
 //
 // PREREQUISITE: Accessibility permission for the app running this (System
 // Settings ▸ Privacy & Security ▸ Accessibility). English Live UI assumed.
@@ -24,6 +25,7 @@
 // Usage:
 //   node open-live-set.mjs "My Song Project/My Song.als"
 //   node open-live-set.mjs --new --add-producer-pal
+//   node open-live-set.mjs --add-producer-pal           # the Set open now
 //   node open-live-set.mjs song.als --discard-unsaved   # only if the user agreed
 //   node open-live-set.mjs song.als --restart           # quit Live first
 //
@@ -81,11 +83,13 @@ const flag = (name) => argv.includes(name); // valueless on/off switch
 
 const USAGE = `Usage: node open-live-set.mjs <path.als> [options]
        node open-live-set.mjs --new [options]
+       node open-live-set.mjs --add-producer-pal
 
   --new                create a new Untitled Set instead of opening a file
   --add-producer-pal   if Producer Pal isn't running in the Set, add the
                        Producer_Pal device on a new MIDI track (needs the
-                       Producer Pal remote script)
+                       Producer Pal remote script). With no path and no
+                       --new: add it to the Set that's open now
   --restart            quit Live first (if running), then relaunch the same
                        Live to open the Set; a save prompt on quit follows
                        --discard-unsaved
@@ -114,6 +118,18 @@ async function main() {
   if (process.platform !== "darwin") {
     throw new Error("macOS only: this drives Live's dialogs with AppleScript");
   }
+  if (
+    flag("--add-producer-pal") &&
+    !flag("--new") &&
+    positionals().length === 0
+  ) {
+    if (flag("--restart")) {
+      throw new Error("--restart needs a .als path or --new");
+    }
+    const result = await addToOpenSet();
+    process.stdout.write(JSON.stringify(result) + "\n");
+    return;
+  }
   const file = setPath();
   const timeoutMs = seconds(opt("--timeout", "120")) * 1000;
   const app = opt("--app");
@@ -141,9 +157,7 @@ async function main() {
  * @returns {string | undefined} Absolute path to the Set; undefined for --new.
  */
 function setPath() {
-  const paths = argv.filter(
-    (a, i) => !a.startsWith("-") && !VALUE_OPTIONS.has(argv[i - 1]),
-  );
+  const paths = positionals();
   if (flag("--new")) {
     if (paths.length > 0) {
       throw new Error(`Pass a .als path or --new, not both`);
@@ -164,6 +178,16 @@ function setPath() {
     throw new Error(`File not found: ${file}`);
   }
   return file;
+}
+
+/**
+ * The arguments that aren't flags or flag values.
+ * @returns {string[]} Positional arguments.
+ */
+function positionals() {
+  return argv.filter(
+    (a, i) => !a.startsWith("-") && !VALUE_OPTIONS.has(argv[i - 1]),
+  );
 }
 
 /**
@@ -263,6 +287,22 @@ async function openLiveSet({
         warning: `A Live window was already titled "${name}", so the swap couldn't be confirmed.`,
       }),
   };
+}
+
+/**
+ * Add Producer Pal to the Set that's open now, unless it's already running.
+ * Opens nothing, so no dialogs to answer.
+ * @returns {Promise<object>} The result printed on stdout.
+ */
+async function addToOpenSet() {
+  if ((await livePid()) == null) {
+    throw new Error("Live isn't running, so there's no open Set to add to");
+  }
+  if (await ppalAnswers()) {
+    return { producerPal: true, dismissed: [] };
+  }
+  const added = await loadProducerPal();
+  return { producerPal: true, addedProducerPal: added, dismissed: [] };
 }
 
 /**
@@ -425,7 +465,7 @@ async function loadProducerPal() {
  */
 export function loadFailure(status, body) {
   if (status === 404) {
-    return "Live's browser has no Producer_Pal device. Put Producer_Pal.amxd where the browser's Max for Live section lists it, e.g. the User Library.";
+    return "Live's browser has no Producer_Pal device. Install Producer_Pal.amxd in the User Library's Presets/MIDI Effects/Max MIDI Effect folder: https://producer-pal.org/installation#install-the-device";
   }
   if (status === 409 && body.candidates != null) {
     return `Live's browser has more than one Producer_Pal device: ${body.candidates.join(", ")}. Keep only one device named Producer_Pal there.`;

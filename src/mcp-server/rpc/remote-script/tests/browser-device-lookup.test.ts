@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, describe, expect, it } from "vitest";
-import { lookUpBrowserDevice } from "../browser-device-lookup.ts";
+import {
+  lookUpBrowserDevice,
+  normalizedName,
+} from "../browser-device-lookup.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
@@ -336,5 +339,16 @@ describe("lookUpBrowserDevice", () => {
         available: false,
       });
     });
+  });
+});
+
+describe("normalizedName", () => {
+  it("matches a name's '/' to the ':' a path writes for it", () => {
+    expect(normalizedName("PP Test (3/4).adv")).toBe("pp test (3:4)");
+    expect(normalizedName(" PP Test (3:4) ")).toBe("pp test (3:4)");
+  });
+
+  it("matches decomposed and composed accents", () => {
+    expect(normalizedName("Te\u0301st.adg")).toBe(normalizedName("T\u00e9st"));
   });
 });

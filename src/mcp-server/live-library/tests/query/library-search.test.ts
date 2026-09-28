@@ -710,9 +710,11 @@ function createDbWithTruncatedPath(): {
       use_count INTEGER DEFAULT 0,
       mod_date INTEGER DEFAULT 0,
       place_id INTEGER,
-      subtype INTEGER
+      subtype INTEGER,
+      flags INTEGER DEFAULT 1027
     );
     CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
+    INSERT INTO places VALUES (1, 1);
     CREATE TABLE keywords (
       file_id INTEGER, keyw_id INTEGER, is_auto INTEGER DEFAULT 0
     );
@@ -732,7 +734,7 @@ function createDbWithTruncatedPath(): {
     insert.run(i, i - 1, fldr, `folder${i}`, 0, 0, null);
   }
 
-  insert.run(1000, 40, wav, "deep.wav", 5, 1_700_000_000, null);
+  insert.run(1000, 40, wav, "deep.wav", 5, 1_700_000_000, 1);
   db.close();
 
   return {

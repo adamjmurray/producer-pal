@@ -387,12 +387,14 @@ sounding.
 ### Create Device (`ppal-create-device`) {#ppal-create-device}
 
 - Add native Live devices (instruments, MIDI effects, audio effects)
+- Add VST/AU plug-ins and Max for Live devices by name (needs the
+  [remote script](/guide/remote-script)). The AI finds them with
+  [Library](#ppal-library)
 - Place devices on any track type: MIDI, audio, return, or the main track
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
-- Create a device or rack from a preset (needs the
-  [remote script](/guide/remote-script))
+- Create a device or rack from a preset (needs the remote script)
 - Load a sample into a Simpler instrument via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
   `{name: "gainDb", value: <dB>}` (new in Live 12.4)

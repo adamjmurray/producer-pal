@@ -16,11 +16,14 @@ import {
   type PresetScope,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { remoteScriptExpiry, remoteScriptWait } from "./browser-devices.ts";
+import {
+  REMOTE_SCRIPT_SETUP,
+  remoteScriptExpiry,
+  remoteScriptWait,
+} from "./browser-devices.ts";
 
 /** Why nothing loads when the remote script isn't answering. */
-export const PRESET_NEEDS_REMOTE_SCRIPT =
-  "loading a preset needs the Producer Pal remote script, which isn't answering; ask the user to set it up in Producer Pal's Settings → Remote Script";
+export const PRESET_NEEDS_REMOTE_SCRIPT = `loading a preset needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`;
 
 /** The remote script's section `type` for each kind of native device. */
 const NATIVE_SECTIONS = [

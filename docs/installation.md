@@ -11,17 +11,6 @@ Producer Pal is a free, open-source Ableton MCP server that brings AI to Ableton
 Live. It works with many AI providers — use whichever you prefer. Note that some
 AI services charge for usage.
 
-<div class="download-band download-band-compact">
-  <h2 class="download-title">Step 1: Get the Max for Live Device</h2>
-  <p class="download-subtitle">Required for every setup — add it to a MIDI track in Ableton Live.</p>
-  <div class="download-actions">
-    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
-      <span class="download-btn-label">Download Max for Live Device</span>
-      <span class="download-btn-sub">Producer_Pal.amxd · v{{ $frontmatter.version }}</span>
-    </a>
-  </div>
-</div>
-
 ::: tip Requirements
 
 **Requires:** [Ableton Live 12.3+](https://www.ableton.com/live/) with
@@ -30,12 +19,31 @@ is recommended — some features don't work on older versions of Live. Use the
 version of Max bundled with Live, or make sure your standalone Max is up to
 date.
 
+:::
+
 Upgrading from a previous version? See the
 [upgrading guide](./installation/upgrading).
 
-:::
+<div class="download-band download-band-compact">
+  <h2 class="download-title">Step 1: Get the Max for Live Device</h2>
+  <p class="download-subtitle">Required for every setup.</p>
+  <div class="download-actions">
+    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
+      <span class="download-btn-label">Download Max for Live Device</span>
+      <span class="download-btn-sub">Producer_Pal.amxd · v{{ $frontmatter.version }}</span>
+    </a>
+  </div>
+</div>
 
-## Choose How You Want to Use It
+### Install the Device {#install-the-device}
+
+<!--@include: ./_partials/save-device.md-->
+
+### Add It to Your Live Set
+
+<!--@include: ./_partials/add-device.md-->
+
+## Step 2: Choose How You Want to Use It {#choose-how-you-want-to-use-it}
 
 Producer Pal works the same with any provider — the main choice is _how_ you
 want to interact with it. Most groups below support multiple AI providers, so

@@ -30,6 +30,10 @@ import {
   resolveCreationTarget,
 } from "./device-creation.ts";
 
+/** What to tell the user when a load needs the remote script. */
+export const REMOTE_SCRIPT_SETUP =
+  "ask the user to set it up in the Producer Pal chat UI's Settings → Remote Script (guide: https://producer-pal.org/guide/remote-script)";
+
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 

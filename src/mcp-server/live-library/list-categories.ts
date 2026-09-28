@@ -35,6 +35,11 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import {
+  COUNTED_FOR_TAG,
+  IN_A_PLACE,
+  IN_LIBRARY_VIEWS,
+} from "./query/candidate-query.ts";
 
 export interface ListCategoriesArgs {
   /** Drill into one top-level category and return its leaf tags. Omit for the
@@ -117,6 +122,8 @@ function listTopCategories(db: DatabaseSync): LibraryTag[] {
        FROM metadata m
        JOIN metadata_values mv ON mv.id = m.value_id
        WHERE m.key IN (?, ?) AND mv.value LIKE '%|%'
+         AND m.file_id IN (SELECT f.file_id FROM files f
+                           WHERE ${IN_A_PLACE} AND ${IN_LIBRARY_VIEWS})
        GROUP BY name
        ORDER BY cnt DESC, name ASC`,
     )
@@ -206,7 +213,9 @@ function leafTagCounts(
       `SELECT kw.name AS name, COUNT(*) AS cnt
        FROM keywords k
        JOIN files kw ON kw.file_id = k.keyw_id
+       JOIN files f ON f.file_id = k.file_id
        WHERE kw.name IN (${placeholders})
+         AND ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
        GROUP BY k.keyw_id
        ORDER BY cnt DESC, kw.name ASC
        LIMIT ?`,

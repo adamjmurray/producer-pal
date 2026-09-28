@@ -7,10 +7,11 @@
  * Scenario: `toPath` for the two non-clip destination kinds — a device slot on
  * another track, and a drum pad in the same rack.
  *
- * The device case deliberately grades the SHAPE (`t1`, or `t1/d<n>`) rather
- * than one index: where in a track's device chain a copy belongs is the model's
- * call, and pinning it would grade that choice instead of the grammar. The drum
- * pad case is exact — `p<note>` names a fixed pad, so there is nothing to choose.
+ * The device case deliberately grades the SHAPE (`t1`, `t1/d<n>` or `t1/d+`)
+ * rather than one index: where in a track's device chain a copy belongs is the
+ * model's call, and pinning it would grade that choice instead of the grammar.
+ * The drum pad case is exact — `p<note>` names a fixed pad, so there is nothing
+ * to choose.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
@@ -27,7 +28,7 @@ const BASS_TRACK_INDEX = 1;
 const DRUMS_TRACK_INDEX = 0;
 
 /** Anywhere in the Bass track's device chain, appended or inserted. */
-const DEVICE_DESTINATION = /^t1(\/d\d+)?$/;
+const DEVICE_DESTINATION = /^t1(\/d(\d+|\+))?$/;
 
 /**
  * The Cyndal Kit spans C1–Eb2, so C3 is an empty pad. The Drum Rack is nested

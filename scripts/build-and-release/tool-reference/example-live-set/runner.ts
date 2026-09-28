@@ -45,7 +45,7 @@ export async function createExampleRunner(): Promise<ExampleRunner> {
     await import("#src/live-api-adapter/live-api-adapter.ts");
   const { beginLiveApiScope, endLiveApiScope, resetLiveApiTracking } =
     await import("#src/live-api-adapter/live-api-release.ts");
-  const { clearMockRegistry, simulateMockDeletes } =
+  const { clearMockRegistry, simulateMockDeletes, simulateMockWrites } =
     await import("#src/test/mocks/mock-registry.ts");
   const { buildExampleLiveSet } = await import("./live-set.ts");
 
@@ -66,6 +66,9 @@ export async function createExampleRunner(): Promise<ExampleRunner> {
     // throw, where the example names one target. Safe here where it isn't in
     // the shared tests, because each example rebuilds the Live Set above.
     simulateMockDeletes();
+    // Writes stick too, or a write result reads back the fixture's old value
+    // and documents Live refusing it (tempo 124 answered as 110).
+    simulateMockWrites();
 
     const def = defs.get(example.toolName);
 

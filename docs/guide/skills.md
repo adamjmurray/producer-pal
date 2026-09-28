@@ -133,6 +133,21 @@ Because the skill is just a thin pointer + bootstrap, it stays correct as
 Producer Pal evolves: new tools, schema changes, and skill updates land in
 `ppal-connect`'s response automatically.
 
+### Adding Producer Pal to a Live Set
+
+If the open Live Set has no Producer Pal device, the agent can add it, on macOS
+or Windows:
+
+```bash
+node ppal.mjs --add-to-live-set
+```
+
+It adds a MIDI track with the device, and does nothing if Producer Pal is
+already running. The agent asks first unless you asked for Producer Pal. This
+needs the [remote script](/guide/remote-script) installed and selected in Live,
+and the device installed in your User Library's Max MIDI Effect folder (see
+[installing](/installation#install-the-device)).
+
 ### Notation and small-model mode
 
 Producer Pal encodes MIDI notes in one of three
@@ -245,7 +260,7 @@ The `producer-pal` skill is the connection. Five more skills come with it:
 - **`ableton-open-live-set`**: open a Live Set by path, or create a new one, and
   wait until it has loaded, answering the dialogs in the way. It never throws
   away unsaved changes or crash-recovered work unless you agree. It can also add
-  Producer Pal to the Set through the Producer Pal
+  Producer Pal to that Set, or to the one open now, through the Producer Pal
   [remote script](/guide/remote-script). macOS only; opening needs no device.
 
 <a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
