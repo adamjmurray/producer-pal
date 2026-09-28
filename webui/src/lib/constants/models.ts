@@ -211,6 +211,25 @@ export const OPENROUTER_MODELS = [
   OTHER_MODEL_OPTION,
 ];
 
+// Mirrors OPENROUTER_MODELS. The gateway has no free models.
+export const VERCEL_MODELS = [
+  { value: "google/gemini-3.8-flash", label: "Google Gemini 3.8 Flash" },
+  { value: "google/gemini-3.1-pro-preview", label: "Google Gemini 3.1 Pro" },
+  {
+    value: "anthropic/claude-sonnet-5.5",
+    label: "Anthropic Claude Sonnet 5.5",
+  },
+  { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
+  { value: "openai/gpt-6-sol", label: "OpenAI GPT-6 Sol" },
+  { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
+  { value: "alibaba/qwen3.8-max", label: "Qwen 3.8 Max" },
+  { value: "deepseek/deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash" },
+  { value: "mistral/mistral-large-3", label: "Mistral Large" },
+  { value: "moonshotai/kimi-k3", label: "Moonshot AI Kimi K3" },
+  { value: "zai/glm-5.3", label: "Z.ai GLM 5.3" },
+  OTHER_MODEL_OPTION,
+];
+
 export const OLLAMA_MODELS = [
   { value: "qwen3.8", label: "qwen3.8" },
   { value: "gemma4", label: "gemma4" },
@@ -234,6 +253,7 @@ export const DEFAULT_MODELS = {
   openai: (OPENAI_MODELS[0] as (typeof OPENAI_MODELS)[0]).value,
   mistral: (MISTRAL_MODELS[0] as (typeof MISTRAL_MODELS)[0]).value,
   openrouter: (OPENROUTER_MODELS[0] as (typeof OPENROUTER_MODELS)[0]).value,
+  vercel: (VERCEL_MODELS[0] as (typeof VERCEL_MODELS)[0]).value,
   ollama: (OLLAMA_MODELS[0] as (typeof OLLAMA_MODELS)[0]).value,
   lmstudio: "",
   custom: "",
@@ -252,6 +272,7 @@ export const PROVIDER_MODELS: Partial<
   openai: OPENAI_MODELS,
   mistral: MISTRAL_MODELS,
   openrouter: OPENROUTER_MODELS,
+  vercel: VERCEL_MODELS,
   ollama: OLLAMA_MODELS,
 };
 

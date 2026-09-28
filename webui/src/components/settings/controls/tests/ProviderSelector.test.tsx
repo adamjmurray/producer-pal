@@ -56,7 +56,7 @@ describe("ProviderSelector", () => {
 
       const options = document.querySelectorAll("option");
 
-      expect(options).toHaveLength(8);
+      expect(options).toHaveLength(9);
 
       const optionData = Array.from(options).map((opt) => ({
         value: opt.value,
@@ -71,6 +71,7 @@ describe("ProviderSelector", () => {
         { value: "ollama", text: "Ollama (local)" },
         { value: "lmstudio", text: "Bionic / LM Studio (local)" },
         { value: "openrouter", text: "OpenRouter" },
+        { value: "vercel", text: "Vercel AI Gateway" },
         { value: "custom", text: "Custom (OpenAI-compatible)" },
       ]);
     });

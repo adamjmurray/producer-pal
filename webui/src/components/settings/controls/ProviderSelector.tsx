@@ -38,6 +38,7 @@ export function ProviderSelector({
         <option value="ollama">Ollama (local)</option>
         <option value="lmstudio">Bionic / LM Studio (local)</option>
         <option value="openrouter">OpenRouter</option>
+        <option value="vercel">Vercel AI Gateway</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
       </select>
     </div>

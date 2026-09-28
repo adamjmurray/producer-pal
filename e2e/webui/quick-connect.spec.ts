@@ -7,6 +7,7 @@ import { expect, test } from "@playwright/test";
 import {
   DEFAULT_MODELS,
   OPENROUTER_MODELS,
+  VERCEL_MODELS,
 } from "../../webui/src/lib/constants/models";
 import {
   expectNoConsoleOutput,
@@ -27,6 +28,16 @@ const OPENROUTER_CONFIGS = OPENROUTER_MODELS.filter(
   modelLabel: m.label,
   envKey: "OPENROUTER_KEY",
 }));
+
+const VERCEL_CONFIGS = VERCEL_MODELS.filter((m) => m.value !== "OTHER").map(
+  (m) => ({
+    provider: "vercel",
+    providerLabel: "Vercel",
+    model: m.value,
+    modelLabel: m.label,
+    envKey: "VERCEL_AI_GATEWAY_KEY",
+  }),
+);
 
 // Provider/model configurations to test
 const TEST_CONFIGS = [
@@ -52,6 +63,7 @@ const TEST_CONFIGS = [
     envKey: "MISTRAL_KEY",
   },
   ...OPENROUTER_CONFIGS,
+  ...VERCEL_CONFIGS,
 ];
 
 for (const config of TEST_CONFIGS) {
