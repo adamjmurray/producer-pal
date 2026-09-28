@@ -43,6 +43,7 @@ export async function runChat(
   const providerOptions = buildProviderOptions(
     options.provider,
     options.thinking,
+    options.model,
   );
 
   const rl = createReadline();

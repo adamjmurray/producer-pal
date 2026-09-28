@@ -192,6 +192,14 @@ async function fetchModelsForProvider(
         Authorization: `Bearer ${validateApiKey(PROVIDER_CONFIGS.openrouter)}`,
       });
 
+    case "vercel":
+      return await fetchOpenAiStyleIds(
+        "https://ai-gateway.vercel.sh/v1/models",
+        {
+          Authorization: `Bearer ${validateApiKey(PROVIDER_CONFIGS.vercel)}`,
+        },
+      );
+
     case "local": {
       const baseUrl =
         options.baseUrl ?? process.env.LOCAL_BASE_URL ?? LOCAL_DEFAULT_BASE_URL;

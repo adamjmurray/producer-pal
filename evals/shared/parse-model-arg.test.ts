@@ -18,6 +18,10 @@ describe("parseModelArg", () => {
       provider: "openrouter",
       model: "anthropic/claude-haiku-4.5",
     });
+    expect(parseModelArg("vercel/openai/gpt-6-luna")).toStrictEqual({
+      provider: "vercel",
+      model: "openai/gpt-6-luna",
+    });
   });
 
   it("infers the provider from a model prefix", () => {

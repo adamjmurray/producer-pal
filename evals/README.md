@@ -132,6 +132,7 @@ be inferred from the prefix:
 | `claude-code/haiku`           | claude-code |
 | `claude-code/fable`           | claude-code |
 | `openrouter/some-model`       | openrouter  |
+| `vercel/openai/gpt-6-luna`    | vercel      |
 | `local/model-name`            | local       |
 
 Only the first `/` splits provider from model, so a model name can contain
@@ -503,15 +504,16 @@ scripts/chat -m codex-code/luna -1 "list tracks in the set"
 
 Set these in `.env` at the project root:
 
-| Variable         | Description                                             |
-| ---------------- | ------------------------------------------------------- |
-| `GEMINI_KEY`     | Google Gemini API key                                   |
-| `ANTHROPIC_KEY`  | Anthropic API key                                       |
-| `OPENAI_KEY`     | OpenAI API key                                          |
-| `OPENROUTER_KEY` | OpenRouter API key                                      |
-| `LOCAL_API_KEY`  | Local server API key (optional)                         |
-| `LOCAL_BASE_URL` | Local server URL (default: `http://localhost:11434/v1`) |
-| `MCP_URL`        | MCP server URL (default: `http://localhost:3350/mcp`)   |
+| Variable                | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `GEMINI_KEY`            | Google Gemini API key                                   |
+| `ANTHROPIC_KEY`         | Anthropic API key                                       |
+| `OPENAI_KEY`            | OpenAI API key                                          |
+| `OPENROUTER_KEY`        | OpenRouter API key                                      |
+| `VERCEL_AI_GATEWAY_KEY` | Vercel AI Gateway API key                               |
+| `LOCAL_API_KEY`         | Local server API key (optional)                         |
+| `LOCAL_BASE_URL`        | Local server URL (default: `http://localhost:11434/v1`) |
+| `MCP_URL`               | MCP server URL (default: `http://localhost:3350/mcp`)   |
 
 The subscription CLIs take no key. `CLAUDE_CODE_BIN` and `CODEX_BIN` override
 which executable is spawned (see

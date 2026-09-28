@@ -51,11 +51,13 @@ const OPENROUTER_EFFORT_MAP: Record<string, string> = {
  *
  * @param provider - The LLM provider
  * @param thinking - CLI thinking level (e.g., "medium", "high", "4096")
+ * @param model - Model id; picks the upstream provider for the Vercel gateway
  * @returns ProviderOptions for streamText, or undefined if no thinking config
  */
 export function buildProviderOptions(
   provider: EvalProvider,
   thinking: ThinkingLevel | undefined,
+  model = "",
 ): ProviderOptions | undefined {
   if (thinking == null) {
     return undefined;
@@ -72,6 +74,8 @@ export function buildProviderOptions(
       return buildOpenAIThinking(level);
     case "openrouter":
       return buildOpenRouterThinking(level);
+    case "vercel":
+      return buildGatewayThinking(level, model);
     case "local":
       return undefined;
     // The agent CLIs carry their own reasoning configuration.
@@ -158,6 +162,31 @@ function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
   }
 
   return { openrouter: { reasoning: { effort } } };
+}
+
+/**
+ * Build Vercel AI Gateway thinking options. The gateway forwards each
+ * provider's own options, so use the upstream provider from the model id
+ * (`anthropic/claude-sonnet-5.5`).
+ *
+ * @param level - Thinking level string
+ * @param model - Gateway model id (`provider/model`)
+ * @returns Upstream provider's thinking options, or undefined if unsupported
+ */
+function buildGatewayThinking(
+  level: string,
+  model: string,
+): ProviderOptions | undefined {
+  switch (model.split("/")[0]) {
+    case "anthropic":
+      return buildAnthropicThinking(level);
+    case "google":
+      return buildGeminiThinking(level);
+    case "openai":
+      return buildOpenAIThinking(level);
+    default:
+      return undefined;
+  }
 }
 
 /**
