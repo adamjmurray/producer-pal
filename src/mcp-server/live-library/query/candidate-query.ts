@@ -33,7 +33,11 @@ import {
   resolveSource,
 } from "../library-filters.ts";
 import { type LibraryItem, type LibrarySearchArgs } from "../library-types.ts";
-import { type ResolvedPath } from "../reconstruct-path.ts";
+import {
+  nameFromPathSegment,
+  pathSegment,
+  type ResolvedPath,
+} from "../reconstruct-path.ts";
 
 /** Raw row shape selected by CANDIDATE_COLUMNS. */
 export interface SearchRow {
@@ -187,8 +191,8 @@ export function buildCandidateWhere(
  *
  * Case sensitivity: segment lookups use `COLLATE NOCASE` so an LLM passing
  * "/users/..." on a case-insensitive macOS/Windows FS still resolves the
- * same row as "/Users/...". The ASCII-only restriction of SQLite's NOCASE
- * collation is fine here — Live's library paths are ASCII in practice.
+ * same row as "/Users/...". NOCASE folds ASCII only. A segment matches as
+ * given or with its accents composed, the form Live stores on macOS.
  *
  * @param db - Open database handle
  * @param absolutePath - Absolute path to resolve, with or without trailing slash
@@ -236,11 +240,14 @@ export function resolveFileIdForPath(
       continue;
     }
 
+    const name = nameFromPathSegment(seg);
     const row = db
       .prepare(
-        "SELECT file_id FROM files WHERE parent_id = ? AND name = ? COLLATE NOCASE LIMIT 1",
+        "SELECT file_id FROM files WHERE parent_id = ? AND (name = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) LIMIT 1",
       )
-      .get(currentId, seg) as { file_id: number } | undefined;
+      .get(currentId, name, name.normalize("NFC")) as
+      | { file_id: number }
+      | undefined;
 
     if (!row) {
       return null;
@@ -301,7 +308,7 @@ export function buildLibraryItem(
   const tags = tagsByFile.get(row.file_id) ?? [];
   const item: LibraryItem = {
     name: row.name,
-    path: resolved?.path ?? `/${row.name}`,
+    path: resolved?.path ?? `/${pathSegment(row.name)}`,
     kind: resolveKind(row.file_type),
     tags,
     useCount: row.use_count,

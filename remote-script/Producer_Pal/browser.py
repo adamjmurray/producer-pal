@@ -7,6 +7,11 @@
 
 import os
 
+try:
+    import unicodedata
+except ImportError:  # not confirmed in every Live build; only accents need it
+    unicodedata = None
+
 MAX_DEPTH = 8
 
 # The `type` param: the app.browser attribute holding that tree, and whether to
@@ -57,13 +62,18 @@ def resolve_path(root, path):
     item = root
     walked = []
     for segment in _split(path):
-        wanted = segment.lower()
+        wanted = _path_name(segment).lower()
         children = list(item.children)
-        match = next((child for child in children if child.name.lower() == wanted), None)
+        match = next(
+            (child for child in children if _path_name(child.name).lower() == wanted),
+            None,
+        )
         if match is None:
-            raise PathNotFound(walked, segment, [child.name for child in children])
+            raise PathNotFound(
+                walked, segment, [_path_name(child.name) for child in children]
+            )
         item = match
-        walked.append(match.name)
+        walked.append(_path_name(match.name))
     return item, "/".join(walked)
 
 
@@ -126,17 +136,17 @@ def find_file(browser, file_path):
     if library and _lower(segments[: len(library)]) == _lower(library):
         found = _walk(browser.user_library, segments[len(library) :])
         if found is not None:
-            return found, _join("User Library", "/".join(segments[len(library) :]))
+            return found, "/".join(["User Library"] + segments[len(library) :])
 
     for label, roots in (("Packs", browser.packs.children), ("Places", browser.user_folders)):
         for root in roots:
-            wanted = root.name.lower()
+            root_name = _path_name(root.name)
             for i, segment in enumerate(segments[:-1]):
-                if segment.lower() == wanted:
+                if segment.lower() == root_name.lower():
                     rest = segments[i + 1 :]
                     found = _walk(root, rest)
                     if found is not None:
-                        return found, "/".join([label, root.name] + rest)
+                        return found, "/".join([label, root_name] + rest)
     raise LookupError(
         "no folder in Live's browser (User Library, Packs, Places) holds %r"
         % file_path
@@ -194,8 +204,10 @@ def _walk(root, segments):
 
 
 def _file_segments(path):
-    """A file path's folders and name, with either separator."""
-    return [part for part in str(path).replace("\\", "/").split("/") if part]
+    """A file path's folders and name, with either separator, in path form."""
+    return [
+        _path_name(part) for part in str(path).replace("\\", "/").split("/") if part
+    ]
 
 
 def _lower(segments):
@@ -203,15 +215,27 @@ def _lower(segments):
 
 
 def _matches(item, query):
-    return not query or query.lower() in item.name.lower()
+    return not query or _path_name(query).lower() in _path_name(item.name).lower()
 
 
 def _normalize(name):
-    lowered = name.strip().lower()
+    lowered = _path_name(name.strip()).lower()
     for suffix in _SUFFIXES:
         if lowered.endswith(suffix):
             return lowered[: -len(suffix)]
     return lowered
+
+
+def _path_name(name):
+    """A name as a path segment: accents composed, "/" written as ":".
+
+    Live shows a ":" in a macOS file name as "/", so a "/" in a name isn't a
+    folder break. Writing it as ":" keeps "/" for separators only and gives
+    the real file name on disk. Browser names are composed; disk names may not be.
+    """
+    if unicodedata is not None:
+        name = unicodedata.normalize("NFC", name)
+    return name.replace("/", ":")
 
 
 def _split(path):
@@ -219,4 +243,5 @@ def _split(path):
 
 
 def _join(path, name):
+    name = _path_name(name)
     return path + "/" + name if path else name
