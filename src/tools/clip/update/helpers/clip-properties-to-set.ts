@@ -161,7 +161,10 @@ export function buildClipPropertiesToSet({
     end,
     startMarker,
     writesLoop: (isLooping || looping == null) && looping !== false,
-    writesEndMarker: (!isLooping || looping === false) && end != null,
+    // A looping clip still has to move end_marker when its start_marker is
+    // going past it, or Live drops the start and playback begins at the old one.
+    writesEndMarker:
+      (!isLooping || looping === false || markerEndFirst) && end != null,
   };
 
   // The loop brace needs `looping` already on, and Live ignores a start_marker
