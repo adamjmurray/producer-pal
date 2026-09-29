@@ -205,4 +205,39 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       expect(bar4Notes).toHaveLength(0);
     });
   });
+
+  describe("existingNotes", () => {
+    // A note already in the clip, with a field bar|beat can't spell.
+    const existing = () => ({ ...createNote(), mute: 1 });
+
+    it("puts them first and returns them as they were", () => {
+      const note = existing();
+      const result = interpretNotation("D3 1|2", { existingNotes: [note] });
+
+      expect(result[0]).toBe(note);
+      expect(result[1]).toStrictEqual(createNote({ pitch: 62, start_time: 1 }));
+    });
+
+    it("lets bar copy copy them", () => {
+      const result = interpretNotation("@2=1", { existingNotes: [existing()] });
+
+      expect(result[1]).toStrictEqual(createNote({ start_time: 4 }));
+    });
+
+    it("lets v0 delete them", () => {
+      const result = interpretNotation("v0 C3 1|1 v100 D3 1|2", {
+        existingNotes: [existing()],
+      });
+
+      expect(result).toStrictEqual([createNote({ pitch: 62, start_time: 1 })]);
+    });
+
+    it("returns them unchanged when the string is empty", () => {
+      const note = existing();
+
+      expect(interpretNotation("", { existingNotes: [note] })).toStrictEqual([
+        note,
+      ]);
+    });
+  });
 });

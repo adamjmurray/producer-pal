@@ -38,6 +38,7 @@ import {
   buildPitchState,
   calculatePositions,
   handlePitchEmission,
+  trackForBarCopy,
   type TimeElement,
 } from "./helpers/pitch-emission.ts";
 import {
@@ -57,6 +58,13 @@ interface InterpretOptions {
   beatsPerBar?: number;
   timeSigNumerator?: number;
   timeSigDenominator?: number;
+  /**
+   * Notes already in the clip, placed before the string's own: bar copy can
+   * copy them and `v0` can delete them, and new notes still start from the
+   * defaults. The survivors come back as the same objects, so fields bar|beat
+   * can't spell (mute, a downward velocity range) are kept.
+   */
+  existingNotes?: NoteEvent[];
 }
 
 /**
@@ -313,17 +321,22 @@ export function interpretNotation(
   barBeatExpression: string,
   options: InterpretOptions = {},
 ): NoteEvent[] {
+  const { timeSigDenominator, existingNotes = [] } = options;
+
   if (!barBeatExpression) {
-    return [];
+    return [...existingNotes];
   }
 
-  const { timeSigDenominator } = options;
   const beatsPerBar = parseBeatsPerBar(options);
   const ast = parseNotation(barBeatExpression, options);
 
   // Bar copy tracking: Map bar number -> array of note metadata
   const notesByBar = new Map<number, BarCopyNote[]>();
-  const events: NoteEvent[] = [];
+  const events: NoteEvent[] = [...existingNotes];
+
+  for (const note of existingNotes) {
+    trackForBarCopy(note, beatsPerBar, timeSigDenominator, notesByBar);
+  }
 
   // Create state object for easier passing to helper functions
   const state: InterpreterState = {

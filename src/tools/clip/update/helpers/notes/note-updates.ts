@@ -5,11 +5,7 @@
 
 import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
-import {
-  formatNotation,
-  interpretNotation,
-  resolveNotation,
-} from "#src/notation/notation.ts";
+import { interpretNotation, resolveNotation } from "#src/notation/notation.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
@@ -19,7 +15,7 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   getClipNoteCount,
-  rawNotesToNoteEvents,
+  rawNotesToCopiedNotes,
   readAllClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
@@ -113,11 +109,12 @@ export function handleNoteUpdates(
   }
 
   // Read the same window as read-clip, so a pickup before the clip start is
-  // carried into the merge.
+  // carried into the merge. Copied whole, so a note the call doesn't touch is
+  // written back exactly as it was, mute and release velocity included.
   const rawExistingNotes = readAllClipNotes(clip);
   const { notes: existingNotes, matchCount: preTransformCount } =
     applyPreTransformsToExisting(
-      rawNotesToNoteEvents(rawExistingNotes),
+      rawNotesToCopiedNotes(rawExistingNotes),
       preTransformString,
       timeSigNumerator,
       timeSigDenominator,
@@ -164,14 +161,15 @@ export function handleNoteUpdates(
 /**
  * Build the merged note array (existing + new) ready for the dedupe/sort/write
  * tail. The merge strategy differs by notation:
- * - barbeat: prepend the existing notes (preTransforms already applied) as
- *   bar|beat notation and re-interpret the combined string, so `v0` in the new
- *   notation can delete overlapping existing notes during interpretation.
- * - midi-json / stark: these have no lossless text serializer for the existing
- *   notes, so combine the NoteEvent arrays directly (new notes last, so they win
- *   same-pitch+start collisions in dedupeNotesKeepingLast) and resolve the delete
- *   markers over that combined array instead — same result as bar|beat's text
- *   round-trip, so midi-json's `v:0` deletes existing notes too.
+ * - barbeat: hand the existing notes (preTransforms already applied) to the
+ *   interpreter ahead of the new ones, so the new notation's bar copy can copy
+ *   them and its `v0` can delete them.
+ * - midi-json / stark: combine the arrays directly (new notes last, so they win
+ *   same-pitch+start collisions in dedupeNotesKeepingLast) and resolve the
+ *   delete markers over the combined array, so midi-json's `v:0` deletes
+ *   existing notes too.
+ * Either way the existing notes are never re-spelled as text, which would lose
+ * what bar|beat can't write.
  * @param notation - Global notation setting the new notes string is written in (or undefined)
  * @param notationString - The new notes
  * @param existingNotes - Existing notes (preTransforms already applied)
@@ -197,20 +195,10 @@ function mergeNewNotes(
     return applyV0Deletions([...existingNotes, ...newNotes]);
   }
 
-  let combinedNotationString = notationString;
-
-  if (existingNotes.length > 0) {
-    const existingNotationString = formatNotation(existingNotes, {
-      timeSigNumerator,
-      timeSigDenominator,
-    });
-
-    combinedNotationString = `${existingNotationString} ${notationString}`;
-  }
-
-  return interpretNotation(combinedNotationString, {
+  return interpretNotation(notationString, {
     timeSigNumerator,
     timeSigDenominator,
+    existingNotes,
   });
 }
 

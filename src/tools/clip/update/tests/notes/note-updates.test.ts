@@ -118,6 +118,108 @@ describe("note-updates", () => {
     });
   });
 
+  describe("handleNoteUpdates keeps what the call didn't touch", () => {
+    // A muted note with a release velocity and a downward velocity range:
+    // three things bar|beat can't spell.
+    const MUTED = {
+      ...rawNote(60, 0, 1),
+      mute: 1,
+      release_velocity: 30,
+      velocity_deviation: -20,
+    };
+    const { note_id: _id, ...MUTED_WRITTEN } = MUTED;
+
+    /**
+     * Merge `notes` into a clip holding MUTED, in the given notation.
+     * @param notes - The new notes
+     * @param notation - Notation they're written in
+     * @returns What the update wrote to the clip
+     */
+    function mergeInto(
+      notes: string,
+      notation?: "midi-json",
+    ): Record<string, number>[] {
+      const { mockClip, addedNotes } = makeNotesMockClip([MUTED]);
+
+      handleNoteUpdates(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        notes,
+        undefined,
+        undefined,
+        4,
+        4,
+        makeCtx(),
+        notation,
+      );
+
+      return addedNotes;
+    }
+
+    it("rewrites an untouched note unchanged on a bar|beat merge", () => {
+      expect(mergeInto("D3 1|3")[0]).toStrictEqual(MUTED_WRITTEN);
+    });
+
+    it("rewrites an untouched note unchanged on a midi-json merge", () => {
+      const added = mergeInto(
+        '[{"pitch":62,"start":2,"duration":1,"velocity":100}]',
+        "midi-json",
+      );
+
+      expect(added[0]).toStrictEqual(MUTED_WRITTEN);
+    });
+
+    it("gives new bar|beat notes the defaults, not the existing notes' values", () => {
+      // The existing note is v100 with a 1-beat duration; make it v80 n/8 so
+      // a new note picking up its values would show.
+      const { mockClip, addedNotes } = makeNotesMockClip([
+        { ...rawNote(60, 0, 1), velocity: 80, duration: 0.5 },
+      ]);
+
+      handleNoteUpdates(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        "D3 1|3",
+        undefined,
+        undefined,
+        4,
+        4,
+        makeCtx(),
+        undefined,
+      );
+
+      expect(addedNotes[1]).toStrictEqual({
+        pitch: 62,
+        start_time: 2,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      });
+    });
+
+    it("rewrites an untouched note unchanged when only transforms run", () => {
+      const { mockClip, addedNotes } = makeNotesMockClip([
+        MUTED,
+        rawNote(62, 2, 2),
+      ]);
+
+      handleNoteUpdates(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        undefined,
+        "D3: velocity = 50",
+        undefined,
+        4,
+        4,
+        makeCtx(),
+        undefined,
+      );
+
+      expect(addedNotes[0]).toStrictEqual(MUTED_WRITTEN);
+    });
+  });
+
   describe("handleDuplicateLoopWithEdits", () => {
     function callWithEdits(
       overrides: {

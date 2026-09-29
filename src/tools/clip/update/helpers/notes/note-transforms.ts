@@ -12,7 +12,7 @@ import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,
-  rawNotesToNoteEvents,
+  rawNotesToCopiedNotes,
   readAllClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
@@ -65,8 +65,9 @@ export function applyTransformsToExistingNotes(
     return { noteCount: 0 };
   }
 
-  // Convert raw notes to NoteEvent format (strips extra Live API properties)
-  const notes: NoteEvent[] = rawNotesToNoteEvents(rawNotes);
+  // Copied whole (only note_id goes), so a note the transforms don't change is
+  // written back exactly as it was, mute and release velocity included.
+  const notes: NoteEvent[] = rawNotesToCopiedNotes(rawNotes);
 
   // applyTransforms mutates notes in place (and no-ops on an undefined string).
   const preCount = applyTransforms(

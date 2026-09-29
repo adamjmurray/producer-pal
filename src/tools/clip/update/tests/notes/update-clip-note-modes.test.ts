@@ -315,6 +315,8 @@ describe("updateClip - Note updates", () => {
           velocity: 50,
           probability: 1,
           velocity_deviation: 0,
+          mute: 0,
+          release_velocity: 64,
         },
         {
           pitch: 64,
@@ -323,6 +325,8 @@ describe("updateClip - Note updates", () => {
           velocity: 50,
           probability: 1,
           velocity_deviation: 0,
+          mute: 0,
+          release_velocity: 64,
         },
       ],
     });

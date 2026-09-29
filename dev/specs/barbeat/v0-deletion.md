@@ -16,13 +16,14 @@ When a `v0` note is encountered during interpretation:
 3. **Stripped from output**: The `v0` note itself is also removed —
    `interpretNotation` applies the deletions as its final step and never returns
    a `velocity: 0` note. The output contains only surviving real notes
-4. **How update-clip deletes**: `update-clip` does NOT read surviving v0 notes
-   from the interpreter output. It serializes the clip's existing notes to
-   notation, concatenates `<existing> <new>` into one string, and interprets
-   that combined string ONCE — so a `v0` in the new notation deletes the
-   matching existing note during that single interpretation pass. `create-clip`
-   has no existing notes to match, so any `v0` simply deletes nothing and is
-   stripped
+4. **How update-clip deletes**: `update-clip` passes the clip's existing notes
+   to the interpreter as `existingNotes`, which sit ahead of the string's own
+   notes. So a `v0` in the new notation deletes a matching existing note, and
+   bar copy can copy existing bars. The existing notes are never re-spelled as
+   text, so what bar|beat can't write (mute, release velocity, a downward
+   velocity range) survives, and new notes start from the defaults.
+   `create-clip` has no existing notes to match, so any `v0` simply deletes
+   nothing and is stripped
 
 ## Examples
 

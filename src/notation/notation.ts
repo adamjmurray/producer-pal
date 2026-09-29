@@ -50,6 +50,11 @@ export interface InterpretNotationOptions {
    * caller MUST run `applyV0Deletions` before writing — Live rejects velocity 0.
    */
   keepV0Deletes?: boolean;
+  /**
+   * bar|beat only: notes already in the clip, which the string's bar copy and
+   * `v0` can reach. Returned as the same objects when they survive.
+   */
+  existingNotes?: NoteEvent[];
 }
 
 /** Options for {@link formatNotation}; `notation` selects the serializer. */

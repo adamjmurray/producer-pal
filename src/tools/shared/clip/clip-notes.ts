@@ -50,8 +50,9 @@ export function removeAllClipNotes(clip: LiveAPI): void {
 
 /**
  * Normalize raw notes from get_notes_extended into NoteEvents for add_new_notes.
- * Drops note_id, mute and release_velocity: these callers rebuild notes from
- * notation, which has nowhere to carry the last two.
+ * Drops note_id, mute and release_velocity: code-exec rebuilds every note from
+ * user code, which has nowhere to carry the last two. Anything that writes
+ * back notes the call didn't touch wants {@link rawNotesToCopiedNotes}.
  * @param rawNotes - Note objects from get_notes_extended
  * @returns NoteEvents safe to pass to add_new_notes
  */

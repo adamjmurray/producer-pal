@@ -202,8 +202,8 @@ describe("note-transforms", () => {
 
   describe("applyTransformsToExistingNotes", () => {
     it("should apply transforms to existing notes", () => {
-      // Live API returns notes with extra properties (note_id, mute, release_velocity)
-      // that must be stripped before passing to add_new_notes
+      // Live API returns notes with a note_id, which must not be fed back to
+      // add_new_notes. mute and release_velocity are kept.
       const existingNotes = [
         rawNote(60, 0, 100),
         rawNote(64, 1, 101),
@@ -241,13 +241,13 @@ describe("note-transforms", () => {
         expect((note as { velocity: number }).velocity).toBe(50);
       }
 
-      // Verify extra Live API properties were stripped (these cause add_new_notes to fail)
       for (const note of addedNotes) {
         const n = note as Record<string, unknown>;
 
         expect(n).not.toHaveProperty("note_id");
-        expect(n).not.toHaveProperty("mute");
-        expect(n).not.toHaveProperty("release_velocity");
+        expect(n).toStrictEqual(
+          expect.objectContaining({ mute: 0, release_velocity: 64 }),
+        );
       }
     });
 
