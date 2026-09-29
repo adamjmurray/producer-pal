@@ -147,9 +147,6 @@ export function refuseLaneOverwrites(sources: LaneCopySource[]): void {
     return;
   }
 
-  // Each clip lands at the position it already has.
-  const spansOf = (clips: LiveAPI[]) => (): Span[] => clips.map(clipSpan);
-
   refuseOverlaps(
     sources.flatMap(({ id, named, place, clips }, turn) =>
       place == null ? [] : [{ id, named, turn, place, spans: spansOf(clips) }],
@@ -173,6 +170,15 @@ export function refuseLaneOverwrites(sources: LaneCopySource[]): void {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Lazily reads where lane clips land: each at the position it already has.
+ * @param clips - The source's clips
+ * @returns A reader for their spans
+ */
+function spansOf(clips: LiveAPI[]): () => Span[] {
+  return () => clips.map(clipSpan);
+}
 
 /** A stretch of an arrangement lane, in beats: start inclusive, end not. */
 interface Span {

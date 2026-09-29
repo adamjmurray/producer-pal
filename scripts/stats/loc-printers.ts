@@ -312,12 +312,6 @@ function printMdTotals(
   extraCol?: string,
   funcTotal?: number,
 ): void {
-  /**
-   * Wrap a number in markdown bold.
-   * @param n - Number to format
-   * @returns Bold-formatted number string
-   */
-  const bold = (n: number): string => `**${fmt(n)}**`;
   const cells = [
     "**Total**",
     ...(extraCol != null ? [extraCol] : []),
@@ -330,6 +324,15 @@ function printMdTotals(
 
   console.log(mdRow(...cells));
   console.log();
+}
+
+/**
+ * Wrap a number in markdown bold.
+ * @param n - Number to format
+ * @returns Bold-formatted number string
+ */
+function bold(n: number): string {
+  return `**${fmt(n)}**`;
 }
 
 /**
