@@ -326,7 +326,8 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  Bionic / LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
+  Bionic / LM Studio (local), OpenRouter, Vercel AI Gateway, or Custom
+  (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
