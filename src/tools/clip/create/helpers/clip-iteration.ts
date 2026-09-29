@@ -27,6 +27,7 @@ import {
   buildClipProperties,
   buildClipResult,
   type ClipResultObject,
+  createdClipLength,
 } from "./created-clip-result.ts";
 
 export interface CreateClipAudioParams {
@@ -140,7 +141,7 @@ export function processClipIteration(
       const result = createSessionClip(
         trackIndex,
         validSceneIndex,
-        clipLength,
+        createdClipLength(clipLength, startBeats),
         liveSet,
       );
 
@@ -152,7 +153,7 @@ export function processClipIteration(
       const result = createArrangementClip(
         trackIndex,
         arrangementStartBeats,
-        regionLength(clipLength, startBeats),
+        createdClipLength(clipLength, startBeats),
         takeLane,
         track,
       );
@@ -203,20 +204,6 @@ export function processClipIteration(
 }
 
 // --- Private helpers ---
-
-/**
- * How long the clip's region is. Live's arrangement create lays down this span
- * right away, clearing whatever it covers, so it must not include the start
- * offset: clipLength runs from beat 0 to the region's end.
- * @param clipLength - Where the region ends, in beats
- * @param startBeats - Where the region starts, or null for beat 0
- * @returns The region's length, or clipLength when start is past the end
- */
-function regionLength(clipLength: number, startBeats: number | null): number {
-  const length = clipLength - (startBeats ?? 0);
-
-  return length > 0 ? length : clipLength;
-}
 
 /**
  * Say on the new clip's entry what reaching its slot took.

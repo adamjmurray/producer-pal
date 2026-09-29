@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, type Mock, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
@@ -59,22 +59,6 @@ function callArrangementIteration(opts: {
   );
 }
 
-const MARKERS = new Set([
-  "start_marker",
-  "loop_start",
-  "loop_end",
-  "end_marker",
-]);
-
-/**
- * The marker writes a clip received, in order.
- * @param set - The clip's mocked set()
- * @returns Each marker write as [property, value]
- */
-function markerWrites(set: Mock): unknown[][] {
-  return set.mock.calls.filter(([prop]) => MARKERS.has(prop as string));
-}
-
 describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", async () => {
     const { track, clip } = setupArrangementClipMocks();
@@ -111,27 +95,6 @@ describe("createClip - arrangement view", () => {
     });
 
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 8);
-  });
-
-  it("moves the ends before the starts when start is at the region's length", async () => {
-    // The clip is created 4 beats long, so a start of beat 4 sits on its
-    // current end. Live drops a start written before the end moves.
-    const { track, clip } = setupArrangementClipMocks();
-
-    await createClip({
-      path: "t0[3|1]",
-      start: "2|1",
-      length: "1bar",
-      notes: "C3 2|1",
-    });
-
-    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
-    expect(markerWrites(clip.set)).toStrictEqual([
-      ["loop_end", 8],
-      ["end_marker", 8],
-      ["start_marker", 4],
-      ["loop_start", 4],
-    ]);
   });
 
   it("keeps the clip length when start is past the notes and no length is given", async () => {

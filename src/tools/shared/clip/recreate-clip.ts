@@ -15,6 +15,7 @@ import {
   rawNotesToCopiedNotes,
   readAllClipNotes,
 } from "./clip-notes.ts";
+import { clipRegionWrites } from "./clip-region-writes.ts";
 
 /**
  * Thrown when the clip was created but a later step — notes, properties, color
@@ -327,21 +328,25 @@ function snapshotClip(
   // stripped, so a stale id isn't re-fed when copying one source to several
   // positions.
   const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
+  const length = sourceClip.getProperty("length") as number;
 
   return {
-    length: sourceClip.getProperty("length") as number,
+    length,
     notes,
     color: color == null ? sourceClip.getProperty("color") : null,
-    // Ends first: the copy is created only as long as the source, so a start
-    // offset (a left-trimmed clip) can sit at or past the copy's current end.
-    // Live rejects a loop_start past loop_end and silently drops a start_marker
-    // past end_marker. Name falls back to the source so an un-overridden
-    // duplicate matches it (as native duplicate does).
+    // The copy is created `length` long, so its ends start there. Name falls
+    // back to the source so an un-overridden duplicate matches it (as native
+    // duplicate does).
     properties: {
-      loop_end: sourceClip.getProperty("loop_end"),
-      end_marker: sourceClip.getProperty("end_marker"),
-      start_marker: sourceClip.getProperty("start_marker"),
-      loop_start: sourceClip.getProperty("loop_start"),
+      ...clipRegionWrites(
+        { loop_end: length, end_marker: length },
+        {
+          loop_start: sourceClip.getProperty("loop_start") as number,
+          loop_end: sourceClip.getProperty("loop_end") as number,
+          start_marker: sourceClip.getProperty("start_marker") as number,
+          end_marker: sourceClip.getProperty("end_marker") as number,
+        },
+      ),
       looping: sourceClip.getProperty("looping"),
       signature_numerator: sourceClip.getProperty("signature_numerator"),
       signature_denominator: sourceClip.getProperty("signature_denominator"),
