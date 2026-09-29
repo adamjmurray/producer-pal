@@ -263,19 +263,21 @@ export function createClipProps68(
  * Expect get_notes_extended was called with standard parameters.
  * @param handle - Mock handle for the clip
  * @param clipLength - The clip length in Ableton beats (default 4)
+ * @param regionStart - Where the clip's region starts, in Ableton beats
  */
 export function expectGetNotesExtendedCall(
   handle: RegisteredMockObject,
   clipLength = 4,
+  regionStart = 0,
 ): void {
-  // Reads one clip-length of margin on each side of the playable region so
-  // out-of-bounds notes (pickups before 1|1, overhang past the end) round-trip;
-  // window is [-clipLength, 2*clipLength].
+  // Reads one clip-length of margin on each side of the region so
+  // out-of-bounds notes (pickups before the start, overhang past the end)
+  // round-trip.
   const expectedArgs: unknown[] = [
     "get_notes_extended",
     0,
     128,
-    -clipLength,
+    regionStart - clipLength,
     clipLength * 3,
   ];
 

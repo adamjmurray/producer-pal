@@ -112,9 +112,8 @@ export function handleNoteUpdates(
     );
   }
 
-  // Read the full [-length, 2*length] window (matches read-clip) so a pickup
-  // before the clip start is carried into the merge — not dropped because it
-  // sits outside the playable region [0, length].
+  // Read the same window as read-clip, so a pickup before the clip start is
+  // carried into the merge.
   const rawExistingNotes = readAllClipNotes(clip);
   const { notes: existingNotes, matchCount: preTransformCount } =
     applyPreTransformsToExisting(

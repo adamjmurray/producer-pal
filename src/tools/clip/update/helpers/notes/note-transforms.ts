@@ -44,10 +44,8 @@ export function applyTransformsToExistingNotes(
   timeSigDenominator: number,
   clipContext?: ClipContext,
 ): NoteUpdateResult {
-  // Read the full [-length, 2*length] window so a pickup note (negative
-  // start_time) is transformed too — otherwise `preTransforms: "v0"` reports
-  // the clip as having no notes and leaves the pickup orphaned (noteCount
-  // lies 0).
+  // Read the same window as read-clip, so a pickup before the clip start is
+  // transformed too — `preTransforms: "v0"` must clear it.
   const rawNotes = readAllClipNotes(clip);
 
   // A no-op, not a refusal: there was nothing to transform, so the clip is

@@ -98,15 +98,26 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
 }
 
 /**
- * The (from_time, time_span) pair for read-clip's note-scan window:
- * [-length, 2*length] in beats, so a pickup before the clip start and overhang
- * past the end come along. Read AND remove share it so the windows can't drift
- * — a wider remove would destroy notes that were never read back.
+ * The (from_time, time_span) pair for the note-scan window: the clip's region
+ * (markers and loop, whichever reach further) plus one clip-length on each
+ * side, so a pickup before the start and overhang past the end come along.
+ * Note times are absolute, not relative to the region, so a clip created at
+ * 5|1 keeps its notes at beat 16. Read AND remove share it so the windows
+ * can't drift — a wider remove would destroy notes that were never read back.
  * @param clip - LiveAPI clip object
  * @returns [fromTime, timeSpan] for get_notes_extended / remove_notes_extended
  */
 function clipNoteScanWindow(clip: LiveAPI): [number, number] {
   const lengthBeats = clip.getProperty("length") as number;
+  const regionStart = Math.min(
+    clip.getProperty("start_marker") as number,
+    clip.getProperty("loop_start") as number,
+  );
+  const regionEnd = Math.max(
+    clip.getProperty("end_marker") as number,
+    clip.getProperty("loop_end") as number,
+  );
+  const fromTime = regionStart - lengthBeats;
 
-  return [-lengthBeats, lengthBeats * 3];
+  return [fromTime, regionEnd + lengthBeats - fromTime];
 }

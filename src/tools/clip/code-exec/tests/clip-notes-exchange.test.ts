@@ -19,6 +19,7 @@ import {
 import {
   codeNote,
   createMockClip,
+  mockGetProperty,
   toLiveApiNote,
 } from "./code-exec-test-helpers.ts";
 
@@ -131,9 +132,14 @@ describe("clip-notes-exchange", () => {
         ],
       };
       const mockClip = {
-        getProperty: vi.fn((prop: string) =>
-          prop === "signature_denominator" ? 4 : 8,
-        ),
+        getProperty: mockGetProperty({
+          signature_denominator: 4,
+          length: 8,
+          start_marker: 0,
+          end_marker: 8,
+          loop_start: 0,
+          loop_end: 8,
+        }),
         call: vi.fn().mockReturnValue(JSON.stringify(mockNotes)),
       };
 
@@ -264,7 +270,7 @@ describe("clip-notes-exchange", () => {
   });
 
   describe("getClipNoteCount", () => {
-    it("should count notes across read-clip's [-length, 2*length] window", () => {
+    it("should count notes across read-clip's window", () => {
       const mockClip = createMockClip(
         8,
         JSON.stringify({ notes: [{}, {}, {}] }),

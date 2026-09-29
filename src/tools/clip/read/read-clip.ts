@@ -9,7 +9,9 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { readAllClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
@@ -367,20 +369,10 @@ function processMidiClip(
 
   const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
     clipMeter();
-  const lengthBeats = clip.getProperty("length") as number;
-
-  // Read the window [-lengthBeats, 2*lengthBeats] so a pickup before the start
-  // (Live allows negative start_time) and overhang past the end round-trip.
-  // Notes more than a clip-length outside the region are still missed.
-  const notesDictionary = clip.call(
-    "get_notes_extended",
-    0,
-    128,
-    -lengthBeats,
-    lengthBeats * 3,
-  ) as string;
-  // `?? []` because nothing to spell is not an error, the way formatNotation is.
-  const notes = JSON.parse(notesDictionary).notes ?? [];
+  // The same window update-clip reads and rewrites, so a note shown here is
+  // one an edit keeps. Notes more than a clip-length outside the region are
+  // missed.
+  const notes = readAllClipNotes(clip) as unknown as NoteEvent[];
 
   // Nothing to spell means the answer is never used, so an empty clip must not
   // pay for the device-tree walk that produces it.

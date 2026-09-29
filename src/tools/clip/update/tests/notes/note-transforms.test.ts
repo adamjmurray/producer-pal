@@ -374,12 +374,15 @@ describe("note-transforms", () => {
       // [0, length], so a pickup at a negative start_time was invisible — `v0`
       // reported the clip as empty and left the pickup orphaned while
       // lying noteCount: 0. The read AND remove must use read-clip's
-      // [-length, 2*length] window so the pickup is seen, transformed, removed.
+      // window, which reaches a clip-length before the region, so the pickup is
+      // seen, transformed, removed.
       const pickup = rawNote(60, -0.5, 100); // half a beat before the start
       const removeCalls: unknown[][] = [];
       let cleared = false;
       const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        getProperty: vi.fn((prop: string) =>
+          ["length", "end_marker", "loop_end"].includes(prop) ? 4 : 0,
+        ),
         call: vi.fn((method: string, ...args: unknown[]) => {
           if (method === "get_notes_extended") {
             // Live only surfaces the pickup when the window reaches before beat 0.

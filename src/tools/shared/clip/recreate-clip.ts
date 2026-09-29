@@ -323,10 +323,9 @@ function snapshotClip(
   name: string | undefined,
   color: string | undefined,
 ): ClipSnapshot {
-  // readAllClipNotes reads the full [-length, 2*length] window, so a pickup
-  // (negative start_time) before the clip start and any overhang past the end
-  // come along. Only note_id is stripped, so a stale id isn't re-fed when
-  // copying one source to several positions.
+  // readAllClipNotes brings pickups and overhang along. Only note_id is
+  // stripped, so a stale id isn't re-fed when copying one source to several
+  // positions.
   const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
 
   return {

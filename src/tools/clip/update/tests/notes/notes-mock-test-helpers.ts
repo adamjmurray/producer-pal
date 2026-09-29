@@ -28,6 +28,8 @@ export function rawNote(pitch: number, startTime: number, noteId: number) {
   };
 }
 
+const REGION_END_PROPS = new Set(["length", "end_marker", "loop_end"]);
+
 /**
  * Build a mock clip that returns `existingNotes` from get_notes_extended and
  * captures every note passed to add_new_notes into the returned `addedNotes`.
@@ -47,7 +49,10 @@ export function makeNotesMockClip<T extends object = Record<string, number>>(
 } {
   const addedNotes: T[] = [];
   const mockClip = {
-    getProperty: vi.fn((prop: string) => (prop === "length" ? length : 0)),
+    // The region runs from 0 to `length`; everything else reads 0.
+    getProperty: vi.fn((prop: string) =>
+      REGION_END_PROPS.has(prop) ? length : 0,
+    ),
     call: vi.fn((method: string, ...args: unknown[]) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: existingNotes });

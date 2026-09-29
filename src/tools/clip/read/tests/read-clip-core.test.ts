@@ -75,7 +75,7 @@ describe("readOneClip", () => {
         include: ["timing", "notes"],
       });
 
-      expectGetNotesExtendedCall(clip);
+      expectGetNotesExtendedCall(clip, 4, 1);
 
       expect(result).toStrictEqual({
         id: "live_set/tracks/1/clip_slots/1/clip",
@@ -109,6 +109,10 @@ describe("readOneClip", () => {
         signature_numerator: 3,
         signature_denominator: 4,
         length: 4, // Ableton beats
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
       },
     });
 

@@ -28,9 +28,8 @@ export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  // Read the same [-length, 2*length] window as read-clip so a pickup before
-  // the clip start (negative start_time) is visible to user code, not silently
-  // dropped because it sits outside the playable region [0, length].
+  // Read the same window as read-clip, so user code sees a pickup before the
+  // clip start too.
   const notes = rawNotesToNoteEvents(readAllClipNotes(clip));
 
   return notes.map((note) => noteEventToCodeNote(note, timeSigDenominator));
