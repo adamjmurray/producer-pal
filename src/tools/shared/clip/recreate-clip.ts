@@ -332,15 +332,16 @@ function snapshotClip(
     length: sourceClip.getProperty("length") as number,
     notes,
     color: color == null ? sourceClip.getProperty("color") : null,
-    // Order mirrors create-clip's buildClipProperties to satisfy Live's
-    // loop_end > loop_start constraint while applying values. Name falls back to
-    // the source so an un-overridden duplicate matches it (as native duplicate
-    // does).
+    // Ends first: the copy is created only as long as the source, so a start
+    // offset (a left-trimmed clip) can sit at or past the copy's current end.
+    // Live rejects a loop_start past loop_end and silently drops a start_marker
+    // past end_marker. Name falls back to the source so an un-overridden
+    // duplicate matches it (as native duplicate does).
     properties: {
-      start_marker: sourceClip.getProperty("start_marker"),
-      loop_start: sourceClip.getProperty("loop_start"),
       loop_end: sourceClip.getProperty("loop_end"),
       end_marker: sourceClip.getProperty("end_marker"),
+      start_marker: sourceClip.getProperty("start_marker"),
+      loop_start: sourceClip.getProperty("loop_start"),
       looping: sourceClip.getProperty("looping"),
       signature_numerator: sourceClip.getProperty("signature_numerator"),
       signature_denominator: sourceClip.getProperty("signature_denominator"),
