@@ -51,22 +51,18 @@ export function buildClipProperties(
   timeSigDenominator: number,
   clipLength: number,
 ): ClipPropertiesToSet {
+  const end = endBeats ?? clipLength;
+
+  // Ends first: an arrangement clip is created only as long as its region, so
+  // the new start can sit at or past its current end. Live rejects a
+  // loop_start past loop_end and silently drops a start_marker past end_marker.
+  // The fresh clip starts at 0, so moving the ends first is always safe.
   const propsToSet: ClipPropertiesToSet = {
+    loop_end: end,
+    end_marker: end,
     start_marker: startBeats ?? 0,
     loop_start: startBeats ?? 0,
-    loop_end: 0,
-    end_marker: 0,
   };
-
-  // Set start_marker and loop_start is handled above
-
-  // Set loop_end and end_marker
-  // Use clipLength as default when endBeats not specified
-  // Note: loop_end must be > loop_start (Live API constraint)
-  const effectiveEnd = endBeats ?? clipLength;
-
-  propsToSet.loop_end = effectiveEnd;
-  propsToSet.end_marker = effectiveEnd;
 
   // Set playing_position (firstStart) only for looping clips
   if (looping && firstStartBeats != null) {
