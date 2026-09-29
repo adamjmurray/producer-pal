@@ -8,8 +8,8 @@ import {
   abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatNotation } from "#src/notation/notation.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readAllClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";

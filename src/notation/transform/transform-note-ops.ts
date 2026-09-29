@@ -34,7 +34,7 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param notes - Notes to operate on (mutated in place)
  * @param timeSigNumerator - Time signature numerator (musical beats per bar)
  * @param timeSigDenominator - Time signature denominator
- * @param arrangementStart - Clip's arrangement origin in musical beats (used by
+ * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
  * @returns Indices (in the rebuilt list) of notes the op produced/affected,
  *   so the caller can report a meaningful "transformed" count
@@ -44,7 +44,7 @@ export function applyNoteOp(
   notes: NoteEvent[],
   timeSigNumerator: number,
   timeSigDenominator: number,
-  arrangementStart?: number,
+  arrangementOrigin?: number,
 ): number[] {
   const beatScale = timeSigDenominator / 4; // Ableton beats -> musical beats
 
@@ -62,7 +62,7 @@ export function applyNoteOp(
 
   const produced =
     op.name === "split"
-      ? splitNotes(matched, op, timeSigDenominator, arrangementStart)
+      ? splitNotes(matched, op, timeSigDenominator, arrangementOrigin)
       : op.name === "ratchet"
         ? ratchetNotes(matched, op, timeSigNumerator, timeSigDenominator)
         : op.name === "repeat"

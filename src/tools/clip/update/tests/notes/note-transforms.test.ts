@@ -133,6 +133,71 @@ describe("note-transforms", () => {
       expect(ctx.clipDuration).toBe(16);
       expect(ctx.arrangementStart).toBe(4);
     });
+
+    it("gives a MIDI clip's start marker and end in note time, in musical beats", () => {
+      // A looping 1-bar region at bar 5, at 4/8: the loop end (20) is where
+      // it stops, and every beat doubles.
+      const looping = clipReading({
+        is_midi_clip: 1,
+        looping: 1,
+        length: 4,
+        start_marker: 16,
+        end_marker: 32,
+        loop_start: 16,
+        loop_end: 20,
+      });
+      // Not looping: the end marker is where it stops.
+      const unlooped = clipReading({
+        is_midi_clip: 1,
+        looping: 0,
+        length: 4,
+        start_marker: 16,
+        end_marker: 20,
+        loop_start: 0,
+        loop_end: 32,
+      });
+
+      const loopingCtx = buildClipContext(
+        looping as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        8,
+      );
+      const unloopedCtx = buildClipContext(
+        unlooped as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+      );
+
+      expect([loopingCtx.startMarker, loopingCtx.clipEnd]).toStrictEqual([
+        32, 40,
+      ]);
+      expect([unloopedCtx.startMarker, unloopedCtx.clipEnd]).toStrictEqual([
+        16, 20,
+      ]);
+    });
+
+    it("leaves the note-time region off an audio clip", () => {
+      const ctx = buildClipContext(
+        clipReading({
+          is_midi_clip: 0,
+          length: 4,
+          end_marker: 4,
+        }) as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+      );
+
+      expect([ctx.startMarker, ctx.clipEnd]).toStrictEqual([
+        undefined,
+        undefined,
+      ]);
+    });
   });
 
   describe("applyTransformsToExistingNotes", () => {

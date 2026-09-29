@@ -157,6 +157,7 @@ function transformInputsFor(
     transformString: params.transformString,
     isAudio: plan.sampleFile != null,
     endBeats: plan.timing.endBeats,
+    startBeats: plan.timing.startBeats,
     timeSigNumerator: plan.timing.timeSigNumerator,
     timeSigDenominator: plan.timing.timeSigDenominator,
     scaleMask,

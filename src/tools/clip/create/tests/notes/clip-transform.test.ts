@@ -42,6 +42,7 @@ function makeInputs(
     transformString: "velocity = 100",
     isAudio: false,
     endBeats: null,
+    startBeats: null,
     timeSigNumerator: 4,
     timeSigDenominator: 4,
     scaleMask: undefined,
@@ -133,6 +134,27 @@ describe("resolveClipTransform", () => {
       resolveClipTransform(inputs, 0, 1, null);
 
       expect(capturedContext()?.arrangementStart).toBeUndefined();
+    });
+
+    it("gives the start marker and end in note time", () => {
+      // `start: "5|1"`, `length: "1bar"`, at 4/8: the clip's notes run from
+      // beat 16 to 20, doubled to musical beats.
+      const inputs = makeInputs({
+        timeSigDenominator: 8,
+        startBeats: 16,
+        clipLength: 20,
+      });
+
+      resolveClipTransform(inputs, 0, 1, null);
+
+      expect(capturedContext()?.startMarker).toBe(32);
+      expect(capturedContext()?.clipEnd).toBe(40);
+    });
+
+    it("puts the start marker at 0 when no start was given", () => {
+      resolveClipTransform(makeInputs(), 0, 1, null);
+
+      expect(capturedContext()?.startMarker).toBe(0);
     });
   });
 });

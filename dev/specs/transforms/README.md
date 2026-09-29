@@ -134,8 +134,9 @@ across clips on the global timeline.
 - **Syntax**: `sync` is an optional trailing keyword (not an expression) on
   cyclical waveform functions: `cos`, `tri`, `saw`, `square`
 - **Evaluation**: When `sync` is present,
-  `effectivePosition = note.start + clip.position` is used instead of
-  `note.start` for phase computation
+  `effectivePosition = note.start - startMarker + clip.position` is used instead
+  of `note.start` for phase computation. Note times are absolute, so the note at
+  the clip's start marker is the one that plays at `clip.position`.
 - **Session clips**: A session clip has no arrangement position, so `sync` is
   ignored and the waveform degrades to clip-relative
   (`effectivePosition = note.start`, phase resets at clip start) with a warning

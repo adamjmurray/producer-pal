@@ -6,6 +6,7 @@
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
+import { arrangementOrigin } from "./helpers/note-properties.ts";
 import {
   type ClipContext,
   type NoteProperties,
@@ -457,6 +458,8 @@ function buildClipNoteProperties(clipContext?: ClipContext): NoteProperties {
   if (clipContext.arrangementStart != null) {
     props["clip:position"] = clipContext.arrangementStart;
   }
+
+  props._arrangementOrigin = arrangementOrigin(clipContext);
 
   return props;
 }

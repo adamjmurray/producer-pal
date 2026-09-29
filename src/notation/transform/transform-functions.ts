@@ -164,16 +164,16 @@ function evaluateWaveform(
   let effectivePosition = position;
 
   if (sync) {
-    const arrangementStart = noteProperties["clip:position"];
+    const origin = noteProperties._arrangementOrigin;
 
-    if (arrangementStart == null) {
+    if (origin == null) {
       // Session clips have no arrangement origin to anchor phase. Degrade
       // gracefully to clip-relative (phase resets at clip start) instead of
       // skipping the whole assignment — mirrors the clip.position variable
       // fallback. effectivePosition stays at the clip-relative position.
       console.warn("sync ignored on session clip — LFO is clip-relative");
     } else {
-      effectivePosition = position + arrangementStart;
+      effectivePosition = position + origin;
     }
   }
 

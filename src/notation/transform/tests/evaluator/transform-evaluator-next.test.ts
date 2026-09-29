@@ -194,15 +194,34 @@ describe("legato()", () => {
     expect(durations[1]).toBe(2); // extended to clip end (4 - 2 = 2)
   });
 
-  it("extends last note to clip end using clip-local length on arrangement clips", () => {
-    // Note start_times are clip-relative, so clipEnd must be the clip-local
-    // length (clipDuration), NOT arrangementStart + clipDuration. With a
-    // non-null arrangementStart, the buggy absolute clipEnd would inflate the
-    // last note's duration by arrangementStart (here: 16 + 4 - 2 = 18).
+  it("extends last note to clip end in note time on arrangement clips", () => {
+    // Note start_times are note time, not arrangement time, so clipEnd must
+    // not add arrangementStart: that would inflate the last note's duration
+    // to 16 + 4 - 2 = 18.
     const durations = legatoDurationsInFourBeatClip({ arrangementStart: 16 });
 
     expect(durations[0]).toBe(2);
     expect(durations[1]).toBe(2); // clip-local: 4 - 2 = 2 (not 18)
+  });
+
+  it("extends last note to the clip's end in note time when its region is offset", () => {
+    // A 1-bar region at bar 5: notes sit at beats 16 and 17 and the clip ends
+    // at 20. Measuring from clipDuration (4) would make the last note's
+    // duration negative and delete it.
+    const notes = createTestNotes([
+      { start_time: 16, duration: 0.25 },
+      { start_time: 17, duration: 0.25 },
+    ]);
+
+    applyTransforms(notes, "duration = legato()", 4, 4, {
+      clipDuration: 4,
+      clipIndex: 0,
+      clipCount: 1,
+      barDuration: 4,
+      clipEnd: 20,
+    });
+
+    expect(notes.map((note) => note.duration)).toStrictEqual([1, 3]);
   });
 
   it("skips chord tones at same start time", () => {

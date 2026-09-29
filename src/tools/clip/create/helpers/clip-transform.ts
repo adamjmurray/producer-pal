@@ -19,6 +19,8 @@ export interface ClipTransformInputs {
   /** Audio clips have no notes to transform */
   isAudio: boolean;
   endBeats: number | null;
+  /** Where the region starts (start marker and loop start), or null for 1|1 */
+  startBeats: number | null;
   timeSigNumerator: number;
   timeSigDenominator: number;
   /** Live Set scale mask for the `scale:mask` variable, or undefined */
@@ -117,6 +119,9 @@ function buildCreateClipContext(
       arrangementStartBeats != null
         ? arrangementStartBeats * beatScale
         : undefined,
+    // clipLength runs from beat 0 to the region's end, so it is note time.
+    startMarker: (inputs.startBeats ?? 0) * beatScale,
+    clipEnd: inputs.clipLength * beatScale,
     barDuration: inputs.timeSigNumerator,
     timeSigDenominator: inputs.timeSigDenominator,
     scalePitchClassMask: inputs.scaleMask,

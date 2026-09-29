@@ -120,6 +120,7 @@ export function buildClipContext(
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
+  const beatScale = timeSigDenominator / 4;
 
   const durationBeats = isArrangementClip
     ? (clip.getProperty("end_time") as number) -
@@ -127,15 +128,41 @@ export function buildClipContext(
     : clipLengthBeats(clip);
 
   return {
-    clipDuration: durationBeats * (timeSigDenominator / 4),
+    clipDuration: durationBeats * beatScale,
     clipIndex,
     clipCount,
     arrangementStart: isArrangementClip
-      ? (clip.getProperty("start_time") as number) * (timeSigDenominator / 4)
+      ? (clip.getProperty("start_time") as number) * beatScale
       : undefined,
+    ...noteTimeRegion(clip, beatScale),
     barDuration: timeSigNumerator,
     timeSigDenominator,
     scalePitchClassMask: readLiveSetScaleMask(),
+  };
+}
+
+/**
+ * Where a MIDI clip's playback starts and stops, in note time. Audio clips
+ * have no notes, and an unwarped one's markers are in seconds, so they get
+ * neither.
+ * @param clip - The clip LiveAPI object
+ * @param beatScale - Musical beats per Ableton beat
+ * @returns startMarker and clipEnd in musical beats, or {} for audio
+ */
+function noteTimeRegion(
+  clip: LiveAPI,
+  beatScale: number,
+): Pick<ClipContext, "startMarker" | "clipEnd"> {
+  if ((clip.getProperty("is_midi_clip") as number) === 0) {
+    return {};
+  }
+
+  const looping = (clip.getProperty("looping") as number) > 0;
+  const end = clip.getProperty(looping ? "loop_end" : "end_marker") as number;
+
+  return {
+    startMarker: (clip.getProperty("start_marker") as number) * beatScale,
+    clipEnd: end * beatScale,
   };
 }
 
