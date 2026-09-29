@@ -207,8 +207,8 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
   });
 
   describe("existingNotes", () => {
-    // A note already in the clip, with a field bar|beat can't spell.
-    const existing = () => ({ ...createNote(), mute: 1 });
+    // A note already in the clip, with fields bar|beat can't spell.
+    const existing = () => ({ ...createNote(), mute: 1, release_velocity: 77 });
 
     it("puts them first and returns them as they were", () => {
       const note = existing();
@@ -218,10 +218,14 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       expect(result[1]).toStrictEqual(createNote({ pitch: 62, start_time: 1 }));
     });
 
-    it("lets bar copy copy them", () => {
+    it("lets bar copy copy them whole", () => {
       const result = interpretNotation("@2=1", { existingNotes: [existing()] });
 
-      expect(result[1]).toStrictEqual(createNote({ start_time: 4 }));
+      expect(result[1]).toStrictEqual({
+        ...createNote({ start_time: 4 }),
+        mute: 1,
+        release_velocity: 77,
+      });
     });
 
     it("lets v0 delete them", () => {
