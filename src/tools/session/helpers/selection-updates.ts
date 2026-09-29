@@ -302,7 +302,7 @@ export function updateClipSlotSelection({
     return false;
   }
 
-  const clipInSlot = LiveAPI.from(`${clipSlotAPI.path} clip`);
+  const clipInSlot = clipSlotAPI.child("clip");
 
   if (clipInSlot.exists()) {
     songView.setProperty("detail_clip", toLiveApiId(clipInSlot.id));
