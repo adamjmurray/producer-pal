@@ -85,7 +85,37 @@ describe("applyTransforms", () => {
 
       applyTransforms(notes, "velocity = 0.5", 4, 4);
       expect(notes).toHaveLength(1);
-      expect(notes[0]!.velocity).toBe(0.5);
+      expect(notes[0]!.velocity).toBe(1);
+    });
+
+    // Live drops a note under velocity 1, so only <= 0 may delete.
+    it.each([
+      ["velocity = 0.7", 100, 1],
+      ["velocity *= 0.004", 100, 1],
+      ["velocity = 0.5\nvelocity += 10", 100, 10.5], // floored after all lines
+      ["velocity *= 0.5", 101, 50.5], // not rounded
+      ["duration = 1", 64, 64], // untouched
+    ])("%j on velocity %d leaves %d", (transform, velocity, expected) => {
+      const notes = createTestNotes([
+        { start_time: 0, velocity },
+        { start_time: 1, velocity },
+      ]);
+
+      expect(applyTransforms(notes, transform, 4, 4)).toBe(2);
+      expect(notes.map((n) => n.velocity)).toStrictEqual([expected, expected]);
+    });
+
+    it("deletes notes when a division by zero evaluates to 0", () => {
+      const notes = createTestNotes([{ start_time: 0 }, { start_time: 1 }]);
+      const clipContext = {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 2,
+        barDuration: 4,
+      };
+
+      applyTransforms(notes, "velocity = 100 / clip.index", 4, 4, clipContext);
+      expect(notes).toHaveLength(0);
     });
 
     it("clamps velocity to maximum 127 with = operator", () => {

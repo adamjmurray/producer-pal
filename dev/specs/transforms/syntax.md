@@ -169,8 +169,8 @@
     handling.
 
 - **Range clamping**: Applied after modulation:
-  - velocity: capped at a max of 127; `<=0` deletes the note (like duration); no
-    minimum clamp (a positive sub-1 result is left as-is, not floored to 1)
+  - velocity: `<=0` deletes the note (like duration); anything else is held to
+    1-127 after all lines run (Live drops a note under 1, so 0.4 becomes 1)
   - timing: unclamped (can shift notes before/after original position)
   - probability: 0.0-1.0
   - duration: 0 or below deletes the note (like a v0 velocity), no minimum clamp

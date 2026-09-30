@@ -153,11 +153,15 @@ export function applyTransforms(
     );
   }
 
-  // Delete notes where transforms reduced velocity to 0 or below, or duration to 0 or below
-  // (consistent with v0 deletion in bar|beat notation)
+  // Velocity or duration at 0 or below deletes the note, like v0 in bar|beat.
   const surviving = notes.filter(
     (note) => note.velocity > 0 && note.duration > 0,
   );
+
+  // Live drops a note under velocity 1, so a positive value below it becomes 1.
+  for (const note of surviving) {
+    note.velocity = Math.max(1, note.velocity);
+  }
 
   if (surviving.length < notes.length) {
     // Warn when a duration transform drove a note to zero/negative length: the
