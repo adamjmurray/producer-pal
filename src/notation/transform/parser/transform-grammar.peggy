@@ -211,7 +211,9 @@ start
 // A transform line is either a parameter assignment (the common case) or a
 // note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
-statement "statement"
+// No display name here or on whereClause: a name hides failures inside the rule,
+// so every syntax error would point at the start of the line.
+statement
   = prefix:selectorPrefix? body:(noteOp / assignmentBody / badNoteOpWithoutParens) {
     const pitchRange = prefix?.pitchRange ?? null;
     const timeRange = prefix?.timeRange ?? null;
@@ -623,7 +625,7 @@ parameter "parameter name"
 // assignment RHS stays purely arithmetic. `validatePredicate` rejects any
 // non-note-property variable and the two selection-derived functions (legato/seq)
 // with a targeted error; other functions are allowed (resolved at selection time).
-whereClause "where() predicate"
+whereClause
   = "where" _ "(" _ expr:boolOr _ ")" {
       validatePredicate(expr);
       return expr;
@@ -726,9 +728,8 @@ badNoteOpInExpression
 
 // A name used as a function that no rule defines — reached only after every real
 // function, note-count op, and shorthand has been tried. Without it the parse
-// fails at column 1 with peggy's generic "Expected statement", which tells a
-// model nothing: `duration *= random(0.9, 0.98)` reported a bad `d`, and models
-// gave up on the DSL and hand-wrote the result instead of trying `rand`.
+// fails with a generic error, and models gave up on the DSL and hand-wrote the
+// result instead of trying `rand`.
 unknownFunction
   = name:$([A-Za-z][A-Za-z0-9_]*) &{ return !FUNCTION_NAMES.includes(name); } "(" {
     throw new Error(`unknown function ${name}() — available: ${FUNCTION_NAMES.join(", ")}. Note-count operations (ratchet/repeat/split/merge) go on their own line, not in an expression.`);
@@ -736,9 +737,9 @@ unknownFunction
 
 // A note-count op written without its parentheses (`C1: merge`). Tried after the
 // real noteOp rule and every assignment form, so the name can only be this
-// mistake. Without it the line fails with peggy's generic "Expected statement",
-// which a model reads as "merge isn't supported" — it then clears the clip and
-// rewrites the notes by hand, the exact thing the op exists to avoid.
+// mistake. Without it the line fails with a generic error, which a model reads
+// as "merge isn't supported" — it then clears the clip and rewrites the notes by
+// hand, the exact thing the op exists to avoid.
 badNoteOpWithoutParens
   = name:noteOpLikeName !"(" {
     throw new Error(`${name} is a note-count operation and needs parentheses — write "${noteOpExample(name)}".`);
@@ -785,6 +786,9 @@ nDuration "absolute duration value"
   / badBarDuration
   / "n" frac:unsignedFraction {
     return { type: "nDuration", wholeNoteFraction: frac };
+  }
+  / "n" [0-9.]* "/0" ![0-9.] {
+    throw new Error(`a note value's denominator can't be 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
   }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);

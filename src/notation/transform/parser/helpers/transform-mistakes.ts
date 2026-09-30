@@ -1,0 +1,119 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { type FailedLine, readFailedLine } from "./failed-line.ts";
+import {
+  afterParameterMistake,
+  shorthandMathMistake,
+  unknownParameterMistake,
+} from "./transform-assignment-mistakes.ts";
+import {
+  bareConditionMistake,
+  unknownPropertyMistake,
+  whereNameMistake,
+} from "./transform-condition-mistakes.ts";
+
+// Runs only after a parse has already failed, so a hint can never change what
+// parses. Each check returns a short fix, or null when it isn't sure — the
+// generic error is better than a wrong fix. Regexes here must stay linear:
+// transforms have no length cap and this runs on the Max thread.
+type MistakeCheck = (line: FailedLine) => string | null;
+
+const CHECKS: MistakeCheck[] = [
+  unclosedParen,
+  zeroDenominator,
+  mixedWildcardRange,
+  unknownPropertyMistake,
+  whereNameMistake,
+  bareConditionMistake,
+  shorthandMathMistake,
+  afterParameterMistake,
+  danglingOperator,
+  unknownParameterMistake,
+];
+
+/**
+ * Name the likely mistake on a transform line that failed to parse.
+ * @param line - The failing line's text
+ * @param column - 0-based offset in the line where the parse failed
+ * @returns A short hint naming the fix, or null when no check is sure
+ */
+export function diagnoseTransformMistake(
+  line: string,
+  column: number,
+): string | null {
+  const failed = readFailedLine(line, column);
+
+  for (const check of CHECKS) {
+    const hint = check(failed);
+
+    if (hint != null) {
+      return hint;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for more `(` than `)`
+ */
+function unclosedParen(line: FailedLine): string | null {
+  const { code } = line;
+
+  const opens = code.split("(").length - 1;
+  const closes = code.split(")").length - 1;
+
+  return opens > closes ? `unclosed "(" — add the missing ")".` : null;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a note value like `n/0`. Same text as the grammar's own
+ *   error for a duration value.
+ */
+function zeroDenominator(line: FailedLine): string | null {
+  const { code } = line;
+
+  // Not `clip.position/0`: the `n` must start a word.
+  const token = /(?<![\w.])n[\d.]*\/0(?![\d.])/.exec(code)?.[0];
+
+  return token == null
+    ? null
+    : `a note value's denominator can't be 0 (got ${token}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a range mixing a whole bar (`3|*`) with a beat (`4|1`)
+ */
+function mixedWildcardRange(line: FailedLine): string | null {
+  const { code } = line;
+
+  const match =
+    /(?<!\d)(\d+)\|\*-<?(\d+)\|(?!\*)/.exec(code) ??
+    /(?<!\d)(\d+)\|[\d.]+(?:[+-]n[\d./]+)?-<?(\d+)\|\*/.exec(code);
+
+  if (match == null) {
+    return null;
+  }
+
+  const [, a, b] = match;
+
+  return `a range can't mix a whole bar (N|*) with a beat — write "${a}|*-${b}|*" for whole bars or "${a}|1-${b}|1" for beats.`;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a line ending in a math operator, as in `velocity = 100 +`
+ */
+function danglingOperator(line: FailedLine): string | null {
+  const { rest } = line;
+
+  return /^[+\-*/%]$/.test(rest)
+    ? `nothing after "${rest}" — add a value or remove it.`
+    : null;
+}

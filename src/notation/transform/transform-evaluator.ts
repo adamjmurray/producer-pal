@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
+import { formatTransformSyntaxError } from "./parser/transform-syntax-error.ts";
 import { applyTransformResult } from "./helpers/apply-transform-result.ts";
 import {
   buildNoteContext,
@@ -382,7 +382,7 @@ export function tryParseTransform(
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       throw new Error(
-        formatParserError(error as PeggySyntaxError, "transform"),
+        formatTransformSyntaxError(error as PeggySyntaxError, transformString),
         { cause: error },
       );
     }

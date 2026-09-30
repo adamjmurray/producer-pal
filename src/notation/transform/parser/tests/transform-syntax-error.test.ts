@@ -1,0 +1,324 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it } from "vitest";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
+import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
+import { formatTransformSyntaxError } from "#src/notation/transform/parser/transform-syntax-error.ts";
+
+/**
+ * @param source - Transform string expected to fail
+ * @returns The error message it fails with
+ */
+function errorFor(source: string): string {
+  try {
+    tryParseTransform(source, 4, 4);
+  } catch (error) {
+    return (error as Error).message;
+  }
+
+  throw new Error(`expected "${source}" to fail`);
+}
+
+describe("transform syntax errors name the mistake", () => {
+  it.each([
+    [
+      "missing =",
+      "E1: velocity rand(90,110)",
+      'position 13 (line 1, column 14) near "rand(90,110)": missing "=" after "velocity" — write "E1: velocity = rand(90,110)".',
+    ],
+    [
+      ": instead of =",
+      "E1: velocity: rand(90,110)",
+      'near ": rand(90,110)": use "=" to assign, not ":" — write "E1: velocity = rand(90,110)".',
+    ],
+    [
+      "shorthand name with :",
+      "v: 95",
+      'v isn\'t a parameter — write "velocity = 95".',
+    ],
+    [
+      "length for duration",
+      "length *= 0.5",
+      'length isn\'t a parameter — write "duration *= 0.5".',
+    ],
+    [
+      "bare comparison",
+      "v<50: delete",
+      'a condition needs where(...) — write "where(note.velocity < 50): delete".',
+    ],
+    [
+      "empty right side",
+      "velocity =",
+      'at end of input: nothing after "velocity =" — add a value, e.g. "velocity = 100".',
+    ],
+    [
+      "unclosed paren",
+      "where(note.velocity < 50: velocity = 1",
+      'position 24 (line 1, column 25) near ": velocity = 1": unclosed "(" — add the missing ")".',
+    ],
+    [
+      "wildcard mixed with a beat",
+      "3|*-4|1: velocity = 1",
+      'a range can\'t mix a whole bar (N|*) with a beat — write "3|*-4|*" for whole bars or "3|1-4|1" for beats.',
+    ],
+    [
+      "zero denominator in a range",
+      "1|1+n/0-2|1: velocity = 1",
+      "a note value's denominator can't be 0 (got n/0)",
+    ],
+    [
+      "clip property in where()",
+      "where(clip.length > 1): velocity = 1",
+      "where() can only test note.velocity, note.pitch, note.start, note.duration, note.probability, note.deviation — got clip.length.",
+    ],
+  ])("%s", (_name, source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+
+  it("says a zero denominator can't be 0 in a duration value", () => {
+    expect(errorFor("duration = n1/0")).toBe(
+      "a note value's denominator can't be 0 (got n1/0): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.",
+    );
+  });
+
+  it("names the fix for math on a shorthand", () => {
+    expect(errorFor("1|1: n/4*0.85")).toBe(
+      'transform syntax error at position 8 (line 1, column 9) near "*0.85": a shorthand can\'t take math — write "1|1: duration = n/4 * 0.85".',
+    );
+  });
+
+  it.each([
+    ["C4+5", 'write "pitch = C4 + 5"'],
+    ["C1: v80 + 10", 'write "C1: velocity = 80 + 10"'],
+    ["p0.5*2", 'write "probability = 0.5 * 2"'],
+    ["2bar/2", 'write "duration = 2bar / 2"'],
+  ])("names the fix for math on shorthand %s", (source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+
+  it.each(["duration = n/0", "duration = n1.5/0", "1|1+n1.5/0-2|1: v1"])(
+    "says a zero denominator can't be 0 in %s",
+    (source) => {
+      expect(errorFor(source)).toContain("denominator can't be 0");
+    },
+  );
+
+  it.each([
+    "duration = n/0.5",
+    "duration = n/04",
+    "1|1+n/0.5-2|1: v1",
+    "1|1+n/05-2|1: v1",
+  ])("doesn't call %s a zero denominator", (source) => {
+    expect(errorFor(source)).not.toContain("can't be 0");
+  });
+});
+
+describe("transform syntax error details", () => {
+  it.each([
+    ["vel = 90", 'write "velocity = 90"'],
+    ["velocty = 5", 'write "velocity = 5"'],
+    ["note.velocity = 100", 'write "velocity = 100"'],
+    ["C1: length *= 0.5", 'write "C1: duration *= 0.5"'],
+    ["foo = 1", "foo isn't a parameter — use one of: velocity, pitch,"],
+    ["velocity + 5", 'write "velocity += 5"'],
+    [
+      "velocity",
+      'at end of input: missing "=" after "velocity" — write "velocity = 100"',
+    ],
+    ["velocity > 100: v80", 'write "where(note.velocity > 100): v80"'],
+    ["timing < 2: delete", 'write "where(note.start < 2): delete"'],
+    ["velocity: v80", 'write "v80"'],
+    ["velocity 5 // note (", 'write "velocity = 5"'],
+    ["pitch == C3: delete", 'write "where(note.pitch == C3): delete"'],
+    ["C: v80", 'a pitch needs an octave, e.g. "C3: v80".'],
+    ["G: v100", 'a pitch needs an octave, e.g. "G3: v100".'],
+    [
+      "velocity = 100 +",
+      'near "+": nothing after "+" — add a value or remove it.',
+    ],
+    [
+      "where(velocity > 100): v80",
+      "inside where(), write note.velocity, not velocity.",
+    ],
+    ["where(position > 4): v1", "— got position."],
+    [
+      "where(note.velocity > 1 and note.pitch > 3): v1",
+      'use && and || inside where(), not "and".',
+    ],
+    ["note.pitch == 36: delete", 'write "where(note.pitch == 36): delete"'],
+    ["3|1-4|*: v1", 'write "3|*-4|*" for whole bars or "3|1-4|1" for beats'],
+    [
+      "velocity = note.velocty",
+      "note.velocty doesn't exist — note.* has velocity, pitch, start, duration, probability, deviation, index, count. Did you mean note.velocity?",
+    ],
+    [
+      "velocity = clip.foo",
+      "clip.foo doesn't exist — clip.* has duration, barDuration, position, index, count.",
+    ],
+    ["C#3: vel = 1 # a comment (", 'write "C#3: velocity = 1"'],
+  ])("%s", (source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+
+  it("reports the failing line of a multi-line string", () => {
+    expect(errorFor("velocity = 1\nlength = n/4")).toContain(
+      'position 13 (line 2, column 1) near "length = n/4": length isn\'t a parameter — write "duration = n/4".',
+    );
+  });
+
+  it("says when a line, not the input, ended", () => {
+    expect(errorFor("velocity =\r\npitch = C3")).toContain(
+      'at end of line: nothing after "velocity ="',
+    );
+  });
+
+  it("truncates long text after the failure", () => {
+    expect(errorFor("velocity 1 + 2 + 3 + 4 + 5 + 6 + 7")).toContain(
+      'near "1 + 2 + 3 + 4 + 5 + 6 + …"',
+    );
+  });
+
+  it("lists statement forms when a line starts with nothing recognizable", () => {
+    expect(errorFor("{ nope")).toContain(
+      'expected a statement, like "velocity = 100", "C1: v80", or "ratchet(2)".',
+    );
+  });
+
+  it("lists what the grammar accepts when no mistake matches", () => {
+    expect(errorFor("velocity = 1 velocity = 2")).toContain(
+      'near "velocity = 2": expected end of line.',
+    );
+  });
+});
+
+describe("formatTransformSyntaxError", () => {
+  it("falls back to a bare message when nothing was expected", () => {
+    const error = {
+      name: "SyntaxError",
+      message: "",
+      found: "@",
+      location: {
+        start: { offset: 0, line: 1, column: 1 },
+        end: { offset: 1, line: 1, column: 2 },
+      },
+    } as PeggySyntaxError;
+
+    expect(formatTransformSyntaxError(error, "@")).toBe(
+      'transform syntax error at position 0 (line 1, column 1) near "@": unexpected text.',
+    );
+  });
+});
+
+// A wrong fix is worse than the generic error, so an unsure hint stays out.
+describe("hints that aren't sure fall back to the generic error", () => {
+  it.each([
+    ["velocity < 50", 'near "< 50": expected "*=", "/=", "-=", "+=", "=".'],
+    ["velocity > 100 delete", 'near "> 100 delete": expected "*="'],
+    ["pitch != C3", 'near "!= C3": expected "*="'],
+    ["velocity ^ 2", 'near "^ 2": expected "*="'],
+    ["velocity * 2 + 1", 'near "* 2 + 1": expected "*="'],
+    ["pitch: v80", 'near ": v80": expected "*="'],
+    ["T: v80", "expected a statement"],
+    ["C: foo", "expected a statement"],
+    ["where(note.velocity >): v1", 'near "): v1": expected expression.'],
+    ["where(note.pitch == C3 velocity): v1", 'expected "&&", "||", ")".'],
+    [
+      "where(note.pitch > 1 where(note.pitch > 2)): v1",
+      'expected "&&", "||", ")".',
+    ],
+  ])("%s", (source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+
+  it.each([
+    ["pan = 0", "pan isn't a parameter — use one of:"],
+    ["gate = 0.5", "gate isn't a parameter — use one of:"],
+  ])("suggests no parameter for %s", (source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+
+  it("blames the colon, not a function call after a where() selector", () => {
+    expect(
+      errorFor("where(note.pitch == C1): velocity: max(note.index, 3)"),
+    ).toContain(
+      'use "=" to assign, not ":" — write "where(note.pitch == C1): velocity = max(note.index, 3)".',
+    );
+  });
+
+  it.each([
+    "position > 4: delete",
+    "time > 2: delete",
+    "zzz < 2: delete",
+    "note.index > 2: delete",
+  ])("suggests no made-up where() property for %s", (source) => {
+    expect(errorFor(source)).toContain(
+      "a condition needs where(...), and where() can only test note.velocity,",
+    );
+  });
+
+  it("doesn't name a pitch as a where() property", () => {
+    expect(errorFor("where(note.pitch == C): v1")).not.toContain(
+      "where() can only test",
+    );
+  });
+
+  it("doesn't read clip.position/0 as a note value", () => {
+    expect(errorFor("velocity: clip.position/0")).not.toContain("can't be 0");
+  });
+
+  // Transforms have no length cap and hints run on the Max thread. The limit is
+  // loose for slow CI runners; a backtracking regex takes seconds here.
+  it.each([
+    ["a spaced-out comparison", `v <${" ".repeat(10_000)}5 x`],
+    ["a spaced-out comparison with a colon", `v <${" ".repeat(10_000)}5 x: v1`],
+    ["a long digit run", `${"1".repeat(10_000)}|x`],
+    ["a long word", `${"a".repeat(10_000)} b`],
+    ["many block-comment openers", "/*".repeat(5000)],
+    ["many where( openers", "where(".repeat(2000)],
+    ["a parameter then spaces", `velocity${" ".repeat(10_000)}x`],
+  ])("stays fast on %s", (_name, source) => {
+    const start = performance.now();
+
+    errorFor(source);
+
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+// A fix that drops the line's selector parses but edits every note.
+describe("fixes keep the line's selector", () => {
+  it.each([
+    ["C1: velocity: 90", 'write "C1: velocity = 90"'],
+    ["1|1-2|1: velocity: 90", 'write "1|1-2|1: velocity = 90"'],
+    [
+      "where(note.velocity < 50): velocity: 100",
+      'write "where(note.velocity < 50): velocity = 100"',
+    ],
+    ["C1: v80 + 5", 'write "C1: velocity = 80 + 5"'],
+    ["C1: vel = 90", 'write "C1: velocity = 90"'],
+    ["C1: pitch + 12", 'write "C1: pitch += 12"'],
+    ["C1 1|1: velocity 90", 'write "C1 1|1: velocity = 90"'],
+    ["C1: velocity =", 'e.g. "C1: velocity = 100"'],
+    ["C1 v<50: delete", 'write "C1 where(note.velocity < 50): delete"'],
+    ["C1: velocity > 100: v80", 'write "C1: where(note.velocity > 100): v80"'],
+  ])("%s", (source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+});
+
+describe("hints don't blame the wrong thing", () => {
+  it.each([
+    ["d: n/8", 'd isn\'t a parameter — write "duration = n/8".'],
+    ["D: n/8", 'D isn\'t a parameter — write "duration = n/8".'],
+    ["C: n/8", "expected a statement"],
+    ["start > 2|1: delete", ": a condition needs where(...)."],
+    ["velocity < 50 && pitch > C3: delete", ": a condition needs where(...)."],
+    ["v < foo: delete", ": a condition needs where(...)."],
+    ["where(note.pitch == X): v80", 'near "X): v80": expected expression.'],
+  ])("%s", (source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+});

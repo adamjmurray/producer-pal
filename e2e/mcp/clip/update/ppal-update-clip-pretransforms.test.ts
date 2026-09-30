@@ -12,6 +12,7 @@
  * ppal-update-clip.test.ts: bare clear/edit (no notes), region-scoped clear,
  * drum-lane remap, and pre-merge ordering. The shorthand forms used here
  * (`v0`, `1|1-1|4: v0`, `C1: C4`) are exactly the small-model-mode subset.
+ * Also checks that a malformed transform's error reaches the model with its fix.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -20,6 +21,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -115,5 +118,28 @@ describe("ppal-update-clip preTransforms", () => {
 
     expect(notes).toContain("C4");
     expect(notes).not.toContain("C1");
+  });
+});
+
+describe("ppal-update-clip transform parse errors", () => {
+  // A model reads the parse error to repair its transform, so the error must
+  // name the fix, not just a position — and the clip stays as it was.
+  it("names the fix for a malformed transform and leaves the notes alone", async () => {
+    const clipId = await createMidiClip(0, "v100 C3 D3 1|1");
+    const before = await readClipNotes(clipId);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "velocity rand(90,110)" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'missing "=" after "velocity" — write "velocity = rand(90,110)"',
+    );
+
+    await sleep(100);
+
+    expect(await readClipNotes(clipId)).toBe(before);
   });
 });

@@ -49,26 +49,6 @@ describe("Peggy Error Formatter", () => {
       );
     });
 
-    it("formats error with labeled expectations for transform", () => {
-      const error = createSyntaxError({
-        expected: [
-          { type: "other", description: "parameter name" },
-          { type: "other", description: "range selector" },
-        ],
-        found: "invalid",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 7, line: 1, column: 8 },
-        },
-      });
-
-      const result = formatParserError(error, "transform");
-
-      expect(result).toBe(
-        'transform syntax error at position 0 (line 1, column 1): Expected parameter name, range selector but "invalid" found',
-      );
-    });
-
     it("limits expectations to 5 items", () => {
       const error = createSyntaxError({
         expected: [
@@ -101,10 +81,10 @@ describe("Peggy Error Formatter", () => {
         },
       });
 
-      const result = formatParserError(error, "transform");
+      const result = formatParserError(error, "bar|beat");
 
       expect(result).toBe(
-        "transform syntax error at position 10 (line 1, column 11): Expected expression but reached end of input",
+        "bar|beat syntax error at position 10 (line 1, column 11): Expected expression but reached end of input",
       );
     });
 
@@ -139,10 +119,10 @@ describe("Peggy Error Formatter", () => {
         },
       });
 
-      const result = formatParserError(error, "transform");
+      const result = formatParserError(error, "bar|beat");
 
       expect(result).toBe(
-        'transform syntax error at position 5 (line 1, column 6): Expected valid syntax but "x" found',
+        'bar|beat syntax error at position 5 (line 1, column 6): Expected valid syntax but "x" found',
       );
     });
 
@@ -154,7 +134,7 @@ describe("Peggy Error Formatter", () => {
         location: undefined as unknown as PeggySyntaxError["location"],
       };
 
-      const result = formatParserError(error, "transform");
+      const result = formatParserError(error, "bar|beat");
 
       expect(result).toContain("at unknown position");
       expect(result).toContain("parameter name");
@@ -199,7 +179,7 @@ describe("Peggy Error Formatter", () => {
         },
       });
 
-      const result = formatParserError(error, "transform");
+      const result = formatParserError(error, "bar|beat");
 
       expect(result).toContain("at position 42 (line 3, column 15)");
     });

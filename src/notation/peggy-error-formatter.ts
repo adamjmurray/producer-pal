@@ -8,12 +8,12 @@ import { type PeggySyntaxError } from "./peggy-parser-types.ts";
 /**
  * Format a Peggy SyntaxError into a human-readable message
  * @param error - The Peggy SyntaxError with location and expected info
- * @param notationType - "bar|beat" or "transform" for context
+ * @param notationType - Notation name for the message
  * @returns Formatted error message with position and helpful context
  */
 export function formatParserError(
   error: PeggySyntaxError,
-  notationType: "bar|beat" | "transform",
+  notationType: "bar|beat",
 ): string {
   const location = formatLocation(error.location);
   const expectations = extractLabeledExpectations(error.expected ?? []);

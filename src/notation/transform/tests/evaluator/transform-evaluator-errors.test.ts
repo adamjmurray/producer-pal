@@ -42,7 +42,7 @@ describe("Transform Evaluator Error Handling", () => {
       const notes = createTestNote();
 
       expect(() => applyTransforms(notes, "{ this is not valid", 4, 4)).toThrow(
-        'but "{" found',
+        'position 0 (line 1, column 1) near "{ this is not valid"',
       );
     });
   });

@@ -39,7 +39,7 @@ describe("Transform - seq function", () => {
 
     it("rejects sync on seq", () => {
       expect(() => parser.parse("velocity += seq(1, 2, sync)")).toThrow(
-        'but "v" found',
+        'but "s" found',
       );
     });
   });
@@ -339,7 +339,7 @@ describe("Transform - clipseq function", () => {
 
     it("rejects sync on clipseq", () => {
       expect(() => parser.parse("pitch += clipseq(1, 2, sync)")).toThrow(
-        'but "p" found',
+        'but "c" found',
       );
     });
   });

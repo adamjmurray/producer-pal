@@ -274,7 +274,7 @@ describe("Transform Parser", () => {
     });
 
     it("rejects old : operator", () => {
-      expect(() => parseAssignments("velocity: 10")).toThrow('but "v" found');
+      expect(() => parseAssignments("velocity: 10")).toThrow('but ":" found');
     });
   });
 
@@ -316,7 +316,9 @@ describe("Transform Parser", () => {
     });
 
     it("throws on missing expression", () => {
-      expect(() => parseAssignments("velocity +=")).toThrow('but "v" found');
+      expect(() => parseAssignments("velocity +=")).toThrow(
+        "but end of input found",
+      );
     });
 
     it("throws on invalid function name", () => {
@@ -335,7 +337,7 @@ describe("Transform Parser", () => {
 
     it("throws on unclosed parenthesis", () => {
       expect(() => parseAssignments("velocity += (10 + 5")).toThrow(
-        'but "v" found',
+        'but "(" found',
       );
     });
 
@@ -352,7 +354,9 @@ describe("Transform Parser", () => {
 
     it("provides labeled error for missing expression", () => {
       // Labels help identify what's expected instead of raw character classes
-      expect(() => parseAssignments("velocity +=")).toThrow('but "v" found');
+      expect(() => parseAssignments("velocity +=")).toThrow(
+        "or expression but end of input found",
+      );
     });
   });
 
@@ -517,25 +521,25 @@ describe("Transform Parser", () => {
 
     it("rejects invalid audio property", () => {
       expect(() => parseAssignments("gain = audio.velocity")).toThrow(
-        'but "g" found',
+        'but "a" found',
       );
     });
 
     it("rejects invalid note property", () => {
       expect(() => parseAssignments("velocity = note.gain")).toThrow(
-        'but "v" found',
+        'but "n" found',
       );
     });
 
     it("rejects invalid clip property", () => {
       expect(() => parseAssignments("velocity = clip.invalid")).toThrow(
-        'but "v" found',
+        'but "c" found',
       );
     });
 
     it("rejects invalid bar property", () => {
       expect(() => parseAssignments("velocity = bar.invalid")).toThrow(
-        'but "v" found',
+        'but "b" found',
       );
     });
 
@@ -571,13 +575,13 @@ describe("Transform Parser", () => {
 
     it("rejects next.index (not a valid next property)", () => {
       expect(() => parseAssignments("velocity = next.index")).toThrow(
-        'but "v" found',
+        'but "n" found',
       );
     });
 
     it("rejects next.count (not a valid next property)", () => {
       expect(() => parseAssignments("velocity = next.count")).toThrow(
-        'but "v" found',
+        'but "n" found',
       );
     });
   });
