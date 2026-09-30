@@ -166,14 +166,6 @@ export const MISTRAL_MODELS = [
 export const OPENROUTER_MODELS = [
   // Paid models
   {
-    value: "google/gemini-3.8-flash",
-    label: "[Paid] Google Gemini 3.8 Flash",
-  },
-  {
-    value: "google/gemini-3.1-pro-preview",
-    label: "[Paid] Google Gemini 3.1 Pro",
-  },
-  {
     value: "anthropic/claude-sonnet-5.5",
     label: "[Paid] Anthropic Claude Sonnet 5.5",
   },
@@ -183,6 +175,14 @@ export const OPENROUTER_MODELS = [
   },
   { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
+  {
+    value: "google/gemini-3.8-flash",
+    label: "[Paid] Google Gemini 3.8 Flash",
+  },
+  {
+    value: "google/gemini-3.1-pro-preview",
+    label: "[Paid] Google Gemini 3.1 Pro",
+  },
   { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
   {
     value: "deepseek/deepseek-v4.1-flash",

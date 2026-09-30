@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Provider } from "#webui/types/settings";
@@ -31,13 +32,15 @@ export function ProviderSelector({
         className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         data-testid="provider-select"
       >
+        <option value="anthropic">Anthropic</option>
+        <option value="openai">OpenAI</option>
         <option value="gemini">Google</option>
         <option value="mistral">Mistral</option>
-        <option value="openai">OpenAI</option>
-        <option value="anthropic">Anthropic</option>
+        <option value="openrouter">OpenRouter</option>
+        {/* Browsers without <hr> in <select> support just skip it */}
+        <hr />
         <option value="ollama">Ollama (local)</option>
         <option value="lmstudio">Bionic / LM Studio (local)</option>
-        <option value="openrouter">OpenRouter</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
       </select>
     </div>
