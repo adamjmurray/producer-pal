@@ -605,17 +605,32 @@ describe("ppal-update-live-set", () => {
     expect(await readLocatorList()).toStrictEqual(before);
   });
 
-  it("takes a numeric locator name", async () => {
-    // Models send numbers where the schema says string, and the MCP SDK
-    // validates before our handler runs, so only a real call proves the
-    // coercion is in the schema the server registered.
+  it('refuses a null locator name instead of naming a locator "null"', async () => {
+    // The MCP SDK validates before our handler runs, so only a real call
+    // proves the schema the server registered doesn't coerce it.
+    const before = await readLocatorList();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "4|1",
+        locatorName: null,
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(await readLocatorList()).toStrictEqual(before);
+  });
+
+  it("takes a locator name made of digits", async () => {
     const created = parseToolResult<UpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-live-set",
         arguments: {
           locatorOperation: "create",
           locatorTime: "4|1",
-          locatorName: 4321,
+          locatorName: "4321",
         },
       }),
     );
@@ -630,7 +645,7 @@ describe("ppal-update-live-set", () => {
 
     expect(found).toBeDefined();
 
-    // Delete by that same name — proves the match casts it too, not just read.
+    // Delete by that same name: the match has to find it too, not just read.
     const deleted = parseToolResult<UpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-live-set",
