@@ -137,18 +137,31 @@ export function createMcpServer(
     toolDef(server, callLiveApi, { smallModelMode, notation });
   }
 
-  // Live API: opt-in via device Setup tab. Goes through the same
-  // tools whitelist as standard tools. Excluded under smallModelMode
-  // because its schema is too large to be useful with small models.
+  // Goes through the same tools whitelist as standard tools.
   if (
-    liveApiEnabled &&
-    !smallModelMode &&
+    isLiveApiToolActive(liveApiEnabled, smallModelMode) &&
     (!includedSet || includedSet.has(toolDefLiveApi.toolName))
   ) {
     toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
   }
 
   return server;
+}
+
+/**
+ * Whether ppal-live-api is offered at all. It is opt-in (device Setup tab), and
+ * small-model mode drops it because its schema is too large for small models.
+ * MCP and REST both gate on this.
+ *
+ * @param liveApiEnabled - The Direct Live API opt-in
+ * @param smallModelMode - Whether small-model mode is on
+ * @returns True when the tool is offered
+ */
+export function isLiveApiToolActive(
+  liveApiEnabled: boolean,
+  smallModelMode: boolean,
+): boolean {
+  return liveApiEnabled && !smallModelMode;
 }
 
 /**
@@ -172,7 +185,11 @@ export function validateTools(
     return { error: "tools must be an array of tool names", validToolNames };
   }
 
-  const list = tools.map(String);
+  if (tools.some((name) => typeof name !== "string")) {
+    return { error: "tools must be an array of tool names", validToolNames };
+  }
+
+  const list = tools as string[];
   const invalid = list.filter((name) => !validToolSet.has(name));
 
   if (invalid.length > 0) {

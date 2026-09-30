@@ -35,9 +35,11 @@ export function resolveContextPath(): string {
 }
 
 /**
- * Read the global context verbatim. Missing/unreadable file yields "".
+ * Read the global context verbatim. A missing file yields ""; an unreadable
+ * one throws, so the editor can't save over content it merely couldn't read.
+ * The ppal-connect injection catches this per block.
  *
- * @returns File contents verbatim, or "" when absent/unreadable
+ * @returns File contents verbatim, or "" when absent
  */
 export function readGlobalContext(): string {
   return readConfigMarkdown(CONTEXT_FILENAME);

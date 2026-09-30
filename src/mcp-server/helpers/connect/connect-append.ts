@@ -11,11 +11,13 @@
 // helper owns the "only ppal-connect, only on success" guard so the wrappers
 // stay tiny and consistent.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   type McpResponse,
   type RequestOverrides,
 } from "../../max-api-adapter.ts";
+import * as console from "../../node-for-max-logger.ts";
 
 /** A wrapped callLiveApi with the same signature as the inner one. */
 export type WrappedCallLiveApi = (
@@ -27,8 +29,9 @@ export type WrappedCallLiveApi = (
 /**
  * Wrap a callLiveApi so a successful ppal-connect response gains an extra text
  * block produced by `produceBlock`. Non-connect tools, error responses, and a
- * null/empty producer result pass through untouched. Compose these to append
- * multiple blocks (e.g. skills then global context).
+ * null/empty producer result pass through untouched. A producer that throws
+ * (e.g. an unreadable user file) is skipped alone; the others still run.
+ * Compose these to append multiple blocks (e.g. skills then global context).
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param produceBlock - Returns (or resolves to) the block text to append, or
@@ -47,7 +50,7 @@ export function withConnectAppend(
     const result = (await inner(tool, args, overrides)) as McpResponse;
 
     if (tool === "ppal-connect" && !result.isError) {
-      const block = await produceBlock();
+      const block = await produceBlockSafely(produceBlock);
 
       if (block) {
         result.content.push({ type: "text", text: block });
@@ -56,4 +59,25 @@ export function withConnectAppend(
 
     return result;
   };
+}
+
+/**
+ * Run a block producer, turning a failure into "no block". This is Node, so the
+ * warning goes to the Max console (there is no per-request warning capture
+ * here), and it stays out of the tool result: the error text names a
+ * filesystem path the model has no business seeing.
+ *
+ * @param produceBlock - The producer to run
+ * @returns The block text, or null when it failed or had nothing to add
+ */
+async function produceBlockSafely(
+  produceBlock: () => string | null | Promise<string | null>,
+): Promise<string | null> {
+  try {
+    return await produceBlock();
+  } catch (error) {
+    console.warn(`ppal-connect: skipped a block: ${errorMessage(error)}`);
+
+    return null;
+  }
 }
