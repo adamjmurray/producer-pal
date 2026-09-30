@@ -133,12 +133,77 @@ describe("note-transforms", () => {
       expect(ctx.clipDuration).toBe(16);
       expect(ctx.arrangementStart).toBe(4);
     });
+
+    it("gives a MIDI clip's start marker and end in note time, in musical beats", () => {
+      // A looping 1-bar region at bar 5, at 4/8: the loop end (20) is where
+      // it stops, and every beat doubles.
+      const looping = clipReading({
+        is_midi_clip: 1,
+        looping: 1,
+        length: 4,
+        start_marker: 16,
+        end_marker: 32,
+        loop_start: 16,
+        loop_end: 20,
+      });
+      // Not looping: the end marker is where it stops.
+      const unlooped = clipReading({
+        is_midi_clip: 1,
+        looping: 0,
+        length: 4,
+        start_marker: 16,
+        end_marker: 20,
+        loop_start: 0,
+        loop_end: 32,
+      });
+
+      const loopingCtx = buildClipContext(
+        looping as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        8,
+      );
+      const unloopedCtx = buildClipContext(
+        unlooped as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+      );
+
+      expect([loopingCtx.startMarker, loopingCtx.clipEnd]).toStrictEqual([
+        32, 40,
+      ]);
+      expect([unloopedCtx.startMarker, unloopedCtx.clipEnd]).toStrictEqual([
+        16, 20,
+      ]);
+    });
+
+    it("leaves the note-time region off an audio clip", () => {
+      const ctx = buildClipContext(
+        clipReading({
+          is_midi_clip: 0,
+          length: 4,
+          end_marker: 4,
+        }) as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+      );
+
+      expect([ctx.startMarker, ctx.clipEnd]).toStrictEqual([
+        undefined,
+        undefined,
+      ]);
+    });
   });
 
   describe("applyTransformsToExistingNotes", () => {
     it("should apply transforms to existing notes", () => {
-      // Live API returns notes with extra properties (note_id, mute, release_velocity)
-      // that must be stripped before passing to add_new_notes
+      // Live API returns notes with a note_id, which must not be fed back to
+      // add_new_notes. mute and release_velocity are kept.
       const existingNotes = [
         rawNote(60, 0, 100),
         rawNote(64, 1, 101),
@@ -176,13 +241,13 @@ describe("note-transforms", () => {
         expect((note as { velocity: number }).velocity).toBe(50);
       }
 
-      // Verify extra Live API properties were stripped (these cause add_new_notes to fail)
       for (const note of addedNotes) {
         const n = note as Record<string, unknown>;
 
         expect(n).not.toHaveProperty("note_id");
-        expect(n).not.toHaveProperty("mute");
-        expect(n).not.toHaveProperty("release_velocity");
+        expect(n).toStrictEqual(
+          expect.objectContaining({ mute: 0, release_velocity: 64 }),
+        );
       }
     });
 
@@ -374,12 +439,15 @@ describe("note-transforms", () => {
       // [0, length], so a pickup at a negative start_time was invisible — `v0`
       // reported the clip as empty and left the pickup orphaned while
       // lying noteCount: 0. The read AND remove must use read-clip's
-      // [-length, 2*length] window so the pickup is seen, transformed, removed.
+      // window, which reaches a clip-length before the region, so the pickup is
+      // seen, transformed, removed.
       const pickup = rawNote(60, -0.5, 100); // half a beat before the start
       const removeCalls: unknown[][] = [];
       let cleared = false;
       const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        getProperty: vi.fn((prop: string) =>
+          ["length", "end_marker", "loop_end"].includes(prop) ? 4 : 0,
+        ),
         call: vi.fn((method: string, ...args: unknown[]) => {
           if (method === "get_notes_extended") {
             // Live only surfaces the pickup when the window reaches before beat 0.

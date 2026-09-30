@@ -31,7 +31,15 @@ function registerClip(
   registerMockObject(CLIP_ID, {
     path,
     type: "Clip",
-    properties: { is_midi_clip: isMidi, length: 8, name },
+    properties: {
+      is_midi_clip: isMidi,
+      length: 8,
+      start_marker: 0,
+      end_marker: 8,
+      loop_start: 0,
+      loop_end: 8,
+      name,
+    },
     methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
   });
 

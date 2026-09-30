@@ -76,7 +76,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     );
 
     // The clip is still 1 bar when the notes are written, so the first count's
-    // [-length, 2*length] window stops at beat 8 and misses E3. Lengthening
+    // window stops at beat 8 and misses E3. Lengthening
     // widens the window, and the recount picks all three up.
     expect(result).toStrictEqual({
       id: "789",

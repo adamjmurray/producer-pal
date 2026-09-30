@@ -89,11 +89,15 @@ export interface CandidateWhere {
  *
  * @param args - Filter parameters
  * @param parentId - Resolved file_id for the inFolder constraint, when present
+ * @param options - How the listing rules apply
+ * @param options.sourceShowsHidden - Whether a source filter also lists files
+ *   Live's library views hide. Off for findSimilar: Show Similar has no Place.
  * @returns Conditions and params (no ORDER BY, no LIMIT)
  */
 export function buildCandidateWhere(
   args: LibrarySearchArgs,
   parentId?: number,
+  { sourceShowsHidden = true }: { sourceShowsHidden?: boolean } = {},
 ): CandidateWhere {
   const where: string[] = [];
   const params: Array<string | number> = [];
@@ -126,8 +130,9 @@ export function buildCandidateWhere(
   // and an IR search asks for exactly the files the flags rule hides.
   if (parentId == null) {
     where.push(IN_A_PLACE);
+    const placeSearch = sourceShowsHidden && args.source != null;
 
-    if (args.source == null && !asksForIRs(args)) {
+    if (!placeSearch && !asksForIRs(args)) {
       where.push(IN_LIBRARY_VIEWS);
     }
   }

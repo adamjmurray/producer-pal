@@ -64,6 +64,8 @@ export function buildNoteProperties(
       props["clip:position"] = clipContext.arrangementStart;
     }
 
+    props._arrangementOrigin = arrangementOrigin(clipContext);
+
     props["clip:barDuration"] = clipContext.barDuration;
 
     if (clipContext.scalePitchClassMask != null) {
@@ -72,4 +74,20 @@ export function buildNoteProperties(
   }
 
   return props;
+}
+
+/**
+ * Where note time 0 falls in the arrangement: the clip's position less its
+ * start marker, since the note at the start marker plays at the clip's start.
+ * @param clipContext - Clip-level context, if any
+ * @returns Musical beats, or undefined for a session clip
+ */
+export function arrangementOrigin(
+  clipContext: ClipContext | undefined,
+): number | undefined {
+  if (clipContext?.arrangementStart == null) {
+    return undefined;
+  }
+
+  return clipContext.arrangementStart - (clipContext.startMarker ?? 0);
 }

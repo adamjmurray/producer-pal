@@ -122,9 +122,9 @@ be inferred from the prefix:
 | ----------------------------- | ----------- |
 | `gemini-3.8-flash`            | google      |
 | `claude-sonnet-5-5`           | anthropic   |
-| `gpt-6-sol`                   | openai      |
+| `gpt-6.1-sol`                 | openai      |
 | `google/gemini-3.8-flash`     | google      |
-| `anthropic/claude-sonnet-5.5` | anthropic   |
+| `anthropic/claude-sonnet-5-5` | anthropic   |
 | `codex-code/sol`              | codex-code  |
 | `codex-code/luna`             | codex-code  |
 | `claude-code/sonnet`          | claude-code |

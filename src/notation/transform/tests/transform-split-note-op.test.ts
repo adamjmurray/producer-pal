@@ -283,6 +283,23 @@ describe("note-count operation: split", () => {
       ]);
     });
 
+    it("maps positions through the start marker when it isn't at 1|1", () => {
+      // Split off an arrangement clip's first 2 bars: its start marker is at
+      // beat 8, and note time 8 plays at arrangement beat 16.
+      const notes = createTestNote({ start_time: 8, duration: 8 });
+
+      // 6|1 is arrangement beat 20 → note time 20 - 16 + 8 = 12.
+      applyTransforms(notes, "split(6|1, sync)", 4, 4, {
+        ...arrangementCtx,
+        startMarker: 8,
+      });
+
+      expectNotePieces(notes, [
+        [8, 4],
+        [12, 4],
+      ]);
+    });
+
     it("falls back to clip-relative (with a warning) on a session clip", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const sessionCtx: ClipContext = {

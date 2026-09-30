@@ -27,6 +27,7 @@ import {
   buildClipProperties,
   buildClipResult,
   type ClipResultObject,
+  createdClipLength,
 } from "./created-clip-result.ts";
 
 export interface CreateClipAudioParams {
@@ -140,7 +141,7 @@ export function processClipIteration(
       const result = createSessionClip(
         trackIndex,
         validSceneIndex,
-        clipLength,
+        createdClipLength(clipLength, startBeats),
         liveSet,
       );
 
@@ -152,7 +153,7 @@ export function processClipIteration(
       const result = createArrangementClip(
         trackIndex,
         arrangementStartBeats,
-        clipLength,
+        createdClipLength(clipLength, startBeats),
         takeLane,
         track,
       );

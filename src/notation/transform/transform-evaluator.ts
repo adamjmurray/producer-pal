@@ -17,7 +17,10 @@ import {
   rejectsPitchLiteralValue,
   warnShortRamp,
 } from "./helpers/assignment-warnings.ts";
-import { buildNoteProperties } from "./helpers/note-properties.ts";
+import {
+  arrangementOrigin,
+  buildNoteProperties,
+} from "./helpers/note-properties.ts";
 import { timeRangeBoundsInMusicalBeats } from "./helpers/time-range-bounds.ts";
 import {
   type ClipContext,
@@ -114,7 +117,7 @@ export function applyTransforms(
         notes,
         timeSigNumerator,
         timeSigDenominator,
-        clipContext?.arrangementStart,
+        arrangementOrigin(clipContext),
       );
 
       // The rebuild invalidates prior index-based tracking, so reseed with the
@@ -228,12 +231,12 @@ function applyAssignmentToNotes(
   const selectedStarts = selectedIndices.map(
     (idx) => (notes[idx] as NoteEvent).start_time * beatScale,
   );
-  // clipDuration is the clip-local length in musical beats, matching the
-  // clip-local space of selectedStarts/noteStart (note start_times are
-  // clip-relative). Do NOT add arrangementStart here — legato() computes the
-  // last note's duration as clipEnd - noteStart, so an arrangement-absolute
-  // clipEnd would inflate it by arrangementStart on arrangement clips.
-  const clipEnd = clipContext ? clipContext.clipDuration : undefined;
+  // legato() gives the last note clipEnd - noteStart, so clipEnd must be in
+  // note time like the starts: not arrangement time, and not the clip's
+  // length when its region doesn't start at 0.
+  const clipEnd = clipContext
+    ? (clipContext.clipEnd ?? clipContext.clipDuration)
+    : undefined;
 
   // Normalization range for ramp/curve is constant across the assignment's
   // selected notes: the selector's bounds, or the clip range when unscoped.

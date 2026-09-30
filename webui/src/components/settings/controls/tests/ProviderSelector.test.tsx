@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -64,14 +65,14 @@ describe("ProviderSelector", () => {
       }));
 
       expect(optionData).toStrictEqual([
+        { value: "anthropic", text: "Anthropic" },
+        { value: "openai", text: "OpenAI" },
         { value: "gemini", text: "Google" },
         { value: "mistral", text: "Mistral" },
-        { value: "openai", text: "OpenAI" },
-        { value: "anthropic", text: "Anthropic" },
-        { value: "ollama", text: "Ollama (local)" },
-        { value: "lmstudio", text: "Bionic / LM Studio (local)" },
         { value: "openrouter", text: "OpenRouter" },
         { value: "vercel", text: "Vercel AI Gateway" },
+        { value: "ollama", text: "Ollama (local)" },
+        { value: "lmstudio", text: "Bionic / LM Studio (local)" },
         { value: "custom", text: "Custom (OpenAI-compatible)" },
       ]);
     });

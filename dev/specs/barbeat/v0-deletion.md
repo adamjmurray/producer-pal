@@ -16,13 +16,14 @@ When a `v0` note is encountered during interpretation:
 3. **Stripped from output**: The `v0` note itself is also removed —
    `interpretNotation` applies the deletions as its final step and never returns
    a `velocity: 0` note. The output contains only surviving real notes
-4. **How update-clip deletes**: `update-clip` does NOT read surviving v0 notes
-   from the interpreter output. It serializes the clip's existing notes to
-   notation, concatenates `<existing> <new>` into one string, and interprets
-   that combined string ONCE — so a `v0` in the new notation deletes the
-   matching existing note during that single interpretation pass. `create-clip`
-   has no existing notes to match, so any `v0` simply deletes nothing and is
-   stripped
+4. **How update-clip deletes**: `update-clip` passes the clip's existing notes
+   to the interpreter as `existingNotes`, which sit ahead of the string's own
+   notes. So a `v0` in the new notation deletes a matching existing note, and
+   bar copy can copy existing bars. The existing notes are never re-spelled as
+   text, so what bar|beat can't write (mute, release velocity, a downward
+   velocity range) survives, and new notes start from the defaults.
+   `create-clip` has no existing notes to match, so any `v0` simply deletes
+   nothing and is stripped
 
 ## Examples
 
@@ -74,12 +75,11 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
   existing notes, so you can selectively delete notes from existing clips
 - **Overwrite in place**: A new (non-`v0`) note at the _same_ pitch and start
   time as an existing note replaces it — e.g. restating a note with a shorter
-  duration shortens it. NB: this is currently emergent, not explicit in the
-  merge code: `update-clip` does not dedupe regular notes — it concatenates
-  existing-then-new notation and hands both to Live's `add_new_notes`, which
-  collapses the duplicate with the later (new) note winning. To _replace_ a
-  region rather than overwrite individual notes in place, clear it first with
-  `preTransforms` or the un-restated notes remain.
+  duration shortens it. `update-clip` passes the clip's notes to the interpreter
+  as `existingNotes`, ahead of the string's own, then dedupes same-pitch+start
+  notes keeping the last, so the new note wins. To _replace_ a region rather
+  than overwrite individual notes in place, clear it first with `preTransforms`
+  or the un-restated notes remain.
 
 ## Technical Details
 

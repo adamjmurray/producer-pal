@@ -156,8 +156,8 @@ Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
    loop.
 3. Result (`length: "2bar"`, 3 notes): `C3 1|1` (original), `C3 2|1` (inserted
    copy), and `E3 3|1` — the orphaned bar-2 note **pushed forward** to bar 3,
-   landing beyond the new loop (overhang; read-clip's `[-length, 2*length]` scan
-   sees it, but the loop does not play it).
+   landing beyond the new loop (overhang; read-clip's scan window sees it, but
+   the loop does not play it).
 
 So selecting a smaller sub-region and doubling is non-destructive: out-of-loop
 notes are displaced forward, never deleted or overwritten. The envelope/

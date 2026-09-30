@@ -82,8 +82,10 @@ describe("ModelSelector", () => {
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-6-sol" });
-      expect(screen.getByRole("option", { name: /^GPT-6 Sol$/ })).toBeDefined();
+      renderModelSelector({ provider: "openai", model: "gpt-6.1-sol" });
+      expect(
+        screen.getByRole("option", { name: /^GPT-6.1 Sol$/ }),
+      ).toBeDefined();
       expect(
         screen.getByRole("option", { name: /^GPT-6 Luna$/ }),
       ).toBeDefined();
@@ -92,14 +94,14 @@ describe("ModelSelector", () => {
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-6-sol",
+        model: "gpt-6.1-sol",
       });
 
       expectModelSelected("gpt-6-luna", setModel);
     });
 
     it("includes the realtime (voice) model in the OpenAI dropdown", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-6-sol" });
+      renderModelSelector({ provider: "openai", model: "gpt-6.1-sol" });
       expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
     });
   });

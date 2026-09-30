@@ -63,7 +63,7 @@ export function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
  * @param matched - Notes selected by the op
  * @param op - The split operation (args are bar|beat cut positions)
  * @param denominator - Time signature denominator (musical beats -> Ableton)
- * @param arrangementStart - Clip's arrangement origin in musical beats, or
+ * @param arrangementOrigin - Arrangement position of note time 0, in musical beats, or
  *   undefined for session clips (only consulted in sync mode)
  * @returns The split note list (children replace each divided note)
  */
@@ -71,7 +71,7 @@ export function splitNotes(
   matched: NoteEvent[],
   op: NoteOp,
   denominator: number,
-  arrangementStart?: number,
+  arrangementOrigin?: number,
 ): NoteEvent[] {
   if (op.args.length === 0) {
     console.warn(
@@ -86,10 +86,10 @@ export function splitNotes(
   let originMusicalBeats = 0;
 
   if (op.sync) {
-    if (arrangementStart == null) {
+    if (arrangementOrigin == null) {
       console.warn("sync ignored on session clip — split is clip-relative");
     } else {
-      originMusicalBeats = arrangementStart;
+      originMusicalBeats = arrangementOrigin;
     }
   }
 

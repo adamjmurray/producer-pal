@@ -395,10 +395,10 @@ describe("buildClipPropertiesToSet", () => {
     );
   });
 
-  it("expands when the start clears loop_end but not end_marker", () => {
-    // The earlier of the two ends decides. start_marker is bounded by
-    // end_marker (2), so the end still moves first even though loop_end (16)
-    // is nowhere near the new start.
+  it("orders each pair by its own end", () => {
+    // start_marker (4) is past end_marker (2), so end_marker moves first.
+    // loop_start (4) is before loop_end (16), so the loop brace keeps the
+    // start-first order.
     const result = build({
       isLooping: false,
       looping: undefined,
@@ -415,10 +415,10 @@ describe("buildClipPropertiesToSet", () => {
       "signature_numerator",
       "signature_denominator",
       "looping",
-      "loop_end",
       "end_marker",
       "loop_start",
       "start_marker",
+      "loop_end",
     ]);
   });
 
@@ -455,6 +455,41 @@ describe("buildClipPropertiesToSet", () => {
         loop_end: 16,
         start_marker: 8,
         end_marker: 16,
+      }),
+    );
+  });
+
+  it("moves a looping clip's end_marker when start_marker passes it", () => {
+    // Live drops a start_marker past end_marker even while looping, and
+    // playback would begin at the old start.
+    const result = build({
+      isLooping: true,
+      looping: undefined,
+      startMarkerBeats: 8,
+      startBeats: 8,
+      endBeats: 12,
+      currentLoopEnd: 5,
+      currentEndMarker: 5,
+    });
+
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      "looping",
+      "loop_end",
+      "end_marker",
+      "loop_start",
+      "start_marker",
+    ]);
+    expect(result).toStrictEqual(
+      expected({
+        looping: undefined,
+        loop_start: 8,
+        loop_end: 12,
+        start_marker: 8,
+        end_marker: 12,
       }),
     );
   });

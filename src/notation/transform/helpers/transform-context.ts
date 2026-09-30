@@ -36,6 +36,8 @@ export interface LegatoContext {
 
 export type NoteProperties = Record<string, number | undefined> & {
   _legatoContext?: LegatoContext;
+  /** Arrangement position of note time 0, for `sync`. Not a `clip.*` variable. */
+  _arrangementOrigin?: number;
 };
 
 /** Evaluates an arithmetic expression node to a number. Carried on the context
@@ -64,6 +66,10 @@ export interface ClipContext {
   clipIndex: number; // 0-based in multi-clip operation
   clipCount: number; // total clips in operation
   arrangementStart?: number; // musical beats; undefined for session clips
+  // Note times are absolute, not relative to the region: a clip whose region
+  // starts at bar 5 has its notes at bar 5. These two place the region.
+  startMarker?: number; // musical beats, note time that plays at arrangementStart (0 when omitted)
+  clipEnd?: number; // musical beats, note time where playback stops (clipDuration when omitted)
   barDuration: number; // musical beats per bar (timeSigNumerator)
   timeSigDenominator?: number; // meter denominator; resolves n<frac> waveform periods in the audio path (defaults to 4)
   scalePitchClassMask?: number; // bitmask of in-scale pitch classes (bit N = pitch class N)

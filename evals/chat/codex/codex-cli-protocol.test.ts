@@ -47,7 +47,7 @@ describe("codexTurnArgs", () => {
 
     expect(args.slice(0, 3)).toStrictEqual(["exec", "--sandbox", "read-only"]);
     expect(args).toStrictEqual(
-      expect.arrayContaining(["--model", "gpt-6-sol"]),
+      expect.arrayContaining(["--model", "gpt-6.1-sol"]),
     );
     expectRestrictions(args);
     expect(args).toContain("mcp_servers.producer-pal.required=true");
@@ -86,7 +86,7 @@ describe("codexJudgeArgs", () => {
 
 describe("resolveCodexModel", () => {
   it("resolves friendly aliases and preserves explicit model ids", () => {
-    expect(resolveCodexModel("sol")).toBe("gpt-6-sol");
+    expect(resolveCodexModel("sol")).toBe("gpt-6.1-sol");
     expect(resolveCodexModel("luna")).toBe("gpt-6-luna");
     expect(resolveCodexModel("gpt-6-astra")).toBe("gpt-6-astra");
   });
