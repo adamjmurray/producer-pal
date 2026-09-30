@@ -333,6 +333,7 @@ function writeClipProperties(
       startMarkerBeats,
       looping,
       isLooping,
+      wasLooping,
       startBeats,
       endBeats,
       currentLoopEnd: readMarker("loop_end"),
