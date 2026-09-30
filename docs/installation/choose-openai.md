@@ -20,5 +20,5 @@ you prefer pay-as-you-go API pricing.
 
 ## Model Notes
 
-- GPT-6 Sol recommended by default
+- GPT-6.1 Sol recommended by default
 - Also available: GPT-6 Luna, GPT-6 Astra

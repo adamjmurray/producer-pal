@@ -68,7 +68,7 @@ For detailed setup, see the [dedicated OpenAI guide](./openai).
 2. In the chat UI settings:
    - Provider: **OpenAI**
    - API Key: Your key
-   - Model: e.g., `gpt-6-sol`
+   - Model: e.g., `gpt-6.1-sol`
 
 ::: tip Subscription Alternative
 

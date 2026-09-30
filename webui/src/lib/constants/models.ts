@@ -144,7 +144,7 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
 ];
 
 export const OPENAI_MODELS: ModelPresetItem[] = [
-  { value: "gpt-6-sol", label: "GPT-6 Sol" },
+  { value: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
   { value: "gpt-6-luna", label: "GPT-6 Luna" },
   { value: "gpt-6-astra", label: "GPT-6 Astra" },
   {
@@ -181,7 +181,7 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-opus-5.5",
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
-  { value: "openai/gpt-6-sol", label: "[Paid] OpenAI GPT-6 Sol" },
+  { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
   {
