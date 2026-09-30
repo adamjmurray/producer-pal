@@ -7,6 +7,8 @@ import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
+import { buildTransformClipContext } from "#src/tools/clip/helpers/transform-clip-context.ts";
+import { createdClipLength } from "./created-clip-result.ts";
 import { calculateClipLength } from "./create-clip-validation.ts";
 
 /** Inputs constant across all clips in one create operation */
@@ -107,23 +109,16 @@ function buildCreateClipContext(
   clipCount: number,
   arrangementStartBeats: number | null,
 ): ClipContext {
-  const beatScale = inputs.timeSigDenominator / 4;
-
-  return {
-    // The clip doesn't exist yet, so clip.duration reflects the pre-transform
-    // note extent (or explicit length) — the best knowable provisional value.
-    clipDuration: inputs.clipLength * beatScale,
+  // clipLength runs from beat 0 to the region's end, so it is note time.
+  return buildTransformClipContext({
+    regionLengthBeats: createdClipLength(inputs.clipLength, inputs.startBeats),
     clipIndex,
     clipCount,
-    arrangementStart:
-      arrangementStartBeats != null
-        ? arrangementStartBeats * beatScale
-        : undefined,
-    // clipLength runs from beat 0 to the region's end, so it is note time.
-    startMarker: (inputs.startBeats ?? 0) * beatScale,
-    clipEnd: inputs.clipLength * beatScale,
-    barDuration: inputs.timeSigNumerator,
+    arrangementStartBeats: arrangementStartBeats ?? undefined,
+    startMarkerBeats: inputs.startBeats ?? 0,
+    clipEndBeats: inputs.clipLength,
+    timeSigNumerator: inputs.timeSigNumerator,
     timeSigDenominator: inputs.timeSigDenominator,
     scalePitchClassMask: inputs.scaleMask,
-  };
+  });
 }

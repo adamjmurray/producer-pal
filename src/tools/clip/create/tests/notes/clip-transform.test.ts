@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
+import { buildClipContext } from "#src/tools/clip/update/helpers/notes/note-transforms.ts";
 import {
   type ClipTransformInputs,
   resolveClipTransform,
@@ -155,6 +156,48 @@ describe("resolveClipTransform", () => {
       resolveClipTransform(makeInputs(), 0, 1, null);
 
       expect(capturedContext()?.startMarker).toBe(0);
+    });
+
+    it("makes clip.duration the region length, not its end", () => {
+      // `start: "5|1"`, `length: "1bar"` in 4/4: 4 beats, not 20.
+      const inputs = makeInputs({ startBeats: 16, clipLength: 20 });
+
+      resolveClipTransform(inputs, 0, 1, null);
+
+      expect(capturedContext()?.clipDuration).toBe(4);
+    });
+
+    it("agrees with update-clip's context for the same offset-region clip", () => {
+      const inputs = makeInputs({
+        timeSigDenominator: 8,
+        startBeats: 16,
+        clipLength: 20,
+        scaleMask: 0, // what update reads from an unmocked Live Set
+      });
+
+      resolveClipTransform(inputs, 0, 1, null);
+
+      // The clip create would make: region 16-20, non-looping.
+      const liveClip = {
+        getProperty: (prop: string) =>
+          ({
+            is_midi_clip: 1,
+            is_arrangement_clip: 0,
+            looping: 0,
+            length: 4,
+            start_marker: 16,
+            end_marker: 20,
+          })[prop] ?? 0,
+      };
+      const updated = buildClipContext(
+        liveClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        8,
+      );
+
+      expect(capturedContext()).toStrictEqual(updated);
     });
   });
 });

@@ -176,8 +176,8 @@ Access audio clip properties in expressions using the `audio.` prefix:
 Access clip and bar context in expressions:
 
 - `note.index` - 0-based order of note in clip (MIDI only)
-- `clip.duration` - Clip duration in musical beats (arrangement length for
-  arrangement clips, content length for session clips)
+- `clip.duration` - Length in musical beats of the region that plays (end minus
+  start, so 5|1 to 6|1 is 1 bar); for arrangement clips, the arrangement length
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
   only; on session clips it resolves to 0 with a warning, since session clips

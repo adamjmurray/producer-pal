@@ -20,7 +20,11 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import {
+  createClipInSlot,
+  createClipTransformHelpers,
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, createArrangementClip, readClipNotes, applyTransform } =
@@ -73,6 +77,23 @@ describe("ppal-clip-transforms (context variables)", () => {
 
     // 12 arrangement beats * 10 = 120
     expect(notes).toContain("v120");
+  });
+
+  it("clip.duration is the region length when the region starts after 1|1", async () => {
+    // Region 5|1 to 6|1 is 1 bar = 4 beats, not the 5 bars to its end.
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s44`, {
+      notes: "v100 C3 5|1",
+      start: "5|1",
+      length: "1bar",
+      transforms: "velocity = clip.duration * 10",
+    });
+
+    expect(await readClipNotes(clipId)).toContain("v40");
+
+    // update-clip agrees
+    await applyTransform(clipId, "velocity = clip.duration * 20");
+
+    expect(await readClipNotes(clipId)).toContain("v80");
   });
 
   it("clip.barDuration reflects time signature", async () => {

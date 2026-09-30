@@ -9,6 +9,10 @@ import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts"
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
+import {
+  buildTransformClipContext,
+  type TransformClipContextInput,
+} from "#src/tools/clip/helpers/transform-clip-context.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,
@@ -121,25 +125,20 @@ export function buildClipContext(
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
-  const beatScale = timeSigDenominator / 4;
+  const startTime = clip.getProperty("start_time") as number;
 
-  const durationBeats = isArrangementClip
-    ? (clip.getProperty("end_time") as number) -
-      (clip.getProperty("start_time") as number)
-    : clipLengthBeats(clip);
-
-  return {
-    clipDuration: durationBeats * beatScale,
+  return buildTransformClipContext({
+    regionLengthBeats: isArrangementClip
+      ? (clip.getProperty("end_time") as number) - startTime
+      : clipLengthBeats(clip),
     clipIndex,
     clipCount,
-    arrangementStart: isArrangementClip
-      ? (clip.getProperty("start_time") as number) * beatScale
-      : undefined,
-    ...noteTimeRegion(clip, beatScale),
-    barDuration: timeSigNumerator,
+    arrangementStartBeats: isArrangementClip ? startTime : undefined,
+    ...noteTimeRegion(clip),
+    timeSigNumerator,
     timeSigDenominator,
     scalePitchClassMask: readLiveSetScaleMask(),
-  };
+  });
 }
 
 /**
@@ -147,23 +146,22 @@ export function buildClipContext(
  * have no notes, and an unwarped one's markers are in seconds, so they get
  * neither.
  * @param clip - The clip LiveAPI object
- * @param beatScale - Musical beats per Ableton beat
- * @returns startMarker and clipEnd in musical beats, or {} for audio
+ * @returns startMarkerBeats and clipEndBeats in Ableton beats, or {} for audio
  */
 function noteTimeRegion(
   clip: LiveAPI,
-  beatScale: number,
-): Pick<ClipContext, "startMarker" | "clipEnd"> {
+): Pick<TransformClipContextInput, "startMarkerBeats" | "clipEndBeats"> {
   if ((clip.getProperty("is_midi_clip") as number) === 0) {
-    return {};
+    return { startMarkerBeats: undefined, clipEndBeats: undefined };
   }
 
   const looping = (clip.getProperty("looping") as number) > 0;
-  const end = clip.getProperty(looping ? "loop_end" : "end_marker") as number;
 
   return {
-    startMarker: (clip.getProperty("start_marker") as number) * beatScale,
-    clipEnd: end * beatScale,
+    startMarkerBeats: clip.getProperty("start_marker") as number,
+    clipEndBeats: clip.getProperty(
+      looping ? "loop_end" : "end_marker",
+    ) as number,
   };
 }
 
