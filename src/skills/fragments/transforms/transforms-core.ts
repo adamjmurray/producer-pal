@@ -47,7 +47,7 @@
 // test holds it.
 export const transformsCore = `## Transforms
 
-Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
+Add \`transforms\` parameter to ppal-create-clip, ppal-update-clip, or ppal-duplicate.
 
 **Shape:** a single string, broadcast across every clip/copy. Multiple expressions: newline-separated. Per-clip variation: \`clip.index\` arithmetic or \`clipseq()\` inside the string (below). Structurally-distinct edits per clip → separate tool calls.
 
@@ -78,10 +78,10 @@ duration += n/16                 // lengthen every note by a sixteenth
 timing += n/8                    // nudge every note an eighth note later (relative)
 \`\`\`
 
-\`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
+\`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use ppal-update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (update-clip \`id\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
+Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
 
 /**
  * Everything about changing a clip that already has notes in it. A SIBLING of
@@ -100,7 +100,7 @@ Across a batch (update-clip \`id\` / duplicate copies / create-clip multiple slo
  * This is `transforms-basic` at standard depth — same gate, same subject — which
  * is the other reason that fragment has no `-standard` twin to be.
  */
-export const transformsEditing = `### Editing Notes Already in a Clip (update-clip only)
+export const transformsEditing = `### Editing Notes Already in a Clip (ppal-update-clip only)
 
 \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a span (\`1|1-2|1: delete\`), one pitch (\`C1: delete\`), a pitch range (\`C1-C5: delete\`), everything (\`delete\`), or remap a drum lane (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Prefer it over deleting inline in \`notes\`. Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s. When the note COUNT changes in a regular way — rolling one note into several, echoing notes later, cutting a held note, gluing repeated hits — \`transforms\` has a note-count operation for it (ratchet, repeat, split, merge). Reach for those before clearing the clip and rewriting the notes by hand.`;
 
@@ -120,7 +120,7 @@ export const transformsEditing = `### Editing Notes Already in a Clip (update-cl
  * never use — precisely backwards for the narrow-toolset workers gating exists
  * to serve.
  */
-export const transformsBasic = `## Editing a clip that already has notes (update-clip)
+export const transformsBasic = `## Editing a clip that already has notes (ppal-update-clip)
 
 \`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add or change notes, pass just those — don't resend the whole clip.
 
