@@ -6,8 +6,8 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
-// "undefined" as a param's whole value. (A JSON null never gets this far —
-// unsetEmptyParams drops it before the schema coerces.)
+// "undefined" as a param's whole value. (A JSON null never gets this far — it
+// is dropped before the schema coerces, over MCP and REST alike.)
 const COERCED_NULLISH = new Set(["null", "undefined"]);
 
 /**

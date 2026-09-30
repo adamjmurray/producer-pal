@@ -93,6 +93,22 @@ describe("ppal-update-track", () => {
     expect(gainTrack.gainDb).toBeCloseTo(-6, 1);
   });
 
+  it('reads a null name as left out, not as the name "null"', async () => {
+    const readName = async (): Promise<string> =>
+      parseToolResult<ReadTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: "t0" },
+        }),
+      ).name;
+    const before = await readName();
+
+    parseToolResult(await updateTrack({ path: "t0", name: null }));
+    await sleep(100);
+
+    expect(await readName()).toBe(before);
+  });
+
   it("updates track mute, solo, and arm states", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;

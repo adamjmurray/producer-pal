@@ -144,6 +144,12 @@ said nothing. See ADR-0035 rule 5.
 Both halves are held for the whole tool surface by
 `src/test/meta/tool-schemas/empty-params.test.ts`.
 
+Over MCP the SDK parses and coerces the args before our handler runs, so
+`defineTool` hands it the params wrapped in `optionalParams()`, which applies
+the same rule and publishes the same JSON Schema.
+`src/mcp-server/tests/server/mcp-sdk-empty-params.test.ts` holds that path
+through a real client.
+
 A param nested below the args isn't reached — wrap that shape in
 `optionalParams()`, as `library-query-schema.ts` does.
 
