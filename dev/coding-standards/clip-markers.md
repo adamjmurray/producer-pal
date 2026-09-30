@@ -70,6 +70,7 @@ Writing them is not symmetric, and these two are the ones that bite:
 So `buildClipPropertiesToSet` writes the markers **before** switching looping
 off, and the brace **after** switching it on.
 
-Two more traps in the same write, which is why it moves the end first when the
-new start lands at or past either current end: Live rejects a `loop_start` past
-`loop_end`, and silently drops a `start_marker` past `end_marker`.
+Two more traps in the same write: Live rejects a `loop_start` past `loop_end`,
+and silently drops a `start_marker` past `end_marker`. So each pair (loop brace,
+markers) moves its end first when its new start lands at or past that pair's
+current end (`endMovesFirst`).
