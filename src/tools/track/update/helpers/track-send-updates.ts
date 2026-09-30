@@ -20,7 +20,10 @@ import {
   refusedSend,
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import {
+  findReturnIndex,
+  returnTrackPathIndex,
+} from "#src/tools/shared/helpers/send-validation.ts";
 import { pairParams } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
@@ -89,7 +92,7 @@ export function trackSendsAt(
  * only collide when they name the same return, and then the list is the later
  * word.
  * @param sendGainDb - Send level in dB, if given
- * @param sendReturn - Return track id, name, or letter prefix, if given
+ * @param sendReturn - Return track id, name, path (rt0), or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
  * @returns The sends to write, one per return, in the order they were named,
  *   the returns more than one of them named, and the ones that matched nothing
@@ -214,6 +217,7 @@ function matchReturn(
     names,
     send.return,
     returns.map((rt) => rt.id),
+    returnTrackPathIndex(send.return),
   );
   const match = returns[index];
 

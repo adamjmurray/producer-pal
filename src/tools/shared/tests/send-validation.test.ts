@@ -12,7 +12,10 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
-import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import {
+  findReturnIndex,
+  returnTrackPathIndex,
+} from "#src/tools/shared/helpers/send-validation.ts";
 
 describe("findReturnIndex", () => {
   const names = ["A-Reverb", "b Delay", "Chorus"];
@@ -79,5 +82,41 @@ describe("findReturnIndex", () => {
     expect(consoleMock.warn).toHaveBeenCalledWith(
       'sendReturn "12" is the id of "Delay" and the name of another return; using the id',
     );
+  });
+});
+
+describe("returnTrackPathIndex", () => {
+  it("reads a return track path", () => {
+    expect(returnTrackPathIndex("rt0")).toBe(0);
+    expect(returnTrackPathIndex(" rt12 ")).toBe(12);
+  });
+
+  it("is -1 for anything else", () => {
+    for (const value of ["t0", "mt", "rt+", "rt0/d0", "rt", "rtx", "3", "A"]) {
+      expect(returnTrackPathIndex(value)).toBe(-1);
+    }
+  });
+});
+
+describe("findReturnIndex with a path", () => {
+  const names = ["A-Reverb", "B-Delay"];
+
+  it("uses the path's index", () => {
+    expect(findReturnIndex(names, "rt1", [], 1)).toBe(1);
+  });
+
+  it("treats a path past the last return as no match", () => {
+    expect(findReturnIndex(names, "rt9", [], 9)).toBe(-1);
+  });
+
+  it("lets an exact name beat the path, and says so", () => {
+    expect(findReturnIndex(["A", "rt0"], "rt0", [], 0)).toBe(1);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'sendReturn "rt0" is the name of "rt0" and also a path to "A"; using the name',
+    );
+  });
+
+  it("lets an id beat the path", () => {
+    expect(findReturnIndex(names, "rt0", ["rt0", "x"], 1)).toBe(0);
   });
 });

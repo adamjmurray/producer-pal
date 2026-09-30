@@ -4,6 +4,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+
+/**
+ * The index a return track path ("rt0") names, or -1 when `value` isn't one.
+ * Says nothing about whether that return exists.
+ * @param value - What the caller wrote for the return
+ * @returns The return track index, or -1
+ */
+export function returnTrackPathIndex(value: string): number {
+  if (!value.trim().startsWith("rt")) {
+    return -1;
+  }
+
+  try {
+    const path = parseObjectPath(value);
+
+    return path.kind === "return-track" ? path.returnIndex : -1;
+  } catch {
+    return -1;
+  }
+}
 
 /**
  * Find the return (track or rack chain) a send refers to, by id or by name.
@@ -12,19 +33,23 @@ import * as console from "#src/shared/max/v8-max-console.ts";
  * or shift when one is renamed. Only these returns' ids count, so a return
  * named after a number stays reachable by name.
  *
- * Otherwise the exact name, then its letter prefix — "A" matches "A-Reverb"
+ * Otherwise the exact name, then a path (`pathIndex`, e.g. "rt0" is the first
+ * return track), then its letter prefix — "A" matches "A-Reverb"
  * (return tracks) and "a Reverb" (rack return chains). Case-insensitive. An
  * exact name anywhere in the list beats a prefix match, so "Delay" finds
  * "Delay", not "Delay 2".
  * @param names - Return names in send order
  * @param sendReturn - Id, name, or letter to match
  * @param ids - Return ids in send order
+ * @param pathIndex - Index `sendReturn` names as a path, if it is one. A name
+ *   written exactly like a path still wins, so existing names keep working.
  * @returns Index of the match, or -1
  */
 export function findReturnIndex(
   names: string[],
   sendReturn: string,
   ids: string[] = [],
+  pathIndex = -1,
 ): number {
   const wanted = sendReturn.toLowerCase();
 
@@ -48,7 +73,17 @@ export function findReturnIndex(
   }
 
   if (exact !== -1) {
+    if (pathIndex >= 0 && pathIndex < names.length && exact !== pathIndex) {
+      console.warn(
+        `sendReturn "${sendReturn}" is the name of "${names[exact]}" and also a path to "${names[pathIndex]}"; using the name`,
+      );
+    }
+
     return exact;
+  }
+
+  if (pathIndex >= 0 && pathIndex < names.length) {
+    return pathIndex;
   }
 
   return names.findIndex((name) => {
