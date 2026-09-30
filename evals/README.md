@@ -124,7 +124,7 @@ be inferred from the prefix:
 | `claude-sonnet-5-5`           | anthropic   |
 | `gpt-6-sol`                   | openai      |
 | `google/gemini-3.8-flash`     | google      |
-| `anthropic/claude-sonnet-5.5` | anthropic   |
+| `anthropic/claude-sonnet-5-5` | anthropic   |
 | `codex-code/sol`              | codex-code  |
 | `codex-code/luna`             | codex-code  |
 | `claude-code/sonnet`          | claude-code |
