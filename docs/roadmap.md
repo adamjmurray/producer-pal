@@ -56,7 +56,7 @@ them.
   `1/16`, `-1.68 st`. A value in the wrong unit or out of range is refused
   instead of quietly written wrong. Dozens of parameters across Live's devices
   were being read in the wrong units, or not at all
-- An arrangement clip is named by where it starts: `t0[5|1]`, or
+- An arrangement clip is named by a position it covers: `t0[5|1]`, or
   `t0[loc:Chorus]`. A locator name works anywhere a bar|beat position does
 - Arrangement clips move and copy across tracks and onto take lanes, audio
   included, even where Live's API has no way to do it directly
