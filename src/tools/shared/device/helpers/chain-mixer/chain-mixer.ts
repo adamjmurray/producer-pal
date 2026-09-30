@@ -20,7 +20,7 @@ import {
   readSendBack,
   readSendGainDb,
   refusedSend,
-  warnSendCollisions,
+  withSupersededSends,
 } from "#src/tools/shared/sends/send-list.ts";
 import {
   asFiniteNumber,
@@ -59,8 +59,6 @@ export interface ChainMixerApplied extends MixerApplied {
 
 /** One send that was written, and the return chain it went to. */
 interface WrittenChainSend extends IndexedSend {
-  /** The return chain's id, for the result entry */
-  returnId: string;
   /** The send parameter, ready to read back */
   param: LiveAPI;
 }
@@ -334,11 +332,10 @@ function applyChainSends(
     ]),
   );
 
-  // After the read-back, so a collision names the level the send ended up at
-  // rather than the one that won the argument list.
-  warnSendCollisions(collisions, landed);
-
-  return [...landed.values(), ...lastPerReturn(refused)];
+  return [
+    ...withSupersededSends(landed, collisions),
+    ...lastPerReturn(refused),
+  ];
 }
 
 /**

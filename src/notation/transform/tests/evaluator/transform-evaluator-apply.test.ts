@@ -676,9 +676,7 @@ probability += -0.2`;
 
       applyTransforms(notes, "gain = 0.5", 4, 4);
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        "Audio parameters (gain, pitchShift) ignored for MIDI clips",
-      );
+      expect(warnSpy).toHaveBeenCalledWith("gain ignored: the clip is MIDI");
       // Audio params should be skipped, velocity should be unchanged
       expect(notes[0]!.velocity).toBe(100);
       warnSpy.mockRestore();

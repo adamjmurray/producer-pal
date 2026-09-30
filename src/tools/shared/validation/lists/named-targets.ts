@@ -102,7 +102,7 @@ export function destinationNamedLaterReason(destination: string): string {
  * @param address - How the later mention spelled it, when that differs
  * @returns The stem
  */
-function namedAgain(address?: string): string {
+export function namedAgain(address?: string): string {
   return address == null
     ? "named again later in this call"
     : `named again as ${address} later in this call`;

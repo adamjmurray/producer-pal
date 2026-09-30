@@ -3,22 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-
 /**
- * Warn that the non-null entries of `params` were not applied.
+ * The note for a clip's entry saying which of the params sent did nothing on it.
  * @param params - Candidate parameters, keyed by their tool argument name
  * @param subject - What they were ignored for, completing "ignored for ..."
+ * @returns The note, or null when every param was unset
  */
-export function warnIgnoredParams(
+export function ignoredParamsNote(
   params: Record<string, unknown>,
   subject: string,
-): void {
+): string | null {
   const ignored = Object.keys(params).filter((name) => params[name] != null);
 
-  if (ignored.length === 0) {
-    return;
-  }
-
-  console.warn(`${ignored.join(", ")} ignored for ${subject}`);
+  return ignored.length === 0
+    ? null
+    : `${ignored.join(", ")} ignored for ${subject}`;
 }

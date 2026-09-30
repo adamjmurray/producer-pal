@@ -7,7 +7,6 @@
 // arrives: Live's insert_device for a native one, or a browser load moved into
 // place. Shared so both kinds resolve, warn, and fail alike.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
@@ -19,7 +18,10 @@ import {
   type ParamResult,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import {
+  pastTheEndReason,
+  resolveInsertionPath,
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -55,7 +57,7 @@ export function insertNativeDevice(
 ): { device: LiveAPI; entry: CreateDeviceResult } {
   const target = resolveCreationTarget(path);
   const { container } = target;
-  const { position, deviceCount } = insertionPosition(target, path, deviceName);
+  const { position, deviceCount } = insertionPosition(target);
 
   const result =
     position != null
@@ -130,37 +132,36 @@ export function resolveCreationTarget(path: string): CreationTarget {
     throw new Error(`container at path "${path}" does not exist`);
   }
 
+  // Live ignores a position past the end without a word, so refuse it before
+  // anything is made (a browser device would otherwise load first).
+  const tooFar = pastTheEndReason(
+    position,
+    container.getChildCount("devices"),
+    path,
+  );
+
+  if (tooFar != null) {
+    throw new Error(tooFar);
+  }
+
   return { container, position, containerPath, createdChains };
 }
 
 /**
- * The index to hand Live. Live rejects any position past the end of the chain,
- * including 0 on an empty one, so those append instead — past the end warns.
+ * The index to hand Live. Live rejects 0 on an empty chain, so that appends.
  * @param target - Where the device goes
  * @param target.container - The container
  * @param target.position - The index the path named, or null for an append
- * @param path - The path as the call wrote it
- * @param deviceName - The device, as the call named it
  * @returns The index (null appends) and the devices already in the container
  */
-export function insertionPosition(
-  { container, position }: CreationTarget,
-  path: string,
-  deviceName: string,
-): { position: number | null; deviceCount: number } {
+export function insertionPosition({ container, position }: CreationTarget): {
+  position: number | null;
+  deviceCount: number;
+} {
   const deviceCount = container.getChildCount("devices");
-  const pastEnd = position != null && position > deviceCount;
-
-  if (pastEnd) {
-    console.warn(
-      `path "${path}" is past the end of the device chain ` +
-        `(${deviceCount} device${deviceCount === 1 ? "" : "s"}), appending "${deviceName}" instead`,
-    );
-  }
 
   return {
-    position:
-      pastEnd || (position === 0 && deviceCount === 0) ? null : position,
+    position: position === 0 && deviceCount === 0 ? null : position,
     deviceCount,
   };
 }

@@ -688,34 +688,38 @@ describe("createClip - audio clip warping", () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns that MIDI-only timing params are ignored for audio", async () => {
+  it("says on the entry that MIDI-only timing params are ignored for audio", async () => {
     const warnSpy = vi.spyOn(v8Console, "warn");
 
     setupSessionAudioClipMocks({ clipLength: 8 });
 
-    await createClip({
+    const result = (await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
       length: "4bar",
       looping: true,
-    });
+    })) as { detail?: string };
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("length, looping ignored for audio clips"),
-    );
+    expect(result.detail).toContain("length, looping ignored for audio clips");
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns that warping is ignored on a MIDI clip", async () => {
+  it("says on the entry that warping is ignored on a MIDI clip", async () => {
     // The inverse of the audio warning: warping is documented audio-only, and
     // the MIDI path has nowhere to put it.
     const warnSpy = vi.spyOn(v8Console, "warn");
 
     setupSessionMocks();
 
-    await createClip({ slot: "0/0", notes: "1|1 C3", warping: true });
+    const result = (await createClip({
+      slot: "0/0",
+      notes: "1|1 C3",
+      warping: true,
+    })) as { detail?: string };
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("warping ignored for MIDI clips"),
+    expect(result.detail).toContain("warping ignored for MIDI clips");
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("ignored"),
     );
   });
 });

@@ -396,7 +396,7 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBeNull();
       expect(result.pitchShift).toBeNull();
       expect(console.warn).toHaveBeenCalledWith(
-        "Note-count operations (ratchet, repeat, merge, split) ignored for audio clips",
+        "ratchet ignored: the clip is audio",
       );
     });
   });
@@ -427,11 +427,10 @@ describe("Audio Transform Evaluator", () => {
   });
 
   describe("error handling", () => {
-    it("returns nulls for invalid syntax", () => {
-      const result = applyAudioTransform(0, 0, "gain = =");
-
-      expect(result.gain).toBeNull();
-      expect(result.pitchShift).toBeNull();
+    it("throws on invalid syntax, like a MIDI transform", () => {
+      expect(() => applyAudioTransform(0, 0, "gain = =")).toThrow(
+        "transform syntax error",
+      );
     });
 
     it("handles note variable in audio context gracefully", () => {

@@ -504,6 +504,22 @@ used to find only a clip starting at bar 5. It now finds the clip playing there,
 even one that started earlier. As a destination it still means where the new
 clip starts.
 
+**More per-target facts moved onto entries.** These used to be warnings; each is
+now `detail` on the target's entry, and `ok: false` where it was everything
+asked of that target:
+
+- `ppal-create-device` refuses an index past the end of the chain (`t0/d9` on a
+  two-device track), as `ppal-update-device` does, instead of appending.
+- A `sends` entry a later one replaced.
+- An `arrangementLength` ignored for a re-created `ppal-duplicate` copy.
+- A failed `code` on `ppal-update-clip`.
+- Transforms for the other kind of clip (`gain` on MIDI, `velocity` on audio).
+  `ppal-create-clip` says the same, and which params the new clip can't use, on
+  the created clip, never as `ok: false`.
+
+An audio clip's unparseable `transforms` now refuses the clip, so no other param
+lands, like a MIDI clip's.
+
 **`wrapInRack` puts every device in one chain.** The devices you name land in
 series in a single chain, the way Live's Group (Cmd/Ctrl+G) does it: MIDI
 effects, then the instrument, then audio effects, each kind in the order you

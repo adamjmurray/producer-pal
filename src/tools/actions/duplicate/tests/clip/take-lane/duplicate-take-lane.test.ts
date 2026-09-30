@@ -157,11 +157,26 @@ describe("duplicate take lane", () => {
     });
   });
 
-  it("warns and ignores arrangementLength for take-lane duplication", async () => {
-    await duplicateToFreshLane({ arrangementLength: "2bar" });
+  it("says on the copy's entry that arrangementLength was ignored, with no warning", async () => {
+    registerLiveSet();
+    registerArrangementSource(true, [SOURCE_NOTE], {});
+    registerTakeLaneTrack({ initialLanes: 0 });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementLength ignored for the re-created"),
+    const result = await duplicate({
+      type: "clip",
+      id: "src_clip",
+      arrangementStart: "1|1",
+      takeLane: 1,
+      arrangementLength: "2bar",
+    });
+
+    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: expect.stringContaining(
+          "arrangementLength ignored: a re-created copy uses the source clip's length",
+        ),
+      }),
     );
   });
 

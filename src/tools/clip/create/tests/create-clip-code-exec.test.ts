@@ -165,7 +165,7 @@ describe("createClip - code execution", () => {
     expect(resultObj.noteCount).toBe(2);
   });
 
-  it("should warn when code execution fails for a created clip", async () => {
+  it("should report a code failure on the created clip's entry", async () => {
     setupSessionCodeExecMocks([0]);
 
     vi.mocked(executeNoteCode).mockResolvedValue(
@@ -177,15 +177,15 @@ describe("createClip - code execution", () => {
       code: "return notes.map(invalid)",
     });
 
-    // Should emit a warning via console.warn
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Code execution failed for clip"),
-    );
+    // The clip exists, so its entry carries the failure; no warning
+    expect(capturedWarnings()).toStrictEqual([]);
 
-    // Should still return the clip result (without updated noteCount)
-    const resultObj = result as { id?: string };
+    const resultObj = result as { id?: string; detail?: string };
 
     expect(resultObj.id).toBeDefined();
+    expect(resultObj.detail).toBe(
+      "code failed: TypeError: notes.map is not a function",
+    );
   });
 
   it("should apply code to multiple created clips", async () => {

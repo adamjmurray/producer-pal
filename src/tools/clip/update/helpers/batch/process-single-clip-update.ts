@@ -31,6 +31,7 @@ import {
   type ClipReasons,
   ignoreClipParams,
   noteClipColor,
+  noteClipReason,
 } from "../entries/clip-reasons.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
@@ -41,6 +42,7 @@ import {
 } from "../clip-beat-positions.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
+import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
 
 interface ClipResult {
   id: string;
@@ -106,9 +108,27 @@ export function processSingleClipUpdate(
   // The transform evaluators warn per clip but have no LiveAPI to name it with,
   // so the label comes from here. Everything inside is synchronous, which is
   // what makes a scope safe to use instead of a parameter.
-  withClipWarningLabel(`clip ${targetLabel(params.clip)}`, () =>
-    updateOneClip(params),
+  //
+  // What a transform skips on this kind of clip goes to the clip's own entry.
+  withClipWarningLabel(
+    `clip ${targetLabel(params.clip)}`,
+    () => updateOneClip(checkTransformsForClipType(params)),
+    (reason) => noteTransformReason(params, reason),
   );
+}
+
+/**
+ * Put what a transform skipped on the clip's entry, once however often it fires.
+ * @param params - The clip's update params
+ * @param reason - What the transform skipped and why
+ */
+function noteTransformReason(
+  params: ProcessSingleClipUpdateParams,
+  reason: string,
+): void {
+  if (!params.reasons.said.get(params.clip.id)?.includes(reason)) {
+    noteClipReason(params.reasons, params.clip.id, reason);
+  }
 }
 
 /**

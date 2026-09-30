@@ -21,7 +21,8 @@ import {
   type TransformAssignment,
   type TransformStatement,
 } from "./parser/transform-parser.ts";
-import * as parser from "./parser/transform-parser.ts";
+import { wrongClipTypeStatements } from "./transform-clip-type.ts";
+import { tryParseTransform } from "./transform-evaluator.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 
 // Constants for gain clamping
@@ -31,16 +32,6 @@ const MAX_GAIN_DB = 24;
 // Constants for pitch shift clamping
 const MIN_PITCH_SHIFT = -48;
 const MAX_PITCH_SHIFT = 48;
-
-// MIDI-only parameters that should be skipped for audio clips
-const MIDI_PARAMETERS = new Set([
-  "velocity",
-  "timing",
-  "duration",
-  "probability",
-  "deviation",
-  "pitch",
-]);
 
 export interface AudioProperties {
   gain: number;
@@ -70,18 +61,10 @@ export function applyAudioTransform(
     return { gain: null, pitchShift: null };
   }
 
-  let ast: TransformStatement[];
-
-  try {
-    // Audio transforms operate on whole-clip gain/pitchShift and never apply a
-    // timeRange, so the meter is irrelevant here; pass denominator 4 to satisfy
-    // the now meter-aware grammar (matches this evaluator's hardcoded-4 convention).
-    ast = parser.parse(transformString, { timeSigDenominator: 4 });
-  } catch (error) {
-    console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
-
-    return { gain: null, pitchShift: null };
-  }
+  // Audio transforms operate on whole-clip gain/pitchShift and never apply a
+  // timeRange, so the meter is irrelevant here; pass 4 to satisfy the
+  // meter-aware grammar. A syntax error throws, as it does for a MIDI clip.
+  const ast = tryParseTransform(transformString, 4, 4);
 
   warnIncompatibleAudioSelectors(ast);
 
@@ -212,10 +195,8 @@ function warnAndSkipBarePitchLiteral(assignment: TransformAssignment): boolean {
 function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   const assignments = ast.filter((a): a is TransformAssignment => !isNoteOp(a));
 
-  if (assignments.some((a) => MIDI_PARAMETERS.has(a.parameter))) {
-    console.warn(
-      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
-    );
+  for (const reason of wrongClipTypeStatements(ast, true).reasons) {
+    console.ignored(reason);
   }
 
   const hasAudioTimeRange = assignments.some(
@@ -225,7 +206,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioTimeRange) {
-    console.warn(
+    console.ignored(
       "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
     );
   }
@@ -237,7 +218,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPitchRange) {
-    console.warn(
+    console.ignored(
       "pitch selector ignored for audio clip transform (audio clips have no pitch)",
     );
   }
@@ -249,14 +230,8 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPredicate) {
-    console.warn(
+    console.ignored(
       "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
-    );
-  }
-
-  if (ast.some(isNoteOp)) {
-    console.warn(
-      "Note-count operations (ratchet, repeat, merge, split) ignored for audio clips",
     );
   }
 }

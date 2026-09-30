@@ -10,6 +10,7 @@ import {
   takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
 import { getMinimalClipInfo } from "../minimal-clip-info.ts";
 import {
@@ -162,7 +163,12 @@ function recreateCopy(
       losses,
     );
 
-    return { copy: getMinimalClipInfo(clip, landedNote(kind, losses)) };
+    return {
+      copy: getMinimalClipInfo(
+        clip,
+        joinDetails([landedNote(kind, losses), ignoredLength(options)]),
+      ),
+    };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
     // refusal would lose a clip the caller has to know about.
@@ -170,7 +176,10 @@ function recreateCopy(
       return {
         copy: getMinimalClipInfo(
           error.partialClip,
-          `the ${kind} copy is incomplete (${error.message})`,
+          joinDetails([
+            `the ${kind} copy is incomplete (${error.message})`,
+            ignoredLength(options),
+          ]),
         ),
       };
     }
@@ -196,4 +205,16 @@ function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
   return kind === "take-lane"
     ? `re-created on the take lane${cost}; expand the take-lanes arrow on the track header in Live to see it`
     : `promoted to the main lane by re-creating it${cost}`;
+}
+
+/**
+ * What a re-created copy says about an arrangementLength it was sent: it is
+ * rebuilt at the source clip's length.
+ * @param options - Everything the copy needs
+ * @returns The note for the copy's entry, or undefined when none was sent
+ */
+function ignoredLength(options: CopyOptions): string | undefined {
+  return options.arrangementLength == null
+    ? undefined
+    : "arrangementLength ignored: a re-created copy uses the source clip's length";
 }

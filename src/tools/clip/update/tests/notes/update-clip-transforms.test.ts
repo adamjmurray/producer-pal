@@ -149,13 +149,13 @@ describe("updateClip - transforms name the clip they warn about", () => {
     mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
   });
 
+  // round() rejects the extra arg the same way for every clip
   it("tells two firings of the same reason apart", async () => {
-    await updateClip({ ids: "123,456", transforms: "gain = 3" });
+    await updateClip({ ids: "123,456", transforms: "velocity = round(1, 2)" });
 
-    expect(capturedWarnings()).toStrictEqual([
-      "clip t0/s0 (id 123): Audio parameters (gain, pitchShift) ignored for MIDI clips",
-      "clip t1/s1 (id 456): Audio parameters (gain, pitchShift) ignored for MIDI clips",
-    ]);
+    expect(capturedWarnings().map((w) => w.split(": Failed")[0])).toStrictEqual(
+      ["clip t0/s0 (id 123)", "clip t1/s1 (id 456)"],
+    );
   });
 });
 

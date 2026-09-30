@@ -40,10 +40,11 @@ import {
   type TransformStatement,
   parse as parseTransform,
 } from "./parser/transform-parser.ts";
+import {
+  AUDIO_PARAMETERS,
+  wrongClipTypeStatements,
+} from "./transform-clip-type.ts";
 import { applyNoteOp } from "./transform-note-ops.ts";
-
-// Audio-only parameters that should be skipped for MIDI clips
-const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
 
 /**
  * Apply transforms to a list of notes in-place
@@ -71,13 +72,8 @@ export function applyTransforms(
     timeSigNumerator,
   );
 
-  // Check for audio parameters and warn
-  const hasAudioParams = ast.some(
-    (a) => !isNoteOp(a) && AUDIO_PARAMETERS.has(a.parameter),
-  );
-
-  if (hasAudioParams) {
-    console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
+  for (const reason of wrongClipTypeStatements(ast, false).reasons) {
+    console.ignored(reason);
   }
 
   // Sort by start_time then pitch so note.index reflects musical order

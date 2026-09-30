@@ -247,7 +247,7 @@ describe("Transform Evaluator Error Handling", () => {
 
       expect(notes[0]!.velocity).toBe(100); // unchanged
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Audio parameters"),
+        "gain ignored: the clip is MIDI",
       );
     });
   });

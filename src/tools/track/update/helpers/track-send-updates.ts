@@ -27,10 +27,7 @@ import {
 import { pairParams } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
-export interface ResolvedSend extends IndexedSend {
-  /** The return track's id, for the result entry */
-  returnId: string;
-}
+export type ResolvedSend = IndexedSend;
 
 /** What a call's sends resolved to, for every track it names to report. */
 export interface TrackSends extends DedupedSends<ResolvedSend> {

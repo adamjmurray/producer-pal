@@ -58,7 +58,7 @@ async function createPlainDrumLoop(scene: number): Promise<ReadClipResult> {
 }
 
 describe("ppal-create-clip with params for the other clip type", () => {
-  it("warns that MIDI-only timing params are dropped on an audio clip", async () => {
+  it("says on the entry that MIDI-only timing params are dropped on an audio clip", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -72,9 +72,10 @@ describe("ppal-create-clip with params for the other clip type", () => {
     });
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(created.warnings.join("\n")).toContain(
+    expect(created.data.detail).toContain(
       "start, length, looping ignored for audio clips",
     );
+    expect(created.warnings).toStrictEqual([]);
 
     await sleep(100);
 
@@ -102,13 +103,12 @@ describe("ppal-create-clip with params for the other clip type", () => {
     });
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(created.warnings.join("\n")).toContain(
-      "length ignored for audio clips",
-    );
+    expect(created.data.detail).toContain("length ignored for audio clips");
+    expect(created.warnings).toStrictEqual([]);
     expect(created.data.id).toBeDefined();
   });
 
-  it("warns that warping is dropped on a MIDI clip", async () => {
+  it("says on the entry that warping is dropped on a MIDI clip", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -119,21 +119,38 @@ describe("ppal-create-clip with params for the other clip type", () => {
     });
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(created.warnings.join("\n")).toContain(
-      "warping ignored for MIDI clips",
-    );
+    expect(created.data.detail).toContain("warping ignored for MIDI clips");
+    expect(created.warnings).toStrictEqual([]);
 
     await sleep(100);
 
     const clip = await readClipWithNotes(ctx.client!, created.data.id);
 
-    // Warned, not refused: the clip is still there.
+    // Said on the entry, not refused: the clip is still there.
     expect(clip.type).toBe("midi");
     expect(clip.notes).toContain("C3");
   });
 });
 
 describe("ppal-create-clip with a param the new clip can't use", () => {
+  // The clip exists, so a transform for the other kind of clip is a detail on
+  // its entry, never ok:false and never a warning.
+  it("reports a gain transform on a MIDI clip on the clip's own entry", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s30`,
+        notes: "C3 1|1",
+        transforms: "velocity = 100\ngain = -3",
+      },
+    });
+    const created = parseToolResultWithWarnings<CreateClipResult>(result);
+
+    expect(created.data.detail).toContain("gain ignored: the clip is MIDI");
+    expect(created.data).not.toHaveProperty("ok");
+    expect(created.warnings).toStrictEqual([]);
+  });
+
   // firstStart only lands when the call also asks for looping, so anything else
   // says so on its own entry — the clip was still created.
   it("reports an ignored firstStart on the clip's own entry", async () => {

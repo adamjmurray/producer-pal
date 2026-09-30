@@ -238,3 +238,24 @@ function appendChainTo(rack: LiveAPI, path: string): LiveAPI {
 
   return created;
 }
+
+/**
+ * Why a device can't go at this index, when it can't. Live takes 0 through the
+ * container's device count (the count itself appends) and ignores anything
+ * higher without a word, so every tool that places a device refuses it.
+ * @param position - The index aimed at, or null to insert at the top
+ * @param deviceCount - How many devices the container holds
+ * @param reportPath - How to spell the destination back to the caller
+ * @returns The reason, or null when the index is in range
+ */
+export function pastTheEndReason(
+  position: number | null,
+  deviceCount: number,
+  reportPath: string,
+): string | null {
+  if (position == null || position <= deviceCount) {
+    return null;
+  }
+
+  return `"${reportPath}" is past the end of a container holding ${deviceCount} device${deviceCount === 1 ? "" : "s"}`;
+}

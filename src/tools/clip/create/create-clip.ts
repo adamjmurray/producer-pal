@@ -38,8 +38,6 @@ import {
   validateCreateClipParams,
   validateDestinationTracks,
   validatePositions,
-  warnAudioOnlyMidiParams,
-  warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
@@ -195,8 +193,6 @@ export async function createClip(
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
-  warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
-  warnAudioOnlyMidiParams(sampleFile, audio);
   const tracks = validateDestinationTracks(destinations);
 
   const song = readSongMeter(liveSet);
@@ -257,6 +253,7 @@ export async function createClip(
     // Set once per request by the V8 adapter (see buildRequestContext).
     deadline: _context.deadline,
     code,
+    regionParams: { start, length, looping, firstStart },
     ...audio,
   });
 

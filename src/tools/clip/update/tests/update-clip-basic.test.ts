@@ -773,7 +773,7 @@ describe("updateClip - Basic operations", () => {
 
   it("should apply code exactly once per clip without a failure warning", async () => {
     setupMidiClipMock(mocks.clip123);
-    vi.mocked(applyCodeToSingleClip).mockResolvedValue(3);
+    vi.mocked(applyCodeToSingleClip).mockResolvedValue({ noteCount: 3 });
 
     const result = await updateClip({ id: "123", code: "return notes" });
 
