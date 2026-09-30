@@ -137,11 +137,11 @@ export function barBeatToMusicalBeats(
   timeSigDenominator?: number,
 ): number {
   // Beat base is an integer or decimal grid beat, optionally displaced by a
-  // `±n<frac>` note-value offset. The base group carries the optional `.\d+` so
+  // `±n<frac>` note-value offset. The base group carries an optional `.\d*` so
   // a decimal beat can also take an offset (`1|1.5+n/4`); the offset suffix is
   // its own optional group. Kept in parity with parseBeatValue below.
   const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
+    /^(-?\d+)\|((-?\d+(?:\.\d*)?)(?:[+-]n(?:\d+\.\d*|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
   );
 
   if (!match) {
@@ -268,7 +268,7 @@ export function validateBarBeatPosition(barBeat: string): void {
   // parity with that regex — only the OUTER structure matters here; the offset
   // suffix is allowed but not inspected (a pickup keeps a valid base).
   const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
+    /^(-?\d+)\|((-?\d+(?:\.\d*)?)(?:[+-]n(?:\d+\.\d*|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
   );
 
   // Not a recognizable bar|beat shape: leave it to barBeatToAbletonBeats's own
@@ -435,7 +435,7 @@ export function durationToAbletonBeats(
   // (group 9) so the group numbering below is untouched. Its count is `[1-9]\d*`
   // like the grammars' — no `n0bar` exception, unlike `0bar`.
   const match = duration.match(
-    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?)|n([1-9]\d*)bars?)$/,
+    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d*|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d*|\d*)\/(0|[1-9]\d*)([dt]?)|n([1-9]\d*)bars?)$/,
   );
 
   if (!match) {
@@ -521,12 +521,12 @@ function parseBeatValue(
 ): number {
   // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1),
   // `1.5+n/4` (decimal base), or the off-grid escape `1-n0.7/4` (decimal
-  // numerator). The base carries an optional `.\d+`; the denominator is a
+  // numerator). The base carries an optional `.\d*`; the denominator is a
   // no-leading-zero integer (`0|[1-9]\d*`); a lone `0` reaches the division-by-
   // zero guard. Kept consistent with the outer barBeatToMusicalBeats regex so a denom
   // the outer accepts never silently mis-parses here.
   const offsetMatch = beatsStr.match(
-    /^(-?\d+(?:\.\d+)?)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?)$/,
+    /^(-?\d+(?:\.\d*)?)([+-])n(\d+\.\d*|\d*)\/(0|[1-9]\d*)([dt]?)$/,
   );
 
   if (offsetMatch) {

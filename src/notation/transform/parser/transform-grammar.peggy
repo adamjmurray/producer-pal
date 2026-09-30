@@ -980,7 +980,7 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
+  = num:([0-9]+ "." [0-9]* / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
     // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
     // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
     // sample-derived value with no clean note-value fraction. The denominator

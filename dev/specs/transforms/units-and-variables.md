@@ -60,7 +60,8 @@ A single trailing `d` (dotted, ×3/2) or `t` (triplet, ×2/3) suffix scales the
 note value, matching bar|beat: `n/4d` = dotted quarter (≡ `n3/8`), `n/4t` =
 quarter triplet (≡ `n/6`), `n/8t` = eighth triplet (≡ `n/12`). Mutually
 exclusive, non-stacking, and applies to any numerator (`n3/8d` = 9/16). Not the
-`.` glyph (bar|beat uses `.` for decimals).
+`.` glyph (bar|beat uses `.` for decimals). A numerator may be a decimal, and a
+trailing dot is fine (`n3./4` == `n3/4`), as in bar|beat.
 
 `n<fraction>` evaluates to a number and composes in any expression:
 
