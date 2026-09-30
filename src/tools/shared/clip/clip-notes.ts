@@ -30,6 +30,22 @@ export function getClipNoteCount(clip: LiveAPI): number {
  */
 export function readAllClipNotes(clip: LiveAPI): Record<string, unknown>[] {
   const [fromTime, timeSpan] = clipNoteScanWindow(clip);
+
+  return readClipNotesInSpan(clip, fromTime, timeSpan);
+}
+
+/**
+ * Read every note starting in a span, as raw Live API note objects.
+ * @param clip - LiveAPI clip object
+ * @param fromTime - Span start in beats
+ * @param timeSpan - Span length in beats
+ * @returns Raw note objects, or [] when the span holds no notes
+ */
+export function readClipNotesInSpan(
+  clip: LiveAPI,
+  fromTime: number,
+  timeSpan: number,
+): Record<string, unknown>[] {
   const result = JSON.parse(
     clip.call("get_notes_extended", 0, 128, fromTime, timeSpan) as string,
   );

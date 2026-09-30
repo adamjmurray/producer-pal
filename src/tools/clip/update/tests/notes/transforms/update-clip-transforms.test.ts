@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { registerScaledLiveSet } from "./notes-mock-test-helpers.ts";
+import { registerScaledLiveSet } from "../notes-mock-test-helpers.ts";
 import {
   mockMergeNoteTracking,
   setupMidiClipMock,

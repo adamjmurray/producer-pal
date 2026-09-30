@@ -9,17 +9,17 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
-} from "../../helpers/notes/note-transforms.ts";
+} from "../../../helpers/notes/note-transforms.ts";
 import {
   makeNotesMockClip,
   rawNote,
   registerScaledLiveSet,
-} from "./notes-mock-test-helpers.ts";
+} from "../notes-mock-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type ClipReasons,
   newClipReasons,
-} from "../../helpers/entries/clip-reasons.ts";
+} from "../../../helpers/entries/clip-reasons.ts";
 
 /**
  * A clip that answers getProperty out of a table, and 0 for anything else.

@@ -30,6 +30,7 @@ import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { getTimeSignature } from "../clip-beat-positions.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
+import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 import { writeClipProperties } from "./write-clip-properties.ts";
 import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
@@ -230,6 +231,8 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     timeSigDenominator,
     notation: context.notation,
   });
+
+  reportNotesOutsideRegion(params, isAudioClip);
 
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, reasons, {
