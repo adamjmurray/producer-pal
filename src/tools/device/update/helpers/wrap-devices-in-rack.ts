@@ -27,7 +27,7 @@ import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { liveObjectWords } from "./update-target-types.ts";
+import { liveObjectWords } from "#src/tools/shared/device/device-target-types.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
