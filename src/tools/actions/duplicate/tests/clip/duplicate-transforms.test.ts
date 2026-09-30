@@ -140,6 +140,52 @@ describe("duplicate - transforms/code", () => {
       });
     });
 
+    it("refuses transforms it can't read before copying anything", async () => {
+      const { sourceClipSlot } = registerSessionClipDuplication({
+        destClipProperties: {},
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toSlot: "0/1",
+          transforms: "velocity = = 1",
+        }),
+      ).rejects.toThrow("transform syntax error");
+
+      expect(updateClipMock).not.toHaveBeenCalled();
+      expect(sourceClipSlot.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to",
+        expect.anything(),
+      );
+    });
+
+    // 1|6-2|1 is a backwards range in 4/4 but valid in 6/8: the copy keeps its
+    // source's meter, so that decides.
+    function copyWithMeter(num: number, den: number): Promise<unknown> {
+      registerSessionClipDuplication({ destClipProperties: {} });
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { signature_numerator: num, signature_denominator: den },
+      });
+
+      return duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1",
+        transforms: "1|6-2|1: velocity = 10",
+      });
+    }
+
+    it("refuses a range the source's 4/4 can't read", async () => {
+      await expect(copyWithMeter(4, 4)).rejects.toThrow("Invalid time range");
+    });
+
+    it("accepts the same range in the source's 6/8", async () => {
+      await expect(copyWithMeter(6, 8)).resolves.toBeDefined();
+    });
+
     it("does not call updateClip when no transforms/code are given", async () => {
       registerSessionClipDuplication({ destClipProperties: {} });
 

@@ -871,19 +871,13 @@ describe("updateClip - splitting mutation coverage", () => {
     expect(resultIds).not.toContain("0");
   });
 
-  it("should not split (or throw) when the split format is invalid", async () => {
+  it("refuses, and splits nothing, when the split format is invalid", async () => {
     const clipId = "clip_1";
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // arrangementSplit is provided but unparseable, so splitPoints is null. The guard's
-    // splitPoints != null term must stay honored (forced-true / || mutants
-    // would call performSplitting with null and throw).
-    const result = await updateClip(
-      { id: clipId, arrangementSplit: "not-a-position" },
-      {},
-    );
-
-    expect(result).toBeDefined();
+    await expect(
+      updateClip({ id: clipId, arrangementSplit: "not-a-position" }, {}),
+    ).rejects.toThrow('Invalid arrangementSplit format: "not-a-position"');
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       expect.anything(),

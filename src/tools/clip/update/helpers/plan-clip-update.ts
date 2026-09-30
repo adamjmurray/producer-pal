@@ -6,7 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
-import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
   LEGACY_SPLIT_MODE,
@@ -28,6 +28,8 @@ import {
   parseArrangementParams,
 } from "./arrangement/update-clip-arrangement-params.ts";
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
+import { type NoteEdits } from "./notes/note-edit-parsing.ts";
+import { refuseUnreadableNoteEdits } from "./notes/note-edit-refusal.ts";
 import { refuseSplitWithMove } from "./update-clip-refusals.ts";
 import {
   clipReporterFor,
@@ -52,6 +54,10 @@ export interface ClipUpdatePlanArgs {
   arrangementLength?: string;
   arrangementSplit?: string;
   split?: string;
+  /** The call's note edits, read before anything is cut or moved */
+  noteEdits: NoteEdits;
+  /** Meter(s) the call sets, one per target */
+  timeSignature?: string;
   /** What each clip has to say beyond its result, added to */
   reasons: ClipReasons;
   context: Partial<ToolContext>;
@@ -109,6 +115,8 @@ export interface ClipUpdatePlan {
  * @param args.arrangementLength - Arrangement span duration(s)
  * @param args.arrangementSplit - Song-timeline split positions
  * @param args.split - Deprecated clip-relative split positions
+ * @param args.noteEdits - The call's notes and transforms
+ * @param args.timeSignature - Meter(s) the call sets, one per target
  * @param args.reasons - What each clip has to say beyond its result
  * @param args.context - Per-request context
  * @returns The clips and the per-clip values the update loop reads
@@ -121,6 +129,8 @@ export function planClipUpdate({
   arrangementLength,
   arrangementSplit,
   split,
+  noteEdits,
+  timeSignature,
   reasons,
   context,
 }: ClipUpdatePlanArgs): ClipUpdatePlan {
@@ -143,6 +153,10 @@ export function planClipUpdate({
     arrangementSplit,
   ));
 
+  // A split can't be undone, so every whole-call value it or the later note
+  // writes depend on is read before any clip is touched.
+  const splitRequest = readSplitRequest(arrangementSplit, split);
+
   // Paired against what the caller named, not against the clips that resolve:
   // an id that names nothing has to take its position with it, or every later
   // clip slides onto the wrong bar.
@@ -163,6 +177,15 @@ export function planClipUpdate({
   const lengthBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(lengthBeats, requestedIndexById.get(clip.id));
 
+  refuseUnreadableNoteEdits({
+    clips,
+    noteEdits,
+    timeSignature,
+    targetCount: targets.ids.length,
+    requestedIndexById,
+    splitting: splitRequest != null,
+  });
+
   // A position with no lane means "same lane, other bar", so a take-lane clip
   // is aimed back at its own lane before anything else reads the destinations.
   keepSourceLaneDestinations(clips, destinationById, startBeatsFor);
@@ -170,8 +193,7 @@ export function planClipUpdate({
   const { clips: splitClips, slots } = applySplittingIfNeeded({
     clips,
     slots: clips.map((clip) => requestedIndexById.get(clip.id) as number),
-    arrangementSplit,
-    split,
+    splitRequest,
     reasons,
     context,
   });
@@ -241,7 +263,7 @@ export function planClipUpdate({
 /** The whole-call args a blank value drops. */
 export type BlankArgs = Omit<
   ClipUpdatePlanArgs,
-  "targets" | "reasons" | "context"
+  "targets" | "noteEdits" | "timeSignature" | "reasons" | "context"
 >;
 
 /** Reported in this order, whatever order the call listed them in. */
@@ -307,12 +329,16 @@ function resolveSongLocators(
   };
 }
 
+interface SplitRequest {
+  points: number[];
+  mode: SplitMode;
+}
+
 interface SplitRequestArgs {
   clips: LiveAPI[];
   /** The target each clip belongs to, in clip order */
   slots: number[];
-  arrangementSplit: string | undefined;
-  split: string | undefined;
+  splitRequest: SplitRequest | null;
   reasons: ClipReasons;
   context: Partial<ToolContext>;
 }
@@ -322,8 +348,7 @@ interface SplitRequestArgs {
  * @param request - The clips, the targets they belong to, and the split params
  * @param request.clips - Validated clip LiveAPI objects
  * @param request.slots - The target each clip belongs to, in clip order
- * @param request.arrangementSplit - Comma-separated song-timeline split positions
- * @param request.split - Deprecated clip-relative split positions
+ * @param request.splitRequest - The split positions, already read, if any
  * @param request.reasons - What each clip has to say beyond its result
  * @param request.context - Tool execution context
  * @returns The clips to update after splitting, and the target each belongs to
@@ -331,18 +356,15 @@ interface SplitRequestArgs {
 function applySplittingIfNeeded({
   clips,
   slots,
-  arrangementSplit,
-  split,
+  splitRequest,
   reasons,
   context,
 }: SplitRequestArgs): { clips: LiveAPI[]; slots: number[] } {
-  const request = resolveSplitRequest(arrangementSplit, split);
-
-  if (request == null) {
+  if (splitRequest == null) {
     return { clips, slots };
   }
 
-  const { value, mode } = request;
+  const { points: splitPoints, mode } = splitRequest;
 
   const arrangementClips = clips.filter((clip) => {
     if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
@@ -373,17 +395,6 @@ function applySplittingIfNeeded({
 
   // Every clip left out already says why on its own entry; don't warn too.
   if (arrangementClips.length === 0) {
-    return { clips, slots };
-  }
-
-  const splitPoints = prepareSplitParams(
-    value,
-    arrangementClips,
-    new Set(),
-    mode,
-  );
-
-  if (splitPoints == null) {
     return { clips, slots };
   }
 
@@ -445,6 +456,26 @@ function splitPieces(
   }
 
   return { clips: afterSplit, slots: slotsAfterSplit };
+}
+
+/**
+ * Read the split param the call used, refusing positions it can't use.
+ * @param arrangementSplit - Song-timeline positions
+ * @param split - Deprecated clip-relative positions
+ * @returns The split positions and how to read them, or null for no split
+ */
+function readSplitRequest(
+  arrangementSplit: string | undefined,
+  split: string | undefined,
+): SplitRequest | null {
+  const request = resolveSplitRequest(arrangementSplit, split);
+
+  return request == null
+    ? null
+    : {
+        points: readSplitPoints(request.value, request.mode),
+        mode: request.mode,
+      };
 }
 
 /**

@@ -528,9 +528,10 @@ describe("updateClip - loc: song positions", () => {
   it("does not read loc: on split, which is clip-relative", async () => {
     setupWithLocators();
 
+    // Read as a clip-relative position, so it is not a position at all.
     await expect(
       updateClip({ id: CLIP_ID, split: "loc:Chorus" }, {}),
-    ).resolves.toBeDefined();
+    ).rejects.toThrow('Invalid split format: "loc:Chorus"');
   });
 });
 
@@ -659,6 +660,7 @@ describe("planClipUpdate - the pieces a split makes", () => {
     const plan = planClipUpdate({
       targets: resolveClipTargets({ id: "clip_1" }),
       arrangementSplit: "2|1",
+      noteEdits: { context: {} },
       reasons: newClipReasons(),
       context: {},
     });
@@ -672,5 +674,90 @@ describe("planClipUpdate - the pieces a split makes", () => {
       ["clip_1", null],
       ["dup_2", null],
     ]);
+  });
+});
+
+// A split can't be undone, so a call that can't be read must refuse before it.
+describe("updateClip - a split with a value it can't read", () => {
+  it.each([
+    ["transforms", { transforms: "velocity = = 1" }, "transform syntax error"],
+    [
+      "preTransforms",
+      { preTransforms: "velocity = = 1" },
+      "transform syntax error",
+    ],
+    ["notes", { notes: "C3 1|1 ((" }, "syntax error"],
+  ])("refuses bad %s and cuts nothing", async (_param, bad, message) => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    await expect(
+      updateClip({ id: "clip_1", arrangementSplit: "2|1", ...bad }),
+    ).rejects.toThrow(message);
+
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ["an unreadable list", "nope", "Invalid arrangementSplit format"],
+    ["one bad point in a list", "2|1, nope", "Invalid arrangementSplit format"],
+    ["no position at all", ",", "Invalid arrangementSplit format"],
+    [
+      "too many points",
+      Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(","),
+      "Too many arrangementSplit points",
+    ],
+    ["only the song start", "1|1", "No valid arrangementSplit points"],
+  ])(
+    "refuses %s and cuts nothing",
+    async (_label, arrangementSplit, message) => {
+      const { callState } = setupClipSplittingMocks("clip_1");
+
+      await expect(
+        updateClip({ id: "clip_1", name: "X", arrangementSplit }),
+      ).rejects.toThrow(message);
+
+      expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+    },
+  );
+
+  // 1|6-2|1 is a backwards range in 4/4 and a valid one in 6/8, so the meter
+  // the clip will have decides whether the cut may go ahead.
+  it("reads the transforms in the meter the clip will have", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+    const transforms = "1|6-2|1: velocity = 10";
+
+    await expect(
+      updateClip({
+        id: "clip_1",
+        arrangementSplit: "2|1",
+        timeSignature: "4/4",
+        transforms,
+      }),
+    ).rejects.toThrow("Invalid time range");
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+
+    await updateClip({
+      id: "clip_1",
+      arrangementSplit: "2|1",
+      timeSignature: "6/8",
+      transforms,
+    });
+    expectDuplicateCalled(callState.trackMock);
   });
 });

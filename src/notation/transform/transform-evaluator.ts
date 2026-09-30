@@ -364,15 +364,15 @@ export function evaluateTransform(
  * @param transformString - Transform expression string
  * @param timeSigDenominator - Time signature denominator; converts `±n`
  *   beat-position offsets in a `timeRange` to musical beats during the parse
- * @param timeSigNumerator - Time signature numerator (musical beats per bar);
- *   lets a `-n` range-bound offset borrow across a bar line during the parse
+ * @param timeSigNumerator - Time signature numerator (musical beats per bar), or
+ *   omitted as audio clips do; lets a `-n` range-bound offset borrow across a bar line during the parse
  * @returns Parsed AST
  * @throws Error with formatted message if parsing fails
  */
 export function tryParseTransform(
   transformString: string,
   timeSigDenominator: number,
-  timeSigNumerator: number,
+  timeSigNumerator?: number,
 ): ReturnType<typeof parseTransform> {
   try {
     return parseTransform(transformString, {

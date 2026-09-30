@@ -625,3 +625,122 @@ async function readClip(
 
   return parseToolResult<ReadClipResult>(result);
 }
+
+// --- A split call that can't be read is refused before anything is cut ---
+
+let refusalTrackIndex: number;
+
+/**
+ * Create a two-bar arrangement clip on the refusal tests' own track.
+ * @param bar - Bar to start it on; each case uses its own
+ * @returns Clip ID
+ */
+async function createSplittableClip(bar: number): Promise<string> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      path: `t${refusalTrackIndex}[${bar}|1]`,
+      notes: "C3 1|1",
+      length: "2bar",
+    },
+  });
+
+  await sleep(200);
+
+  return parseToolResult<{ id: string }>(result).id;
+}
+
+/**
+ * Send a split call that must be refused, and check the clip is untouched:
+ * same clips on the track, the original with its own id and span.
+ * @param bar - Bar the clip starts on
+ * @param args - The update-clip args, besides the id
+ * @param message - Text the refusal must contain
+ */
+async function expectRefusedWithoutCutting(
+  bar: number,
+  args: Record<string, unknown>,
+  message: string,
+): Promise<void> {
+  const id = await createSplittableClip(bar);
+  const before = await readClipsOnTrack(ctx.client!, refusalTrackIndex);
+
+  const result = await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: { id, ...args },
+  });
+
+  expect(getToolErrorMessage(result)).toContain(message);
+
+  await sleep(200);
+
+  const after = await readClipsOnTrack(ctx.client!, refusalTrackIndex);
+
+  expect(after.clips).toStrictEqual(before.clips);
+  expect(after.clips.map((clip) => clip.id)).toContain(id);
+}
+
+describe("ppal-update-clip refuses an unreadable split call", () => {
+  beforeAll(async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi", name: "Split Refusal Tests" },
+    });
+
+    refusalTrackIndex = trackIndexFromPath(
+      parseToolResult<CreateTrackResult>(result).path,
+    );
+  });
+
+  it("throws for bad transforms and does not split the clip", async () => {
+    await expectRefusedWithoutCutting(
+      501,
+      { arrangementSplit: "501|2", transforms: "velocity = = 1" },
+      "transform syntax error",
+    );
+  });
+
+  it("throws for bad notes and does not split the clip", async () => {
+    await expectRefusedWithoutCutting(
+      511,
+      { arrangementSplit: "511|2", notes: "C3 1|1 ((" },
+      "syntax error",
+    );
+  });
+
+  it("throws for a malformed arrangementSplit", async () => {
+    await expectRefusedWithoutCutting(
+      531,
+      { arrangementSplit: "not-a-position" },
+      "Invalid arrangementSplit format",
+    );
+  });
+
+  // 1|6-2|1 runs backwards in 4/4 but is a valid range in 6/8.
+  it("splits a 6/8 clip whose transform range only fits its own meter", async () => {
+    const created = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${refusalTrackIndex}[521|1]`,
+        notes: "C3 1|1",
+        length: "2bar",
+        timeSignature: "6/8",
+      },
+    });
+    const id = parseToolResult<{ id: string }>(created).id;
+
+    await sleep(200);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id,
+        arrangementSplit: "521|2",
+        transforms: "1|6-2|1: velocity = 10",
+      },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(parseToolResult<unknown[]>(result)).toHaveLength(2);
+  });
+});

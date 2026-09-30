@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockMergeNoteTracking,
   note,
@@ -13,6 +12,8 @@ import {
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { type TimeSignature } from "#src/tools/clip/update/helpers/clip-beat-positions.ts";
+import { refuseNoteEditsByMeter } from "#src/tools/clip/update/helpers/notes/note-edit-parsing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 type ClipMock = UpdateClipMocks[keyof UpdateClipMocks];
@@ -42,16 +43,9 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    const result = await updateClip({
-      id: "123,456",
-      name: "X,Y",
-      notes: "C3 1|1 ((",
-    });
-
-    expect(result).toStrictEqual([
-      expect.objectContaining({ id: "123", ok: false }),
-      expect.objectContaining({ id: "456", ok: false }),
-    ]);
+    await expect(
+      updateClip({ id: "123,456", name: "X,Y", notes: "C3 1|1 ((" }),
+    ).rejects.toThrow("syntax error");
     expectUntouched(mocks.clip123);
     expectUntouched(mocks.clip456);
   });
@@ -176,14 +170,13 @@ describe("updateClip - note edits the clip ignores", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("still only warns on an audio clip's unparseable transforms", async () => {
+  it("ignores notes on an audio clip, even ones it can't parse", async () => {
     setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
       id: "123",
       name: "X",
       notes: "C3 1|1 ((",
-      transforms: "gain = = 1",
     });
 
     expect(result).toStrictEqual({
@@ -192,9 +185,15 @@ describe("updateClip - note edits the clip ignores", () => {
       detail: "notes ignored: the clip is audio",
     });
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "X");
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to parse transform string"),
-    );
+  });
+
+  it("refuses an audio clip's unparseable transforms, touching nothing", async () => {
+    setupAudioClipMock(mocks.clip123);
+
+    await expect(
+      updateClip({ id: "123", name: "X", transforms: "gain = = 1" }),
+    ).rejects.toThrow("transform syntax error");
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
   });
 
   it("still ignores valid transforms on a MIDI clip with no notes", async () => {
@@ -213,5 +212,38 @@ describe("updateClip - note edits the clip ignores", () => {
       }),
     );
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "X");
+  });
+});
+
+describe("refuseNoteEditsByMeter - which clips refuse the call", () => {
+  const rangeEdits = {
+    transformString: "1|6-2|1: velocity = 10",
+    context: {},
+  };
+
+  function clipIn(numerator: number, denominator: number): LiveAPI {
+    return {
+      getProperty: (name: string) => (name === "is_audio_clip" ? 0 : 1),
+      meter: { timeSigNumerator: numerator, timeSigDenominator: denominator },
+    } as unknown as LiveAPI;
+  }
+
+  const meterOf = (clip: LiveAPI) =>
+    (clip as unknown as { meter: TimeSignature }).meter;
+
+  it("leaves a clip that fails alone when it is not the one being cut", () => {
+    const clips = [clipIn(6, 8), clipIn(4, 4)];
+
+    expect(() =>
+      refuseNoteEditsByMeter(clips, rangeEdits, meterOf, (c) => c === clips[0]),
+    ).not.toThrow();
+  });
+
+  it("refuses when the clip being cut is the one that fails", () => {
+    const clips = [clipIn(6, 8), clipIn(4, 4)];
+
+    expect(() =>
+      refuseNoteEditsByMeter(clips, rangeEdits, meterOf, (c) => c === clips[1]),
+    ).toThrow("Invalid time range");
   });
 });
