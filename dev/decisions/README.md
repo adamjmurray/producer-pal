@@ -116,3 +116,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |
 | [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                  |
 | [0051](0051-a-write-that-did-nothing-says-so.md)                   | A write that did nothing says so                                      |
+| [0052](0052-enum-values-are-kebab-case.md)                         | Enum values are kebab-case; old spellings stay as hidden aliases      |

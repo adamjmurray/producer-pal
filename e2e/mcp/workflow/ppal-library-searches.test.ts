@@ -83,8 +83,8 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { label: "Kicks", source: "sampleFolder", query: "kick" },
-      { label: "Everything", source: "sampleFolder" },
+      { label: "Kicks", source: "sample-folder", query: "kick" },
+      { label: "Everything", source: "sample-folder" },
     ]);
 
     expect(result.results.map((entry) => entry.label)).toStrictEqual([
@@ -102,8 +102,8 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { source: "sampleFolder", query: "kick" },
-      { source: "sampleFolder", query: "sample" },
+      { source: "sample-folder", query: "kick" },
+      { source: "sample-folder", query: "sample" },
     ]);
 
     expect(result).not.toHaveProperty("dbAvailable");
@@ -115,7 +115,7 @@ describe("ppal-library searches", () => {
     // One folder-only query and one that reaches the DB: the roll-up is a
     // property of the batch, not of the query that happened to trigger it.
     const result = await batch([
-      { source: "sampleFolder", query: "kick" },
+      { source: "sample-folder", query: "kick" },
       { query: "kick", limit: 1 },
     ]);
 
@@ -126,9 +126,9 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { label: "Kicks", source: "sampleFolder", query: "kick" },
-      { label: "Kicks", source: "sampleFolder", query: "sample" },
-      { source: "sampleFolder" },
+      { label: "Kicks", source: "sample-folder", query: "kick" },
+      { label: "Kicks", source: "sample-folder", query: "sample" },
+      { source: "sample-folder" },
     ]);
 
     // Every group stays addressable: the first "Kicks" keeps the bare label,
@@ -145,8 +145,8 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { label: "Nothing", source: "sampleFolder", query: "no-such-sample" },
-      { label: "Kicks", source: "sampleFolder", query: "kick" },
+      { label: "Nothing", source: "sample-folder", query: "no-such-sample" },
+      { label: "Kicks", source: "sample-folder", query: "kick" },
     ]);
 
     // A dropped empty group would silently shift every later label's meaning.
@@ -162,7 +162,9 @@ describe("ppal-library searches", () => {
       await ctx.client!.callTool({
         name: "ppal-library",
         arguments: {
-          searches: [{ label: "Kicks", source: "sampleFolder", query: "kick" }],
+          searches: [
+            { label: "Kicks", source: "sample-folder", query: "kick" },
+          ],
         },
       }),
     );
@@ -189,7 +191,7 @@ describe("ppal-library searches", () => {
 
     const searches = Array.from({ length: MAX_QUERIES + 1 }, (_, i) => ({
       label: `q${i}`,
-      source: "sampleFolder",
+      source: "sample-folder",
       query: "kick",
     }));
     const { data, warnings } = parseToolResultWithWarnings<BatchResult>(

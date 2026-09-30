@@ -102,7 +102,7 @@ describe("findDuplicates", () => {
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {
     const result = await expectSampleFolderExplained(
-      () => findDuplicates({ source: "sampleFolder" }),
+      () => findDuplicates({ source: "sample-folder" }),
       (r) => r.groups,
     );
 

@@ -341,11 +341,11 @@ describe("library tool — searches fan-out", () => {
       result: { tags: [] },
     });
 
-    await library({ action: "listTags", searches: [{ tags: "Kick" }] });
+    await library({ action: "list-tags", searches: [{ tags: "Kick" }] });
 
     expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('searches does not apply to action "listTags"'),
+      expect.stringContaining('searches does not apply to action "list-tags"'),
     );
 
     warnSpy.mockRestore();
@@ -360,12 +360,12 @@ describe("library tool — searches fan-out", () => {
       { action: "search", queries: [{ label: "Kick", tags: "Kick" }] },
     ],
     [
-      "the searchBatch action",
-      { action: "searchBatch", searches: [{ label: "Kick", tags: "Kick" }] },
+      "the search-batch action",
+      { action: "search-batch", searches: [{ label: "Kick", tags: "Kick" }] },
     ],
     [
       "both old names at once",
-      { action: "searchBatch", queries: [{ label: "Kick", tags: "Kick" }] },
+      { action: "search-batch", queries: [{ label: "Kick", tags: "Kick" }] },
     ],
   ])("runs the fan-out for a caller still on %s", async (_label, args) => {
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
@@ -376,18 +376,18 @@ describe("library tool — searches fan-out", () => {
     });
   });
 
-  it("warns when a caller still sends the searchBatch action", async () => {
+  it("warns when a caller still sends the search-batch action", async () => {
     const warnSpy = await spyOnMaxWarn();
 
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 
     await library({
-      action: "searchBatch",
+      action: "search-batch",
       searches: [{ label: "Kick", tags: "Kick" }],
     });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      'action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+      'action "search-batch" is deprecated and will be removed; use action "search" with searches instead',
     );
 
     warnSpy.mockRestore();
@@ -454,7 +454,7 @@ describe("library tool — searches fan-out", () => {
     const result = await library(
       {
         action: "search",
-        searches: [{ source: "sampleFolder" }, { source: "sampleFolder" }],
+        searches: [{ source: "sample-folder" }, { source: "sample-folder" }],
       },
       { sampleFolder: "/samples/" },
     );

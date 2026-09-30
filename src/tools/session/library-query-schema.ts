@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { optionalParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 
 // Shared enum value lists so the single-search params (library.def.ts) and
@@ -35,7 +36,7 @@ export const LIBRARY_DEVICE_KIND_VALUES = [
 ] as const;
 
 export const LIBRARY_SOURCE_VALUES = [
-  "sampleFolder",
+  "sample-folder",
   "user",
   "pack",
   "builtin",
@@ -43,7 +44,36 @@ export const LIBRARY_SOURCE_VALUES = [
   "plugin",
 ] as const;
 
-export const LIBRARY_SORT_VALUES = ["use_count", "mod_date", "name"] as const;
+export const LIBRARY_ACTION_VALUES = [
+  "search",
+  "list-tags",
+  "list-categories",
+  "list-plugins",
+  "find-similar",
+  "find-duplicates",
+  "search-batch",
+] as const;
+
+export const LIBRARY_SORT_VALUES = ["use-count", "mod-date", "name"] as const;
+
+// Old camelCase and snake_case spellings, still accepted but never published.
+export const LIBRARY_SOURCE_ALIASES = {
+  sampleFolder: "sample-folder",
+} as const;
+
+export const LIBRARY_ACTION_ALIASES = {
+  listTags: "list-tags",
+  listCategories: "list-categories",
+  listPlugins: "list-plugins",
+  findSimilar: "find-similar",
+  findDuplicates: "find-duplicates",
+  searchBatch: "search-batch",
+} as const;
+
+export const LIBRARY_SORT_ALIASES = {
+  use_count: "use-count",
+  mod_date: "mod-date",
+} as const;
 
 /**
  * One query in a `searches` fan-out. Fields mirror the single-search scalars
@@ -83,18 +113,16 @@ export const batchQuerySchema = z.object(
       .enum(LIBRARY_DEVICE_KIND_VALUES)
       .optional()
       .describe("device classification filter"),
-    source: z
-      .enum(LIBRARY_SOURCE_VALUES)
+    source: aliasedEnum(LIBRARY_SOURCE_VALUES, LIBRARY_SOURCE_ALIASES)
       .optional()
       .describe("where the file lives"),
     inFolder: z.coerce
       .string()
       .optional()
       .describe("absolute folder path; immediate children only"),
-    sort: z
-      .enum(LIBRARY_SORT_VALUES)
+    sort: aliasedEnum(LIBRARY_SORT_VALUES, LIBRARY_SORT_ALIASES)
       .optional()
-      .describe("sort order; defaults to use_count desc"),
+      .describe("sort order; defaults to use-count desc"),
     verifyPaths: z
       .boolean()
       .optional()

@@ -73,7 +73,7 @@ export function installFakeLom(lom: FakeLom): FakeLomCalls {
 
   const runOp = (op: FakeOp): unknown => {
     switch (op.type) {
-      case "set_path": {
+      case "set-path": {
         const asked = String(op.value);
         const resolved = lom.aliases?.[asked] ?? asked;
 
@@ -83,7 +83,7 @@ export function installFakeLom(lom: FakeLom): FakeLomCalls {
         return currentPath;
       }
 
-      case "get_property":
+      case "get-field":
         return readWrapperProperty(current, currentPath, op.property);
 
       case "info": {

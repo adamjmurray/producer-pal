@@ -211,7 +211,7 @@ describe("x-producer-pal-disabled-tools", () => {
     });
     const result = await subset.callTool({
       name: "ppal-library",
-      arguments: { action: "listTags" },
+      arguments: { action: "list-tags" },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -222,7 +222,7 @@ describe("x-producer-pal-disabled-tools", () => {
       isToolError(
         await ctx.client!.callTool({
           name: "ppal-library",
-          arguments: { action: "listTags" },
+          arguments: { action: "list-tags" },
         }),
       ),
     ).toBe(false);

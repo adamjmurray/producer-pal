@@ -198,6 +198,24 @@ bar|beat in every notation.
 co-located, there are no dangling refs to guard — just keep each param's modes
 correct.
 
+## Enum values
+
+Every enum value we define is kebab-case (`list-tags`, `use-count`). Strings
+Live owns keep Live's spelling: scale and view names, quantize grids like
+`1/8T`, device labels like `M/S`, routing names like `No Input`, Simpler's
+`one-shot`.
+
+Renaming a value leaves the old spelling as a hidden alias: `aliasedEnum()`
+publishes only the new values, and a call using an old one validates and reaches
+the handler as the new one. No refusal, no warning. Don't rename a value without
+one. See ADR-0052.
+
+```typescript
+source: aliasedEnum(["sample-folder", "user"], {
+  sampleFolder: "sample-folder",
+});
+```
+
 ## Retiring a param
 
 Deleting a param from `inputSchema` is not enough. `define-tool` derives the

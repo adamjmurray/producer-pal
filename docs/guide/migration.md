@@ -365,7 +365,7 @@ tool has always worked this way.
   `Instrument Rack`. Match on the start of the string.
 - **Reads round to Live's display precision.** Tempo, pan and sends are rounded
   like gain, and a tiny value no longer arrives as a numeric string.
-- **`ppal-library` shows what Live's browser shows.** `findSimilar` results
+- **`ppal-library` shows what Live's browser shows.** `find-similar` results
   carry `distance` (lower = closer, no fixed range) instead of `similarity`.
   Library-wide searches leave out copies inside other installed Live versions
   and files Live's All search hides; pass `inFolder` or `source` to reach them.

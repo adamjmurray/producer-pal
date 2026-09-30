@@ -178,9 +178,9 @@ async function identifyObjects(
   const jobs: Job[] = paths.map((path) => ({
     path,
     ops: [
-      { type: "get_property", property: "id" },
-      { type: "get_property", property: "type" },
-      { type: "get_property", property: "path" },
+      { type: "get-field", property: "id" },
+      { type: "get-field", property: "type" },
+      { type: "get-field", property: "path" },
       { type: "info" },
     ],
   }));

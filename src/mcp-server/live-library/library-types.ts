@@ -71,12 +71,12 @@ export type LibraryItemType = "loop" | "oneshot" | "impulse-response";
 
 /**
  * Where in Live's library a file lives. Mostly collapses Live's
- * `folder_kind` integers; "sampleFolder" is the special case for files
+ * `folder_kind` integers; "sample-folder" is the special case for files
  * found via the user-configured custom sample folder (V8 filesystem
  * scan, not in Live's DB).
  */
 export type LibrarySource =
-  | "sampleFolder"
+  | "sample-folder"
   | "user"
   | "pack"
   | "builtin"
@@ -84,7 +84,7 @@ export type LibrarySource =
   | "plugin";
 
 /** Sort order for search results */
-export type LibrarySort = "use_count" | "mod_date" | "name";
+export type LibrarySort = "use-count" | "mod-date" | "name";
 
 export interface LibrarySearchArgs {
   query?: string;
