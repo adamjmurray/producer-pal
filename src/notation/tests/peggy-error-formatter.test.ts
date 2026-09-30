@@ -4,184 +4,118 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { formatParserError } from "../peggy-error-formatter.ts";
+import {
+  editDistance,
+  fixParses,
+  formatSyntaxError,
+  isUnclosed,
+  stripComments,
+  type SyntaxFailure,
+  zeroDenominatorHint,
+} from "../peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "../peggy-parser-types.ts";
 
-interface SyntaxErrorOverrides {
-  expected?: PeggySyntaxError["expected"];
-  found?: string | null;
-  location?: PeggySyntaxError["location"];
-}
-
-function createSyntaxError(
-  overrides: SyntaxErrorOverrides = {},
+/**
+ * @param offset - Where the parse stopped
+ * @param line - 1-based line of the failure
+ * @param column - 1-based column of the failure
+ * @returns A Peggy-shaped syntax error
+ */
+function syntaxError(
+  offset: number,
+  line = 1,
+  column = offset + 1,
 ): PeggySyntaxError {
+  const point = { offset, line, column };
+
   return {
     name: "SyntaxError",
     message: "Expected ...",
-    expected:
-      "expected" in overrides
-        ? (overrides.expected as PeggySyntaxError["expected"])
-        : [{ type: "other", description: "time position" }],
-    found: overrides.found !== undefined ? overrides.found : "x",
-    location: overrides.location ?? {
-      start: { offset: 0, line: 1, column: 1 },
-      end: { offset: 1, line: 1, column: 2 },
-    },
+    expected: [{ type: "literal", text: "]" }],
+    found: null,
+    location: { start: point, end: point },
   };
 }
 
-describe("Peggy Error Formatter", () => {
-  describe("formatParserError", () => {
-    it("formats error with labeled expectations for barbeat", () => {
-      const error = createSyntaxError({
-        expected: [
-          { type: "other", description: "time position" },
-          { type: "other", description: "note pitch" },
-          { type: "other", description: "velocity value" },
-        ],
-      });
+describe("formatSyntaxError", () => {
+  it("names the position, the text there, and the detail", () => {
+    let seen: SyntaxFailure | undefined;
+    const message = formatSyntaxError(
+      "demo syntax error",
+      syntaxError(10, 2, 4),
+      "C3 1|1\nE3 x 1|2",
+      (failure) => {
+        seen = failure;
 
-      const result = formatParserError(error, "bar|beat");
+        return "the fix.";
+      },
+    );
 
-      expect(result).toBe(
-        'bar|beat syntax error at position 0 (line 1, column 1): Expected time position, note pitch, velocity value but "x" found',
-      );
+    expect(message).toBe(
+      'demo syntax error at position 10 (line 2, column 4) near "x 1|2": the fix.',
+    );
+    expect(seen).toStrictEqual({
+      line: "E3 x 1|2",
+      column: 3,
+      expected: [{ type: "literal", text: "]" }],
+      source: "C3 1|1\nE3 x 1|2",
+      offset: 10,
     });
+  });
 
-    it("limits expectations to 5 items", () => {
-      const error = createSyntaxError({
-        expected: [
-          { type: "other", description: "option1" },
-          { type: "other", description: "option2" },
-          { type: "other", description: "option3" },
-          { type: "other", description: "option4" },
-          { type: "other", description: "option5" },
-          { type: "other", description: "option6" },
-          { type: "other", description: "option7" },
-        ],
-      });
+  it("says where the input or the line ended", () => {
+    expect(formatSyntaxError("e", syntaxError(3), "C3 ", () => "d")).toBe(
+      "e at position 3 (line 1, column 4) at end of input: d",
+    );
+    expect(formatSyntaxError("e", syntaxError(3), "C3 \nD3", () => "d")).toBe(
+      "e at position 3 (line 1, column 4) at end of line: d",
+    );
+  });
 
-      const result = formatParserError(error, "bar|beat");
+  it("shortens long text at the failure", () => {
+    const message = formatSyntaxError(
+      "e",
+      syntaxError(0),
+      "x".repeat(40),
+      () => "d",
+    );
 
-      // Should only include first 5
-      expect(result).toContain("option1");
-      expect(result).toContain("option5");
-      expect(result).not.toContain("option6");
-      expect(result).not.toContain("option7");
-    });
+    expect(message).toContain(`near "${"x".repeat(24)}…"`);
+  });
+});
 
-    it("handles error at end of input", () => {
-      const error = createSyntaxError({
-        expected: [{ type: "other", description: "expression" }],
-        found: null,
-        location: {
-          start: { offset: 10, line: 1, column: 11 },
-          end: { offset: 10, line: 1, column: 11 },
-        },
-      });
+describe("hint helpers", () => {
+  it("strips comments but keeps a sharp", () => {
+    expect(stripComments("C#3 1|1 // [ note")).toBe("C#3 1|1 ");
+    expect(stripComments("C3 /* ( */ 1|1 # )")).toBe("C3   1|1 ");
+  });
 
-      const result = formatParserError(error, "bar|beat");
+  it("spots an unclosed bracket", () => {
+    expect(isUnclosed("[C3 E3", "[", "]")).toBe(true);
+    expect(isUnclosed("[C3 E3]", "[", "]")).toBe(false);
+  });
 
-      expect(result).toBe(
-        "bar|beat syntax error at position 10 (line 1, column 11): Expected expression but reached end of input",
-      );
-    });
+  it("spots a zero note-value denominator, but not n/0.5", () => {
+    expect(zeroDenominatorHint("C3 1|1+n1/0")).toContain("(got n1/0)");
+    expect(zeroDenominatorHint("n/0.5 C3")).toBeNull();
+    expect(zeroDenominatorHint("clip.position/0")).toBeNull();
+  });
 
-    it("ignores non-labeled expectations", () => {
-      const error = createSyntaxError({
-        expected: [
-          { type: "literal", value: "+" },
-          { type: "class", value: "[0-9]" },
-          { type: "other", description: "time position" },
-          { type: "literal", value: "v" },
-        ],
-      });
+  it("measures edit distance", () => {
+    expect(editDistance("kck", "kick")).toBe(1);
+    expect(editDistance("melod", "melody")).toBe(1);
+  });
 
-      const result = formatParserError(error, "bar|beat");
+  it("reports whether a fix parses", () => {
+    const parse = (text: string): string => {
+      if (text !== "ok") {
+        throw new Error("no");
+      }
 
-      // Should only include the labeled one
-      expect(result).toContain("time position");
-      expect(result).not.toContain("+");
-      expect(result).not.toContain("[0-9]");
-      expect(result).not.toContain("v");
-    });
+      return text;
+    };
 
-    it("falls back to 'valid syntax' when no labels", () => {
-      const error = createSyntaxError({
-        expected: [
-          { type: "literal", value: "+" },
-          { type: "literal", value: "-" },
-        ],
-        location: {
-          start: { offset: 5, line: 1, column: 6 },
-          end: { offset: 6, line: 1, column: 7 },
-        },
-      });
-
-      const result = formatParserError(error, "bar|beat");
-
-      expect(result).toBe(
-        'bar|beat syntax error at position 5 (line 1, column 6): Expected valid syntax but "x" found',
-      );
-    });
-
-    it("handles missing location info", () => {
-      const error = {
-        ...createSyntaxError({
-          expected: [{ type: "other", description: "parameter name" }],
-        }),
-        location: undefined as unknown as PeggySyntaxError["location"],
-      };
-
-      const result = formatParserError(error, "bar|beat");
-
-      expect(result).toContain("at unknown position");
-      expect(result).toContain("parameter name");
-    });
-
-    it("escapes control characters in found value", () => {
-      const error = createSyntaxError({
-        found: "\n\t\\",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 3, line: 1, column: 4 },
-        },
-      });
-
-      const result = formatParserError(error, "bar|beat");
-
-      expect(result).toContain('"\\n\\t\\\\"');
-    });
-
-    it("handles empty expected array", () => {
-      const error = createSyntaxError({ expected: [] });
-
-      const result = formatParserError(error, "bar|beat");
-
-      expect(result).toContain("valid syntax");
-    });
-
-    it("handles undefined expected array", () => {
-      const error = createSyntaxError({ expected: undefined });
-
-      const result = formatParserError(error, "bar|beat");
-
-      expect(result).toContain("valid syntax");
-    });
-
-    it("formats multi-line error position correctly", () => {
-      const error = createSyntaxError({
-        expected: [{ type: "other", description: "parameter assignment" }],
-        location: {
-          start: { offset: 42, line: 3, column: 15 },
-          end: { offset: 43, line: 3, column: 16 },
-        },
-      });
-
-      const result = formatParserError(error, "bar|beat");
-
-      expect(result).toContain("at position 42 (line 3, column 15)");
-    });
+    expect(fixParses(parse, "ok")).toBe(true);
+    expect(fixParses(parse, "bad")).toBe(false);
   });
 });

@@ -18,6 +18,7 @@
 
 import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import {
   drumHeaderPitch,
   noteLabel,
@@ -35,6 +36,7 @@ import {
   type StarkSection,
 } from "#src/notation/stark/parser/stark-parser.ts";
 import * as parser from "#src/notation/stark/parser/stark-parser.ts";
+import { formatStarkSyntaxError } from "#src/notation/stark/parser/stark-syntax-error.ts";
 import {
   BASS_REGISTER_DEFAULT,
   CHORDS_REGISTER_DEFAULT,
@@ -119,9 +121,12 @@ export function parseNotation(starkExpression: string): StarkSection[] {
   try {
     return parser.parse(starkExpression);
   } catch (error) {
-    throw new Error(`Stark notation parse error: ${(error as Error).message}`, {
-      cause: error,
-    });
+    const message =
+      error instanceof Error && error.name === "SyntaxError"
+        ? formatStarkSyntaxError(error as PeggySyntaxError, starkExpression)
+        : `Stark notation parse error: ${(error as Error).message}`;
+
+    throw new Error(message, { cause: error });
   }
 }
 

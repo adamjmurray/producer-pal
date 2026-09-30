@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  isUnclosed,
+  zeroDenominatorHint,
+} from "#src/notation/peggy-error-formatter.ts";
 import { type FailedLine, readFailedLine } from "./failed-line.ts";
 import {
   afterParameterMistake,
@@ -23,7 +27,7 @@ type MistakeCheck = (line: FailedLine) => string | null;
 
 const CHECKS: MistakeCheck[] = [
   unclosedParen,
-  zeroDenominator,
+  ({ code }) => zeroDenominatorHint(code),
   mixedWildcardRange,
   unknownPropertyMistake,
   whereNameMistake,
@@ -62,28 +66,9 @@ export function diagnoseTransformMistake(
  * @returns Hint for more `(` than `)`
  */
 function unclosedParen(line: FailedLine): string | null {
-  const { code } = line;
-
-  const opens = code.split("(").length - 1;
-  const closes = code.split(")").length - 1;
-
-  return opens > closes ? `unclosed "(" — add the missing ")".` : null;
-}
-
-/**
- * @param line - The failing line
- * @returns Hint for a note value like `n/0`. Same text as the grammar's own
- *   error for a duration value.
- */
-function zeroDenominator(line: FailedLine): string | null {
-  const { code } = line;
-
-  // Not `clip.position/0`: the `n` must start a word.
-  const token = /(?<![\w.])n[\d.]*\/0(?![\d.])/.exec(code)?.[0];
-
-  return token == null
-    ? null
-    : `a note value's denominator can't be 0 (got ${token}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`;
+  return isUnclosed(line.code, "(", ")")
+    ? `unclosed "(" — add the missing ")".`
+    : null;
 }
 
 /**

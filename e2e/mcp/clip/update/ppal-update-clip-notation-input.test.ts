@@ -13,7 +13,12 @@
  * Run with: npm run e2e:mcp -- ppal-update-clip-notation-input
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import {
+  getToolErrorMessage,
+  isToolError,
+  setupMcpTestContext,
+  sleep,
+} from "../../mcp-test-helpers.ts";
 import { updateAndRead } from "../helpers/clip-io-test-helpers.ts";
 import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
@@ -37,5 +42,28 @@ describe("ppal-update-clip bar|beat input", () => {
     await updateAndRead(ctx.client!, clipId, { notes: "D3 1|3." });
 
     expect(await readClipNotes(clipId)).toContain("D3 1|3");
+  });
+});
+
+describe("ppal-update-clip bar|beat parse errors", () => {
+  // A model reads the parse error to repair its notes, so the error must name
+  // the fix — and the clip stays as it was.
+  it("names the fix for a note missing its octave and leaves the notes alone", async () => {
+    const clipId = await createMidiClip(2, "C3 1|1");
+    const before = await readClipNotes(clipId);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, notes: "E 1|2" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "a note needs an octave: E3, not E",
+    );
+
+    await sleep(100);
+
+    expect(await readClipNotes(clipId)).toBe(before);
   });
 });

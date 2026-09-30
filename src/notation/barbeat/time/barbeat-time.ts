@@ -299,7 +299,7 @@ export function validateBarBeatPosition(barBeat: string): void {
   // valid. Word-for-word the grammar's badZeroBeat steer.
   if (beatBaseLiteral.startsWith("0") || beatBaseLiteral.startsWith("-")) {
     throw new Error(
-      `beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${beatBaseLiteral}.`,
+      `beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${beatBaseLiteral.replace(/\.$/, "")}.`,
     );
   }
 }

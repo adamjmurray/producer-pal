@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  fixParses as fixParsesWith,
+  stripComments,
+} from "#src/notation/peggy-error-formatter.ts";
 import { parse } from "../transform-parser.ts";
 
 /** A transform line that failed to parse, split where the parse stopped. */
@@ -30,54 +34,9 @@ export function readFailedLine(line: string, column: number): FailedLine {
 }
 
 /**
- * Whether a suggested fix really parses. A hint that names a wrong fix is
- * worse than none, so every "write …" hint checks here first.
  * @param fix - A transform statement
  * @returns Whether it parses
  */
 export function fixParses(fix: string): boolean {
-  try {
-    parse(fix);
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Remove comments so their text can't trigger a hint. `#` only starts a
- * comment after whitespace — `C#3` is a pitch. Scans with indexOf, not a
- * regex, so a line of thousands of `/*` stays linear.
- * @param text - Transform text
- * @returns The text without comments
- */
-function stripComments(text: string): string {
-  const pieces: string[] = [];
-  let position = 0;
-
-  while (position < text.length) {
-    const open = text.indexOf("/*", position);
-
-    if (open === -1) {
-      pieces.push(text.slice(position));
-      break;
-    }
-
-    pieces.push(text.slice(position, open), " ");
-    const close = text.indexOf("*/", open + 2);
-
-    position = close === -1 ? text.length : close + 2;
-  }
-
-  let code = pieces.join("");
-  const lineComment = code.indexOf("//");
-
-  if (lineComment !== -1) {
-    code = code.slice(0, lineComment);
-  }
-
-  const hash = /(?:^|\s)#/.exec(code);
-
-  return hash == null ? code : code.slice(0, hash.index + hash[0].length - 1);
+  return fixParsesWith(parse, fix);
 }

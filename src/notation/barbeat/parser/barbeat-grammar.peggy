@@ -260,6 +260,10 @@ duration "duration value"
   / "n" frac:unsignedFraction {
     return { duration: frac };  // Fraction of a whole note (e.g., 1/4 = quarter)
   }
+  / "n" [0-9.]* "/0" ![0-9.] {
+    // Same text as the transform grammar's nDuration.
+    throw new Error(`a note value's denominator can't be 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
+  }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet, or a bar form like 1bar or 1bar+n/4. Got n${bad}`);
   }
@@ -398,16 +402,21 @@ rangeAsBeat
 // `1|1-n/N` (see standard skills).
 badZeroBeat
   = "0" [0-9]* ("." [0-9]*)? {
-      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text().replace(/\.$/, "")}.`);
     }
 
 // Last resort for a digit-led element that is neither a position (no `|`) nor a
-// duration (no `bar`): a `bar.beat`/`bar:beat` written with the wrong separator,
-// or a raw MIDI number used as a pitch. Ordered last in `element` so every real
+// duration (no `bar`): a position with spaces around its pipe (`1 | 1`), a
+// `bar.beat`/`bar:beat` written with the wrong separator, or a raw MIDI number
+// used as a pitch. The spaced pipe goes first, since `1 | 1` would otherwise
+// read as the MIDI number 1. Ordered last in `element` so every real
 // element wins first; raises a fix-suggesting error in place of peggy's generic
 // "Expected …". Never returns a value.
 badNumericToken
-  = unsignedInt ("." / ":") unsignedInt {
+  = bar:$([1-9] [0-9]*) before:$[ \t]* "|" after:$[ \t]* beat:$([1-9] [0-9]* ("." [0-9]*)?) &{ return before !== "" || after !== ""; } {
+      throw new Error(`no spaces around the pipe in a position: write ${bar}|${beat}, not "${text()}".`);
+    }
+  / unsignedInt ("." / ":") unsignedInt {
       throw new Error(`positions use a pipe: bar|beat (e.g. 1|1), not "." or ":". Got ${text()}.`);
     }
   / unsignedInt &(WS / !.) {

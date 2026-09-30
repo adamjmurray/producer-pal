@@ -50,7 +50,7 @@ export interface SyntaxError extends Error {
 /** Peggy SyntaxError with detailed expected items for error formatting */
 export interface PeggySyntaxError extends Error {
   name: "SyntaxError";
-  expected?: Array<{ type: string; value?: string; description?: string }>;
+  expected?: Array<{ type: string; text?: string; description?: string }>;
   found: string | null;
   location: {
     start: { offset: number; line: number; column: number };

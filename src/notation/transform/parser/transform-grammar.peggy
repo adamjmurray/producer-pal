@@ -590,7 +590,7 @@ beatValue
 // rule across grammars). The `1|0`-as-pickup reading is deliberately not taught.
 badZeroBeat
   = "0" [0-9]* ("." [0-9]*)? {
-      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text().replace(/\.$/, "")}.`);
     }
 
 // Old bare-fraction beat (`4/3`); matched only to raise a targeted error.

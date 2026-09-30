@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { editDistance } from "#src/notation/peggy-error-formatter.ts";
+
 // The names the transform grammar accepts, for "did you mean" hints. Peggy
 // can't import these, so a parity test holds them in step with the grammar.
 
@@ -95,32 +97,4 @@ export function suggestTransformName(
   }
 
   return best;
-}
-
-/**
- * Levenshtein distance between two strings.
- * @param a - First string
- * @param b - Second string
- * @returns Number of single-character edits between them
- */
-function editDistance(a: string, b: string): number {
-  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
-
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i];
-
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-
-      current[j] = Math.min(
-        (previous[j] as number) + 1,
-        (current[j - 1] as number) + 1,
-        (previous[j - 1] as number) + cost,
-      );
-    }
-
-    previous = current;
-  }
-
-  return previous[b.length] as number;
 }

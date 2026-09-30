@@ -3,20 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  type ExpectedItem,
+  formatSyntaxError,
+} from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { diagnoseTransformMistake } from "./helpers/transform-mistakes.ts";
-
-const NEAR_MAX_LENGTH = 24;
 
 // Whitespace and comment openers are allowed almost everywhere, so listing
 // them as "expected" only buries the real alternatives.
 const NOISE_LITERALS = new Set(["//", "#", "/*"]);
-
-interface ExpectedItem {
-  type: string;
-  text?: string;
-  description?: string;
-}
 
 /**
  * Format a transform parse failure: where it failed, the text there, and the
@@ -29,37 +25,13 @@ export function formatTransformSyntaxError(
   error: PeggySyntaxError,
   source: string,
 ): string {
-  const { offset, line, column } = error.location.start;
-  const lineStart = source.lastIndexOf("\n", offset - 1) + 1;
-  const newline = source.indexOf("\n", offset);
-  const lineText = source
-    .slice(lineStart, newline === -1 ? source.length : newline)
-    .replace(/\r$/, "");
-  const lineColumn = offset - lineStart;
-
-  const detail =
-    diagnoseTransformMistake(lineText, lineColumn) ??
-    describeExpected(error.expected ?? []);
-
-  return `transform syntax error at position ${offset} (line ${line}, column ${column}) ${near(lineText.slice(lineColumn), offset >= source.length)}: ${detail}`;
-}
-
-/**
- * @param rest - The failing line from the failure on
- * @param atEnd - Whether the failure is at the end of the whole input
- * @returns `near "<text>"`, or where the line or input ended
- */
-function near(rest: string, atEnd: boolean): string {
-  const text = rest.trimEnd();
-
-  if (text === "") {
-    return atEnd ? "at end of input" : "at end of line";
-  }
-
-  const shown =
-    text.length > NEAR_MAX_LENGTH ? `${text.slice(0, NEAR_MAX_LENGTH)}…` : text;
-
-  return `near "${shown}"`;
+  return formatSyntaxError(
+    "transform syntax error",
+    error,
+    source,
+    ({ line, column, expected }) =>
+      diagnoseTransformMistake(line, column) ?? describeExpected(expected),
+  );
 }
 
 /**
