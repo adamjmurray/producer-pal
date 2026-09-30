@@ -184,4 +184,13 @@ describe("Live's library listing rules", () => {
 
     expect(result.items.map((i) => i.name)).toContain("flagged_boom.wav");
   });
+
+  it("findSimilar leaves them out with a source filter, as Show Similar does", async () => {
+    const result = await findSimilar({
+      similarTo: `${USER_LIBRARY}/user_kick.aif`,
+      source: "user",
+    });
+
+    expect(result.items.map((i) => i.name)).not.toContain("flagged_boom.wav");
+  });
 });

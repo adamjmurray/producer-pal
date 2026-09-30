@@ -164,7 +164,9 @@ function rankCandidates(
   seed: Seed,
   parentId: number | undefined,
 ): LibrarySimilarItem[] {
-  const { where, params } = buildCandidateWhere(args, parentId);
+  const { where, params } = buildCandidateWhere(args, parentId, {
+    sourceShowsHidden: false,
+  });
 
   // CAST hash to TEXT: it's a full 64-bit int that a JS number can't hold.
   // Assumes one fe_values row per file; a second row with another hash would
