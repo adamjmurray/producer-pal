@@ -77,23 +77,21 @@ describe("updateClip - splitting smoke tests", () => {
     expect(callState.trackMock.call).not.toHaveBeenCalled();
   });
 
-  it("splits nothing when both split params are given", async () => {
+  it("refuses both split params, before touching anything", async () => {
     const clipId = "clip_1";
-    const consoleSpy = vi.spyOn(console, "warn");
-
     const { callState } = setupClipSplittingMocks(clipId);
 
     // They read positions on different timelines, so there is no safe guess.
-    await updateClip({ id: clipId, arrangementSplit: "2|1", split: "3|1" }, {});
-
-    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
+    await expect(
+      updateClip(
+        { id: clipId, arrangementSplit: "2|1", split: "3|1", name: "Renamed" },
+        {},
+      ),
+    ).rejects.toThrow(
+      "arrangementSplit and split both name split positions; use arrangementSplit alone (split is deprecated)",
     );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit and split both name split"),
-    );
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+    expect(lookupMockObject(clipId)?.set).not.toHaveBeenCalled();
   });
 
   it("splits for arrangementSplit when split is sent blank", async () => {

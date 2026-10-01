@@ -14,10 +14,6 @@ import {
   type SplitMode,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import {
-  namedParam,
-  paramNamesSomething,
-} from "#src/tools/shared/helpers/param-presence.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   computeOverwritePlan,
@@ -27,6 +23,7 @@ import {
   beatsForClip,
   parseArrangementParams,
 } from "./arrangement/update-clip-arrangement-params.ts";
+import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
 import { type NoteEdits } from "./notes/note-edit-parsing.ts";
 import { refuseUnreadableNoteEdits } from "./notes/note-edit-refusal.ts";
@@ -480,11 +477,11 @@ function readSplitRequest(
 
 /**
  * Pick which split param to act on. The two read positions on different
- * timelines, so sending both is ambiguous: warn and split nothing rather than
- * guess, matching how toPath/toSlot handle a doubled destination.
+ * timelines, so sending both is ambiguous: refuse rather than guess, the same
+ * way toPath/toSlot handle a doubled destination.
  * @param rawArrangementSplit - Song-timeline positions
  * @param rawSplit - Deprecated clip-relative positions
- * @returns The positions and how to read them, or null to skip splitting
+ * @returns The positions and how to read them, or null when none were sent
  */
 function resolveSplitRequest(
   rawArrangementSplit: string | undefined,
@@ -492,19 +489,14 @@ function resolveSplitRequest(
 ): { value: string; mode: SplitMode } | null {
   // A blank names no position, so reading one as a request made a caller that
   // fills unused strings with "" lose the split it did ask for. `split` is
-  // hidden, so a model never saw the name — read it without the warning.
-  const arrangementSplit = namedParam(rawArrangementSplit, "arrangementSplit");
-  const split = paramNamesSomething(rawSplit) ? rawSplit?.trim() : undefined;
-
-  if (arrangementSplit != null && split != null) {
-    console.warn(
-      "arrangementSplit and split both name split positions, so no clip was " +
-        "split; use arrangementSplit alone (split is deprecated, and its " +
-        "positions are measured from each clip's start instead of the song timeline)",
-    );
-
-    return null;
-  }
+  // hidden, so a model never saw the name: its null reads without a warning.
+  const { value: arrangementSplit, aliasValue: split } = refuseDoubledSpelling({
+    param: "arrangementSplit",
+    value: rawArrangementSplit,
+    alias: "split",
+    aliasValue: rawSplit,
+    noun: "split positions",
+  });
 
   if (arrangementSplit != null) {
     return { value: arrangementSplit, mode: ARRANGEMENT_SPLIT_MODE };

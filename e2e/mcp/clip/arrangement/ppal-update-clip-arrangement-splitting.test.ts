@@ -422,23 +422,29 @@ describe("Behavioral splitting tests", () => {
       ]);
     });
 
-    it("splits nothing when both split params are given", async () => {
+    it("refuses both split params, changing nothing", async () => {
       const clipId = await createFourBarClip(430);
 
       await sleep(200);
       const result = await ctx.client!.callTool({
         name: "ppal-update-clip",
-        arguments: { id: clipId, arrangementSplit: "432|1", split: "3|1" },
+        arguments: {
+          id: clipId,
+          arrangementSplit: "432|1",
+          split: "3|1",
+          name: "Not Renamed",
+        },
       });
 
-      expect(getToolWarnings(result).join("\n")).toContain(
-        "both name split positions",
+      expect(getToolErrorMessage(result)).toContain(
+        "arrangementSplit and split both name split positions; use arrangementSplit alone",
       );
 
       await sleep(200);
       const clips = await clipsInSpan(430, 4);
 
       expect(clips).toHaveLength(1);
+      expect(clips[0]?.id).toBe(clipId);
     });
   });
 
