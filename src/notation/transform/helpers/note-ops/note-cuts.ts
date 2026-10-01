@@ -87,7 +87,9 @@ export function splitNotes(
 
   if (op.sync) {
     if (arrangementOrigin == null) {
-      console.warn("sync ignored on session clip — split is clip-relative");
+      console.clipDetail(
+        "sync ignored: session clip, so split is clip-relative",
+      );
     } else {
       originMusicalBeats = arrangementOrigin;
     }
@@ -128,13 +130,13 @@ export function splitNotes(
   }
 
   if (uncut > 0) {
-    console.warn(
-      `split: ${uncut} note(s) contained none of the given positions and were left unchanged`,
+    console.clipDetail(
+      `split: ${uncut} note(s) contained none of the given positions, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.warn(
+    console.clipDetail(
       `split: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }

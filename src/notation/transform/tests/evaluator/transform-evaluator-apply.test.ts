@@ -147,7 +147,7 @@ describe("applyTransforms", () => {
 
       expect(notes).toHaveLength(0);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("transform drove duration to 0 or below"),
+        expect.stringContaining("duration went to 0 or below"),
       );
     });
 

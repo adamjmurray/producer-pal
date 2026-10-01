@@ -89,8 +89,8 @@ note op sees the rebuilt note list (e.g. `note.index` re-derives over the denser
 or sparser set). The optional selector scopes which notes the op touches; notes
 outside the selector pass through untouched. A note op's selector — like every
 selector — is **per-line**: it applies to that op only and is not carried to or
-from neighboring statements. Note ops are MIDI-only; they are ignored (with a
-warning) on audio clips.
+from neighboring statements. Note ops are MIDI-only; they are ignored (reported
+on the clip's entry) on audio clips.
 
 ### ratchet(count) / ratchet(noteValue)
 
@@ -160,8 +160,8 @@ unchanged — `repeat` translates notes, it does not stretch them.
   exact onset of another same-pitch note (an existing note or an earlier copy,
   within `SAME_TIME_EPSILON`), the write-path dedupe keeps the last write and
   drops the other — deterministic, but the displaced note (with its own
-  velocity/probability) is replaced. `repeat` emits a warning counting how many
-  collisions collapsed; the op is not skipped.
+  velocity/probability) is replaced. The clip's entry says how many duplicate
+  notes were dropped; the op is not skipped.
 
 `repeat` runs in the same statement-major pipeline as the other note ops, so
 **order matters** when it composes with a `merge`. `repeat` then `merge` first
@@ -198,7 +198,8 @@ probability, and deviation.
   beats-per-bar.
 - A position only cuts a note when it falls **strictly inside** that note's
   span; a position on a note's own onset/offset is a boundary, not a cut. A note
-  containing none of the positions is left unchanged (with a warning).
+  containing none of the positions is left unchanged (reported on the clip's
+  entry).
 - Positions are de-duplicated, so a repeated position never makes a zero-width
   sliver. The per-note piece cap (64) still applies.
 - Zero/negative-duration notes are left unchanged (and are removed later by the
@@ -209,8 +210,8 @@ probability, and deviation.
   clip origin. Each position is mapped into note time through the clip's
   arrangement start and start marker, so e.g. a clip starting at bar 5 (start
   marker at 1|1) cut with `split(6|1, sync)` cuts at clip bar 2. Session clips
-  have no arrangement origin, so `sync` is ignored (warn-and-degrade to
-  clip-relative), mirroring the waveform `sync` fallback.
+  have no arrangement origin, so `sync` is ignored (degrades to clip-relative,
+  reported on the clip's entry), mirroring the waveform `sync` fallback.
 
 ```
 split(2|1)            // cut every note that spans bar 2's downbeat

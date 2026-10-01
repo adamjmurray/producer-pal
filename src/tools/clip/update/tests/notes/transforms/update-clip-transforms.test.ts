@@ -149,13 +149,29 @@ describe("updateClip - transforms name the clip they warn about", () => {
     mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
   });
 
-  // round() rejects the extra arg the same way for every clip
+  // ratchet() rejects a zero grid the same way for every clip
   it("tells two firings of the same reason apart", async () => {
-    await updateClip({ ids: "123,456", transforms: "velocity = round(1, 2)" });
+    await updateClip({ ids: "123,456", transforms: "ratchet(n0/4)" });
 
-    expect(capturedWarnings().map((w) => w.split(": Failed")[0])).toStrictEqual(
-      ["clip t0/s0 (id 123)", "clip t1/s1 (id 456)"],
-    );
+    expect(
+      capturedWarnings().map((w) => w.split(": ratchet")[0]),
+    ).toStrictEqual(["clip t0/s0 (id 123)", "clip t1/s1 (id 456)"]);
+  });
+
+  // A fact about one clip's notes goes on that clip's entry, and is no warning.
+  it("puts a per-clip fact on that clip's entry", async () => {
+    const result = await updateClip({
+      ids: "123,456",
+      transforms: "duration = -1",
+    });
+
+    const fact = "1 note(s) deleted: duration went to 0 or below";
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ id: "123", detail: fact }),
+      expect.objectContaining({ id: "456", detail: fact }),
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 

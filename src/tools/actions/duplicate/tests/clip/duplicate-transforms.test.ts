@@ -116,6 +116,40 @@ describe("duplicate - transforms/code", () => {
       ]);
     });
 
+    // A fact about one copy (here, notes a transform deleted) arrives on that
+    // copy's entry from the update, and never as a warning.
+    it("puts a per-copy transform fact on that copy's entry only", async () => {
+      setupTwoSlotDuplication();
+
+      const dest1 = "live_set/tracks/0/clip_slots/1/clip";
+      const dest2 = "live_set/tracks/0/clip_slots/2/clip";
+      const fact = "1 note(s) deleted: duration went to 0 or below";
+
+      updateClipMock.mockReturnValueOnce([
+        { id: dest1, noteCount: 3, transformed: 3, detail: fact },
+        { id: dest2, noteCount: 3, transformed: 3 },
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1, 0/2",
+        transforms: "duration -= clip.index",
+      });
+
+      expect(result).toStrictEqual([
+        {
+          id: dest1,
+          path: "t0/s1",
+          noteCount: 3,
+          transformed: 3,
+          detail: fact,
+        },
+        { id: dest2, path: "t0/s2", noteCount: 3, transformed: 3 },
+      ]);
+      expect(consoleMock.warn).not.toHaveBeenCalled();
+    });
+
     it("passes the code string through to updateClip", async () => {
       registerSessionClipDuplication({ destClipProperties: {} });
       const destId = "live_set/tracks/0/clip_slots/1/clip";

@@ -127,8 +127,8 @@ export function applyAudioTransform(
         pitchShiftModified = true;
       }
     } catch (error) {
-      console.warn(
-        `Failed to evaluate ${assignment.parameter} transform: ${errorMessage(error)}`,
+      console.clipDetail(
+        `${assignment.parameter} transform failed: ${errorMessage(error)}`,
       );
     }
   }
@@ -196,7 +196,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   const assignments = ast.filter((a): a is TransformAssignment => !isNoteOp(a));
 
   for (const reason of wrongClipTypeStatements(ast, true).reasons) {
-    console.ignored(reason);
+    console.clipDetail(reason);
   }
 
   const hasAudioTimeRange = assignments.some(
@@ -206,7 +206,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioTimeRange) {
-    console.ignored(
+    console.clipDetail(
       "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
     );
   }
@@ -218,7 +218,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPitchRange) {
-    console.ignored(
+    console.clipDetail(
       "pitch selector ignored for audio clip transform (audio clips have no pitch)",
     );
   }
@@ -230,7 +230,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPredicate) {
-    console.ignored(
+    console.clipDetail(
       "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
     );
   }
@@ -383,7 +383,9 @@ function resolveAudioVariable(
   if (node.name === "position" && clipContext.arrangementStart == null) {
     // Session clips have no arrangement origin; 0 is the neutral position so
     // the transform keeps running instead of failing the clip.
-    console.warn(`clip.position is not available for session clips; using 0`);
+    console.clipDetail(
+      "clip.position isn't available on a session clip; used 0",
+    );
 
     return 0;
   }

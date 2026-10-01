@@ -292,7 +292,7 @@ describe("where() predicate filtering", () => {
       );
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("where() predicate"),
+        expect.stringContaining("where() failed"),
       );
       warnSpy.mockRestore();
     });

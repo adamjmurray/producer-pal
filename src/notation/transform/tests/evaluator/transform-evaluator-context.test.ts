@@ -214,7 +214,7 @@ describe("Context Variables", () => {
       expect(result.velocity).toStrictEqual({ operator: "set", value: 0 });
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          "clip.position is not available for session clips",
+          "clip.position isn't available on a session clip",
         ),
       );
     });

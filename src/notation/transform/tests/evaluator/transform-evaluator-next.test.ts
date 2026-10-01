@@ -183,7 +183,7 @@ describe("legato()", () => {
     expect(notes[0]!.duration).toBe(2);
     expect(notes[1]!.duration).toBe(1); // kept current duration
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("keeping current duration"),
+      expect.stringContaining("kept its duration"),
     );
   });
 

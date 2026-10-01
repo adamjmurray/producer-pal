@@ -73,7 +73,7 @@ export function applyTransforms(
   );
 
   for (const reason of wrongClipTypeStatements(ast, false).reasons) {
-    console.ignored(reason);
+    console.clipDetail(reason);
   }
 
   // Sort by start_time then pitch so note.index reflects musical order
@@ -167,8 +167,8 @@ export function applyTransforms(
     ).length;
 
     if (droppedForDuration > 0) {
-      console.warn(
-        `${droppedForDuration} note(s) deleted: transform drove duration to 0 or below`,
+      console.clipDetail(
+        `${droppedForDuration} note(s) deleted: duration went to 0 or below`,
       );
     }
 
@@ -309,11 +309,11 @@ function applyAssignmentToNotes(
       transformedIndices.add(i);
       appliedCount++;
     } catch (error) {
-      const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
+      const message = `${assignment.parameter} transform failed: ${errorMessage(error)}`;
 
       if (!warnedFailures.has(message)) {
         warnedFailures.add(message);
-        console.warn(message);
+        console.clipDetail(message);
       }
     }
   }

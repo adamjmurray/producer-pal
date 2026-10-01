@@ -171,7 +171,9 @@ function evaluateWaveform(
       // gracefully to clip-relative (phase resets at clip start) instead of
       // skipping the whole assignment — mirrors the clip.position variable
       // fallback. effectivePosition stays at the clip-relative position.
-      console.warn("sync ignored on session clip — LFO is clip-relative");
+      console.clipDetail(
+        "sync ignored: session clip, so the LFO is clip-relative",
+      );
     } else {
       effectivePosition = position + origin;
     }

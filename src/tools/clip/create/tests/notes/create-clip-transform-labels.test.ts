@@ -17,10 +17,10 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
-// A transform that fails to evaluate warns once per clip, with the same text
+// A transform with a bad argument warns once per clip, with the same text
 // every time, which is exactly what the label has to tell apart.
-const FAILING_TRANSFORM = "velocity = round(1, 2)";
-const FAILED = 'Failed to evaluate transform for parameter "velocity": ';
+const FAILING_TRANSFORM = "ratchet(n0/4)";
+const FAILED = "ratchet() grid";
 
 /**
  * The warnings with the failure's own wording cut off, leaving each label.
@@ -112,6 +112,24 @@ describe("createClip - transforms name the clip they warn about", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({ detail: "gain ignored: the clip is MIDI" }),
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // A fact about this clip's notes goes on its entry, once, and is no warning.
+  it("says on the entry what a transform did to the clip's notes", async () => {
+    registerEmptyClipSlot(0);
+
+    const result = await createClip({
+      slot: "0/0",
+      notes: "C3 1|1",
+      transforms: "duration = -1",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "1 note(s) deleted: duration went to 0 or below",
+      }),
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });

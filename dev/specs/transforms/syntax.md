@@ -163,10 +163,10 @@
     for ranges on the float-valued props (`duration`, `probability`, `start`).
   - **Evaluation**: the predicate is evaluated during note selection,
     AND-combined after the pitch/time filters. An evaluation failure (e.g. a
-    note missing the referenced property) warns and excludes the note, matching
-    warn-and-skip on the apply path. On audio clips (gain/pitchShift) a
-    note-property predicate warns and passes through, mirroring noteOp/audio
-    handling.
+    note missing the referenced property) excludes the note and says so on the
+    clip's entry, matching skip-and-report on the apply path. On audio clips
+    (gain/pitchShift) a note-property predicate is reported on the entry and
+    passes through, mirroring noteOp/audio handling.
 
 - **Range clamping**: Applied after modulation:
   - velocity: `<=0` deletes the note (like duration); anything else is held to

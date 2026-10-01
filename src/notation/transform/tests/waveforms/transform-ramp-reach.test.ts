@@ -42,7 +42,7 @@ function reachWarnings(
     return {
       warnings: warn.mock.calls
         .map((call) => String(call[0]))
-        .filter((message) => message.includes("of the way to its end value")),
+        .filter((message) => message.includes("of its end value")),
       notes,
     };
   } finally {
@@ -61,7 +61,7 @@ describe("ramp reach detection", () => {
     // The whole point: every note matched, and the ramp still fell short.
     expect(notes.at(-1)?.velocity).toBeLessThan(127);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("ramp() only got 75%");
+    expect(warnings[0]).toContain("ramp() only reached 75%");
     expect(warnings[0]).toContain("(2|4.5)");
   });
 

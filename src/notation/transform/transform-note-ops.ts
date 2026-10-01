@@ -209,13 +209,13 @@ function ratchetNotes(
   }
 
   if (shortNotes > 0) {
-    console.warn(
-      `ratchet: ${shortNotes} note(s) spanned no grid line and were left unchanged`,
+    console.clipDetail(
+      `ratchet: ${shortNotes} note(s) spanned no grid line, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.warn(
+    console.clipDetail(
       `ratchet: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }

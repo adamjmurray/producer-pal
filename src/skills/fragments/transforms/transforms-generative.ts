@@ -29,7 +29,7 @@ Operations that change how many notes exist, or modulate a value across the clip
 
 - **Roll / subdivide one note into several** — \`ratchet(N)\` divides each matched note into N equal pieces; \`ratchet(n/16)\` instead cuts on the absolute 16th-note grid (pieces align to bar positions, partial slivers at the ends)
 - **Echo / copy notes to a later position** — \`repeat(offset, copies)\` echoes each matched note forward by \`offset\` (a note value like \`n/8\` or \`<count>bar\`). \`copies\` defaults to 1, so \`repeat(n/8)\` adds one echo an 8th later and \`repeat(n/8, 3)\` adds three. It does NOT resize the clip — copies past the end stay hidden until you grow \`length\`; to double a loop AND lengthen the clip use ppal-update-clip's \`duplicateLoop\`
-- **Cut a held note at chosen points** — \`split(2|1, 2|3)\` cuts at explicit, possibly unequal clip bar|beat positions (each position cuts whichever matched note spans it). Add a trailing \`sync\` — \`split(6|1, sync)\` — to read positions on the arrangement timeline instead; ignored with a warning on session clips
+- **Cut a held note at chosen points** — \`split(2|1, 2|3)\` cuts at explicit, possibly unequal clip bar|beat positions (each position cuts whichever matched note spans it). Add a trailing \`sync\` — \`split(6|1, sync)\` — to read positions on the arrangement timeline instead; ignored on session clips (noted on the clip)
 - **Glue repeated hits into one sustained note** — \`merge()\` spans all same-pitch matched notes into one. Optional gap tolerance: \`merge(0)\` glues only touching/overlapping notes, \`merge(n/8)\` glues notes within an 8th-note gap
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio). The argument is the cycle LENGTH as a note value (\`n/4\`, \`1bar\`) — never radians, never a note property:
@@ -43,7 +43,7 @@ Operations that change how many notes exist, or modulate a value across the clip
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
 - For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
 - Period spellings: \`n/4\` = quarter-note cycle, \`n/1\` = whole note, \`<count>bar\` = meter-aware bars (\`cos(1bar)\`, \`cos(4bar)\`). Same \`n\` fraction grammar as everywhere; bare numbers are beats
-- \`sync\` keyword (last arg on periodic waves) anchors phase to the arrangement timeline (continuous across clips) instead of clip start. Only meaningful on arrangement clips: a session clip has no arrangement position, so \`sync\` is ignored and the wave degrades to clip-relative (phase resets at clip start) with a warning — the modulation still applies. Without \`sync\`, phase is clip-relative everywhere (the default)
+- \`sync\` keyword (last arg on periodic waves) anchors phase to the arrangement timeline (continuous across clips) instead of clip start. Only meaningful on arrangement clips: a session clip has no arrangement position, so \`sync\` is ignored and the wave degrades to clip-relative (phase resets at clip start), noted on the clip — the modulation still applies. Without \`sync\`, phase is clip-relative everywhere (the default)
 
 \`\`\`
 timing += 0.05 * rand()          // humanize timing

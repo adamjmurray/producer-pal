@@ -29,7 +29,7 @@ let clipSink: ((message: string) => void) | undefined;
  * Run a transform with every warning it raises naming the clip it was for.
  * @param label - How to name the clip, or undefined to leave warnings bare
  * @param run - The transform work; must be synchronous
- * @param sink - Where {@link ignored} facts go instead of a warning, when the
+ * @param sink - Where {@link clipDetail} facts go instead of a warning, when the
  *   caller reports them on the clip's own entry
  * @returns Whatever run returns
  */
@@ -53,11 +53,12 @@ export function withClipWarningLabel<T>(
 }
 
 /**
- * Say that part of a transform did nothing on the clip it ran for: the caller's
- * sink takes it when there is one (the clip's entry), else it is a warning.
- * @param message - What was ignored and why
+ * Report a fact about the clip a transform ran for (something skipped, changed
+ * or clamped on it): the caller's sink takes it when there is one (the clip's
+ * entry), else it is a warning.
+ * @param message - What happened on the clip, short enough to read as detail
  */
-export function ignored(message: string): void {
+export function clipDetail(message: string): void {
   if (clipSink == null) {
     warn(message);
   } else {

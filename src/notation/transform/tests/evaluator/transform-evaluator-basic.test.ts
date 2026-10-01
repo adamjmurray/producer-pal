@@ -598,7 +598,7 @@ timing += 0.05`;
       expect(result).not.toHaveProperty("velocity");
       expect(result.timing!.value).toBe(0.05);
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Failed to evaluate transform"),
+        expect.stringContaining(" transform failed"),
       );
     });
 

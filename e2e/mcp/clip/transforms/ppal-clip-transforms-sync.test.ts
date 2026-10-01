@@ -13,9 +13,11 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  getToolWarnings,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
+  sleep,
 } from "../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   applyTransform as applyTransformHelper,
   createArrangementClip as createArrangementClipHelper,
@@ -107,9 +109,9 @@ describe("ppal-clip-transforms-sync", () => {
     expect(notes).toContain("v14 C3 1|3");
   });
 
-  it("session clip with sync degrades to clip-relative with a warning", async () => {
+  it("session clip with sync degrades to clip-relative, said on its entry", async () => {
     // Session clips have no arrangement position, so sync is ignored and the
-    // wave degrades to clip-relative (same as omitting sync) with a warning —
+    // wave degrades to clip-relative (same as omitting sync), noted on the entry —
     // the modulation still applies. Phase uses just notePos/4:
     //   Note at 1|1: 0/4 = 0, cos(0) = 1 → 64+50 = 114
     //   Note at 1|2: 1/4 = 0.25, cos(0.25) = 0 → 64
@@ -124,10 +126,13 @@ describe("ppal-clip-transforms-sync", () => {
       clipId,
       "velocity += 50 * cos(n/1, sync)",
     );
-    const warnings = getToolWarnings(result);
+    const { data, warnings } = parseToolResultWithWarnings<{ detail?: string }>(
+      result,
+    );
 
-    expect(warnings.length).toBeGreaterThan(0);
-    expect(warnings.some((w) => w.toLowerCase().includes("sync"))).toBe(true);
+    // A fact about this clip belongs on its entry, not in a warning
+    expect(data.detail).toContain("sync ignored: session clip");
+    expect(warnings).toStrictEqual([]);
 
     // Modulation still applied — identical to the non-synced (clip-relative) form
     const notes = await readClipNotes(clipId);
@@ -135,6 +140,29 @@ describe("ppal-clip-transforms-sync", () => {
     expect(notes).toContain("v114 n/4 C3 1|1");
     expect(notes).toContain("v64 C3 1|2,4");
     expect(notes).toContain("v14 C3 1|3");
+  });
+
+  it("a duplicated session clip says on its own entry that sync was ignored", async () => {
+    const clipId = await createSessionClip(100, "v64 C3 1|1\nv64 C3 1|2");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: clipId,
+        toPath: `t${EMPTY_MIDI_TRACK}/s101`,
+        transforms: "velocity += 50 * cos(n/1, sync)",
+      },
+    });
+
+    await sleep(100);
+
+    const { data, warnings } = parseToolResultWithWarnings<{ detail?: string }>(
+      result,
+    );
+
+    expect(data.detail).toContain("sync ignored: session clip");
+    expect(warnings).toStrictEqual([]);
   });
 
   it("sync with phase offset combines both offsets", async () => {

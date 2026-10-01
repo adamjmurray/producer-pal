@@ -318,7 +318,7 @@ describe("note-count operation: split", () => {
         [2, 6],
       ]);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("sync ignored on session clip"),
+        expect.stringContaining("sync ignored: session clip"),
       );
       warn.mockRestore();
     });

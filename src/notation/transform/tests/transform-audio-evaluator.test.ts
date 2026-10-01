@@ -512,7 +512,7 @@ describe("Audio Transform Evaluator", () => {
       // (neutral) + warn instead of failing the transform.
       expect(result.gain).toBe(0);
       expect(console.warn).toHaveBeenCalledWith(
-        "clip.position is not available for session clips; using 0",
+        "clip.position isn't available on a session clip; used 0",
       );
     });
 
@@ -672,7 +672,7 @@ describe("Audio Transform Evaluator", () => {
       expect(synced.gain).toBeCloseTo(1, 9);
       expect(synced.gain).toBeCloseTo(unsynced.gain as number, 9);
       expect(console.warn).toHaveBeenCalledWith(
-        "sync ignored on session clip — LFO is clip-relative",
+        "sync ignored: session clip, so the LFO is clip-relative",
       );
     });
   });

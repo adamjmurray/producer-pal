@@ -119,10 +119,10 @@ export function warnShortRamp(
     timeSigDenominator,
   );
 
-  console.warn(
-    `${name}() only got ${Math.round(reached * 100)}% of the way to its end ` +
-      `value — it spans the time range, and the last matched note is before ` +
-      `the range end. End the range on that note (${lastBarBeat}) to reach it.`,
+  console.clipDetail(
+    `${name}() only reached ${Math.round(reached * 100)}% of its end value: ` +
+      `the last matched note is before the range end. End the range on that ` +
+      `note (${lastBarBeat}) to reach it.`,
   );
 }
 

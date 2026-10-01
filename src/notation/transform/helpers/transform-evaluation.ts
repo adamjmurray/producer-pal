@@ -145,8 +145,8 @@ function processAssignment(
 
     return { value: evaluateExpression(assignment.expression, ctx) };
   } catch (error) {
-    console.warn(
-      `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
+    console.clipDetail(
+      `${assignment.parameter} transform failed: ${errorMessage(error)}`,
     );
 
     return { skip: true };
@@ -310,8 +310,8 @@ export function evaluateExpression(
       // (neutral) + warn instead of failing the transform — mirrors the audio
       // evaluator so the condition is recoverable on both note and audio paths.
       if (node.namespace === "clip" && node.name === "position") {
-        console.warn(
-          `clip.position is not available for session clips; using 0`,
+        console.clipDetail(
+          "clip.position isn't available on a session clip; used 0",
         );
 
         return 0;

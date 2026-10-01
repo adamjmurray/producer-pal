@@ -15,8 +15,8 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
-  getToolWarnings,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -128,13 +128,18 @@ describe("ppal-clip-transforms (context variables)", () => {
     expect(notes2).toContain("G3");
   });
 
-  it("clip.position warns on session clips", async () => {
+  it("clip.position on a session clip is said on its entry, not warned", async () => {
     const clipId = await createMidiClip(32, "v100 C3 1|1");
 
     const result = await applyTransform(clipId, "velocity = clip.position");
-    const warnings = getToolWarnings(result);
+    const { data, warnings } = parseToolResultWithWarnings<{ detail?: string }>(
+      result,
+    );
 
-    expect(warnings.length).toBeGreaterThan(0);
+    expect(data.detail).toBe(
+      "clip.position isn't available on a session clip; used 0",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 
   it("note.count scales velocity based on total note count", async () => {
@@ -212,33 +217,25 @@ describe("ppal-clip-transforms (context variables)", () => {
 // =============================================================================
 
 describe("ppal-clip-transforms (arity validation)", () => {
-  it("warns on rand() with too many arguments", async () => {
-    const clipId = await createMidiClip(33, "v80 C3 1|1");
+  it.each([
+    ["rand", 33, "velocity = rand(0, 100, 50)"],
+    ["ramp", 34, "velocity = ramp(0, 100, 1, 2)"],
+  ])(
+    "says on the entry when %s() has too many arguments",
+    async (_name, scene, transform) => {
+      const clipId = await createMidiClip(scene, "v80 C3 1|1");
 
-    const result = await applyTransform(clipId, "velocity = rand(0, 100, 50)");
-    const warnings = getToolWarnings(result);
+      const result = await applyTransform(clipId, transform);
+      const { data, warnings } = parseToolResultWithWarnings<{
+        detail?: string;
+      }>(result);
 
-    expect(warnings.length).toBeGreaterThan(0);
-    // Original velocity should be unchanged
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80");
-  });
-
-  it("warns on ramp() with too many arguments", async () => {
-    const clipId = await createMidiClip(34, "v80 C3 1|1");
-
-    const result = await applyTransform(
-      clipId,
-      "velocity = ramp(0, 100, 1, 2)",
-    );
-    const warnings = getToolWarnings(result);
-
-    expect(warnings.length).toBeGreaterThan(0);
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80");
-  });
+      expect(data.detail).toContain("velocity transform failed");
+      expect(warnings).toStrictEqual([]);
+      // Original velocity should be unchanged
+      expect(await readClipNotes(clipId)).toContain("v80");
+    },
+  );
 });
 
 // =============================================================================

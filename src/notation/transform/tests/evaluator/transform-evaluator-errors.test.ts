@@ -326,7 +326,7 @@ describe("Transform Evaluator Error Handling", () => {
       applyTransforms(notes, "velocity = round(1, 2)", 4, 4);
 
       const failureWarnings = capturedWarnings().filter((warning) =>
-        warning.includes("Failed to evaluate transform"),
+        warning.includes(" transform failed"),
       );
 
       expect(failureWarnings).toHaveLength(1);

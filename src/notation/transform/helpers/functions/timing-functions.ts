@@ -127,8 +127,8 @@ export function evaluateLegato(
   // No next note and no known clip end (e.g. the final note in a context that
   // doesn't supply a clip length): keep the note's current duration rather than
   // failing the whole transform.
-  console.warn(
-    "legato(): no next note and no clip end for the last note; keeping current duration",
+  console.clipDetail(
+    "legato(): last note has no next note or clip end; kept its duration",
   );
 
   // duration is always populated by buildNoteProperties for note transforms.

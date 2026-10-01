@@ -180,8 +180,8 @@ Access clip and bar context in expressions:
   start, so 5|1 to 6|1 is 1 bar); for arrangement clips, the arrangement length
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
-  only; on session clips it resolves to 0 with a warning, since session clips
-  have no arrangement origin)
+  only; on session clips it resolves to 0 with a detail on the clip's entry,
+  since session clips have no arrangement origin)
 - `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
   longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
   6/8). Prefer the `<count>bar` literal: `1bar` == `clip.barDuration` and `4bar`
