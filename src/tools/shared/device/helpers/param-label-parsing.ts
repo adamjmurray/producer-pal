@@ -14,6 +14,19 @@ interface LabelPattern {
   isPan?: boolean;
 }
 
+// A bare "k" means thousands and says nothing about what is measured: Analog's
+// filter frequencies read "999", then "1.00k". It must come after "khz".
+const BARE_THOUSANDS = /^([\d.]+)\s*k$/i;
+
+/**
+ * Whether text is a number with a bare "k" suffix, like "22.0k".
+ * @param text - Trimmed text to check
+ * @returns True if it is a number of thousands with no unit
+ */
+export function isBareThousands(text: string): boolean {
+  return BARE_THOUSANDS.test(text);
+}
+
 /**
  * Label parsing patterns for extracting values and units from display labels.
  * Order matters - more specific patterns should come before general ones.
@@ -22,6 +35,7 @@ const LABEL_PATTERNS: LabelPattern[] = [
   // ms must precede s so "100ms" doesn't match the s-only pattern
   { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
   { regex: /^([\d.]+)\s*hz$/i, unit: "Hz" },
+  { regex: BARE_THOUSANDS, unit: null, multiplier: 1000 },
   { regex: /^([\d.]+)\s*ms$/i, unit: "ms" },
   { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
   { regex: /^([\d.-]+)\s*db$/i, unit: "dB" },
@@ -177,43 +191,89 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * value, or -1 if none does.
  *
  * Matching is case-insensitive: the option list is closed, so a stricter match
- * would protect against no ambiguity. A two-option param whose labels are an
- * Off/On pair also accepts the `false`/`0` and `true`/`1` a model plausibly
- * sends for a toggle, which arrive as strings after schema coercion.
- * @param valueItems - The param's value_items, in index order
+ * would protect against no ambiguity. The text the caller wrote is tried before
+ * the normalized value, because normalizing strips units ("24 dB" becomes 24)
+ * and a bare "k" ("2k" becomes 2000), hiding a label that carries them. A bare
+ * number also picks a unit-labelled option when it names exactly one ("24" on
+ * "12 dB"/"24 dB"); a number with another unit never does. A two-option param
+ * whose labels are an Off/On pair also accepts the `false`/`0` and `true`/`1` a
+ * model plausibly sends for a toggle, which arrive as strings after schema
+ * coercion.
+ * @param valueItems - The param's value_items, in index order. Max returns a
+ *   numeric label (e.g. 1, 2) as a number, so a list can mix numbers and strings.
  * @param inputValue - The value to resolve, as normalizeParamValue left it
+ * @param writtenText - The value as the caller wrote it; defaults to inputValue
  * @returns The matching index, or -1 if nothing matches
  */
 export function resolveEnumIndex(
-  valueItems: string[],
+  valueItems: (string | number)[],
   inputValue: string | number,
+  writtenText: string = String(inputValue),
 ): number {
-  const wanted = String(inputValue).toLowerCase();
-  const exact = valueItems.findIndex((item) => item.toLowerCase() === wanted);
+  const lower = valueItems.map((item) => String(item).toLowerCase());
+  const wanted = [
+    ...new Set([writtenText.toLowerCase(), String(inputValue).toLowerCase()]),
+  ];
 
-  if (exact !== -1) {
-    return exact;
+  for (const candidate of wanted) {
+    const exact = lower.indexOf(candidate);
+
+    if (exact !== -1) {
+      return exact;
+    }
   }
 
-  if (valueItems.length !== 2) {
-    return -1;
+  const unitIndex = indexOfUnitLabelled(valueItems, writtenText);
+
+  if (unitIndex !== -1) {
+    return unitIndex;
   }
 
-  const lower = valueItems.map((item) => item.toLowerCase());
   const offIndex = lower.indexOf("off");
   const onIndex = lower.indexOf("on");
 
-  if (offIndex === -1 || onIndex === -1) {
+  if (valueItems.length !== 2 || offIndex === -1 || onIndex === -1) {
     return -1;
   }
 
-  if (OFF_LABELS.has(wanted)) {
+  if (wanted.some((candidate) => OFF_LABELS.has(candidate))) {
     return offIndex;
   }
 
-  if (ON_LABELS.has(wanted)) {
+  if (wanted.some((candidate) => ON_LABELS.has(candidate))) {
     return onIndex;
   }
 
   return -1;
+}
+
+/**
+ * The one option whose label is a number with a unit and whose number equals a
+ * bare number the caller wrote.
+ * @param valueItems - The param's value_items
+ * @param writtenText - The value as the caller wrote it
+ * @returns The option's index, or -1 if the text isn't a bare number or no
+ *   single option matches
+ */
+function indexOfUnitLabelled(
+  valueItems: (string | number)[],
+  writtenText: string,
+): number {
+  const number = Number(writtenText);
+
+  if (writtenText.trim() === "" || !Number.isFinite(number)) {
+    return -1;
+  }
+
+  const matches: number[] = [];
+
+  for (const [index, item] of valueItems.entries()) {
+    const parsed = parseLabel(String(item));
+
+    if (parsed.unit != null && parsed.value === number) {
+      matches.push(index);
+    }
+  }
+
+  return matches.length === 1 ? (matches[0] as number) : -1;
 }

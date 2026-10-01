@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
@@ -36,6 +37,7 @@ import {
 } from "./helpers/transform-evaluation.ts";
 import {
   type PitchRange,
+  type NoteOp,
   type TransformAssignment,
   type TransformStatement,
   parse as parseTransform,
@@ -45,6 +47,7 @@ import {
   wrongClipTypeStatements,
 } from "./transform-clip-type.ts";
 import { applyNoteOp } from "./transform-note-ops.ts";
+import { type TransformOutcome } from "./transformed-count.ts";
 
 /**
  * Apply transforms to a list of notes in-place
@@ -53,7 +56,8 @@ import { applyNoteOp } from "./transform-note-ops.ts";
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context for clip/bar variables
- * @returns Count of unique notes with at least one non-audio transform matched, or undefined if no transforms applied
+ * @returns The notes at least one non-audio transform touched (see
+ *   countTransformed), or undefined if no transforms applied
  */
 export function applyTransforms(
   notes: NoteEvent[],
@@ -61,7 +65,7 @@ export function applyTransforms(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
-): number | undefined {
+): TransformOutcome | undefined {
   if (!transformString || notes.length === 0) {
     return undefined;
   }
@@ -88,8 +92,9 @@ export function applyTransforms(
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
   const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
 
-  // Track which notes had at least one MIDI transform applied
-  const transformedIndices = new Set<number>();
+  // Track which notes had at least one MIDI transform applied, by object: note
+  // ops rebuild the array, so indices don't survive them.
+  const touched = new Set<NoteEvent>();
 
   // Process statements sequentially (statement-major order).
   // Each statement is fully applied before the next one runs.
@@ -108,21 +113,14 @@ export function applyTransforms(
 
     // Note-count op (ratchet/merge/split/repeat): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
-      const produced = applyNoteOp(
+      applyTrackedNoteOp(
         stmt,
         notes,
         timeSigNumerator,
         timeSigDenominator,
         arrangementOrigin(clipContext),
+        touched,
       );
-
-      // The rebuild invalidates prior index-based tracking, so reseed with the
-      // op's output notes; later assignments add their fresh indices on top.
-      transformedIndices.clear();
-
-      for (const idx of produced) {
-        transformedIndices.add(idx);
-      }
 
       continue;
     }
@@ -145,11 +143,60 @@ export function applyTransforms(
       timeSigDenominator,
       clipTimeRange,
       clipContext,
-      transformedIndices,
+      touched,
     );
   }
 
-  // Velocity or duration at 0 or below deletes the note, like v0 in bar|beat.
+  const deleted = deleteZeroedNotes(notes, touched);
+
+  return { touched, deleted };
+}
+
+/**
+ * Run a note-count op and tally its output as touched: the matched notes it
+ * kept and any it made. A skipped op tallies nothing, and earlier tallies keep
+ * their notes.
+ * @param op - The note-count operation
+ * @param notes - Notes to operate on (rebuilt in place)
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param originBeats - Arrangement position of note time 0, or undefined
+ * @param touched - Set to track which notes were transformed
+ */
+function applyTrackedNoteOp(
+  op: NoteOp,
+  notes: NoteEvent[],
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  originBeats: number | undefined,
+  touched: Set<NoteEvent>,
+): void {
+  const produced = applyNoteOp(
+    op,
+    notes,
+    timeSigNumerator,
+    timeSigDenominator,
+    originBeats,
+  );
+
+  for (const note of produced) {
+    touched.add(note);
+  }
+}
+
+/**
+ * Delete notes where transforms reduced velocity to 0 or below, or duration to
+ * 0 or below (consistent with v0 deletion in bar|beat notation), and raise a
+ * surviving velocity below 1 to 1. Touched notes that go are dropped from
+ * `touched` and returned.
+ * @param notes - Notes to filter in place
+ * @param touched - Set of notes the transforms touched
+ * @returns The touched notes that were deleted
+ */
+function deleteZeroedNotes(
+  notes: NoteEvent[],
+  touched: Set<NoteEvent>,
+): NoteEvent[] {
   const surviving = notes.filter(
     (note) => note.velocity > 0 && note.duration > 0,
   );
@@ -159,24 +206,36 @@ export function applyTransforms(
     note.velocity = Math.max(1, note.velocity);
   }
 
-  if (surviving.length < notes.length) {
-    // Warn when a duration transform drove a note to zero/negative length: the
-    // note is deleted (not clamped), so surface it rather than vanishing silently.
-    const droppedForDuration = notes.filter(
-      (note) => note.duration <= 0,
-    ).length;
-
-    if (droppedForDuration > 0) {
-      console.clipDetail(
-        `${droppedForDuration} note(s) deleted: duration went to 0 or below`,
-      );
-    }
-
-    notes.length = 0;
-    notes.push(...surviving);
+  if (surviving.length === notes.length) {
+    return [];
   }
 
-  return transformedIndices.size;
+  // Warn when a duration transform drove a note to zero/negative length: the
+  // note is deleted (not clamped), so surface it rather than vanishing silently.
+  // Same-slot copies count once, as they do in the written result.
+  const droppedForDuration = dedupeNotesKeepingLast(
+    notes.filter((note) => note.duration <= 0),
+  ).length;
+
+  if (droppedForDuration > 0) {
+    console.clipDetail(
+      `${droppedForDuration} note(s) deleted: duration went to 0 or below`,
+    );
+  }
+
+  const survivors = new Set(surviving);
+  const deleted: NoteEvent[] = [];
+
+  for (const note of notes) {
+    if (!survivors.has(note) && touched.delete(note)) {
+      deleted.push(note);
+    }
+  }
+
+  notes.length = 0;
+  notes.push(...surviving);
+
+  return deleted;
 }
 
 /**
@@ -193,7 +252,7 @@ export function applyTransforms(
  * @param timeSigDenominator - Time signature denominator
  * @param clipTimeRange - Clip time range for expression evaluation
  * @param clipContext - Optional clip-level context for clip variables
- * @param transformedIndices - Set to track which notes were transformed
+ * @param touched - Set to track which notes were transformed
  */
 function applyAssignmentToNotes(
   assignment: TransformAssignment,
@@ -203,7 +262,7 @@ function applyAssignmentToNotes(
   timeSigDenominator: number,
   clipTimeRange: TimeRange,
   clipContext: ClipContext | undefined,
-  transformedIndices: Set<number>,
+  touched: Set<NoteEvent>,
 ): void {
   if (rejectsPitchLiteralValue(assignment)) {
     return;
@@ -251,7 +310,7 @@ function applyAssignmentToNotes(
   // single malformed line doesn't relay N copies of the same WARNING.
   const warnedFailures = new Set<string>();
 
-  // transformedIndices is cumulative across the whole transform, so it can't
+  // touched is cumulative across the whole transform, so it can't
   // tell whether THIS assignment applied anything. Count what this one wrote.
   let appliedCount = 0;
 
@@ -306,7 +365,7 @@ function applyAssignmentToNotes(
         timeSigDenominator,
       );
 
-      transformedIndices.add(i);
+      touched.add(note);
       appliedCount++;
     } catch (error) {
       const message = `${assignment.parameter} transform failed: ${errorMessage(error)}`;

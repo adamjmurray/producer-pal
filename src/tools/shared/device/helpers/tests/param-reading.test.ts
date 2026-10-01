@@ -112,7 +112,7 @@ describe("param-reading", () => {
       min?: number;
       max?: number;
       isEnabled?: number;
-      valueItems?: string[];
+      valueItems?: (string | number)[];
       displayValue?: string;
     }
 
@@ -216,6 +216,22 @@ describe("param-reading", () => {
         name: "Mode",
         value: "On",
         options: valueItems,
+      });
+    });
+
+    it("keeps numeric labels as numbers", () => {
+      setupParamMock({
+        name: "Delay Taps",
+        isQuantized: 1,
+        value: 1,
+        valueItems: [1, 2],
+      });
+
+      expect(readParameter(createMockParamApi("param_3"))).toStrictEqual({
+        id: "param_3",
+        name: "Delay Taps",
+        value: 2,
+        options: [1, 2],
       });
     });
 

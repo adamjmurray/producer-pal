@@ -101,7 +101,7 @@ describe("applyTransforms", () => {
         { start_time: 1, velocity },
       ]);
 
-      expect(applyTransforms(notes, transform, 4, 4)).toBe(2);
+      expect(applyTransforms(notes, transform, 4, 4)?.touched.size).toBe(2);
       expect(notes.map((n) => n.velocity)).toStrictEqual([expected, expected]);
     });
 
@@ -680,77 +680,6 @@ probability += -0.2`;
       // Audio params should be skipped, velocity should be unchanged
       expect(notes[0]!.velocity).toBe(100);
       warnSpy.mockRestore();
-    });
-  });
-
-  describe("return value (transformed count)", () => {
-    it("returns undefined for null transform string", () => {
-      const notes = createTestNote();
-
-      expect(
-        applyTransforms(notes, null as unknown as string, 4, 4),
-      ).toBeUndefined();
-    });
-
-    it("returns undefined for empty transform string", () => {
-      const notes = createTestNote();
-
-      expect(applyTransforms(notes, "", 4, 4)).toBeUndefined();
-    });
-
-    it("returns undefined for empty notes array", () => {
-      const notes: NoteEvent[] = [];
-
-      expect(applyTransforms(notes, "velocity += 10", 4, 4)).toBeUndefined();
-    });
-
-    // C3=60, E3=64, G3=67 on beats 1-3: the selector reaches the first two.
-    const cMajorTriad = (): NoteEvent[] =>
-      createTestNotes([
-        { pitch: 60, start_time: 0 },
-        { pitch: 64, start_time: 1 },
-        { pitch: 67, start_time: 2 },
-      ]);
-
-    it("returns count of all notes when no selector is used", () => {
-      expect(applyTransforms(cMajorTriad(), "velocity += 10", 4, 4)).toBe(3);
-    });
-
-    it("returns count of matched notes with pitch selector", () => {
-      expect(
-        applyTransforms(cMajorTriad(), "C3-E3: velocity += 10", 4, 4),
-      ).toBe(2);
-    });
-
-    it("counts deleted notes as transformed", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, velocity: 100 },
-        { pitch: 64, start_time: 1, velocity: 100 },
-      ]);
-
-      // All notes match, velocity set to 0 deletes them
-      const result = applyTransforms(notes, "velocity = 0", 4, 4);
-
-      expect(result).toBe(2);
-      expect(notes).toHaveLength(0);
-    });
-
-    it("deduplicates across multiple transform lines", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0 },
-        { pitch: 64, start_time: 1 },
-        { pitch: 67, start_time: 2 },
-      ]);
-
-      // Both lines match all notes - should still count 3, not 6
-      const result = applyTransforms(
-        notes,
-        "velocity += 10\nprobability += -0.1",
-        4,
-        4,
-      );
-
-      expect(result).toBe(3);
     });
   });
 

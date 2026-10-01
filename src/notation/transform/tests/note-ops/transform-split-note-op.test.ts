@@ -14,8 +14,8 @@ import {
   createTestNote,
   createTestNotes,
   testNote,
-} from "./evaluator/transform-evaluator-test-helpers.ts";
-import { expectNotePieces } from "./transform-test-helpers.ts";
+} from "../evaluator/transform-evaluator-test-helpers.ts";
+import { expectNotePieces } from "../transform-test-helpers.ts";
 
 // Build a split op whose args are bar|beat points given in absolute musical
 // beats — mirrors what the grammar produces, for tests that exercise splitNotes
@@ -170,7 +170,7 @@ describe("note-count operation: split", () => {
       4,
     );
 
-    expectNotePieces(result, [
+    expectNotePieces(result.notes, [
       [0, 4],
       [4, 2],
       [6, 2],
@@ -186,7 +186,7 @@ describe("note-count operation: split", () => {
       4,
     );
 
-    expectNotePieces(result, [
+    expectNotePieces(result.notes, [
       [0, 4],
       [4, 2],
       [6, 2],
@@ -255,7 +255,7 @@ describe("note-count operation: split", () => {
 
     const result = splitNotes([note], splitOp(0.5), 4);
 
-    expect(result).toStrictEqual([note]);
+    expect(result.notes).toStrictEqual([note]);
   });
 
   describe("sync (arrangement-aligned positions)", () => {
@@ -331,7 +331,7 @@ describe("note-count operation: split", () => {
     // there is no clamp and no warning.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(63)), 4);
 
-    expect(result).toHaveLength(64);
+    expect(result.notes).toHaveLength(64);
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -342,7 +342,7 @@ describe("note-count operation: split", () => {
     // 64 interior cuts would make 65 pieces (one past the cap); the op keeps 64.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(64)), 4);
 
-    expect(result).toHaveLength(64);
+    expect(result.notes).toHaveLength(64);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
     warn.mockRestore();
   });
@@ -354,7 +354,7 @@ describe("note-count operation: split", () => {
     // cap; the op keeps 64 pieces (63 cuts) and warns.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(70)), 4);
 
-    expect(result).toHaveLength(64);
+    expect(result.notes).toHaveLength(64);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
     warn.mockRestore();
   });

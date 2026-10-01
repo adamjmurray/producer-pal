@@ -15,6 +15,7 @@ maps a display value back to a raw one.
 | ------------------ | -------------------------- | --------------------------------------- |
 | Number with a unit | `"1.00 kHz"`, `"-6 dB"`    | `parseLabel` pattern                    |
 | Bare number        | `"4.00"`, `8`              | `parseLabel` fallback + the units table |
+| Bare thousands     | `"999"`, `"22.0k"`         | `parseLabel` bare-`k` pattern + units   |
 | Enum               | `"Peak"`, `"Expand"`       | `is_quantized` + `value_items`          |
 | Division ladder    | `"1/16"`, `"1 / 16"`       | `isDivisionParam` → enumerated options  |
 | Ratio              | `"4.00 : 1"`, `"1 : 2.00"` | `parseLabel` ratio patterns             |

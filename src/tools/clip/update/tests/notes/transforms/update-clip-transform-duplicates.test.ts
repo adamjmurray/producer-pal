@@ -42,7 +42,7 @@ describe("updateClip - notes a transform collapses", () => {
       id: "123",
       path: "t0/s0",
       noteCount: 1,
-      transformed: 2,
+      transformed: 1,
       detail: DROPPED,
     });
     expect(capturedWarnings()).toStrictEqual([]);

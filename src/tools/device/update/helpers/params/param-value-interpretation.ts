@@ -57,20 +57,21 @@ export function setParamValue(
     : undefined;
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
-  // 1. Enum - quantized param. Resolve the input against value_items by string.
-  // normalizeParamValue turns a numeric-looking label (e.g. "4" on a
-  // "1"/"2"/"4"/"8" or synced note-value selector) into a number, so match
-  // String(inputValue): otherwise a numeric label skips enum dispatch and falls
-  // into the numeric binary-search branch, writing a garbage raw value
-  // (e.g. 2.9999… instead of index 2). Quantized params are discrete enums with
-  // no continuous range to search, so numeric input is always a label lookup.
+  // 1. Enum - quantized param. Quantized params are discrete enums with no
+  // continuous range to search, so numeric input is always a label lookup: a
+  // numeric label (e.g. "4" on a "1"/"2"/"4"/"8" selector) must not fall into
+  // the numeric binary-search branch, which writes a garbage raw value
+  // (2.9999… instead of index 2).
   if (isQuantized) {
-    const valueItems = param.getPropertyList("value_items") as string[];
-    const index = resolveEnumIndex(valueItems, inputValue);
+    const valueItems = param.getPropertyList("value_items") as (
+      | string
+      | number
+    )[];
+    const index = resolveEnumIndex(valueItems, inputValue, writtenText);
 
     if (index === -1) {
       return {
-        reason: `"${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
+        reason: `"${writtenText}" is not valid. Options: ${valueItems.join(", ")}`,
       };
     }
 

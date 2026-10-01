@@ -34,6 +34,11 @@ export interface KnownParamUnit {
 // Corpus `Width`, Reverb `Input Width`, Roar `FB Width` and `Env Width`.
 // See dev/live-api/device-param-labels.md.
 const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
+  // Labels run "999" then "1.00k": a bare k for thousands, and no "Hz".
+  Analog: {
+    "F1 Freq": { unit: "Hz", min: 30, max: 22000 },
+    "F2 Freq": { unit: "Hz", min: 30, max: 22000 },
+  },
   Corpus: {
     "LFO Rate": { unit: "Hz", min: 0.01, max: 10 },
     Tune: { unit: "Hz", min: 16.35, max: 4186 },

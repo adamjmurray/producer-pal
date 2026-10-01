@@ -17,7 +17,11 @@ import {
   normalizeDivisionLabel,
   normalizePan,
 } from "../param-reading.ts";
-import { parseLabel, resolveEnumIndex } from "../param-label-parsing.ts";
+import {
+  isBareThousands,
+  parseLabel,
+  resolveEnumIndex,
+} from "../param-label-parsing.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [
@@ -205,6 +209,28 @@ describe("parseLabel", () => {
     it("parses Hz directly", () => {
       expect(parseLabel("440 Hz")).toStrictEqual({ value: 440, unit: "Hz" });
       expect(parseLabel("20 Hz")).toStrictEqual({ value: 20, unit: "Hz" });
+    });
+  });
+
+  describe("a bare k for thousands", () => {
+    // Analog's filter frequencies read "999" then "1.00k", with no unit.
+    it.each([
+      { label: "22.0k", value: 22000 },
+      { label: "1.00K", value: 1000 },
+      { label: "1.00 k", value: 1000 },
+      { label: "0.8k", value: 800 },
+    ])("scales '$label' by 1000 and names no unit", ({ label, value }) => {
+      expect(parseLabel(label)).toStrictEqual({ value, unit: null });
+    });
+
+    it("leaves kHz as Hz", () => {
+      expect(parseLabel("1.5 kHz")).toStrictEqual({ value: 1500, unit: "Hz" });
+    });
+
+    it("isBareThousands tells a bare k from kHz", () => {
+      expect(isBareThousands("22.0k")).toBe(true);
+      expect(isBareThousands("1.5 kHz")).toBe(false);
+      expect(isBareThousands("173")).toBe(false);
     });
   });
 
@@ -495,5 +521,58 @@ describe("resolveEnumIndex", () => {
 
   it("does not treat 0/1 or booleans as toggles for more than two options", () => {
     expect(resolveEnumIndex(["Off", "On", "Auto"], "true")).toBe(-1);
+  });
+
+  it("resolves labels Max returned as numbers", () => {
+    expect(resolveEnumIndex([1, 2], "1")).toBe(0);
+    expect(resolveEnumIndex([1, 2], 2)).toBe(1);
+    expect(resolveEnumIndex([1, 2], "3")).toBe(-1);
+  });
+
+  it("resolves a mixed list of words and numbers", () => {
+    expect(resolveEnumIndex(["Mono", 2, 4], "4")).toBe(2);
+    expect(resolveEnumIndex(["Mono", 2, 4], "mono")).toBe(0);
+  });
+
+  describe("a label that carries a unit or a bare k", () => {
+    const slope = ["12 dB", "24 dB"];
+
+    it.each([
+      ["24 dB", 24],
+      ["24 db", 24],
+      ["24", 24],
+    ])("matches %s on a dB list", (written, normalized) => {
+      expect(resolveEnumIndex(slope, normalized, written)).toBe(1);
+    });
+
+    it("refuses a bare number that matches no option", () => {
+      expect(resolveEnumIndex(slope, 36, "36")).toBe(-1);
+    });
+
+    it("refuses a number written in a different unit", () => {
+      expect(resolveEnumIndex(slope, 24, "24 ms")).toBe(-1);
+    });
+
+    it("refuses a bare number that matches several options", () => {
+      expect(resolveEnumIndex(["24 dB", "24 Hz"], 24, "24")).toBe(-1);
+    });
+
+    it("does not read the bare number of a non-unit label", () => {
+      expect(resolveEnumIndex(["1/8", "1/4"], 1, "1")).toBe(-1);
+    });
+
+    it.each([
+      ["2k", 2000, 1],
+      ["2K", 2000, 1],
+      ["4k", 4000, 2],
+    ])("matches %s on a bare-k list", (written, normalized, index) => {
+      expect(resolveEnumIndex(["1k", "2k", "4k"], normalized, written)).toBe(
+        index,
+      );
+    });
+
+    it("matches a decimal bare-k label", () => {
+      expect(resolveEnumIndex(["44.1k", "48k"], 48000, "48k")).toBe(1);
+    });
   });
 });

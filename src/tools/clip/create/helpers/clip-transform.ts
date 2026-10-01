@@ -6,6 +6,7 @@
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { countTransformed } from "#src/notation/transform/transformed-count.ts";
 import {
   droppedDuplicatesNote,
   transformsIgnoredAudioNote,
@@ -97,7 +98,7 @@ export function resolveClipTransform(
     arrangementStartBeats,
   );
 
-  const transformedCount = applyTransforms(
+  const outcome = applyTransforms(
     clipNotes,
     transformString,
     inputs.timeSigNumerator,
@@ -120,7 +121,8 @@ export function resolveClipTransform(
       inputs.timeSigNumerator,
       inputs.timeSigDenominator,
     ),
-    transformedCount,
+    // Counted on the deduped notes, so collapsed duplicates don't inflate it.
+    transformedCount: countTransformed(outcome, sorted),
     details: factsFor(droppedDuplicatesNote(collisions)),
   };
 }

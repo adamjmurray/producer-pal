@@ -45,7 +45,7 @@ function mockNoteCount(
 
 /**
  * What get_notes_extended returns for a clip holding `noteCount` notes, one per
- * beat so none share a slot.
+ * beat (a clip can't hold two notes on the same pitch and onset).
  * @param noteCount - Number of notes to report
  * @returns The JSON string Live's API hands back
  */

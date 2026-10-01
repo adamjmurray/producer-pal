@@ -9,6 +9,7 @@ import {
   type BarBeatPointNode,
   type NoteOp,
 } from "../../parser/transform-parser.ts";
+import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
 
 // Per-note ceiling on pieces a note-count op may produce — bounds note
 // explosion. Shared by ratchet (a roll) and split (explicit cuts). A note cut
@@ -65,20 +66,21 @@ export function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
  * @param denominator - Time signature denominator (musical beats -> Ableton)
  * @param arrangementOrigin - Arrangement position of note time 0, in musical beats, or
  *   undefined for session clips (only consulted in sync mode)
- * @returns The split note list (children replace each divided note)
+ * @returns The split note list (children replace each divided note), or a
+ *   skipped result
  */
 export function splitNotes(
   matched: NoteEvent[],
   op: NoteOp,
   denominator: number,
   arrangementOrigin?: number,
-): NoteEvent[] {
+): NoteOpResult {
   if (op.args.length === 0) {
     console.warn(
       "split() needs one or more bar|beat positions, e.g. split(2|1, 2|3); skipping",
     );
 
-    return matched;
+    return skippedNoteOp(matched);
   }
 
   // In sync mode the positions are arrangement-absolute; subtract the clip's
@@ -141,7 +143,7 @@ export function splitNotes(
     );
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /**
