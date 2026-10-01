@@ -190,16 +190,16 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * The index an enum (quantized) param's value_items resolves to for an input
  * value, or -1 if none does.
  *
- * Matching is case-insensitive: the option list is closed, so a stricter match
- * would protect against no ambiguity. The text the caller wrote is tried before
- * the normalized value, because normalizing strips units ("24 dB" becomes 24)
- * and a bare "k" ("2k" becomes 2000), hiding a label that carries them. A bare
- * number also picks a unit-labelled option when it names exactly one ("24" on
- * "12 dB"/"24 dB"). A number with a unit picks the option with the same unit and
- * number however it is spaced ("12 dB" on "12dB"); another unit never does. A
- * two-option param whose labels are an Off/On pair also accepts the
- * `false`/`0` and `true`/`1` a model plausibly sends for a toggle, which arrive
- * as strings after schema coercion.
+ * Tried in order, first hit wins:
+ * 1. The written text, then the normalized value, ignoring case. Written text
+ *    comes first because normalizing strips units ("24 dB" becomes 24).
+ * 2. The one option with the same number and unit ("12 dB" on "12dB"); a bare
+ *    number matches any unit ("24" on "24 dB").
+ * 3. The one option that differs only in case, spacing or a hyphen between
+ *    words ("Mid / Side", "Lowpass").
+ * 4. For an Off/On pair, the `false`/`0` and `true`/`1` a model sends for a
+ *    toggle.
+ * Two options matching at one step make the text ambiguous, so it is refused.
  * @param valueItems - The param's value_items, in index order. Max returns a
  *   numeric label (e.g. 1, 2) as a number, so a list can mix numbers and strings.
  * @param inputValue - The value to resolve, as normalizeParamValue left it
@@ -230,6 +230,12 @@ export function resolveEnumIndex(
     return unitIndex;
   }
 
+  const looseIndex = indexOfLooseLabel(valueItems, writtenText);
+
+  if (looseIndex !== -1) {
+    return looseIndex;
+  }
+
   const offIndex = lower.indexOf("off");
   const onIndex = lower.indexOf("on");
 
@@ -246,6 +252,43 @@ export function resolveEnumIndex(
   }
 
   return -1;
+}
+
+/**
+ * A label with case and whitespace removed, plus any hyphen that joins two
+ * words ("Low-pass" is "lowpass"), so "Mid / Side" and "Mid/Side" compare equal.
+ * A hyphen that is a minus sign ("-6") stays: dropping it would turn -6 into 6.
+ * @param label - A display label or what the caller wrote
+ * @returns The key to compare labels by
+ */
+export function looseLabelKey(label: string): string {
+  return label
+    .toLowerCase()
+    .replaceAll(/\s+/g, "")
+    .replaceAll(/(?<=[\p{L}\p{N}&])-(?=[\p{L}&])/gu, "");
+}
+
+/**
+ * The one option that matches what the caller wrote under `looseLabelKey`. Two
+ * options with the same key make the text ambiguous, so none is picked.
+ * @param valueItems - The param's value_items
+ * @param writtenText - The value as the caller wrote it
+ * @returns The option's index, or -1 if none or several match
+ */
+function indexOfLooseLabel(
+  valueItems: (string | number)[],
+  writtenText: string,
+): number {
+  const wanted = looseLabelKey(writtenText);
+  const matches: number[] = [];
+
+  for (const [index, item] of valueItems.entries()) {
+    if (looseLabelKey(String(item)) === wanted) {
+      matches.push(index);
+    }
+  }
+
+  return matches.length === 1 ? (matches[0] as number) : -1;
 }
 
 /**

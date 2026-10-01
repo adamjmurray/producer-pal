@@ -94,4 +94,83 @@ describe("updateDevice - division params", () => {
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     expect(capturedWarnings()).toHaveLength(0);
   });
+
+  describe("a sync ladder with dotted and triplet rates", () => {
+    // Analog's LFO sync rate: bar counts, then fractions, each with a d and t.
+    const ladder = ["4d", "4", "4t", "1/4d", "1/4", "1/4t", "1/32d", "1/32t"];
+    let rate: RegisteredMockObject;
+
+    function registerLadder(current: number): void {
+      rate = registerMockObject("794", {
+        path: livePath.track(0).device(0).parameter(2),
+        type: "DeviceParameter",
+        properties: {
+          name: "LFO1 SncRate",
+          original_name: "LFO1 SncRate",
+          is_quantized: 0,
+          value: current,
+          min: 0,
+          max: ladder.length - 1,
+        },
+        methods: {
+          str_for_value: (value: unknown) => ladder[Number(value)] ?? "?",
+        },
+      });
+    }
+
+    it.each([
+      ["4 d", 0],
+      ["4D", 0],
+      ["4 t", 2],
+      ["1/4D", 3],
+      ["1/4 d", 3],
+      ["1 / 4 T", 5],
+      ["1/32T", 7],
+      ["1 / 4", 4],
+    ])("writes %s to option index %i", (value, index) => {
+      registerLadder(4);
+
+      updateDevice({ id: "123", params: [{ name: "794", value }] });
+
+      expect(rate.set).toHaveBeenCalledWith("value", index);
+    });
+
+    it("reports the dotted rate it landed on, not its leading number", () => {
+      registerLadder(1);
+
+      const result = updateDevice({
+        id: "123",
+        params: [{ name: "794", value: "4 d" }],
+      });
+
+      expect(rate.set).toHaveBeenCalledWith("value", 0);
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ id: "794", name: "LFO1 SncRate", value: "4d" }],
+      });
+    });
+
+    it("writes the bare bar count, not the dotted rate", () => {
+      registerLadder(0);
+
+      updateDevice({ id: "123", params: [{ name: "794", value: "4" }] });
+
+      expect(rate.set).toHaveBeenCalledWith("value", 1);
+    });
+
+    it("refuses a rate the ladder doesn't have", () => {
+      registerLadder(0);
+
+      expect(
+        noParamLanded(() =>
+          updateDevice({
+            id: "123",
+            params: [{ name: "794", value: "1/8 d" }],
+          }),
+        ),
+      ).toBe('no param landed — "794": "1/8 d" is not a valid division option');
+      expect(rate.set).not.toHaveBeenCalled();
+    });
+  });
 });

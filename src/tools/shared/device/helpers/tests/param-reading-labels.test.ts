@@ -172,7 +172,22 @@ describe("isDivisionLabel spacing", () => {
   );
 });
 
+describe("isDivisionLabel dotted and triplet rates", () => {
+  it.each(["1/4d", "1/8t", "1 / 16 D", "1/32T"])("accepts '%s'", (label) => {
+    expect(isDivisionLabel(label)).toBe(true);
+  });
+
+  it.each(["4d", "1/4x", "1/4dd"])("rejects '%s'", (label) => {
+    expect(isDivisionLabel(label)).toBe(false);
+  });
+});
+
 describe("isDivisionParam", () => {
+  it("sees a dotted or triplet fraction at the max end", () => {
+    // Analog's sync rate runs "4d".."1/32t", so it is a ladder at any value.
+    expect(isDivisionParam("4d", "4d", "1/32t")).toBe(true);
+  });
+
   it("sees a fraction at the max end", () => {
     // Sync ladders run from bar counts to fractions ("8".."1/64"), so the
     // current value and the minimum are both bare numbers.

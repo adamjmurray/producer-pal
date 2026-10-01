@@ -182,4 +182,37 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
       }
     });
   });
+
+  describe("a label written with different case, spacing or hyphens", () => {
+    // [device, param, sent, label Live reports back]
+    const cases = [
+      ["Analog", "LFO1 SncRate", "4 d", "4d"],
+      ["Analog", "LFO1 SncRate", "1/4D", "1/4d"],
+      ["Analog", "LFO1 SncRate", "1 / 32", "1/32"],
+      ["Auto Filter", "Filter Type", "Lowpass", "Low-pass"],
+      ["Echo", "Channel Mode", "Mid / Side", "Mid/Side"],
+    ] as const;
+
+    it.each(cases)(
+      "%s %s: writes %s as %s",
+      async (device, param, sent, label) => {
+        const deviceId = await createTestDevice(ctx.client!, device, "t8");
+        const { data, warnings } = await writeParam(
+          ctx.client!,
+          deviceId,
+          param,
+          sent,
+        );
+
+        expect(warnings).toStrictEqual([]);
+        expect(data.params).toStrictEqual([
+          { id: expect.any(String), name: param, value: label },
+        ]);
+
+        const read = await readParam(ctx.client!, deviceId, param);
+
+        expect(read.value).toBe(label);
+      },
+    );
+  });
 });

@@ -7,6 +7,7 @@
 // Import from there directly instead of through this file
 
 import {
+  looseLabelKey,
   parseLabel,
   strForValue,
   unitForLabels,
@@ -72,13 +73,14 @@ export function isPanLabel(label: string): boolean {
 }
 
 /**
- * Check if a label is a division fraction format (e.g., "1/8", "1/16").
- * Live spaces the slash on some params ("1 / 16") and not on others.
+ * Check if a label is a division fraction format (e.g., "1/8", "1/16"), with
+ * the "d"/"t" of a dotted or triplet rate ("1/4d", "1/8t") allowed. Live spaces
+ * the slash on some params ("1 / 16") and not on others.
  * @param label - Display label
  * @returns True if label is a division fraction
  */
 export function isDivisionLabel(label: string): boolean {
-  return typeof label === "string" && /^1\s*\/\s*\d+$/.test(label);
+  return typeof label === "string" && /^1\s*\/\s*\d+\s*[dt]?$/i.test(label);
 }
 
 /**
@@ -94,13 +96,14 @@ export function isDivisionParam(...labels: string[]): boolean {
 }
 
 /**
- * A division label with its spacing removed, so "1 / 16" and "1/16" compare
- * equal. Whatever a caller writes has to match a label Live produced.
+ * A division label with spacing and case removed, so "1 / 16" and "1/16", or
+ * "4 D" and "4d", compare equal. Whatever a caller writes has to match a label
+ * Live produced.
  * @param label - Display label
- * @returns The label with all whitespace stripped
+ * @returns The label to compare divisions by
  */
 export function normalizeDivisionLabel(label: string): string {
-  return label.replaceAll(/\s+/g, "");
+  return looseLabelKey(label);
 }
 
 /**

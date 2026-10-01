@@ -310,6 +310,49 @@ describe("updateDevice - param conversion discriminators", () => {
     );
   });
 
+  describe("enum labels written with different case, spacing or hyphens", () => {
+    function registerEnum(items: string[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Filter Type",
+          original_name: "Filter Type",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["Lowpass", 0],
+      ["low pass", 0],
+      ["High pass", 1],
+      ["Band - pass", 2],
+    ])("writes %s", (value, index) => {
+      const param = registerEnum(["Low-pass", "High-pass", "Band-pass"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Type", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("refuses text that fits two options equally", () => {
+      registerEnum(["Low-pass", "Low pass"]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Filter Type", value: "Lowpass" }],
+        }),
+      ).toThrow('"Lowpass" is not valid. Options: Low-pass, Low pass');
+    });
+  });
+
   describe("pan max value comes from the display labels, not the 50 fallback", () => {
     let param: RegisteredMockObject;
 
