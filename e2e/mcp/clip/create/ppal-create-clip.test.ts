@@ -282,6 +282,45 @@ describe("ppal-create-clip", () => {
     expect(clip.transformed).toBe(70);
   });
 
+  it("counts a deleted note once when a bar copy duplicates it", async () => {
+    // The same bar copy as above makes 88 hats, of which 64 are distinct. A
+    // transform that zeroes them deletes 64 notes, so the count must say 64
+    // (and the duration warning too), not 88.
+    const notes =
+      "v45 n/16 Gb1 1|1x8@n/8 v60 B1 1|2.5 @2-8=1 v95 C1 5|1,2,3,4 @6-8=5 v60 D1 8|3.5x6@n/16";
+
+    const byVelocity = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s10`,
+        length: "8bar",
+        notes,
+        transforms: "Gb1: velocity = 0",
+      },
+    });
+
+    expect(parseToolResult<CreateClipResult>(byVelocity).transformed).toBe(64);
+
+    const byDuration = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s11`,
+        length: "8bar",
+        notes,
+        transforms: "Gb1: duration = 0",
+      },
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<CreateClipResult>(byDuration);
+
+    expect(data.transformed).toBe(64);
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(
+        "64 note(s) deleted: transform drove duration to 0 or below",
+      ),
+    ]);
+  });
+
   it("refuses a clip the track cannot hold", async () => {
     // Live declines a create it can't do without raising, and the arrangement
     // create calls answer with another object — the Live Set (id 1). Reported

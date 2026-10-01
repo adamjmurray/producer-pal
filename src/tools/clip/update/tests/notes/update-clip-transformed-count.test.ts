@@ -74,4 +74,35 @@ describe("updateClip - transformed count", () => {
       expect(result).toStrictEqual(expect.objectContaining({ transformed }));
     });
   });
+
+  // Both stages count: a note either one touched counts once, and a note
+  // preTransforms deleted still counts.
+  describe.each([
+    ["transforms only", undefined],
+    ["notes and transforms", "E3 1|4"],
+  ])("preTransforms and transforms: %s", (_name, notes) => {
+    it.each([
+      ["different notes both count", "C3: velocity += 0", "D3: velocity += 0"],
+      [
+        "a note touched by both counts once",
+        "C3: velocity += 0",
+        "C3-D3: velocity += 0",
+      ],
+      [
+        "a note preTransforms deleted still counts",
+        "C3: velocity = 0",
+        "D3: velocity += 0",
+      ],
+    ])("%s", async (_case, preTransforms, transforms) => {
+      const result = await updateClip({
+        id: "123",
+        notes,
+        preTransforms,
+        transforms,
+      });
+
+      // 2 C3 + 1 D3 in every case
+      expect(result).toStrictEqual(expect.objectContaining({ transformed: 3 }));
+    });
+  });
 });

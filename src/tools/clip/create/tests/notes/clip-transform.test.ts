@@ -20,7 +20,13 @@ vi.mock(
     ...(await importOriginal()),
     applyTransforms: vi.fn(() => ({
       touched: new Set<NoteEvent>(),
-      deleted: 3,
+      deleted: [60, 61, 62].map((pitch) => ({
+        pitch,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+      })),
     })),
   }),
 );
@@ -67,7 +73,13 @@ describe("resolveClipTransform", () => {
     vi.clearAllMocks();
     vi.mocked(applyTransforms).mockReturnValue({
       touched: new Set<NoteEvent>(),
-      deleted: 3,
+      deleted: [60, 61, 62].map((pitch) => ({
+        pitch,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+      })),
     });
   });
 

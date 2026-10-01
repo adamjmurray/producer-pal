@@ -12,6 +12,10 @@ import {
   splitNoteAtCuts,
   splitNotes,
 } from "./helpers/note-ops/note-cuts.ts";
+import {
+  type NoteOpResult,
+  skippedNoteOp,
+} from "./helpers/note-ops/note-op-result.ts";
 import { numericOpArg } from "./helpers/note-ops/numeric-op-arg.ts";
 import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
 import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
@@ -37,8 +41,7 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
  * @returns The op's output for the matched notes (kept originals included), or
- *   an empty list when the op was skipped. Every op signals a skip by handing
- *   back the `matched` array itself.
+ *   an empty list when the op was skipped
  */
 export function applyNoteOp(
   op: NoteOp,
@@ -61,7 +64,7 @@ export function applyNoteOp(
     }
   }
 
-  const produced =
+  const result =
     op.name === "split"
       ? splitNotes(matched, op, timeSigDenominator, arrangementOrigin)
       : op.name === "ratchet"
@@ -72,12 +75,12 @@ export function applyNoteOp(
 
   // Rebuild in place: passthrough + produced, re-sorted (a note-count op's
   // output can reorder relative to passthrough notes). sortNotes keeps identity.
-  const rebuilt = sortNotes([...passthrough, ...produced]);
+  const rebuilt = sortNotes([...passthrough, ...result.notes]);
 
   notes.length = 0;
   notes.push(...rebuilt);
 
-  return produced === matched ? [] : produced;
+  return result.skipped ? [] : result.notes;
 }
 
 /**
@@ -125,14 +128,15 @@ function noteMatchesSelector(
  * @param op - The ratchet operation
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The ratcheted note list (children replace each divided note)
+ * @returns The ratcheted note list (children replace each divided note), or a
+ *   skipped result
  */
 function ratchetNotes(
   matched: NoteEvent[],
   op: NoteOp,
   numerator: number,
   denominator: number,
-): NoteEvent[] {
+): NoteOpResult {
   // ratchet args are always expressions (bar|beat points only reach `split`).
   const arg = op.args[0] as ExpressionNode | undefined;
 
@@ -141,7 +145,7 @@ function ratchetNotes(
       "ratchet() needs a count or note value, e.g. ratchet(2) or ratchet(n/16); skipping",
     );
 
-    return matched;
+    return skippedNoteOp(matched);
   }
 
   if (op.args.length > 1) {
@@ -153,7 +157,7 @@ function ratchetNotes(
   const plan = resolveRatchetPlan(arg, numerator, denominator);
 
   if (plan == null) {
-    return matched; // arg invalid — warn already emitted, pass through
+    return skippedNoteOp(matched); // arg invalid — warn already emitted, pass through
   }
 
   const out: NoteEvent[] = [];
@@ -210,7 +214,7 @@ function ratchetNotes(
     );
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /** Resolved ratchet plan: a fixed `count`, or a `grid` size in Ableton beats. */
@@ -338,18 +342,19 @@ const MERGE_TOLERANCE_SKIP_MESSAGE =
  * @param op - The merge operation (may carry a gap-tolerance argument)
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The merged notes (one per run within each pitch group)
+ * @returns The merged notes (one per run within each pitch group), or a
+ *   skipped result
  */
 function mergeNotes(
   matched: NoteEvent[],
   op: NoteOp,
   numerator: number,
   denominator: number,
-): NoteEvent[] {
+): NoteOpResult {
   const tolerance = resolveMergeTolerance(op, numerator, denominator);
 
   if (tolerance == null) {
-    return matched; // unusable tolerance — warn already emitted, pass through
+    return skippedNoteOp(matched); // unusable tolerance — warn already emitted, pass through
   }
 
   const byPitch = new Map<number, NoteEvent[]>();
@@ -370,7 +375,7 @@ function mergeNotes(
     out.push(...mergeRuns(group, tolerance));
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /**

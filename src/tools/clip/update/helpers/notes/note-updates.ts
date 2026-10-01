@@ -10,6 +10,7 @@ import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
+  combineOutcomes,
   countTransformed,
   type TransformOutcome,
 } from "#src/notation/transform/transformed-count.ts";
@@ -154,11 +155,14 @@ export function handleNoteUpdates(
     clip.call("add_new_notes", { notes: mergedNotes });
   }
 
-  // Fall back to the preTransform outcome when there's no transforms string,
-  // so a notes + preTransforms update still reports a count (not undefined).
+  // Both stages count: a note either one touched counts once, and a notes +
+  // preTransforms update still reports a count (not undefined).
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: countTransformed(postOutcome ?? preOutcome, mergedNotes),
+    transformed: countTransformed(
+      combineOutcomes(preOutcome, postOutcome),
+      mergedNotes,
+    ),
   };
 }
 

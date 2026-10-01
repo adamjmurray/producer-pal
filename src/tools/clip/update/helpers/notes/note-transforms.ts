@@ -6,7 +6,10 @@
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import { countTransformed } from "#src/notation/transform/transformed-count.ts";
+import {
+  combineOutcomes,
+  countTransformed,
+} from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
@@ -100,7 +103,10 @@ export function applyTransformsToExistingNotes(
 
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: countTransformed(postOutcome ?? preOutcome, written),
+    transformed: countTransformed(
+      combineOutcomes(preOutcome, postOutcome),
+      written,
+    ),
   };
 }
 

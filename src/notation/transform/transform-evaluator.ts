@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -190,26 +191,29 @@ function applyTrackedNoteOp(
 /**
  * Delete notes where transforms reduced velocity to 0 or below, or duration to
  * 0 or below (consistent with v0 deletion in bar|beat notation). Touched notes
- * that go are dropped from `touched` and counted in the return value.
+ * that go are dropped from `touched` and returned.
  * @param notes - Notes to filter in place
  * @param touched - Set of notes the transforms touched
- * @returns How many touched notes were deleted
+ * @returns The touched notes that were deleted
  */
 function deleteZeroedNotes(
   notes: NoteEvent[],
   touched: Set<NoteEvent>,
-): number {
+): NoteEvent[] {
   const surviving = notes.filter(
     (note) => note.velocity > 0 && note.duration > 0,
   );
 
   if (surviving.length === notes.length) {
-    return 0;
+    return [];
   }
 
   // Warn when a duration transform drove a note to zero/negative length: the
   // note is deleted (not clamped), so surface it rather than vanishing silently.
-  const droppedForDuration = notes.filter((note) => note.duration <= 0).length;
+  // Same-slot copies count once, as they do in the written result.
+  const droppedForDuration = dedupeNotesKeepingLast(
+    notes.filter((note) => note.duration <= 0),
+  ).length;
 
   if (droppedForDuration > 0) {
     console.warn(
@@ -218,11 +222,11 @@ function deleteZeroedNotes(
   }
 
   const survivors = new Set(surviving);
-  let deleted = 0;
+  const deleted: NoteEvent[] = [];
 
   for (const note of notes) {
     if (!survivors.has(note) && touched.delete(note)) {
-      deleted++;
+      deleted.push(note);
     }
   }
 

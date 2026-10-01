@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { createClip } from "../../create-clip.ts";
 import { setupSessionMocks } from "../create-clip-test-helpers.ts";
 
@@ -43,5 +44,47 @@ describe("createClip - transformed count", () => {
     });
 
     expect(result).toStrictEqual(expect.objectContaining({ transformed: 2 }));
+  });
+
+  describe("deleted duplicates", () => {
+    // The bar copy makes 88 interpreted hats; 64 are written, so 64 are deleted.
+    it.each(["velocity = 0", "duration = 0"])(
+      "counts each deleted slot once: Gb1 %s",
+      async (assignment) => {
+        setupSessionMocks({
+          liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        });
+
+        const result = await createClip({
+          slot: "0/0",
+          length: "8bar",
+          notes: NOTES,
+          transforms: `Gb1: ${assignment}`,
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({ transformed: 64 }),
+        );
+      },
+    );
+
+    it("counts the deduped set in the duration warning", async () => {
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip({
+        slot: "0/0",
+        length: "8bar",
+        notes: NOTES,
+        transforms: "Gb1: duration = 0",
+      });
+
+      expect(capturedWarnings()).toStrictEqual([
+        expect.stringContaining(
+          "64 note(s) deleted: transform drove duration to 0 or below",
+        ),
+      ]);
+    });
   });
 });
