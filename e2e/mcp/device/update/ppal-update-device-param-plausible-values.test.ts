@@ -106,4 +106,31 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
       }
     });
   });
+
+  describe("a quantized param whose labels carry a unit", () => {
+    it("writes Simpler's Filter Slope by its label or its bare number", async () => {
+      const deviceId = await createTestDevice(ctx.client!, "Simpler", "t8");
+
+      for (const [sent, label] of [
+        ["12 dB", "12 dB"],
+        ["24", "24 dB"],
+      ] as const) {
+        const { data, warnings } = await writeParam(
+          ctx.client!,
+          deviceId,
+          "Filter Slope",
+          sent,
+        );
+
+        expect(warnings).toStrictEqual([]);
+        expect(data.params).toStrictEqual([
+          { id: expect.any(String), name: "Filter Slope", value: label },
+        ]);
+
+        const param = await readParam(ctx.client!, deviceId, "Filter Slope");
+
+        expect(param.value).toBe(label);
+      }
+    });
+  });
 });

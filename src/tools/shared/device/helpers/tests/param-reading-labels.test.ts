@@ -533,4 +533,46 @@ describe("resolveEnumIndex", () => {
     expect(resolveEnumIndex(["Mono", 2, 4], "4")).toBe(2);
     expect(resolveEnumIndex(["Mono", 2, 4], "mono")).toBe(0);
   });
+
+  describe("a label that carries a unit or a bare k", () => {
+    const slope = ["12 dB", "24 dB"];
+
+    it.each([
+      ["24 dB", 24],
+      ["24 db", 24],
+      ["24", 24],
+    ])("matches %s on a dB list", (written, normalized) => {
+      expect(resolveEnumIndex(slope, normalized, written)).toBe(1);
+    });
+
+    it("refuses a bare number that matches no option", () => {
+      expect(resolveEnumIndex(slope, 36, "36")).toBe(-1);
+    });
+
+    it("refuses a number written in a different unit", () => {
+      expect(resolveEnumIndex(slope, 24, "24 ms")).toBe(-1);
+    });
+
+    it("refuses a bare number that matches several options", () => {
+      expect(resolveEnumIndex(["24 dB", "24 Hz"], 24, "24")).toBe(-1);
+    });
+
+    it("does not read the bare number of a non-unit label", () => {
+      expect(resolveEnumIndex(["1/8", "1/4"], 1, "1")).toBe(-1);
+    });
+
+    it.each([
+      ["2k", 2000, 1],
+      ["2K", 2000, 1],
+      ["4k", 4000, 2],
+    ])("matches %s on a bare-k list", (written, normalized, index) => {
+      expect(resolveEnumIndex(["1k", "2k", "4k"], normalized, written)).toBe(
+        index,
+      );
+    });
+
+    it("matches a decimal bare-k label", () => {
+      expect(resolveEnumIndex(["44.1k", "48k"], 48000, "48k")).toBe(1);
+    });
+  });
 });

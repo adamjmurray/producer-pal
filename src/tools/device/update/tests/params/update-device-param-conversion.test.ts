@@ -219,6 +219,62 @@ describe("updateDevice - param conversion discriminators", () => {
     });
   });
 
+  describe("enum labels that carry a unit or a bare k", () => {
+    function registerEnum(items: string[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Filter Slope",
+          original_name: "Filter Slope",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["24 dB", 1],
+      ["24", 1],
+      ["12 db", 0],
+    ])("writes %s by the label it names", (value, index) => {
+      const param = registerEnum(["12 dB", "24 dB"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Slope", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("writes a bare-k label as written", () => {
+      const param = registerEnum(["1k", "2k", "4k"]);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Slope", value: "2K" }],
+      });
+
+      expect(expectValueSet(param)).toBe(1);
+    });
+
+    it.each(["36", "24 ms"])(
+      "refuses %s, echoing what was written",
+      (value) => {
+        registerEnum(["12 dB", "24 dB"]);
+
+        expect(() =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Slope", value }],
+          }),
+        ).toThrow(`"${value}" is not valid. Options: 12 dB, 24 dB`);
+      },
+    );
+  });
+
   describe("pan max value comes from the display labels, not the 50 fallback", () => {
     let param: RegisteredMockObject;
 
