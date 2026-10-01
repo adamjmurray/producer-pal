@@ -229,19 +229,6 @@ describe("note-count operation: split", () => {
     warn.mockRestore();
   });
 
-  it("warns and skips when no positions are given", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const notes = createTestNote({ start_time: 0, duration: 1 });
-
-    applyTransforms(notes, "split()", 4, 4);
-
-    expect(notes).toHaveLength(1);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("needs one or more bar|beat positions"),
-    );
-    warn.mockRestore();
-  });
-
   it("leaves a zero/negative-duration note unchanged", () => {
     // Exercised via splitNotes directly: the final evaluator sweep would delete
     // a zero-duration note before it could be observed here.

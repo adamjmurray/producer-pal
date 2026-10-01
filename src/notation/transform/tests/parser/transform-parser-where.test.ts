@@ -341,13 +341,13 @@ describe("Transform Parser - where() predicate", () => {
 
   describe("duplicate selector segments", () => {
     // A duplicate is warn-and-skipped, not a hard parse error: the line carries a
-    // `selectorWarning` the evaluator relays before skipping just that line, so
+    // `selectorError` the evaluator relays before skipping just that line, so
     // the other lines still apply. (Evaluator behavior is covered in
     // transform-where.test.ts.)
     it("flags two pitch selectors with guidance to use a range", () => {
       const result = parseAssignments("C3: E3: velocity = 120");
 
-      expect(result[0]!.selectorWarning).toMatch(
+      expect(result[0]!.selectorError).toMatch(
         /duplicate pitch selector .*range like C3-E3/,
       );
     });
@@ -355,7 +355,7 @@ describe("Transform Parser - where() predicate", () => {
     it("flags two time selectors", () => {
       const result = parseAssignments("1|1-2|1: 3|1-4|1: v0");
 
-      expect(result[0]!.selectorWarning).toMatch(/duplicate time selector/);
+      expect(result[0]!.selectorError).toMatch(/duplicate time selector/);
     });
 
     it("flags two where() clauses with guidance to use &&/||", () => {
@@ -363,15 +363,15 @@ describe("Transform Parser - where() predicate", () => {
         "where(note.pitch > 60): where(note.pitch < 70): v0",
       );
 
-      expect(result[0]!.selectorWarning).toMatch(
+      expect(result[0]!.selectorError).toMatch(
         /duplicate where\(\).*&& \/ \|\|/,
       );
     });
 
-    it("leaves well-formed lines without a selectorWarning", () => {
+    it("leaves well-formed lines without a selectorError", () => {
       const result = parseAssignments("C3-C5 where(note.velocity > 80): v0");
 
-      expect(result[0]!.selectorWarning).toBeUndefined();
+      expect(result[0]!.selectorError).toBeUndefined();
     });
   });
 

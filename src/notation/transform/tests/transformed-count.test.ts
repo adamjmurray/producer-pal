@@ -144,7 +144,9 @@ describe("applyTransforms", () => {
 
       it("keeps earlier lines' notes when a note op is skipped", () => {
         expect(
-          countAfter("C3: velocity += 0\nE3: velocity += 0\nC3: ratchet(1)"),
+          countAfter(
+            "C3: velocity += 0\nE3: velocity += 0\nC3: ratchet(rand(0, 0))",
+          ),
         ).toBe(2);
       });
 
@@ -158,7 +160,7 @@ describe("applyTransforms", () => {
       });
 
       it("counts nothing for a skipped op", () => {
-        expect(countAfter("C3: ratchet(1)")).toBe(0);
+        expect(countAfter("C3: ratchet(rand(0, 0))")).toBe(0);
       });
 
       it("doesn't count notes a merge consumed", () => {

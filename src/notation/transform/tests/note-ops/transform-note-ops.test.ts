@@ -12,26 +12,9 @@ import {
 } from "../evaluator/transform-evaluator-test-helpers.ts";
 import {
   expectTransformedNotes,
-  TOUCHING_C3_PAIR,
   TOUCHING_C3_TRIO,
   warnSpyWithNote,
-  warnSpyWithNotes,
 } from "../transform-test-helpers.ts";
-
-// Asserts a merge tolerance is rejected: the two well-separated notes pass
-// through unchanged and a warning containing `message` is emitted.
-function expectMergeWarnsAndSkips(transform: string, message: string): void {
-  const { warn, notes } = warnSpyWithNotes([
-    { pitch: 60, start_time: 0, duration: 1 },
-    { pitch: 60, start_time: 3, duration: 1 },
-  ]);
-
-  applyTransforms(notes, transform, 4, 4);
-
-  expect(notes).toHaveLength(2);
-  expect(warn).toHaveBeenCalledWith(expect.stringContaining(message));
-  warn.mockRestore();
-}
 
 describe("note-count operations (ratchet/merge)", () => {
   describe("ratchet", () => {
@@ -167,18 +150,6 @@ describe("note-count operations (ratchet/merge)", () => {
       warn.mockRestore();
     });
 
-    it("warns and skips a count below 2", () => {
-      const { warn, notes } = warnSpyWithNote({ duration: 1 });
-
-      applyTransforms(notes, "ratchet(1)", 4, 4);
-
-      expect(notes).toHaveLength(1);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("count of 2 or more"),
-      );
-      warn.mockRestore();
-    });
-
     it("clamps an excessive count and warns", () => {
       const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
@@ -200,58 +171,33 @@ describe("note-count operations (ratchet/merge)", () => {
       warn.mockRestore();
     });
 
-    it("warns and skips a zero-length grid (n0/4)", () => {
+    it("skips a count that comes out below 2 as it runs", () => {
       const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
-      applyTransforms(notes, "ratchet(n0/4)", 4, 4);
+      // rand() can't be judged before the notes are, so the op checks it
+      applyTransforms(notes, "ratchet(rand(0, 0))", 4, 4);
 
       expect(notes).toHaveLength(1);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("grid must be greater than 0"),
+        expect.stringContaining("needs a count of 2 or more"),
       );
       warn.mockRestore();
     });
 
-    it("warns and skips when the argument overflows to a non-finite value", () => {
+    it("skips a count that overflows to non-finite as it runs", () => {
       const { warn, notes } = warnSpyWithNote({ duration: 1 });
       const big = "9".repeat(62);
 
-      // A product of huge decimals overflows to Infinity, which is not a usable
-      // count -> warn-and-skip distinct from the could-not-evaluate (throw) path.
       applyTransforms(
         notes,
-        `ratchet(${big} * ${big} * ${big} * ${big} * ${big} * ${big})`,
+        `ratchet(rand(1, 1) * ${big} * ${big} * ${big} * ${big} * ${big} * ${big})`,
         4,
         4,
       );
 
       expect(notes).toHaveLength(1);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("is not a number"),
-      );
-      warn.mockRestore();
-    });
-
-    it("warns and skips when no argument is given", () => {
-      const { warn, notes } = warnSpyWithNote({ duration: 1 });
-
-      applyTransforms(notes, "ratchet()", 4, 4);
-
-      expect(notes).toHaveLength(1);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("needs a count or note value"),
-      );
-      warn.mockRestore();
-    });
-
-    it("warns and uses the first argument when given more than one", () => {
-      const { warn, notes } = warnSpyWithNote({ duration: 1 });
-
-      applyTransforms(notes, "ratchet(2, 3)", 4, 4);
-
-      expect(notes).toHaveLength(2); // used the first arg (2), not 3
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("single count or note value"),
+        expect.stringContaining("must be a finite number"),
       );
       warn.mockRestore();
     });
@@ -277,19 +223,6 @@ describe("note-count operations (ratchet/merge)", () => {
 
       expect(notes).toHaveLength(1);
       expect(warn).toHaveBeenCalled();
-      warn.mockRestore();
-    });
-
-    it("warns and skips a bare pitch literal instead of coercing to MIDI", () => {
-      const { warn, notes } = warnSpyWithNote({ duration: 1 });
-
-      // ratchet(C2) would silently coerce to MIDI 36 pieces — reject it instead
-      applyTransforms(notes, "ratchet(C2)", 4, 4);
-
-      expect(notes).toHaveLength(1);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("isn't a valid ratchet count"),
-      );
       warn.mockRestore();
     });
 
@@ -460,33 +393,6 @@ describe("note-count operations (ratchet/merge)", () => {
           ],
           [6, 8],
         );
-      });
-
-      it("warns and skips a non-zero bare-number tolerance", () => {
-        expectMergeWarnsAndSkips("merge(0.25)", "note value");
-      });
-
-      it("warns and skips an integer beat-count tolerance", () => {
-        expectMergeWarnsAndSkips("merge(2)", "note value");
-      });
-
-      it("warns and skips a bar-value tolerance (<count>bar not accepted)", () => {
-        expectMergeWarnsAndSkips("merge(1bar)", "<count>bar");
-      });
-
-      it("warns about extra arguments and uses the first", () => {
-        // The pair touches, so it merges under merge(0).
-        const { warn, notes } = warnSpyWithNotes(TOUCHING_C3_PAIR);
-
-        applyTransforms(notes, "merge(0, n/8)", 4, 4);
-
-        expect(notes).toStrictEqual([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
-        ]);
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringContaining("using the first argument"),
-        );
-        warn.mockRestore();
       });
     });
   });

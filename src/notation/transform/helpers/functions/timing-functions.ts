@@ -20,12 +20,6 @@ export function evaluateSwing(
   raw: boolean,
   ctx: EvalContext,
 ): number {
-  if (args.length === 0 || args.length > 2) {
-    throw new Error(
-      `Function swing() requires 1-2 arguments: swing(amount [, grid])`,
-    );
-  }
-
   const amount = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
 
   // Default grid is half a musical beat — the off-beat between the meter's
@@ -71,12 +65,6 @@ export function evaluateQuant(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length !== 1) {
-    throw new Error(
-      `Function quant() requires exactly 1 argument: quant(grid)`,
-    );
-  }
-
   const grid = parseGrid(args[0] as ExpressionNode, ctx, "quant");
 
   return Math.round(ctx.position / grid) * grid;
@@ -95,10 +83,6 @@ export function evaluateLegato(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length > 1) {
-    throw new Error("legato() accepts at most 1 argument (tolerance)");
-  }
-
   const legato = ctx.noteProperties._legatoContext;
 
   if (!legato) {

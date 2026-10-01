@@ -149,9 +149,10 @@ describe("updateClip - transforms name the clip they warn about", () => {
     mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
   });
 
-  // ratchet() rejects a zero grid the same way for every clip
+  // A count only known as the transform runs (rand) fails the same way for
+  // every clip
   it("tells two firings of the same reason apart", async () => {
-    await updateClip({ ids: "123,456", transforms: "ratchet(n0/4)" });
+    await updateClip({ ids: "123,456", transforms: "ratchet(rand(0, 0))" });
 
     expect(
       capturedWarnings().map((w) => w.split(": ratchet")[0]),

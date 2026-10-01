@@ -405,21 +405,6 @@ describe("Transform - clipseq function", () => {
         expect.stringContaining("seq()"),
       );
     });
-
-    it("warns when called with no arguments (via applyTransforms catch)", () => {
-      const notes = createTestNotes([{ pitch: 60, start_time: 0 }]);
-
-      applyTransforms(notes, "velocity = clipseq()", 4, 4, {
-        clipIndex: 0,
-        clipCount: 1,
-        clipDuration: 4,
-        barDuration: 4,
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("clipseq() requires at least 1 argument"),
-      );
-    });
   });
 
   describe("integrated with applyTransforms (MIDI per-clip variation)", () => {

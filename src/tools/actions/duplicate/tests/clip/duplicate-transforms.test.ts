@@ -195,6 +195,27 @@ describe("duplicate - transforms/code", () => {
       );
     });
 
+    it("refuses a transform argument that is wrong for every copy before copying anything", async () => {
+      const { sourceClipSlot } = registerSessionClipDuplication({
+        destClipProperties: {},
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toSlot: "0/1",
+          transforms: "ratchet(1)",
+        }),
+      ).rejects.toThrow("ratchet() needs a count of 2 or more");
+
+      expect(updateClipMock).not.toHaveBeenCalled();
+      expect(sourceClipSlot.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to",
+        expect.anything(),
+      );
+    });
+
     // 1|6-2|1 is a backwards range in 4/4 but valid in 6/8: the copy keeps its
     // source's meter, so that decides.
     function copyWithMeter(num: number, den: number): Promise<unknown> {

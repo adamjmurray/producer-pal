@@ -15,6 +15,8 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -218,20 +220,17 @@ describe("ppal-clip-transforms (context variables)", () => {
 
 describe("ppal-clip-transforms (arity validation)", () => {
   it.each([
-    ["rand", 33, "velocity = rand(0, 100, 50)"],
-    ["ramp", 34, "velocity = ramp(0, 100, 1, 2)"],
+    [33, "rand(0, 100, 50)", "rand() needs 0-2 arguments"],
+    [34, "ramp(0, 100, 1, 2)", "ramp() needs exactly 2 arguments"],
   ])(
-    "says on the entry when %s() has too many arguments",
-    async (_name, scene, transform) => {
+    "refuses scene %i's %s as too many arguments, leaving the notes alone",
+    async (scene, call, message) => {
       const clipId = await createMidiClip(scene, "v80 C3 1|1");
 
-      const result = await applyTransform(clipId, transform);
-      const { data, warnings } = parseToolResultWithWarnings<{
-        detail?: string;
-      }>(result);
+      const result = await applyTransform(clipId, `velocity = ${call}`);
 
-      expect(data.detail).toContain("velocity transform failed");
-      expect(warnings).toStrictEqual([]);
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(message);
       // Original velocity should be unchanged
       expect(await readClipNotes(clipId)).toContain("v80");
     },

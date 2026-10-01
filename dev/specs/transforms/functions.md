@@ -100,11 +100,11 @@ argument forms differ in geometry:
 
 - **count** form (a bare number, e.g. `ratchet(4)`): exactly `count` EQUAL
   pieces, regardless of where the note sits — child duration = parent duration /
-  count. Rounded to the nearest integer; a count below 2 warns and is skipped (1
-  piece is a no-op). Counts above the per-note cap (64) are clamped with a
-  warning. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count — it
-  warns and is skipped rather than coercing to its MIDI number (a pitch literal
-  nested in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
+  count. Rounded to the nearest integer; a count below 2 is refused (1 piece is
+  a no-op). Counts above the per-note cap (64) are clamped and said on the
+  clip's entry. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count —
+  it is refused rather than coerced to its MIDI number (a pitch literal nested
+  in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
 - **noteValue** form (a note value or `<count>bar`, e.g. `ratchet(n/16)`,
   `ratchet(1bar)`): cuts the note on the ABSOLUTE grid of that size (multiples
   of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
@@ -112,8 +112,11 @@ argument forms differ in geometry:
   off-grid keeps a partial sliver at that end. A note that spans no grid line
   (it fits within a single grid cell) is left unchanged with a warning. The
   per-note cap (64) still applies.
-- The argument is a constant (no per-note variables); an unusable argument warns
-  and the op is skipped (notes pass through unchanged).
+- The argument is a constant (no per-note variables). A constant that is
+  unusable (no argument, a second argument, a count below 2, a grid of 0, a
+  value that can't be evaluated) is refused up front. One that can only be known
+  as the op runs (it uses a random function or a variable) warns and the op is
+  skipped (notes pass through unchanged).
 - Zero/negative-duration notes are left unchanged (and are removed later by the
   standard zero-duration deletion sweep).
 
@@ -136,16 +139,16 @@ unchanged — `repeat` translates notes, it does not stretch them.
 
 - **offset** (first argument, required): a **note value** (`n/8`, `n/4`, …) or a
   bar duration (`<count>bar`). This is the only dialect accepted here — a bare
-  number, a pitch, or any other expression warns and the op is skipped. The
-  offset must be greater than 0. It is meter-aware: `1bar` resolves through the
-  clip's beats-per-bar (one bar in 6/8 is three Ableton beats).
+  number, a pitch, or any other expression is refused. The offset must be
+  greater than 0. It is meter-aware: `1bar` resolves through the clip's
+  beats-per-bar (one bar in 6/8 is three Ableton beats).
 - **copies** (second argument, optional, default 1): the number of echoes to
-  add. Rounded to the nearest integer; a count below 1 warns and is skipped (0
-  echoes is a no-op). Counts above the per-note cap (64) are clamped with a
-  warning. A bare pitch literal (e.g. `repeat(n/8, C2)`) is not a valid count —
-  it warns and is skipped rather than coercing to its MIDI number (a pitch
-  literal nested in arithmetic still resolves to a number). An arithmetic count
-  (e.g. `repeat(n/4, 1 + 2)`) is fine. Omit it for the common single-echo case:
+  add. Rounded to the nearest integer; a count below 1 is refused (0 echoes is a
+  no-op). Counts above the cap (64) are clamped and said on the clip's entry. A
+  bare pitch literal (e.g. `repeat(n/8, C2)`) is not a valid count — it is
+  refused rather than coerced to its MIDI number (a pitch literal nested in
+  arithmetic still resolves to a number). An arithmetic count (e.g.
+  `repeat(n/4, 1 + 2)`) is fine. Omit it for the common single-echo case:
   `repeat(n/8)`.
 - **Does NOT resize the clip.** Unlike `update-clip`'s `duplicateLoop` (which
   doubles clip length via Live's native Duplicate Loop), `repeat` only adds
@@ -153,9 +156,10 @@ unchanged — `repeat` translates notes, it does not stretch them.
   past the clip's end are still emitted; in Live they sit beyond the loop/end
   marker, hidden until the clip is lengthened. To grow the clip to fit the
   echoes, set `length` on the same `update-clip` call (or a follow-up).
-- The arguments are constants (no per-note variables); an unusable argument
-  warns and the op is skipped (notes pass through unchanged). A third positional
-  argument warns and is ignored (the first two are used).
+- The arguments are constants (no per-note variables). An unusable constant (no
+  offset, a third argument, a count below 1, a value that can't be evaluated) is
+  refused up front; a count that can only be known as the op runs warns and the
+  op is skipped (notes pass through unchanged).
 - **Same-pitch onset collisions collapse keep-last.** When a copy lands on the
   exact onset of another same-pitch note (an existing note or an earlier copy,
   within `SAME_TIME_EPSILON`), the write-path dedupe keeps the last write and
@@ -203,8 +207,8 @@ probability, and deviation.
 - Positions are de-duplicated, so a repeated position never makes a zero-width
   sliver. The per-note piece cap (64) still applies.
 - Zero/negative-duration notes are left unchanged (and are removed later by the
-  standard zero-duration deletion sweep). Calling `split()` with no positions
-  warns and is skipped.
+  standard zero-duration deletion sweep). Calling `split()` with no positions is
+  refused.
 - **`sync`** (optional trailing keyword, same form as the waveform `sync`): the
   positions are interpreted against the **arrangement timeline** instead of the
   clip origin. Each position is mapped into note time through the clip's
@@ -241,9 +245,8 @@ two same-pitch notes may sit and still merge:
   meter-invariant in absolute time (an 8th is always an 8th).
 
 Any other argument — a non-zero bare number (`merge(2)`, `merge(0.25)`), a bar
-value (`merge(1bar)`), a pitch literal, or an expression — warns and the merge
-is skipped (notes pass through unchanged). A second argument warns and is
-ignored (the first is used).
+value (`merge(1bar)`), a pitch literal, or an expression — is refused, as is a
+second argument.
 
 ```
 merge()               // span every pitch's notes across the whole clip

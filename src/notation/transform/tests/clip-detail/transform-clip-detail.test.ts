@@ -85,18 +85,20 @@ describe("per-clip transform facts go to the clip's sink", () => {
     ],
     [
       "an assignment that fails",
-      () => noteDetails(createTestNote(), "velocity = cos()"),
+      () => noteDetails(createTestNote(), "velocity = audio.gain"),
       /^velocity transform failed: /,
     ],
     [
       "an assignment that fails in a single evaluation",
       () =>
-        details(() => evaluateTransform("velocity = cos()", createContext())),
+        details(() =>
+          evaluateTransform("velocity = audio.gain", createContext()),
+        ),
       /^velocity transform failed: /,
     ],
     [
       "an audio assignment that fails",
-      () => details(() => applyAudioTransform(0, 0, "pitchShift = cos()")),
+      () => details(() => applyAudioTransform(0, 0, "pitchShift = note.pitch")),
       /^pitchShift transform failed: /,
     ],
     [

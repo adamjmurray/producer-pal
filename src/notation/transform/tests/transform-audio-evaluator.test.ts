@@ -344,15 +344,10 @@ describe("Audio Transform Evaluator", () => {
       );
     });
 
-    it("warns and skips a gain line carrying a duplicate-selector warning", () => {
-      // Two pitch selectors on one line is invalid; the parser keeps the line
-      // but attaches a selectorWarning. The audio evaluator relays that warning
-      // and skips the assignment (gain stays unchanged -> null).
-      const result = applyAudioTransform(0, 0, "C3: E3: gain = -6");
-
-      expect(result.gain).toBeNull();
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("duplicate pitch selector"),
+    it("refuses a gain line with a duplicate selector", () => {
+      // Two pitch selectors on one line is invalid.
+      expect(() => applyAudioTransform(0, 0, "C3: E3: gain = -6")).toThrow(
+        "duplicate pitch selector",
       );
     });
   });
@@ -742,42 +737,18 @@ describe("Audio Transform Evaluator", () => {
   });
 
   describe("pitch literal as a value (#4)", () => {
-    it("warns and skips a bare pitch literal assigned to gain (no silent coerce)", () => {
-      // `gain = C3` is nonsensical — audio clips have no pitch. It must not
-      // silently coerce to a MIDI number (C3 → 60, clamped to the 24 dB max);
-      // warn clearly and leave gain unchanged. (Previously it threw a cryptic
-      // internal error; the first fix made it silently write the clamped MIDI
-      // number — this asserts warn-and-skip instead.)
-      const result = applyAudioTransform(0, 0, "gain = C3");
-
-      expect(result.gain).toBeNull();
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'pitch name "C3" isn\'t a valid value for gain',
-        ),
-      );
-    });
-
-    it("warns and skips a bare pitch literal assigned to pitchShift", () => {
-      const result = applyAudioTransform(0, 0, "pitchShift = C3");
-
-      expect(result.pitchShift).toBeNull();
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'pitch name "C3" isn\'t a valid value for pitchShift',
-        ),
-      );
-    });
-
-    it("shows the source operator (+=), not the internal token, in the warning", () => {
-      applyAudioTransform(0, 0, "gain += C3");
-
-      // The skipped assignment is echoed as the user wrote it ("gain +="), not
-      // the internal operator token ("gain add").
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping "gain +=".'),
-      );
-    });
+    it.each([
+      ["gain = C3", 'pitch name "C3" isn\'t a value for gain'],
+      ["pitchShift = C3", 'pitch name "C3" isn\'t a value for pitchShift'],
+      ["gain += C3", 'pitch name "C3" isn\'t a value for gain'],
+    ])(
+      "refuses a bare pitch literal: %s (no silent coerce)",
+      (transform, message) => {
+        // `gain = C3` is nonsensical (audio clips have no pitch) and must not
+        // silently coerce to a MIDI number (C3 -> 60, clamped to the 24 dB max).
+        expect(() => applyAudioTransform(0, 0, transform)).toThrow(message);
+      },
+    );
 
     it("still resolves a pitch literal nested in arithmetic to its MIDI number", () => {
       // Only a BARE top-level pitch literal is rejected. Nested in an expression

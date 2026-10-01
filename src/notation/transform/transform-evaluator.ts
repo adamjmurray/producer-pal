@@ -14,10 +14,7 @@ import {
   buildNoteContext,
   selectAssignmentNotes,
 } from "./helpers/assignment-note-selection.ts";
-import {
-  rejectsPitchLiteralValue,
-  warnShortRamp,
-} from "./helpers/assignment-warnings.ts";
+import { warnShortRamp } from "./helpers/assignment-warnings.ts";
 import {
   arrangementOrigin,
   buildNoteProperties,
@@ -46,6 +43,7 @@ import {
   AUDIO_PARAMETERS,
   wrongClipTypeStatements,
 } from "./transform-clip-type.ts";
+import { checkTransformArgs } from "./transform-arg-checks.ts";
 import { applyNoteOp } from "./transform-note-ops.ts";
 import { type TransformOutcome } from "./transformed-count.ts";
 
@@ -102,14 +100,6 @@ export function applyTransforms(
   // note-count ops (ratchet/merge/split/repeat) whose output the next statement sees.
   for (let j = 0; j < ast.length; j++) {
     const stmt = ast[j] as TransformStatement;
-
-    // A duplicate selector segment (two pitch/time selectors, or two where()
-    // clauses) is warned-and-skipped rather than failing the whole transform:
-    // relay the parser's message and move on so the other lines still apply.
-    if (stmt.selectorWarning != null) {
-      console.warn(stmt.selectorWarning);
-      continue;
-    }
 
     // Note-count op (ratchet/merge/split/repeat): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
@@ -264,10 +254,6 @@ function applyAssignmentToNotes(
   clipContext: ClipContext | undefined,
   touched: Set<NoteEvent>,
 ): void {
-  if (rejectsPitchLiteralValue(assignment)) {
-    return;
-  }
-
   // The selected notes are those matching BOTH the pitch range AND the
   // time-range selector. Indexing and next.*/legato() are scoped to this set,
   // so a sub-range selector (e.g. one bar of a ratcheted hat run) gets a
@@ -415,22 +401,27 @@ export function evaluateTransform(
 }
 
 /**
- * Parse a transform string, returning the AST. Throws on parse errors.
+ * Parse a transform string, returning the AST. Throws on parse errors, and on a
+ * mistake in the text that is the same for every clip (see checkTransformArgs).
  * @param transformString - Transform expression string
  * @param timeSigDenominator - Time signature denominator; converts `±n`
  *   beat-position offsets in a `timeRange` to musical beats during the parse
  * @param timeSigNumerator - Time signature numerator (musical beats per bar), or
  *   omitted as audio clips do; lets a `-n` range-bound offset borrow across a bar line during the parse
+ * @param clipType - The kind of clip the transform will run on
  * @returns Parsed AST
- * @throws Error with formatted message if parsing fails
+ * @throws Error with formatted message if parsing or the argument checks fail
  */
 export function tryParseTransform(
   transformString: string,
   timeSigDenominator: number,
   timeSigNumerator?: number,
+  clipType: "midi" | "audio" = "midi",
 ): ReturnType<typeof parseTransform> {
+  let ast: TransformStatement[];
+
   try {
-    return parseTransform(transformString, {
+    ast = parseTransform(transformString, {
       timeSigDenominator,
       beatsPerBar: timeSigNumerator,
     });
@@ -444,4 +435,8 @@ export function tryParseTransform(
 
     throw error;
   }
+
+  checkTransformArgs(ast, timeSigNumerator ?? 4, timeSigDenominator, clipType);
+
+  return ast;
 }

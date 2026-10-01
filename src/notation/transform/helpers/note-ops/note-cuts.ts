@@ -9,7 +9,7 @@ import {
   type BarBeatPointNode,
   type NoteOp,
 } from "../../parser/transform-parser.ts";
-import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
+import { type NoteOpResult } from "./note-op-result.ts";
 
 // Per-note ceiling on pieces a note-count op may produce — bounds note
 // explosion. Shared by ratchet (a roll) and split (explicit cuts). A note cut
@@ -53,7 +53,7 @@ export function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
  * ratchet grid form (regularly spaced cut lines), the cut lines here are the
  * arbitrary, possibly unequal positions the user named. Each position only cuts
  * a note when it falls strictly inside that note's span; a note containing none
- * of the positions is left unchanged (with a warning). Positions are shared
+ * of the positions is left unchanged (with a detail). Positions are shared
  * across all matched notes (absolute clip coordinates), so a single position
  * subdivides every note it lands inside.
  *
@@ -75,14 +75,6 @@ export function splitNotes(
   denominator: number,
   arrangementOrigin?: number,
 ): NoteOpResult {
-  if (op.args.length === 0) {
-    console.warn(
-      "split() needs one or more bar|beat positions, e.g. split(2|1, 2|3); skipping",
-    );
-
-    return skippedNoteOp(matched);
-  }
-
   // In sync mode the positions are arrangement-absolute; subtract the clip's
   // origin to bring them into the clip-relative space the notes live in.
   let originMusicalBeats = 0;

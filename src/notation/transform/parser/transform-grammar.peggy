@@ -151,11 +151,9 @@
   // Fold a list of selector segments (each a pitch / time / where piece, parsed in
   // any order) into the single { pitchRange, timeRange, predicate } shape the
   // statement rule consumes. Each kind may appear at most once — a duplicate is a
-  // user mistake (two pitch selectors AND-combine to the empty set). Rather than
-  // throw (which would abort the WHOLE transforms string, killing the other
-  // lines), keep the first occurrence and record a `selectorWarning`. The
-  // evaluator relays it as a WARNING and skips just this line, so the remaining
-  // lines still apply — the warn-and-skip pattern used across the transform tool.
+  // user mistake (two pitch selectors AND-combine to the empty set). Keep the
+  // first occurrence and record a `selectorError` rather than throwing here, so
+  // transform-arg-checks.ts refuses it alongside its other checks.
   // `matched` is the raw prefix text, for the message.
   function combineSelectorSegments(segments, matched) {
     let pitchRange = null;
@@ -192,10 +190,10 @@
         predicate = seg.predicate;
       }
     }
-    const selectorWarning = reasons.length
-      ? `Skipping "${label}": ${reasons.join("; ")}.`
+    const selectorError = reasons.length
+      ? `Bad selector "${label}": ${reasons.join("; ")}`
       : null;
-    return { pitchRange, timeRange, predicate, selectorWarning };
+    return { pitchRange, timeRange, predicate, selectorError };
   }
 }}
 
@@ -218,12 +216,11 @@ statement
     const pitchRange = prefix?.pitchRange ?? null;
     const timeRange = prefix?.timeRange ?? null;
     const predicate = prefix?.predicate ?? null;
-    const selectorWarning = prefix?.selectorWarning ?? null;
+    const selectorError = prefix?.selectorError ?? null;
     const isNoteOpBody = !Array.isArray(body) && body.kind === "noteOp";
-    // A duplicate-selector line is already destined to be warn-and-skipped by the
-    // evaluator (selectorWarning set), so don't hard-fail it on the where()-on-
-    // noteOp rule below — let the skip take precedence.
-    if (predicate != null && isNoteOpBody && selectorWarning == null) {
+    // A duplicate-selector line is refused by the arg checks (selectorError set),
+    // so don't hard-fail it on the where()-on-noteOp rule below.
+    if (predicate != null && isNoteOpBody && selectorError == null) {
       // Note-count ops (ratchet/merge/split/repeat) don't support a where()
       // predicate. Reject rather than silently ignore so the limitation is visible.
       throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split/repeat) — put the predicate on a parameter assignment line instead.`);
@@ -231,19 +228,19 @@ statement
     // Only attach `predicate` when a where() clause is present, so non-predicate
     // assignments keep their historical shape (just pitchRange/timeRange).
     const predPart = predicate != null ? { predicate } : {};
-    // A duplicate-selector line carries a warning for the evaluator to relay
-    // before skipping; absent on well-formed lines so they keep their shape.
-    const warnPart = selectorWarning != null ? { selectorWarning } : {};
+    // A duplicate-selector line carries its error for the arg checks; absent on
+    // well-formed lines so they keep their shape.
+    const errorPart = selectorError != null ? { selectorError } : {};
     // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
     // selector + predicate to each so a single token's writes share one filter.
     if (Array.isArray(body)) {
-      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...warnPart, ...b }));
+      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...errorPart, ...b }));
     }
     // Note ops carry only the positional selector (no predicate field).
     if (isNoteOpBody) {
-      return { pitchRange, timeRange, ...warnPart, ...body };
+      return { pitchRange, timeRange, ...errorPart, ...body };
     }
-    return { pitchRange, timeRange, ...predPart, ...warnPart, ...body };
+    return { pitchRange, timeRange, ...predPart, ...errorPart, ...body };
   }
 
 // The optional `selector:` prefix. A list of selector segments — a pitch

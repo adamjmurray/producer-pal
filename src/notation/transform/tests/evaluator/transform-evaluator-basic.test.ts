@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -407,15 +408,6 @@ describe("Transform Evaluator", () => {
       // phase 0.5^0.5 = sqrt(0.5) ≈ 0.707
       expect(result.velocity!.value).toBeCloseTo(Math.sqrt(0.5), 10);
     });
-
-    it("skips curve with missing arguments", () => {
-      const result = evaluateTransform(
-        "velocity += curve(0, 1)",
-        createContext({ clipTimeRange: { start: 0, end: 4 } }),
-      );
-
-      expect(result).toStrictEqual({});
-    });
   });
 
   describe("ramp waveform", () => {
@@ -472,33 +464,6 @@ describe("Transform Evaluator", () => {
       );
 
       expect(result.velocity!.value).toBe(0); // -1 + 2 * 0.5
-    });
-
-    it("throws error when start argument is missing", () => {
-      const result = evaluateTransform(
-        "velocity += ramp()",
-        createContext({ clipTimeRange: { start: 0, end: 4 } }),
-      );
-
-      expect(result).toStrictEqual({});
-    });
-
-    it("throws error when end argument is missing", () => {
-      const result = evaluateTransform(
-        "velocity += ramp(0)",
-        createContext({ clipTimeRange: { start: 0, end: 4 } }),
-      );
-
-      expect(result).toStrictEqual({});
-    });
-
-    it("throws error when too many arguments", () => {
-      const result = evaluateTransform(
-        "velocity += ramp(0, 1, 2)",
-        createContext({ clipTimeRange: { start: 0, end: 4 } }),
-      );
-
-      expect(result).toStrictEqual({});
     });
   });
 
@@ -588,8 +553,9 @@ probability += 0.2 * cos(n/2)`;
     });
 
     it("skips parameter with evaluation error but continues with others", () => {
-      // Use an expression that will cause evaluation error (cos without frequency)
-      const modString = `velocity += cos()
+      // Use an expression that will cause an evaluation error (an audio
+      // variable has no value in a MIDI note context)
+      const modString = `velocity += audio.gain
 timing += 0.05`;
 
       const result = evaluateTransform(modString, createContext());
@@ -600,13 +566,6 @@ timing += 0.05`;
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(" transform failed"),
       );
-    });
-
-    it("handles missing frequency argument", () => {
-      const result = evaluateTransform("velocity += cos()", createContext());
-
-      expect(result).toStrictEqual({});
-      expect(capturedWarnings()).not.toHaveLength(0);
     });
   });
 

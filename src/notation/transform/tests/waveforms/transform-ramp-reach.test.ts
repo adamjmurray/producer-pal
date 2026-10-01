@@ -183,7 +183,7 @@ describe("ramp reach detection", () => {
     // transformedIndices is cumulative: the first line filling it must not make
     // the failed second line look like it applied something.
     const { warnings } = reachWarnings(
-      "velocity = 100\n2|3-3|1: velocity = ramp(1)",
+      "velocity = 100\n2|3-3|1: velocity = ramp(1, audio.gain)",
     );
 
     expect(warnings).toStrictEqual([]);

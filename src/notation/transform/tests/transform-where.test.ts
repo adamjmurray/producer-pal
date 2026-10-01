@@ -4,9 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
+import {
+  applyTransforms,
+  evaluateTransform,
+} from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { createContext } from "./evaluator/transform-evaluator-test-helpers.ts";
+import {
+  createContext,
+  createTestNotes,
+} from "./evaluator/transform-evaluator-test-helpers.ts";
 import { expectVelocitiesAfter } from "./transform-test-helpers.ts";
 
 // One quiet note and one loud note — the minimal pair for a velocity threshold.
@@ -297,22 +303,15 @@ describe("where() predicate filtering", () => {
       warnSpy.mockRestore();
     });
 
-    it("warns and skips a duplicate-selector line but applies the others", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    it("refuses a duplicate-selector line, applying none of the transform", () => {
+      const notes = createTestNotes([{ start_time: 0, velocity: 50 }]);
 
-      // First line has two pitch selectors (invalid) — it is warned-and-skipped.
-      // The second line is well-formed and still applies, proving one bad line
-      // does not abort the whole transforms string.
-      expectVelocitiesAfter(
-        [{ start_time: 0, velocity: 50 }],
-        "C3: E3: velocity = 120\nvelocity += 10",
-        [60], // only the second line ran (50 + 10)
-      );
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("duplicate pitch selector"),
-      );
-      warnSpy.mockRestore();
+      // First line has two pitch selectors (invalid); the second is fine, but
+      // the whole transform is refused before any line runs.
+      expect(() =>
+        applyTransforms(notes, "C3: E3: velocity = 120\nvelocity += 10", 4, 4),
+      ).toThrow('Bad selector "C3: E3:": duplicate pitch selector');
+      expect(notes[0]!.velocity).toBe(50);
     });
   });
 

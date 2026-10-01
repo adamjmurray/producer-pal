@@ -3,51 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/**
- * Warnings about a whole assignment rather than a single note: a value that
- * can't mean what it says, and a ramp that never reached its end value.
- */
+/** Warning about a whole assignment rather than a single note: a ramp that never reached its end value. */
 
 import { musicalBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import {
-  type ExpressionNode,
-  type TransformAssignment,
-} from "../parser/transform-parser.ts";
+import { type ExpressionNode } from "../parser/transform-parser.ts";
 import * as console from "../transform-warning-label.ts";
 import { findFunctionName } from "./find-function.ts";
 import { type TimeRange } from "./transform-context.ts";
-import { operatorDisplay } from "./transform-evaluation.ts";
-
-/**
- * Reject a bare pitch literal used as a value for anything but `pitch`.
- *
- * `b2` and `C3` are meaningful as a value only for the `pitch` parameter (and
- * as selectors or function arguments). Assigned anywhere else it is almost
- * certainly a typo that would silently coerce to a MIDI number
- * (`velocity = b2` → 59), so warn and skip rather than corrupt the note.
- *
- * @param assignment - The assignment about to be applied
- * @returns True when the assignment was rejected and must not run
- */
-export function rejectsPitchLiteralValue(
-  assignment: TransformAssignment,
-): boolean {
-  const expr = assignment.expression;
-
-  if (
-    assignment.parameter === "pitch" ||
-    typeof expr !== "object" ||
-    expr.type !== "pitchLiteral"
-  ) {
-    return false;
-  }
-
-  console.warn(
-    `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
-  );
-
-  return true;
-}
 
 /** The functions whose value is a position within the time range. */
 const RAMP_NAMES = new Set(["ramp", "curve"]);

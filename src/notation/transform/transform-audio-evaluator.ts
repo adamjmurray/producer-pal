@@ -11,11 +11,7 @@ import {
   type ClipContext,
   type NoteProperties,
 } from "./helpers/transform-context.ts";
-import {
-  applyBinaryOp,
-  isNoteOp,
-  operatorDisplay,
-} from "./helpers/transform-evaluation.ts";
+import { applyBinaryOp, isNoteOp } from "./helpers/transform-evaluation.ts";
 import {
   type ExpressionNode,
   type TransformAssignment,
@@ -64,7 +60,7 @@ export function applyAudioTransform(
   // Audio transforms operate on whole-clip gain/pitchShift and never apply a
   // timeRange, so the meter is irrelevant here; pass 4 to satisfy the
   // meter-aware grammar. A syntax error throws, as it does for a MIDI clip.
-  const ast = tryParseTransform(transformString, 4, 4);
+  const ast = tryParseTransform(transformString, 4, 4, "audio");
 
   warnIncompatibleAudioSelectors(ast);
 
@@ -90,20 +86,6 @@ export function applyAudioTransform(
   let pitchShiftModified = false;
 
   for (const assignment of audioAssignments) {
-    // A duplicate selector segment is warned-and-skipped, consistent with the
-    // MIDI evaluator: relay the parser's message and skip just this line.
-    if (assignment.selectorWarning != null) {
-      console.warn(assignment.selectorWarning);
-      continue;
-    }
-
-    // A bare top-level pitch literal (`gain = C3`) is nonsensical for audio and
-    // is warned-and-skipped here (a nested pitch literal is still resolved to
-    // its MIDI number in evaluateAudioExpression).
-    if (warnAndSkipBarePitchLiteral(assignment)) {
-      continue;
-    }
-
     try {
       const value = evaluateAudioExpression(
         assignment.expression,
@@ -157,33 +139,6 @@ function nextAudioValue(
   value: number,
 ): number {
   return operator === "set" ? value : current + value;
-}
-
-/**
- * Detect a bare top-level pitch literal assigned to an audio parameter
- * (`gain = C3`, `pitchShift = C3`) and warn-and-skip it. Audio clips have no
- * pitch, and gain/pitchShift are plain numbers; assigning a pitch literal would
- * silently coerce to a MIDI number (`C3` → 60, clamped to the parameter max).
- * Mirrors the note evaluator's pitch-as-value guard. A pitch literal nested in
- * arithmetic or a function arg is NOT caught here — it is still resolved to its
- * MIDI number in evaluateAudioExpression.
- * @param assignment - The audio transform assignment to check
- * @returns true if the assignment was a bare pitch literal (warned + skip), else false
- */
-function warnAndSkipBarePitchLiteral(assignment: TransformAssignment): boolean {
-  const expr = assignment.expression;
-
-  if (typeof expr !== "object" || expr.type !== "pitchLiteral") {
-    return false;
-  }
-
-  const example = assignment.parameter === "gain" ? "-6" : "12";
-
-  console.warn(
-    `pitch name "${expr.name}" isn't a valid value for ${assignment.parameter}; audio clips have no pitch — gain and pitchShift take numbers (e.g. ${assignment.parameter} = ${example}). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
-  );
-
-  return true;
 }
 
 /**
@@ -279,8 +234,8 @@ function evaluateAudioExpression(
 
   // Pitch literal (`C3`) nested in an expression (arithmetic operand or function
   // arg, e.g. `gain = C3 + 0`) — its MIDI number, mirroring the note evaluator.
-  // A bare top-level `gain = C3` never reaches here: applyAudioTransform catches
-  // and warns it. This branch only stops a nested pitch literal from falling
+  // A bare top-level `gain = C3` never reaches here: checkTransformArgs refuses
+  // it. This branch only stops a nested pitch literal from falling
   // through to the function-call branch below and throwing a cryptic
   // "args is undefined" internal error.
   if (node.type === "pitchLiteral") {

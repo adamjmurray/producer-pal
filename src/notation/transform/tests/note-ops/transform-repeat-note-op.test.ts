@@ -206,33 +206,22 @@ describe("note-count operation: repeat", () => {
     });
   });
 
-  describe("warn-and-skip", () => {
-    it("skips when no offset is given", () => {
-      expectRepeatWarnsAndSkips("repeat()", "needs an offset");
-    });
-
-    it("skips a bare number offset (must be a note value or bar)", () => {
+  // A bad count that the up-front checks can't see (it uses a variable or a
+  // random function) is still caught as the op runs.
+  describe("warn-and-skip at run time", () => {
+    it("skips a copy count that comes out below 1", () => {
       expectRepeatWarnsAndSkips(
-        "repeat(2)",
-        "offset must be a note value like n/8 or a bar duration",
+        "repeat(n/8, rand(0, 0))",
+        "needs a copy count of 1 or more",
       );
     });
 
-    it("skips a zero offset", () => {
-      expectRepeatWarnsAndSkips(
-        "repeat(n0/4)",
-        "offset must be greater than 0",
-      );
-    });
+    it("skips a copy count that overflows to non-finite", () => {
+      const big = "9".repeat(62);
 
-    it("skips when the copy count is below 1", () => {
-      expectRepeatWarnsAndSkips("repeat(n/4, 0)", "copy count of 1 or more");
-    });
-
-    it("skips a pitch-literal copy count", () => {
       expectRepeatWarnsAndSkips(
-        "repeat(n/8, C3)",
-        "isn't a valid repeat copy count",
+        `repeat(n/8, rand(1, 1) * ${big} * ${big} * ${big} * ${big} * ${big} * ${big})`,
+        "copy count must be a finite number",
       );
     });
 
@@ -240,28 +229,6 @@ describe("note-count operation: repeat", () => {
       expectRepeatWarnsAndSkips(
         "repeat(n/4, audio.gain)",
         "copy count could not be evaluated",
-      );
-    });
-
-    it("skips a copy count that overflows to non-finite", () => {
-      // pow(10, 400) overflows a double — evaluateExpression throws, so it lands
-      // in the same "could not be evaluated" skip path.
-      expectRepeatWarnsAndSkips(
-        "repeat(n/4, pow(10, 400))",
-        "copy count could not be evaluated",
-      );
-    });
-
-    it("skips a copy count that arithmetic-evaluates to NaN", () => {
-      // A ~400-digit literal parses to Infinity; Infinity - Infinity = NaN.
-      // Plain arithmetic (unlike pow) doesn't throw, so the explicit finite
-      // guard in resolveRepeatCopies is what turns this into a warn-and-skip
-      // rather than a silent zero-copy no-op.
-      const big = "1" + "0".repeat(400);
-
-      expectRepeatWarnsAndSkips(
-        `repeat(n/4, ${big} - ${big})`,
-        "must be a finite number",
       );
     });
 
@@ -274,18 +241,6 @@ describe("note-count operation: repeat", () => {
       expect(notes).toHaveLength(65);
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("clamped to the max"),
-      );
-      warn.mockRestore();
-    });
-
-    it("uses the first two args and warns on extras", () => {
-      const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 1 });
-
-      applyTransforms(notes, "repeat(n/4, 2, n/8)", 4, 4);
-
-      expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1, 2]);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("using the first two arguments"),
       );
       warn.mockRestore();
     });

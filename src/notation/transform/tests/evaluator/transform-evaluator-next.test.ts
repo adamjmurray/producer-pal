@@ -259,17 +259,6 @@ describe("legato()", () => {
     expect(notes[2]!.duration).toBe(0.25);
   });
 
-  it("rejects more than 1 argument", () => {
-    const warn = vi.spyOn(console, "warn");
-    const notes = createTestNotes([{ start_time: 0 }, { start_time: 1 }]);
-
-    applyTransforms(notes, "duration = legato(0.1, 0.2)", 4, 4);
-
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("legato()"));
-    // Notes unchanged
-    expect(notes[0]!.duration).toBe(1);
-  });
-
   it("groups humanized chord tones with tolerance", () => {
     const notes = createTestNotes([
       { pitch: 60, start_time: 0, duration: 0.25 },

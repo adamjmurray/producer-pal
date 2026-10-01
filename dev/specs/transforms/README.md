@@ -47,21 +47,22 @@ merge(0); // glue only touching/overlapping same-pitch notes
 merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
-**Bad argument counts warn rather than fail silently** (counting only positional
-args — the trailing `sync`/`raw` keywords are not arguments), and the warning is
-relayed once per malformed line, not once per affected note. Handling differs by
-call kind:
+**A call with the wrong arguments is refused up front** — the whole call fails
+before any clip is touched, because the text is wrong the same way for every
+clip (see
+[ADR-0054](../../decisions/0054-a-bad-transform-argument-is-refused-up-front.md)).
+Argument counts count only positional args — the trailing `sync`/`raw` keywords
+are not arguments. An argument that uses a note or clip variable or a random
+function can't be judged until the transform runs; it is reported on the clip
+then. Handling differs by call kind:
 
 - **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
-  too many arguments makes the assignment apply no change — the matched notes
-  pass through unchanged rather than the call guessing intent — and later lines
-  still run.
+  too many arguments refuses the call.
 - **Note-count operations** (`ratchet`, `repeat`, `split`, `merge`): a missing
-  required argument skips the operation (matched notes pass through), but
-  **extra** arguments warn and the call proceeds using the leading argument(s)
-  it expects — `ratchet`/`merge` use the first, `repeat` uses the first two.
-  `split` is variadic (any number of cut positions, so no "too many" case) and
-  `merge()` with no argument is its valid span-all default.
+  required argument or an **extra** one refuses the call (`ratchet`/`merge` take
+  one argument, `repeat` two). `split` is variadic (any number of cut positions,
+  so no "too many" case) and `merge()` with no argument is its valid span-all
+  default.
 
 **Two shape mistakes fail the parse with a targeted message** rather than
 peggy's generic "Expected statement", which points at column 1 and names

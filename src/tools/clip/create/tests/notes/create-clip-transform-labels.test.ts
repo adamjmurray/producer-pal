@@ -17,10 +17,10 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
-// A transform with a bad argument warns once per clip, with the same text
-// every time, which is exactly what the label has to tell apart.
-const FAILING_TRANSFORM = "ratchet(n0/4)";
-const FAILED = "ratchet() grid";
+// A count only known as the transform runs (rand) warns once per clip, with the
+// same text every time, which is exactly what the label has to tell apart.
+const FAILING_TRANSFORM = "ratchet(rand(0, 0))";
+const FAILED = "ratchet(0)";
 
 /**
  * The warnings with the failure's own wording cut off, leaving each label.
@@ -81,6 +81,25 @@ describe("createClip - transforms name the clip they warn about", () => {
     });
 
     expect(warningLabels()).toStrictEqual(["clip t0[1|1]: "]);
+  });
+
+  // The same argument is wrong for every clip, so nothing is created.
+  it("refuses a transform argument that is wrong for every clip before creating one", async () => {
+    const slot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+      path: livePath.track(0).clipSlot(0),
+      properties: { has_clip: 0 },
+    });
+
+    await expect(
+      createClip({
+        slot: "0/0",
+        notes: "C3 1|1",
+        transforms: "velocity = C3",
+      }),
+    ).rejects.toThrow(`note name "C3" isn't a value for velocity`);
+
+    expect(slot.call).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // A transform for the other kind of clip does nothing there; the created

@@ -272,14 +272,6 @@ describe("Transform Evaluator - quant()", () => {
   });
 
   describe("error handling", () => {
-    it("throws for zero arguments", () => {
-      expectTransformError("timing = quant()");
-    });
-
-    it("throws for two arguments", () => {
-      expectTransformError("timing = quant(n/8, n/16)");
-    });
-
     it("throws for grid <= 0", () => {
       expectTransformError("timing = quant(-1)");
     });

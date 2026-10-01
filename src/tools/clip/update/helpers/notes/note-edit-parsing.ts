@@ -6,6 +6,7 @@
 import { parseNotation } from "#src/notation/notation.ts";
 import { type TimeSignature } from "../clip-beat-positions.ts";
 import { hasNoteEdits } from "./note-transforms.ts";
+import { TransformArgError } from "#src/notation/transform/transform-arg-checks.ts";
 import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
 
 /** The note edits one update-clip call sends a MIDI clip. */
@@ -56,7 +57,8 @@ export function parseNoteEdits(
  * read transforms the way their own evaluator does (no meter), so only their
  * transforms are parsed.
  *
- * A syntax error fails everywhere and always refuses the call. An error in only
+ * A syntax error, or an argument check failure (the text is wrong for every
+ * clip), fails everywhere and always refuses the call. An error in only
  * some meters is that clip's own problem and is left to its own parse, unless
  * one of the clips that fails is `strict`: a cut can't be undone.
  * @param clips - The clips the call will update
@@ -102,6 +104,11 @@ export function refuseNoteEditsByMeter(
         parseNoteEdits(edits, meter.timeSigNumerator, meter.timeSigDenominator);
       }
     } catch (error) {
+      // Wrong for every clip, whatever its meter or type: never left to a clip.
+      if (error instanceof TransformArgError) {
+        throw error;
+      }
+
       errors.push({ error, strict });
     }
   }
@@ -121,7 +128,7 @@ export function refuseNoteEditsByMeter(
 function parseAudioTransforms(edits: NoteEdits): void {
   for (const transforms of [edits.preTransformString, edits.transformString]) {
     if (transforms) {
-      tryParseTransform(transforms, 4);
+      tryParseTransform(transforms, 4, undefined, "audio");
     }
   }
 }
