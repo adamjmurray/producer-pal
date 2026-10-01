@@ -107,6 +107,33 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
     });
   });
 
+  describe("a param whose name Live pads with a trailing space", () => {
+    it('writes Operator\'s "A Fix On " by its trimmed name', async () => {
+      const deviceId = await createTestDevice(ctx.client!, "Operator", "t8");
+
+      for (const [sent, label] of [
+        ["A Fix On ", "Off"],
+        ["A Fix On", "On"],
+      ] as const) {
+        const { data, warnings } = await writeParam(
+          ctx.client!,
+          deviceId,
+          sent,
+          label,
+        );
+
+        expect(warnings).toStrictEqual([]);
+        expect(data.params).toStrictEqual([
+          { id: expect.any(String), name: "A Fix On", value: label },
+        ]);
+      }
+
+      const param = await readParam(ctx.client!, deviceId, "A Fix On");
+
+      expect(param.value).toBe("On");
+    });
+  });
+
   describe("a quantized param whose labels carry a unit", () => {
     it("writes Simpler's Filter Slope by its label or its bare number", async () => {
       const deviceId = await createTestDevice(ctx.client!, "Simpler", "t8");

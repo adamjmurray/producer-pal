@@ -33,17 +33,27 @@ export const AUTOMATION_STATE_MAP: Record<number, string> = {
 };
 
 /**
+ * A param's name without the padding Live puts on some (Operator's "A Fix On "),
+ * so the name read is the name a caller can send back.
+ * @param paramApi - LiveAPI parameter object
+ * @returns The trimmed name
+ */
+export function trimmedParamName(paramApi: LiveAPI): string {
+  return paramApi.getName().trim();
+}
+
+/**
  * Format parameter name, appending original_name if different (e.g. for rack macros).
  * @param paramApi - LiveAPI parameter object
  * @returns Formatted name like "Reverb (Macro 1)" or just "Device On"
  */
-function formatParamName(paramApi: LiveAPI): string {
-  const name = paramApi.getName();
+export function formatParamName(paramApi: LiveAPI): string {
+  const name = trimmedParamName(paramApi);
   const rawOriginalName = paramApi.getProperty("original_name") as
     | string
     | number
     | undefined;
-  const originalName = String(rawOriginalName ?? "");
+  const originalName = String(rawOriginalName ?? "").trim();
 
   return originalName !== name ? `${name} (${originalName})` : name;
 }

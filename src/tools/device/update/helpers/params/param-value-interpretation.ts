@@ -14,6 +14,7 @@ import {
   isPanLabel,
   normalizeDivisionLabel,
   normalizePan,
+  trimmedParamName,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   readNumericRange,
@@ -129,7 +130,7 @@ export function setParamValue(
       maxLabel,
       writtenText,
       deviceName,
-      paramName: param.getProperty("name") as string,
+      paramName: trimmedParamName(param),
     });
   }
 
