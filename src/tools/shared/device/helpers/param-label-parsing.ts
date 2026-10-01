@@ -195,10 +195,11 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * the normalized value, because normalizing strips units ("24 dB" becomes 24)
  * and a bare "k" ("2k" becomes 2000), hiding a label that carries them. A bare
  * number also picks a unit-labelled option when it names exactly one ("24" on
- * "12 dB"/"24 dB"); a number with another unit never does. A two-option param
- * whose labels are an Off/On pair also accepts the `false`/`0` and `true`/`1` a
- * model plausibly sends for a toggle, which arrive as strings after schema
- * coercion.
+ * "12 dB"/"24 dB"). A number with a unit picks the option with the same unit and
+ * number however it is spaced ("12 dB" on "12dB"); another unit never does. A
+ * two-option param whose labels are an Off/On pair also accepts the
+ * `false`/`0` and `true`/`1` a model plausibly sends for a toggle, which arrive
+ * as strings after schema coercion.
  * @param valueItems - The param's value_items, in index order. Max returns a
  *   numeric label (e.g. 1, 2) as a number, so a list can mix numbers and strings.
  * @param inputValue - The value to resolve, as normalizeParamValue left it
@@ -248,20 +249,25 @@ export function resolveEnumIndex(
 }
 
 /**
- * The one option whose label is a number with a unit and whose number equals a
- * bare number the caller wrote.
+ * The one option whose label is a number with a unit and that equals what the
+ * caller wrote. A bare number matches any unit; a number with a unit must match
+ * the unit too, ignoring spacing, case and scale ("0.8 kHz" is "800 Hz").
  * @param valueItems - The param's value_items
  * @param writtenText - The value as the caller wrote it
- * @returns The option's index, or -1 if the text isn't a bare number or no
- *   single option matches
+ * @returns The option's index, or -1 if the text isn't a number or no single
+ *   option matches
  */
 function indexOfUnitLabelled(
   valueItems: (string | number)[],
   writtenText: string,
 ): number {
-  const number = Number(writtenText);
+  const trimmed = writtenText.trim();
+  const bare = trimmed === "" ? Number.NaN : Number(trimmed);
+  const written: ParsedLabel = Number.isFinite(bare)
+    ? { value: bare, unit: null }
+    : parseLabel(trimmed);
 
-  if (writtenText.trim() === "" || !Number.isFinite(number)) {
+  if (written.value == null) {
     return -1;
   }
 
@@ -270,10 +276,24 @@ function indexOfUnitLabelled(
   for (const [index, item] of valueItems.entries()) {
     const parsed = parseLabel(String(item));
 
-    if (parsed.unit != null && parsed.value === number) {
+    if (
+      parsed.unit != null &&
+      (written.unit == null || written.unit === parsed.unit) &&
+      parsed.direction === written.direction &&
+      sameValue(parsed.value, written.value)
+    ) {
       matches.push(index);
     }
   }
 
   return matches.length === 1 ? (matches[0] as number) : -1;
+}
+
+function sameValue(a: number | string | null, b: number | string): boolean {
+  if (typeof a === "number" && typeof b === "number") {
+    // Scaling "1.1 kHz" by 1000 isn't exact
+    return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a));
+  }
+
+  return a === b;
 }

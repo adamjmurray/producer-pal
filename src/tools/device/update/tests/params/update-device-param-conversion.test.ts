@@ -249,6 +249,41 @@ describe("updateDevice - param conversion discriminators", () => {
       expect(expectValueSet(param)).toBe(index);
     });
 
+    it.each([
+      ["12 dB", 0],
+      ["24 DB", 1],
+      ["24", 1],
+      ["12dB", 0],
+    ])("writes %s on labels with no space before the unit", (value, index) => {
+      const param = registerEnum(["12dB", "24dB"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Slope", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("writes 0.8 kHz on an 800 Hz label", () => {
+      const param = registerEnum(["400 Hz", "800 Hz"]);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Slope", value: "0.8 kHz" }],
+      });
+
+      expect(expectValueSet(param)).toBe(1);
+    });
+
+    it.each(["36", "24 ms"])("refuses %s on labels with no space", (value) => {
+      registerEnum(["12dB", "24dB"]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Filter Slope", value }],
+        }),
+      ).toThrow(`"${value}" is not valid. Options: 12dB, 24dB`);
+    });
+
     it("writes a bare-k label as written", () => {
       const param = registerEnum(["1k", "2k", "4k"]);
 

@@ -132,5 +132,27 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
         expect(param.value).toBe(label);
       }
     });
+
+    it("writes Auto Filter's Filter Slope when the label has no space", async () => {
+      const deviceId = await createTestDevice(ctx.client!, "Auto Filter", "t8");
+
+      for (const label of ["12dB", "24dB"]) {
+        const { data, warnings } = await writeParam(
+          ctx.client!,
+          deviceId,
+          "Filter Slope",
+          `${label.slice(0, 2)} dB`,
+        );
+
+        expect(warnings).toStrictEqual([]);
+        expect(data.params).toStrictEqual([
+          { id: expect.any(String), name: "Filter Slope", value: label },
+        ]);
+
+        const param = await readParam(ctx.client!, deviceId, "Filter Slope");
+
+        expect(param.value).toBe(label);
+      }
+    });
   });
 });
