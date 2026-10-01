@@ -110,8 +110,8 @@ argument forms differ in geometry:
   of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
   true grid ratchet, not an equal division. A note that starts and/or ends
   off-grid keeps a partial sliver at that end. A note that spans no grid line
-  (it fits within a single grid cell) is left unchanged with a warning. The
-  per-note cap (64) still applies.
+  (it fits within a single grid cell) is left unchanged, and the clip's entry
+  says how many. The per-note cap (64) still applies.
 - The argument is a constant (no per-note variables). A constant that is
   unusable (no argument, a second argument, a count below 2, a grid of 0, a
   value that can't be evaluated) is refused up front. One that can only be known

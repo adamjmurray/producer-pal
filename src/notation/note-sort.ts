@@ -81,10 +81,10 @@ export function dedupeAndSortNotes<
  * SAME_TIME_EPSILON (round-tripped notes drift, so onsets get a tolerance
  * instead of an equality check).
  *
- * One definition on purpose. A `v0` delete marker, the keep-last dedupe above,
- * and the repeat-collision warning must agree on what "the same note" means — if
- * they drift, a `v0` can fail to delete a note that a restated note would still
- * overwrite. Generic so it takes any note-like type.
+ * One definition on purpose. A `v0` delete marker and the keep-last dedupe above
+ * must agree on what "the same note" means — if they drift, a `v0` can fail to
+ * delete a note that a restated note would still overwrite. Generic so it takes
+ * any note-like type.
  * @param a - A note-like object with start_time and pitch
  * @param b - The note-like object to compare it against
  * @returns True when both land on the same pitch and onset
