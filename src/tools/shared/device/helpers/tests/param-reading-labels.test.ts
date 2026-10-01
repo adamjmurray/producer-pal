@@ -17,7 +17,11 @@ import {
   normalizeDivisionLabel,
   normalizePan,
 } from "../param-reading.ts";
-import { parseLabel, resolveEnumIndex } from "../param-label-parsing.ts";
+import {
+  isBareThousands,
+  parseLabel,
+  resolveEnumIndex,
+} from "../param-label-parsing.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [
@@ -205,6 +209,28 @@ describe("parseLabel", () => {
     it("parses Hz directly", () => {
       expect(parseLabel("440 Hz")).toStrictEqual({ value: 440, unit: "Hz" });
       expect(parseLabel("20 Hz")).toStrictEqual({ value: 20, unit: "Hz" });
+    });
+  });
+
+  describe("a bare k for thousands", () => {
+    // Analog's filter frequencies read "999" then "1.00k", with no unit.
+    it.each([
+      { label: "22.0k", value: 22000 },
+      { label: "1.00K", value: 1000 },
+      { label: "1.00 k", value: 1000 },
+      { label: "0.8k", value: 800 },
+    ])("scales '$label' by 1000 and names no unit", ({ label, value }) => {
+      expect(parseLabel(label)).toStrictEqual({ value, unit: null });
+    });
+
+    it("leaves kHz as Hz", () => {
+      expect(parseLabel("1.5 kHz")).toStrictEqual({ value: 1500, unit: "Hz" });
+    });
+
+    it("isBareThousands tells a bare k from kHz", () => {
+      expect(isBareThousands("22.0k")).toBe(true);
+      expect(isBareThousands("1.5 kHz")).toBe(false);
+      expect(isBareThousands("173")).toBe(false);
     });
   });
 

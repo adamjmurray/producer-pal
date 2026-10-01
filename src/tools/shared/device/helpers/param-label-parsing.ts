@@ -14,6 +14,19 @@ interface LabelPattern {
   isPan?: boolean;
 }
 
+// A bare "k" means thousands and says nothing about what is measured: Analog's
+// filter frequencies read "999", then "1.00k". It must come after "khz".
+const BARE_THOUSANDS = /^([\d.]+)\s*k$/i;
+
+/**
+ * Whether text is a number with a bare "k" suffix, like "22.0k".
+ * @param text - Trimmed text to check
+ * @returns True if it is a number of thousands with no unit
+ */
+export function isBareThousands(text: string): boolean {
+  return BARE_THOUSANDS.test(text);
+}
+
 /**
  * Label parsing patterns for extracting values and units from display labels.
  * Order matters - more specific patterns should come before general ones.
@@ -22,6 +35,7 @@ const LABEL_PATTERNS: LabelPattern[] = [
   // ms must precede s so "100ms" doesn't match the s-only pattern
   { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
   { regex: /^([\d.]+)\s*hz$/i, unit: "Hz" },
+  { regex: BARE_THOUSANDS, unit: null, multiplier: 1000 },
   { regex: /^([\d.]+)\s*ms$/i, unit: "ms" },
   { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
   { regex: /^([\d.-]+)\s*db$/i, unit: "dB" },
