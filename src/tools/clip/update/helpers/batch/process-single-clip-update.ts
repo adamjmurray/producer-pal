@@ -6,13 +6,7 @@
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import {
-  markerBeats,
-  markerBeatsPerUnit,
-  markerClampSeconds,
-} from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
@@ -26,22 +20,18 @@ import {
   handleNoteUpdates,
   handleQuantization,
 } from "../notes/note-updates.ts";
-import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
 import {
   type ClipReasons,
   ignoreClipParams,
-  noteClipColor,
   noteClipReason,
 } from "../entries/clip-reasons.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import {
-  calculateBeatPositions,
-  getTimeSignature,
-} from "../clip-beat-positions.ts";
+import { getTimeSignature } from "../clip-beat-positions.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
+import { writeClipProperties } from "./write-clip-properties.ts";
 import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
 
 interface ClipResult {
@@ -277,94 +267,6 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     reasons,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
-}
-
-/**
- * Write the clip's name, color, meter, and loop region.
- *
- * Runs BEFORE duplicateLoop (see the caller). start/length can't reach here
- * alongside it — they pick what gets doubled, so the combination is refused up
- * front (ADR-0040) — but firstStart can, and it sets the playback marker
- * without moving the region.
- *
- * @param params - The full single-clip update params
- * @param resolved - Derived per-clip values not present on params
- * @param resolved.timeSigNumerator - Resolved time signature numerator
- * @param resolved.timeSigDenominator - Resolved time signature denominator
- * @param resolved.isLooping - The clip's looping state after this update
- * @param resolved.wasLooping - The clip's looping state before this update
- */
-function writeClipProperties(
-  params: ProcessSingleClipUpdateParams,
-  {
-    timeSigNumerator,
-    timeSigDenominator,
-    isLooping,
-    wasLooping,
-  }: {
-    timeSigNumerator: number;
-    timeSigDenominator: number;
-    isLooping: boolean;
-    wasLooping: boolean;
-  },
-): void {
-  const {
-    clip,
-    name,
-    color,
-    timeSignature,
-    start,
-    length,
-    firstStart,
-    looping,
-    reasons,
-  } = params;
-  const markerScale = {
-    beatsPerMarkerUnit: markerBeatsPerUnit(clip),
-    markerClampSeconds: markerClampSeconds(clip),
-  };
-
-  // Includes the end_marker bounds check for start_marker
-  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
-    start,
-    length,
-    firstStart,
-    reasons,
-    timeSigNumerator,
-    timeSigDenominator,
-    clip,
-    isLooping,
-    wasLooping,
-    ...markerScale,
-  });
-
-  // Both ends: loop_start and start_marker are bounded by different properties,
-  // and one call can write both.
-  const readMarker = (property: string) =>
-    markerBeats(clip, property, markerScale);
-
-  clip.setAll(
-    buildClipPropertiesToSet({
-      name,
-      color,
-      timeSignature,
-      timeSigNumerator,
-      timeSigDenominator,
-      startMarkerBeats,
-      looping,
-      isLooping,
-      wasLooping,
-      startBeats,
-      endBeats,
-      currentLoopEnd: readMarker("loop_end"),
-      currentEndMarker: readMarker("end_marker"),
-      beatsPerMarkerUnit: markerScale.beatsPerMarkerUnit,
-    }),
-  );
-
-  if (color != null) {
-    noteClipColor(reasons, clip.id, landedColor(clip, color));
-  }
 }
 
 /**
