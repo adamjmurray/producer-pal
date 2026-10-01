@@ -522,4 +522,15 @@ describe("resolveEnumIndex", () => {
   it("does not treat 0/1 or booleans as toggles for more than two options", () => {
     expect(resolveEnumIndex(["Off", "On", "Auto"], "true")).toBe(-1);
   });
+
+  it("resolves labels Max returned as numbers", () => {
+    expect(resolveEnumIndex([1, 2], "1")).toBe(0);
+    expect(resolveEnumIndex([1, 2], 2)).toBe(1);
+    expect(resolveEnumIndex([1, 2], "3")).toBe(-1);
+  });
+
+  it("resolves a mixed list of words and numbers", () => {
+    expect(resolveEnumIndex(["Mono", 2, 4], "4")).toBe(2);
+    expect(resolveEnumIndex(["Mono", 2, 4], "mono")).toBe(0);
+  });
 });

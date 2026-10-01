@@ -250,7 +250,10 @@ export function readParameter(
   const automationState = AUTOMATION_STATE_MAP[automationIdx];
 
   if ((paramApi.getProperty("is_quantized") as number) > 0) {
-    const valueItems = paramApi.getPropertyList("value_items") as string[];
+    const valueItems = paramApi.getPropertyList("value_items") as (
+      | string
+      | number
+    )[];
     const valueIdx = paramApi.getProperty("value") as number;
     const result: Record<string, unknown> = {
       id: paramApi.id,

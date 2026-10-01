@@ -65,7 +65,10 @@ export function setParamValue(
   // (e.g. 2.9999… instead of index 2). Quantized params are discrete enums with
   // no continuous range to search, so numeric input is always a label lookup.
   if (isQuantized) {
-    const valueItems = param.getPropertyList("value_items") as string[];
+    const valueItems = param.getPropertyList("value_items") as (
+      | string
+      | number
+    )[];
     const index = resolveEnumIndex(valueItems, inputValue);
 
     if (index === -1) {

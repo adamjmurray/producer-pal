@@ -194,16 +194,19 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * would protect against no ambiguity. A two-option param whose labels are an
  * Off/On pair also accepts the `false`/`0` and `true`/`1` a model plausibly
  * sends for a toggle, which arrive as strings after schema coercion.
- * @param valueItems - The param's value_items, in index order
+ * @param valueItems - The param's value_items, in index order. Max returns a
+ *   numeric label (e.g. 1, 2) as a number, so a list can mix numbers and strings.
  * @param inputValue - The value to resolve, as normalizeParamValue left it
  * @returns The matching index, or -1 if nothing matches
  */
 export function resolveEnumIndex(
-  valueItems: string[],
+  valueItems: (string | number)[],
   inputValue: string | number,
 ): number {
   const wanted = String(inputValue).toLowerCase();
-  const exact = valueItems.findIndex((item) => item.toLowerCase() === wanted);
+  const exact = valueItems.findIndex(
+    (item) => String(item).toLowerCase() === wanted,
+  );
 
   if (exact !== -1) {
     return exact;
@@ -213,7 +216,7 @@ export function resolveEnumIndex(
     return -1;
   }
 
-  const lower = valueItems.map((item) => item.toLowerCase());
+  const lower = valueItems.map((item) => String(item).toLowerCase());
   const offIndex = lower.indexOf("off");
   const onIndex = lower.indexOf("on");
 

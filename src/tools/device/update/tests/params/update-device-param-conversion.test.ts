@@ -165,6 +165,60 @@ describe("updateDevice - param conversion discriminators", () => {
     });
   });
 
+  // Max hands numeric labels back as numbers, so a list can be [1, 2] or
+  // ["Mono", 2, 4].
+  describe("enum labels Max returns as numbers", () => {
+    function registerEnum(items: (string | number)[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Delay Taps",
+          original_name: "Delay Taps",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["1", 0],
+      ["2", 1],
+    ])("writes %s on a numeric-only list", (value, index) => {
+      const param = registerEnum([1, 2]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Delay Taps", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it.each([
+      ["4", 2],
+      ["mono", 0],
+    ])("writes %s on a mixed list", (value, index) => {
+      const param = registerEnum(["Mono", 2, 4]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Delay Taps", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("refuses a value no number label matches, listing the options", () => {
+      registerEnum([1, 2]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Delay Taps", value: "3" }],
+        }),
+      ).toThrow('"3" is not valid. Options: 1, 2');
+    });
+  });
+
   describe("pan max value comes from the display labels, not the 50 fallback", () => {
     let param: RegisteredMockObject;
 

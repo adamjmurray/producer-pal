@@ -20,6 +20,7 @@ import {
   writeParam,
 } from "../helpers/update-device-param-test-helpers";
 import { createTestDevice, setupMcpTestContext } from "../../mcp-test-helpers";
+import { readParam } from "../helpers/device-param-test-helpers";
 
 const ctx = setupMcpTestContext();
 
@@ -74,6 +75,35 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
       expect(data.params).toStrictEqual([
         { id: expect.any(String), name: "Ratio", value: "inf : 1" },
       ]);
+    });
+  });
+
+  describe("a quantized param whose labels are numbers", () => {
+    it("writes Chorus-Ensemble's Delay Taps by its numeric label", async () => {
+      // t8 is an empty MIDI track; an audio effect there is fine.
+      const deviceId = await createTestDevice(
+        ctx.client!,
+        "Chorus-Ensemble",
+        "t8",
+      );
+
+      for (const taps of [1, 2]) {
+        const { data, warnings } = await writeParam(
+          ctx.client!,
+          deviceId,
+          "Delay Taps",
+          String(taps),
+        );
+
+        expect(warnings).toStrictEqual([]);
+        expect(data.params).toStrictEqual([
+          { id: expect.any(String), name: "Delay Taps", value: taps },
+        ]);
+
+        const param = await readParam(ctx.client!, deviceId, "Delay Taps");
+
+        expect(param.value).toBe(taps);
+      }
     });
   });
 });
