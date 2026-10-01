@@ -36,8 +36,9 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param timeSigDenominator - Time signature denominator
  * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
- * @returns Indices (in the rebuilt list) of notes the op produced/affected,
- *   so the caller can report a meaningful "transformed" count
+ * @returns The op's output for the matched notes (kept originals included), or
+ *   an empty list when the op was skipped. Every op signals a skip by handing
+ *   back the `matched` array itself.
  */
 export function applyNoteOp(
   op: NoteOp,
@@ -45,7 +46,7 @@ export function applyNoteOp(
   timeSigNumerator: number,
   timeSigDenominator: number,
   arrangementOrigin?: number,
-): number[] {
+): NoteEvent[] {
   const beatScale = timeSigDenominator / 4; // Ableton beats -> musical beats
 
   // Partition by the op's selector (pitch range + time range).
@@ -76,18 +77,7 @@ export function applyNoteOp(
   notes.length = 0;
   notes.push(...rebuilt);
 
-  // Report the indices of the op's output notes (distinct object refs) so the
-  // caller's transformed count reflects how many notes the op produced.
-  const producedSet = new Set(produced);
-  const indices: number[] = [];
-
-  for (let i = 0; i < notes.length; i++) {
-    if (producedSet.has(notes[i] as NoteEvent)) {
-      indices.push(i);
-    }
-  }
-
-  return indices;
+  return produced === matched ? [] : produced;
 }
 
 /**

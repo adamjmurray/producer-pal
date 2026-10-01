@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ClipTransformInputs,
@@ -17,7 +18,10 @@ vi.mock(
   import("#src/notation/transform/transform-evaluator.ts"),
   async (importOriginal) => ({
     ...(await importOriginal()),
-    applyTransforms: vi.fn(() => 3),
+    applyTransforms: vi.fn(() => ({
+      touched: new Set<NoteEvent>(),
+      deleted: 3,
+    })),
   }),
 );
 
@@ -61,7 +65,10 @@ function capturedContext() {
 describe("resolveClipTransform", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(applyTransforms).mockReturnValue(3);
+    vi.mocked(applyTransforms).mockReturnValue({
+      touched: new Set<NoteEvent>(),
+      deleted: 3,
+    });
   });
 
   describe("early-return guard", () => {

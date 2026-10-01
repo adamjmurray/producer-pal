@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { countTransformed } from "#src/notation/transform/transformed-count.ts";
 import {
   createTestNote,
   createTestNotes,
@@ -685,12 +686,21 @@ probability += -0.2`;
       ]);
 
     it("returns count of all notes when no selector is used", () => {
-      expect(applyTransforms(cMajorTriad(), "velocity += 10", 4, 4)).toBe(3);
+      const notes = cMajorTriad();
+
+      expect(
+        countTransformed(applyTransforms(notes, "velocity += 10", 4, 4), notes),
+      ).toBe(3);
     });
 
     it("returns count of matched notes with pitch selector", () => {
+      const notes = cMajorTriad();
+
       expect(
-        applyTransforms(cMajorTriad(), "C3-E3: velocity += 10", 4, 4),
+        countTransformed(
+          applyTransforms(notes, "C3-E3: velocity += 10", 4, 4),
+          notes,
+        ),
       ).toBe(2);
     });
 
@@ -703,7 +713,7 @@ probability += -0.2`;
       // All notes match, velocity set to 0 deletes them
       const result = applyTransforms(notes, "velocity = 0", 4, 4);
 
-      expect(result).toBe(2);
+      expect(countTransformed(result, notes)).toBe(2);
       expect(notes).toHaveLength(0);
     });
 
@@ -722,7 +732,48 @@ probability += -0.2`;
         4,
       );
 
-      expect(result).toBe(3);
+      expect(countTransformed(result, notes)).toBe(3);
+    });
+
+    describe("note ops", () => {
+      // C3, E3, G3 on beats 1-3
+      const countAfter = (transforms: string): number | undefined => {
+        const notes = cMajorTriad();
+
+        return countTransformed(
+          applyTransforms(notes, transforms, 4, 4),
+          notes,
+        );
+      };
+
+      it("keeps earlier lines' notes when a note op is skipped", () => {
+        expect(
+          countAfter("C3: velocity += 0\nE3: velocity += 0\nC3: ratchet(1)"),
+        ).toBe(2);
+      });
+
+      it("keeps earlier lines' notes when a note op works on other notes", () => {
+        // C3 touched, E3 replaced by two pieces
+        expect(countAfter("C3: velocity += 0\nE3: ratchet(2)")).toBe(3);
+      });
+
+      it("counts the notes a repeat kept and the copies it made", () => {
+        expect(countAfter("C3-E3: repeat(n/8)")).toBe(4);
+      });
+
+      it("counts nothing for a skipped op", () => {
+        expect(countAfter("C3: ratchet(1)")).toBe(0);
+      });
+
+      it("doesn't count notes a merge consumed", () => {
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0 },
+          { pitch: 60, start_time: 1 },
+        ]);
+        const result = applyTransforms(notes, "velocity += 0\nmerge()", 4, 4);
+
+        expect(countTransformed(result, notes)).toBe(1);
+      });
     });
   });
 

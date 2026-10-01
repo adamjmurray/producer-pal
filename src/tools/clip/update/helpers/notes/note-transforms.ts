@@ -6,6 +6,7 @@
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { countTransformed } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
@@ -70,14 +71,14 @@ export function applyTransformsToExistingNotes(
   const notes: NoteEvent[] = rawNotesToCopiedNotes(rawNotes);
 
   // applyTransforms mutates notes in place (and no-ops on an undefined string).
-  const preCount = applyTransforms(
+  const preOutcome = applyTransforms(
     notes,
     preTransformString,
     timeSigNumerator,
     timeSigDenominator,
     clipContext,
   );
-  const postCount = applyTransforms(
+  const postOutcome = applyTransforms(
     notes,
     transformString,
     timeSigNumerator,
@@ -87,19 +88,19 @@ export function applyTransformsToExistingNotes(
 
   removeAllClipNotes(clip);
 
-  if (notes.length > 0) {
-    // Dedupe then sort before re-adding, identically to the merge path: a
-    // transform can collapse two notes onto the same pitch+exact-onset (dedupe
-    // keep-last resolves that deterministically instead of letting Live drop
-    // one), and any remaining tail overlap is made safe by ascending order.
-    clip.call("add_new_notes", {
-      notes: sortNotes(dedupeNotesKeepingLast(notes)),
-    });
+  // Dedupe then sort before re-adding, identically to the merge path: a
+  // transform can collapse two notes onto the same pitch+exact-onset (dedupe
+  // keep-last resolves that deterministically instead of letting Live drop
+  // one), and any remaining tail overlap is made safe by ascending order.
+  const written = sortNotes(dedupeNotesKeepingLast(notes));
+
+  if (written.length > 0) {
+    clip.call("add_new_notes", { notes: written });
   }
 
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: postCount ?? preCount,
+    transformed: countTransformed(postOutcome ?? preOutcome, written),
   };
 }
 

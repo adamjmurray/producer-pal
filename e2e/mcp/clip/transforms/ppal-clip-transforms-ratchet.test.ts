@@ -28,6 +28,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
+  parseToolResultWithWarnings,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
 import { setupClipTransformTest } from "../helpers/ppal-clip-transforms-test-helpers.ts";
@@ -79,5 +80,29 @@ describe("ppal-clip-transforms (ratchet round-trip)", () => {
     expect(notes).toContain("v80"); // selection index 1
     expect(notes).not.toContain("v120"); // would appear with clip-wide index
     expect(notes).toContain("v100"); // first hat's pieces untouched
+  });
+
+  it("keeps earlier lines' notes in the count when a note op follows", async () => {
+    const clipId = await createMidiClip(92, "v100 n/4 Gb1 1|1 Gb1 1|2 D1 1|3");
+
+    // ratchet(1) is skipped, so it must not wipe the tally of the lines above.
+    const skipped = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(
+        clipId,
+        "Gb1: velocity += 0\nD1: velocity += 0\nGb1: ratchet(1)",
+      ),
+    );
+
+    expect(skipped.warnings).toStrictEqual([
+      expect.stringContaining("ratchet(1) needs a count of 2 or more"),
+    ]);
+    expect(skipped.data.transformed).toBe(3);
+
+    // A working op on other notes keeps them too: 2 Gb1 + 2 D1 pieces.
+    const worked = parseToolResult<UpdateClipResult>(
+      await applyTransform(clipId, "Gb1: velocity += 0\nD1: ratchet(2)"),
+    );
+
+    expect(worked.transformed).toBe(4);
   });
 });

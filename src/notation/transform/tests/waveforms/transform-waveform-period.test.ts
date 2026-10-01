@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { countTransformed } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
@@ -37,7 +38,10 @@ function runTransform(
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
   try {
-    const transformed = applyTransforms(notes, transform, 4, 4);
+    const transformed = countTransformed(
+      applyTransforms(notes, transform, 4, 4),
+      notes,
+    );
 
     return {
       velocities: notes.map((note) => note.velocity),
