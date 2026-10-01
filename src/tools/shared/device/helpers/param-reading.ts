@@ -44,7 +44,8 @@ export function trimmedParamName(paramApi: LiveAPI): string {
 }
 
 /**
- * Format parameter name, appending original_name if different (e.g. for rack macros).
+ * Format parameter name, appending original_name if different (e.g. for rack
+ * macros). A blank name (an unnamed macro) formats as the original name alone.
  * @param paramApi - LiveAPI parameter object
  * @returns Formatted name like "Reverb (Macro 1)" or just "Device On"
  */
@@ -55,6 +56,10 @@ export function formatParamName(paramApi: LiveAPI): string {
     | number
     | undefined;
   const originalName = String(rawOriginalName ?? "").trim();
+
+  if (name === "") {
+    return originalName;
+  }
 
   return originalName !== name ? `${name} (${originalName})` : name;
 }

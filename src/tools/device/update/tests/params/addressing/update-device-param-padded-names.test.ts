@@ -82,4 +82,24 @@ describe("updateDevice - param names Live pads with spaces", () => {
 
     expect(param.set).toHaveBeenCalledWith("value", 0.5);
   });
+
+  it("names a blank-named macro by its original name alone", () => {
+    registerDevice("p-macro");
+
+    const param = registerContinuousParam("p-macro", {
+      name: " ",
+      originalName: "Macro 3",
+      display: (v) => Number(v).toFixed(2),
+    });
+
+    const result = updateDevice({
+      id: "123",
+      params: [{ name: "Macro 3", value: "0.5" }],
+    });
+
+    expect(param.set).toHaveBeenCalledWith("value", 0.5);
+    expect(paramsOf(result)).toStrictEqual([
+      expect.objectContaining({ id: "p-macro", name: "Macro 3" }),
+    ]);
+  });
 });
