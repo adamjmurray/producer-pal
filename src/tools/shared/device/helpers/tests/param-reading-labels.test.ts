@@ -205,6 +205,12 @@ describe("normalizeDivisionLabel", () => {
       normalizeDivisionLabel("1/16"),
     );
   });
+
+  it("keeps '1 1/16' apart from the label '11  / 16'", () => {
+    expect(normalizeDivisionLabel("1 1/16")).not.toBe(
+      normalizeDivisionLabel("11  / 16"),
+    );
+  });
 });
 
 describe("parseLabel", () => {

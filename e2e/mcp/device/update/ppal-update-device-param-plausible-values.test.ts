@@ -183,6 +183,19 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
     });
   });
 
+  describe("a bare number on a param whose options are words", () => {
+    it("refuses 0 on Dynamic Tube's Tube Type instead of landing on C", async () => {
+      const deviceId = await createTestDevice(
+        ctx.client!,
+        "Dynamic Tube",
+        "t8",
+      );
+      const written = await writeParam(ctx.client!, deviceId, "Tube Type", "0");
+
+      expectParamRefused(written, "Tube Type", "Options: A, B, C");
+    });
+  });
+
   describe("a label written with different case, spacing or hyphens", () => {
     // [device, param, sent, label Live reports back]
     const cases = [

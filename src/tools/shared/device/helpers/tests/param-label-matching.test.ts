@@ -22,6 +22,17 @@ describe("looseLabelKey", () => {
     expect(looseLabelKey(label)).toBe(key);
   });
 
+  it.each([
+    ["1 1/16", "1 1/16"],
+    ["1  1/16", "1 1/16"],
+    ["1 6", "1 6"],
+    ["11  / 16", "11/16"],
+    ["1 / 16", "1/16"],
+    ["Amp 1 LFO 1 -> Volume", "amp1lfo1->volume"],
+  ])("keeps a space between digits only: %s is %s", (label, key) => {
+    expect(looseLabelKey(label)).toBe(key);
+  });
+
   it.each([["-6 dB"], ["Pitch -6"], ["1 -> 2"]])(
     "keeps a hyphen that is not between words in %s",
     (label) => {
@@ -37,6 +48,12 @@ describe("normalizeDivisionLabel", () => {
 
   it.each(["1/4 D", "1 / 4D", "1/4d"])("reads %s as 1/4d", (written) => {
     expect(normalizeDivisionLabel(written)).toBe("1/4d");
+  });
+
+  it("does not read '1 1/16' as the label '11  / 16'", () => {
+    expect(normalizeDivisionLabel("1 1/16")).not.toBe(
+      normalizeDivisionLabel("11  / 16"),
+    );
   });
 });
 
@@ -92,5 +109,33 @@ describe("resolveEnumIndex loose matching", () => {
 
   it("keeps a different unit refused", () => {
     expect(resolveEnumIndex(["12 dB", "24 dB"], 24, "24 ms")).toBe(-1);
+  });
+});
+
+describe("resolveEnumIndex refuses text that only looks like an option", () => {
+  it.each([
+    [["A", "B", "C"], "0"],
+    [["A", "B", "C"], "0.0"],
+    [["0 ms", "1 ms", "10 ms"], "1/2"],
+    [["0 ms", "1 ms", "10 ms"], "10-20"],
+    [["1 ms", "10 ms"], "10 samples"],
+    [["12 dB", "24 dB"], "12 oct"],
+    [["12 dB", "24 dB"], "24 x"],
+    [["1/16", "11/16"], "1 1/16"],
+    [["1/16", "11/16"], "11 1/16"],
+    [[1, 6, 16], "1 6"],
+  ])("refuses %j written as %s", (options, written) => {
+    expect(resolveEnumIndex(options, written)).toBe(-1);
+  });
+
+  it("still lands a bare number on a measured unit and a pan on its label", () => {
+    expect(resolveEnumIndex(["12 dB", "24 dB"], "24")).toBe(1);
+    expect(resolveEnumIndex(["50L", "C", "50R"], "C")).toBe(1);
+    expect(resolveEnumIndex(["50L", "C", "50R"], "50 R")).toBe(2);
+  });
+
+  it("matches a spaced digit label however it is spaced", () => {
+    expect(resolveEnumIndex(["1 1/16", "1/16"], "1  1/16")).toBe(0);
+    expect(resolveEnumIndex(["11  / 16", "1 / 16"], "11/16")).toBe(0);
   });
 });

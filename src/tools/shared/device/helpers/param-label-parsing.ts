@@ -194,7 +194,7 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * 1. The written text, then the normalized value, ignoring case. Written text
  *    comes first because normalizing strips units ("24 dB" becomes 24).
  * 2. The one option with the same number and unit ("12 dB" on "12dB"); a bare
- *    number matches any unit ("24" on "24 dB").
+ *    number matches any measured unit ("24" on "24 dB", never pan "C").
  * 3. The one option that differs only in case, spacing or a hyphen between
  *    words ("Mid / Side", "Lowpass").
  * 4. For an Off/On pair, the `false`/`0` and `true`/`1` a model sends for a
@@ -258,13 +258,20 @@ export function resolveEnumIndex(
  * A label with case and whitespace removed, plus any hyphen that joins two
  * words ("Low-pass" is "lowpass"), so "Mid / Side" and "Mid/Side" compare equal.
  * A hyphen that is a minus sign ("-6") stays: dropping it would turn -6 into 6.
+ * Whitespace between two digits becomes one space, so "1 1/16" never reads as
+ * "11/16".
  * @param label - A display label or what the caller wrote
  * @returns The key to compare labels by
  */
 export function looseLabelKey(label: string): string {
   return label
     .toLowerCase()
-    .replaceAll(/\s+/g, "")
+    .replaceAll(/\s+/g, (run, offset: number, whole: string) =>
+      /\d/.test(whole[offset - 1] ?? "") &&
+      /\d/.test(whole[offset + run.length] ?? "")
+        ? " "
+        : "",
+    )
     .replaceAll(/(?<=[\p{L}\p{N}&])-(?=[\p{L}&])/gu, "");
 }
 
@@ -293,8 +300,11 @@ function indexOfLooseLabel(
 
 /**
  * The one option whose label is a number with a unit and that equals what the
- * caller wrote. A bare number matches any unit; a number with a unit must match
- * the unit too, ignoring spacing, case and scale ("0.8 kHz" is "800 Hz").
+ * caller wrote. A bare number matches any measured unit (not pan or note
+ * names, which are words like "C"); a number with a unit must match the unit
+ * too, ignoring spacing, case and scale ("0.8 kHz" is "800 Hz"). Text that is
+ * neither a plain number nor a number with a unit ("10 samples") matches
+ * nothing.
  * @param valueItems - The param's value_items
  * @param writtenText - The value as the caller wrote it
  * @returns The option's index, or -1 if the text isn't a number or no single
@@ -310,7 +320,12 @@ function indexOfUnitLabelled(
     ? { value: bare, unit: null }
     : parseLabel(trimmed);
 
-  if (written.value == null) {
+  // parseLabel falls back to a leading number, so "10 samples" parses with no
+  // unit. Only a plain number may go without one.
+  if (
+    written.value == null ||
+    (written.unit == null && !Number.isFinite(bare))
+  ) {
     return -1;
   }
 
@@ -321,7 +336,9 @@ function indexOfUnitLabelled(
 
     if (
       parsed.unit != null &&
-      (written.unit == null || written.unit === parsed.unit) &&
+      (written.unit == null
+        ? !NON_MEASURED_UNITS.has(parsed.unit)
+        : written.unit === parsed.unit) &&
       parsed.direction === written.direction &&
       sameValue(parsed.value, written.value)
     ) {
@@ -331,6 +348,9 @@ function indexOfUnitLabelled(
 
   return matches.length === 1 ? (matches[0] as number) : -1;
 }
+
+/** Units that are names, not measurements: a bare number never means these. */
+const NON_MEASURED_UNITS = new Set(["pan", "note"]);
 
 function sameValue(a: number | string | null, b: number | string): boolean {
   if (typeof a === "number" && typeof b === "number") {
