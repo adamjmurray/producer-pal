@@ -3,9 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import {
+  droppedDuplicatesNote,
+  transformsIgnoredAudioNote,
+  transformsIgnoredNoNotesNote,
+} from "#src/tools/clip/helpers/clip-entry-notes.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { buildTransformClipContext } from "#src/tools/clip/helpers/transform-clip-context.ts";
 import { createdClipLength } from "./created-clip-result.ts";
@@ -15,6 +20,8 @@ import { calculateClipLength } from "./create-clip-validation.ts";
 export interface ClipTransformInputs {
   /** Shared interpreted notes (untransformed) */
   notes: MidiNote[];
+  /** Duplicates already dropped from the shared notes (no-transform path) */
+  droppedDuplicates: number;
   /** Provisional clip length in Ableton beats, from the interpreted notes */
   clipLength: number;
   transformString: string | null;
@@ -33,6 +40,8 @@ export interface ClipTransformResult {
   notes: MidiNote[];
   clipLength: number;
   transformedCount: number | undefined;
+  /** Facts about this clip for its entry: transform skipped, duplicates dropped */
+  details: string[];
 }
 
 /**
@@ -45,7 +54,8 @@ export interface ClipTransformResult {
  * @param clipIndex - 0-based index of this clip within the view
  * @param clipCount - Total clips created in this view
  * @param arrangementStartBeats - Arrangement start in Ableton beats, or null for session
- * @returns Notes, clip length, and transformed-note count for this clip
+ * @returns Notes, clip length, transformed-note count, and what to say on the
+ *   clip's entry
  */
 export function resolveClipTransform(
   inputs: ClipTransformInputs,
@@ -55,8 +65,27 @@ export function resolveClipTransform(
 ): ClipTransformResult {
   const { notes, clipLength, transformString, isAudio } = inputs;
 
-  if (transformString == null || isAudio || notes.length === 0) {
-    return { notes, clipLength, transformedCount: undefined };
+  if (transformString == null) {
+    return {
+      notes,
+      clipLength,
+      transformedCount: undefined,
+      details: factsFor(droppedDuplicatesNote(inputs.droppedDuplicates)),
+    };
+  }
+
+  // Nothing to transform: the clip is made as asked, and its entry says so
+  if (isAudio || notes.length === 0) {
+    return {
+      notes,
+      clipLength,
+      transformedCount: undefined,
+      details: [
+        isAudio
+          ? transformsIgnoredAudioNote()
+          : transformsIgnoredNoNotesNote(["transforms"]),
+      ],
+    };
   }
 
   // Clone so each clip transforms an independent copy (notes are flat objects)
@@ -81,7 +110,7 @@ export function resolveClipTransform(
   // deletes nondeterministically — dedupe collapses those to one (keeping last).
   // Sorting then guards the remaining earlier-onset shifts (ascending writes
   // survive). Mirrors the update and merge write paths.
-  const sorted = sortNotes(dedupeNotesKeepingLast(clipNotes));
+  const { notes: sorted, collisions } = dedupeAndSortNotes(clipNotes);
 
   return {
     notes: sorted,
@@ -92,7 +121,16 @@ export function resolveClipTransform(
       inputs.timeSigDenominator,
     ),
     transformedCount,
+    details: factsFor(droppedDuplicatesNote(collisions)),
   };
+}
+
+/**
+ * @param note - A note for the entry, or null
+ * @returns The note as a list of zero or one
+ */
+function factsFor(note: string | null): string[] {
+  return note == null ? [] : [note];
 }
 
 /**

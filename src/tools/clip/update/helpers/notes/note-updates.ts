@@ -6,7 +6,10 @@
 import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation, resolveNotation } from "#src/notation/notation.ts";
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import {
+  dedupeAndSortNotes,
+  dedupeNotesKeepingLast,
+} from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -23,6 +26,7 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
   hasNoteEdits,
+  noteDroppedDuplicates,
 } from "./note-transforms.ts";
 import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
 
@@ -121,13 +125,18 @@ export function handleNoteUpdates(
       clipContext,
     );
 
-  const notes = mergeNewNotes(
+  const { notes, inputDuplicates } = mergeNewNotes(
     notation,
     notationString,
     existingNotes,
     timeSigNumerator,
     timeSigDenominator,
   );
+
+  // Restating an existing note is a deliberate overwrite, so it isn't reported.
+  // What is: duplicates inside the input itself, and what a transform collapses
+  // on top of what was already colliding.
+  const collidingBefore = notes.length - dedupeNotesKeepingLast(notes).length;
 
   // Apply transforms to notes if provided
   const transformed = applyTransforms(
@@ -144,11 +153,17 @@ export function handleNoteUpdates(
   // truncation instead of deleting the earlier write. See note-sort.ts.
   removeAllClipNotes(clip);
 
-  const mergedNotes = sortNotes(dedupeNotesKeepingLast(notes));
+  const { notes: mergedNotes, collisions } = dedupeAndSortNotes(notes);
 
   if (mergedNotes.length > 0) {
     clip.call("add_new_notes", { notes: mergedNotes });
   }
+
+  // Can undercount when a transform both clears an existing collision and makes
+  // a new one.
+  const transformCollapsed = Math.max(0, collisions - collidingBefore);
+
+  noteDroppedDuplicates(reasons, clip.id, inputDuplicates + transformCollapsed);
 
   // Fall back to the preTransform match count when there's no transforms string,
   // so a notes + preTransforms update still reports a count (not undefined).
@@ -175,7 +190,10 @@ export function handleNoteUpdates(
  * @param existingNotes - Existing notes (preTransforms already applied)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Combined note array (unsorted, not yet deduped)
+ * @returns Combined note array (unsorted, not yet deduped), and how many
+ *   duplicates the input itself held (0 for bar|beat: its existing notes go
+ *   through the interpreter, so the input's own duplicates can't be told apart
+ *   from a restated note)
  */
 function mergeNewNotes(
   notation: Notation | undefined,
@@ -183,7 +201,7 @@ function mergeNewNotes(
   existingNotes: NoteEvent[],
   timeSigNumerator: number,
   timeSigDenominator: number,
-): NoteEvent[] {
+): { notes: NoteEvent[]; inputDuplicates: number } {
   if (resolveNotation(notation) !== "barbeat") {
     const newNotes = interpretNotation(notationString, {
       notation,
@@ -192,14 +210,23 @@ function mergeNewNotes(
       keepV0Deletes: true,
     });
 
-    return applyV0Deletions([...existingNotes, ...newNotes]);
+    const resolvedNew = applyV0Deletions(newNotes);
+
+    return {
+      notes: applyV0Deletions([...existingNotes, ...newNotes]),
+      inputDuplicates:
+        resolvedNew.length - dedupeNotesKeepingLast(resolvedNew).length,
+    };
   }
 
-  return interpretNotation(notationString, {
-    timeSigNumerator,
-    timeSigDenominator,
-    existingNotes,
-  });
+  return {
+    notes: interpretNotation(notationString, {
+      timeSigNumerator,
+      timeSigDenominator,
+      existingNotes,
+    }),
+    inputDuplicates: 0,
+  };
 }
 
 /**

@@ -146,6 +146,24 @@ describe("updateClip - code execution", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("puts dropped duplicate notes from code on the clip's entry", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0), codeNote(60, 0)]),
+    );
+
+    const result = await updateClip({ id: "123", code: "return notes" });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 1,
+      detail: "dropped 1 duplicate note at the same pitch and start",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
   it("keeps the entry with a detail when code fails after another change landed", async () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
 

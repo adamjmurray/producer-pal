@@ -188,6 +188,25 @@ describe("createClip - code execution", () => {
     );
   });
 
+  it("should report duplicate notes dropped from code on the created clip's entry", async () => {
+    const { clipsByScene } = setupSessionCodeExecMocks([0]);
+
+    setupNoteTrackingMock([clipsByScene.get(0) as RegisteredMockObject]);
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0), codeNote(60, 0)]),
+    );
+
+    const result = await createClip({ slot: "0/0", code: "return notes" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      id: expect.any(String),
+      path: "t0/s0",
+      noteCount: 1,
+      detail: "dropped 1 duplicate note at the same pitch and start",
+    });
+  });
+
   it("should apply code to multiple created clips", async () => {
     const { clipsByScene } = setupSessionCodeExecMocks([0, 1]);
     const firstClip = clipsByScene.get(0);

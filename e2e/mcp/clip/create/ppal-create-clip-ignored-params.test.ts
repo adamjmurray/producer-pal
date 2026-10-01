@@ -151,6 +151,39 @@ describe("ppal-create-clip with a param the new clip can't use", () => {
     expect(created.warnings).toStrictEqual([]);
   });
 
+  it("reports transforms sent for a MIDI clip with no notes on its entry", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s31`,
+        transforms: "velocity = 100",
+      },
+    });
+    const created = parseToolResultWithWarnings<CreateClipResult>(result);
+
+    expect(created.data.detail).toBe(
+      "transforms ignored: the clip has no notes",
+    );
+    expect(created.data).not.toHaveProperty("ok");
+    expect(created.warnings).toStrictEqual([]);
+  });
+
+  it("reports transforms sent for an audio clip on its entry", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        sampleFile: DRUM_LOOP_FILE,
+        path: `t${AUDIO_TRACK}/s4`,
+        warping: false,
+        transforms: "velocity = 100",
+      },
+    });
+    const created = parseToolResultWithWarnings<CreateClipResult>(result);
+
+    expect(created.data.detail).toBe("transforms ignored: the clip is audio");
+    expect(created.warnings).toStrictEqual([]);
+  });
+
   // firstStart only lands when the call also asks for looping, so anything else
   // says so on its own entry — the clip was still created.
   it("reports an ignored firstStart on the clip's own entry", async () => {

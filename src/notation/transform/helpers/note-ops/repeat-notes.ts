@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isSameSlot } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "../../transform-warning-label.ts";
 import {
@@ -74,46 +73,18 @@ export function repeatNotes(
   }
 
   const out: NoteEvent[] = [...matched];
-  let collisions = 0;
 
   for (const note of matched) {
     for (let k = 1; k <= copies; k++) {
       const copy = { ...note, start_time: note.start_time + k * offset };
 
       // A copy landing on an existing note's exact onset+pitch is collapsed
-      // keep-last by the write path's dedupe — deterministic, but it silently
-      // replaces a note (with its own velocity/probability). Count it so we can
-      // warn, consistent with the project's warn-and-skip convention.
-      if (collidesWithPlacedNote(copy, out)) {
-        collisions++;
-      }
-
+      // keep-last by the write path's dedupe, which says so on the clip's entry.
       out.push(copy);
     }
   }
 
-  if (collisions > 0) {
-    console.warn(
-      `repeat collapsed ${collisions} same-pitch onset ${
-        collisions === 1 ? "collision" : "collisions"
-      } (keeping the last copy at each spot)`,
-    );
-  }
-
   return out;
-}
-
-/**
- * Whether a generated copy lands on a slot ({@link isSameSlot}) already taken in
- * the output — i.e. a collision the write-path dedupe will collapse keep-last.
- * Shares the predicate with dedupeNotesKeepingLast, so the warning count always
- * matches what gets dropped.
- * @param copy - The candidate copy about to be pushed
- * @param placed - Notes already in the output (originals plus earlier copies)
- * @returns True when `copy` collides with an already-placed note
- */
-function collidesWithPlacedNote(copy: NoteEvent, placed: NoteEvent[]): boolean {
-  return placed.some((existing) => isSameSlot(existing, copy));
 }
 
 /**

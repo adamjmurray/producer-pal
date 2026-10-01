@@ -9,6 +9,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
+import { droppedDuplicatesNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
@@ -26,6 +27,7 @@ import {
   type ClipReasons,
   clipIgnoredParams,
   ignoreClipParams,
+  noteClipReason,
 } from "../entries/clip-reasons.ts";
 import { type ClipTargets, refuseTarget } from "../entries/clip-targets.ts";
 import { type ClipUpdatePlan } from "../plan-clip-update.ts";
@@ -443,6 +445,13 @@ async function applyCodeExecToNewClips(
       }
     } else if (applied != null) {
       clipResult.noteCount = applied.noteCount;
+
+      const dropped = droppedDuplicatesNote(applied.droppedDuplicates);
+
+      // Tiled copies run the same code: say it once, like a failure
+      if (dropped != null && !reasons.said.get(sourceId)?.includes(dropped)) {
+        noteClipReason(reasons, sourceId, dropped);
+      }
     }
   }
 }

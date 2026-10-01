@@ -17,7 +17,7 @@
  */
 
 import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import {
   drumHeaderPitch,
@@ -76,8 +76,8 @@ export function interpretNotation(
   // Warn only when drum and pitched lines share a clip — that crosses the
   // Drum-Rack/instrument track boundary and is usually a mistake. Mixing pitched
   // registers (bass:+melody:, melody:+chords:) is normal multi-part writing, so
-  // it must NOT warn (that was noise). Genuine same-pitch overlaps are caught
-  // separately by the dedupe warning below.
+  // it must NOT warn (that was noise). Same-pitch overlaps are dropped by the
+  // write path, which says so on the clip's entry.
   const hasDrums = ast.some((s) => "midi" in s);
   const hasPitched = ast.some((s) => !("midi" in s));
 
@@ -95,16 +95,9 @@ export function interpretNotation(
     }
   }
 
-  // Resolve same-pitch+start collisions (can arise from mixed sections).
-  const { notes: sorted, collisions } = dedupeAndSortNotes(notes);
-
-  if (collisions > 0) {
-    console.warn(
-      `Stark: ${collisions} same-pitch+start ${collisions === 1 ? "collision" : "collisions"} from mixed sections; keeping last note`,
-    );
-  }
-
-  return sorted;
+  // Same-pitch+start collisions (from mixed sections) are left for the write
+  // path to drop and count: it says so on the clip's entry.
+  return sortNotes(notes);
 }
 
 /**

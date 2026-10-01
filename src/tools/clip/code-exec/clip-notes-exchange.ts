@@ -10,7 +10,6 @@ import {
   noteEventToCodeNote,
 } from "#src/notation/midi-json/midi-json-note.ts";
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   readAllClipNotes,
   rawNotesToNoteEvents,
@@ -40,14 +39,15 @@ export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
  *
  * @param clip - LiveAPI clip object
  * @param notes - Array of notes in code-facing format
+ * @returns How many same-pitch+start duplicates were dropped
  */
-export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
+export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): number {
   // Remove all existing notes (same window readAllClipNotes/read-clip use, so a
   // pickup before the clip start is cleared too — never orphaned outside it).
   removeAllClipNotes(clip);
 
   if (notes.length === 0) {
-    return;
+    return 0;
   }
 
   // Convert musical beats back to Ableton beats, then dedupe same-pitch+start
@@ -63,13 +63,9 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
     notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
   );
 
-  if (collisions > 0) {
-    console.warn(
-      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
-    );
-  }
-
   clip.call("add_new_notes", { notes: noteEvents });
+
+  return collisions;
 }
 
 /** @see getClipNoteCount - re-exported for code-exec API compatibility */

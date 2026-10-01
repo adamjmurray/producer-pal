@@ -33,6 +33,8 @@ export interface ClipPlan {
   timing: ClipTimingContext;
   notes: MidiNote[];
   clipLength: number;
+  /** Duplicate notes dropped when no transform runs, said on each clip's entry */
+  droppedDuplicates: number;
 }
 
 /** The per-clip params, as the caller sent them, plus the call-wide ones. */
@@ -64,8 +66,7 @@ interface ClipValues {
  * Work out what to build at each position the call names.
  *
  * Positions asking for the same timing share one plan, so the notation is
- * interpreted once per distinct meter and region — and its duplicate-note
- * warning is raised once, not once per clip.
+ * interpreted once per distinct meter and region.
  * @param inputs - The per-clip params as sent, and the call-wide ones
  * @returns One plan per position, in the order the call named them
  * @throws Error when a list has an empty entry, or a value won't parse
@@ -167,7 +168,7 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
     );
   }
 
-  const { notes, clipLength } = prepareClipData(
+  const { notes, clipLength, droppedDuplicates } = prepareClipData(
     values.sampleFile,
     inputs.notationString,
     timing.endBeats,
@@ -184,5 +185,6 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
     timing,
     notes,
     clipLength,
+    droppedDuplicates,
   };
 }

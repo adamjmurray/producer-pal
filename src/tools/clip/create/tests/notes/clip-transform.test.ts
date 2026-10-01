@@ -40,6 +40,7 @@ function makeInputs(
   return {
     notes,
     clipLength: 4,
+    droppedDuplicates: 0,
     transformString: "velocity = 100",
     isAudio: false,
     endBeats: null,

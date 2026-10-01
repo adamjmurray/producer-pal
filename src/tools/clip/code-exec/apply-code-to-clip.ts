@@ -18,15 +18,18 @@ import { getClipLocationInfo } from "#src/tools/clip/code-exec/code-execution-co
  * @param code - User-provided JavaScript code body
  * @param clipIndex - 0-based position in the current batch (for clip.index in user code)
  * @param clipCount - Total clips in the current batch (for clip.count in user code)
- * @returns The updated note count, the error the code failed with (the clip is
- *   left as it was), or null if the clip doesn't exist
+ * @returns The updated note count and how many duplicate notes were dropped, the
+ *   error the code failed with (the clip is left as it was), or null if the clip
+ *   doesn't exist
  */
 export async function applyCodeToSingleClip(
   clipId: string,
   code: string,
   clipIndex: number,
   clipCount: number,
-): Promise<{ noteCount: number } | { error: string } | null> {
+): Promise<
+  { noteCount: number; droppedDuplicates: number } | { error: string } | null
+> {
   const clip = LiveAPI.from(["id", clipId]);
 
   if (!clip.exists()) {
@@ -47,7 +50,7 @@ export async function applyCodeToSingleClip(
     return { error: result.error };
   }
 
-  applyNotesToClip(clip, result.notes);
+  const droppedDuplicates = applyNotesToClip(clip, result.notes);
 
-  return { noteCount: getClipNoteCount(clip) };
+  return { noteCount: getClipNoteCount(clip), droppedDuplicates };
 }

@@ -124,12 +124,13 @@ describe("stark interpreter — drums (event-based)", () => {
     ).toStrictEqual([1, 3]);
   });
 
-  it("resolves a same-pitch+start collision keeping the last note", () => {
-    // kick and C1 both resolve to MIDI 36 at t=0.
+  it("leaves a same-pitch+start collision for the write path to drop", () => {
+    // kick and C1 both resolve to MIDI 36 at t=0. The write path drops one and
+    // says so on the clip's entry, so the interpreter keeps both and is quiet.
     const notes = interpretNotation("kick: X\nC1: X");
 
-    expect(notes).toHaveLength(1);
-    expect(notes[0]?.pitch).toBe(36);
+    expect(notes.map((n) => n.pitch)).toStrictEqual([36, 36]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 
@@ -521,14 +522,14 @@ describe("stark interpreter — velocity buckets are within range", () => {
 });
 
 describe("stark interpreter — additional branch coverage", () => {
-  it("warns with the plural noun for multiple collisions from mixed sections", () => {
-    // kick and melody C,, both resolve to MIDI 36 at t=0 and t=1 → 2 collisions.
+  it("keeps collisions from mixed sections without warning", () => {
+    // kick and melody C,, both resolve to MIDI 36 at t=0 and t=1.
     const notes = interpretNotation("kick: X X\nmelody: C,, C,,");
 
-    expect(notes).toHaveLength(2);
+    expect(notes).toHaveLength(4);
     expect(notes.every((n) => n.pitch === 36)).toBe(true);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("2 same-pitch+start collisions"),
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("collision"),
     );
   });
 

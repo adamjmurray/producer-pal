@@ -31,7 +31,7 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
 
 /**
  * Create a clip from two identical p60/start0 notes and assert the dedupe
- * collapsed them keep-last and warned the LLM about the drop.
+ * collapsed them keep-last and said so on the clip's entry (no warning).
  * @param extraParams - Extra create-clip params this case adds (e.g. transforms)
  */
 async function expectDuplicatePairDeduped(
@@ -42,7 +42,7 @@ async function expectDuplicatePairDeduped(
     liveSet: { signature_numerator: 4, signature_denominator: 4 },
   });
 
-  await createClip(
+  const result = await createClip(
     {
       slot: "0/0",
       notes:
@@ -53,9 +53,10 @@ async function expectDuplicatePairDeduped(
   );
 
   expectNotesAdded(clip, [note(60, 0, 1)]);
-  expect(warn).toHaveBeenCalledWith(
-    expect.stringContaining("Dropped 1 duplicate note"),
+  expect((result as { detail?: string }).detail).toBe(
+    "dropped 1 duplicate note at the same pitch and start",
   );
+  expect(warn).not.toHaveBeenCalled();
 }
 
 describe("createClip - advanced features", () => {
@@ -431,19 +432,19 @@ describe("createClip - advanced features", () => {
       ]);
     });
 
-    it("dedupes same-pitch+start duplicates on the no-transform path and warns", async () => {
+    it("dedupes same-pitch+start duplicates on the no-transform path and says so", async () => {
       // Two identical p:60,t:0 notes, no transform. The create path only sorted
       // before, so both reached add_new_notes and Live silently dropped one. The
-      // dedupe collapses them keep-last and warns so the LLM sees the drop.
+      // dedupe collapses them keep-last and says so on the entry.
       await expectDuplicatePairDeduped();
     });
 
-    it("treats a blank transforms string as no transform: dedupes and warns", async () => {
+    it("treats a blank transforms string as no transform: dedupes and says so", async () => {
       // transforms:"" is not undefined, so before the entry-point normalization
       // it took the sortNotes (has-transform) branch — skipping the no-transform
-      // dedupe warning — while applyTransforms no-oped on "". Written notes stayed
+      // dedupe note — while applyTransforms no-oped on "". Written notes stayed
       // correct (the post-transform dedupe still collapsed them) but the
-      // LLM-visible "Dropped N duplicate note(s)" warning was silently lost.
+      // "dropped N duplicate note(s)" detail was lost.
       await expectDuplicatePairDeduped({ transforms: "" });
     });
 

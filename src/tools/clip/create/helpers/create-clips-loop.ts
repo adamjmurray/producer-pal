@@ -9,7 +9,6 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
@@ -41,6 +40,7 @@ import {
 } from "./create-clip-destinations.ts";
 import { type ClipPlan } from "./clip-plans.ts";
 import { processClipIteration } from "./clip-iteration.ts";
+import { applyCodeToCreatedClip } from "./created-clip-code.ts";
 import { type ClipResultObject } from "./created-clip-result.ts";
 import {
   type ClipTransformInputs,
@@ -157,6 +157,7 @@ function transformInputsFor(
   return {
     notes: plan.notes,
     clipLength: plan.clipLength,
+    droppedDuplicates: plan.droppedDuplicates,
     transformString: params.transformString,
     isAudio: plan.sampleFile != null,
     endBeats: plan.timing.endBeats,
@@ -330,6 +331,7 @@ async function createClipAtIndex(
     notes: clipNotes,
     clipLength,
     transformedCount,
+    details: transformDetails,
   } = withClipWarningLabel(
     `clip ${position}${ordinalSuffix(index, totalCount)}`,
     () =>
@@ -406,6 +408,7 @@ async function createClipAtIndex(
 
     // What the clip can't use of what was sent, said on its own entry
     for (const note of [
+      ...transformDetails,
       ...skippedTransforms,
       ignoredParamsNote(...unusableParams(params, plan)),
     ]) {
@@ -416,18 +419,7 @@ async function createClipAtIndex(
 
     // Apply code execution to the newly created clip
     if (code != null) {
-      const applied = await applyCodeToSingleClip(
-        clipResult.id,
-        code,
-        index,
-        totalCount,
-      );
-
-      if (applied != null && "error" in applied) {
-        appendDetail(clipResult, `code failed: ${applied.error}`);
-      } else if (applied != null) {
-        clipResult.noteCount = applied.noteCount;
-      }
+      await applyCodeToCreatedClip(clipResult, code, index, totalCount);
     }
 
     return clipResult;

@@ -3,11 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import {
+  droppedDuplicatesNote,
+  transformsIgnoredNoNotesNote,
+} from "#src/tools/clip/helpers/clip-entry-notes.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   buildTransformClipContext,
@@ -60,11 +64,7 @@ export function applyTransformsToExistingNotes(
       transformString != null ? "transforms" : null,
     ].filter((param) => param != null);
 
-    noteClipReason(
-      reasons,
-      clip.id,
-      `${sent.join("/")} ignored: the clip has no notes`,
-    );
+    noteClipReason(reasons, clip.id, transformsIgnoredNoNotesNote(sent));
 
     return { noteCount: 0 };
   }
@@ -96,15 +96,34 @@ export function applyTransformsToExistingNotes(
     // transform can collapse two notes onto the same pitch+exact-onset (dedupe
     // keep-last resolves that deterministically instead of letting Live drop
     // one), and any remaining tail overlap is made safe by ascending order.
-    clip.call("add_new_notes", {
-      notes: sortNotes(dedupeNotesKeepingLast(notes)),
-    });
+    const { notes: written, collisions } = dedupeAndSortNotes(notes);
+
+    clip.call("add_new_notes", { notes: written });
+    noteDroppedDuplicates(reasons, clip.id, collisions);
   }
 
   return {
     noteCount: getClipNoteCount(clip),
     transformed: postCount ?? preCount,
   };
+}
+
+/**
+ * Say on the clip's entry that a transform collapsed notes onto one another.
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param clipId - The clip
+ * @param count - How many notes were dropped
+ */
+export function noteDroppedDuplicates(
+  reasons: ClipReasons,
+  clipId: string,
+  count: number,
+): void {
+  const note = droppedDuplicatesNote(count);
+
+  if (note != null && !reasons.said.get(clipId)?.includes(note)) {
+    noteClipReason(reasons, clipId, note);
+  }
 }
 
 /**

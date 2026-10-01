@@ -371,10 +371,10 @@ function resolveArrangementLocators(
 
 /**
  * Normalize a blank/whitespace-only transforms string to null so both the
- * dedupe-warning path (prepareClipData) and per-clip resolveClipTransform treat
- * it as "no transform". An LLM-supplied `transforms: ""` otherwise skips the
- * "Dropped N duplicate note(s)" warning while applyTransforms no-ops on "", and
- * a whitespace-only string would reach applyTransforms and throw a parse error.
+ * duplicate-dropping path (prepareClipData) and per-clip resolveClipTransform
+ * treat it as "no transform". An LLM-supplied `transforms: ""` otherwise skips
+ * the dropped-duplicates note while applyTransforms no-ops on "", and a
+ * whitespace-only string would reach applyTransforms and throw a parse error.
  * @param transformString - Raw transforms param, or null
  * @returns The original string when it has non-whitespace content, else null
  */

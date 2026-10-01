@@ -656,6 +656,8 @@ export interface UpdateClipResult {
   length?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any */
   created?: string;
+  /** What the call asked for that the clip didn't get */
+  detail?: string;
 }
 
 /** Result from ppal-create-track tool */
