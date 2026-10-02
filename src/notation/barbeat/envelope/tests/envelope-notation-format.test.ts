@@ -111,4 +111,22 @@ describe("formatEnvelopeNotation", () => {
       { time: 8, value: 0.9, jump: true },
     ]);
   });
+
+  it.each([
+    ["1/4 (dotted)", "1/4 [dotted]"],
+    ["x)", "x]"],
+    ["a ( b", "a [ b"],
+    ["((a))", "[[a]]"],
+  ])("writes the display %j so it reads back", (display, written) => {
+    const text = formatEnvelopeNotation(
+      events([0, 0.25, display], [8, 0.5, display]),
+      FOUR_FOUR,
+    );
+
+    expect(text).toBe(`1|1 0.25 (${written}) ~ 3|1 0.5 (${written})`);
+    expect(parseEnvelopeNotation(text, FOUR_FOUR)).toStrictEqual([
+      { time: 0, value: 0.25, jump: false },
+      { time: 8, value: 0.5, jump: false },
+    ]);
+  });
 });

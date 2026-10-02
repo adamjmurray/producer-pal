@@ -9,7 +9,8 @@
 //
 // A point is "bar|beat value", `~` ramps to the next point and `>` holds the
 // previous value until the next point's time and then jumps to it. On read a
-// point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`.
+// point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`. Round
+// brackets inside a display are written as square ones, so it stays one group.
 
 import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import {
@@ -169,6 +170,7 @@ function groupByTime(
 
 /**
  * Write one point, with Live's display when it says more than the value does.
+ * The display is informational, so its parentheses become square brackets.
  * @param point - The point to write
  * @param meter - The clip meter the time is spelled in
  * @returns "bar|beat value" or "bar|beat value (display)"
@@ -182,7 +184,7 @@ function formatPoint(point: FormattedPoint, meter: EnvelopeMeter): string {
   const value = formatValue(point.value);
   const display =
     point.display != null && point.display !== value
-      ? ` (${point.display})`
+      ? ` (${point.display.replaceAll("(", "[").replaceAll(")", "]")})`
       : "";
 
   return `${time} ${value}${display}`;
