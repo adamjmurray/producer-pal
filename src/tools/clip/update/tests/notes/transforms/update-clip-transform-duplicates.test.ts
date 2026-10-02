@@ -4,30 +4,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockMergeNoteTracking,
-  setupMidiClipMock,
-  setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-const NOTE = {
-  pitch: 60,
-  duration: 1,
-  velocity: 100,
-  probability: 1,
-  velocity_deviation: 0,
-};
-const DROPPED = "dropped 1 duplicate note at the same pitch and start";
+import {
+  DROPPED,
+  NOTE,
+  setupDuplicateNoteMocks,
+} from "./update-clip-duplicates-test-helpers.ts";
 
 describe("updateClip - notes a transform collapses", () => {
   let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    mocks = setupUpdateClipMocks();
-    setupMidiClipMock(mocks.clip123, { length: 4 });
+    mocks = setupDuplicateNoteMocks();
   });
 
   it("says so on the entry when a transform lands two notes on one slot", async () => {

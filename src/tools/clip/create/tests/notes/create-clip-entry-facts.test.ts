@@ -143,6 +143,21 @@ describe("createClip - facts about a clip go on its entry", () => {
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
+    it("are not counted when a transform pulls them apart", async () => {
+      setupSessionMocks({ liveSet: FOUR_FOUR });
+
+      const result = await createClip(
+        {
+          slot: "0/0",
+          notes: DUPLICATE_PAIR,
+          transforms: "pitch += note.index",
+        },
+        { notation: "midi-json" },
+      );
+
+      expect(detailOf(result)).toBeUndefined();
+    });
+
     it("are counted on every clip of a multi-clip create", async () => {
       setupArrangementClipMocks();
 

@@ -15,9 +15,9 @@
  *
  * Genuine same-pitch+start duplicates can't be saved by sorting, so both tools
  * dedupe keep-last before the write, and the new note wins deterministically.
- * create-clip says so on the clip's entry (an accident in the input);
- * update-clip's merge stays quiet, since restating a note there is an
- * intentional overwrite.
+ * Both say so on the clip's entry when the input itself holds the duplicate (an
+ * accident in the input); update-clip's merge stays quiet when the input only
+ * restates an existing note, since that is an intentional overwrite.
  *
  * Also covers create-clip's noteCount reporting the count Live actually stored
  * (read back) rather than the interpreted-input count.
@@ -258,5 +258,29 @@ describe("note write ordering (create + update transforms)", () => {
     const overwritten = parseToolResult<UpdateClipResult>(overwrite);
 
     expect(overwritten.noteCount).toBe(1);
+    expect(overwritten.detail).toBeUndefined();
+  });
+
+  it("update-clip says on the entry when the new bar|beat notation holds a duplicate", async () => {
+    const trackIndex = await createOrderingTrack("Notation Duplicate Track");
+    const created = await createClipWithCount(
+      `t${trackIndex}/s0`,
+      "n/4 C1 1|1",
+      1,
+    );
+
+    // The notation writes E1 twice at one onset; the existing C1 is untouched.
+    const updateResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: created.id, notes: "n/4 E1 E1 1|3" },
+    });
+    const { data: updated, warnings } =
+      parseToolResultWithWarnings<UpdateClipResult>(updateResult);
+
+    expect(updated.noteCount).toBe(2);
+    expect(updated.detail).toBe(
+      "dropped 1 duplicate note at the same pitch and start",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 });

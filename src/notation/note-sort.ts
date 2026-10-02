@@ -56,6 +56,18 @@ export function dedupeNotesKeepingLast<
 }
 
 /**
+ * How many notes {@link dedupeNotesKeepingLast} would drop: the ones that share
+ * a slot with a later note.
+ * @param notes - Notes in insertion order
+ * @returns The number of same-pitch+start duplicates among them
+ */
+export function countSlotCollisions(
+  notes: { start_time: number; pitch: number }[],
+): number {
+  return notes.length - dedupeNotesKeepingLast(notes).length;
+}
+
+/**
  * Prepare notes for an `add_new_notes` write: collapse same-pitch+start
  * collisions (keep-last) then sort ascending by start_time — the two steps every
  * write path must do so Live doesn't silently drop notes. Returns the collision

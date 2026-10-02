@@ -182,7 +182,10 @@ describe("muted notes", () => {
   it("are replaced by a note written at the same pitch and start", async () => {
     const clipId = await createClipWithMutedNote(3);
 
-    await updateClip(clipId, { notes: "E3 1|3" });
+    const result = await updateClip(clipId, { notes: "E3 1|3" });
+
+    // Replacing a muted note is not a duplicate, so nothing is reported.
+    expect(result.detail).toBeUndefined();
 
     const dicts = await readNoteDicts(ctx.client!, clipId);
 
