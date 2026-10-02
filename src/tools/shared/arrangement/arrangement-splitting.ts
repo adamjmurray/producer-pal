@@ -12,6 +12,10 @@ import {
   type SplitMiss,
 } from "#src/tools/shared/arrangement/arrangement-splitting-warnings.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
+import {
+  type LaneView,
+  laneViewOf,
+} from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import {
   createAndDeleteTempClip,
@@ -27,7 +31,7 @@ import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   rescanSplitClips,
   type SplitClipRange,
-} from "./helpers/arrangement-splitting-rescan.ts";
+} from "./arrangement-splitting-rescan.ts";
 
 export interface SplittingContext {
   silenceWavPath?: string;
@@ -35,6 +39,8 @@ export interface SplittingContext {
   deadline?: number | null;
   /** Where to say what happened to a clip; unset drops what the split reports. */
   reportClip?: ClipReporter;
+  /** What is on the arrangement lanes, shared with every write in the call. */
+  lanes?: LaneView;
 }
 
 /**
@@ -151,6 +157,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const { track, holdingStart: holdingAreaStart } = trackStateFor(
     args.tracks,
     trackIndex,
+    context,
   );
 
   // Create boundaries: [0, ...splitPoints, clipLength]
@@ -271,11 +278,13 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
  *
  * @param tracks - Per-track state for this call, added to on a miss
  * @param trackIndex - The track the clip is on
+ * @param context - The call's context, which carries its lane view
  * @returns That track's state
  */
 function trackStateFor(
   tracks: Map<number, TrackSplitState>,
   trackIndex: number,
+  context: SplittingContext,
 ): TrackSplitState {
   const known = tracks.get(trackIndex);
 
@@ -284,7 +293,10 @@ function trackStateFor(
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
-  const state = { track, holdingStart: holdingAreaStartOnTrack(track) };
+  const state = {
+    track,
+    holdingStart: holdingAreaStartOnTrack(track, 0, context),
+  };
 
   tracks.set(trackIndex, state);
 
@@ -516,5 +528,5 @@ export function performSplitting(
     warnUnusedSplitPoints(splitPoints, usedPoints, mode);
   }
 
-  return rescanSplitClips(splitClipRanges, clips);
+  return rescanSplitClips(splitClipRanges, clips, laneViewOf(_context));
 }

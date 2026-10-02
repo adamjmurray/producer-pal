@@ -6,6 +6,7 @@
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import {
   markClipLanded,
   noteClipReason,
@@ -79,14 +80,14 @@ export function handleArrangementLengthOperation({
 
   // Check if shortening, lengthening, or same
   if (arrangementLengthBeats > currentArrangementLength) {
-    // Growing into the lane overwrites whatever sits after the clip, so read
-    // the lane first and say what the growth cost. The ledger is scanned right
-    // here: shortening and splitting change clips without telling it.
+    // Growing into the lane overwrites whatever sits after the clip, so note
+    // the lane first and say what the growth cost. This clip's ledger starts
+    // here, from the call's lane view, so it hears of nothing before it.
     const lane: ArrangementLane = {
       kind: "track",
       trackIndex: clip.trackIndex as number,
     };
-    const ledger = new LaneLedger();
+    const ledger = new LaneLedger({ lanes: laneViewOf(context) });
 
     ledger.scan(lane);
 

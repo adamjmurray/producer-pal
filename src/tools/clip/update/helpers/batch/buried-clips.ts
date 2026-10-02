@@ -13,6 +13,7 @@ import {
   buildClipResultObject,
   type ClipResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
@@ -47,6 +48,8 @@ export interface BuriedClipsCheck {
   landed: ReadonlyMap<string, LandedSpan>;
   /** Every span the call wrote, whoever's clip it holds. */
   written: readonly LandedSpan[];
+  /** The call's lanes, so finding what a landing left needs no lane scan. */
+  lanes?: LaneView;
 }
 
 /**
@@ -59,6 +62,7 @@ export interface BuriedClipsCheck {
  * @param check.heldBack - Clips the call clears once their overwrite has landed
  * @param check.landed - Where and when each landed copy landed, by entry id
  * @param check.written - Every span the call wrote
+ * @param check.lanes - The call's lanes
  */
 export function markBuriedClips({
   results,
@@ -66,6 +70,7 @@ export function markBuriedClips({
   heldBack,
   landed,
   written,
+  lanes,
 }: BuriedClipsCheck): void {
   // The read-back costs a look-up per entry, so most calls skip it: one that
   // clears nothing buries nothing, and a lone entry has no sibling.
@@ -90,6 +95,7 @@ export function markBuriedClips({
     spanOf: (entry) => landed.get(entry.id),
     written,
     taken: results.filter((entry) => !goneSet.has(entry)).map(({ id }) => id),
+    lanes,
   });
 
   for (const entry of gone) {

@@ -84,6 +84,7 @@ export function createPartialTile(
   const holdingStart = holdingAreaStartOnTrack(
     track,
     targetPosition + partialLength,
+    context,
   );
 
   // Create shortened clip in holding area

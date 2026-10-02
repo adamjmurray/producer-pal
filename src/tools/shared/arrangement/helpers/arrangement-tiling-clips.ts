@@ -15,6 +15,7 @@ import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
+import { type LaneView } from "./arrangement-lane-view.ts";
 import { type ClipReporter } from "./clip-reporter.ts";
 
 /**
@@ -37,6 +38,8 @@ export interface TilingContext {
   deadline?: number | null;
   /** Where to say what happened to a clip; unset drops what tiling reports. */
   reportClip?: ClipReporter;
+  /** What is on the arrangement lanes, kept true by every write that has this. */
+  lanes?: LaneView;
 }
 
 export interface CreatedClip {
@@ -125,6 +128,9 @@ export function createAndDeleteTempClip(
   isMidiClip: boolean,
   context: TilingContext,
 ): void {
+  // The temp clip is gone by the time anything looks, so say what it trimmed.
+  context.lanes?.wroteOnTrack(track, position, position + length);
+
   if (isMidiClip) {
     const tempResult = track.call("create_midi_clip", position, length) as [
       string,

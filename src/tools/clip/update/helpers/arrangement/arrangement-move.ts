@@ -17,6 +17,7 @@ import {
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
@@ -138,12 +139,12 @@ export function handleArrangementStartOperation({
   }
 
   // The landing overwrites whatever is in its way — including a clip an
-  // earlier target of this same call put there — so read the destination lane
-  // and let this clip's entry say what it displaced. The ledger is scanned right
-  // here, not kept from an earlier target: shortening, splitting and resizing
-  // change clips without telling it.
+  // earlier target of this same call put there — so note the destination lane
+  // and let this clip's entry say what it displaced. The ledger is this clip's
+  // own, so it reports only what this landing did; the lane's contents come
+  // from the call's lane view, which every earlier write kept true.
   const lane = arrangementLaneOf(landing);
-  const ledger = new LaneLedger();
+  const ledger = new LaneLedger({ lanes: laneViewOf(context) });
   // Read before the move: the landing clears this much even when Live then
   // makes no copy, and the copy is the only other way to learn it.
   const length = landedLength(clip);

@@ -3,22 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// What is on each arrangement lane a call writes to, so a write can say what it
-// overwrote without scanning the lane again.
+// What each arrangement write did to the clips already on its lane, in prose.
 //
-// A write over a range never changes a clip that didn't overlap it. Live keeps
-// a trimmed clip's id, except that a write starting exactly where a clip starts
-// re-creates its rest under a new id. A split keeps the head on the id and gives
-// the tail a new one; a covered clip's id is gone. So after a write the
-// ledger reads the lane's id list, the written clips' spans, and the spans of
-// cached clips that overlapped the written range. Nothing else can have moved.
-//
-// Only valid while every change to the lane since the scan went through the
-// ledger. A caller that edits clips in other ways in between (shortening,
-// splitting, resizing) must scan right before its tracked write instead.
-//
-// Holds ids and spans only, never a LiveAPI: objects are released when a
-// request ends, and a ledger belongs to one call.
+// The lane's contents come from a LaneView, which keeps them true across the
+// whole call. The ledger keeps its own note of how each lane stood before a
+// write (its baseline), so what it reports is what the write changed, not what
+// the call changed. Every write that goes through the ledger must be reported
+// to it (afterWrite) before the next one starts.
 //
 // A call whose own clips report their own fate (duplicate: a copy a later copy
 // buries says so on its own entry) can ask the ledger to leave those clips out
@@ -27,38 +18,35 @@
 // the rest of a copy re-created under a new id. A new clip anywhere else is
 // never assumed to be ours.
 
-import {
-  fromLiveApiId,
-  toLiveApiId,
-} from "#src/tools/shared/helpers/live-api-values.ts";
+import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { laneObject } from "./arrangement-clip-at-position.ts";
 import { EPSILON } from "./arrangement-tiling-clips.ts";
+import {
+  laneKey,
+  laneObject,
+  LaneView,
+  type Reach,
+} from "./arrangement-lane-view.ts";
 import {
   arrangementLaneOf,
   type ClipSpan,
   describeWriteEffects,
 } from "./arrangement-write-effects.ts";
-import { type ArrangementTrack, isTakeLaneClip } from "./take-lanes.ts";
-
-/** One lane as the ledger last saw it. */
-interface LaneState {
-  clips: Map<string, ClipSpan>;
-  /** Clips the track's list showed that sit on a take lane, never re-checked. */
-  notOnLane: Set<string>;
-}
-
-/** A stretch of the timeline. */
-export interface Reach {
-  start: number;
-  end: number;
-}
+import { type ArrangementTrack } from "./take-lanes.ts";
 
 /** What {@link LaneLedger.afterWrite} may be told besides the written ids. */
 interface AfterWriteOptions {
   api?: LiveAPI;
   reach?: Reach;
+}
+
+/** How the ledger reports, and what it reads the lanes from. */
+interface LedgerOptions {
+  /** Leave the call's own clips out of what a write reports. */
+  skipOwn?: boolean;
+  /** The call's lanes; a ledger of its own when the caller has none. */
+  lanes?: LaneView;
 }
 
 /** The arrangement lanes one call has written to, and what was on them. */
@@ -68,25 +56,41 @@ export class LaneLedger {
    * what Live left of one of them when a later write cut it.
    */
   readonly ours = new Set<string>();
-  private readonly lanes = new Map<string, LaneState>();
+  readonly lanes: LaneView;
+  /** Each lane as it stood after the last write the ledger heard of. */
+  private baselines = new Map<string, Map<string, ClipSpan>>();
+  private baselinesOf: number;
   private readonly skipOwn: boolean;
 
   /**
    * @param options - How to report
    * @param options.skipOwn - Leave the call's own clips out of what a write
    *   reports, because their own entries say what became of them
+   * @param options.lanes - The call's lanes, shared with everything else that
+   *   writes to them
    */
-  constructor(options: { skipOwn?: boolean } = {}) {
+  constructor(options: LedgerOptions = {}) {
     this.skipOwn = options.skipOwn === true;
+    this.lanes = options.lanes ?? new LaneView();
+    this.baselinesOf = this.lanes.generation;
   }
 
   /**
-   * Read a lane's clips, the first time it is touched. Call before the write.
+   * Note how a lane stands, the first time it is touched. Call before the
+   * write.
    * @param lane - The lane about to be written to
    * @param api - The lane object, when the caller already has it
    */
   scan(lane: ArrangementLane, api: LiveAPI = laneObject(lane)): void {
-    this.stateOf(lane, api);
+    // A write ahead may have been parked on a wait that let another request
+    // edit lanes, which leaves every note about how a lane stood no good. One
+    // already in flight keeps its own: it is what the write is measured against.
+    if (this.baselinesOf !== this.lanes.generation) {
+      this.baselines.clear();
+      this.baselinesOf = this.lanes.generation;
+    }
+
+    this.baselineOf(lane, api);
   }
 
   /**
@@ -134,11 +138,12 @@ export class LaneLedger {
 
   /**
    * Drop what the ledger knows of a lane, for a failure that may have changed
-   * it unseen. The next touch scans it again.
+   * it unseen. The next touch reads it again.
    * @param lane - The lane to forget
    */
   forget(lane: ArrangementLane): void {
-    this.lanes.delete(laneKey(lane));
+    this.baselines.delete(laneKey(lane));
+    this.lanes.forget(lane);
   }
 
   /**
@@ -146,7 +151,9 @@ export class LaneLedger {
    * them meanwhile.
    */
   forgetAll(): void {
-    this.lanes.clear();
+    this.lanes.forgetAll();
+    this.baselines.clear();
+    this.baselinesOf = this.lanes.generation;
   }
 
   /**
@@ -166,64 +173,38 @@ export class LaneLedger {
     { api = laneObject(lane), reach }: AfterWriteOptions = {},
   ): string | undefined {
     const wrote = new Set(written.map(fromLiveApiId));
-    const state = this.stateOf(lane, api);
-    const ids = api.getChildIds("arrangement_clips").map(fromLiveApiId);
-    const present = new Set(ids);
-    const before = [...state.clips.values()]
+    const baseline = this.baselineOf(lane, api);
+
+    if (reach != null) {
+      this.lanes.wrote(lane, reach);
+    }
+
+    this.lanes.changed(lane, wrote);
+
+    const now = this.lanes.clips(lane, api);
+    const after = new Map(now.map((clip) => [clip.id, clip]));
+    const before = [...baseline.values()]
       .filter((clip) => !wrote.has(clip.id))
       .toSorted((a, b) => a.start - b.start);
     const reported = this.skipOwn
       ? before.filter((clip) => !this.ours.has(clip.id))
       : before;
-    // Spans read this time, and the new clips the write didn't make.
-    const read = new Map<string, ClipSpan>();
-    const tails: ClipSpan[] = [];
+    // The clips the write made that it didn't name: what it cut off a clip.
+    const tails = now.filter(
+      (clip) => !baseline.has(clip.id) && !wrote.has(clip.id),
+    );
 
     for (const id of wrote) {
       this.ours.add(id);
-    }
-
-    for (const id of ids) {
-      if (wrote.has(id)) {
-        read.set(id, spanOf(id));
-      } else if (!state.clips.has(id) && !state.notOnLane.has(id)) {
-        const span = readNewClip(lane, state, id);
-
-        if (span != null) {
-          read.set(id, span);
-          tails.push(span);
-        }
-      }
     }
 
     if (this.skipOwn) {
       this.claimTailsOfOwn(before, tails);
     }
 
-    const touched = mergeReach(reach, [...read.values()]);
+    this.baselines.set(laneKey(lane), after);
 
-    for (const was of state.clips.values()) {
-      if (
-        touched != null &&
-        present.has(was.id) &&
-        !read.has(was.id) &&
-        overlaps(was, touched)
-      ) {
-        read.set(was.id, spanOf(was.id));
-      }
-    }
-
-    for (const id of state.clips.keys()) {
-      if (!present.has(id)) {
-        state.clips.delete(id);
-      }
-    }
-
-    for (const [id, span] of read) {
-      state.clips.set(id, span);
-    }
-
-    return describeWriteEffects(lane, reported, state.clips, tails);
+    return describeWriteEffects(lane, reported, after, tails);
   }
 
   /**
@@ -250,109 +231,30 @@ export class LaneLedger {
     }
   }
 
-  private stateOf(lane: ArrangementLane, api: LiveAPI): LaneState {
+  /**
+   * How the lane stood after the last write, noted from the view the first
+   * time.
+   * @param lane - The lane
+   * @param api - The lane object
+   * @returns Its clips by id
+   */
+  private baselineOf(
+    lane: ArrangementLane,
+    api: LiveAPI,
+  ): Map<string, ClipSpan> {
     const key = laneKey(lane);
-    const known = this.lanes.get(key);
+    const known = this.baselines.get(key);
 
     if (known != null) {
       return known;
     }
 
-    const state: LaneState = { clips: new Map(), notOnLane: new Set() };
+    const noted = new Map(
+      this.lanes.clips(lane, api).map((clip) => [clip.id, clip]),
+    );
 
-    for (const id of api.getChildIds("arrangement_clips")) {
-      const span = readNewClip(lane, state, fromLiveApiId(id));
+    this.baselines.set(key, noted);
 
-      if (span != null) {
-        state.clips.set(span.id, span);
-      }
-    }
-
-    this.lanes.set(key, state);
-
-    return state;
+    return noted;
   }
-}
-
-// --- Helpers below main exports ---
-
-/**
- * @param lane - An arrangement lane
- * @returns A key naming the lane
- */
-function laneKey(lane: ArrangementLane): string {
-  return lane.kind === "take-lane"
-    ? `${lane.trackIndex}/${lane.laneIndex}`
-    : `${lane.trackIndex}`;
-}
-
-/**
- * A clip's span, read from Live.
- * @param id - The clip's id
- * @param clip - The clip's object, when the caller already built it
- * @returns Where it begins and ends
- */
-function spanOf(
-  id: string,
-  clip: LiveAPI = LiveAPI.from(toLiveApiId(id)),
-): ClipSpan {
-  return {
-    id,
-    start: clip.getProperty("start_time") as number,
-    end: clip.getProperty("end_time") as number,
-  };
-}
-
-/**
- * The span of a clip the ledger hasn't seen. A track's own list is meant to
- * leave out take-lane clips, but isn't trusted to: one that turns up is
- * remembered so it is never checked or read again.
- * @param lane - The lane the clip was listed on
- * @param state - The lane's state, which learns the answer
- * @param id - The clip's id
- * @returns Its span, or null when it isn't on the lane
- */
-function readNewClip(
-  lane: ArrangementLane,
-  state: LaneState,
-  id: string,
-): ClipSpan | null {
-  const clip = LiveAPI.from(toLiveApiId(id));
-
-  if (lane.kind === "track" && isTakeLaneClip(clip)) {
-    state.notOnLane.add(id);
-
-    return null;
-  }
-
-  return spanOf(id, clip);
-}
-
-/**
- * The stretch a write covered: the clips it left, and anything it cleared.
- * @param reach - What the caller says it cleared, if anything
- * @param spans - The spans of the clips the write left
- * @returns The stretch, or null when there is none
- */
-function mergeReach(
-  reach: Reach | undefined,
-  spans: readonly ClipSpan[],
-): Reach | null {
-  const all = reach == null ? spans : [...spans, reach];
-
-  return all.length === 0
-    ? null
-    : {
-        start: Math.min(...all.map((span) => span.start)),
-        end: Math.max(...all.map((span) => span.end)),
-      };
-}
-
-/**
- * @param clip - A clip's span
- * @param reach - A stretch of the timeline
- * @returns Whether they share any time; touching at an edge doesn't count
- */
-function overlaps(clip: ClipSpan, reach: Reach): boolean {
-  return clip.start < reach.end - EPSILON && clip.end > reach.start + EPSILON;
 }

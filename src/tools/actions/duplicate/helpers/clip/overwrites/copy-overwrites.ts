@@ -20,10 +20,8 @@
 // doesn't wait on it keeps the ledger.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import {
-  LaneLedger,
-  type Reach,
-} from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { type Reach } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { noteCopyEffects } from "../../minimal-clip-info.ts";
 

@@ -10,9 +10,11 @@
 // landed at and outside every span the call wrote after it.
 
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { clipsOnLane } from "./arrangement-clip-at-position.ts";
+import { LaneView } from "./arrangement-lane-view.ts";
+import { type ClipSpan } from "./arrangement-write-effects.ts";
 
 /** Counts landings as they happen; only the order matters, never the value. */
 let landings = 0;
@@ -44,13 +46,8 @@ export interface RemainderClaim<Entry> {
   written: Iterable<LandedSpan>;
   /** Ids the call's other entries still name. */
   taken: Iterable<string>;
-}
-
-/** A clip on a scanned lane, with its span read once. */
-interface ScannedClip {
-  api: LiveAPI;
-  start: number;
-  end: number;
+  /** The call's lanes, which know what is on each one without a scan. */
+  lanes?: LaneView;
 }
 
 /**
@@ -74,8 +71,8 @@ export function wholeLaneWrite(lane: ArrangementLane): LandedSpan {
 /**
  * Finds what is left of each gone entry's clip: a clip inside the span it
  * landed at that no span written later touches, and that no other entry
- * names. Latest landed first, each clip claimed once. Scans each lane (and
- * reads each clip's span) at most once.
+ * names. Latest landed first, each clip claimed once. Asks the lane view for
+ * each lane once, and looks up only the clips it hands back.
  * @param claim - The entries, where they landed, and what to steer clear of
  * @returns The piece each entry names, for each clip with any left
  */
@@ -84,7 +81,8 @@ export function claimRemainders<Entry>(
 ): Map<Entry, Remainder> {
   const claimed = new Set(claim.taken);
   const written = [...claim.written];
-  const scanned = new Map<string, ScannedClip[]>();
+  const lanes = claim.lanes ?? new LaneView();
+  const scanned = new Map<string, ClipSpan[]>();
   const found = new Map<Entry, Remainder>();
   const latestFirst = [...claim.entries]
     .flatMap((entry) => {
@@ -96,7 +94,7 @@ export function claimRemainders<Entry>(
 
   for (const { entry, span } of latestFirst) {
     const key = JSON.stringify(span.lane);
-    const clips = scanned.get(key) ?? scanClips(span.lane);
+    const clips = scanned.get(key) ?? lanes.clips(span.lane);
 
     scanned.set(key, clips);
 
@@ -105,11 +103,13 @@ export function claimRemainders<Entry>(
     );
     const pieces = clips.filter(
       (clip) =>
-        !claimed.has(clip.api.id) &&
+        !claimed.has(clip.id) &&
         liesInside(clip, span) &&
         !later.some((other) => overlaps(clip, other)),
     );
-    const piece = namedPiece(pieces, span)?.api;
+    const named = namedPiece(pieces, span);
+    const piece =
+      named == null ? undefined : LiveAPI.from(toLiveApiId(named.id));
     const path = piece == null ? undefined : objectPathForApi(piece);
 
     if (piece != null && path != null) {
@@ -122,25 +122,12 @@ export function claimRemainders<Entry>(
 }
 
 /**
- * The clips on a lane with their spans.
- * @param lane - The lane to scan
- * @returns Each clip, in Live's order
- */
-function scanClips(lane: ArrangementLane): ScannedClip[] {
-  return clipsOnLane(lane).map((api) => ({
-    api,
-    start: api.getProperty("start_time") as number,
-    end: api.getProperty("end_time") as number,
-  }));
-}
-
-/**
  * Whether a clip lies wholly inside a landing's span.
  * @param clip - A clip on the landing's lane
  * @param span - Where the landing put its clip
  * @returns True when the clip could be a piece of it
  */
-function liesInside(clip: ScannedClip, span: LandedSpan): boolean {
+function liesInside(clip: ClipSpan, span: LandedSpan): boolean {
   return (
     clip.start > span.start - SAME_TIME_EPSILON &&
     clip.end < span.end + SAME_TIME_EPSILON
@@ -153,7 +140,7 @@ function liesInside(clip: ScannedClip, span: LandedSpan): boolean {
  * @param span - Where the landing put its clip
  * @returns True when they share more than an edge
  */
-function overlaps(clip: ScannedClip, span: LandedSpan): boolean {
+function overlaps(clip: ClipSpan, span: LandedSpan): boolean {
   return (
     clip.start < span.end - SAME_TIME_EPSILON &&
     clip.end > span.start + SAME_TIME_EPSILON
@@ -168,9 +155,9 @@ function overlaps(clip: ScannedClip, span: LandedSpan): boolean {
  * @returns The piece, or undefined when there is none
  */
 function namedPiece(
-  pieces: ScannedClip[],
+  pieces: ClipSpan[],
   span: LandedSpan,
-): ScannedClip | undefined {
+): ClipSpan | undefined {
   const earliestFirst = pieces.toSorted((a, b) => a.start - b.start);
 
   return (

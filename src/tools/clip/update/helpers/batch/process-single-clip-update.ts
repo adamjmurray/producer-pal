@@ -96,6 +96,10 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
 ): void {
+  // Its properties can resize it (looping, length, region), which no write
+  // below reports on its own, so the call's lane view reads it again.
+  params.context.lanes?.clipChanged(params.clip);
+
   // The transform evaluators warn per clip but have no LiveAPI to name it with,
   // so the label comes from here. Everything inside is synchronous, which is
   // what makes a scope safe to use instead of a parameter.

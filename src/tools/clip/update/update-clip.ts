@@ -6,6 +6,7 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
   type EnvelopeLine,
@@ -79,6 +80,21 @@ import {
 export async function updateClip(
   args: ClipUpdateArgs = {},
   context: Partial<ToolContext> = {},
+): Promise<ClipEntry | ClipEntry[]> {
+  // Every arrangement write in the call, and in a call nested in it, shares the
+  // one lane view the context carries meanwhile.
+  return await sharingLaneView(context, () => updateClipOnLanes(args, context));
+}
+
+/**
+ * One update-clip call, with the call's lane view on its context.
+ * @param args - The clip parameters
+ * @param context - Per-request context
+ * @returns The clip when one was named, otherwise one entry per target named
+ */
+async function updateClipOnLanes(
+  args: ClipUpdateArgs,
+  context: Partial<ToolContext>,
 ): Promise<ClipEntry | ClipEntry[]> {
   const { id, ids, path, paths, toPath, toSlot } = args;
   const { arrangementStart, arrangementLength, arrangementSplit, split } = args;

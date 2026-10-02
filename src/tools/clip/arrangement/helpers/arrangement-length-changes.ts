@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import {
   createAudioClipInSession,
   type CreatedClip,
@@ -28,6 +29,8 @@ import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 
 export interface ArrangementContext {
   silenceWavPath?: string;
+  /** What is on the arrangement lanes, shared with every write in the call. */
+  lanes?: LaneView;
 }
 
 export interface ClipIdResult {
@@ -259,6 +262,7 @@ function createLoopedClipTiles({
       position: newEndTime,
       length: tempClipLength,
       silenceWavPath: context.silenceWavPath,
+      lanes: context.lanes,
     });
 
     newEndTime = currentStartTime + totalContentLength;
@@ -351,6 +355,7 @@ export function handleArrangementShortening({
     position: newEndTime,
     length: tempClipLength,
     silenceWavPath: context.silenceWavPath as string,
+    lanes: context.lanes,
     setupAudioClip: (tempClip: LiveAPI) => {
       // Re-apply warping and looping to arrangement clip
       tempClip.set("warping", 1);
@@ -366,6 +371,7 @@ interface TruncateWithTempClipArgs {
   position: number;
   length: number;
   silenceWavPath: string;
+  lanes?: LaneView;
   setupAudioClip?: ((tempClip: LiveAPI) => void) | null;
 }
 
@@ -377,6 +383,7 @@ interface TruncateWithTempClipArgs {
  * @param options.position - Position for temp clip
  * @param options.length - Length of temp clip
  * @param options.silenceWavPath - Path to silence WAV (for audio clips)
+ * @param options.lanes - The call's lanes, told what the temp clip cut into
  * @param options.setupAudioClip - Optional callback to setup audio temp clip
  */
 function truncateWithTempClip({
@@ -385,8 +392,12 @@ function truncateWithTempClip({
   position,
   length,
   silenceWavPath,
+  lanes,
   setupAudioClip = null,
 }: TruncateWithTempClipArgs): void {
+  // The temp clip is gone by the time anything looks, so say what it trimmed.
+  lanes?.wroteOnTrack(track, position, position + length);
+
   if (isAudioClip) {
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,

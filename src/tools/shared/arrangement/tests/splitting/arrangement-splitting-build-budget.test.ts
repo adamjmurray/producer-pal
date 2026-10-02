@@ -26,7 +26,7 @@ import {
   createSplittingCallMock,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
-} from "./helpers/arrangement-splitting-test-helpers.ts";
+} from "../helpers/arrangement-splitting-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
 
@@ -73,10 +73,29 @@ describe("arrangement splitting build budget", () => {
     // to carry the per-clip holding-area scan with it.
     expect(resolves("live_set tracks *")).toBe(2);
 
-    // Three per clip and no more: once for the id the caller listed, once for
-    // the single holding-area scan, once for the rescan that collects the
-    // pieces. A holding-area scan per clip would make this term quadratic.
-    expect(resolves("id *")).toBe(CLIPS * 3);
+    // Four per clip and no more: once for the id the caller listed, once for
+    // the single scan of the track (which the holding area comes from), once
+    // more when the cut trims it and its span is read again, once for the piece
+    // the rescan hands back. A scan per clip would make this term quadratic.
+    expect(resolves("id *")).toBe(CLIPS * 4);
+  });
+
+  it("builds a clip no cut touches once, for the scan, and never again", async () => {
+    const from = vi.spyOn(LiveAPI, "from");
+
+    // Only the first clip is cut. The scan that finds the holding area reads
+    // every clip on the track once; nothing after it reads the other five: no
+    // trim reached them and no piece of theirs is wanted.
+    await updateClip({ id: clipIds[0] as string, arrangementSplit: "2|1" }, {});
+
+    const untouched = clipIds.slice(2);
+
+    expect(
+      untouched.map(
+        (id) =>
+          from.mock.calls.filter(([found]) => found === `id ${id}`).length,
+      ),
+    ).toStrictEqual(untouched.map(() => 1));
   });
 
   it("builds nothing new for a listed clip no point falls inside", async () => {

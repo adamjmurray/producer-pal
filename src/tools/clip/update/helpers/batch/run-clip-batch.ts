@@ -231,6 +231,7 @@ export async function runClipBatch({
     heldBack: plan.overwrites?.nonSurvivorIds,
     landed: landedSpans(movedClipGroups),
     written: writtenSpans(movedClipGroups),
+    lanes: context.lanes,
   });
 
   skipUnmovedClips({
