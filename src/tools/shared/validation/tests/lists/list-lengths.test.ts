@@ -128,6 +128,69 @@ describe("validateListLengths", () => {
   });
 });
 
+describe("the comma hint", () => {
+  const HINT = "write it as \\,";
+
+  it("teaches \\, when a value list is the one that disagrees", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "path", count: 2 },
+        { param: "name", value: "Keys, Wet,Pad, Dry" },
+      ]),
+    ).toThrow(
+      "path names 2 entries but name names 4 entries. Comma-separated " +
+        "params must name the same number of entries, or one value that " +
+        `covers them all. To keep a comma inside a value, ${HINT}`,
+    );
+  });
+
+  it("teaches it when the value list comes first", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "name", value: "A,B,C" },
+        { param: "path", count: 2 },
+      ]),
+    ).toThrow(HINT);
+  });
+
+  // Target and path lists split at every comma, so `\,` wouldn't help them.
+  it.each([
+    [
+      "two target lists",
+      [
+        { param: "path", value: "t0,t1", target: true },
+        { param: "arrangementStart", value: "1|1,2|1,3|1", target: true },
+      ],
+    ],
+    [
+      "a path and a count",
+      [
+        { param: "toPath", value: "t0[1|1],t1[1|1]", isPath: true },
+        { param: "id", count: 3 },
+      ],
+    ],
+  ])("is left off for %s", (_, args) => {
+    expect(() => validateListLengths(args)).toThrow(
+      expect.objectContaining({
+        message: expect.not.stringContaining(HINT) as unknown,
+      }),
+    );
+  });
+
+  it("is left off requireSameLength, whose lists are paths and positions", () => {
+    expect(() =>
+      requireSameLength(
+        { param: "toPath", count: 2 },
+        { param: "arrangementStart", count: 3 },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        message: expect.not.stringContaining(HINT) as unknown,
+      }),
+    );
+  });
+});
+
 describe("requireSameLength", () => {
   it("takes counts that agree", () => {
     expect(() =>
