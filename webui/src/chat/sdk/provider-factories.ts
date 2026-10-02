@@ -12,6 +12,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
 import { isAdaptiveByDefaultModel } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
+import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
@@ -63,7 +64,7 @@ export function createProviderModel(
       return createOpenAICompatible({
         name: "lmstudio",
         apiKey: apiKey || "not-needed",
-        baseURL: baseUrl ?? "http://localhost:1234/v1",
+        baseURL: withDefaultUrl(baseUrl, "http://localhost:1234/v1"),
         // Without includeUsage the SDK omits `stream_options.include_usage`, so
         // OpenAI-compatible servers never emit a usage chunk and token counts
         // stay undefined (show as 0 in the UI).
@@ -73,7 +74,7 @@ export function createProviderModel(
     case "ollama":
       return createOpenAI({
         apiKey: apiKey || "not-needed",
-        baseURL: baseUrl ?? "http://localhost:11434/v1",
+        baseURL: withDefaultUrl(baseUrl, "http://localhost:11434/v1"),
       }).chat(modelId);
 
     case "custom": {
