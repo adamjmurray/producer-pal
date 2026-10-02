@@ -303,8 +303,10 @@ Then point an MCP client (Bionic or similar) at the globally installed command:
 }
 ```
 
-The `--small-model-mode` option should automatically enable small model mode.
-Connect and confirm `ppal-read-live-set` is called, then clean up:
+The `--small-model-mode` option enables small model mode for this client only,
+so the device's Small Model Mode checkbox won't change. Check the tool
+descriptions are the short ones instead. Connect and confirm
+`ppal-read-live-set` is called, then clean up:
 
 ```sh
 npm uninstall -g producer-pal
