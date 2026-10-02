@@ -23,13 +23,13 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers.ts";
-import { createArrangementClip } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../../../mcp-test-helpers.ts";
+import { createArrangementClip } from "../../helpers/ppal-clip-transforms-test-helpers.ts";
 import {
   arrangementClipAt,
   readClipFully,
-} from "../helpers/clip-io-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+} from "../../helpers/clip-io-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 

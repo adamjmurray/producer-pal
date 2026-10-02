@@ -3,16 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
-import {
-  type FakeAnswer,
-  type FakeRemoteScript,
-  startFakeRemoteScript,
-} from "./remote-script-test-helpers.ts";
+import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
 
 const LOAD_ARGS = {
   type: "plugin",
@@ -30,28 +25,7 @@ const HOTSWAP_ARGS = {
   expiresInMs: 5000,
 };
 
-let fake: FakeRemoteScript | undefined;
-
-beforeEach(() => {
-  registerRemoteScriptRoutes();
-});
-
-afterEach(async () => {
-  clearNodeRoutes();
-  await fake?.close();
-  fake = undefined;
-});
-
-/**
- * Start a stand-in remote script that gives every request the same answer.
- * @param answer - The answer
- * @returns The stand-in
- */
-async function answerWith(answer: FakeAnswer): Promise<FakeRemoteScript> {
-  fake = await startFakeRemoteScript(() => answer);
-
-  return fake;
-}
+const answerWith = useFakeRemoteScriptRoutes(registerRemoteScriptRoutes);
 
 describe("remoteScript.resolve", () => {
   it("looks the name up in Live's browser", async () => {

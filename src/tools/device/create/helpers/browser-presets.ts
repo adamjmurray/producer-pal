@@ -17,10 +17,10 @@ import {
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import {
-  REMOTE_SCRIPT_SETUP,
   remoteScriptExpiry,
   remoteScriptWait,
-} from "./browser-devices.ts";
+} from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import { REMOTE_SCRIPT_SETUP } from "./browser-devices.ts";
 
 /** Why nothing loads when the remote script isn't answering. */
 export const PRESET_NEEDS_REMOTE_SCRIPT = `loading a preset needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`;

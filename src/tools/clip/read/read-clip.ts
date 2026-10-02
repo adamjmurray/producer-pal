@@ -10,6 +10,7 @@ import {
 import { formatNotation } from "#src/notation/notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
@@ -21,10 +22,12 @@ import {
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   readFanOut,
   type ReadResult,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
 import {
   clipRegionBeats,
   processWarpMarkers,
@@ -116,6 +119,9 @@ export interface ReadClipResult {
   warpMode?: string;
   warpMarkers?: WarpMarker[];
 
+  /** Each automated parameter (with a `detail` when its events couldn't be read), or why there are none to report */
+  envelopes?: ClipEnvelope[] | string;
+
   /** What the read couldn't produce for this clip */
   detail?: string;
 }
@@ -131,11 +137,11 @@ export interface ReadClipResult {
  * @param context - Context object (supplies the global notation setting)
  * @returns One clip, or one entry per clip named
  */
-export function readClip(
+export async function readClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
-): ReadResult<ReadClipResult> {
-  return readFanOut(
+): Promise<ReadResult<ReadClipResult>> {
+  const result = readFanOut(
     args,
     {
       object: "clip",
@@ -144,6 +150,45 @@ export function readClip(
     },
     (one) => readNamedClip(one, context),
   );
+
+  // Envelopes are read after the fan-out, not inside it: they are the one part
+  // of a clip read that waits on the remote script, and only this tool offers
+  // them — read-track and read-scene share the per-clip read and stay sync.
+  if (parseIncludeArray(args.include, READ_CLIP_DEFAULTS).includeEnvelopes) {
+    for (const entry of Array.isArray(result) ? result : [result]) {
+      await addClipEnvelopes(entry, context.deadline);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Put one clip's automation on its own entry. Nothing here throws: a clip read
+ * that can't reach the remote script still answers with everything else.
+ * @param entry - One clip the read produced, or a target it skipped
+ * @param deadline - The request deadline from ToolContext, if any
+ */
+async function addClipEnvelopes(
+  entry: ReadClipResult | TargetSkip,
+  deadline: number | null | undefined,
+): Promise<void> {
+  if ("ok" in entry || entry.id == null) {
+    return;
+  }
+
+  const clip = LiveAPI.from(entry.id);
+
+  try {
+    entry.envelopes = await clipEnvelopes(
+      clip,
+      entry.view === "arrangement",
+      clipMeterReader(clip),
+      deadline,
+    );
+  } catch (error) {
+    entry.envelopes = errorMessage(error);
+  }
 }
 
 /**

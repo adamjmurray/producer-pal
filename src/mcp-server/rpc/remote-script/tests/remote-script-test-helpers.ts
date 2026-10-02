@@ -8,6 +8,8 @@ import http from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach } from "vitest";
+import { clearNodeRoutes } from "../../node-request-protocol.ts";
 
 /**
  * Make a throwaway directory to stand in for the User Library.
@@ -88,6 +90,31 @@ export async function startFakeRemoteScript(
         server.close(() => resolve());
       });
     },
+  };
+}
+
+/**
+ * Register the routes under test before each test; after it, clear them and
+ * close the stand-in remote script.
+ * @param register - Registers the routes under test
+ * @returns Starts a stand-in that gives every request the same answer
+ */
+export function useFakeRemoteScriptRoutes(
+  register: () => void,
+): (answer: FakeAnswer) => Promise<FakeRemoteScript> {
+  let fake: FakeRemoteScript | undefined;
+
+  beforeEach(register);
+  afterEach(async () => {
+    clearNodeRoutes();
+    await fake?.close();
+    fake = undefined;
+  });
+
+  return async (answer) => {
+    fake = await startFakeRemoteScript(() => answer);
+
+    return fake;
   };
 }
 

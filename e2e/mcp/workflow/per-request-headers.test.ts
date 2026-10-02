@@ -36,11 +36,11 @@ import {
   MCP_URL,
   parseToolResult,
   type ReadClipResult,
-  remoteScriptAnswers,
   setConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { remoteScriptAnswers } from "./helpers/server-capability-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });

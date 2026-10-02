@@ -19,8 +19,8 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+} from "../../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 

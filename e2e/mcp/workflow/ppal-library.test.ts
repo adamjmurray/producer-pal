@@ -27,10 +27,10 @@ import {
 import {
   isToolError,
   parseToolResult,
-  readLiveVersion,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { readLiveVersion } from "./helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 

@@ -20,8 +20,8 @@ import {
   type ReadClipResult,
   type SkippedTargetResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers";
-import { arrangementStartOf } from "./helpers/arrangement-start-test-helpers.ts";
+} from "../../mcp-test-helpers";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 // Use once: true since we're only reading pre-populated clips
 const ctx = setupMcpTestContext({ once: true });
