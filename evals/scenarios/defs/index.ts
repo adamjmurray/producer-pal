@@ -118,9 +118,14 @@ export {
   colorListPairing,
   duplicateDestinationPairing,
 } from "./pairing/list-pairing.ts";
+export {
+  trackListBatching,
+  trackNameCommaPairing,
+} from "./pairing/track-list-pairing.ts";
 export { pathTrackSceneAddress } from "./path/path-track-scene-address.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
 export { rackPadOps } from "./device/rack-pad-ops.ts";
+export { partialFailureHonesty } from "./result/partial-failure-honesty.ts";
 export { writeTrustSilentResult } from "./result/write-result-trust.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
