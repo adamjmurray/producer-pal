@@ -204,15 +204,16 @@ describe("ppal-clip-transforms-waveforms", () => {
   // matched, so a range ending more than one grid step past the last note stops
   // short of its end value with nothing else in the response to say so. Seven
   // 16th hats stop at 2|4.5, two steps inside a `2|3-3|1` range.
-  it("warns when a ramp's range ends past its last note", async () => {
+  it("says on the entry when a ramp's range ends past its last note", async () => {
     const clipId = await createMidiClip(46, "v100 n/16 C3 2|3x7");
-    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+    const { data, warnings } = parseToolResultWithWarnings<UpdateClipResult>(
       await applyTransform(clipId, "2|3-3|1: velocity = ramp(1, 127)"),
     );
 
-    expect(warnings.join("\n")).toContain("of the way to its end value");
-    // The warning names the position to end the range on, which is the fix.
-    expect(warnings.join("\n")).toContain("2|4.5");
+    expect(warnings).toStrictEqual([]);
+    expect(data.detail).toContain("of its end value");
+    // It names the position to end the range on, which is the fix.
+    expect(data.detail).toContain("2|4.5");
     // Every hat was transformed, and none of them reached the asked-for 127.
     expect(await readClipNotes(clipId)).not.toContain("v127");
   });
