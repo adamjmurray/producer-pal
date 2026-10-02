@@ -310,7 +310,7 @@ descriptions are the short ones instead. Connect and confirm
 
 ```sh
 npm uninstall -g producer-pal
-rm npm/producer-pal-*.tgz
+rm producer-pal-*.tgz
 cd ..
 ```
 
