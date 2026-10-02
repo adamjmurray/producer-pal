@@ -89,7 +89,6 @@ function effectOnClip(
   now: ClipSpan | undefined,
   tails: readonly ClipSpan[],
 ): string | undefined {
-  const wasAt = arrangementPositionPath(lane, was.start);
   const inside = tails.filter(
     (clip) =>
       clip.start > was.start + EPSILON && clip.start < was.end - EPSILON,
@@ -101,7 +100,7 @@ function effectOnClip(
     const rest = inside.find((clip) => Math.abs(clip.end - was.end) <= EPSILON);
 
     return rest == null
-      ? `${OVERWROTE}${wasAt}`
+      ? `${OVERWROTE}${arrangementPositionPath(lane, was.start)}`
       : `${SHORTENED}${arrangementPositionPath(lane, rest.start)}`;
   }
 
@@ -109,7 +108,7 @@ function effectOnClip(
   const tail = inside[0];
 
   if (tail != null) {
-    return `${SPLIT}${wasAt} into ${arrangementPositionPath(lane, now.start)} and ${arrangementPositionPath(lane, tail.start)}`;
+    return `${SPLIT}${arrangementPositionPath(lane, was.start)} into ${arrangementPositionPath(lane, now.start)} and ${arrangementPositionPath(lane, tail.start)}`;
   }
 
   if (

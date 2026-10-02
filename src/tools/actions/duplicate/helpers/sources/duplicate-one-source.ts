@@ -99,7 +99,7 @@ export async function duplicateEverySource(
 ): Promise<object[]> {
   const created: object[] = [];
   // Reads each arrangement lane once, so every copy can say what it overwrote.
-  const ledger = copyLedger();
+  const ledger = copyLedger(args.context.lanes);
 
   if (args.clipDestinations != null) {
     refuseClipOverwrites(args.sources, args.clipDestinations, {

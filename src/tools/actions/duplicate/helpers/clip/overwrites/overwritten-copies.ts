@@ -7,6 +7,7 @@
 // landed on top of.
 
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { claimRemainders } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { stillAtPath } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -51,8 +52,12 @@ interface ClipSlot {
  * Each copy is checked by reading its id back, not by comparing the paths the
  * call reported: a copy can be cleared by one that starts somewhere else.
  * @param createdObjects - The clip results of one call, mutated in place
+ * @param lanes - The call's lanes, so finding what a landing left needs no scan
  */
-export function markOverwrittenCopies(createdObjects: object[]): void {
+export function markOverwrittenCopies(
+  createdObjects: object[],
+  lanes?: LaneView,
+): void {
   const slots = clipSlots(createdObjects);
 
   // A lone copy has nothing in the call that could have buried it — which is
@@ -67,6 +72,7 @@ export function markOverwrittenCopies(createdObjects: object[]): void {
     spanOf: ({ entry }) => copySpan(entry),
     written: slots.flatMap(({ entry }) => copyWrite(entry) ?? []),
     taken: slots.filter((slot) => !gone.has(slot)).map(({ entry }) => entry.id),
+    lanes,
   });
 
   // A later copy can also cut the back off a copy, or split it: the id and the

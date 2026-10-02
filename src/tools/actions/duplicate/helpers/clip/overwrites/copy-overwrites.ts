@@ -5,23 +5,25 @@
 
 // What an arrangement copy did to the clips already on its lane: Live
 // overwrites, trims and splits them without a word, so the copy's own entry
-// says it (ADR-0047). One ledger serves the whole call; it reads a lane once
-// and after each copy re-reads only what the copy could have changed.
+// says it (ADR-0047). One ledger serves the whole call, over the call's lane
+// view: a lane is read once, and after each copy only what the copy could have
+// changed is read again.
 //
-// The ledger is valid only while every arrangement change since its scan went
-// through it. A copy edits clips in other ways (clearing, tiling, lengthening)
-// inside its own write, so each copy is wrapped whole: the lane is scanned
-// before the first copy to it, and read back after the copy is finished. No
-// copy in the call touches a lane between those two points.
+// A copy edits clips in other ways (clearing, tiling, lengthening) inside its
+// own write, so each copy is wrapped whole: the lane is noted before the first
+// copy to it, and read back after the copy is finished. Those edits report to
+// the same view as they go.
 //
-// A copy that waits on update-clip (lengthening one) may let another request
-// edit lanes meanwhile, so the ledger forgets every lane once it resumes and the
-// next copy scans again. Update-clip scans the lane there anyway. A copy that
-// doesn't wait on it keeps the ledger.
+// A copy that really parks on a wait (code exec, a Node round trip) may let
+// another request edit lanes meanwhile. The view drops every lane itself then,
+// and the next copy reads again.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
-import { type Reach } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import {
+  type LaneView,
+  type Reach,
+} from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { noteCopyEffects } from "../../minimal-clip-info.ts";
 
@@ -71,10 +73,11 @@ interface CopyEntry {
 /**
  * The ledger for one call's copies. A copy a later copy buries says so on its
  * own entry, so the later copy doesn't report it again.
+ * @param lanes - The call's lanes, shared with whatever else writes to them
  * @returns A new ledger
  */
-export function copyLedger(): LaneLedger {
-  return new LaneLedger({ skipOwn: true });
+export function copyLedger(lanes?: LaneView): LaneLedger {
+  return new LaneLedger({ skipOwn: true, lanes });
 }
 
 /**
@@ -154,8 +157,6 @@ export function copyClearing<T>(
  * @param reach - Everything the copy may have cleared, whether or not it landed
  * @param write - Makes the copy, in its final shape
  * @param idsOf - The ids of the clips the copy made
- * @param waits - Whether the copy waits on update-clip, so the ledger can't be
- *   trusted for the next copy
  * @returns What the copy made, and what it did to the clips that were there
  */
 export async function copyClearingAsync<T>(
@@ -164,7 +165,6 @@ export async function copyClearingAsync<T>(
   reach: Reach,
   write: () => T | Promise<T>,
   idsOf: (made: T) => string[],
-  waits: boolean,
 ): Promise<CopiedClearing<T>> {
   ledger.scan(where.lane, where.api);
 
@@ -173,22 +173,10 @@ export async function copyClearingAsync<T>(
   try {
     made = await write();
   } catch (error) {
-    const failure = failedClearing(ledger, where, reach, error);
-
-    if (waits) {
-      ledger.forgetAll();
-    }
-
-    throw failure;
+    throw failedClearing(ledger, where, reach, error);
   }
 
-  const read = readClearing(ledger, where, reach, made, idsOf);
-
-  if (waits) {
-    ledger.forgetAll();
-  }
-
-  return read;
+  return readClearing(ledger, where, reach, made, idsOf);
 }
 
 /**

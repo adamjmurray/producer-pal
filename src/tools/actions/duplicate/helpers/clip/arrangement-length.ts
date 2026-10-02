@@ -11,6 +11,11 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
+import {
+  laneViewOf,
+  trackLane,
+} from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
 import {
@@ -100,6 +105,7 @@ export async function createClipsForLength(
     const holdingStart = holdingAreaStartOnTrack(
       track,
       arrangementStartBeats + arrangementLengthBeats,
+      context,
     );
 
     const { holdingClipId } = createShortenedClipInHolding(
@@ -213,14 +219,18 @@ async function lengthenClipAndCollectInfo(
     color,
     context,
   );
-  const arrangementClipIds = track.getChildIds("arrangement_clips");
+  // Which of them are on the track comes from the call's lane view, so no clip
+  // on it is looked up but the ones asked about.
+  const onTrack = new Set(
+    laneViewOf(context)
+      .clips(trackLane(track), track)
+      .map(({ id }) => id),
+  );
 
   for (const clipObj of clipResults) {
-    const clipLiveAPI = arrangementClipIds
-      .map((id) => LiveAPI.from(id))
-      .find((c) => c.id === clipObj.id);
+    if (onTrack.has(clipObj.id)) {
+      const clipLiveAPI = LiveAPI.from(toLiveApiId(clipObj.id));
 
-    if (clipLiveAPI) {
       // The copy's entry keeps update-clip's detail but never its `ok: false`:
       // the copy was made. What the lengthening cleared is left out: the call's
       // ledger reports what the whole copy did, and the clips update-clip names

@@ -210,8 +210,6 @@ async function clearingCopy(
     copyReach(startBeats, sourceBeats, spanBeats),
     write,
     ({ copy }) => (copy == null ? [] : copiedIds(copy)),
-    // A longer copy is grown by update-clip, which waits.
-    spanBeats > sourceBeats,
   );
 
   if (cleared == null) {

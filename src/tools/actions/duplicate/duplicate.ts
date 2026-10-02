@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
@@ -113,31 +114,30 @@ interface DuplicateArgs {
  * @returns Result object(s)
  */
 export async function duplicate(
-  {
-    type,
-    id,
-    ids,
-    path,
-    paths,
-    count = 1,
-    arrangementStart,
-    locator,
-    arrangementLength,
-    name,
-    color,
-    withoutClips,
-    withoutDevices,
-    routeToSource,
-    focus,
-    toSlot,
-    toPath,
-    transforms,
-    code,
-    takeLane,
-    takeLaneName,
-  }: DuplicateArgs,
+  args: DuplicateArgs,
   context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
+  // Every arrangement write in the call, and in a tool nested in it, shares the
+  // one lane view the context carries meanwhile.
+  return await sharingLaneView(context, () => duplicateOnLanes(args, context));
+}
+
+/**
+ * One duplicate call, with the call's lane view on its context.
+ * @param args - The parameters
+ * @param context - Context object
+ * @returns Result object(s)
+ */
+async function duplicateOnLanes(
+  args: DuplicateArgs,
+  context: Partial<ToolContext>,
+): Promise<object | object[]> {
+  const { type, ids, paths, locator, arrangementLength, name, color } = args;
+  const { routeToSource, focus, toSlot, transforms, code } = args;
+  const { takeLane, takeLaneName } = args;
+  let { id, path, count = 1, arrangementStart, toPath } = args;
+  let { withoutClips, withoutDevices } = args;
+
   // A value the schema coerced from a JSON null names nothing. Counting it as
   // sent refuses the call over a param the caller deliberately left empty.
   id = namedIdParam(id, ids, "ids");
@@ -296,7 +296,7 @@ async function finishCopies(
   // Scene copies can land on each other's clips too. Session copies are left
   // out: an inserted scene shifts earlier copies, which would read as buried.
   if (type === "scene" && params.destination === "arrangement") {
-    markOverwrittenCopies(createdObjects);
+    markOverwrittenCopies(createdObjects, context.lanes);
 
     return;
   }
@@ -308,7 +308,7 @@ async function finishCopies(
   // A copy can land on one an earlier copy in this call just made. Say so in
   // that copy's own entry, before anything downstream spends an id that now
   // names nothing.
-  markOverwrittenCopies(createdObjects);
+  markOverwrittenCopies(createdObjects, context.lanes);
 
   // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
   if (params.transforms != null || params.code != null) {

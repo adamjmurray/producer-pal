@@ -72,8 +72,11 @@ export function registerStackingTrack(lengths: number[]): string[] {
     methods: {
       duplicate_clip_to_arrangement: (sourceId, start) => {
         const [sourceStart, sourceEnd] = laneClipSpan(bareId(sourceId));
+        const id = writeLaneClip(start as number, sourceEnd - sourceStart);
 
-        return ["id", writeLaneClip(start as number, sourceEnd - sourceStart)];
+        inheritLoop(bareId(sourceId), id);
+
+        return ["id", id];
       },
       create_midi_clip: (start, length) => [
         "id",
@@ -96,6 +99,31 @@ export function registerStackingTrack(lengths: number[]): string[] {
 
     return id;
   });
+}
+
+/** What makes a clip tile when it is lengthened, and a copy keeps. */
+const LOOP_PROPERTIES = [
+  "looping",
+  "loop_start",
+  "loop_end",
+  "start_marker",
+  "end_marker",
+] as const;
+
+/**
+ * Give a copy the loop of the clip it was made from, when that has one.
+ * @param sourceId - The clip copied
+ * @param copyId - The copy
+ */
+function inheritLoop(sourceId: string, copyId: string): void {
+  const source = lookupMockObject(sourceId)?.properties ?? {};
+  const copy = lookupMockObject(copyId)?.properties ?? {};
+
+  for (const name of LOOP_PROPERTIES) {
+    if (source[name] !== undefined) {
+      copy[name] = source[name];
+    }
+  }
 }
 
 /**

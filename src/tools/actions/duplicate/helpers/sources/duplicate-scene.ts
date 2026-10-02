@@ -317,8 +317,6 @@ async function copyTrackClip(
       copyReach(startBeats, clipLengthBeats(clip), lengthBeats),
       write,
       (clips) => clips.flatMap(copiedIds),
-      // A longer copy is grown by update-clip, which waits.
-      lengthBeats > clipLengthBeats(clip),
     );
 
     return { clips: made, ...(cleared != null && { cleared }) };

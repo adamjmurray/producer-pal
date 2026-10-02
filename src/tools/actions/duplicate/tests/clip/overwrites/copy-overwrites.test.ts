@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   clearMockRegistry,
@@ -23,6 +24,16 @@ import {
   noteCleared,
 } from "#src/tools/actions/duplicate/helpers/clip/overwrites/copy-overwrites.ts";
 import { copyEffectsOf } from "#src/tools/actions/duplicate/helpers/minimal-clip-info.ts";
+
+/**
+ * A promise that parks the request the way a Node round trip does, which lets
+ * another request run.
+ * @param value - What it settles with, or a promise to follow
+ * @returns The promise
+ */
+function parked<T>(value: T | Promise<T>): Promise<T> {
+  return suspendWarningCapture(Promise.resolve(value));
+}
 
 describe("copyReach", () => {
   it("runs from the start to the longest span", () => {
@@ -136,7 +147,6 @@ describe("a copy that throws", () => {
         { start: 0, end: 8 },
         () => Promise.reject(new Error("no clip")),
         () => [],
-        false,
       ),
     ).rejects.toThrow("no clip");
     expect(rescans(ledger, where)).toBe(true);
@@ -157,31 +167,38 @@ describe("a copy that throws", () => {
     expect(rescans(ledger, where)).toBe(false);
   });
 
-  it("forgets every lane after a copy that waited, and only then", async () => {
+  it("reads the lane again after a copy that really waited, and only then", async () => {
     const ledger = copyLedger();
     const where = mainLaneOf(0, LiveAPI.from(livePath.track(0)));
 
-    const copy = async (waits: boolean): Promise<void> => {
+    /**
+     * Run a copy, and say whether the lane's clip was read while it ran.
+     * @param waits - Whether the copy parks on a wait that lets another request run
+     * @returns Whether the clip was read
+     */
+    const copyReads = async (waits: boolean): Promise<boolean> => {
+      clip.get.mockClear();
+      // Past the clip on the lane, so the copy itself reads nothing.
       await copyClearingAsync(
         ledger,
         where,
-        { start: 0, end: 8 },
-        () => Promise.resolve("made"),
+        { start: 100, end: 108 },
+        () => (waits ? parked("made") : Promise.resolve("made")),
         () => [],
-        waits,
       );
+
+      return clip.get.mock.calls.length > 0;
     };
 
-    await copy(false);
+    // The first copy reads the lane; a copy that doesn't wait keeps what it has.
+    await copyReads(false);
 
+    expect(await copyReads(false)).toBe(false);
+    expect(await copyReads(true)).toBe(true);
     expect(rescans(ledger, where)).toBe(false);
-
-    await copy(true);
-
-    expect(rescans(ledger, where)).toBe(true);
   });
 
-  it("forgets every lane after a failed copy that waited, and only then", async () => {
+  it("forgets every lane after a failed copy that really waited, and only then", async () => {
     registerMockObject("other-clip", {
       path: livePath.track(1).arrangementClip(0),
       type: "Clip",
@@ -205,9 +222,11 @@ describe("a copy that throws", () => {
           ledger,
           other,
           { start: 0, end: 8 },
-          () => Promise.reject(new Error("no clip")),
+          () =>
+            waits
+              ? parked(Promise.reject(new Error("no clip")))
+              : Promise.reject(new Error("no clip")),
           () => [],
-          waits,
         ),
       ).rejects.toThrow("no clip");
       results.push(rescans(ledger, where));
