@@ -20,9 +20,9 @@ for await (const part of result.fullStream) {
 }
 ```
 
-All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
-through this single code path via provider-specific model factories in
-`provider-factories.ts`.
+All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Vercel AI
+Gateway, Ollama) go through this single code path via provider-specific model
+factories in `provider-factories.ts`.
 
 **Locked Settings:**
 

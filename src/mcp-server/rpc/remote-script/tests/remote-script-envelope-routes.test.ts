@@ -3,16 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
-import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "../remote-script-envelope-routes.ts";
-import {
-  type FakeAnswer,
-  type FakeRemoteScript,
-  startFakeRemoteScript,
-} from "./remote-script-test-helpers.ts";
+import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
 
 const PARAMETER = {
   name: "Volume",
@@ -25,28 +20,9 @@ const PARAMETER = {
   automation_state: 0,
 };
 
-let fake: FakeRemoteScript | undefined;
-
-beforeEach(() => {
-  registerRemoteScriptEnvelopeRoutes();
-});
-
-afterEach(async () => {
-  clearNodeRoutes();
-  await fake?.close();
-  fake = undefined;
-});
-
-/**
- * Start a stand-in remote script that gives every request the same answer.
- * @param answer - The answer
- * @returns The stand-in
- */
-async function answerWith(answer: FakeAnswer): Promise<FakeRemoteScript> {
-  fake = await startFakeRemoteScript(() => answer);
-
-  return fake;
-}
+const answerWith = useFakeRemoteScriptRoutes(
+  registerRemoteScriptEnvelopeRoutes,
+);
 
 describe("remoteScript.envelope.list", () => {
   it("forwards the clip and hands back what the remote script listed", async () => {

@@ -27,7 +27,8 @@ export type EvalProvider =
   | "google"
   | "local"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "vercel";
 
 /**
  * A test scenario that runs against Ableton Live

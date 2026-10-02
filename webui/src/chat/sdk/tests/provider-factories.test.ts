@@ -59,6 +59,16 @@ describe("createProviderModel", () => {
     expect(getModelId(model)).toBe("claude-3.5-sonnet");
   });
 
+  it("creates a model for vercel provider", () => {
+    const model = createProviderModel(
+      "vercel",
+      "anthropic/claude-sonnet-5.5",
+      "key",
+    );
+
+    expect(getModelId(model)).toBe("anthropic/claude-sonnet-5.5");
+  });
+
   it("creates a model for mistral provider", () => {
     const model = createProviderModel("mistral", "mistral-large", "key");
 

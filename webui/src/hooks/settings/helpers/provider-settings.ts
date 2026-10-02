@@ -55,6 +55,11 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     model: DEFAULT_MODELS.openrouter,
     thinking: "Default",
   },
+  vercel: {
+    apiKey: "",
+    model: DEFAULT_MODELS.vercel,
+    thinking: "Default",
+  },
   lmstudio: {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
@@ -245,6 +250,7 @@ export interface AllProviderSettings {
   openai: ProviderSettings;
   mistral: ProviderSettings;
   openrouter: ProviderSettings;
+  vercel: ProviderSettings;
   lmstudio: ProviderSettings;
   ollama: ProviderSettings;
   custom: ProviderSettings;
@@ -307,6 +313,7 @@ export function isValidProvider(value: unknown): value is Provider {
  * @param {ProviderSettings} openai - OpenAI settings
  * @param {ProviderSettings} mistral - Mistral settings
  * @param {ProviderSettings} openrouter - OpenRouter settings
+ * @param {ProviderSettings} vercel - Vercel AI Gateway settings
  * @param {ProviderSettings} lmstudio - LM Studio settings
  * @param {ProviderSettings} ollama - Ollama settings
  * @param {ProviderSettings} custom - Custom provider settings
@@ -318,6 +325,7 @@ export function buildAllProviderSettings(
   openai: ProviderSettings,
   mistral: ProviderSettings,
   openrouter: ProviderSettings,
+  vercel: ProviderSettings,
   lmstudio: ProviderSettings,
   ollama: ProviderSettings,
   custom: ProviderSettings,
@@ -328,6 +336,7 @@ export function buildAllProviderSettings(
     openai,
     mistral,
     openrouter,
+    vercel,
     lmstudio,
     ollama,
     custom,

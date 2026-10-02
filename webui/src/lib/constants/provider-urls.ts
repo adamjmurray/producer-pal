@@ -12,6 +12,7 @@ export const API_KEY_URLS: Record<string, string | undefined> = {
   openai: "https://platform.openai.com/api-keys",
   mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
   openrouter: "https://openrouter.ai/settings/keys",
+  vercel: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys",
 };
 
 export const MODEL_DOCS_URLS: Record<string, string | undefined> = {
@@ -20,6 +21,7 @@ export const MODEL_DOCS_URLS: Record<string, string | undefined> = {
   openai: "https://platform.openai.com/docs/models",
   mistral: "https://docs.mistral.ai/getting-started/models",
   openrouter: "https://openrouter.ai/models",
+  vercel: "https://vercel.com/ai-gateway/models",
   lmstudio: "https://lmstudio.ai/models",
   ollama: "https://ollama.com/search",
 };

@@ -9,12 +9,8 @@ import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { type LanguageModel } from "ai";
-import {
-  isAlwaysOnThinkingModel,
-  isLegacyNonThinkingModel,
-  isLegacyThinkingModel,
-} from "#webui/hooks/settings/config-builders";
+import { createGateway, type LanguageModel } from "ai";
+import { isAdaptiveByDefaultModel } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 
 /**
@@ -24,7 +20,7 @@ import { type Provider } from "#webui/types/settings";
  * local reasoning models emit as thinking; `@ai-sdk/openai`'s chat model
  * silently drops it). Ollama stays on `@ai-sdk/openai` because its thinking
  * control rides on the `openai` providerOptions namespace. OpenRouter uses its
- * own SDK; Gemini uses `@ai-sdk/google`.
+ * own SDK; Gemini uses `@ai-sdk/google`; Vercel AI Gateway uses `ai`'s own.
  *
  * @param provider - Producer Pal provider identifier
  * @param modelId - Model identifier string
@@ -56,6 +52,9 @@ export function createProviderModel(
         apiKey,
         fetch: transformOpenRouterRequest,
       }).chat(modelId);
+
+    case "vercel":
+      return createGateway({ apiKey })(modelId);
 
     case "mistral":
       return createMistral({ apiKey })(modelId);
@@ -187,9 +186,7 @@ function shouldForceThinkingDisabled(body: AnthropicRequestBody): boolean {
   return (
     body.thinking == null &&
     typeof body.model === "string" &&
-    !isLegacyThinkingModel(body.model) &&
-    !isAlwaysOnThinkingModel(body.model) &&
-    !isLegacyNonThinkingModel(body.model)
+    isAdaptiveByDefaultModel(body.model)
   );
 }
 

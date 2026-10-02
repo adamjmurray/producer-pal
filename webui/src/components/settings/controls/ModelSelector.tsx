@@ -16,6 +16,7 @@ const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   openai: "e.g., gpt-6-luna",
   mistral: "e.g., ministral-14b-latest",
   openrouter: "e.g., openai/gpt-6-luna",
+  vercel: "e.g., openai/gpt-6-luna",
   ollama: "e.g., qwen3.8",
   lmstudio: "", // Not used (has dedicated input)
   custom: "", // Not used (has dedicated input)

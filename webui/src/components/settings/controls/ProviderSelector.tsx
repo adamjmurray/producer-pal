@@ -37,6 +37,7 @@ export function ProviderSelector({
         <option value="gemini">Google</option>
         <option value="mistral">Mistral</option>
         <option value="openrouter">OpenRouter</option>
+        <option value="vercel">Vercel AI Gateway</option>
         {/* Browsers without <hr> in <select> support just skip it */}
         <hr />
         <option value="ollama">Ollama (local)</option>

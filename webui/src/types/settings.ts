@@ -15,6 +15,7 @@ import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-d
  * - OpenAI
  * - Mistral (OpenAI-compatible)
  * - OpenRouter (OpenAI-compatible)
+ * - Vercel AI Gateway
  * - LM Studio (local OpenAI-compatible)
  * - Ollama (local OpenAI-compatible)
  * - Custom (any OpenAI-compatible provider)
@@ -27,6 +28,7 @@ export type Provider =
   | "openai"
   | "mistral"
   | "openrouter"
+  | "vercel"
   | "lmstudio"
   | "ollama"
   | "custom";

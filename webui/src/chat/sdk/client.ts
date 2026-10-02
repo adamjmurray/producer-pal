@@ -615,6 +615,7 @@ function isAbortError(error: unknown): boolean {
  * namespace). Reasoning re-emission therefore does not run for OpenRouter; its
  * cache prefix is stabilized separately by transformOpenRouterRequest. This is an
  * intended asymmetry, not a missed case — don't "fix" it by widening the check.
+ * The Vercel gateway forwards `anthropic` options as-is, so it does re-emit.
  * @param providerOptions - Provider options passed to streamText
  * @returns True when Anthropic thinking is enabled for this request
  */
@@ -622,10 +623,10 @@ function isAnthropicThinkingEnabled(
   providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
 ): boolean {
   const anthropic = providerOptions?.anthropic as
-    | { thinking?: unknown }
+    | { thinking?: { type?: string } }
     | undefined;
 
-  return anthropic?.thinking != null;
+  return anthropic?.thinking != null && anthropic.thinking.type !== "disabled";
 }
 
 /**
