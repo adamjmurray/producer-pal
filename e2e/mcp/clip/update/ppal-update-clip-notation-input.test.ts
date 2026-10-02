@@ -66,4 +66,16 @@ describe("ppal-update-clip bar|beat parse errors", () => {
 
     expect(await readClipNotes(clipId)).toBe(before);
   });
+
+  it("keeps the whole position in the spaced-pipe fix", async () => {
+    const clipId = await createMidiClip(3, "C3 1|1");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, notes: "E3 1 | 1x4@n/4,3.5" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("write 1|1x4@n/4,3.5");
+  });
 });

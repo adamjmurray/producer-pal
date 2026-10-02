@@ -84,6 +84,76 @@ describe("bar|beat syntax errors", () => {
     expect(errorFor("C3 1| 1")).toContain("write 1|1");
   });
 
+  // Every position form from dev/specs/barbeat: the fix keeps all of it.
+  it.each([
+    ["C3 1 | 1-n/4", "1|1-n/4"],
+    ["C3 1 |1,2,3", "1|1,2,3"],
+    ["C3 1 | 1.5", "1|1.5"],
+    ["C3 1 | 1.5+n/4", "1|1.5+n/4"],
+    ["C3 1 | 2+n/12", "1|2+n/12"],
+    ["C3 2| 1x4", "2|1x4"],
+    ["C3 1 | 1x4@n/4", "1|1x4@n/4"],
+    ["C3 1 | 1x3@n/12", "1|1x3@n/12"],
+    ["C3 1 | 1x4@1bar", "1|1x4@1bar"],
+    ["C3 1 | 1x3@1bar-n/4", "1|1x3@1bar-n/4"],
+    ["C3 1 | 2+n/12x3@n/12", "1|2+n/12x3@n/12"],
+    ["C3 1 | 1x4@n/4,3.5", "1|1x4@n/4,3.5"],
+    ["C3 1 | 1x2@n/4,3x2@n/8", "1|1x2@n/4,3x2@n/8"],
+    ["C3 1 | 1, 2, 3", "1|1, 2, 3"],
+    ["C3 1 | 1,2,", "1|1,2,"],
+    ["C3 1 | 1,2|3", "1|1,2|3"],
+    ["C3 1 | 1, 2 | 3", "1|1, 2|3"],
+    ["C3 1 | 1 v80", "1|1"],
+  ])("%s → suggests the whole position: %s", (notes, fixed) => {
+    const message = errorFor(notes);
+
+    expect(message).toContain(`write ${fixed}, not "`);
+    expect(() =>
+      parseNotation(notes.replaceAll(/\s*\|\s*/g, "|")),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ["C3 1|1,2 | 3", '"1|1,2 | 3"', "write 1|1,2|3,"],
+    ["C3 1|1, 2 | 3", '"1|1, 2 | 3"', "write 1|1, 2|3,"],
+    ["C3 1|1,2 |3", '"1|1,2 |3"', "write 1|1,2|3,"],
+    ["C3 1|1,2| 3", '"1|1,2| 3"', "write 1|1,2|3,"],
+    ["C3 1|1x4@n/4,3 | 2", '"1|1x4@n/4,3 | 2"', "write 1|1x4@n/4,3|2,"],
+    ["C3 2|1 D3 1|1,2 | 3 v80", '"1|1,2 | 3"', "write 1|1,2|3,"],
+  ])(
+    "%s → spaced pipe after a position keeps the whole position",
+    (notes, was, fix) => {
+      const message = errorFor(notes);
+
+      expect(message).toContain(fix);
+      expect(message).toContain(was);
+      expect(() =>
+        parseNotation(notes.replaceAll(/\s*\|\s*/g, "|")),
+      ).not.toThrow();
+    },
+  );
+
+  it("names no fix for a spaced pipe that has no single fix", () => {
+    expect(errorFor("C3 1|1 | 3")).not.toContain("no spaces");
+    expect(errorFor("C3 | 1")).not.toContain("no spaces");
+    expect(errorFor("v80 | 1|1")).not.toContain("no spaces");
+  });
+
+  it("never suggests an invalid position for a spaced beat 0", () => {
+    const hint = "beats are 1-indexed: the downbeat is beat 1";
+
+    expect(errorFor("C3 1 | 0")).toContain(hint);
+    expect(errorFor("C3 1 |0.5")).toContain(hint);
+    expect(errorFor("C3 1 | 0")).not.toContain("write 1|0");
+  });
+
+  it("keeps the beat's own error behind a spaced pipe", () => {
+    expect(errorFor("C3 1 | 1+2")).toContain("beat offsets use the note-value");
+    expect(errorFor("C3 1 | 1-2|1")).toContain(
+      "a position is a single bar|beat",
+    );
+  });
+
   it("keeps the MIDI-number steer when no beat follows the pipe", () => {
     expect(errorFor("C3 1 | C3")).toContain("not MIDI numbers. Got 1.");
   });

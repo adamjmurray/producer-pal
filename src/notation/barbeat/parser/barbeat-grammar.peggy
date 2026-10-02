@@ -405,16 +405,16 @@ badZeroBeat
       throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text().replace(/\.$/, "")}.`);
     }
 
-// Last resort for a digit-led element that is neither a position (no `|`) nor a
-// duration (no `bar`): a position with spaces around its pipe (`1 | 1`), a
-// `bar.beat`/`bar:beat` written with the wrong separator, or a raw MIDI number
-// used as a pitch. The spaced pipe goes first, since `1 | 1` would otherwise
-// read as the MIDI number 1. Ordered last in `element` so every real
-// element wins first; raises a fix-suggesting error in place of peggy's generic
-// "Expected …". Never returns a value.
+// Last resort for a digit-led element: a position with spaces around a pipe
+// (`1 | 1`), `bar.beat`/`bar:beat`, or a raw MIDI number. The spaced pipe must
+// come before the MIDI branch, which would read `1 | 1` as the number 1. It
+// parses the whole position so the fix keeps all of it, and a bad beat
+// (`1 | 0`) raises its own error rather than a fix that wouldn't parse. Never
+// returns a value.
 badNumericToken
-  = bar:$([1-9] [0-9]*) before:$[ \t]* "|" after:$[ \t]* beat:$([1-9] [0-9]* ("." [0-9]*)?) &{ return before !== "" || after !== ""; } {
-      throw new Error(`no spaces around the pipe in a position: write ${bar}|${beat}, not "${text()}".`);
+  = pos:$(oneOrMoreInt hs "|" hs spacedBeatList) &{ return /[ \t]\||\|[ \t]/.test(pos); } {
+      const fixed = pos.replace(/[ \t]*\|[ \t]*/g, "|");
+      throw new Error(`no spaces around the pipe in a position: write ${fixed}, not "${pos}".`);
     }
   / unsignedInt ("." / ":") unsignedInt {
       throw new Error(`positions use a pipe: bar|beat (e.g. 1|1), not "." or ":". Got ${text()}.`);
@@ -422,6 +422,14 @@ badNumericToken
   / unsignedInt &(WS / !.) {
       throw new Error(`use note names like C3 (middle C) for pitches, not MIDI numbers. Got ${text()}.`);
     }
+
+// `beatList`, but a later item's own `bar|` may also have spaces around its pipe.
+spacedBeatList
+  = beatSpec (hs "," hs spacedBeatItem)* (hs ",")?
+
+spacedBeatItem
+  = oneOrMoreInt hs "|" hs beatSpec
+  / beatSpec
 
 unsignedMixedNumber
   = wholeNumber:unsignedInt "+" fraction:unsignedFraction {

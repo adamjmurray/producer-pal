@@ -46,6 +46,7 @@ const CHECKS: MistakeCheck[] = [
   negativeBeat,
   missingBeat,
   badPositionSuffix,
+  spacedPipe,
   detachedToken,
   badBarCopy,
   commaBetweenItems,
@@ -177,6 +178,53 @@ function badPositionSuffix(line: FailedLine): string | null {
   return /^[+-]/.test(rest)
     ? "a beat offset is +n<fraction> or -n<fraction>, e.g. 1|1+n/12 = beat 1 + an eighth triplet."
     : null;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a spaced pipe after a valid position start (`1|1,2 | 3`,
+ *   `1|1,2| 3`), when removing the spaces around it makes the line parse. Goes
+ *   before `detachedToken`, which would quote only the last word.
+ */
+function spacedPipe(line: FailedLine): string | null {
+  const { line: text, head, rest, tokenStart } = line;
+  const pipe = tokenStart + head.length;
+  const before = text.slice(0, pipe).trimEnd();
+  const after = text.slice(pipe + 1).trimStart();
+
+  if (!rest.startsWith("|") || before === "") {
+    return null;
+  }
+
+  const start = positionStart(before);
+
+  if (start == null || !fixParses(parse, `${before}|${after}`)) {
+    return null;
+  }
+
+  const word = firstWord(after).replace(/,$/, "");
+  const end = text.length - after.length + word.length;
+
+  return `no spaces around the pipe in a position: write ${before.slice(start)}|${word}, not "${text.slice(start, end)}".`;
+}
+
+/**
+ * @param before - The line up to a pipe, trailing space removed
+ * @returns Where the position the pipe belongs to starts, or null
+ */
+function positionStart(before: string): number | null {
+  let start: number | null = null;
+  let afterComma = false;
+
+  for (const word of before.matchAll(/\S+/g)) {
+    if (!afterComma && /^[1-9]\d*\|/.test(word[0])) {
+      start = word.index;
+    }
+
+    afterComma = word[0].endsWith(",");
+  }
+
+  return start;
 }
 
 /**
