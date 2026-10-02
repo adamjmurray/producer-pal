@@ -117,6 +117,37 @@ describe("remoteScript.envelope.read", () => {
   });
 });
 
+describe("remoteScript.envelope failures", () => {
+  it("words a dropped connection for clip automation, not Live's browser", async () => {
+    await answerWith({ drop: true });
+
+    expect(
+      await dispatchNodeRoute(ENVELOPE_ROUTES.write, {
+        track: "t0",
+        slot: 0,
+        points: [{ time: 0, value: 0 }],
+      }),
+    ).toStrictEqual({
+      success: false,
+      error: "the Producer Pal remote script did not answer in time",
+    });
+  });
+
+  it("names the remote script when a failed reply gives no error", async () => {
+    await answerWith({ status: 500, body: {} });
+
+    expect(
+      await dispatchNodeRoute(ENVELOPE_ROUTES.list, { track: "t0", slot: 0 }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: "the Producer Pal remote script answered with status 500",
+      },
+    });
+  });
+});
+
 describe("remoteScript.envelope.write", () => {
   it("forwards the points", async () => {
     const points = [

@@ -49,12 +49,14 @@ type ListedEnvelope = EnvelopeListResult["envelopes"][number];
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether the clip is in the arrangement
  * @param clipMeter - Getter for the clip's meter, which spells the event times
+ * @param deadline - The request deadline from ToolContext, if any
  * @returns One entry per automated parameter, or why there are none to report
  */
 export async function clipEnvelopes(
   clip: LiveAPI,
   isArrangementClip: boolean,
   clipMeter: () => { numerator: number; denominator: number },
+  deadline?: number | null,
 ): Promise<ClipEnvelope[] | string> {
   if (isArrangementClip) {
     return ARRANGEMENT_CLIP_NOTE;
@@ -71,6 +73,7 @@ export async function clipEnvelopes(
   const listed = await envelopeRoute<EnvelopeListResult>(
     ENVELOPE_ROUTES.list,
     target,
+    deadline,
   );
 
   if (!listed.ok) {
@@ -80,11 +83,15 @@ export async function clipEnvelopes(
   const envelopes: ClipEnvelope[] = [];
 
   for (const entry of listed.result.envelopes) {
-    const read = await envelopeRoute<EnvelopeReadResult>(ENVELOPE_ROUTES.read, {
-      ...target,
-      ...parameterTarget(entry),
-      limit: MAX_ENVELOPE_EVENTS,
-    });
+    const read = await envelopeRoute<EnvelopeReadResult>(
+      ENVELOPE_ROUTES.read,
+      {
+        ...target,
+        ...parameterTarget(entry),
+        limit: MAX_ENVELOPE_EVENTS,
+      },
+      deadline,
+    );
 
     if (!read.ok) {
       return read.reason;

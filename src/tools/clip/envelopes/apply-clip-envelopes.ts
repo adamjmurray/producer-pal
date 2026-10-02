@@ -44,10 +44,12 @@ interface ClipAddress {
  * the entry, and the lines after it still run.
  * @param entry - The clip's result entry, written to
  * @param lines - The `envelopes` param, already read into lines
+ * @param deadline - The request deadline from ToolContext, if any
  */
 export async function applyClipEnvelopes(
   entry: ClipResult | undefined,
   lines: readonly EnvelopeLine[] | undefined,
+  deadline?: number | null,
 ): Promise<void> {
   if (entry == null || lines == null) {
     return;
@@ -70,36 +72,44 @@ export async function applyClipEnvelopes(
     return;
   }
 
-  await writeEachLine(entry, lines, {
-    trackIndex,
-    slot,
-    timeSigNumerator: clip.getProperty("signature_numerator") as number,
-    timeSigDenominator: clip.getProperty("signature_denominator") as number,
-    endBeats: Math.max(
-      clip.getProperty("loop_end") as number,
-      clip.getProperty("end_marker") as number,
-    ),
-  });
+  await writeEachLine(
+    entry,
+    lines,
+    {
+      trackIndex,
+      slot,
+      timeSigNumerator: clip.getProperty("signature_numerator") as number,
+      timeSigDenominator: clip.getProperty("signature_denominator") as number,
+      endBeats: Math.max(
+        clip.getProperty("loop_end") as number,
+        clip.getProperty("end_marker") as number,
+      ),
+    },
+    deadline,
+  );
 }
 
 // --- Helpers below main exports ---
 
 /**
- * Write the lines one at a time, stopping only when the remote script turns out
- * not to be there at all.
+ * Write the lines one at a time, stopping when the remote script turns out not
+ * to be there, or when it stops answering or the request runs out of time: the
+ * next line would stall the same way.
  * @param entry - The clip's result entry, written to
  * @param lines - The `envelopes` param, already read into lines
  * @param address - The clip the lines write to, and its meter
+ * @param deadline - The request deadline, if any
  */
 async function writeEachLine(
   entry: ClipResult,
   lines: readonly EnvelopeLine[],
   address: ClipAddress,
+  deadline: number | null | undefined,
 ): Promise<void> {
   let written = 0;
 
-  for (const line of lines) {
-    const outcome = await writeOneLine(line, address);
+  for (const [index, line] of lines.entries()) {
+    const outcome = await writeOneLine(line, address, deadline);
 
     if (outcome.ok) {
       written += 1;
@@ -117,6 +127,11 @@ async function writeEachLine(
       return;
     }
 
+    if (outcome.stalled != null) {
+      reportStalled(entry, outcome, line, lines.slice(index + 1));
+      break;
+    }
+
     appendDetail(entry, `envelope "${line.target}": ${outcome.reason}`);
   }
 
@@ -124,17 +139,64 @@ async function writeEachLine(
 }
 
 /**
+ * Say where a stalled write stopped, and which lines it left alone.
+ * @param entry - The clip's result entry, written to
+ * @param outcome - The failed route call
+ * @param line - The line that stalled
+ * @param rest - The lines after it, none of them sent
+ */
+function reportStalled(
+  entry: ClipResult,
+  outcome: Extract<RouteOutcome<unknown>, { ok: false }>,
+  line: EnvelopeLine,
+  rest: readonly EnvelopeLine[],
+): void {
+  if (outcome.stalled === "out-of-time") {
+    appendDetail(
+      entry,
+      `${outcome.reason}; envelopes not written, re-run for ${named([line, ...rest])}`,
+    );
+
+    return;
+  }
+
+  appendDetail(
+    entry,
+    `envelope "${line.target}": ${outcome.reason}; ${line.notation === "" ? "it may still have been cleared" : "its points may still have landed"}`,
+  );
+
+  if (rest.length > 0) {
+    appendDetail(
+      entry,
+      `envelopes not written, since the next would wait the same way: ${named(rest)}`,
+    );
+  }
+}
+
+/**
+ * Quote each line's target, for a detail.
+ * @param lines - The lines to name
+ * @returns The targets, comma-separated
+ */
+function named(lines: readonly EnvelopeLine[]): string {
+  return lines.map(({ target }) => `"${target}"`).join(", ");
+}
+
+/**
  * Write or clear one parameter's envelope.
  * @param line - The line to apply
  * @param address - The clip it writes to, and its meter
+ * @param deadline - The request deadline, if any
  * @returns Whether it landed, and why it didn't when it didn't
  */
 async function writeOneLine(
   line: EnvelopeLine,
   address: ClipAddress,
+  deadline: number | null | undefined,
 ): Promise<RouteOutcome<unknown> & { note?: string }> {
   const { trackIndex, slot } = address;
   let request;
+  let points;
 
   try {
     request = {
@@ -142,6 +204,9 @@ async function writeOneLine(
       slot,
       ...envelopeTarget(line.target, trackIndex),
     };
+    // The up-front check parsed in 4/4; this clip's meter can still refuse it.
+    points =
+      line.notation === "" ? [] : parseEnvelopeNotation(line.notation, address);
   } catch (error) {
     return { ok: false, reason: errorMessage(error), available: true };
   }
@@ -150,10 +215,10 @@ async function writeOneLine(
     return await envelopeRoute<EnvelopeClearResult>(
       ENVELOPE_ROUTES.clear,
       request,
+      deadline,
     );
   }
 
-  const points = parseEnvelopeNotation(line.notation, address);
   const outcome = await envelopeRoute<EnvelopeWriteResult>(
     ENVELOPE_ROUTES.write,
     {
@@ -164,6 +229,7 @@ async function writeOneLine(
         ...(point.jump && { jump: true }),
       })),
     },
+    deadline,
   );
 
   return outcome.ok

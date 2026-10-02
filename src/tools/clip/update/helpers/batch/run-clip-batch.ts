@@ -202,6 +202,7 @@ export async function runClipBatch({
       reasons,
       code: args.code,
       envelopeLines,
+      deadline,
     });
 
     const results = updatedClips.slice(written);
@@ -389,10 +390,17 @@ async function processClipUpdateStep(
   params: ProcessSingleClipUpdateParams & {
     code?: string;
     envelopeLines?: EnvelopeLine[];
+    deadline: number | null;
   },
 ): Promise<string | null> {
-  const { code, envelopeLines, clipIndex, clipCount, ...processParams } =
-    params;
+  const {
+    code,
+    envelopeLines,
+    deadline,
+    clipIndex,
+    clipCount,
+    ...processParams
+  } = params;
   const prevLen = params.updatedClips.length;
 
   try {
@@ -406,7 +414,11 @@ async function processClipUpdateStep(
     );
     // Last, and on the entry the rest of the update settled on: a move
     // re-creates the clip under a new id.
-    await applyClipEnvelopes(params.updatedClips[prevLen], envelopeLines);
+    await applyClipEnvelopes(
+      params.updatedClips[prevLen],
+      envelopeLines,
+      deadline,
+    );
 
     return null;
   } catch (error) {

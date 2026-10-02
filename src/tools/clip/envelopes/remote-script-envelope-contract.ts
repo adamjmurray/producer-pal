@@ -13,6 +13,10 @@ export {
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 
+/** What a caller is told when the remote script gave no answer at all. */
+export const REMOTE_SCRIPT_UNANSWERED =
+  "the Producer Pal remote script did not answer in time";
+
 /** The Node routes V8 calls to reach the remote script's envelope routes. */
 export const ENVELOPE_ROUTES = {
   list: "remoteScript.envelope.list",

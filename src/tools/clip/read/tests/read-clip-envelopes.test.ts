@@ -303,7 +303,21 @@ describe("readClip - envelopes", () => {
     setupClip();
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
-    expect(await readEnvelopes()).toBe("the remote script went unanswered");
+    expect(await readEnvelopes()).toBe(
+      "the Producer Pal remote script did not answer in time",
+    );
+  });
+
+  it("sends nothing once the request deadline has passed", async () => {
+    setupClip();
+
+    const clip = (await readClip(
+      { path: "t0/s1", include: ["envelopes"] },
+      { deadline: Date.now() - 1 },
+    )) as ReadClipResult;
+
+    expect(clip.envelopes).toBe("the request ran out of time");
+    expect(requestNode).not.toHaveBeenCalled();
   });
 
   it("keeps reading the clip when the channel throws", async () => {

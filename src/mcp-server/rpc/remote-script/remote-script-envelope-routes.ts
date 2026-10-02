@@ -7,10 +7,14 @@ import {
   ENVELOPE_ROUTES,
   type EnvelopeReply,
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
+  REMOTE_SCRIPT_UNANSWERED,
 } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
-import { remoteScriptRequest, replyError } from "./remote-script-client.ts";
+import {
+  type RemoteScriptReply,
+  remoteScriptRequest,
+} from "./remote-script-client.ts";
 
 /** The V8-side name of each param the remote script spells differently. */
 const BODY_KEYS: Record<string, string> = {
@@ -46,24 +50,41 @@ export function registerRemoteScriptEnvelopeRoutes(): void {
  * @param args - The route args, in V8's spelling
  * @returns The remote script's JSON, an error worded for the model, or
  *   `available: false` when nothing answered
+ * @throws Error when the remote script took the request but never answered
  */
 async function forwardEnvelopeRequest(
   name: string,
   args: unknown,
 ): Promise<EnvelopeReply<Record<string, unknown>>> {
-  const reply = await remoteScriptRequest({
-    method: "POST",
-    route: `/envelope/${name}`,
-    body: envelopeBody(args),
-  });
+  const body = envelopeBody(args);
+  let reply: RemoteScriptReply;
+
+  try {
+    reply = await remoteScriptRequest({
+      method: "POST",
+      route: `/envelope/${name}`,
+      body,
+    });
+  } catch {
+    // The client words this for the browser routes, not for clip automation.
+    throw new Error(REMOTE_SCRIPT_UNANSWERED);
+  }
 
   if (!reply.available) {
     return { available: false };
   }
 
-  return reply.status === 200
-    ? { available: true, result: reply.body }
-    : { available: true, error: replyError(reply) };
+  if (reply.status === 200) {
+    return { available: true, result: reply.body };
+  }
+
+  return {
+    available: true,
+    error:
+      typeof reply.body.error === "string"
+        ? reply.body.error
+        : `the Producer Pal remote script answered with status ${reply.status}`,
+  };
 }
 
 /**

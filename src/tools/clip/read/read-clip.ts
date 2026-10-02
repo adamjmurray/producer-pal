@@ -156,7 +156,7 @@ export async function readClip(
   // them — read-track and read-scene share the per-clip read and stay sync.
   if (parseIncludeArray(args.include, READ_CLIP_DEFAULTS).includeEnvelopes) {
     for (const entry of Array.isArray(result) ? result : [result]) {
-      await addClipEnvelopes(entry);
+      await addClipEnvelopes(entry, context.deadline);
     }
   }
 
@@ -167,9 +167,11 @@ export async function readClip(
  * Put one clip's automation on its own entry. Nothing here throws: a clip read
  * that can't reach the remote script still answers with everything else.
  * @param entry - One clip the read produced, or a target it skipped
+ * @param deadline - The request deadline from ToolContext, if any
  */
 async function addClipEnvelopes(
   entry: ReadClipResult | TargetSkip,
+  deadline: number | null | undefined,
 ): Promise<void> {
   if ("ok" in entry || entry.id == null) {
     return;
@@ -182,6 +184,7 @@ async function addClipEnvelopes(
       clip,
       entry.view === "arrangement",
       clipMeterReader(clip),
+      deadline,
     );
   } catch (error) {
     entry.envelopes = errorMessage(error);

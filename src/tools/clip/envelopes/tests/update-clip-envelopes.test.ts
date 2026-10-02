@@ -6,7 +6,7 @@
 // update-clip's `envelopes` param, the one part of a clip write that goes out
 // to the Producer Pal remote script.
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -234,6 +234,107 @@ describe("updateClip - envelopes", () => {
       expect.objectContaining({
         envelopes: 1,
         detail: 'envelope "volume": value 5 is outside 0..1',
+      }),
+    );
+  });
+
+  it("words a stalled round trip for the caller, and stops sending", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: false,
+      error:
+        "node_request 'remoteScript.envelope.write' timed out after 45000ms",
+    });
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: `volume: ${NOTATION}\n${FILTER_ID}: ${NOTATION}\npan: ${NOTATION}`,
+    });
+
+    expect(requestNode).toHaveBeenCalledTimes(1);
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 0,
+        detail:
+          'envelope "volume": the Producer Pal remote script did not answer in time; its points may still have landed; envelopes not written, since the next would wait the same way: "472", "pan"',
+      }),
+    );
+  });
+
+  it("says a stalled clear may still have happened", async () => {
+    vi.mocked(requestNode).mockResolvedValue({ success: false });
+
+    const result = await updateClip({ id: "123", envelopes: "volume:" });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail:
+          'envelope "volume": the Producer Pal remote script did not answer in time; it may still have been cleared',
+      }),
+    );
+  });
+
+  describe("at the request deadline", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("waits no longer than the time left, and sends nothing once it's gone", async () => {
+      const deadline = Date.now() + 1000;
+
+      setupMidiClipMock(mocks.clip123, { loop_end: 16, end_marker: 16 });
+      vi.mocked(requestNode).mockImplementation(async () => {
+        vi.setSystemTime(deadline + 1);
+
+        return { success: true, result: { available: true, result: {} } };
+      });
+
+      const result = await updateClip(
+        {
+          id: "123",
+          envelopes: `volume: ${NOTATION}\n${FILTER_ID}: ${NOTATION}\npan: ${NOTATION}`,
+        },
+        { deadline },
+      );
+
+      expect(requestNode).toHaveBeenCalledTimes(1);
+      expect(requestNode).toHaveBeenCalledWith(
+        ENVELOPE_ROUTES.write,
+        expect.anything(),
+        1000,
+      );
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 1,
+          detail:
+            'the request ran out of time; envelopes not written, re-run for "472", "pan"',
+        }),
+      );
+    });
+  });
+
+  it("reports a line the clip's own meter can't parse, and writes the rest", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      signature_numerator: 3,
+      signature_denominator: 4,
+    });
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: `volume: 1|5 0 ~ 2|1 1\npan: 1|1 0 ~ 2|1 1`,
+    });
+
+    expect(requestNode).toHaveBeenCalledTimes(1);
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "123",
+        envelopes: 1,
+        detail: expect.stringContaining(
+          'envelope "volume": Envelope points must run forwards in time',
+        ) as string,
       }),
     );
   });
