@@ -25,7 +25,6 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   DRUM_LOOP_8BAR_FILE,
-  parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
@@ -40,6 +39,7 @@ import {
   moveOffTakeLane,
   readClipFully,
   updateClip,
+  readNoteDicts,
 } from "../helpers/clip-io-test-helpers.ts";
 import {
   AUDIO_TRACK,
@@ -120,7 +120,7 @@ describe("arrangement clip moved to another lane", () => {
 
     await writeOneMutedNote(source.id);
 
-    const before = await noteDicts(source.id);
+    const before = await readNoteDicts(ctx.client!, source.id);
 
     expect(before).toHaveLength(1);
     expect(before[0]!.mute).toBe(1);
@@ -132,7 +132,7 @@ describe("arrangement clip moved to another lane", () => {
 
     expect(moved.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
 
-    const after = await noteDicts(moved.id!);
+    const after = await readNoteDicts(ctx.client!, moved.id!);
 
     expect(after[0]!.mute).toBe(1);
     expect(after[0]!.release_velocity).toBe(77);
@@ -623,32 +623,4 @@ async function writeOneMutedNote(clipId: string): Promise<void> {
   });
 
   await sleep(100);
-}
-
-/**
- * A clip's notes as Live reports them, minus the note_id it assigns itself.
- * @param clipId - The clip's Live API id
- * @returns One dictionary per note, in Live's own shape
- */
-async function noteDicts(
-  clipId: string,
-): Promise<Array<Record<string, number>>> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-live-api",
-    arguments: {
-      path: `id ${clipId}`,
-      operations: [
-        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
-      ],
-    },
-  });
-
-  const [raw] = parseToolResult<{
-    results: Array<{ result: string }>;
-  }>(result).results;
-  const { notes } = JSON.parse(raw!.result) as {
-    notes: Array<Record<string, number>>;
-  };
-
-  return notes.map(({ note_id: _noteId, ...note }) => note);
 }

@@ -216,5 +216,5 @@ function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
 function ignoredLength(options: CopyOptions): string | undefined {
   return options.arrangementLength == null
     ? undefined
-    : "arrangementLength ignored: a re-created copy uses the source clip's length";
+    : "arrangementLength ignored: a re-created copy keeps the source clip's arrangement length";
 }

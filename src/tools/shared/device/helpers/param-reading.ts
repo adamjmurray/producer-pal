@@ -7,6 +7,7 @@
 // Import from there directly instead of through this file
 
 import {
+  looseLabelKey,
   parseLabel,
   strForValue,
   unitForLabels,
@@ -33,17 +34,32 @@ export const AUTOMATION_STATE_MAP: Record<number, string> = {
 };
 
 /**
- * Format parameter name, appending original_name if different (e.g. for rack macros).
+ * A param's name without the padding Live puts on some (Operator's "A Fix On "),
+ * so the name read is the name a caller can send back.
+ * @param paramApi - LiveAPI parameter object
+ * @returns The trimmed name
+ */
+export function trimmedParamName(paramApi: LiveAPI): string {
+  return paramApi.getName().trim();
+}
+
+/**
+ * Format parameter name, appending original_name if different (e.g. for rack
+ * macros). A blank name (an unnamed macro) formats as the original name alone.
  * @param paramApi - LiveAPI parameter object
  * @returns Formatted name like "Reverb (Macro 1)" or just "Device On"
  */
-function formatParamName(paramApi: LiveAPI): string {
-  const name = paramApi.getName();
+export function formatParamName(paramApi: LiveAPI): string {
+  const name = trimmedParamName(paramApi);
   const rawOriginalName = paramApi.getProperty("original_name") as
     | string
     | number
     | undefined;
-  const originalName = String(rawOriginalName ?? "");
+  const originalName = String(rawOriginalName ?? "").trim();
+
+  if (name === "") {
+    return originalName;
+  }
 
   return originalName !== name ? `${name} (${originalName})` : name;
 }
@@ -62,13 +78,14 @@ export function isPanLabel(label: string): boolean {
 }
 
 /**
- * Check if a label is a division fraction format (e.g., "1/8", "1/16").
- * Live spaces the slash on some params ("1 / 16") and not on others.
+ * Check if a label is a division fraction format (e.g., "1/8", "1/16"), with
+ * the "d"/"t" of a dotted or triplet rate ("1/4d", "1/8t") allowed. Live spaces
+ * the slash on some params ("1 / 16") and not on others.
  * @param label - Display label
  * @returns True if label is a division fraction
  */
 export function isDivisionLabel(label: string): boolean {
-  return typeof label === "string" && /^1\s*\/\s*\d+$/.test(label);
+  return typeof label === "string" && /^1\s*\/\s*\d+\s*[dt]?$/i.test(label);
 }
 
 /**
@@ -84,13 +101,14 @@ export function isDivisionParam(...labels: string[]): boolean {
 }
 
 /**
- * A division label with its spacing removed, so "1 / 16" and "1/16" compare
- * equal. Whatever a caller writes has to match a label Live produced.
+ * A division label with spacing and case removed, so "1 / 16" and "1/16", or
+ * "4 D" and "4d", compare equal. Whatever a caller writes has to match a label
+ * Live produced.
  * @param label - Display label
- * @returns The label with all whitespace stripped
+ * @returns The label to compare divisions by
  */
 export function normalizeDivisionLabel(label: string): string {
-  return label.replaceAll(/\s+/g, "");
+  return looseLabelKey(label);
 }
 
 /**

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { trimmedParamName } from "../../helpers/param-reading.ts";
 import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
   enumParam,
@@ -252,7 +253,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
       );
 
       if (isModulatable === 1) {
-        modulatableParameters.push(String(param.getProperty("name")));
+        modulatableParameters.push(trimmedParamName(param));
       }
     }
 

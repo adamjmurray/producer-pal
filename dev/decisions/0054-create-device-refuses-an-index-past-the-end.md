@@ -1,4 +1,4 @@
-# ADR-0053: create-device refuses an index past the end
+# ADR-0054: create-device refuses an index past the end
 
 - **Status:** Accepted
 - **Date logged:** 2026-09-30

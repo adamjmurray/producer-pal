@@ -24,7 +24,7 @@ import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   getClipNoteCount,
   rawNotesToCopiedNotes,
-  readAllClipNotes,
+  readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 import {
@@ -119,11 +119,11 @@ export function handleNoteUpdates(
 
   // Read the same window as read-clip, so a pickup before the clip start is
   // carried into the merge. Copied whole, so a note the call doesn't touch is
-  // written back exactly as it was, mute and release velocity included.
-  const rawExistingNotes = readAllClipNotes(clip);
+  // written back exactly as it was. Muted notes sit out and are put back.
+  const { visible, muted } = readClipNotes(clip);
   const { notes: existingNotes, outcome: preOutcome } =
     applyPreTransformsToExisting(
-      rawNotesToCopiedNotes(rawExistingNotes),
+      rawNotesToCopiedNotes(visible),
       preTransformString,
       timeSigNumerator,
       timeSigDenominator,
@@ -152,13 +152,15 @@ export function handleNoteUpdates(
     clipContext,
   );
 
-  // Remove all notes and add new notes. Dedupe same-pitch+start collisions
-  // (new wins — new notes follow the existing ones in the combined array) then
-  // sort ascending by start_time so Live resolves every same-pitch overlap by
-  // truncation instead of deleting the earlier write. See note-sort.ts.
+  // Dedupe same-pitch+start collisions (new wins, over a muted note too), then
+  // sort by start so Live truncates same-pitch overlaps instead of deleting the
+  // earlier write. See note-sort.ts.
   removeAllClipNotes(clip);
 
-  const { notes: mergedNotes, collisions } = dedupeAndSortNotes(notes);
+  const { notes: mergedNotes, collisions } = dedupeAndSortNotes(
+    notes,
+    rawNotesToCopiedNotes(muted),
+  );
 
   if (mergedNotes.length > 0) {
     clip.call("add_new_notes", { notes: mergedNotes });

@@ -1,4 +1,4 @@
-# ADR-0054: A bad transform argument is refused up front
+# ADR-0055: A bad transform argument is refused up front
 
 - **Status:** Accepted
 - **Date logged:** 2026-09-30

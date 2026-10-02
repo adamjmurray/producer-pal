@@ -50,7 +50,7 @@ merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merg
 **A call with the wrong arguments is refused up front** — the whole call fails
 before any clip is touched, because the text is wrong the same way for every
 clip (see
-[ADR-0054](../../decisions/0054-a-bad-transform-argument-is-refused-up-front.md)).
+[ADR-0055](../../decisions/0055-a-bad-transform-argument-is-refused-up-front.md)).
 Argument counts count only positional args — the trailing `sync`/`raw` keywords
 are not arguments. An argument that uses a note or clip variable or a random
 function can't be judged until the transform runs; it is reported on the clip

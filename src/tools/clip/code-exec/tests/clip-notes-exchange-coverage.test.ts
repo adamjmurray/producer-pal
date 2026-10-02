@@ -28,7 +28,7 @@ describe("applyNotesToClip dropped duplicates", () => {
     return {
       mockClip: {
         getProperty: vi.fn().mockReturnValue(4),
-        call: vi.fn(),
+        call: vi.fn(() => JSON.stringify({ notes: [] })),
       } as unknown as LiveAPI,
     };
   }

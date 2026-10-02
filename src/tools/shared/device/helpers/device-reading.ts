@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
-import { readParameter, readParameterBasic } from "./param-reading.ts";
+import {
+  readParameter,
+  readParameterBasic,
+  trimmedParamName,
+} from "./param-reading.ts";
 import { processDrumPads } from "./drum-pads-from-chains.ts";
 import { buildChainInfo } from "./chain-info.ts";
 import { buildChainPath, buildReturnChainPath } from "./path/insertion-path.ts";
@@ -380,7 +384,7 @@ export function readDeviceParameters(
     const searchLower = search.toLowerCase().trim();
 
     parameters = parameters.filter((p) =>
-      p.getName().toLowerCase().includes(searchLower),
+      trimmedParamName(p).toLowerCase().includes(searchLower),
     );
   }
 

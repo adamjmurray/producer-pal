@@ -25,6 +25,7 @@ import {
   takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
 import {
   canRecreateClip,
   PartialRecreateError,
@@ -576,12 +577,16 @@ function copyClipToLane(
 
   try {
     const copy = recreateClip(clip, lane, startBeats, name, color, clipLosses);
+    // A changed length is this clip's own to report, not the lane's.
+    const lengthChange = clipLosses.filter(isSpanLoss);
 
     for (const loss of clipLosses) {
-      losses.add(loss);
+      if (!isSpanLoss(loss)) {
+        losses.add(loss);
+      }
     }
 
-    return getMinimalClipInfo(copy);
+    return getMinimalClipInfo(copy, lengthChange.join("; ") || undefined);
   } catch (error) {
     if (error instanceof PartialRecreateError) {
       return getMinimalClipInfo(

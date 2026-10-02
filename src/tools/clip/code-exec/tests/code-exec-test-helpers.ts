@@ -11,12 +11,15 @@ interface MockClip {
   call: Mock;
 }
 
+const EMPTY_NOTES = JSON.stringify({ notes: [] });
+
 /**
  * Create a clip mock whose getProperty returns the same value for every
  * property (both `signature_denominator` and `length` in these tests), except
  * the region, which runs from 0 to that value.
  * @param propertyValue - Value returned by getProperty, and the region's end
- * @param callReturn - Optional value returned by every call() (e.g. notes JSON)
+ * @param callReturn - Optional value returned by every call() (e.g. notes JSON).
+ *   Without it, get_notes_extended answers an empty clip
  * @returns The clip mock
  */
 export function createMockClip(
@@ -27,7 +30,12 @@ export function createMockClip(
     getProperty: vi.fn((prop: string) =>
       prop === "start_marker" || prop === "loop_start" ? 0 : propertyValue,
     ),
-    call: callReturn == null ? vi.fn() : vi.fn().mockReturnValue(callReturn),
+    call:
+      callReturn == null
+        ? vi.fn((method: string) =>
+            method === "get_notes_extended" ? EMPTY_NOTES : undefined,
+          )
+        : vi.fn().mockReturnValue(callReturn),
   };
 }
 

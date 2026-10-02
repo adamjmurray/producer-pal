@@ -1,4 +1,4 @@
-# ADR-0052: Enum values are kebab-case; old spellings stay as hidden aliases
+# ADR-0053: Enum values are kebab-case; old spellings stay as hidden aliases
 
 - **Status:** Accepted
 - **Date logged:** 2026-09-30

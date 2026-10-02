@@ -172,7 +172,22 @@ describe("isDivisionLabel spacing", () => {
   );
 });
 
+describe("isDivisionLabel dotted and triplet rates", () => {
+  it.each(["1/4d", "1/8t", "1 / 16 D", "1/32T"])("accepts '%s'", (label) => {
+    expect(isDivisionLabel(label)).toBe(true);
+  });
+
+  it.each(["4d", "1/4x", "1/4dd"])("rejects '%s'", (label) => {
+    expect(isDivisionLabel(label)).toBe(false);
+  });
+});
+
 describe("isDivisionParam", () => {
+  it("sees a dotted or triplet fraction at the max end", () => {
+    // Analog's sync rate runs "4d".."1/32t", so it is a ladder at any value.
+    expect(isDivisionParam("4d", "4d", "1/32t")).toBe(true);
+  });
+
   it("sees a fraction at the max end", () => {
     // Sync ladders run from bar counts to fractions ("8".."1/64"), so the
     // current value and the minimum are both bare numbers.
@@ -188,6 +203,12 @@ describe("normalizeDivisionLabel", () => {
   it("makes a written '1/16' match a label Live spaced as '1 / 16'", () => {
     expect(normalizeDivisionLabel("1 / 16")).toBe(
       normalizeDivisionLabel("1/16"),
+    );
+  });
+
+  it("keeps '1 1/16' apart from the label '11  / 16'", () => {
+    expect(normalizeDivisionLabel("1 1/16")).not.toBe(
+      normalizeDivisionLabel("11  / 16"),
     );
   });
 });
@@ -573,6 +594,39 @@ describe("resolveEnumIndex", () => {
 
     it("matches a decimal bare-k label", () => {
       expect(resolveEnumIndex(["44.1k", "48k"], 48000, "48k")).toBe(1);
+    });
+  });
+
+  describe("a unit written with different spacing than the label", () => {
+    it.each([
+      ["12 dB", 12, 0],
+      ["24 DB", 24, 1],
+      ["24", 24, 1],
+      ["12dB", 12, 0],
+    ])("matches %s on a no-space dB list", (written, normalized, index) => {
+      expect(resolveEnumIndex(["12dB", "24dB"], normalized, written)).toBe(
+        index,
+      );
+    });
+
+    it("matches a spaced unit on a four-option slope", () => {
+      const slope = ["6dB", "12dB", "24dB", "48dB"];
+
+      expect(resolveEnumIndex(slope, 6, "6 dB")).toBe(0);
+      expect(resolveEnumIndex(slope, 36, "36")).toBe(-1);
+    });
+
+    it("matches a number across kHz and Hz", () => {
+      expect(resolveEnumIndex(["400 Hz", "800 Hz"], 0.8, "0.8 kHz")).toBe(1);
+      expect(resolveEnumIndex(["1000 Hz", "1100 Hz"], 1.1, "1.1 kHz")).toBe(1);
+    });
+
+    it("refuses a spaced number in a different unit", () => {
+      expect(resolveEnumIndex(["12dB", "24dB"], 24, "24 ms")).toBe(-1);
+    });
+
+    it("refuses a spaced unit that matches several options", () => {
+      expect(resolveEnumIndex(["1000 Hz", "1.0 kHz"], 1, "1 khz")).toBe(-1);
     });
   });
 });

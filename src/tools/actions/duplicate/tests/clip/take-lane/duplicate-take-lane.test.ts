@@ -174,7 +174,7 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         detail: expect.stringContaining(
-          "arrangementLength ignored: a re-created copy uses the source clip's length",
+          "arrangementLength ignored: a re-created copy keeps the source clip's arrangement length",
         ),
       }),
     );

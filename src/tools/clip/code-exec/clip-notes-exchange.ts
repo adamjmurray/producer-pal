@@ -11,8 +11,9 @@ import {
 } from "#src/notation/midi-json/midi-json-note.ts";
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import {
-  readAllClipNotes,
+  rawNotesToCopiedNotes,
   rawNotesToNoteEvents,
+  readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 import { type CodeNote } from "./code-exec-types.ts";
@@ -29,24 +30,28 @@ export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
   ) as number;
   // Read the same window as read-clip, so user code sees a pickup before the
   // clip start too.
-  const notes = rawNotesToNoteEvents(readAllClipNotes(clip));
+  // Muted notes are hidden, as in read-clip; applyNotesToClip keeps them.
+  const notes = rawNotesToNoteEvents(readClipNotes(clip).visible);
 
   return notes.map((note) => noteEventToCodeNote(note, timeSigDenominator));
 }
 
 /**
- * Apply notes to a clip, replacing all existing notes.
+ * Apply notes to a clip, replacing all its visible notes. Muted notes are
+ * hidden from user code, so they stay in the clip as they were.
  *
  * @param clip - LiveAPI clip object
  * @param notes - Array of notes in code-facing format
  * @returns How many same-pitch+start duplicates were dropped
  */
 export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): number {
-  // Remove all existing notes (same window readAllClipNotes/read-clip use, so a
+  const { muted } = readClipNotes(clip);
+
+  // Remove all existing notes (same window readClipNotes/read-clip use, so a
   // pickup before the clip start is cleared too — never orphaned outside it).
   removeAllClipNotes(clip);
 
-  if (notes.length === 0) {
+  if (notes.length === 0 && muted.length === 0) {
     return 0;
   }
 
@@ -59,8 +64,10 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): number {
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
+  // Muted notes go under, so a user note at the same pitch+start replaces one.
   const { notes: noteEvents, collisions } = dedupeAndSortNotes(
     notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
+    rawNotesToCopiedNotes(muted),
   );
 
   clip.call("add_new_notes", { notes: noteEvents });

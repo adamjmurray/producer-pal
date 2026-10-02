@@ -249,6 +249,41 @@ describe("updateDevice - param conversion discriminators", () => {
       expect(expectValueSet(param)).toBe(index);
     });
 
+    it.each([
+      ["12 dB", 0],
+      ["24 DB", 1],
+      ["24", 1],
+      ["12dB", 0],
+    ])("writes %s on labels with no space before the unit", (value, index) => {
+      const param = registerEnum(["12dB", "24dB"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Slope", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("writes 0.8 kHz on an 800 Hz label", () => {
+      const param = registerEnum(["400 Hz", "800 Hz"]);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Slope", value: "0.8 kHz" }],
+      });
+
+      expect(expectValueSet(param)).toBe(1);
+    });
+
+    it.each(["36", "24 ms"])("refuses %s on labels with no space", (value) => {
+      registerEnum(["12dB", "24dB"]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Filter Slope", value }],
+        }),
+      ).toThrow(`"${value}" is not valid. Options: 12dB, 24dB`);
+    });
+
     it("writes a bare-k label as written", () => {
       const param = registerEnum(["1k", "2k", "4k"]);
 
@@ -273,6 +308,49 @@ describe("updateDevice - param conversion discriminators", () => {
         ).toThrow(`"${value}" is not valid. Options: 12 dB, 24 dB`);
       },
     );
+  });
+
+  describe("enum labels written with different case, spacing or hyphens", () => {
+    function registerEnum(items: string[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Filter Type",
+          original_name: "Filter Type",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["Lowpass", 0],
+      ["low pass", 0],
+      ["High pass", 1],
+      ["Band - pass", 2],
+    ])("writes %s", (value, index) => {
+      const param = registerEnum(["Low-pass", "High-pass", "Band-pass"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Type", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("refuses text that fits two options equally", () => {
+      registerEnum(["Low-pass", "Low pass"]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Filter Type", value: "Lowpass" }],
+        }),
+      ).toThrow('"Lowpass" is not valid. Options: Low-pass, Low pass');
+    });
   });
 
   describe("pan max value comes from the display labels, not the 50 fallback", () => {

@@ -457,7 +457,7 @@ describe("take lanes", () => {
     );
 
     expect(lengthDup.data.detail).toContain(
-      "arrangementLength ignored: a re-created copy uses the source clip's length",
+      "arrangementLength ignored: a re-created copy keeps the source clip's arrangement length",
     );
     expect(lengthDup.warnings).toStrictEqual([]);
     expect(lengthDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[9|1]`);

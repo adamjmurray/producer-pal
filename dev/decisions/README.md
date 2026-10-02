@@ -116,6 +116,7 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list         |
 | [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                  |
 | [0051](0051-a-write-that-did-nothing-says-so.md)                   | A write that did nothing says so                                      |
-| [0052](0052-enum-values-are-kebab-case.md)                         | Enum values are kebab-case; old spellings stay as hidden aliases      |
-| [0053](0053-create-device-refuses-an-index-past-the-end.md)        | create-device refuses an index past the end, as update-device does    |
-| [0054](0054-a-bad-transform-argument-is-refused-up-front.md)       | A bad transform argument is refused up front                          |
+| [0052](0052-muted-notes-are-hidden-and-left-alone.md)              | Muted notes are hidden and left alone                                 |
+| [0053](0053-enum-values-are-kebab-case.md)                         | Enum values are kebab-case; old spellings stay as hidden aliases      |
+| [0054](0054-create-device-refuses-an-index-past-the-end.md)        | create-device refuses an index past the end, as update-device does    |
+| [0055](0055-a-bad-transform-argument-is-refused-up-front.md)       | A bad transform argument is refused up front                          |

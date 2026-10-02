@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { trimmedParamName } from "../../helpers/param-reading.ts";
 import { coerceInt } from "../specialized-param-access.ts";
 import { type ActionOutcome } from "../specialized-device-types.ts";
 
@@ -15,7 +16,8 @@ import { type ActionOutcome } from "../specialized-device-types.ts";
 // Sources are addressed by name (MOD_SOURCES, in matrix column order, verified
 // against Live 12.4's UI) or a bare index 0-12 — no LOM property exposes them.
 // Targets are keyed by PARAMETER NAME (get_modulation_target_parameter_name),
-// not display label (visible_modulation_target_names).
+// not display label (visible_modulation_target_names). Live pads some names
+// ("Osc 1 Pos "), so every name is trimmed before it is compared or reported.
 
 // Modulation sources in matrix column order (index = sourceIndex 0-12).
 export const MOD_SOURCES = [
@@ -43,7 +45,8 @@ const MAX_TARGETS = 512;
 
 /**
  * Resolve the target index for a named parameter in the modulation matrix.
- * Matching is case-insensitive and trims whitespace: LLMs case-mangle names.
+ * Matching is case-insensitive and trims whitespace on both sides: LLMs
+ * case-mangle names, and Live pads some.
  * @param device - LiveAPI device object
  * @param target - Parameter name to find
  * @returns Target index (0-based), or -1 if not found
@@ -59,7 +62,7 @@ export function resolveTargetIndex(device: LiveAPI, target: string): number {
       break;
     }
 
-    if (typeof name === "string" && name.toLowerCase() === needle) {
+    if (typeof name === "string" && name.trim().toLowerCase() === needle) {
       return i;
     }
   }
@@ -69,7 +72,7 @@ export function resolveTargetIndex(device: LiveAPI, target: string): number {
 
 /**
  * Find a DeviceParameter child by name (checks getProperty("name") on each).
- * Matching is case-insensitive and trims surrounding whitespace.
+ * Matching is case-insensitive and trims whitespace on both sides.
  * @param device - LiveAPI device object
  * @param name - Parameter name to find
  * @returns The matching LiveAPI parameter, or undefined
@@ -81,9 +84,7 @@ export function findParamChild(
   const needle = name.trim().toLowerCase();
   const children = device.getChildren("parameters");
 
-  return children.find(
-    (p) => String(p.getProperty("name")).toLowerCase() === needle,
-  );
+  return children.find((p) => trimmedParamName(p).toLowerCase() === needle);
 }
 
 /**
@@ -226,7 +227,7 @@ export function readModulations(device: LiveAPI): unknown[] {
         // s is bounded by SOURCE_COUNT, so MOD_SOURCES[s] is always defined.
         const source = MOD_SOURCES[s] as string;
 
-        result.push({ target: String(name), source, amount: v });
+        result.push({ target: String(name).trim(), source, amount: v });
       }
     }
   }

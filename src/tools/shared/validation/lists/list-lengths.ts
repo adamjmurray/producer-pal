@@ -16,6 +16,9 @@ import { plural } from "./plural.ts";
  * starts.
  */
 
+/** Added when a value list was split at a comma its caller may have meant as text. */
+const ESCAPE_HINT = " To keep a comma inside a value, write it as \\,";
+
 /** One list param, as the caller sent it. */
 export interface ListArg {
   /** The param name, for the error message. */
@@ -68,6 +71,10 @@ export function validateListLengths(args: ListArg[]): void {
       noun: arg.noun ?? "entry",
       count: entryCount(arg),
       isList: isList(arg),
+      // Only a value list splits at `\,`; a target or path list splits at
+      // every comma, so the hint would be wrong for it.
+      escapable:
+        arg.count == null && arg.isPath !== true && arg.target !== true,
     }))
     .filter((list) => list.isList);
 
@@ -87,7 +94,7 @@ export function validateListLengths(args: ListArg[]): void {
     `${first.param} names ${plural(first.count, first.noun)} but ` +
       `${odd.param} names ${plural(odd.count, odd.noun)}. Comma-separated ` +
       `params must name the same number of entries, or one value that ` +
-      `covers them all.`,
+      `covers them all.${first.escapable || odd.escapable ? ESCAPE_HINT : ""}`,
   );
 }
 

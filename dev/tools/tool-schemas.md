@@ -208,7 +208,7 @@ Live owns keep Live's spelling: scale and view names, quantize grids like
 Renaming a value leaves the old spelling as a hidden alias: `aliasedEnum()`
 publishes only the new values, and a call using an old one validates and reaches
 the handler as the new one. No refusal, no warning. Don't rename a value without
-one. See ADR-0052.
+one. See ADR-0053.
 
 ```typescript
 source: aliasedEnum(["sample-folder", "user"], {

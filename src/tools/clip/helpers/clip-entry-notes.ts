@@ -20,10 +20,14 @@ export function droppedDuplicatesNote(count: number): string | null {
 /**
  * What to say when a transform was sent for a clip with no notes to change.
  * @param sent - The transform params that were sent, e.g. `["transforms"]`
+ * @param hasMuted - Whether the clip has muted notes, which edits leave alone
  * @returns The note for the clip's entry
  */
-export function transformsIgnoredNoNotesNote(sent: string[]): string {
-  return `${sent.join("/")} ignored: the clip has no notes`;
+export function transformsIgnoredNoNotesNote(
+  sent: string[],
+  hasMuted = false,
+): string {
+  return `${sent.join("/")} ignored: the clip has ${hasMuted ? "only muted notes, which edits leave alone" : "no notes"}`;
 }
 
 /**
