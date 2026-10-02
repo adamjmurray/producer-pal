@@ -62,13 +62,7 @@ export function RemoteScriptTab() {
 
       <p data-testid="remote-script-status">{summarize(status)}</p>
 
-      {/* Keyed on the detected path: a Refresh that finally finds the User
-          Library has to reach the field, which holds its own edits. */}
-      <InstallForm
-        key={status.userLibrary ?? ""}
-        status={status}
-        remote={remote}
-      />
+      <InstallForm status={status} remote={remote} />
 
       {status.installed && (
         <EnableSteps
@@ -175,7 +169,10 @@ interface InstallFormProps {
  */
 function InstallForm({ status, remote }: InstallFormProps) {
   const detected = status.userLibrary;
-  const [path, setPath] = useState(detected ?? "");
+  // Null until the user edits, so a Refresh that finds the User Library reaches
+  // the field without ever overwriting a typed path.
+  const [typed, setTyped] = useState<string | null>(null);
+  const path = typed ?? detected ?? "";
 
   return (
     <div className="space-y-2">
@@ -189,7 +186,7 @@ function InstallForm({ status, remote }: InstallFormProps) {
         data-testid="remote-script-path"
         type="text"
         value={path}
-        onInput={(e) => setPath((e.target as HTMLInputElement).value)}
+        onInput={(e) => setTyped((e.target as HTMLInputElement).value)}
         className={inputClass}
       />
       {detected == null && (
@@ -205,7 +202,7 @@ function InstallForm({ status, remote }: InstallFormProps) {
         onClick={() => remote.install(path.trim())}
         className={buttonClass}
       >
-        {installLabel(status, remote.installing)}
+        {installLabel(status, remote.installing, path.trim() === detected)}
       </button>
 
       {remote.installError != null && (
@@ -229,17 +226,23 @@ function InstallForm({ status, remote }: InstallFormProps) {
 }
 
 /**
- * Text for the install button.
+ * Text for the install button. The status describes only the detected User
+ * Library, so any other path is a plain "Install".
  * @param status - The server's remote-script status
  * @param installing - Whether an install is in flight
+ * @param isDetectedPath - Whether the field holds the detected User Library
  * @returns The button label
  */
-function installLabel(status: RemoteScriptStatus, installing: boolean): string {
+function installLabel(
+  status: RemoteScriptStatus,
+  installing: boolean,
+  isDetectedPath: boolean,
+): string {
   if (installing) {
     return "Installing…";
   }
 
-  if (!status.installed) {
+  if (!status.installed || !isDetectedPath) {
     return "Install";
   }
 
