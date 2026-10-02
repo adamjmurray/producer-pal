@@ -401,8 +401,9 @@ export function evaluateTransform(
 }
 
 /**
- * Parse a transform string, returning the AST. Throws on parse errors, and on a
- * mistake in the text that is the same for every clip (see checkTransformArgs).
+ * Parse a transform string, returning the AST. Throws on parse errors and on a
+ * bad argument (see checkTransformArgs for which refuse the call and which fail
+ * only the clips whose meter makes them bad).
  * @param transformString - Transform expression string
  * @param timeSigDenominator - Time signature denominator; converts `±n`
  *   beat-position offsets in a `timeRange` to musical beats during the parse

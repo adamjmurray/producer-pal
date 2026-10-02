@@ -9,6 +9,7 @@ import {
 } from "./helpers/functions/function-arity.ts";
 import { checkNoteOpArgs } from "./helpers/note-ops/note-op-arg-checks.ts";
 import {
+  argError,
   evaluateNumericArg,
   isConstantExpression,
 } from "./helpers/note-ops/numeric-op-arg.ts";
@@ -19,17 +20,22 @@ import {
   type TransformStatement,
 } from "./parser/transform-parser.ts";
 import { AUDIO_PARAMETERS } from "./transform-clip-type.ts";
-
-/** A mistake in the transform text that is the same for every clip. */
-export class TransformArgError extends Error {
-  override name = "TransformArgError";
-}
+import {
+  MeterDependentArgError,
+  TransformArgError,
+} from "./helpers/note-ops/transform-arg-errors.ts";
 
 /**
- * Throw for a mistake in the transform text that is the same for every clip: a
- * duplicate selector, a pitch name used as a number, a note op with the wrong
- * arguments, a `curve()` exponent that is not above 0. Callers run this as part
- * of parsing, so the whole call is refused before any clip is touched.
+ * Throw for a mistake in the transform text: a duplicate selector, a pitch name
+ * used as a number, a note op with the wrong arguments, a `curve()` exponent
+ * that is not above 0.
+ *
+ * A mistake that holds in every meter throws {@link TransformArgError}, which
+ * callers use to refuse the whole call. A constant that mixes note values or bar
+ * lengths with other terms (`1bar - 4`) is judged in this meter only and throws
+ * {@link MeterDependentArgError}: it fails the clip, not the call. Across
+ * statements a meter-independent mistake is thrown ahead of a meter-dependent
+ * one.
  *
  * What depends on a clip or a note (a variable, a random function, a clip with
  * no notes in the range) isn't judged here; it is reported per clip as the
@@ -46,21 +52,32 @@ export function checkTransformArgs(
   denominator: number,
   clipType: "midi" | "audio",
 ): void {
+  let meterDependent: MeterDependentArgError | undefined;
+
   try {
-    checkStatements(ast, numerator, denominator, clipType);
+    checkStatements(ast, numerator, denominator, clipType, (error) => {
+      meterDependent ??= error;
+    });
   } catch (error) {
     throw error instanceof TransformArgError
       ? error
       : new TransformArgError((error as Error).message);
   }
+
+  if (meterDependent != null) {
+    throw meterDependent;
+  }
 }
 
-// The checks themselves; checkTransformArgs tags whatever they throw.
+// The checks themselves; checkTransformArgs tags whatever they throw. A
+// meter-dependent failure is handed to `onMeterDependent` so the rest of the
+// text is still checked for meter-independent ones.
 function checkStatements(
   ast: TransformStatement[],
   numerator: number,
   denominator: number,
   clipType: "midi" | "audio",
+  onMeterDependent: (error: MeterDependentArgError) => void,
 ): void {
   const isAudio = clipType === "audio";
 
@@ -69,13 +86,21 @@ function checkStatements(
       throw new Error(stmt.selectorError);
     }
 
-    if (isNoteOp(stmt)) {
-      if (!isAudio) {
-        throwIfArityError(stmt.args);
-        checkNoteOpArgs(stmt, numerator, denominator);
+    try {
+      if (isNoteOp(stmt)) {
+        if (!isAudio) {
+          throwIfArityError(stmt.args);
+          checkNoteOpArgs(stmt, numerator, denominator);
+        }
+      } else if (AUDIO_PARAMETERS.has(stmt.parameter) === isAudio) {
+        checkAssignment(stmt, numerator, denominator, isAudio);
       }
-    } else if (AUDIO_PARAMETERS.has(stmt.parameter) === isAudio) {
-      checkAssignment(stmt, numerator, denominator, isAudio);
+    } catch (error) {
+      if (!(error instanceof MeterDependentArgError)) {
+        throw error;
+      }
+
+      onMeterDependent(error);
     }
   }
 }
@@ -143,7 +168,10 @@ function checkCurveExponents(
       const result = evaluateNumericArg(exponent, numerator, denominator);
 
       if ("value" in result && result.value <= 0) {
-        throw new Error(`curve() exponent must be > 0, got ${result.value}`);
+        throw argError(
+          exponent,
+          `curve() exponent must be > 0, got ${result.value}`,
+        );
       }
     }
 

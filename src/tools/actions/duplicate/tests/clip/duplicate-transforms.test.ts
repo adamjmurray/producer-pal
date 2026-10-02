@@ -218,7 +218,11 @@ describe("duplicate - transforms/code", () => {
 
     // 1|6-2|1 is a backwards range in 4/4 but valid in 6/8: the copy keeps its
     // source's meter, so that decides.
-    function copyWithMeter(num: number, den: number): Promise<unknown> {
+    function copyWithMeter(
+      num: number,
+      den: number,
+      transforms = "1|6-2|1: velocity = 10",
+    ): Promise<unknown> {
       registerSessionClipDuplication({ destClipProperties: {} });
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
@@ -229,7 +233,7 @@ describe("duplicate - transforms/code", () => {
         type: "clip",
         id: "clip1",
         toSlot: "0/1",
-        transforms: "1|6-2|1: velocity = 10",
+        transforms,
       });
     }
 
@@ -239,6 +243,17 @@ describe("duplicate - transforms/code", () => {
 
     it("accepts the same range in the source's 6/8", async () => {
       await expect(copyWithMeter(6, 8)).resolves.toBeDefined();
+    });
+
+    // A bar is 4 beats in 4/4 and 6 in 6/4. A copy replaces what it lands on, so
+    // a source that can't read it refuses the call, as for a range above.
+    it("refuses a meter-dependent argument the source's meter makes bad", async () => {
+      const transform = "repeat(n/8, 1bar - 4)";
+
+      await expect(copyWithMeter(4, 4, transform)).rejects.toThrow(
+        "repeat() needs a copy count of 1 or more",
+      );
+      await expect(copyWithMeter(6, 4, transform)).resolves.toBeDefined();
     });
 
     it("does not call updateClip when no transforms/code are given", async () => {

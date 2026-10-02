@@ -8,6 +8,8 @@
 // region and even MIDI-vs-audio are settled per clip rather than per call.
 
 import { type Notation } from "#src/shared/notation.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { failuresByMeter } from "#src/tools/clip/helpers/transform-meter-failures.ts";
 import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
@@ -35,6 +37,8 @@ export interface ClipPlan {
   clipLength: number;
   /** Duplicate notes dropped when no transform runs, said on each clip's entry */
   droppedDuplicates: number;
+  /** Why the transform can't be read in this meter, which fails this clip only */
+  transformFailure?: string;
 }
 
 /** The per-clip params, as the caller sent them, plus the call-wide ones. */
@@ -82,7 +86,7 @@ export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
   };
   const cache = new Map<string, ClipPlan>();
 
-  return Array.from({ length: count }, (_unused, index) => {
+  const plans = Array.from({ length: count }, (_unused, index) => {
     const values: ClipValues = {
       sampleFile: valueAt(inputs.sampleFile, index, lists.sampleFile),
       timeSignature: valueAt(inputs.timeSignature, index, lists.timeSignature),
@@ -103,6 +107,10 @@ export function buildClipPlans(inputs: ClipPlanInputs): ClipPlan[] {
 
     return plan;
   });
+
+  markUnreadableTransforms(plans, inputs.transformString);
+
+  return plans;
 }
 
 // --- Helpers below main exports ---
@@ -139,6 +147,57 @@ function valueAt(
 }
 
 /**
+ * Read the transform once per meter before anything is created: the per-clip
+ * transform runs after take lanes exist, and Live can't delete a lane. Even with
+ * no notes to apply it to, a transform that can't be read is refused. A mistake
+ * that is only this meter's marks its plans instead, so those clips fail and the
+ * rest are made (see failuresByMeter).
+ * @param plans - Every position's plan; audio plans read no transform
+ * @param transformString - The transform, if sent
+ */
+function markUnreadableTransforms(
+  plans: ClipPlan[],
+  transformString: string | null,
+): void {
+  if (transformString == null) {
+    return;
+  }
+
+  const groups = new Map<
+    string,
+    { plans: ClipPlan[]; strict: false; numerator: number; denominator: number }
+  >();
+
+  for (const plan of new Set(plans)) {
+    const { timeSigNumerator: numerator, timeSigDenominator: denominator } =
+      plan.timing;
+    const key = `${numerator}/${denominator}`;
+
+    if (!plan.sampleFile) {
+      const group = groups.get(key) ?? {
+        plans: [],
+        strict: false,
+        numerator,
+        denominator,
+      };
+
+      group.plans.push(plan);
+      groups.set(key, group);
+    }
+  }
+
+  const failed = failuresByMeter(groups, (group) => {
+    tryParseTransform(transformString, group.denominator, group.numerator);
+  });
+
+  for (const [key, error] of failed) {
+    for (const plan of (groups.get(key) as { plans: ClipPlan[] }).plans) {
+      plan.transformFailure = errorMessage(error);
+    }
+  }
+}
+
+/**
  * Resolve one position's timing and notes.
  * @param inputs - The per-clip params as sent, and the call-wide ones
  * @param values - What this position asked for
@@ -156,17 +215,6 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
       looping: inputs.looping,
     },
   );
-
-  // Parsed once per meter before anything is created: the per-clip transform
-  // runs after take lanes exist, and Live can't delete a lane. Even with no
-  // notes to apply it to, a transform that can't be read is refused.
-  if (inputs.transformString != null && !values.sampleFile) {
-    tryParseTransform(
-      inputs.transformString,
-      timing.timeSigDenominator,
-      timing.timeSigNumerator,
-    );
-  }
 
   const { notes, clipLength, droppedDuplicates } = prepareClipData(
     values.sampleFile,

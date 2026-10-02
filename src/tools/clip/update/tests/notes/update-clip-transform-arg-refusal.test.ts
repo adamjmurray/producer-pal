@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  expectClipUntouched,
   mockMergeNoteTracking,
   note,
   setupAudioClipMock,
@@ -14,22 +15,6 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-type ClipMock = UpdateClipMocks[keyof UpdateClipMocks];
-
-/**
- * Assert a clip got no writes.
- * @param clip - The clip mock to check
- */
-function expectUntouched(clip: ClipMock): void {
-  expect(clip.set).not.toHaveBeenCalled();
-
-  const calls = clip.call.mock.calls.map(([method]) => method);
-
-  expect(
-    calls.filter((method) => method !== "get_notes_extended"),
-  ).toStrictEqual([]);
-}
 
 // A mistake in the transform text is the same for every clip, so the call is
 // refused once, before any clip is touched.
@@ -52,8 +37,8 @@ describe("updateClip - a bad transform argument is refused before any clip is to
       updateClip({ id: "123,456", name: "X,Y", ...edit }),
     ).rejects.toThrow("ratchet() needs a count of 2 or more");
 
-    expectUntouched(mocks.clip123);
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip456);
   });
 
   it("refuses a duplicate selector", async () => {
@@ -61,7 +46,7 @@ describe("updateClip - a bad transform argument is refused before any clip is to
       updateClip({ id: "123", name: "X", transforms: "C3: E3: velocity = 1" }),
     ).rejects.toThrow('Bad selector "C3: E3:": duplicate pitch selector');
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it.each([
@@ -79,8 +64,8 @@ describe("updateClip - a bad transform argument is refused before any clip is to
         updateClip({ id: "123,456", name: "X,Y", transforms }),
       ).rejects.toThrow(message);
 
-      expectUntouched(mocks.clip123);
-      expectUntouched(mocks.clip456);
+      expectClipUntouched(mocks.clip123);
+      expectClipUntouched(mocks.clip456);
     },
   );
 
@@ -91,7 +76,7 @@ describe("updateClip - a bad transform argument is refused before any clip is to
       updateClip({ id: "456", name: "X", transforms: "gain = C3" }),
     ).rejects.toThrow(`pitch name "C3" isn't a value for gain`);
 
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip456);
   });
 
   it("leaves an argument only known as the transform runs to the clip", async () => {

@@ -48,13 +48,16 @@ merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merg
 ```
 
 **A call with the wrong arguments is refused up front** — the whole call fails
-before any clip is touched, because the text is wrong the same way for every
-clip (see
+before any clip is touched, because the text is wrong the same way in every
+meter (see
 [ADR-0055](../../decisions/0055-a-bad-transform-argument-is-refused-up-front.md)).
 Argument counts count only positional args — the trailing `sync`/`raw` keywords
 are not arguments. An argument that uses a note or clip variable or a random
 function can't be judged until the transform runs; it is reported on the clip
-then. Handling differs by call kind:
+then. So is a constant that mixes note values or bar lengths with other terms
+(`1bar - 4`, `n/16 - n/8`): its value depends on each clip's meter, so only the
+clips it is bad for fail (`ok: false`, notes untouched) and the rest go on.
+Handling differs by call kind:
 
 - **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
   too many arguments refuses the call.

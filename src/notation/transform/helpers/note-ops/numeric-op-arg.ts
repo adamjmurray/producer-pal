@@ -10,6 +10,7 @@ import {
   constantEvalContext,
   evaluateExpression,
 } from "../transform-evaluation.ts";
+import { MeterDependentArgError } from "./transform-arg-errors.ts";
 
 // Functions whose value depends only on their arguments. Anything else (rand,
 // choose, seq, the waveforms, ...) can differ per call, so its argument can't be
@@ -78,6 +79,67 @@ export function isConstantExpression(
         isConstantExpression(node.left, meterKnown) &&
         isConstantExpression(node.right, meterKnown)
       );
+  }
+}
+
+/**
+ * The error for a bad constant argument: meter-dependent when its value mixes
+ * note values or bar lengths with other terms, since another meter gives another
+ * number. A single duration, negated or scaled by a constant, is positive times
+ * the constant in any meter, so one at 0 or below is bad everywhere.
+ * @param arg - The constant argument that is bad
+ * @param message - What is wrong with it
+ * @returns The error to throw
+ */
+export function argError(arg: ExpressionNode, message: string): Error {
+  return isMeterIndependent(arg)
+    ? new Error(message)
+    : new MeterDependentArgError(message);
+}
+
+function isMeterIndependent(arg: ExpressionNode): boolean {
+  if (isDurationNode(arg) || isConstantExpression(arg, false)) {
+    return true;
+  }
+
+  if (!isScaledDuration(arg)) {
+    return false;
+  }
+
+  const result = evaluateNumericArg(arg, 4, 4);
+
+  return "value" in result && result.value <= 0;
+}
+
+// One duration, negated (`-n/8` is `0 - n/8`) or multiplied or divided by a
+// constant: no other duration, no added terms.
+function isScaledDuration(node: ExpressionNode): boolean {
+  if (typeof node !== "object") {
+    return false;
+  }
+
+  if (isDurationNode(node)) {
+    return true;
+  }
+
+  switch (node.type) {
+    case "subtract":
+      return node.left === 0 && isScaledDuration(node.right);
+
+    case "multiply":
+      return (
+        (isScaledDuration(node.left) &&
+          isConstantExpression(node.right, false)) ||
+        (isConstantExpression(node.left, false) && isScaledDuration(node.right))
+      );
+
+    case "divide":
+      return (
+        isScaledDuration(node.left) && isConstantExpression(node.right, false)
+      );
+
+    default:
+      return false;
   }
 }
 

@@ -6,8 +6,8 @@
 import { parseNotation } from "#src/notation/notation.ts";
 import { type TimeSignature } from "../clip-beat-positions.ts";
 import { hasNoteEdits } from "./note-transforms.ts";
-import { TransformArgError } from "#src/notation/transform/transform-arg-checks.ts";
 import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
+import { failuresByMeter } from "#src/tools/clip/helpers/transform-meter-failures.ts";
 
 /** The note edits one update-clip call sends a MIDI clip. */
 export interface NoteEdits {
@@ -57,10 +57,11 @@ export function parseNoteEdits(
  * read transforms the way their own evaluator does (no meter), so only their
  * transforms are parsed.
  *
- * A syntax error, or an argument check failure (the text is wrong for every
- * clip), fails everywhere and always refuses the call. An error in only
- * some meters is that clip's own problem and is left to its own parse, unless
- * one of the clips that fails is `strict`: a cut can't be undone.
+ * A syntax error, or an argument mistake that holds in every meter, always
+ * refuses the call. An error in only some meters (a bar|beat range, a constant
+ * that mixes note values or bar lengths with other terms) is that clip's own
+ * problem and is left to its own parse, unless one of the clips that fails is
+ * `strict`: a cut can't be undone. See {@link failuresByMeter}.
  * @param clips - The clips the call will update
  * @param edits - The call's note edits
  * @param meterOf - A clip's meter once this call has updated it
@@ -94,31 +95,13 @@ export function refuseNoteEditsByMeter(
     groups.set(key, group);
   }
 
-  const errors: Array<{ error: unknown; strict: boolean }> = [];
-
-  for (const { meter, strict } of groups.values()) {
-    try {
-      if (meter == null) {
-        parseAudioTransforms(edits);
-      } else {
-        parseNoteEdits(edits, meter.timeSigNumerator, meter.timeSigDenominator);
-      }
-    } catch (error) {
-      // Wrong for every clip, whatever its meter or type: never left to a clip.
-      if (error instanceof TransformArgError) {
-        throw error;
-      }
-
-      errors.push({ error, strict });
+  failuresByMeter(groups, ({ meter }) => {
+    if (meter == null) {
+      parseAudioTransforms(edits);
+    } else {
+      parseNoteEdits(edits, meter.timeSigNumerator, meter.timeSigDenominator);
     }
-  }
-
-  if (
-    errors.length > 0 &&
-    (errors.some((e) => e.strict) || errors.length === groups.size)
-  ) {
-    throw (errors[0] as { error: unknown }).error;
-  }
+  });
 }
 
 /**

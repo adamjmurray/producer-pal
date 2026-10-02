@@ -339,6 +339,13 @@ function positionsTracksTake(
     }
 
     const position = arrangementPositions[ref.index] as ArrangementPosition;
+
+    // A clip whose transform can't be read in its meter is never made, so it
+    // gets no take lane either: Live can't delete one.
+    if (plans[index]?.transformFailure != null) {
+      return [];
+    }
+
     // Truthiness, like the create loop: an empty sampleFile makes a MIDI clip.
     const blocker = createClipBlocker(
       !plans[index]?.sampleFile,

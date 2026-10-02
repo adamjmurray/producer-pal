@@ -320,6 +320,11 @@ async function createClipAtIndex(
   const pos = resolveIterationPosition(params, ref);
   const position = clipPositionLabel(view, pos);
 
+  // Its meter can't read the transform: this clip fails, the others go on.
+  if (plan.transformFailure != null) {
+    return skipEntry({ param: "path", value: position }, plan.transformFailure);
+  }
+
   // Apply the transform with this clip's context (clipseq/clip.index/etc.).
   // Falls back to the shared notes/length when there is no transform.
   //

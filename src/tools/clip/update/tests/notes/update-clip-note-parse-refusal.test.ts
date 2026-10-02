@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  expectClipUntouched,
   mockMergeNoteTracking,
   note,
   setupAudioClipMock,
@@ -15,22 +16,6 @@ import {
 import { type TimeSignature } from "#src/tools/clip/update/helpers/clip-beat-positions.ts";
 import { refuseNoteEditsByMeter } from "#src/tools/clip/update/helpers/notes/note-edit-parsing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-type ClipMock = UpdateClipMocks[keyof UpdateClipMocks];
-
-/**
- * Assert a clip got no writes.
- * @param clip - The clip mock to check
- */
-function expectUntouched(clip: ClipMock): void {
-  expect(clip.set).not.toHaveBeenCalled();
-
-  const calls = clip.call.mock.calls.map(([method]) => method);
-
-  expect(
-    calls.filter((method) => method !== "get_notes_extended"),
-  ).toStrictEqual([]);
-}
 
 describe("updateClip - unreadable note edits refused before the clip is touched", () => {
   let mocks: UpdateClipMocks;
@@ -46,8 +31,8 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
     await expect(
       updateClip({ id: "123,456", name: "X,Y", notes: "C3 1|1 ((" }),
     ).rejects.toThrow("syntax error");
-    expectUntouched(mocks.clip123);
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip456);
   });
 
   // 1|5 is the next bar's downbeat in 4/4, so the range is a point there; in
@@ -78,7 +63,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       ok: false,
       detail: expect.stringContaining("Invalid time range"),
     });
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip456);
   });
 
   it("doubles nothing when the transforms can't be parsed", async () => {
@@ -93,7 +78,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       }),
     ).rejects.toThrow("transform syntax error");
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it.each([
@@ -107,7 +92,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       updateClip({ id: "123", name: "X", preTransforms: "velocity = = 1" }),
     ).rejects.toThrow("transform syntax error");
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it("refuses bad transforms even when the notes leave none to act on", async () => {
@@ -122,7 +107,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       }),
     ).rejects.toThrow("transform syntax error");
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it.each([
@@ -137,7 +122,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
         updateClip({ id: "123", name: "X", notes }, { notation }),
       ).rejects.toThrow(error);
 
-      expectUntouched(mocks.clip123);
+      expectClipUntouched(mocks.clip123);
     },
   );
 
@@ -159,7 +144,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
     await expect(
       updateClip({ id: "456", timeSignature: "3/4", transforms }),
     ).rejects.toThrow("Invalid time range");
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip456);
   });
 });
 
@@ -245,5 +230,61 @@ describe("refuseNoteEditsByMeter - which clips refuse the call", () => {
     expect(() =>
       refuseNoteEditsByMeter(clips, rangeEdits, meterOf, (c) => c === clips[1]),
     ).toThrow("Invalid time range");
+  });
+});
+
+// A bar is 4 beats in 4/4 and 6 in 6/4, so this has no copies in 4/4 only.
+const METER_DEPENDENT = "repeat(n/8, 1bar - 4)";
+
+describe("updateClip - a constant that depends on the meter", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456, {
+      signature_numerator: 6,
+      signature_denominator: 4,
+    });
+    mockMergeNoteTracking(mocks.clip123, [note(60, 4)]);
+    mockMergeNoteTracking(mocks.clip456, [note(60, 6)]);
+  });
+
+  it("fails only the clip whose meter makes it bad, leaving its notes alone", async () => {
+    const result = (await updateClip({
+      id: "123,456",
+      name: "X,Y",
+      transforms: METER_DEPENDENT,
+    })) as object[];
+
+    expect(result[0]).toStrictEqual({
+      id: "123",
+      ok: false,
+      detail: "repeat() needs a copy count of 1 or more",
+    });
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+    expect(result[1]).not.toHaveProperty("ok");
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Y");
+    expect(mocks.clip456.call).toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+  });
+
+  it("refuses the call when every clip's meter makes it bad", async () => {
+    await expect(
+      updateClip({ id: "123", transforms: METER_DEPENDENT }),
+    ).rejects.toThrow("repeat() needs a copy count of 1 or more");
+  });
+
+  it("still refuses a mistake that holds in every meter, whatever the meters", async () => {
+    await expect(
+      updateClip({ id: "123,456", transforms: "repeat(n/8, 0)" }),
+    ).rejects.toThrow("repeat() needs a copy count of 1 or more");
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
   });
 });

@@ -8,15 +8,18 @@ import {
   type NoteOp,
 } from "../../parser/transform-parser.ts";
 import {
+  argError,
   evaluateNumericArg,
   isConstantExpression,
   isDurationNode,
 } from "./numeric-op-arg.ts";
 
 /**
- * Throw for a note op whose arguments are wrong the same way for every clip.
- * An argument that uses a variable or a random function can't be judged here
- * and is left for the op to check as it runs.
+ * Throw for a note op whose arguments are wrong. One that is wrong the same way
+ * in every meter is a plain error; a constant that mixes note values or bar
+ * lengths with other terms is judged in this meter only (see `argError`). An
+ * argument that uses a variable or a random function can't be judged here and
+ * is left for the op to check as it runs.
  * @param op - The parsed note op
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
@@ -83,10 +86,10 @@ function checkRatchet(
 
   if (isDurationNode(arg)) {
     if (value <= 0) {
-      throw new Error("ratchet() grid must be greater than 0");
+      throw argError(arg, "ratchet() grid must be greater than 0");
     }
   } else if (Math.round(value) < 2) {
-    throw new Error("ratchet() needs a count of 2 or more");
+    throw argError(arg, "ratchet() needs a count of 2 or more");
   }
 }
 
@@ -134,7 +137,7 @@ function checkRepeat(
   );
 
   if (count != null && Math.round(count) < 1) {
-    throw new Error("repeat() needs a copy count of 1 or more");
+    throw argError(copies, "repeat() needs a copy count of 1 or more");
   }
 }
 
@@ -184,7 +187,7 @@ function constantArg(
   const result = evaluateNumericArg(arg, numerator, denominator);
 
   if ("problem" in result) {
-    throw new Error(`${label} ${result.problem}`);
+    throw argError(arg, `${label} ${result.problem}`);
   }
 
   return result.value;
