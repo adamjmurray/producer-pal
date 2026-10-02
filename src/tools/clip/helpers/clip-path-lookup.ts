@@ -11,6 +11,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { requireClipSourcePath } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import {
   existingId,
@@ -51,10 +52,19 @@ export function clipIdPerPath(
  * The id of the clip one location holds, or the reason it holds none.
  * @param entry - One clip path, a slot or an arrangement position
  * @param label - Param name the path came from, for the reason
+ * @param lanes - The call's lanes, for a caller resolving several paths
  * @returns The clip's id, or why there isn't one
  */
-export function clipIdAtPath(entry: string, label = "path"): IdLookup {
-  return existingId(clipAtPath(entry, label), { noun: "clip", label, entry });
+export function clipIdAtPath(
+  entry: string,
+  label = "path",
+  lanes?: LaneView,
+): IdLookup {
+  return existingId(clipAtPath(entry, label, lanes), {
+    noun: "clip",
+    label,
+    entry,
+  });
 }
 
 // --- Helpers below main exports ---
@@ -63,9 +73,14 @@ export function clipIdAtPath(entry: string, label = "path"): IdLookup {
  * The clip at one location, whichever kind of location it is.
  * @param entry - One clip path, a slot or an arrangement position
  * @param label - Param name the path came from
+ * @param lanes - The call's lanes, for a caller resolving several paths
  * @returns The clip, or null when nothing is there
  */
-function clipAtPath(entry: string, label: string): LiveAPI | null {
+function clipAtPath(
+  entry: string,
+  label: string,
+  lanes: LaneView | undefined,
+): LiveAPI | null {
   const source = requireClipSourcePath(parseObjectPath(entry, label), label);
 
   if (source.kind === "slot") {
@@ -74,5 +89,5 @@ function clipAtPath(entry: string, label: string): LiveAPI | null {
     );
   }
 
-  return arrangementClipAtPosition(source, label);
+  return arrangementClipAtPosition(source, label, lanes);
 }

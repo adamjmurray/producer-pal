@@ -122,8 +122,8 @@ export class LaneView {
   ): ClipSpan | undefined {
     return this.clips(lane, api).find(
       (clip) =>
-        Math.abs(clip.start - beats) < SAME_TIME_EPSILON ||
-        (clip.start < beats && beats < clip.end - SAME_TIME_EPSILON),
+        startsAtBeats(clip.start, beats) ||
+        insideBeats(clip.start, clip.end, beats),
     );
   }
 
@@ -345,6 +345,29 @@ export async function sharingLaneView<T>(
  */
 export function laneViewOf(context: { lanes?: LaneView }): LaneView {
   return context.lanes ?? new LaneView();
+}
+
+/**
+ * @param start - Where a clip starts, in beats
+ * @param beats - A position, in beats
+ * @returns Whether the clip starts there, give or take Live's rounding
+ */
+export function startsAtBeats(start: number, beats: number): boolean {
+  return Math.abs(start - beats) < SAME_TIME_EPSILON;
+}
+
+/**
+ * @param start - Where a clip starts, in beats
+ * @param end - Where it ends; the end is exclusive
+ * @param beats - A position, in beats
+ * @returns Whether the position is after the start and before the end
+ */
+export function insideBeats(
+  start: number,
+  end: number,
+  beats: number,
+): boolean {
+  return start < beats && beats < end - SAME_TIME_EPSILON;
 }
 
 /**

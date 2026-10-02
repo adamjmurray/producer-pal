@@ -6,7 +6,10 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import {
+  type LaneView,
+  sharingLaneView,
+} from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
   type EnvelopeLine,
@@ -104,7 +107,7 @@ async function updateClipOnLanes(
 
   // Refuses a call whose lists disagree, or that names no clip at all, before
   // resolving anything.
-  const targets = clipTargets({ id, ids, path, paths }, args);
+  const targets = clipTargets({ id, ids, path, paths }, args, context.lanes);
 
   refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
@@ -179,11 +182,13 @@ async function updateClipOnLanes(
  * @param targets - The call's id/ids and path/paths params
  * @param values - The tool arguments as received, for the lists paired against
  *   the clips those params name
+ * @param lanes - The call's lanes, so arrangement paths read each lane once
  * @returns The targets the call names, and the clips they found
  */
 function clipTargets(
   targets: Pick<ClipUpdateArgs, "id" | "ids" | "path" | "paths">,
   values: ClipUpdateArgs,
+  lanes: LaneView | undefined,
 ): ClipTargets {
   validateListLengths([
     { param: targetParamLabel(targets), count: targetCount(targets) },
@@ -203,7 +208,7 @@ function clipTargets(
     },
   ]);
 
-  const resolved = resolveClipTargets(targets);
+  const resolved = resolveClipTargets(targets, lanes);
 
   if (resolved.named.length === 0) {
     throw new Error("id or path is required");

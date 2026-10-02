@@ -11,6 +11,7 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { clipIdAtPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import {
   namedIdParam,
   namedPathParam,
@@ -48,9 +49,13 @@ export interface ClipTargets {
  * place whether or not it found a clip. A path that names no clip reports it
  * here instead of warning: its slot in the result is where the reason belongs.
  * @param targets - The call's id/ids and path/paths params
+ * @param lanes - The call's lanes, so paths on one lane read it once
  * @returns The targets, the ids they found, and the entries for the ones that found none
  */
-export function resolveClipTargets(targets: TargetParams): ClipTargets {
+export function resolveClipTargets(
+  targets: TargetParams,
+  lanes?: LaneView,
+): ClipTargets {
   const named = namedTargets({
     id: namedIdParam(targets.id, targets.ids, "ids"),
     path: namedPathParam(targets.path, targets.paths),
@@ -62,7 +67,7 @@ export function resolveClipTargets(targets: TargetParams): ClipTargets {
     }
 
     const lookup = resolvePathEntry(target.value, (entry) =>
-      clipIdAtPath(entry, "path"),
+      clipIdAtPath(entry, "path", lanes),
     );
 
     if (lookup.id == null) {

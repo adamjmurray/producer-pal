@@ -89,6 +89,28 @@ describe("update-clip over a long lane", () => {
     expect(far.map((id) => buildsOf(from, id))).toStrictEqual(far.map(() => 1));
   });
 
+  it("reads each clip a batch of paths and moves doesn't touch once, paths included", async () => {
+    const from = vi.spyOn(LiveAPI, "from");
+    // The clips at bars 1, 3, 5 and 7, found by where they are, then moved.
+    const result = (await updateClip({
+      path: "t0[1|1],t0[3|1],t0[5|1],t0[7|1]",
+      arrangementStart: "39|1,41|1,43|1,45|1",
+    })) as ClipResult[];
+
+    expect(result.map(({ path }) => path)).toStrictEqual([
+      "t0[39|1]",
+      "t0[41|1]",
+      "t0[43|1]",
+      "t0[45|1]",
+    ]);
+
+    // Four lookups and four moves, and the far end of the lane was read once.
+    const far = ids.slice(30);
+
+    expect(readsOf(far)).toStrictEqual(far.map(() => 2));
+    expect(far.map((id) => buildsOf(from, id))).toStrictEqual(far.map(() => 1));
+  });
+
   it("reads each clip a batch of lengthenings doesn't touch once", async () => {
     makeLooping(ids[0] as string);
     makeLooping(ids[10] as string);
