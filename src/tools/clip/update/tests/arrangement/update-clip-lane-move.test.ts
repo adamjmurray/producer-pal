@@ -604,7 +604,7 @@ describe("moving a clip off a take lane", () => {
 
     const source = lookupMockObject(SOURCE_ID);
 
-    // The remove window mirrors readAllClipNotes: [-length, 3 * length].
+    // The remove window mirrors readAllClipNotes.
     expect(source?.call).toHaveBeenCalledWith(
       "remove_notes_extended",
       0,

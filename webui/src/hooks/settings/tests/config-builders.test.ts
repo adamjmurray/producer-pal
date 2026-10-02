@@ -28,7 +28,7 @@ describe("config-builders", () => {
     });
 
     it("is false for other models", () => {
-      expect(isAlwaysOnThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isAlwaysOnThinkingModel("claude-sonnet-5-5")).toBe(false);
       expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
     });
   });
@@ -45,7 +45,7 @@ describe("config-builders", () => {
 
     it("is false for 3.7+ and modern named-tier ids (they support thinking)", () => {
       expect(isLegacyNonThinkingModel("claude-3-7-sonnet")).toBe(false);
-      expect(isLegacyNonThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isLegacyNonThinkingModel("claude-sonnet-5-5")).toBe(false);
       expect(isLegacyNonThinkingModel("claude-opus-5-5")).toBe(false);
       expect(isLegacyNonThinkingModel("claude-haiku-4-5")).toBe(false);
     });
@@ -102,7 +102,7 @@ describe("config-builders", () => {
     it("should extract whole-number versions", () => {
       expect(extractGptVersion("gpt-5-2025-08-07")).toBe(5);
       expect(extractGptVersion("gpt-5-mini-2025-08-07")).toBe(5);
-      expect(extractGptVersion("gpt-6-sol")).toBe(6);
+      expect(extractGptVersion("gpt-6.1-sol")).toBe(6.1);
     });
 
     it("should return null for non-gpt models", () => {
@@ -164,7 +164,7 @@ describe("config-builders", () => {
 
     describe("gpt-6 models", () => {
       it("should map Max to max", () => {
-        expect(mapThinkingToReasoningEffort("Max", "gpt-6-sol")).toBe("max");
+        expect(mapThinkingToReasoningEffort("Max", "gpt-6.1-sol")).toBe("max");
       });
 
       it("should map Off to none", () => {

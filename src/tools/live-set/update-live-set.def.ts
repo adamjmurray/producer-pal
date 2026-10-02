@@ -54,7 +54,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
         "Bar|beat position(s), song meter; comma-separated for several. Required for create. Delete/rename: more locators, after any locatorId",
       smallModel: null,
     }),
-    locatorName: param(z.coerce.string().optional(), {
+    locatorName: param(z.string().optional(), {
       default:
         "Create/rename: one name for all, or one per locator. Delete: each name is also a target, deleting every locator with that name",
       smallModel: null,

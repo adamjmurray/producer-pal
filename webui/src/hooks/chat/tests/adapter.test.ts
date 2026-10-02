@@ -283,7 +283,7 @@ describe("chatAdapter", () => {
     });
 
     it("sends none and no summary for gpt-6 with Off thinking", () => {
-      const config = buildForProvider("openai", "Off", "gpt-6-sol");
+      const config = buildForProvider("openai", "Off", "gpt-6.1-sol");
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "none" },

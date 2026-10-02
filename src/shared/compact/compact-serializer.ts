@@ -18,45 +18,45 @@ const UNQUOTED_KEY_RE = /^(?:[$A-Z_a-z][\w$]*|\d+)$/;
  * @returns Compact JS literal string
  */
 export function toCompactJSLiteral(obj: unknown): string {
-  /**
-   * Convert a value to compact JS literal syntax
-   * @param val - Value to convert
-   * @returns Converted value or undefined
-   */
-  function convert(val: unknown): string | undefined {
-    // Primitives that need special treatment other than JSON.stringify() below
-    if (val === null) {
-      return "null";
-    }
-
-    if (Array.isArray(val)) {
-      const items = val.map(convert).filter((v) => v !== undefined);
-
-      return "[" + items.join(",") + "]";
-    }
-
-    if (typeof val === "object") {
-      const pairs: string[] = [];
-
-      for (const [key, value] of Object.entries(val)) {
-        const converted = convert(value);
-
-        if (converted === undefined) {
-          continue;
-        } // Skip undefined values
-
-        const keyStr = UNQUOTED_KEY_RE.test(key) ? key : JSON.stringify(key);
-
-        pairs.push(keyStr + ":" + converted);
-      }
-
-      return "{" + pairs.join(",") + "}";
-    }
-
-    return JSON.stringify(val);
-  }
-
   const result = convert(obj);
 
   return result ?? "";
+}
+
+/**
+ * Convert a value to compact JS literal syntax
+ * @param val - Value to convert
+ * @returns Converted value or undefined
+ */
+function convert(val: unknown): string | undefined {
+  // Primitives that need special treatment other than JSON.stringify() below
+  if (val === null) {
+    return "null";
+  }
+
+  if (Array.isArray(val)) {
+    const items = val.map(convert).filter((v) => v !== undefined);
+
+    return "[" + items.join(",") + "]";
+  }
+
+  if (typeof val === "object") {
+    const pairs: string[] = [];
+
+    for (const [key, value] of Object.entries(val)) {
+      const converted = convert(value);
+
+      if (converted === undefined) {
+        continue;
+      } // Skip undefined values
+
+      const keyStr = UNQUOTED_KEY_RE.test(key) ? key : JSON.stringify(key);
+
+      pairs.push(keyStr + ":" + converted);
+    }
+
+    return "{" + pairs.join(",") + "}";
+  }
+
+  return JSON.stringify(val);
 }

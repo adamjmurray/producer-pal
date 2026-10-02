@@ -30,7 +30,7 @@ describe("applyNotesToClip collision warning", () => {
       warn: vi.spyOn(v8Console, "warn").mockImplementation(() => {}),
       mockClip: {
         getProperty: vi.fn().mockReturnValue(4),
-        call: vi.fn(),
+        call: vi.fn(() => JSON.stringify({ notes: [] })),
       } as unknown as LiveAPI,
     };
   }

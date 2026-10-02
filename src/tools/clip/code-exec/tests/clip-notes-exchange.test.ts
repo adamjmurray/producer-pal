@@ -19,6 +19,7 @@ import {
 import {
   codeNote,
   createMockClip,
+  mockGetProperty,
   toLiveApiNote,
 } from "./code-exec-test-helpers.ts";
 
@@ -131,9 +132,14 @@ describe("clip-notes-exchange", () => {
         ],
       };
       const mockClip = {
-        getProperty: vi.fn((prop: string) =>
-          prop === "signature_denominator" ? 4 : 8,
-        ),
+        getProperty: mockGetProperty({
+          signature_denominator: 4,
+          length: 8,
+          start_marker: 0,
+          end_marker: 8,
+          loop_start: 0,
+          loop_end: 8,
+        }),
         call: vi.fn().mockReturnValue(JSON.stringify(mockNotes)),
       };
 
@@ -252,7 +258,7 @@ describe("clip-notes-exchange", () => {
 
       applyNotesToClip(mockClip as unknown as LiveAPI, []);
 
-      expect(mockClip.call).toHaveBeenCalledTimes(1);
+      expect(mockClip.call).toHaveBeenCalledTimes(2);
       expect(mockClip.call).toHaveBeenCalledWith(
         "remove_notes_extended",
         0,
@@ -260,11 +266,76 @@ describe("clip-notes-exchange", () => {
         -4,
         12,
       );
+      expect(mockClip.call).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
+    });
+
+    describe("with muted notes in the clip", () => {
+      const MUTED = {
+        note_id: 9,
+        pitch: 64,
+        start_time: 1,
+        duration: 1,
+        velocity: 90,
+        probability: 1,
+        velocity_deviation: 0,
+        mute: 1,
+        release_velocity: 50,
+      };
+      const { note_id: _id, ...MUTED_WRITTEN } = MUTED;
+
+      it("puts them back untouched beside the user's notes", () => {
+        const mockClip = createMockClip(4, JSON.stringify({ notes: [MUTED] }));
+        const late = codeNote(60, 2, { velocity: 100 });
+
+        applyNotesToClip(mockClip as unknown as LiveAPI, [late]);
+
+        expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+          notes: [MUTED_WRITTEN, toLiveApiNote(late)],
+        });
+      });
+
+      it("keeps them when user code returns no notes", () => {
+        const mockClip = createMockClip(4, JSON.stringify({ notes: [MUTED] }));
+
+        applyNotesToClip(mockClip as unknown as LiveAPI, []);
+
+        expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+          notes: [MUTED_WRITTEN],
+        });
+      });
+
+      it("replaces one with a user note at the same pitch and start, without a warning", () => {
+        const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+        const mockClip = createMockClip(4, JSON.stringify({ notes: [MUTED] }));
+        const same = codeNote(64, 1, { velocity: 80 });
+
+        applyNotesToClip(mockClip as unknown as LiveAPI, [same]);
+
+        expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+          notes: [toLiveApiNote(same)],
+        });
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      it("hides them from user code", () => {
+        const visible = { ...MUTED, pitch: 60, mute: 0 };
+        const mockClip = createMockClip(
+          4,
+          JSON.stringify({ notes: [visible, MUTED] }),
+        );
+
+        const notes = extractNotesFromClip(mockClip as unknown as LiveAPI);
+
+        expect(notes.map((note) => note.pitch)).toStrictEqual([60]);
+      });
     });
   });
 
   describe("getClipNoteCount", () => {
-    it("should count notes across read-clip's [-length, 2*length] window", () => {
+    it("should count notes across read-clip's window", () => {
       const mockClip = createMockClip(
         8,
         JSON.stringify({ notes: [{}, {}, {}] }),

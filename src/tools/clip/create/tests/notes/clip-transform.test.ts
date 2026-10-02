@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ClipTransformInputs,
@@ -17,7 +18,16 @@ vi.mock(
   import("#src/notation/transform/transform-evaluator.ts"),
   async (importOriginal) => ({
     ...(await importOriginal()),
-    applyTransforms: vi.fn(() => 3),
+    applyTransforms: vi.fn(() => ({
+      touched: new Set<NoteEvent>(),
+      deleted: [60, 61, 62].map((pitch) => ({
+        pitch,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+      })),
+    })),
   }),
 );
 
@@ -42,6 +52,7 @@ function makeInputs(
     transformString: "velocity = 100",
     isAudio: false,
     endBeats: null,
+    startBeats: null,
     timeSigNumerator: 4,
     timeSigDenominator: 4,
     scaleMask: undefined,
@@ -60,7 +71,16 @@ function capturedContext() {
 describe("resolveClipTransform", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(applyTransforms).mockReturnValue(3);
+    vi.mocked(applyTransforms).mockReturnValue({
+      touched: new Set<NoteEvent>(),
+      deleted: [60, 61, 62].map((pitch) => ({
+        pitch,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+      })),
+    });
   });
 
   describe("early-return guard", () => {
@@ -133,6 +153,27 @@ describe("resolveClipTransform", () => {
       resolveClipTransform(inputs, 0, 1, null);
 
       expect(capturedContext()?.arrangementStart).toBeUndefined();
+    });
+
+    it("gives the start marker and end in note time", () => {
+      // `start: "5|1"`, `length: "1bar"`, at 4/8: the clip's notes run from
+      // beat 16 to 20, doubled to musical beats.
+      const inputs = makeInputs({
+        timeSigDenominator: 8,
+        startBeats: 16,
+        clipLength: 20,
+      });
+
+      resolveClipTransform(inputs, 0, 1, null);
+
+      expect(capturedContext()?.startMarker).toBe(32);
+      expect(capturedContext()?.clipEnd).toBe(40);
+    });
+
+    it("puts the start marker at 0 when no start was given", () => {
+      resolveClipTransform(makeInputs(), 0, 1, null);
+
+      expect(capturedContext()?.startMarker).toBe(0);
     });
   });
 });

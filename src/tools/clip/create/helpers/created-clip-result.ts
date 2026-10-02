@@ -6,6 +6,7 @@
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
+import { clipRegionWrites } from "#src/tools/shared/clip/clip-region-writes.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   landedColor,
@@ -51,22 +52,20 @@ export function buildClipProperties(
   timeSigDenominator: number,
   clipLength: number,
 ): ClipPropertiesToSet {
+  const start = startBeats ?? 0;
+  const end = endBeats ?? clipLength;
+  const createdLength = createdClipLength(clipLength, startBeats);
   const propsToSet: ClipPropertiesToSet = {
-    start_marker: startBeats ?? 0,
-    loop_start: startBeats ?? 0,
-    loop_end: 0,
-    end_marker: 0,
+    ...clipRegionWrites(
+      { loop_end: createdLength, end_marker: createdLength },
+      {
+        loop_start: start,
+        loop_end: end,
+        start_marker: start,
+        end_marker: end,
+      },
+    ),
   };
-
-  // Set start_marker and loop_start is handled above
-
-  // Set loop_end and end_marker
-  // Use clipLength as default when endBeats not specified
-  // Note: loop_end must be > loop_start (Live API constraint)
-  const effectiveEnd = endBeats ?? clipLength;
-
-  propsToSet.loop_end = effectiveEnd;
-  propsToSet.end_marker = effectiveEnd;
 
   // Set playing_position (firstStart) only for looping clips
   if (looping && firstStartBeats != null) {
@@ -90,6 +89,25 @@ export function buildClipProperties(
   propsToSet.signature_denominator = timeSigDenominator;
 
   return propsToSet;
+}
+
+/**
+ * How long to create a MIDI clip: its region's length. Live's arrangement
+ * create lays down this span right away, clearing whatever it covers, so it
+ * must not include the start offset: clipLength runs from beat 0 to the
+ * region's end. A region before 1|1 ends at or below 0, and Live makes no clip
+ * that long.
+ * @param clipLength - Where the region ends, in beats
+ * @param startBeats - Where the region starts, or null for beat 0
+ * @returns The region's length, or clipLength when start is past the end
+ */
+export function createdClipLength(
+  clipLength: number,
+  startBeats: number | null,
+): number {
+  const length = clipLength - (startBeats ?? 0);
+
+  return length > 0 ? length : clipLength;
 }
 
 export interface ClipResultObject {

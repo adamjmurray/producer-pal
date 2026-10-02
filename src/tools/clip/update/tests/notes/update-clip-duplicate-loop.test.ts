@@ -44,16 +44,16 @@ function mockNoteCount(
 }
 
 /**
- * What get_notes_extended returns for a clip holding `noteCount` identical
- * notes.
+ * What get_notes_extended returns for a clip holding `noteCount` notes, one per
+ * beat (a clip can't hold two notes on the same pitch and onset).
  * @param noteCount - Number of notes to report
  * @returns The JSON string Live's API hands back
  */
 function notesJson(noteCount: number): string {
   return JSON.stringify({
-    notes: Array.from({ length: noteCount }, () => ({
+    notes: Array.from({ length: noteCount }, (_, i) => ({
       pitch: 60,
-      start_time: 0,
+      start_time: i,
       duration: 1,
       velocity: 100,
     })),

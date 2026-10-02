@@ -54,12 +54,11 @@ The notes string uses compact bar|beat notation. This is an expensive operation
 
 All authored notes round-trip on read, including ones outside the clip's
 playable region: pickups before the start (negative time, e.g. a note authored
-as `1|1-n/12`) and overhang past the end. The read window spans one clip-length
-of margin on each side of the playable region `[0, length]` (i.e.
-`[-length, 2*length]`), so out-of-bounds notes are not silently dropped. (The
-`noteCount` reported by create/update tools mirrors this same
-`[-length, 2*length]` read window: it counts stored pickup and overhang notes
-within that finite scan, not only notes in the playable region.)
+as `1|1-n/12`) and overhang past the end. The read window is the clip's region
+(markers and loop, whichever reach further) plus one clip-length on each side.
+Note times are absolute, so a region starting at 5|1 has its notes at 5|1, not
+1|1. The `noteCount` reported by create/update tools uses the same window, and
+update-clip rewrites only what it covers.
 
 ## Include: `"sample"`
 

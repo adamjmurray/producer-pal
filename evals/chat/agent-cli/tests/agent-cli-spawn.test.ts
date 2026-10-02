@@ -50,7 +50,7 @@ describe("spawnAgentCli", () => {
     try {
       const result = await spawnAgentCli(
         CODEX_CLI_TRANSPORT,
-        ["exec", "--model", "gpt-6-sol"],
+        ["exec", "--model", "gpt-6.1-sol"],
         "Connect to Ableton Live",
         { cwd: dir },
       );
@@ -58,7 +58,7 @@ describe("spawnAgentCli", () => {
       expect(result).toBe(stdout);
       expect(readInvocations(recordFile)).toStrictEqual([
         {
-          argv: ["exec", "--model", "gpt-6-sol"],
+          argv: ["exec", "--model", "gpt-6.1-sol"],
           stdin: "Connect to Ableton Live",
           cwd: dir,
         },

@@ -15,6 +15,7 @@ import {
   evaluateExpression,
 } from "../transform-evaluation.ts";
 import { MAX_NOTE_PIECES } from "./note-cuts.ts";
+import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
 import { numericOpArg } from "./numeric-op-arg.ts";
 
 /**
@@ -35,14 +36,14 @@ import { numericOpArg } from "./numeric-op-arg.ts";
  * @param op - The repeat operation (args: offset duration, optional copy count)
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The originals plus their time-shifted copies
+ * @returns The originals plus their time-shifted copies, or a skipped result
  */
 export function repeatNotes(
   matched: NoteEvent[],
   op: NoteOp,
   numerator: number,
   denominator: number,
-): NoteEvent[] {
+): NoteOpResult {
   // repeat args are always expressions (bar|beat points only reach `split`).
   const offsetArg = op.args[0] as ExpressionNode | undefined;
   const copiesArg = op.args[1] as ExpressionNode | undefined;
@@ -52,7 +53,7 @@ export function repeatNotes(
       "repeat() needs an offset, e.g. repeat(n/8) or repeat(1bar); skipping",
     );
 
-    return matched;
+    return skippedNoteOp(matched);
   }
 
   if (op.args.length > 2) {
@@ -64,13 +65,13 @@ export function repeatNotes(
   const offset = resolveRepeatOffset(offsetArg, numerator, denominator);
 
   if (offset == null) {
-    return matched; // offset invalid — warn already emitted, pass through
+    return skippedNoteOp(matched); // offset invalid — warn already emitted, pass through
   }
 
   const copies = resolveRepeatCopies(copiesArg, numerator, denominator);
 
   if (copies == null) {
-    return matched; // copy count invalid — warn already emitted, pass through
+    return skippedNoteOp(matched); // copy count invalid — warn already emitted, pass through
   }
 
   const out: NoteEvent[] = [...matched];
@@ -100,7 +101,7 @@ export function repeatNotes(
     );
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /**

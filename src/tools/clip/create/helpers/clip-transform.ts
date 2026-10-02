@@ -6,6 +6,7 @@
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { countTransformed } from "#src/notation/transform/transformed-count.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { calculateClipLength } from "./create-clip-validation.ts";
 
@@ -19,6 +20,8 @@ export interface ClipTransformInputs {
   /** Audio clips have no notes to transform */
   isAudio: boolean;
   endBeats: number | null;
+  /** Where the region starts (start marker and loop start), or null for 1|1 */
+  startBeats: number | null;
   timeSigNumerator: number;
   timeSigDenominator: number;
   /** Live Set scale mask for the `scale:mask` variable, or undefined */
@@ -64,7 +67,7 @@ export function resolveClipTransform(
     arrangementStartBeats,
   );
 
-  const transformedCount = applyTransforms(
+  const outcome = applyTransforms(
     clipNotes,
     transformString,
     inputs.timeSigNumerator,
@@ -87,7 +90,8 @@ export function resolveClipTransform(
       inputs.timeSigNumerator,
       inputs.timeSigDenominator,
     ),
-    transformedCount,
+    // Counted on the deduped notes, so collapsed duplicates don't inflate it.
+    transformedCount: countTransformed(outcome, sorted),
   };
 }
 
@@ -117,6 +121,9 @@ function buildCreateClipContext(
       arrangementStartBeats != null
         ? arrangementStartBeats * beatScale
         : undefined,
+    // clipLength runs from beat 0 to the region's end, so it is note time.
+    startMarker: (inputs.startBeats ?? 0) * beatScale,
+    clipEnd: inputs.clipLength * beatScale,
     barDuration: inputs.timeSigNumerator,
     timeSigDenominator: inputs.timeSigDenominator,
     scalePitchClassMask: inputs.scaleMask,

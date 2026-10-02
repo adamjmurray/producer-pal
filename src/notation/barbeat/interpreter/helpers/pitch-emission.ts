@@ -159,17 +159,29 @@ function emitPitchAtPosition(
   };
 
   events.push(noteEvent);
+  trackForBarCopy(noteEvent, beatsPerBar, timeSigDenominator, notesByBar);
+}
 
-  // Track for bar copy: calculate actual bar from note position
+/**
+ * Add a note to the bar copy buffer, under the bar it starts in. v0 notes go
+ * in too: applyV0Deletions filters them at the end.
+ * @param noteEvent - The note, in Ableton beats
+ * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator
+ * @param notesByBar - Notes by bar cache
+ */
+export function trackForBarCopy(
+  noteEvent: NoteEvent,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+  notesByBar: Map<number, BarCopyNote[]>,
+): void {
   const barDuration =
     timeSigDenominator != null
       ? beatsPerBar * (4 / timeSigDenominator)
       : beatsPerBar;
-  const actualBar = Math.floor(abletonBeats / barDuration) + 1;
+  const actualBar = Math.floor(noteEvent.start_time / barDuration) + 1;
   const barStartAbletonBeats = (actualBar - 1) * barDuration;
-  const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
-
-  // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
   let barNotes = notesByBar.get(actualBar);
 
   if (barNotes == null) {
@@ -179,7 +191,7 @@ function emitPitchAtPosition(
 
   barNotes.push({
     ...noteEvent,
-    relativeTime: relativeAbletonBeats,
+    relativeTime: noteEvent.start_time - barStartAbletonBeats,
     originalBar: actualBar,
   });
 }

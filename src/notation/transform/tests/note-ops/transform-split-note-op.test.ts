@@ -14,8 +14,8 @@ import {
   createTestNote,
   createTestNotes,
   testNote,
-} from "./evaluator/transform-evaluator-test-helpers.ts";
-import { expectNotePieces } from "./transform-test-helpers.ts";
+} from "../evaluator/transform-evaluator-test-helpers.ts";
+import { expectNotePieces } from "../transform-test-helpers.ts";
 
 // Build a split op whose args are bar|beat points given in absolute musical
 // beats — mirrors what the grammar produces, for tests that exercise splitNotes
@@ -170,7 +170,7 @@ describe("note-count operation: split", () => {
       4,
     );
 
-    expectNotePieces(result, [
+    expectNotePieces(result.notes, [
       [0, 4],
       [4, 2],
       [6, 2],
@@ -186,7 +186,7 @@ describe("note-count operation: split", () => {
       4,
     );
 
-    expectNotePieces(result, [
+    expectNotePieces(result.notes, [
       [0, 4],
       [4, 2],
       [6, 2],
@@ -255,7 +255,7 @@ describe("note-count operation: split", () => {
 
     const result = splitNotes([note], splitOp(0.5), 4);
 
-    expect(result).toStrictEqual([note]);
+    expect(result.notes).toStrictEqual([note]);
   });
 
   describe("sync (arrangement-aligned positions)", () => {
@@ -280,6 +280,23 @@ describe("note-count operation: split", () => {
       expectNotePieces(notes, [
         [0, 4],
         [4, 4],
+      ]);
+    });
+
+    it("maps positions through the start marker when it isn't at 1|1", () => {
+      // Split off an arrangement clip's first 2 bars: its start marker is at
+      // beat 8, and note time 8 plays at arrangement beat 16.
+      const notes = createTestNote({ start_time: 8, duration: 8 });
+
+      // 6|1 is arrangement beat 20 → note time 20 - 16 + 8 = 12.
+      applyTransforms(notes, "split(6|1, sync)", 4, 4, {
+        ...arrangementCtx,
+        startMarker: 8,
+      });
+
+      expectNotePieces(notes, [
+        [8, 4],
+        [12, 4],
       ]);
     });
 
@@ -314,7 +331,7 @@ describe("note-count operation: split", () => {
     // there is no clamp and no warning.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(63)), 4);
 
-    expect(result).toHaveLength(64);
+    expect(result.notes).toHaveLength(64);
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -325,7 +342,7 @@ describe("note-count operation: split", () => {
     // 64 interior cuts would make 65 pieces (one past the cap); the op keeps 64.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(64)), 4);
 
-    expect(result).toHaveLength(64);
+    expect(result.notes).toHaveLength(64);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
     warn.mockRestore();
   });
@@ -337,7 +354,7 @@ describe("note-count operation: split", () => {
     // cap; the op keeps 64 pieces (63 cuts) and warns.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(70)), 4);
 
-    expect(result).toHaveLength(64);
+    expect(result.notes).toHaveLength(64);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
     warn.mockRestore();
   });

@@ -81,6 +81,32 @@ describe("createClip - arrangement view", () => {
     });
   });
 
+  it("spans only the region when start is past 1|1", async () => {
+    // `start: "2|1"` puts the region at beats 4-12. Live's create takes the
+    // arrangement span, so passing the region's end (12) would lay down 3 bars
+    // and destroy a clip in the extra bar.
+    const { track } = setupArrangementClipMocks();
+
+    await createClip({
+      path: "t0[3|1]",
+      start: "2|1",
+      length: "2bar",
+      notes: "C3 2|1",
+    });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 8);
+  });
+
+  it("keeps the clip length when start is past the notes and no length is given", async () => {
+    // The notes end the clip at bar 2 (beat 4), before the start at beat 8, so
+    // there is no region to measure.
+    const { track } = setupArrangementClipMocks();
+
+    await createClip({ path: "t0[3|1]", start: "3|1", notes: "C3 1|1" });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+  });
+
   it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
     const { track } = setupArrangementClipMocks();
 

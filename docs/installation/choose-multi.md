@@ -20,7 +20,7 @@ single API key with pay-per-use pricing. Access it via the
 
 - **Gemini 3.8 Flash** - fast and capable
 - **Claude Opus 5.5** - strong reasoning
-- **GPT-6 Sol** - solid all-rounder
+- **GPT-6.1 Sol** - solid all-rounder
 - **Mistral Large** - competitive performance and pricing
 
 ## Other OpenAI-Compatible Providers

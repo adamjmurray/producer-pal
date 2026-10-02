@@ -4,12 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { TEMPO_REFUSAL } from "#src/tools/constants.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -421,5 +423,16 @@ describe("updateLiveSet", () => {
       id: "live_set_id",
       $meta: [scaleDisabledNote],
     });
+  });
+});
+
+describe("updateLiveSet schema", () => {
+  // The MCP SDK validates against this schema before the tool runs, so a
+  // string param that coerces would write a null as the name "null".
+  it('refuses a null locatorName instead of naming a locator "null"', () => {
+    const schema = z.object(toolDefUpdateLiveSet.toolOptions.inputSchema);
+
+    expect(schema.safeParse({ locatorName: null }).success).toBe(false);
+    expect(schema.safeParse({ locatorName: "Verse" }).success).toBe(true);
   });
 });

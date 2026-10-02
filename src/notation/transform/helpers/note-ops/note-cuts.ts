@@ -9,6 +9,7 @@ import {
   type BarBeatPointNode,
   type NoteOp,
 } from "../../parser/transform-parser.ts";
+import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
 
 // Per-note ceiling on pieces a note-count op may produce — bounds note
 // explosion. Shared by ratchet (a roll) and split (explicit cuts). A note cut
@@ -63,22 +64,23 @@ export function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
  * @param matched - Notes selected by the op
  * @param op - The split operation (args are bar|beat cut positions)
  * @param denominator - Time signature denominator (musical beats -> Ableton)
- * @param arrangementStart - Clip's arrangement origin in musical beats, or
+ * @param arrangementOrigin - Arrangement position of note time 0, in musical beats, or
  *   undefined for session clips (only consulted in sync mode)
- * @returns The split note list (children replace each divided note)
+ * @returns The split note list (children replace each divided note), or a
+ *   skipped result
  */
 export function splitNotes(
   matched: NoteEvent[],
   op: NoteOp,
   denominator: number,
-  arrangementStart?: number,
-): NoteEvent[] {
+  arrangementOrigin?: number,
+): NoteOpResult {
   if (op.args.length === 0) {
     console.warn(
       "split() needs one or more bar|beat positions, e.g. split(2|1, 2|3); skipping",
     );
 
-    return matched;
+    return skippedNoteOp(matched);
   }
 
   // In sync mode the positions are arrangement-absolute; subtract the clip's
@@ -86,10 +88,10 @@ export function splitNotes(
   let originMusicalBeats = 0;
 
   if (op.sync) {
-    if (arrangementStart == null) {
+    if (arrangementOrigin == null) {
       console.warn("sync ignored on session clip — split is clip-relative");
     } else {
-      originMusicalBeats = arrangementStart;
+      originMusicalBeats = arrangementOrigin;
     }
   }
 
@@ -139,7 +141,7 @@ export function splitNotes(
     );
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /**

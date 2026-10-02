@@ -11,20 +11,42 @@ export interface CopiedNote extends NoteEvent {
   release_velocity: number;
 }
 
-/**
- * Count the notes in a clip across the same window read-clip reads, so the two
- * agree — a pickup before the start and overhang past the end included.
- * @param clip - LiveAPI clip object
- * @returns Number of notes in the read window
- */
-export function getClipNoteCount(clip: LiveAPI): number {
-  return readAllClipNotes(clip).length;
+export interface ClipNotes {
+  visible: Record<string, unknown>[];
+  /** Hidden from the model; every edit leaves them in place */
+  muted: Record<string, unknown>[];
 }
 
 /**
- * Read every note in a clip's scan window as raw Live API note objects. Each
- * still carries note_id, so run them through {@link rawNotesToNoteEvents} or
- * {@link rawNotesToCopiedNotes} before re-adding.
+ * Count a clip's visible notes over read-clip's window, so the two agree.
+ * @param clip - LiveAPI clip object
+ * @returns Number of visible notes in the read window
+ */
+export function getClipNoteCount(clip: LiveAPI): number {
+  return readClipNotes(clip).visible.length;
+}
+
+/**
+ * Read a clip's raw notes split by mute. The model sees and edits `visible`; a
+ * write that removes all notes and re-adds them must put `muted` back.
+ * @param clip - LiveAPI clip object
+ * @returns The scan window's notes, split by mute
+ */
+export function readClipNotes(clip: LiveAPI): ClipNotes {
+  const visible: Record<string, unknown>[] = [];
+  const muted: Record<string, unknown>[] = [];
+
+  for (const note of readAllClipNotes(clip)) {
+    ((note.mute as number) > 0 ? muted : visible).push(note);
+  }
+
+  return { visible, muted };
+}
+
+/**
+ * Read every note in a clip's scan window, muted ones included, for copying a
+ * clip; what the model sees or edits wants {@link readClipNotes}. Strip
+ * note_id ({@link rawNotesToCopiedNotes}) before re-adding.
  * @param clip - LiveAPI clip object
  * @returns Raw note objects, or [] when the window holds no notes
  */
@@ -50,8 +72,9 @@ export function removeAllClipNotes(clip: LiveAPI): void {
 
 /**
  * Normalize raw notes from get_notes_extended into NoteEvents for add_new_notes.
- * Drops note_id, mute and release_velocity: these callers rebuild notes from
- * notation, which has nowhere to carry the last two.
+ * Drops note_id, mute and release_velocity: code-exec rebuilds every visible
+ * note from user code, which has nowhere to carry the last two. Anything that
+ * writes back notes the call didn't touch wants {@link rawNotesToCopiedNotes}.
  * @param rawNotes - Note objects from get_notes_extended
  * @returns NoteEvents safe to pass to add_new_notes
  */
@@ -98,15 +121,26 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
 }
 
 /**
- * The (from_time, time_span) pair for read-clip's note-scan window:
- * [-length, 2*length] in beats, so a pickup before the clip start and overhang
- * past the end come along. Read AND remove share it so the windows can't drift
- * — a wider remove would destroy notes that were never read back.
+ * The (from_time, time_span) pair for the note-scan window: the clip's region
+ * (markers and loop, whichever reach further) plus one clip-length on each
+ * side, so a pickup before the start and overhang past the end come along.
+ * Note times are absolute, not relative to the region, so a clip created at
+ * 5|1 keeps its notes at beat 16. Read AND remove share it so the windows
+ * can't drift — a wider remove would destroy notes that were never read back.
  * @param clip - LiveAPI clip object
  * @returns [fromTime, timeSpan] for get_notes_extended / remove_notes_extended
  */
 function clipNoteScanWindow(clip: LiveAPI): [number, number] {
   const lengthBeats = clip.getProperty("length") as number;
+  const regionStart = Math.min(
+    clip.getProperty("start_marker") as number,
+    clip.getProperty("loop_start") as number,
+  );
+  const regionEnd = Math.max(
+    clip.getProperty("end_marker") as number,
+    clip.getProperty("loop_end") as number,
+  );
+  const fromTime = regionStart - lengthBeats;
 
-  return [-lengthBeats, lengthBeats * 3];
+  return [fromTime, regionEnd + lengthBeats - fromTime];
 }

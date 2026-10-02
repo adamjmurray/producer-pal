@@ -118,21 +118,21 @@ scripts/eval [options]
 Models use `provider/model` format, or just the model name if the provider can
 be inferred from the prefix:
 
-| Format                      | Provider    |
-| --------------------------- | ----------- |
-| `gemini-3.8-flash`          | google      |
-| `claude-sonnet-5`           | anthropic   |
-| `gpt-6-sol`                 | openai      |
-| `google/gemini-3.8-flash`   | google      |
-| `anthropic/claude-sonnet-5` | anthropic   |
-| `codex-code/sol`            | codex-code  |
-| `codex-code/luna`           | codex-code  |
-| `claude-code/sonnet`        | claude-code |
-| `claude-code/opus`          | claude-code |
-| `claude-code/haiku`         | claude-code |
-| `claude-code/fable`         | claude-code |
-| `openrouter/some-model`     | openrouter  |
-| `local/model-name`          | local       |
+| Format                        | Provider    |
+| ----------------------------- | ----------- |
+| `gemini-3.8-flash`            | google      |
+| `claude-sonnet-5-5`           | anthropic   |
+| `gpt-6.1-sol`                 | openai      |
+| `google/gemini-3.8-flash`     | google      |
+| `anthropic/claude-sonnet-5-5` | anthropic   |
+| `codex-code/sol`              | codex-code  |
+| `codex-code/luna`             | codex-code  |
+| `claude-code/sonnet`          | claude-code |
+| `claude-code/opus`            | claude-code |
+| `claude-code/haiku`           | claude-code |
+| `claude-code/fable`           | claude-code |
+| `openrouter/some-model`       | openrouter  |
+| `local/model-name`            | local       |
 
 Only the first `/` splits provider from model, so a model name can contain
 slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
@@ -145,7 +145,7 @@ the `local` provider.
 scripts/eval -a -m gemini-3.8-flash
 
 # Compare two models on one scenario
-scripts/eval -t connect-to-ableton -m gemini-3.8-flash -m claude-sonnet-5
+scripts/eval -t connect-to-ableton -m gemini-3.8-flash -m claude-sonnet-5-5
 
 # Compare Codex subscription models (requires `codex login`)
 scripts/eval -t connect-to-ableton \
@@ -437,7 +437,7 @@ model is tested.
 
 ```bash
 # 2 scenarios x 2 models = 4 runs, one table
-scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-5
+scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-5-5
 ```
 
 To compare environments (e.g. default vs `--small-model`), do a run per
@@ -486,7 +486,7 @@ Without `-i` they use the agent-CLI system prompt, not the built-in one.
 scripts/chat -m gemini-3.8-flash -1 "list tracks in the set"
 
 # Interactive session with Claude
-scripts/chat -m claude-sonnet-5
+scripts/chat -m claude-sonnet-5-5
 
 # Test a local model
 scripts/chat -m local/glm-4.7-flash -1 "connect to Ableton"

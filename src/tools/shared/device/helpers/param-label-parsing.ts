@@ -14,6 +14,19 @@ interface LabelPattern {
   isPan?: boolean;
 }
 
+// A bare "k" means thousands and says nothing about what is measured: Analog's
+// filter frequencies read "999", then "1.00k". It must come after "khz".
+const BARE_THOUSANDS = /^([\d.]+)\s*k$/i;
+
+/**
+ * Whether text is a number with a bare "k" suffix, like "22.0k".
+ * @param text - Trimmed text to check
+ * @returns True if it is a number of thousands with no unit
+ */
+export function isBareThousands(text: string): boolean {
+  return BARE_THOUSANDS.test(text);
+}
+
 /**
  * Label parsing patterns for extracting values and units from display labels.
  * Order matters - more specific patterns should come before general ones.
@@ -22,6 +35,7 @@ const LABEL_PATTERNS: LabelPattern[] = [
   // ms must precede s so "100ms" doesn't match the s-only pattern
   { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
   { regex: /^([\d.]+)\s*hz$/i, unit: "Hz" },
+  { regex: BARE_THOUSANDS, unit: null, multiplier: 1000 },
   { regex: /^([\d.]+)\s*ms$/i, unit: "ms" },
   { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
   { regex: /^([\d.-]+)\s*db$/i, unit: "dB" },
@@ -176,44 +190,173 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * The index an enum (quantized) param's value_items resolves to for an input
  * value, or -1 if none does.
  *
- * Matching is case-insensitive: the option list is closed, so a stricter match
- * would protect against no ambiguity. A two-option param whose labels are an
- * Off/On pair also accepts the `false`/`0` and `true`/`1` a model plausibly
- * sends for a toggle, which arrive as strings after schema coercion.
- * @param valueItems - The param's value_items, in index order
+ * Tried in order, first hit wins:
+ * 1. The written text, then the normalized value, ignoring case. Written text
+ *    comes first because normalizing strips units ("24 dB" becomes 24).
+ * 2. The one option with the same number and unit ("12 dB" on "12dB"); a bare
+ *    number matches any measured unit ("24" on "24 dB", never pan "C").
+ * 3. The one option that differs only in case, spacing or a hyphen between
+ *    words ("Mid / Side", "Lowpass").
+ * 4. For an Off/On pair, the `false`/`0` and `true`/`1` a model sends for a
+ *    toggle.
+ * Two options matching at one step make the text ambiguous, so it is refused.
+ * @param valueItems - The param's value_items, in index order. Max returns a
+ *   numeric label (e.g. 1, 2) as a number, so a list can mix numbers and strings.
  * @param inputValue - The value to resolve, as normalizeParamValue left it
+ * @param writtenText - The value as the caller wrote it; defaults to inputValue
  * @returns The matching index, or -1 if nothing matches
  */
 export function resolveEnumIndex(
-  valueItems: string[],
+  valueItems: (string | number)[],
   inputValue: string | number,
+  writtenText: string = String(inputValue),
 ): number {
-  const wanted = String(inputValue).toLowerCase();
-  const exact = valueItems.findIndex((item) => item.toLowerCase() === wanted);
+  const lower = valueItems.map((item) => String(item).toLowerCase());
+  const wanted = [
+    ...new Set([writtenText.toLowerCase(), String(inputValue).toLowerCase()]),
+  ];
 
-  if (exact !== -1) {
-    return exact;
+  for (const candidate of wanted) {
+    const exact = lower.indexOf(candidate);
+
+    if (exact !== -1) {
+      return exact;
+    }
   }
 
-  if (valueItems.length !== 2) {
-    return -1;
+  const unitIndex = indexOfUnitLabelled(valueItems, writtenText);
+
+  if (unitIndex !== -1) {
+    return unitIndex;
   }
 
-  const lower = valueItems.map((item) => item.toLowerCase());
+  const looseIndex = indexOfLooseLabel(valueItems, writtenText);
+
+  if (looseIndex !== -1) {
+    return looseIndex;
+  }
+
   const offIndex = lower.indexOf("off");
   const onIndex = lower.indexOf("on");
 
-  if (offIndex === -1 || onIndex === -1) {
+  if (valueItems.length !== 2 || offIndex === -1 || onIndex === -1) {
     return -1;
   }
 
-  if (OFF_LABELS.has(wanted)) {
+  if (wanted.some((candidate) => OFF_LABELS.has(candidate))) {
     return offIndex;
   }
 
-  if (ON_LABELS.has(wanted)) {
+  if (wanted.some((candidate) => ON_LABELS.has(candidate))) {
     return onIndex;
   }
 
   return -1;
+}
+
+/**
+ * A label with case and whitespace removed, plus any hyphen that joins two
+ * words ("Low-pass" is "lowpass"), so "Mid / Side" and "Mid/Side" compare equal.
+ * A hyphen that is a minus sign ("-6") stays: dropping it would turn -6 into 6.
+ * Whitespace between two digits becomes one space, so "1 1/16" never reads as
+ * "11/16".
+ * @param label - A display label or what the caller wrote
+ * @returns The key to compare labels by
+ */
+export function looseLabelKey(label: string): string {
+  return label
+    .toLowerCase()
+    .replaceAll(/\s+/g, (run, offset: number, whole: string) =>
+      /\d/.test(whole[offset - 1] ?? "") &&
+      /\d/.test(whole[offset + run.length] ?? "")
+        ? " "
+        : "",
+    )
+    .replaceAll(/(?<=[\p{L}\p{N}&])-(?=[\p{L}&])/gu, "");
+}
+
+/**
+ * The one option that matches what the caller wrote under `looseLabelKey`. Two
+ * options with the same key make the text ambiguous, so none is picked.
+ * @param valueItems - The param's value_items
+ * @param writtenText - The value as the caller wrote it
+ * @returns The option's index, or -1 if none or several match
+ */
+function indexOfLooseLabel(
+  valueItems: (string | number)[],
+  writtenText: string,
+): number {
+  const wanted = looseLabelKey(writtenText);
+  const matches: number[] = [];
+
+  for (const [index, item] of valueItems.entries()) {
+    if (looseLabelKey(String(item)) === wanted) {
+      matches.push(index);
+    }
+  }
+
+  return matches.length === 1 ? (matches[0] as number) : -1;
+}
+
+/**
+ * The one option whose label is a number with a unit and that equals what the
+ * caller wrote. A bare number matches any measured unit (not pan or note
+ * names, which are words like "C"); a number with a unit must match the unit
+ * too, ignoring spacing, case and scale ("0.8 kHz" is "800 Hz"). Text that is
+ * neither a plain number nor a number with a unit ("10 samples") matches
+ * nothing.
+ * @param valueItems - The param's value_items
+ * @param writtenText - The value as the caller wrote it
+ * @returns The option's index, or -1 if the text isn't a number or no single
+ *   option matches
+ */
+function indexOfUnitLabelled(
+  valueItems: (string | number)[],
+  writtenText: string,
+): number {
+  const trimmed = writtenText.trim();
+  const bare = trimmed === "" ? Number.NaN : Number(trimmed);
+  const written: ParsedLabel = Number.isFinite(bare)
+    ? { value: bare, unit: null }
+    : parseLabel(trimmed);
+
+  // parseLabel falls back to a leading number, so "10 samples" parses with no
+  // unit. Only a plain number may go without one.
+  if (
+    written.value == null ||
+    (written.unit == null && !Number.isFinite(bare))
+  ) {
+    return -1;
+  }
+
+  const matches: number[] = [];
+
+  for (const [index, item] of valueItems.entries()) {
+    const parsed = parseLabel(String(item));
+
+    if (
+      parsed.unit != null &&
+      (written.unit == null
+        ? !NON_MEASURED_UNITS.has(parsed.unit)
+        : written.unit === parsed.unit) &&
+      parsed.direction === written.direction &&
+      sameValue(parsed.value, written.value)
+    ) {
+      matches.push(index);
+    }
+  }
+
+  return matches.length === 1 ? (matches[0] as number) : -1;
+}
+
+/** Units that are names, not measurements: a bare number never means these. */
+const NON_MEASURED_UNITS = new Set(["pan", "note"]);
+
+function sameValue(a: number | string | null, b: number | string): boolean {
+  if (typeof a === "number" && typeof b === "number") {
+    // Scaling "1.1 kHz" by 1000 isn't exact
+    return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a));
+  }
+
+  return a === b;
 }

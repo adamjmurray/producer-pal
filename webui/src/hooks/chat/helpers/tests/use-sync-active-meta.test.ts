@@ -41,7 +41,7 @@ describe("useSyncActiveMeta", () => {
 
     renderHook(() =>
       useSyncActiveMeta(ref, {
-        activeModel: "claude-sonnet-5",
+        activeModel: "claude-sonnet-5-5",
         activeProvider: "anthropic",
         activeThinking: "high",
         activeSmallModelMode: false,
@@ -53,7 +53,7 @@ describe("useSyncActiveMeta", () => {
 
     expect(ref.current).toStrictEqual({
       ...DEFAULT_META,
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
       provider: "anthropic",
       thinking: "high",
       smallModelMode: false,

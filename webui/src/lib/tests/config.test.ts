@@ -53,7 +53,7 @@ describe("config", () => {
       // ANTHROPIC_MODELS was missing from ALL_MODELS, so Anthropic ids rendered
       // as the raw id (e.g. in the chat header and LockedSettingsNotice).
       expect(getModelName("claude-opus-5-5")).toBe("Claude Opus 5.5");
-      expect(getModelName("claude-sonnet-5")).toBe("Claude Sonnet 5");
+      expect(getModelName("claude-sonnet-5-5")).toBe("Claude Sonnet 5.5");
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {

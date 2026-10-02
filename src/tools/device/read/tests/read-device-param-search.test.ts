@@ -178,4 +178,35 @@ describe("readOneDevice paramSearch filtering", () => {
       unit: "dB",
     });
   });
+
+  it("finds a param Live pads with a trailing space, and reports it trimmed", () => {
+    registerMockObject("device-123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        name: "Operator",
+        class_display_name: "Operator",
+        type: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+        is_active: 1,
+        parameters: ["id", "param-1"],
+      },
+    });
+    registerMockObject("param-1", {
+      path: livePath.track(0).device(0).parameter(0),
+      type: "DeviceParameter",
+      properties: { name: "A Fix On ", original_name: "A Fix On " },
+    });
+
+    const result = readOneDevice({
+      id: "device-123",
+      include: ["params"],
+      paramSearch: "A Fix On ",
+    });
+
+    expect(result.parameters).toStrictEqual([
+      { id: "param-1", name: "A Fix On" },
+    ]);
+  });
 });

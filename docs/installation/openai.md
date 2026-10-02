@@ -39,7 +39,7 @@ In the chat UI settings:
 
 - Provider: **OpenAI**
 - API Key: Paste your key
-- Model: `gpt-6-sol`
+- Model: `gpt-6.1-sol`
 
 Click "Save".
 

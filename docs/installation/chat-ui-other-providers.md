@@ -35,7 +35,7 @@ ways to run Claude.
 2. In the chat UI settings:
    - Provider: **Anthropic**
    - API Key: Your key
-   - Model: e.g., `claude-sonnet-5`
+   - Model: e.g., `claude-sonnet-5-5`
 
 ### OpenRouter
 
@@ -46,7 +46,7 @@ one place. Includes free and pay-as-you-go options.
 2. In the chat UI settings:
    - Provider: **OpenRouter**
    - API Key: Your key
-   - Model: e.g., `anthropic/claude-sonnet-5`, `google/gemini-3.8-flash`
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
 
 ### Mistral
 
@@ -68,7 +68,7 @@ For detailed setup, see the [dedicated OpenAI guide](./openai).
 2. In the chat UI settings:
    - Provider: **OpenAI**
    - API Key: Your key
-   - Model: e.g., `gpt-6-sol`
+   - Model: e.g., `gpt-6.1-sol`
 
 ::: tip Subscription Alternative
 

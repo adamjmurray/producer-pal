@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { endMovesFirst } from "#src/tools/shared/clip/clip-region-writes.ts";
+
 export interface ClipPropsToSet {
   name?: string;
   color?: string;
@@ -17,8 +19,10 @@ export interface ClipPropsToSet {
 }
 
 interface RegionProps {
-  /** Set the end before the start (see buildClipPropertiesToSet) */
-  setEndFirst: boolean;
+  /** Write loop_end before loop_start (see endMovesFirst) */
+  loopEndFirst: boolean;
+  /** Write end_marker before start_marker (see endMovesFirst) */
+  markerEndFirst: boolean;
   /** Start position in marker units */
   start: number | null;
   /** End position in marker units */
@@ -32,15 +36,12 @@ interface RegionProps {
 }
 
 /**
- * Add the region properties in an order Live accepts.
- *
- * Order: end (if expanding) -> loop_start -> start_marker -> end (normal).
- * Live rejects loop_start behind loop_end, and silently ignores a start_marker
- * past end_marker, so an expanding write has to move the end out of the way.
- *
+ * Add the region properties in an order Live accepts: each pair's end goes
+ * first only when endMovesFirst says so, then the starts, then the other ends.
  * @param propsToSet - Properties object to modify
  * @param region - Which properties to write, and where
- * @param region.setEndFirst - Set the end before the start
+ * @param region.loopEndFirst - Write loop_end before loop_start
+ * @param region.markerEndFirst - Write end_marker before start_marker
  * @param region.start - Start position in marker units
  * @param region.end - End position in marker units
  * @param region.startMarker - Start marker position in marker units
@@ -50,7 +51,8 @@ interface RegionProps {
 function addRegionProperties(
   propsToSet: ClipPropsToSet,
   {
-    setEndFirst,
+    loopEndFirst,
+    markerEndFirst,
     start,
     end,
     startMarker,
@@ -58,23 +60,21 @@ function addRegionProperties(
     writesEndMarker,
   }: RegionProps,
 ): void {
-  const addEnd = () => {
+  const addEnds = (first: boolean) => {
     if (end == null) {
       return;
     }
 
-    if (writesLoop) {
+    if (writesLoop && loopEndFirst === first) {
       propsToSet.loop_end = end;
     }
 
-    if (writesEndMarker) {
+    if (writesEndMarker && markerEndFirst === first) {
       propsToSet.end_marker = end;
     }
   };
 
-  if (setEndFirst) {
-    addEnd();
-  }
+  addEnds(true);
 
   if (writesLoop && start != null) {
     propsToSet.loop_start = start;
@@ -84,9 +84,7 @@ function addRegionProperties(
     propsToSet.start_marker = startMarker;
   }
 
-  if (!setEndFirst) {
-    addEnd();
-  }
+  addEnds(false);
 }
 
 export interface BuildClipPropertiesArgs {
@@ -138,13 +136,6 @@ export function buildClipPropertiesToSet({
   currentEndMarker,
   beatsPerMarkerUnit,
 }: BuildClipPropertiesArgs): ClipPropsToSet {
-  // Live rejects a loop_start past loop_end, and silently drops a start_marker
-  // past end_marker. One call can write both starts, so the earlier end decides.
-  const setEndFirst =
-    startBeats != null && endBeats != null
-      ? startBeats >= Math.min(currentLoopEnd, currentEndMarker)
-      : false;
-
   // The markers are seconds on an unwarped audio clip and beats everywhere
   // else. This is the only place that writes them, so it is the only place that
   // has to convert.
@@ -162,13 +153,18 @@ export function buildClipPropertiesToSet({
     signature_denominator: timeSignature != null ? timeSigDenominator : null,
   };
 
+  const markerEndFirst = endMovesFirst(startMarkerBeats, currentEndMarker);
   const region: RegionProps = {
-    setEndFirst,
+    loopEndFirst: endMovesFirst(startBeats, currentLoopEnd),
+    markerEndFirst,
     start,
     end,
     startMarker,
     writesLoop: (isLooping || looping == null) && looping !== false,
-    writesEndMarker: (!isLooping || looping === false) && end != null,
+    // A looping clip still has to move end_marker when its start_marker is
+    // going past it, or Live drops the start and playback begins at the old one.
+    writesEndMarker:
+      (!isLooping || looping === false || markerEndFirst) && end != null,
   };
 
   // The loop brace needs `looping` already on, and Live ignores a start_marker

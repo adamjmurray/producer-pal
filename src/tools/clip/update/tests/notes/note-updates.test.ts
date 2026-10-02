@@ -10,6 +10,7 @@ import {
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
 } from "../../helpers/notes/note-updates.ts";
+import { applyTransformsToExistingNotes } from "../../helpers/notes/note-transforms.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 import {
   type ClipReasons,
@@ -118,6 +119,108 @@ describe("note-updates", () => {
     });
   });
 
+  describe("handleNoteUpdates keeps what the call didn't touch", () => {
+    // A muted note with a release velocity and a downward velocity range:
+    // three things bar|beat can't spell.
+    const MUTED = {
+      ...rawNote(60, 0, 1),
+      mute: 1,
+      release_velocity: 30,
+      velocity_deviation: -20,
+    };
+    const { note_id: _id, ...MUTED_WRITTEN } = MUTED;
+
+    /**
+     * Merge `notes` into a clip holding MUTED, in the given notation.
+     * @param notes - The new notes
+     * @param notation - Notation they're written in
+     * @returns What the update wrote to the clip
+     */
+    function mergeInto(
+      notes: string,
+      notation?: "midi-json",
+    ): Record<string, number>[] {
+      const { mockClip, addedNotes } = makeNotesMockClip([MUTED]);
+
+      handleNoteUpdates(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        notes,
+        undefined,
+        undefined,
+        4,
+        4,
+        makeCtx(),
+        notation,
+      );
+
+      return addedNotes;
+    }
+
+    it("rewrites an untouched note unchanged on a bar|beat merge", () => {
+      expect(mergeInto("D3 1|3")[0]).toStrictEqual(MUTED_WRITTEN);
+    });
+
+    it("rewrites an untouched note unchanged on a midi-json merge", () => {
+      const added = mergeInto(
+        '[{"pitch":62,"start":2,"duration":1,"velocity":100}]',
+        "midi-json",
+      );
+
+      expect(added[0]).toStrictEqual(MUTED_WRITTEN);
+    });
+
+    it("gives new bar|beat notes the defaults, not the existing notes' values", () => {
+      // The existing note is v100 with a 1-beat duration; make it v80 n/8 so
+      // a new note picking up its values would show.
+      const { mockClip, addedNotes } = makeNotesMockClip([
+        { ...rawNote(60, 0, 1), velocity: 80, duration: 0.5 },
+      ]);
+
+      handleNoteUpdates(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        "D3 1|3",
+        undefined,
+        undefined,
+        4,
+        4,
+        makeCtx(),
+        undefined,
+      );
+
+      expect(addedNotes[1]).toStrictEqual({
+        pitch: 62,
+        start_time: 2,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      });
+    });
+
+    it("rewrites an untouched note unchanged when only transforms run", () => {
+      const { mockClip, addedNotes } = makeNotesMockClip([
+        MUTED,
+        rawNote(62, 2, 2),
+      ]);
+
+      handleNoteUpdates(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        undefined,
+        "D3: velocity = 50",
+        undefined,
+        4,
+        4,
+        makeCtx(),
+        undefined,
+      );
+
+      expect(addedNotes[0]).toStrictEqual(MUTED_WRITTEN);
+    });
+  });
+
   describe("handleDuplicateLoopWithEdits", () => {
     function callWithEdits(
       overrides: {
@@ -189,6 +292,150 @@ describe("note-updates", () => {
 
       expect(removeNoteCalls(clip).length).toBeGreaterThan(0);
       expect(result?.transformed).toBe(2);
+    });
+  });
+});
+
+// A muted E3 on beat 1 (bar|beat 1|2), with a release velocity of its own.
+const MUTED = { ...rawNote(64, 1, 9), mute: 1, release_velocity: 30 };
+const { note_id: _id, ...MUTED_WRITTEN } = MUTED;
+
+describe("muted notes in an edit", () => {
+  let reasons: ClipReasons;
+
+  beforeEach(() => {
+    reasons = newClipReasons();
+  });
+
+  function merge(notes: string, transforms?: string) {
+    const { mockClip, addedNotes } = makeNotesMockClip([
+      rawNote(60, 0, 1),
+      MUTED,
+    ]);
+    const result = handleNoteUpdates(
+      mockClip as unknown as LiveAPI,
+      reasons,
+      notes,
+      transforms,
+      undefined,
+      4,
+      4,
+      makeCtx(),
+      undefined,
+    );
+
+    return { addedNotes, result };
+  }
+
+  it("keeps a muted note through a merge and counts only visible ones", () => {
+    const { addedNotes, result } = merge("G3 1|3");
+
+    expect(addedNotes).toHaveLength(3);
+    expect(addedNotes).toContainEqual(MUTED_WRITTEN);
+    expect(result?.noteCount).toBe(1);
+  });
+
+  it("replaces a muted note when a note lands on its pitch and start", () => {
+    const { addedNotes } = merge("E3 1|2");
+
+    const written = addedNotes.filter((note) => note.pitch === 64);
+
+    expect(written).toHaveLength(1);
+    expect(written[0]).not.toHaveProperty("mute");
+    expect(written[0]).not.toHaveProperty("release_velocity");
+  });
+
+  it("leaves a muted note alone when transforms run after a merge", () => {
+    const { addedNotes, result } = merge("G3 1|3", "velocity = 20");
+
+    expect(addedNotes).toContainEqual(MUTED_WRITTEN);
+    expect(result?.transformed).toBe(2);
+  });
+
+  it("is not deleted by a v0 aimed at it", () => {
+    const { addedNotes } = merge("v0 E3 1|2");
+
+    expect(addedNotes).toContainEqual(MUTED_WRITTEN);
+  });
+
+  it("is not copied by a bar copy", () => {
+    const { mockClip, addedNotes } = makeNotesMockClip([
+      rawNote(60, 0, 1),
+      MUTED,
+    ]);
+
+    handleNoteUpdates(
+      mockClip as unknown as LiveAPI,
+      reasons,
+      "@2=1",
+      undefined,
+      undefined,
+      4,
+      4,
+      makeCtx({ clipDuration: 8 }),
+      undefined,
+    );
+
+    expect(
+      addedNotes.map((note) => [note.pitch, note.start_time]),
+    ).toStrictEqual([
+      [60, 0],
+      [64, 1],
+      [60, 4],
+    ]);
+  });
+
+  describe("with only transforms", () => {
+    function transform(notes: object[]) {
+      const { mockClip, addedNotes } = makeNotesMockClip(notes);
+      const clip = { ...mockClip, id: "123" };
+      const result = applyTransformsToExistingNotes(
+        clip as unknown as LiveAPI,
+        reasons,
+        undefined,
+        "velocity = 20",
+        4,
+        4,
+      );
+
+      return { addedNotes, result };
+    }
+
+    it("changes only visible notes and writes the muted one back as it was", () => {
+      const { addedNotes, result } = transform([rawNote(60, 0, 1), MUTED]);
+
+      expect(result).toStrictEqual({ noteCount: 1, transformed: 1 });
+      expect(addedNotes).toContainEqual(MUTED_WRITTEN);
+      expect(addedNotes.filter((note) => note.velocity === 20)).toHaveLength(1);
+    });
+
+    it("leaves the muted note when preTransforms v0 clears the visible ones", () => {
+      const { mockClip, addedNotes } = makeNotesMockClip([
+        rawNote(60, 0, 1),
+        rawNote(67, 2, 2),
+        MUTED,
+      ]);
+      const result = applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        "v0",
+        undefined,
+        4,
+        4,
+      );
+
+      expect(result.transformed).toBe(2);
+      expect(addedNotes).toStrictEqual([MUTED_WRITTEN]);
+    });
+
+    it("says a clip with only muted notes has nothing to edit", () => {
+      const { addedNotes, result } = transform([MUTED]);
+
+      expect(result).toStrictEqual({ noteCount: 0 });
+      expect(addedNotes).toStrictEqual([]);
+      expect(reasons.said.get("123")?.join("; ")).toBe(
+        "transforms ignored: the clip has only muted notes, which edits leave alone",
+      );
     });
   });
 });

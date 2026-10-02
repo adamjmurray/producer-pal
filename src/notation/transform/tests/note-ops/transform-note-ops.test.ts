@@ -9,14 +9,14 @@ import {
   createTestNote,
   testNote,
   createTestNotes,
-} from "./evaluator/transform-evaluator-test-helpers.ts";
+} from "../evaluator/transform-evaluator-test-helpers.ts";
 import {
   expectTransformedNotes,
   TOUCHING_C3_PAIR,
   TOUCHING_C3_TRIO,
   warnSpyWithNote,
   warnSpyWithNotes,
-} from "./transform-test-helpers.ts";
+} from "../transform-test-helpers.ts";
 
 // Asserts a merge tolerance is rejected: the two well-separated notes pass
 // through unchanged and a warning containing `message` is emitted.

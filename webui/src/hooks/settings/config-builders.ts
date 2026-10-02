@@ -163,7 +163,7 @@ export function mapThinkingToOpenRouterEffort(
 
 /**
  * Extracts the GPT version number from a model name.
- * @param {string} model - Model identifier (e.g., "gpt-5.2-2025-12-11", "gpt-6-sol")
+ * @param {string} model - Model identifier (e.g., "gpt-5.2-2025-12-11", "gpt-6.1-sol")
  * @returns {number | null} - Version number (e.g., 5.2, 6) or null if not a versioned GPT model
  */
 export function extractGptVersion(model: string): number | null {
@@ -185,7 +185,7 @@ export function isO1O3Model(model: string): boolean {
  * Checks if an OpenAI model is a reasoning model (emits reasoning tokens and
  * rejects a non-default sampling temperature). Gates the reasoning-summary
  * request in the adapter.
- * Covers GPT-5 and later (gpt-5, gpt-5.4-mini, gpt-6-sol, etc.) and o-series.
+ * Covers GPT-5 and later (gpt-5, gpt-5.4-mini, gpt-6.1-sol, etc.) and o-series.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if reasoning model
  */

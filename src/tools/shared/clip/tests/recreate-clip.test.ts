@@ -173,6 +173,63 @@ describe("recreateClip onto the source's own lane", () => {
   });
 });
 
+describe("recreateClip on a source with a start offset", () => {
+  it("moves the ends before the starts", () => {
+    // A 2-bar clip with its first bar trimmed off: the copy is created 4 beats
+    // long, so a start of beat 4 sits on its current end. Live drops a start
+    // written before the end moves.
+    registerMockObject("offset_src", {
+      path: SOURCE_PATH,
+      type: "Clip",
+      properties: {
+        is_midi_clip: 1,
+        length: 4,
+        start_marker: 4,
+        loop_start: 4,
+        loop_end: 8,
+        end_marker: 8,
+      },
+      methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
+    });
+    const copy = registerMockObject("offset_copy", {
+      path: livePath.track(0).takeLane(0).arrangementClip(1),
+      type: "Clip",
+      properties: { is_arrangement_clip: 1 },
+    });
+
+    registerMockObject("offset_lane", {
+      path: LANE_PATH,
+      type: "TakeLane",
+      methods: { create_midi_clip: () => ["id", "offset_copy"] },
+    });
+
+    recreateClip(
+      LiveAPI.from(SOURCE_PATH),
+      LiveAPI.from(LANE_PATH),
+      0,
+      undefined,
+      undefined,
+      [],
+    );
+
+    const markers = new Set([
+      "start_marker",
+      "loop_start",
+      "loop_end",
+      "end_marker",
+    ]);
+
+    expect(
+      copy.set.mock.calls.filter(([prop]) => markers.has(prop as string)),
+    ).toStrictEqual([
+      ["loop_end", 8],
+      ["end_marker", 8],
+      ["start_marker", 4],
+      ["loop_start", 4],
+    ]);
+  });
+});
+
 describe("recreateClip and the source's groove", () => {
   const SOURCE_HAS_GROOVE = { has_groove: 1, groove: ["id", 42] };
 

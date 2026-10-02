@@ -15,6 +15,8 @@ import {
   rawNotesToCopiedNotes,
   readAllClipNotes,
 } from "./clip-notes.ts";
+import { arrangementSpan, noteSpanLoss } from "./arrangement-span.ts";
+import { clipRegionWrites } from "./clip-region-writes.ts";
 
 /**
  * Thrown when the clip was created but a later step — notes, properties, color
@@ -40,6 +42,7 @@ export class PartialRecreateError extends Error {
 
 /** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
+  /** What the copy is created at: the source's span, or its loop length. */
   length: number;
   notes: CopiedNote[];
   /** The source's own color, read only when there is no override to use. */
@@ -56,6 +59,11 @@ interface AudioClipSnapshot {
 
 /** How a destination makes the empty clip the snapshot is poured into. */
 interface RecreateTarget {
+  /**
+   * Whether the copy keeps an arrangement source's span. A session slot has no
+   * span, so there the copy is as long as the source's loop.
+   */
+  keepsSpan: boolean;
   createMidi: (length: number) => LiveAPI;
   createAudio: (filePath: string) => LiveAPI;
 }
@@ -63,6 +71,10 @@ interface RecreateTarget {
 /**
  * Re-create a clip in the arrangement, somewhere Live's own duplicate can't
  * reach: a MIDI clip from its notes, an audio clip from its sample.
+ *
+ * An arrangement source keeps its span on the timeline, not its loop length. A
+ * MIDI copy is created at that span; an audio copy can't be (Live sets no end
+ * on `create_audio_clip`), so a different length is reported in `losses`.
  *
  * Used for both take-lane directions, because `duplicate_clip_to_arrangement`
  * handles neither: a TakeLane has no duplicate API, and the Track-scoped one
@@ -86,6 +98,7 @@ export function recreateClip(
   losses: string[],
 ): LiveAPI {
   return recreateInto(sourceClip, name, color, losses, {
+    keepsSpan: true,
     createMidi: (length) =>
       createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
@@ -126,6 +139,7 @@ export function recreateClipInSlot(
   const position = pathPrefix(clipSlot);
 
   return recreateInto(sourceClip, name, color, losses, {
+    keepsSpan: false,
     createMidi: (length) => {
       clipSlot.call("create_clip", length);
 
@@ -225,8 +239,10 @@ function recreateInto(
   losses: string[],
   target: RecreateTarget,
 ): LiveAPI {
+  const span = target.keepsSpan ? arrangementSpan(sourceClip) : null;
+
   if (sourceClip.getProperty("is_midi_clip") === 1) {
-    const snapshot = snapshotClip(sourceClip, name, color);
+    const snapshot = snapshotClip(sourceClip, name, color, span);
     const newClip = target.createMidi(snapshot.length);
 
     try {
@@ -237,6 +253,13 @@ function recreateInto(
       newClip.setAll(snapshot.properties);
       applyColor(newClip, color, snapshot.color);
       noteGrooveLoss(newClip, snapshot.properties.groove, losses);
+      noteSpanLoss(
+        newClip,
+        span,
+        meterOf(snapshot.properties),
+        "Live shortened the new clip",
+        losses,
+      );
     } catch (error) {
       throw new PartialRecreateError(errorMessage(error), newClip);
     }
@@ -251,11 +274,32 @@ function recreateInto(
     newClip.setAll(snapshot.properties);
     applyColor(newClip, color, snapshot.color);
     noteGrooveLoss(newClip, snapshot.properties.groove, losses);
+    noteSpanLoss(
+      newClip,
+      span,
+      meterOf(snapshot.properties),
+      "Live rebuilds an audio clip from its sample",
+      losses,
+    );
   } catch (error) {
     throw new PartialRecreateError(errorMessage(error), newClip);
   }
 
   return newClip;
+}
+
+/**
+ * @param properties - A snapshot's clip properties
+ * @returns The clip's time signature
+ */
+function meterOf(properties: Record<string, unknown>): {
+  numerator: number;
+  denominator: number;
+} {
+  return {
+    numerator: properties.signature_numerator as number,
+    denominator: properties.signature_denominator as number,
+  };
 }
 
 /**
@@ -316,32 +360,38 @@ function applyColor(
  * @param sourceClip - The clip being copied
  * @param name - Name override, or undefined to keep the source's
  * @param color - Color override, or undefined to keep the source's
+ * @param span - The arrangement span to keep, or null to use the loop length
  * @returns The source's length, notes, color, and clip properties
  */
 function snapshotClip(
   sourceClip: LiveAPI,
   name: string | undefined,
   color: string | undefined,
+  span: number | null,
 ): ClipSnapshot {
-  // readAllClipNotes reads the full [-length, 2*length] window, so a pickup
-  // (negative start_time) before the clip start and any overhang past the end
-  // come along. Only note_id is stripped, so a stale id isn't re-fed when
-  // copying one source to several positions.
+  // readAllClipNotes brings pickups and overhang along. Only note_id is
+  // stripped, so a stale id isn't re-fed when copying one source to several
+  // positions.
   const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
+  const length = span ?? (sourceClip.getProperty("length") as number);
 
   return {
-    length: sourceClip.getProperty("length") as number,
+    length,
     notes,
     color: color == null ? sourceClip.getProperty("color") : null,
-    // Order mirrors create-clip's buildClipProperties to satisfy Live's
-    // loop_end > loop_start constraint while applying values. Name falls back to
-    // the source so an un-overridden duplicate matches it (as native duplicate
-    // does).
+    // The copy is created `length` long, so its ends start there. Name falls
+    // back to the source so an un-overridden duplicate matches it (as native
+    // duplicate does).
     properties: {
-      start_marker: sourceClip.getProperty("start_marker"),
-      loop_start: sourceClip.getProperty("loop_start"),
-      loop_end: sourceClip.getProperty("loop_end"),
-      end_marker: sourceClip.getProperty("end_marker"),
+      ...clipRegionWrites(
+        { loop_end: length, end_marker: length },
+        {
+          loop_start: sourceClip.getProperty("loop_start") as number,
+          loop_end: sourceClip.getProperty("loop_end") as number,
+          start_marker: sourceClip.getProperty("start_marker") as number,
+          end_marker: sourceClip.getProperty("end_marker") as number,
+        },
+      ),
       looping: sourceClip.getProperty("looping"),
       signature_numerator: sourceClip.getProperty("signature_numerator"),
       signature_denominator: sourceClip.getProperty("signature_denominator"),

@@ -28,16 +28,19 @@ duplicate handles neither direction: `TakeLane` has no duplicate API, and
 `Track.duplicate_clip_to_arrangement` silently no-ops when the _source_ is a
 take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
 (promote) by rebuilding the clip from its notes, or from its sample for audio;
-envelope automation is dropped, and a warped audio clip's markers reset. A
-`duplicate` with `type: "track"` and a lane destination copies a whole lane the
-same way — clips only, so the devices, routing, mixer settings and session clips
-a new-track copy carries stay behind. Its source is a track (`t2`, its main
-lane) or a lane (`t2/l0`, or that lane's id); `t2/l+` names no source, and a
-lane can't copy onto itself. A lane source with a bare track destination (`t2`,
-its own track or another) promotes the whole lane onto that track's main lane,
-replacing the clips already at those positions; it makes no lane, so its entry
-reports the track's path with no `created`. A track source has no such
-destination — a bare `toPath` there is the new-track copy's, and is ignored.
+envelope automation is dropped, and a warped audio clip's markers reset. A MIDI
+copy keeps the source's arrangement length even when its loop is shorter; an
+audio copy can't (Live sets no end on `create_audio_clip`), so its entry reports
+the length it got. A `duplicate` with `type: "track"` and a lane destination
+copies a whole lane the same way — clips only, so the devices, routing, mixer
+settings and session clips a new-track copy carries stay behind. Its source is a
+track (`t2`, its main lane) or a lane (`t2/l0`, or that lane's id); `t2/l+`
+names no source, and a lane can't copy onto itself. A lane source with a bare
+track destination (`t2`, its own track or another) promotes the whole lane onto
+that track's main lane, replacing the clips already at those positions; it makes
+no lane, so its entry reports the track's path with no `created`. A track source
+has no such destination — a bare `toPath` there is the new-track copy's, and is
+ignored.
 
 **A lane is one-way**: nothing removes a take lane or a clip on one. A move of a
 lane clip gets as close as Live allows — `update-clip` copies the content to the

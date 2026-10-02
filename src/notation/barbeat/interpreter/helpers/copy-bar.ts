@@ -21,13 +21,12 @@ export function copyNoteToDestination(
   events: NoteEvent[],
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
+  // Copy the whole note: an existing clip note carries fields bar|beat can't
+  // spell (release velocity), and a copy shouldn't lose them.
+  const { relativeTime, originalBar: _originalBar, ...fields } = sourceNote;
   const copiedNote: NoteEvent = {
-    pitch: sourceNote.pitch,
-    start_time: destinationBarStart + sourceNote.relativeTime,
-    duration: sourceNote.duration,
-    velocity: sourceNote.velocity,
-    probability: sourceNote.probability,
-    velocity_deviation: sourceNote.velocity_deviation,
+    ...fields,
+    start_time: destinationBarStart + relativeTime,
   };
 
   events.push(copiedNote);

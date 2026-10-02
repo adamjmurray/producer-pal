@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import {
+  createTestNote,
   expectGetNotesExtendedCall,
   registerDrumRackTrack,
   setupMidiClipMock,
@@ -99,7 +100,7 @@ describe("readOneClip", () => {
       include: ["timing", "notes"],
     });
 
-    expectGetNotesExtendedCall(clip);
+    expectGetNotesExtendedCall(clip, 4, 1);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
@@ -352,5 +353,37 @@ describe("readOneClip", () => {
     });
 
     expect(result.notes).toBeUndefined();
+  });
+
+  it("reads notes in a clip whose region doesn't start at 1|1", () => {
+    // A clip created at 5|1 keeps its region and its notes at beat 16. Like
+    // Live, the mock only answers with notes inside the window asked for.
+    const note = createTestNote({ pitch: 60, startTime: 16 });
+    const clip = setupMidiClipMock({
+      clipProps: {
+        length: 4,
+        start_marker: 16,
+        end_marker: 20,
+        loop_start: 16,
+        loop_end: 20,
+      },
+    });
+
+    clip.call.mockImplementation((method: string, ...args: unknown[]) => {
+      const [, , fromTime = 0, span = 0] = args as number[];
+      const inWindow = fromTime <= 16 && fromTime + span > 16;
+
+      return method === "get_notes_extended"
+        ? JSON.stringify({ notes: inWindow ? [note] : [] })
+        : null;
+    });
+
+    const result = readOneClip({
+      trackIndex: 1,
+      sceneIndex: 1,
+      include: ["notes"],
+    });
+
+    expect(result.notes).toBe("v100 n/4 C3 5|1");
   });
 });

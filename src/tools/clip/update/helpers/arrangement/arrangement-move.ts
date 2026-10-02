@@ -462,9 +462,8 @@ function landedLength(clip: LiveAPI): number | null {
 
 /**
  * Recount a clip's notes after its length changed. The first count was taken
- * against the old [-length, 2*length] scan window, which misses notes written
- * past the old end — the whole point of writing notes and lengthening in one
- * call.
+ * against the old region's scan window, which misses notes written past the
+ * old end — the whole point of writing notes and lengthening in one call.
  * @param clipId - The clip the notes were written to
  * @param noteResult - The count from the note write, or null when none ran
  * @returns The note result with a refreshed count, or null

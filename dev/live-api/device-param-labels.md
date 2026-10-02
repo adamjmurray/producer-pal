@@ -15,6 +15,7 @@ maps a display value back to a raw one.
 | ------------------ | -------------------------- | --------------------------------------- |
 | Number with a unit | `"1.00 kHz"`, `"-6 dB"`    | `parseLabel` pattern                    |
 | Bare number        | `"4.00"`, `8`              | `parseLabel` fallback + the units table |
+| Bare thousands     | `"999"`, `"22.0k"`         | `parseLabel` bare-`k` pattern + units   |
 | Enum               | `"Peak"`, `"Expand"`       | `is_quantized` + `value_items`          |
 | Division ladder    | `"1/16"`, `"1 / 16"`       | `isDivisionParam` → enumerated options  |
 | Ratio              | `"4.00 : 1"`, `"1 : 2.00"` | `parseLabel` ratio patterns             |
@@ -38,10 +39,20 @@ so an unrecognized ratio (`"inf : 1"`) reaches the sentinel trim instead.
 `LFO S&H` reads `"1 / 16"`; its `LFO Rate` reads `"1/16"`. Division matching is
 whitespace-insensitive on both sides for this reason.
 
+**An option written loosely still matches.** After the exact and unit matches
+fail, an enum option is picked by a key that ignores case, whitespace and a
+hyphen between words (`Mid / Side` for `Mid/Side`, `Lowpass` for `Low-pass`), if
+exactly one option has that key. Division rates use the same key (`4 d`, `1/4D`,
+`1 / 32`). A minus sign is never dropped. A tie refuses; no stock device has
+one.
+
 **A division ladder is not fractions all the way down.** Sync rates run from bar
 counts up to fractions — `"8"`, `"4"`, `"2"`, `"1"`, `"1/2"` … `"1/64"`.
 Detection has to check the max end too, because a param sitting in the bar half
-shows a bare number at both its current value and its minimum.
+shows a bare number at both its current value and its minimum. Analog's and
+Tension's rates also carry a dotted or triplet `d`/`t` (`4d`, `1/32t`), which
+detection allows; without it a param sitting on `4d` stopped reading as a ladder
+and echoed `4` for a write that landed on `4d`.
 
 **The display doesn't always rise with the raw value.** Multiband Dynamics'
 ratios count down. `param-display-search.ts` negates the display for those so

@@ -6,14 +6,18 @@
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import {
+  combineOutcomes,
+  countTransformed,
+} from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,
-  rawNotesToNoteEvents,
-  readAllClipNotes,
+  rawNotesToCopiedNotes,
+  readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
@@ -44,15 +48,14 @@ export function applyTransformsToExistingNotes(
   timeSigDenominator: number,
   clipContext?: ClipContext,
 ): NoteUpdateResult {
-  // Read the full [-length, 2*length] window so a pickup note (negative
-  // start_time) is transformed too — otherwise `preTransforms: "v0"` reports
-  // the clip as having no notes and leaves the pickup orphaned (noteCount
-  // lies 0).
-  const rawNotes = readAllClipNotes(clip);
+  // Read the same window as read-clip, so a pickup before the clip start is
+  // transformed too — `preTransforms: "v0"` must clear it.
+  // Muted notes are absent to the transforms and put back after.
+  const { visible, muted } = readClipNotes(clip);
 
   // A no-op, not a refusal: there was nothing to transform, so the clip is
   // already how the call asked for it and the entry keeps its noteCount.
-  if (rawNotes.length === 0) {
+  if (visible.length === 0) {
     const sent = [
       preTransformString != null ? "preTransforms" : null,
       transformString != null ? "transforms" : null,
@@ -61,24 +64,25 @@ export function applyTransformsToExistingNotes(
     noteClipReason(
       reasons,
       clip.id,
-      `${sent.join("/")} ignored: the clip has no notes`,
+      `${sent.join("/")} ignored: the clip has ${muted.length > 0 ? "only muted notes, which edits leave alone" : "no notes"}`,
     );
 
     return { noteCount: 0 };
   }
 
-  // Convert raw notes to NoteEvent format (strips extra Live API properties)
-  const notes: NoteEvent[] = rawNotesToNoteEvents(rawNotes);
+  // Copied whole (only note_id goes), so a note the transforms don't change is
+  // written back exactly as it was, release velocity included.
+  const notes: NoteEvent[] = rawNotesToCopiedNotes(visible);
 
   // applyTransforms mutates notes in place (and no-ops on an undefined string).
-  const preCount = applyTransforms(
+  const preOutcome = applyTransforms(
     notes,
     preTransformString,
     timeSigNumerator,
     timeSigDenominator,
     clipContext,
   );
-  const postCount = applyTransforms(
+  const postOutcome = applyTransforms(
     notes,
     transformString,
     timeSigNumerator,
@@ -88,19 +92,24 @@ export function applyTransformsToExistingNotes(
 
   removeAllClipNotes(clip);
 
-  if (notes.length > 0) {
-    // Dedupe then sort before re-adding, identically to the merge path: a
-    // transform can collapse two notes onto the same pitch+exact-onset (dedupe
-    // keep-last resolves that deterministically instead of letting Live drop
-    // one), and any remaining tail overlap is made safe by ascending order.
-    clip.call("add_new_notes", {
-      notes: sortNotes(dedupeNotesKeepingLast(notes)),
-    });
+  // Dedupe then sort before re-adding, identically to the merge path: a
+  // transform can collapse two notes onto the same pitch+exact-onset (dedupe
+  // keep-last resolves that deterministically instead of letting Live drop
+  // one), and any remaining tail overlap is made safe by ascending order.
+  const written = sortNotes(
+    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...notes]),
+  );
+
+  if (written.length > 0) {
+    clip.call("add_new_notes", { notes: written });
   }
 
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: postCount ?? preCount,
+    transformed: countTransformed(
+      combineOutcomes(preOutcome, postOutcome),
+      written,
+    ),
   };
 }
 
@@ -122,6 +131,7 @@ export function buildClipContext(
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
+  const beatScale = timeSigDenominator / 4;
 
   const durationBeats = isArrangementClip
     ? (clip.getProperty("end_time") as number) -
@@ -129,15 +139,41 @@ export function buildClipContext(
     : clipLengthBeats(clip);
 
   return {
-    clipDuration: durationBeats * (timeSigDenominator / 4),
+    clipDuration: durationBeats * beatScale,
     clipIndex,
     clipCount,
     arrangementStart: isArrangementClip
-      ? (clip.getProperty("start_time") as number) * (timeSigDenominator / 4)
+      ? (clip.getProperty("start_time") as number) * beatScale
       : undefined,
+    ...noteTimeRegion(clip, beatScale),
     barDuration: timeSigNumerator,
     timeSigDenominator,
     scalePitchClassMask: readLiveSetScaleMask(),
+  };
+}
+
+/**
+ * Where a MIDI clip's playback starts and stops, in note time. Audio clips
+ * have no notes, and an unwarped one's markers are in seconds, so they get
+ * neither.
+ * @param clip - The clip LiveAPI object
+ * @param beatScale - Musical beats per Ableton beat
+ * @returns startMarker and clipEnd in musical beats, or {} for audio
+ */
+function noteTimeRegion(
+  clip: LiveAPI,
+  beatScale: number,
+): Pick<ClipContext, "startMarker" | "clipEnd"> {
+  if ((clip.getProperty("is_midi_clip") as number) === 0) {
+    return {};
+  }
+
+  const looping = (clip.getProperty("looping") as number) > 0;
+  const end = clip.getProperty(looping ? "loop_end" : "end_marker") as number;
+
+  return {
+    startMarker: (clip.getProperty("start_marker") as number) * beatScale,
+    clipEnd: end * beatScale,
   };
 }
 

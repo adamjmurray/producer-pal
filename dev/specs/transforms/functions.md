@@ -206,11 +206,11 @@ probability, and deviation.
   warns and is skipped.
 - **`sync`** (optional trailing keyword, same form as the waveform `sync`): the
   positions are interpreted against the **arrangement timeline** instead of the
-  clip origin. The clip's arrangement start is subtracted from each position, so
-  e.g. a clip starting at bar 5 cut with `split(6|1, sync)` cuts at
-  clip-relative bar 2. Session clips have no arrangement origin, so `sync` is
-  ignored (warn-and-degrade to clip-relative), mirroring the waveform `sync`
-  fallback.
+  clip origin. Each position is mapped into note time through the clip's
+  arrangement start and start marker, so e.g. a clip starting at bar 5 (start
+  marker at 1|1) cut with `split(6|1, sync)` cuts at clip bar 2. Session clips
+  have no arrangement origin, so `sync` is ignored (warn-and-degrade to
+  clip-relative), mirroring the waveform `sync` fallback.
 
 ```
 split(2|1)            // cut every note that spans bar 2's downbeat

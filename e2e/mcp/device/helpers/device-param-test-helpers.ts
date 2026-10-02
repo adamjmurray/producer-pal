@@ -19,7 +19,7 @@ export interface ParamInfo {
   value?: number | string;
   min?: number;
   max?: number;
-  options?: string[];
+  options?: (string | number)[];
   alsoAccepts?: string;
 }
 

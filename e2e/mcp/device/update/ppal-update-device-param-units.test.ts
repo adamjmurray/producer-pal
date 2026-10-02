@@ -23,6 +23,7 @@ import {
 } from "../helpers/update-device-param-test-helpers";
 import {
   createTestDevice,
+  createTestDeviceAt,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -171,6 +172,35 @@ describe("ppal-update-device param units", () => {
     });
   });
 
+  // Analog's F1 Freq reads "999", then "1.00k": a bare k for thousands and no
+  // "Hz". "22.0k" used to read as 22, giving a range of 30 to 22.
+  describe("a param whose labels use a bare k for thousands", () => {
+    it("reports a rising range in Hz", async () => {
+      const path = await createTestDeviceAt(ctx.client!, "Analog", "t8");
+      const param = await readFreq(path);
+
+      expect(param.unit).toBe("Hz");
+      expect(param.min).toBe(30);
+      expect(param.max).toBe(22000);
+    });
+
+    it.each(["800", "800 Hz", "0.8 kHz", "0.8k"])(
+      "lands %j on about 800 Hz",
+      async (value) => {
+        const path = await createTestDeviceAt(ctx.client!, "Analog", "t8");
+
+        await ctx.client!.callTool({
+          name: "ppal-update-device",
+          arguments: { path, params: [{ name: "F1 Freq", value }] },
+        });
+        await sleep(100);
+
+        // Live shows three digits at this size, so allow a step either side.
+        expect(Number((await readFreq(path)).value)).toBeCloseTo(800, -1);
+      },
+    );
+  });
+
   describe("a param that measures nothing", () => {
     // S/C EQ Q is a Q factor: a bare number with no unit recorded, because
     // there is no unit to record.
@@ -251,6 +281,33 @@ async function readUnit(
   return result.parameters?.find((p) => p.name === name)?.unit;
 }
 
+/**
+ * Read Analog's F1 Freq as read-device reports it.
+ * @param path - Path of the Analog device
+ * @returns The parameter entry
+ */
+async function readFreq(path: string): Promise<FreqParam> {
+  const result = parseToolResult<ReadDeviceResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path, include: ["param-values"], paramSearch: "F1 Freq" },
+    }),
+  );
+  const found = result.parameters?.find((p) => p.name === "F1 Freq");
+
+  expect(found, 'no parameter named "F1 Freq"').toBeDefined();
+
+  return found as FreqParam;
+}
+
+interface FreqParam {
+  name: string;
+  value?: number | string;
+  min?: number;
+  max?: number;
+  unit?: string;
+}
+
 interface ReadDeviceResult {
-  parameters?: Array<{ name: string; unit?: string }>;
+  parameters?: FreqParam[];
 }
