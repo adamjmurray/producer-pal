@@ -171,7 +171,7 @@
     "peggy": "5.1.0",
     "rolldown": "1.2.9",
     "typescript": "npm:@typescript/typescript6@6.0.2",
-    "undici": "8.11.0",
+    "undici": "8.11.2",
     "vite": "8.3.0",
     "vite-plugin-singlefile": "2.3.3",
     "vitepress": "1.6.4",
