@@ -38,8 +38,10 @@ export interface ClipEnvelope {
   eventCount: number;
   /** Set when the clip holds more events than the read returned */
   truncated?: true;
-  /** The automation as envelope notation, in the clip's own meter */
-  events: string;
+  /** The automation as envelope notation, in the clip's own meter; absent when it couldn't be read */
+  events?: string;
+  /** Why `events` is absent */
+  detail?: string;
 }
 
 type ListedEnvelope = EnvelopeListResult["envelopes"][number];
@@ -50,7 +52,8 @@ type ListedEnvelope = EnvelopeListResult["envelopes"][number];
  * @param isArrangementClip - Whether the clip is in the arrangement
  * @param clipMeter - Getter for the clip's meter, which spells the event times
  * @param deadline - The request deadline from ToolContext, if any
- * @returns One entry per automated parameter, or why there are none to report
+ * @returns One entry per automated parameter, each saying why when its events
+ *   couldn't be read, or why there are none to report at all
  */
 export async function clipEnvelopes(
   clip: LiveAPI,
@@ -82,7 +85,17 @@ export async function clipEnvelopes(
 
   const envelopes: ClipEnvelope[] = [];
 
+  let stalledReason: string | undefined;
+
   for (const entry of listed.result.envelopes) {
+    if (stalledReason != null) {
+      envelopes.push(
+        unreadEnvelope(trackIndex, entry, `not read: ${stalledReason}`),
+      );
+
+      continue;
+    }
+
     const read = await envelopeRoute<EnvelopeReadResult>(
       ENVELOPE_ROUTES.read,
       {
@@ -94,7 +107,18 @@ export async function clipEnvelopes(
     );
 
     if (!read.ok) {
-      return read.reason;
+      if (!read.available) {
+        return read.reason;
+      }
+
+      // A stalled route would stall the rest the same way.
+      if (read.stalled != null) {
+        stalledReason = read.reason;
+      }
+
+      envelopes.push(unreadEnvelope(trackIndex, entry, read.reason));
+
+      continue;
     }
 
     envelopes.push(envelopeEntry(trackIndex, entry, read.result, clipMeter));
@@ -120,6 +144,46 @@ function parameterTarget(entry: ListedEnvelope): {
 }
 
 /**
+ * Name one listed envelope's parameter on a result entry.
+ * @param trackIndex - The clip's track, which spells the device path
+ * @param entry - What the list route said about the parameter
+ * @returns The parameter, id and device the entry names it by
+ */
+function envelopeIdentity(
+  trackIndex: number,
+  entry: ListedEnvelope,
+): Pick<ClipEnvelope, "parameter" | "id" | "device"> {
+  const id = parameterId(trackIndex, entry);
+
+  return {
+    parameter: entry.parameter.name,
+    ...(id != null && { id }),
+    ...(entry.device != null && {
+      device: `t${String(trackIndex)}/${entry.device}`,
+    }),
+  };
+}
+
+/**
+ * Build the entry for a parameter whose events weren't read.
+ * @param trackIndex - The clip's track
+ * @param entry - What the list route said about the parameter
+ * @param detail - Why its events are missing
+ * @returns The entry, with the event count the list gave
+ */
+function unreadEnvelope(
+  trackIndex: number,
+  entry: ListedEnvelope,
+  detail: string,
+): ClipEnvelope {
+  return {
+    ...envelopeIdentity(trackIndex, entry),
+    eventCount: entry.event_count,
+    detail,
+  };
+}
+
+/**
  * Build one envelope's result entry.
  * @param trackIndex - The clip's track, which spells the device path
  * @param entry - What the list route said about the parameter
@@ -134,14 +198,9 @@ function envelopeEntry(
   clipMeter: () => { numerator: number; denominator: number },
 ): ClipEnvelope {
   const { numerator, denominator } = clipMeter();
-  const id = parameterId(trackIndex, entry);
 
   return {
-    parameter: entry.parameter.name,
-    ...(id != null && { id }),
-    ...(entry.device != null && {
-      device: `t${String(trackIndex)}/${entry.device}`,
-    }),
+    ...envelopeIdentity(trackIndex, entry),
     eventCount: read.event_count ?? entry.event_count,
     ...(read.truncated === true && { truncated: true as const }),
     events: formatEnvelopeNotation(

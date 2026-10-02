@@ -299,6 +299,115 @@ describe("readClip - envelopes", () => {
     expect(await readEnvelopes()).toBe("no clip in slot 1 of t0");
   });
 
+  it("keeps the envelopes it read when one parameter's read fails", async () => {
+    setupClip();
+    vi.mocked(requestNode).mockImplementation(async (route, args) => {
+      if (route === ENVELOPE_ROUTES.list) {
+        return {
+          success: true,
+          result: {
+            available: true,
+            result: { envelopes: [MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM] },
+          },
+        };
+      }
+
+      return (args as { parameter?: unknown }).parameter === "send0"
+        ? {
+            success: true,
+            result: { available: true, error: "parameter send0 is gone" },
+          }
+        : {
+            success: true,
+            result: {
+              available: true,
+              result: { exists: true, event_count: 2, events: EVENTS },
+            },
+          };
+    });
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+      {
+        parameter: "Send A",
+        id: "send-param",
+        eventCount: 2,
+        detail: "parameter send0 is gone",
+      },
+      {
+        parameter: "Filter Freq",
+        id: "filter-param",
+        device: "t0/d0/c1/d0",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+    ]);
+  });
+
+  it("reports the whole read as unreachable if the remote script goes missing mid-read", async () => {
+    setupClip();
+    vi.mocked(requestNode).mockImplementation(async (route) =>
+      route === ENVELOPE_ROUTES.list
+        ? {
+            success: true,
+            result: { available: true, result: { envelopes: [MIXER_VOLUME] } },
+          }
+        : { success: true, result: { available: false } },
+    );
+
+    expect(await readEnvelopes()).toBe(
+      "the Producer Pal remote script isn't running, so clip automation can't be reached",
+    );
+  });
+
+  it("stops reading when a route stalls, and says which parameters it left", async () => {
+    setupClip();
+    vi.mocked(requestNode).mockImplementation(async (route) => {
+      if (route === ENVELOPE_ROUTES.list) {
+        return {
+          success: true,
+          result: {
+            available: true,
+            result: { envelopes: [MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM] },
+          },
+        };
+      }
+
+      return { success: false };
+    });
+
+    const unanswered = "the Producer Pal remote script did not answer in time";
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 2,
+        detail: unanswered,
+      },
+      {
+        parameter: "Send A",
+        id: "send-param",
+        eventCount: 2,
+        detail: `not read: ${unanswered}`,
+      },
+      {
+        parameter: "Filter Freq",
+        id: "filter-param",
+        device: "t0/d0/c1/d0",
+        eventCount: 2,
+        detail: `not read: ${unanswered}`,
+      },
+    ]);
+    // The list, then the one read that stalled.
+    expect(requestNode).toHaveBeenCalledTimes(2);
+  });
+
   it("says when the route itself went unanswered", async () => {
     setupClip();
     vi.mocked(requestNode).mockResolvedValue({ success: false });
