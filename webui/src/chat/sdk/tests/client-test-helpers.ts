@@ -48,21 +48,71 @@ export function mockStreamParts(parts: Record<string, unknown>[]): void {
  * the turn is aborted or the request dies partway through.
  * @param parts - Stream parts to emit before failing
  * @param error - The error to throw after the last part
+ * @param gate - Optional promise the stream parks on before throwing
  * @returns A streamText-shaped result
  */
 export function failingAfterStream(
   parts: Record<string, unknown>[],
   error: unknown,
+  gate?: Promise<void>,
 ): { stream: AsyncIterable<Record<string, unknown>> } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
     for (const p of parts) {
       yield p;
     }
 
+    if (gate != null) {
+      await gate;
+    }
+
     throw error;
   }
 
   return { stream: iterate() };
+}
+
+/**
+ * Stream parts that complete the given number of steps and end with the given
+ * overall finishReason.
+ * @param steps - Number of finish-step parts to emit
+ * @param finishReason - finishReason for the final finish part
+ * @returns Stream parts array
+ */
+export function buildSteppedStream(
+  steps: number,
+  finishReason: string,
+): Record<string, unknown>[] {
+  const parts: Record<string, unknown>[] = [];
+
+  for (let i = 0; i < steps; i++) {
+    parts.push({ type: "finish-step" });
+  }
+
+  parts.push({ type: "finish", finishReason });
+
+  return parts;
+}
+
+/**
+ * A history whose assistant turn calls `ppal-connect`.
+ * @param result - The tool result that came back; omit for a history persisted
+ *   mid-tool, before any result existed
+ * @returns The two-message history
+ */
+export function connectToolCallHistory(result?: string): ChatMessage[] {
+  const call = { id: "tc1", name: "ppal-connect", args: {} };
+
+  return [
+    { role: "user", content: "Connect" },
+    {
+      role: "assistant",
+      content: "Connecting",
+      toolCalls: [call],
+      ...(result == null
+        ? {}
+        : { toolResults: [{ ...call, result, isError: false }] }),
+    },
+  ];
 }
 
 /**

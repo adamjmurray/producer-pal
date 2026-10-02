@@ -3,40 +3,47 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { toLiveApiView } from "#src/tools/shared/utils.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { toLiveApiView } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   applyDetailView,
   applyPluginEditorWindow,
+  buildTrackPath,
   updateClipSelection,
   updateClipSlotSelection,
   updateDeviceSelection,
   updateSceneSelection,
   updateTrackSelection,
-  validateParameters,
   type TrackCategory,
-} from "./helpers/select-helpers.ts";
-import { requireSelectTargets } from "./helpers/select-existence-helpers.ts";
+} from "./helpers/selection-updates.ts";
+import { requireSelectTargets } from "./helpers/require-select-targets.ts";
 import {
   determineAutoDetailView,
+  isSameLiveApiId,
   resolveNamedIds,
   type SelectIdArgs,
-} from "./helpers/select-id-helpers.ts";
-import { resolvePath } from "./helpers/select-path-helpers.ts";
+} from "./helpers/select-id-resolution.ts";
+import { resolvePath } from "./helpers/select-path-resolution.ts";
+import {
+  applyArrangementStart,
+  resolveArrangementPosition,
+} from "./helpers/select-arrangement-position.ts";
 import {
   resolveRackTarget,
   selectRackTarget,
-} from "./helpers/select-rack-helpers.ts";
+} from "./helpers/rack-selection.ts";
 import {
-  buildClipResponseFromId,
-  buildClipResponseFromSlot,
-  buildDeviceResponseFromId,
-  buildDeviceResponseFromPath,
-  buildSceneResponseFromId,
-  buildTrackResponseFromId,
+  addClipToResponse,
+  addDeviceToResponse,
+  addSceneToResponse,
+  addTrackToResponse,
   readFullState,
-} from "./helpers/select-response-helpers.ts";
+  type ResolvedArgs,
+} from "./helpers/select-responses.ts";
 
 export interface SelectArgs extends SelectIdArgs {
   // External params (from schema)
@@ -44,7 +51,8 @@ export interface SelectArgs extends SelectIdArgs {
   trackType?: TrackCategory;
   trackIndex?: number;
   sceneIndex?: number;
-  /** Clip slot "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
+  /** Clip slot "t0/s3", an arrangement spot "t0[5|1]", a device "t0/d1", a drum
+   * pad "t0/d0/pC1", or a bare track "t0" */
   path?: string;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string;
@@ -69,10 +77,15 @@ export interface SelectResult {
   selectedClip?: {
     id: string;
     /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
-     * the arrangement. select's own path takes the session form only. */
+     * the arrangement. select's own path takes either form. */
     path?: string;
   };
-  selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
+  selectedDevice?: {
+    id: string;
+    path: string;
+    pluginWindowOpen?: boolean;
+    detail?: string;
+  };
   selectedDrumPad?: { id: string; path: string };
   selectedChain?: { id: string; path: string };
 }
@@ -96,6 +109,7 @@ export function select(
   const { view, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
   const { trackIndex, category, sceneIndex, devicePath } = resolved;
+  const { arrangementStartBeats } = resolved;
   const { rackTargetId, rackTargetPath } = resolved;
   const devicePathParam = resolved.devicePathParam ?? "path";
 
@@ -115,7 +129,7 @@ export function select(
     return readFullState();
   }
 
-  requireSelectTargets({
+  const requiredTargets = requireSelectTargets({
     trackId,
     category,
     trackIndex,
@@ -132,23 +146,6 @@ export function select(
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
 
-  // View switching
-  let effectiveView: string | undefined;
-
-  if (view != null) {
-    appView.call("show_view", toLiveApiView(view));
-    effectiveView = view;
-  }
-
-  // Auto-switch to session view for scene/slot (session-only concepts)
-  const needsSessionView =
-    sceneId != null || sceneIndex != null || parsedClipSlot != null;
-
-  if (view == null && needsSessionView) {
-    appView.call("show_view", toLiveApiView("session"));
-    effectiveView = "session";
-  }
-
   // Perform selections
   const trackResult = updateTrackSelection({
     songView,
@@ -162,29 +159,44 @@ export function select(
     sceneIndex,
   });
 
-  if (clipId !== undefined) {
-    updateClipSelection({ appView, songView, clipId, requestedView: view });
+  if (arrangementStartBeats != null) {
+    applyArrangementStart(arrangementStartBeats);
+
+    // Said after the writes: a lane that isn't there stops nothing, so the
+    // warning reports what the call did rather than what it refused.
+    if (resolved.missingTakeLane != null) {
+      console.warn(resolved.missingTakeLane);
+    }
   }
+
+  // Scene/slot are session-only concepts, so they force session view.
+  const needsSessionView =
+    sceneId != null || sceneIndex != null || parsedClipSlot != null;
+
+  const effectiveView = resolveEffectiveView({
+    appView,
+    songView,
+    view,
+    needsSessionView,
+    needsArrangementView: arrangementStartBeats != null,
+    clipId,
+  });
 
   const selectedDeviceAPI = updateDeviceSelection({
     songView,
     deviceId,
     devicePath,
     devicePathParam,
+    resolvedDevice: requiredTargets.device,
   });
 
-  let pluginWindowOpen: boolean | undefined;
-
-  if (args.openPluginWindow != null) {
-    const applied = applyPluginEditorWindow(
-      selectedDeviceAPI,
-      args.openPluginWindow,
-    );
-
-    if (applied) {
-      pluginWindowOpen = args.openPluginWindow;
-    }
-  }
+  const pluginWindow =
+    args.openPluginWindow == null
+      ? null
+      : {
+          open: args.openPluginWindow,
+          ...applyPluginEditorWindow(selectedDeviceAPI, args.openPluginWindow),
+        };
 
   const rackSelection =
     rackTarget == null ? undefined : selectRackTarget(songView, rackTarget);
@@ -215,14 +227,149 @@ export function select(
   addTrackToResponse(result, trackResult.selectedTrackId);
   addSceneToResponse(result, sceneResult.selectedSceneId);
   addClipToResponse(result, resolved, clipSlotHasClip);
-  addDeviceToResponse(result, resolved);
+  addDeviceToResponse(result, resolved, selectedDeviceAPI);
   Object.assign(result, rackSelection);
 
-  if (pluginWindowOpen != null && result.selectedDevice != null) {
-    result.selectedDevice.pluginWindowOpen = pluginWindowOpen;
+  if (result.selectedDevice != null && pluginWindow != null) {
+    if (pluginWindow.applied) {
+      result.selectedDevice.pluginWindowOpen = pluginWindow.open;
+    }
+
+    if (pluginWindow.detail != null) {
+      appendDetail(result.selectedDevice, pluginWindow.detail);
+    }
   }
 
   return result;
+}
+
+interface ValidateParametersOptions {
+  trackId?: string;
+  category?: TrackCategory;
+  trackIndex?: number;
+  sceneId?: string;
+  sceneIndex?: number;
+  deviceId?: string;
+  devicePath?: string;
+  devicePathParam: "path" | "devicePath";
+  slot?: { trackIndex: number; sceneIndex: number };
+}
+
+/**
+ * Validate selection parameters for conflicts
+ * @param options - Parameters object
+ * @param options.trackId - Track ID
+ * @param options.category - Track category
+ * @param options.trackIndex - Track index
+ * @param options.sceneId - Scene ID
+ * @param options.sceneIndex - Scene index
+ * @param options.deviceId - Device ID
+ * @param options.devicePath - Device path
+ * @param options.devicePathParam - The param the device path came from
+ * @param options.slot - Clip slot coordinates
+ */
+function validateParameters({
+  trackId,
+  category,
+  trackIndex,
+  sceneId,
+  sceneIndex,
+  deviceId,
+  devicePath,
+  devicePathParam,
+  slot: _slot,
+}: ValidateParametersOptions): void {
+  // Track selection validation
+  if (category === "master" && trackIndex != null) {
+    throw new Error(
+      "trackIndex should not be provided when trackType is 'master'",
+    );
+  }
+
+  // Device selection validation
+  if (deviceId != null && devicePath != null) {
+    throw new Error(`cannot specify both id and ${devicePathParam}`);
+  }
+
+  // Cross-validation for track ID vs index (requires Live API calls)
+  if (trackId != null && trackIndex != null) {
+    // An index with a category that builds no path is already refused above.
+    const trackAPI = LiveAPI.from(
+      assertDefined(buildTrackPath(category, trackIndex), "track path"),
+    );
+
+    if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
+      throw new Error("id and trackIndex refer to different tracks");
+    }
+  }
+
+  // Cross-validation for scene ID vs index
+  if (sceneId != null && sceneIndex != null) {
+    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
+
+    if (sceneAPI.exists() && !isSameLiveApiId(sceneAPI.id, sceneId)) {
+      throw new Error("id and sceneIndex refer to different scenes");
+    }
+  }
+}
+
+interface ResolveEffectiveViewOptions {
+  appView: LiveAPI;
+  songView: LiveAPI;
+  view?: "session" | "arrangement";
+  needsSessionView: boolean;
+  needsArrangementView: boolean;
+  clipId?: string;
+}
+
+/**
+ * Decide the view select ends on and switch Live to it. An explicit `view`
+ * always wins; otherwise a scene/slot target forces session view, a song
+ * position forces arrangement view, and a clip target infers session or
+ * arrangement from where the clip lives.
+ * @param options - Inputs to the decision
+ * @param options.appView - LiveAPI instance for live_app view
+ * @param options.songView - LiveAPI instance for live_set view
+ * @param options.view - The caller's own `view` param, if given
+ * @param options.needsSessionView - Whether a scene/slot target forces session
+ * @param options.needsArrangementView - Whether a song position forces arrangement
+ * @param options.clipId - Clip ID being selected, if any
+ * @returns The view select switched to and should report, if any
+ */
+function resolveEffectiveView({
+  appView,
+  songView,
+  view,
+  needsSessionView,
+  needsArrangementView,
+  clipId,
+}: ResolveEffectiveViewOptions): "session" | "arrangement" | undefined {
+  const forcedView = needsSessionView
+    ? "session"
+    : needsArrangementView
+      ? "arrangement"
+      : undefined;
+
+  if (view != null) {
+    appView.call("show_view", toLiveApiView(view));
+  } else if (forcedView != null) {
+    appView.call("show_view", toLiveApiView(forcedView));
+  }
+
+  let effectiveView = view ?? forcedView;
+
+  if (clipId !== undefined) {
+    const clipView = updateClipSelection({
+      appView,
+      songView,
+      clipId,
+      switchView: view == null,
+    });
+
+    effectiveView = view == null ? clipView : effectiveView;
+  }
+
+  return effectiveView;
 }
 
 interface ApplyViewChangesOptions {
@@ -278,23 +425,6 @@ function applyViewChanges({
   appView.call("hide_view", LIVE_API_VIEW_NAMES.BROWSER);
 }
 
-interface ResolvedArgs {
-  trackId?: string;
-  sceneId?: string;
-  clipId?: string;
-  deviceId?: string;
-  trackIndex?: number;
-  category: TrackCategory;
-  sceneIndex?: number;
-  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
-  devicePath?: string;
-  devicePathParam?: "path" | "devicePath";
-  rackTargetId?: string;
-  rackTargetPath?: string;
-  hasArgs: boolean;
-  viewOnly: boolean;
-}
-
 /**
  * Resolve external params (id, path, slot string) to internal representations
  * @param args - Raw select arguments
@@ -308,6 +438,9 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   const { parsedClipSlot, devicePath, devicePathParam, rackTargetPath } =
     fromPath;
   const { trackIndex, category, sceneIndex } = fromPath;
+  // Read before any write, like the existence checks: a position Live can't
+  // resolve must fail with the view and selection untouched.
+  const arrangement = resolveArrangementPosition(fromPath.arrangementPosition);
 
   const hasSelectionArgs =
     trackId != null ||
@@ -329,11 +462,14 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   return {
     trackId,
     sceneId,
-    clipId,
+    // A clip on the spot a position path names is selected like any other.
+    clipId: clipId ?? arrangement?.clipId,
     deviceId,
     trackIndex,
     category: category ?? "regular",
     sceneIndex,
+    arrangementStartBeats: arrangement?.beats,
+    missingTakeLane: arrangement?.missingTakeLane,
     parsedClipSlot,
     devicePath,
     devicePathParam,
@@ -342,98 +478,4 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     hasArgs,
     viewOnly,
   };
-}
-
-/**
- * Add track info to action response if a track was selected
- * @param result - Response being built
- * @param selectedTrackId - Live API ID of selected track, if any
- */
-function addTrackToResponse(
-  result: SelectResult,
-  selectedTrackId: string | undefined,
-): void {
-  if (selectedTrackId != null) {
-    const info = buildTrackResponseFromId(selectedTrackId);
-
-    if (info) {
-      result.selectedTrack = info;
-    }
-  }
-}
-
-/**
- * Add scene info to action response if a scene was selected
- * @param result - Response being built
- * @param selectedSceneId - Live API ID of selected scene, if any
- */
-function addSceneToResponse(
-  result: SelectResult,
-  selectedSceneId: string | undefined,
-): void {
-  if (selectedSceneId != null) {
-    const info = buildSceneResponseFromId(selectedSceneId);
-
-    if (info) {
-      result.selectedScene = info;
-    }
-  }
-}
-
-/**
- * Add clip info to action response if a clip was selected
- * @param result - Response being built
- * @param resolved - Resolved args
- * @param clipSlotHasClip - Whether clipSlot had a clip
- */
-function addClipToResponse(
-  result: SelectResult,
-  resolved: ResolvedArgs,
-  clipSlotHasClip: boolean,
-): void {
-  if (resolved.clipId != null) {
-    const info = buildClipResponseFromId(resolved.clipId);
-
-    if (info) {
-      result.selectedClip = info;
-
-      // A clip selection always switches Live to the clip's required view
-      // (session for slotted clips, arrangement otherwise), so report that view
-      // even when it overrides an explicitly requested, conflicting view.
-      result.view =
-        LiveAPI.from(resolved.clipId).clipSlotIndex == null
-          ? "arrangement"
-          : "session";
-    }
-  } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
-    const info = buildClipResponseFromSlot(resolved.parsedClipSlot);
-
-    if (info) {
-      result.selectedClip = info;
-    }
-  }
-}
-
-/**
- * Add device info to action response if a device was selected
- * @param result - Response being built
- * @param resolved - Resolved args
- */
-function addDeviceToResponse(
-  result: SelectResult,
-  resolved: ResolvedArgs,
-): void {
-  if (resolved.deviceId != null) {
-    const info = buildDeviceResponseFromId(resolved.deviceId);
-
-    if (info) {
-      result.selectedDevice = info;
-    }
-  } else if (resolved.devicePath != null) {
-    const info = buildDeviceResponseFromPath(resolved.devicePath);
-
-    if (info) {
-      result.selectedDevice = info;
-    }
-  }
 }

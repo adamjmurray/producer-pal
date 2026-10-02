@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   formatNotation,
   interpretNotation,
+  parseNotation,
   resolveNotation,
 } from "../notation.ts";
 
@@ -133,5 +135,34 @@ describe("formatNotation stark routing", () => {
   it("returns empty string for no notes", () => {
     expect(formatNotation([], { notation: "stark" })).toBe("");
     expect(formatNotation(null, { notation: "stark" })).toBe("");
+  });
+});
+
+describe("parseNotation router", () => {
+  it.each([
+    ["barbeat", "C3 1|1 ((", "bar|beat syntax error"],
+    ["midi-json", "[{p:60", "Invalid MIDI JSON"],
+    ["stark", "melody: ((", "Stark notation parse error"],
+  ] as const)(
+    "throws what %s interpretation throws",
+    (notation, input, error) => {
+      expect(() => parseNotation(input, { notation })).toThrow(error);
+    },
+  );
+
+  it("accepts an empty string", () => {
+    expect(() => parseNotation("")).not.toThrow();
+  });
+
+  it.each([
+    ["barbeat", "C3"],
+    ["midi-json", "[{t:0,d:1,v:100}]"],
+    ["stark", "kick: x\nmelody: C4/4"],
+  ] as const)("accepts %s without warning", (notation, input) => {
+    expect(() => parseNotation(input, { notation })).not.toThrow();
+    expect(capturedWarnings()).toHaveLength(0);
+
+    interpretNotation(input, { notation });
+    expect(capturedWarnings()).not.toHaveLength(0);
   });
 });

@@ -14,6 +14,7 @@ const TOOL_CONTEXT = "ppal-context";
 
 export const projectContextWorkflow: EvalScenario = {
   id: "project-context-workflow",
+  tags: ["context", "workflow"],
   description: "Write and read project context",
   kind: "regression",
   liveSet: "basic-midi-4-track",

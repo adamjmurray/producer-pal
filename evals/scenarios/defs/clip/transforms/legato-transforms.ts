@@ -10,16 +10,16 @@
 
 import { argText } from "../../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
+import { requireSuccessfulToolCall } from "../../../assertions/index.ts";
 import { type EvalScenario } from "../../../types.ts";
-import {
-  assertNotesRead,
-  getTransforms,
-} from "../helpers/clip-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { getTransforms } from "../helpers/clip-turn-readers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const legatoTransforms: EvalScenario = {
   id: "legato-transforms",
+  tags: ["transforms"],
   description: "Add octaves, humanize timing, and apply legato with tolerance",
   kind: "capability",
   requires: { transforms: true },
@@ -46,12 +46,11 @@ export const legatoTransforms: EvalScenario = {
       type: "custom",
       description: "notes doubled with octave-up copies",
       assert: (turns) => {
-        const calls = turns[2]?.toolCalls ?? [];
-        const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
-
-        if (!updateCall) {
-          throw new Error("ppal-update-clip not found in turn 2");
-        }
+        const updateCall = requireSuccessfulToolCall(
+          turns,
+          2,
+          TOOL_UPDATE_CLIP,
+        );
 
         // Should have notes param (adding the octave copies) or use transforms
         const notes = argText(updateCall.args.notes);

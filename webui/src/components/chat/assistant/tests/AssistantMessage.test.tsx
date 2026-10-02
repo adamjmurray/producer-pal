@@ -8,8 +8,17 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { type UIPart } from "#webui/types/messages";
+import { type UIMessage, type UIPart } from "#webui/types/messages";
 import { AssistantMessage } from "#webui/components/chat/assistant/AssistantMessage";
+
+/**
+ * A completed tool part.
+ * @param name - Tool name
+ * @returns The part
+ */
+function toolPart(name: string): UIPart {
+  return { type: "tool", name, args: {}, result: "ok" };
+}
 
 describe("AssistantMessage", () => {
   describe("basic rendering", () => {
@@ -150,6 +159,21 @@ describe("AssistantMessage", () => {
     });
   });
 
+  /**
+   * A spawn_subagent tool part carrying a worker transcript.
+   * @param subagentMessages - The worker transcript to attach
+   * @returns The parts list for one subagent call
+   */
+  const subagentParts = (subagentMessages: UIMessage[]): UIPart[] => [
+    {
+      type: "tool",
+      name: "spawn_subagent",
+      args: { task: "x" },
+      result: JSON.stringify("done"),
+      subagentMessages,
+    },
+  ];
+
   describe("subagent tool parts", () => {
     it("routes spawn_subagent to the subagent card, not the generic tool call", () => {
       const parts: UIPart[] = [
@@ -170,34 +194,60 @@ describe("AssistantMessage", () => {
     });
 
     it("renders the worker transcript from subagentMessages", () => {
-      const parts: UIPart[] = [
+      const parts = subagentParts([
         {
-          type: "tool",
-          name: "spawn_subagent",
-          args: { task: "x" },
-          result: JSON.stringify("done"),
-          subagentMessages: [
-            {
-              role: "user",
-              parts: [{ type: "text", content: "delegated task text" }],
-              rawHistoryIndex: 0,
-              timestamp: 0,
-            },
-            {
-              role: "model",
-              parts: [{ type: "text", content: "worker reply text" }],
-              rawHistoryIndex: 1,
-              timestamp: 0,
-            },
-          ],
+          role: "user",
+          parts: [{ type: "text", content: "delegated task text" }],
+          rawHistoryIndex: 0,
+          timestamp: 0,
         },
-      ];
+        {
+          role: "model",
+          parts: [{ type: "text", content: "worker reply text" }],
+          rawHistoryIndex: 1,
+          timestamp: 0,
+        },
+      ]);
 
       const { container } = render(<AssistantMessage parts={parts} />);
 
       expect(container.textContent).toContain("↳ subagent transcript");
       expect(container.textContent).toContain("delegated task text");
       expect(container.textContent).toContain("worker reply text");
+    });
+
+    it("shows an empty task when the model sent one that isn't text", () => {
+      const parts: UIPart[] = [
+        {
+          type: "tool",
+          name: "spawn_subagent",
+          args: { task: { steps: ["a", "b"] } },
+          result: JSON.stringify("done"),
+        },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.textContent).toContain("subagent");
+      expect(container.textContent).not.toContain("steps");
+    });
+
+    it("skips transcript user parts that carry no text", () => {
+      const parts = subagentParts([
+        {
+          role: "user",
+          parts: [
+            { type: "text", content: "kept" },
+            { type: "step-usage", usage: { inputTokens: 1 } },
+          ],
+          rawHistoryIndex: 0,
+          timestamp: 0,
+        },
+      ]);
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.textContent).toContain("kept");
     });
 
     it.each([
@@ -316,7 +366,7 @@ describe("AssistantMessage", () => {
 
   describe("step-usage parts", () => {
     const stepUsageParts: UIPart[] = [
-      { type: "tool", name: "t", args: {}, result: "ok" },
+      toolPart("t"),
       { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
       { type: "text", content: "Done" },
     ];
@@ -330,6 +380,33 @@ describe("AssistantMessage", () => {
       expect(container.textContent).toContain("33");
     });
 
+    it("appends generation speed to a timed step", () => {
+      const parts: UIPart[] = [
+        toolPart("t"),
+        {
+          type: "step-usage",
+          usage: { inputTokens: 6078, outputTokens: 33 },
+          timing: { timeToFirstTokenMs: 840, outputTokensPerSecond: 38 },
+        },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).toContain(
+        "· 38 tok/s · 840ms to first token",
+      );
+    });
+
+    it("shows no generation speed when the step was not timed", () => {
+      const { container } = render(
+        <AssistantMessage parts={stepUsageParts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).not.toContain("tok/s");
+    });
+
     it("hides step-usage when showTokenUsage is false", () => {
       const { container } = render(
         <AssistantMessage parts={stepUsageParts} showTokenUsage={false} />,
@@ -340,7 +417,7 @@ describe("AssistantMessage", () => {
 
     it("shows reasoning tokens in step-usage when present", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 6078, outputTokens: 335, reasoningTokens: 225 },
@@ -356,7 +433,7 @@ describe("AssistantMessage", () => {
 
     it("shows cached tokens in step-usage when present", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 9100, outputTokens: 40, cacheReadTokens: 9000 },
@@ -372,7 +449,7 @@ describe("AssistantMessage", () => {
 
     it("shows new content tokens when prevStepUsage is provided", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 10000, outputTokens: 200 },
@@ -394,12 +471,12 @@ describe("AssistantMessage", () => {
 
     it("builds prev usage map across multiple step-usage parts", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
+        toolPart("t1"),
         {
           type: "step-usage",
           usage: { inputTokens: 5000, outputTokens: 100 },
         },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
+        toolPart("t2"),
         {
           type: "step-usage",
           usage: { inputTokens: 10200, outputTokens: 200 },
@@ -417,11 +494,7 @@ describe("AssistantMessage", () => {
 
   describe("tool call grouping", () => {
     it("groups 3+ consecutive tool parts into a single disclosure", () => {
-      const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-        { type: "tool", name: "t3", args: {}, result: "ok" },
-      ];
+      const parts: UIPart[] = [toolPart("t1"), toolPart("t2"), toolPart("t3")];
 
       render(<AssistantMessage parts={parts} />);
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
@@ -436,10 +509,7 @@ describe("AssistantMessage", () => {
     });
 
     it("does not group fewer than 3 consecutive tool parts", () => {
-      const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-      ];
+      const parts: UIPart[] = [toolPart("t1"), toolPart("t2")];
 
       render(<AssistantMessage parts={parts} />);
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
@@ -449,10 +519,10 @@ describe("AssistantMessage", () => {
 
     it("renders step-usage outside the group when showTokenUsage is true", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
+        toolPart("t1"),
         { type: "step-usage", usage: { inputTokens: 100, outputTokens: 50 } },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-        { type: "tool", name: "t3", args: {}, result: "ok" },
+        toolPart("t2"),
+        toolPart("t3"),
       ];
 
       const { container } = render(
@@ -464,11 +534,11 @@ describe("AssistantMessage", () => {
 
     it("text parts break tool groups", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-        { type: "tool", name: "t3", args: {}, result: "ok" },
+        toolPart("t1"),
+        toolPart("t2"),
+        toolPart("t3"),
         { type: "text", content: "Done" },
-        { type: "tool", name: "t4", args: {}, result: "ok" },
+        toolPart("t4"),
       ];
 
       render(<AssistantMessage parts={parts} />);
@@ -476,6 +546,18 @@ describe("AssistantMessage", () => {
 
       // 1 group + 1 text + 1 individual tool
       expect(container!.children).toHaveLength(3);
+    });
+
+    it("ignores an image part, which only a user bubble renders", () => {
+      const parts: UIPart[] = [
+        { type: "image", mediaType: "image/png", data: "AAA" },
+        { type: "text", content: "Done" },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.querySelector("img")).toBeNull();
+      expect(container.textContent).toContain("Done");
     });
   });
 });

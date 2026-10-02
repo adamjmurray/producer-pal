@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type RealtimeItem } from "@openai/agents/realtime";
-import { safeParseToolArgs } from "#webui/chat/helpers/formatter-helpers";
+import { safeParseToolArgs } from "#webui/chat/helpers/message-formatting";
 import { type UIMessage, type UIToolPart } from "#webui/types/messages";
 
 type AssistantMessageItem = Extract<

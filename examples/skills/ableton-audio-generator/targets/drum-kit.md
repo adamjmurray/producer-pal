@@ -54,7 +54,7 @@ working on a pad with a MIDI effect in front of it:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-device \
-  '{"deviceName":"Drum Rack","path":"t0","params":[
+  '{"device":"Drum Rack","path":"t0","params":[
      {"name":"pC1/sample","value":"/abs/path/kick.wav"},
      {"name":"pD1/sample","value":"/abs/path/snare.wav"},
      {"name":"pF#1/sample","value":"/abs/path/hat-closed.wav"}]}'

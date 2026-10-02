@@ -92,32 +92,30 @@ export function resolveAbsolutePaths(
   const rows = db.prepare(sql).all(...fileIds) as unknown as WalkRow[];
   // Group by root_id and assemble; rows are already depth-DESC per root
   // (i.e. root segment first, leaf last) thanks to the ORDER BY.
-  const segmentsByRoot = new Map<number, string[]>();
-  // Track the highest-depth row's parent_id per root. When the chain
-  // reached the actual root row, that parent_id is 0; if the recursion
-  // stopped at MAX_PARENT_DEPTH first, it's the parent_id of the
-  // truncation point (non-zero).
-  const headParentByRoot = new Map<number, number>();
+  // Per root: its segments, plus the highest-depth row's parent_id. When the
+  // chain reached the actual root row, that parent_id is 0; if the recursion
+  // stopped at MAX_PARENT_DEPTH first, it's the parent_id of the truncation
+  // point (non-zero).
+  const byRoot = new Map<number, { segs: string[]; headParent: number }>();
 
   for (const row of rows) {
-    let segs = segmentsByRoot.get(row.root_id);
+    let entry = byRoot.get(row.root_id);
 
-    if (!segs) {
-      segs = [];
-      segmentsByRoot.set(row.root_id, segs);
+    if (!entry) {
       // First row per root_id is the highest-depth (chain head) thanks
       // to ORDER BY depth DESC. Normalize NULL → 0 so the truncation
       // check below treats both as "reached root".
-      headParentByRoot.set(row.root_id, row.parent_id ?? 0);
+      entry = { segs: [], headParent: row.parent_id ?? 0 };
+      byRoot.set(row.root_id, entry);
     }
 
-    segs.push(row.name);
+    entry.segs.push(row.name);
   }
 
-  for (const [rootId, segs] of segmentsByRoot.entries()) {
+  for (const [rootId, { segs, headParent }] of byRoot.entries()) {
     const resolved: ResolvedPath = {
       path: joinPathSegments(segs),
-      truncated: (headParentByRoot.get(rootId) ?? 0) !== 0,
+      truncated: headParent !== 0,
     };
 
     // segs are root-first, leaf-last; the immediate parent folder is the
@@ -145,14 +143,39 @@ export function resolveAbsolutePaths(
  */
 function joinPathSegments(segs: string[]): string {
   const root = segs[0] as string;
-  const rest = segs.slice(1);
+  const rest = segs.slice(1).map(pathSegment);
   const driveMatch = WINDOWS_DRIVE_ROOT.exec(root);
 
   if (driveMatch) {
     return `${(driveMatch[1] as string).toUpperCase()}:/${rest.join("/")}`;
   }
 
-  const tail = root === "/" ? rest : segs;
+  const tail = root === "/" ? rest : [pathSegment(root), ...rest];
 
   return `/${tail.join("/")}`;
+}
+
+// Live's database and browser show a ":" in a macOS file name as "/", so a "/"
+// in a name isn't a folder break. Paths write it back as ":", which keeps "/"
+// for separators only and gives the real file name on disk. Windows names hold
+// neither character. The remote script's browser.py follows the same rule.
+// Accents stay as stored: some file systems treat composed and decomposed
+// accents as different names, so compose only to compare.
+
+/**
+ * A name as a path segment, "/" written as ":".
+ * @param name - A name from Live's database or browser
+ * @returns The segment
+ */
+export function pathSegment(name: string): string {
+  return name.replaceAll("/", ":");
+}
+
+/**
+ * The name Live's database stores for a path segment.
+ * @param segment - One segment of a path, not a drive root
+ * @returns The name, with ":" as Live shows it
+ */
+export function nameFromPathSegment(segment: string): string {
+  return segment.replaceAll(":", "/");
 }

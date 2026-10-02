@@ -1,14 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
@@ -19,19 +19,22 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce.string().optional().describe("provide this or path"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("scene ID(s) to read, comma-separated for multiple"),
 
-    sceneId: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases({ idAlias: "sceneId" }),
     path: z.coerce
       .string()
       .optional()
       .describe(
-        "scene path instead of id: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
+        "scene path(s) to read, comma-separated: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
       ),
+
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: scenePathFromIndex,
     }),
     include: param(
       z

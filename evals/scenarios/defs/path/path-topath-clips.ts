@@ -17,16 +17,14 @@ import {
   asArrangementTrack,
   clipStarts,
   takeLanes,
-} from "../arrangement-helpers.ts";
-import {
-  clearClipSlots,
-  MSG_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+} from "../arrangement-readback.ts";
+import { MSG_CONNECT } from "../clip/helpers/clip-tool-constants.ts";
+import { clearClipSlots } from "../clip/helpers/clip-turn-readers.ts";
 import {
   assertClipCreatedAtPath,
   assertPathArg,
   assertSlotOccupancy,
-} from "./path-scenario-helpers.ts";
+} from "./path-assertions.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 
@@ -99,6 +97,7 @@ function assertArrangementLayout(): EvalAssertion {
 
 export const pathToPathClipDestinations: EvalScenario = {
   id: "path-topath-clips",
+  tags: ["paths"],
   description: "One toPath across session slot, arrangement, and take lane",
   kind: "capability",
   liveSet: "basic-midi-4-track",

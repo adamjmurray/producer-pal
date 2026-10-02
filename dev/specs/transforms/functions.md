@@ -45,7 +45,9 @@ timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
 Snaps note timing to the nearest grid point. Returns absolute position — use
 with `timing =`.
 
-- **grid**: Grid size as a note value or numeric musical beats.
+- **grid**: Grid size as a note value or numeric musical beats. Must be > 0 —
+  unlike a waveform period, a zero or negative grid has nothing to snap to. Same
+  for `swing()`'s optional grid.
 
 ```
 timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
@@ -204,11 +206,11 @@ probability, and deviation.
   warns and is skipped.
 - **`sync`** (optional trailing keyword, same form as the waveform `sync`): the
   positions are interpreted against the **arrangement timeline** instead of the
-  clip origin. The clip's arrangement start is subtracted from each position, so
-  e.g. a clip starting at bar 5 cut with `split(6|1, sync)` cuts at
-  clip-relative bar 2. Session clips have no arrangement origin, so `sync` is
-  ignored (warn-and-degrade to clip-relative), mirroring the waveform `sync`
-  fallback.
+  clip origin. Each position is mapped into note time through the clip's
+  arrangement start and start marker, so e.g. a clip starting at bar 5 (start
+  marker at 1|1) cut with `split(6|1, sync)` cuts at clip bar 2. Session clips
+  have no arrangement origin, so `sync` is ignored (warn-and-degrade to
+  clip-relative), mirroring the waveform `sync` fallback.
 
 ```
 split(2|1)            // cut every note that spans bar 2's downbeat

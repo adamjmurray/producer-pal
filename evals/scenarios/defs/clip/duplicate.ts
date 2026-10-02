@@ -15,20 +15,21 @@ import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { callNamesArrangementPosition } from "../arrangement-helpers.ts";
-import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
+import { callNamesArrangementPosition } from "../arrangement-readback.ts";
+import { assertNamesTarget } from "../path/path-assertions.ts";
+import { clipStateAssertion } from "./helpers/clip-note-assertions.ts";
 import {
-  clearClipSlots,
-  clipStateAssertion,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "./helpers/clip-tool-constants.ts";
+import { clearClipSlots } from "./helpers/clip-turn-readers.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 
 export const duplicate: EvalScenario = {
   id: "duplicate",
+  tags: ["clips"],
   description:
     "Create content, duplicate track, and duplicate clip to arrangement",
   kind: "regression",
@@ -246,11 +247,12 @@ function secondHalfMirrorsFirst(events: NoteEvent[]): boolean {
  * envelopes per the automation limitation).
  *
  * Requires Ableton (real device + LLM): `npm run build:debug` then
- * `./scripts/eval -m google/gemini-3.6-flash -t duplicate-loop`.
+ * `./scripts/eval -m google/gemini-3.8-flash -t duplicate-loop`.
  * NOT yet validated vs Live.
  */
 export const duplicateLoop: EvalScenario = {
   id: "duplicate-loop",
+  tags: ["clips"],
   description:
     "Double a MIDI clip with duplicateLoop (native Clip.duplicate_loop)",
   kind: "capability",

@@ -65,6 +65,15 @@ export async function openPreferencesTab(page: Page): Promise<void> {
 }
 
 /**
+ * Switch to the Remote Script tab and wait for its status line.
+ * @param page - Playwright page
+ */
+export async function openRemoteScriptTab(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Remote Script" }).click();
+  await expect(page.getByTestId("remote-script-status")).toBeVisible();
+}
+
+/**
  * Commit the buffered settings through the footer Save and wait for the modal
  * to close.
  * @param page - Playwright page

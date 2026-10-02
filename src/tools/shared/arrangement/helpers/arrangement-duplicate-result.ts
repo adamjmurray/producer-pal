@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { NONEXISTENT_ID } from "#src/live-api-adapter/live-api-path-utils.ts";
+import { NONEXISTENT_ID } from "#src/live-api-adapter/live-api-id-or-path.ts";
 
 /**
  * The clip a `duplicate_clip_to_arrangement` call produced.

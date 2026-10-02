@@ -12,7 +12,11 @@
  * the fold is per-vendor — that is the callback a transport supplies.
  */
 
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import {
+  type StepTiming,
+  type TokenUsage,
+  tokensPerSecond,
+} from "#webui/chat/sdk/types.ts";
 import {
   mcpResultInjectedBlocks,
   mcpResultText,
@@ -30,6 +34,8 @@ export interface AgentStreamState {
   openCalls: Map<string, ToolCall>;
   sessionId?: string;
   usage?: TokenUsage;
+  /** The turn's generation speed, when the CLI reported the time it took. */
+  timing?: StepTiming;
   /** Set to fail the whole turn; the CLI's own message. */
   error?: string;
 }
@@ -81,7 +87,26 @@ export function parseAgentCliStream(
     toolCalls: state.toolCalls,
     ...(state.sessionId != null ? { sessionId: state.sessionId } : {}),
     ...(state.usage != null ? { usage: state.usage } : {}),
+    ...(state.timing != null ? { timing: state.timing } : {}),
   };
+}
+
+/**
+ * Build a turn's timing from its output tokens and how long they took.
+ *
+ * These CLIs report one figure per turn, so there is no time to first token.
+ *
+ * @param outputTokens - Tokens the turn generated
+ * @param durationMs - Milliseconds those tokens took
+ * @returns The timing, or undefined when the rate isn't measurable
+ */
+export function turnTiming(
+  outputTokens: number | undefined,
+  durationMs: number | undefined,
+): StepTiming | undefined {
+  const outputTokensPerSecond = tokensPerSecond(outputTokens, durationMs);
+
+  return outputTokensPerSecond == null ? undefined : { outputTokensPerSecond };
 }
 
 /**

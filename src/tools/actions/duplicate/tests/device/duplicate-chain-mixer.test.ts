@@ -13,22 +13,16 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(
-  import("#src/tools/shared/device/helpers/chain-mixer-helpers.ts"),
+  import("#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts"),
   async (importOriginal) => ({
     ...(await importOriginal()),
-    applyChainMixer: vi.fn(() => ({})),
+    applyChainMixerAside: vi.fn(() => ({})),
   }),
 );
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
-}));
-
-import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/duplicate-chain-mixer-helpers.ts";
-import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
-import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/copy-chain-mixer.ts";
+import { applyChainMixerAside } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 
 const SOURCE_RACK = livePath.track(0).device(0);
 const OTHER_RACK = livePath.track(1).device(0);
@@ -70,7 +64,7 @@ function rackWithReturns(
  * @param mixer - readChainMixer output from the source chain
  * @param source - The rack the source chain belongs to
  * @param destination - The rack the copy landed in
- * @returns The new chain the mixer was written to
+ * @returns The new chain, and what its entry has to say
  */
 function copyMixerToNewChain(
   mixer: Record<string, unknown>,
@@ -80,10 +74,11 @@ function copyMixerToNewChain(
   registerMockObject("chain-new", { type: "Chain" });
 
   const created = LiveAPI.from("chain-new");
+  const notes = newTargetNotes();
 
-  copyChainMixerTo(created, mixer, source, destination);
+  copyChainMixerTo(created, mixer, source, destination, notes);
 
-  return created;
+  return { created, said: notes.said };
 }
 
 describe("copyChainMixerTo", () => {
@@ -94,45 +89,61 @@ describe("copyChainMixerTo", () => {
   it("carries gain and pan", () => {
     const rack = rackWithReturns("rack-0", SOURCE_RACK, []);
 
-    const created = copyMixerToNewChain({ gainDb: -6, pan: 0.4 }, rack, rack);
+    const { created } = copyMixerToNewChain(
+      { gainDb: -6, pan: 0.4 },
+      rack,
+      rack,
+    );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: -6,
-      pan: 0.4,
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: -6,
+        pan: 0.4,
+      },
+      expect.anything(),
+    );
   });
 
   it("carries every send when the copy stays in the same rack", () => {
     const rack = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
 
-    const created = copyMixerToNewChain(
+    const { created } = copyMixerToNewChain(
       { sends: [{ return: "a Verb", gainDb: -9 }] },
       rack,
       rack,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-      sends: [{ return: "a Verb", gainDb: -9 }],
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+        sends: [{ return: "a Verb", gainDb: -9 }],
+      },
+      expect.anything(),
+    );
   });
 
   it("carries a cross-rack send whose return name exists on both sides", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, ["A VERB"]);
 
-    const created = copyMixerToNewChain(
+    const { created } = copyMixerToNewChain(
       { sends: [{ return: "a Verb", gainDb: -9 }] },
       source,
       destination,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-      sends: [{ return: "a Verb", gainDb: -9 }],
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+        sends: [{ return: "a Verb", gainDb: -9 }],
+      },
+      expect.anything(),
+    );
   });
 
   it("carries a cross-rack send to a return chain with an all-digit name", () => {
@@ -140,43 +151,51 @@ describe("copyChainMixerTo", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["1"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, [1]);
 
-    const created = copyMixerToNewChain(
+    const { created } = copyMixerToNewChain(
       { sends: [{ return: "1", gainDb: -9 }] },
       source,
       destination,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-      sends: [{ return: "1", gainDb: -9 }],
-    });
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+        sends: [{ return: "1", gainDb: -9 }],
+      },
+      expect.anything(),
+    );
   });
 
-  it("drops a cross-rack send with no match, naming it", () => {
+  it("drops a cross-rack send with no match, naming it on the copy's entry", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, ["b Delay"]);
 
-    const created = copyMixerToNewChain(
+    const { created, said } = copyMixerToNewChain(
       { sends: [{ return: "a Verb", gainDb: -9 }] },
       source,
       destination,
     );
 
-    expect(applyChainMixer).toHaveBeenCalledWith(created, {
-      gainDb: undefined,
-      pan: undefined,
-    });
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+    expect(applyChainMixerAside).toHaveBeenCalledWith(
+      created,
+      {
+        gainDb: undefined,
+        pan: undefined,
+      },
+      expect.anything(),
+    );
+    expect(said.join()).toContain(
       'no return chain named "a Verb", so that send was not copied',
     );
   });
 
-  it("pluralizes the warning when several sends are dropped", () => {
+  it("pluralizes the reason when several sends are dropped", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb", "b Del"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, []);
 
-    copyMixerToNewChain(
+    const { said } = copyMixerToNewChain(
       {
         sends: [
           { return: "a Verb", gainDb: -9 },
@@ -187,8 +206,6 @@ describe("copyChainMixerTo", () => {
       destination,
     );
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "those sends were not copied",
-    );
+    expect(said.join()).toContain("those sends were not copied");
   });
 });

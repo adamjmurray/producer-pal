@@ -11,6 +11,7 @@ import {
   codeExecFailure,
 } from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 import {
+  expectNotesWritten,
   setupUpdateClipMocks,
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -57,18 +58,7 @@ describe("updateClip - code execution", () => {
       0,
     );
 
-    // applyNotesToClip should have been called (removes + adds notes)
-    expect(mocks.clip123.call).toHaveBeenCalledWith(
-      "remove_notes_extended",
-      0,
-      128,
-      // Window varies with clip length; clip-notes.test.ts pins it exactly.
-      expect.any(Number),
-      expect.any(Number),
-    );
-    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: notes.map(toLiveApiNote),
-    });
+    expectNotesWritten(mocks.clip123, notes.map(toLiveApiNote));
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
@@ -167,6 +157,25 @@ describe("updateClip - code execution", () => {
         "Code execution failed for clip t1/s1 (id 456): Runtime error",
       ),
     );
+  });
+
+  // The clip update already landed before the code ran, so the throw is a
+  // reason on the clip's own entry rather than a refusal of the whole call.
+  it("keeps the update that landed when the code step throws", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockRejectedValue(
+      new Error("the code exec round trip died"),
+    );
+
+    const result = await updateClip({ id: "123", name: "Renamed", code: "x" });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: "update stopped partway: the code exec round trip died",
+    });
   });
 
   it("should tell executeNoteCode an arrangement clip is in no scene", async () => {

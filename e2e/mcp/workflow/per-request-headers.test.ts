@@ -36,6 +36,7 @@ import {
   MCP_URL,
   parseToolResult,
   type ReadClipResult,
+  remoteScriptAnswers,
   setConfig,
   setupMcpTestContext,
   sleep,
@@ -245,14 +246,17 @@ describe("x-producer-pal-disabled-tools", () => {
     // e2e runs against a live ~/.producer-pal, so the dev machine's own skills
     // overrides are part of both blobs the server just served.
     const overrides = await fetchSkillOverrides();
+    // The server adds the plug-ins section while the remote script answers, and
+    // withholding create-device drops it, so the expected blobs must match.
+    const remoteScript = await remoteScriptAnswers();
 
     // The live server dropped exactly what assembling the same toolset drops
     // here — so this tracks any future skills reorg on its own, rather than
     // going stale against hand-picked content markers.
     expect(removed).toStrictEqual(
       removedLines(
-        buildSkills({ notation: "barbeat" }, overrides),
-        buildSkills({ notation: "barbeat", tools }, overrides),
+        buildSkills({ notation: "barbeat", remoteScript }, overrides),
+        buildSkills({ notation: "barbeat", tools, remoteScript }, overrides),
       ),
     );
 

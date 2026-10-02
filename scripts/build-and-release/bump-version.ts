@@ -13,6 +13,7 @@ import {
   nextVersion,
   parseVersion,
 } from "./helpers/next-version.ts";
+import { replaceVersionLine } from "./helpers/replace-version-line.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -106,6 +107,19 @@ const versionContent = readFileSync(versionPath, "utf8").replace(
 
 writeFileSync(versionPath, versionContent);
 console.log("✓ Updated src/shared/config.ts");
+
+// Update the remote script's version.py. The build stamps this line again when
+// it embeds the script, so the two must agree.
+const pyVersionPath = join(rootDir, "remote-script/Producer_Pal/version.py");
+const pyVersionContent = replaceVersionLine(
+  readFileSync(pyVersionPath, "utf8"),
+  /^VERSION = ".*"$/m,
+  `VERSION = "${newVersion}"`,
+  "remote-script/Producer_Pal/version.py",
+);
+
+writeFileSync(pyVersionPath, pyVersionContent);
+console.log("✓ Updated remote-script/Producer_Pal/version.py");
 
 // Update npm/package.json
 const npmPkgPath = join(rootDir, "npm/package.json");

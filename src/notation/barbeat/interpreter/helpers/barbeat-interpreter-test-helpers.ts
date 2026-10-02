@@ -8,11 +8,11 @@ import { type BarCopyNote, type NoteEvent } from "#src/notation/types.ts";
 import {
   type BufferState,
   type PitchState,
-} from "./barbeat-interpreter-buffer-helpers.ts";
+} from "./interpreter-buffer-state.ts";
 import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
-} from "./barbeat-interpreter-copy-helpers.ts";
+} from "./bar-copy-destinations.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 type BarCopyElement = Parameters<typeof handleBarCopySingleDestination>[0];

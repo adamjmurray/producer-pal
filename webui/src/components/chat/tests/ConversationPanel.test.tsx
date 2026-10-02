@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { ConversationPanel } from "#webui/components/chat/ConversationPanel";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
+import { conversationPanelProps } from "#webui/components/chat/tests/conversation-panel-props";
 
 const conversations: ConversationSummary[] = [
   createTestSummary({
@@ -30,21 +31,9 @@ const conversations: ConversationSummary[] = [
 ];
 
 const defaultProps = {
+  ...conversationPanelProps(),
   isOpen: true,
-  activeConversationId: null as string | null,
-  searchQuery: "",
-  matchedIds: null as Set<string> | null,
-  onSearchChange: vi.fn(),
-  onSelect: vi.fn(),
   onNewConversation: vi.fn(),
-  onDelete: vi.fn(),
-  onExportItem: vi.fn(),
-  onRename: vi.fn(),
-  onToggleBookmark: vi.fn(),
-  onExport: vi.fn(),
-  onImport: vi.fn(),
-  notification: null as { message: string; type: "success" | "error" } | null,
-  onDismissNotification: vi.fn(),
 };
 
 describe("ConversationPanel", () => {

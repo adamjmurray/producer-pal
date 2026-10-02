@@ -107,4 +107,54 @@ describe("UserMessageEditor", () => {
 
     expect((saveButton as HTMLButtonElement).disabled).toBe(true);
   });
+
+  describe("with images", () => {
+    const images = [
+      { mediaType: "image/png", data: "AAA" },
+      { mediaType: "image/png", data: "BBB" },
+    ];
+
+    it("saves with empty text while an image is kept", () => {
+      const onSave = vi.fn();
+
+      render(
+        <UserMessageEditor
+          {...defaultProps}
+          text=""
+          images={images}
+          onSave={onSave}
+        />,
+      );
+      const saveButton = screen.getByTestId("edit-message-save");
+
+      expect((saveButton as HTMLButtonElement).disabled).toBe(false);
+
+      fireEvent.keyDown(screen.getByTestId("edit-message-textarea"), {
+        key: "Enter",
+      });
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns focus to the text box after removing an image", () => {
+      const onRemoveImage = vi.fn();
+
+      render(
+        <UserMessageEditor
+          {...defaultProps}
+          images={images}
+          onRemoveImage={onRemoveImage}
+        />,
+      );
+      const removeButton = screen.getByLabelText("Remove attachment 2");
+
+      removeButton.focus();
+      fireEvent.click(removeButton);
+
+      expect(onRemoveImage).toHaveBeenCalledExactlyOnceWith(1);
+      expect(document.activeElement).toBe(
+        screen.getByTestId("edit-message-textarea"),
+      );
+    });
+  });
 });

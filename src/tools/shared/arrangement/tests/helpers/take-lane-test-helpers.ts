@@ -7,6 +7,7 @@ import { expect } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  deleteMockObject,
   lookupMockObject,
   registerMockObject,
   type RegisteredMockObject,
@@ -33,6 +34,25 @@ export function expectTakeLaneMidiClip(
   ).toHaveBeenCalledWith("create_midi_clip", start, length);
 }
 
+/**
+ * Assert the track created exactly one take lane, and that lane was told to
+ * make a clip at each of the given starts.
+ * @param track - The track the lane was created on
+ * @param starts - Expected clip starts, in beats
+ * @param laneIndex - The take lane that got the clips
+ */
+export function expectOneLaneWithClipsAt(
+  track: RegisteredMockObject,
+  starts: number[],
+  laneIndex = 0,
+): void {
+  expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
+
+  for (const start of starts) {
+    expectTakeLaneMidiClip(laneIndex, start);
+  }
+}
+
 export interface TakeLaneTrackOptions {
   trackIndex?: number;
   /** Number of pre-existing (empty) take lanes */
@@ -45,6 +65,8 @@ export interface TakeLaneTrackOptions {
   postCreateFails?: boolean;
   /** 0 makes it an audio track, which an audio source can be copied to */
   hasMidiInput?: number;
+  /** 1 makes it a group track, which has no take lanes */
+  isFoldable?: number;
   /**
    * Seed clips into pre-existing lanes for overlap testing. Index i lists the
    * clip time ranges (in beats) to register on initial lane i.
@@ -74,6 +96,7 @@ export function registerTakeLaneTrack(
     clipCreationFails = false,
     postCreateFails = false,
     hasMidiInput = 1,
+    isFoldable = 0,
     initialLaneClips = [],
   } = options;
   const laneIds: string[] = [];
@@ -133,7 +156,7 @@ export function registerTakeLaneTrack(
   const mainLaneClips: string[] = [];
   const trackProps: Record<string, unknown> = {
     has_midi_input: hasMidiInput,
-    is_foldable: 0,
+    is_foldable: isFoldable,
     take_lanes: children(...laneIds),
     arrangement_clips: children(),
   };
@@ -207,6 +230,7 @@ function createOwnedClip(
   const length =
     typeof lengthBeats === "number" ? lengthBeats : owner.clipLength;
 
+  clearCoveredClips(owner, start, start + length);
   registerMockObject(clipId, {
     path: owner.pathFor(owner.clips.length),
     type: "Clip",
@@ -262,10 +286,77 @@ function seedLaneClips(
         .takeLane(laneIndex)
         .arrangementClip(laneClips.length),
       type: "Clip",
-      properties: { is_arrangement_clip: 1, start_time: start, end_time: end },
+      properties: seededClipProperties(start, end),
     });
     laneClips.push(clipId);
   }
 
   laneProps.arrangement_clips = children(...laneClips);
+}
+
+/**
+ * Everything a seeded lane clip has to answer, so a move can re-create it
+ * elsewhere: a re-create reads the source's notes, region and meter, not just
+ * where it sits.
+ * @param start - Its arrangement start, in beats
+ * @param end - Its arrangement end, in beats
+ * @returns The clip's properties
+ */
+function seededClipProperties(
+  start: number,
+  end: number,
+): Record<string, unknown> {
+  return {
+    is_arrangement_clip: 1,
+    is_midi_clip: 1,
+    start_time: start,
+    end_time: end,
+    length: end - start,
+    looping: 1,
+    start_marker: 0,
+    loop_start: 0,
+    loop_end: end - start,
+    end_marker: end - start,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    muted: 0,
+    name: "Take",
+    color: 16711680,
+  };
+}
+
+/**
+ * Clear what a new clip lands on top of, the way an arrangement create does in
+ * Live. Only a clip the new one covers whole — Live trims a partial overlap
+ * instead, which this doesn't model.
+ * @param owner - The lane or main lane the clip is created on
+ * @param start - The new clip's start, in beats
+ * @param end - The new clip's end, in beats
+ */
+function clearCoveredClips(owner: ClipOwner, start: number, end: number): void {
+  const survivors = owner.clips.filter((clipId) => {
+    const props = lookupMockObject(clipId)?.properties;
+    const clipStart = props?.start_time;
+    const clipEnd = props?.end_time;
+
+    if (typeof clipStart !== "number" || typeof clipEnd !== "number") {
+      return true;
+    }
+
+    return clipStart < start || clipEnd > end;
+  });
+
+  if (survivors.length === owner.clips.length) {
+    return;
+  }
+
+  for (const clipId of owner.clips) {
+    if (!survivors.includes(clipId)) {
+      deleteMockObject(clipId);
+    }
+  }
+
+  owner.clips.length = 0;
+  owner.clips.push(...survivors);
+  owner.props.arrangement_clips = children(...owner.clips);
 }

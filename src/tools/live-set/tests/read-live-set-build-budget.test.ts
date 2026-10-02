@@ -14,7 +14,7 @@
 // they produce were always right. Only the price was wrong.
 
 import { describe, expect, it } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
@@ -88,11 +88,7 @@ function setupGrid(): void {
  * @returns Resolutions of the session clip shape
  */
 function slotResolves(): number {
-  return (
-    liveApiBuildStats().byShape.find(
-      ([shape]) => shape === "live_set tracks * clip_slots * clip",
-    )?.[1] ?? 0
-  );
+  return resolves("live_set tracks * clip_slots * clip");
 }
 
 describe("readLiveSet build budget", () => {

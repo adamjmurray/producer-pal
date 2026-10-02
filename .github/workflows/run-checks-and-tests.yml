@@ -132,6 +132,11 @@ jobs:
       - name: Build parser
         run: npm run parser:build
 
+      # The remote script's Python, against fake Live objects. ubuntu-latest
+      # ships python3, and the tests use only the standard library.
+      - name: Test the remote script
+        run: npm run remote-script:test
+
       - name: Run tests with coverage
         id: tests
         run: FORCE_COLOR=3 npm run test:coverage:verbose

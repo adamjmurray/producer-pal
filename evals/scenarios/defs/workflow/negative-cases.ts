@@ -14,6 +14,7 @@ const SET_TEMPO = 120;
 
 export const negativeCases: EvalScenario = {
   id: "negative-cases",
+  tags: ["workflow"],
   description: "Handle an impossible request",
   kind: "regression",
   liveSet: "basic-midi-4-track",

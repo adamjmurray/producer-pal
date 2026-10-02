@@ -22,6 +22,7 @@ import {
   type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
 import {
@@ -39,6 +40,22 @@ const OFF_GRID_NOTES = "C3 1|1.25\nD3 1|2.75";
 /** Read a clip's serialized notes. */
 const readNotes = (clipId: string): Promise<string> =>
   readClipNotes(ctx, clipId);
+
+/**
+ * Read back one clip's name.
+ * @param clipId - The clip to read
+ * @returns Its name
+ */
+async function readClipName(
+  clipId: string,
+): Promise<string | null | undefined> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { id: clipId },
+  });
+
+  return parseToolResult<ReadClipResult>(result).name;
+}
 
 /**
  * Create a 1-bar clip holding off-grid notes for a quantization test.
@@ -393,15 +410,17 @@ describe("ppal-update-clip", () => {
     expect(newClip.name).toBe("Move Me");
     expect(newClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s5`);
 
-    // Verify the original slot is now empty
+    // Verify the original slot is now empty: reading it back errors, which is
+    // what an empty slot answers a read that named it.
     const verifyOld = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { path: `t${EMPTY_MIDI_TRACK}/s4` },
     });
-    const { data: oldSlot } =
-      parseToolResultWithWarnings<ReadClipResult>(verifyOld);
 
-    expect(oldSlot.id).toBeNull();
+    expect(isToolError(verifyOld)).toBe(true);
+    expect(getToolErrorMessage(verifyOld)).toContain(
+      `no clip at t${EMPTY_MIDI_TRACK}/s4`,
+    );
   });
 
   // The batch resolves the destination track once and every clip's copy check
@@ -464,12 +483,14 @@ describe("ppal-update-clip", () => {
     const { data, warnings } = parseToolResultWithWarnings<{
       id: string;
       slot?: string;
+      detail?: string;
     }>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(warnings.join(" ")).toContain(
-      "names an arrangement lane, so session clip",
+    expect(data.detail).toContain(
+      'not moved: toPath "t7" names an arrangement lane and this is a session clip',
     );
+    expect(warnings.join(" ")).not.toContain("not moved");
 
     await sleep(100);
 
@@ -490,11 +511,124 @@ describe("ppal-update-clip", () => {
       name: "ppal-update-clip",
       arguments: { path: "t0/s0,t1/s0", toPath: "t0/d0" },
     });
-    const warnings = getToolWarnings(result).join(" ");
+    const { data, warnings } = parseToolResultWithWarnings<unknown>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(warnings).toContain("device paths hold no clips");
-    expect(warnings).not.toContain("destination for");
+    // The one destination covers both clips, so both entries say why nothing
+    // moved — nothing warns, and the count was never the problem.
+    expect(JSON.stringify(data)).toContain("device paths hold no clips");
+    expect(warnings.join(" ")).not.toContain("destination for");
+    expect(warnings.join(" ")).not.toContain("device paths hold no clips");
+  });
+
+  // N targets named, N entries back: the miss holds its slot so the caller can
+  // pair the entries against the paths it sent, and nothing warns about it.
+  it("keeps the slot of a path that holds no clip", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s20`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s20,t${EMPTY_MIDI_TRACK}/s21`,
+        name: "Half Named",
+      },
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<Array<ReadClipResult | SkippedTargetResult>>(
+        result,
+      );
+    const [updated, missed] = data as [ReadClipResult, SkippedTargetResult];
+
+    expect(data).toHaveLength(2);
+    expect(updated.id).toBe(clipId);
+    expect(missed).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}/s21`,
+      ok: false,
+      detail: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
+    });
+    expect(warnings.join(" ")).not.toContain("no clip at path");
+  });
+
+  // The name list pairs with the targets named, so the skip in the middle must
+  // not slide the names after it onto the wrong clips.
+  it("keeps each name on the target named at its own position", async () => {
+    // The later scene first: creating its clip auto-creates s24, so the middle
+    // target names a slot that exists and holds nothing.
+    const lastId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s25`, {
+      notes: "D3 1|1",
+    });
+    const firstId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s23`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s23,t${EMPTY_MIDI_TRACK}/s24,t${EMPTY_MIDI_TRACK}/s25`,
+        name: "a,b,c",
+      },
+    });
+    const data =
+      parseToolResult<Array<ReadClipResult | SkippedTargetResult>>(result);
+
+    expect(data).toHaveLength(3);
+    expect(data[1]).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}/s24`,
+      ok: false,
+      detail: `no clip at path "t${EMPTY_MIDI_TRACK}/s24"`,
+    });
+
+    await sleep(100);
+
+    expect(await readClipName(firstId)).toBe("a");
+    expect(await readClipName(lastId)).toBe("c");
+  });
+
+  // An id and a path can name one clip. Updating it twice would compound every
+  // operation, so the earlier mention keeps its slot and says where the work is.
+  it("keeps both slots when one clip is named by id and by path", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s26`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, path, name: "First,Last" },
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<Array<ReadClipResult & { detail?: string }>>(
+        result,
+      );
+
+    expect(data).toHaveLength(2);
+    // The earlier mention needed no work, so it carries a reason and no `ok`.
+    expect(data[0]).toStrictEqual({
+      id: clipId,
+      path,
+      detail: `named again as "${path}" later in this call`,
+    });
+    expect(data[1]?.id).toBe(clipId);
+    expect(data[1]?.detail).toBeUndefined();
+    expect(warnings.join(" ")).not.toContain("later in this call");
+
+    await sleep(100);
+
+    expect(await readClipName(clipId)).toBe("Last");
+  });
+
+  // One target and nothing done: there is no list for an entry to hold a place
+  // in, so the reason comes back as the error.
+  it("throws when the one path it names holds no clip", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s22`, name: "Nobody Home" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `no clip at path "t${EMPTY_MIDI_TRACK}/s22"`,
+    );
   });
 
   // Naming fewer destinations than clips is refused before anything runs, so
@@ -557,6 +691,33 @@ describe("ppal-update-clip", () => {
     );
   });
 
+  it("refuses toPath and toSlot together, leaving the clip alone", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s6`, {
+      notes: "C3 1|1",
+      name: "Untouched",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: clipId,
+        toPath: `t${EMPTY_MIDI_TRACK}/s7`,
+        toSlot: `${EMPTY_MIDI_TRACK}/8`,
+        name: "Not Renamed",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "toPath and toSlot both name a destination",
+    );
+
+    await sleep(100);
+
+    // Refused up front, so the rename in the same call never landed either.
+    expect(await readClipName(clipId)).toBe("Untouched");
+  });
+
   // A blank id reads as unset, so the path carries the call — but nothing in
   // the result would say the id the caller sent was dropped.
   it("warns when a blank id rides along with a path", async () => {
@@ -582,6 +743,61 @@ describe("ppal-update-clip", () => {
     });
 
     expect(parseToolResult<ReadClipResult>(verify).name).toBe("Named By Path");
+  });
+
+  // A blank whole-call arg reads as unset too, so the move never happens — and
+  // no result entry could say the destination the caller sent went nowhere.
+  it("warns when a blank toPath is dropped", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s6`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, toPath: "", name: "Stayed Put" },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining("blank toPath ignored — leave it out instead"),
+    );
+
+    await sleep(100);
+
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: clipId },
+    });
+    const stayed = parseToolResult<ReadClipResult>(verify);
+
+    expect(stayed.path).toBe(path);
+    expect(stayed.name).toBe("Stayed Put");
+  });
+
+  // Every spelling the caller wrote, deprecated ones included, in one warning.
+  it("names every blank position and split arg at once", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s7`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: clipId,
+        toSlot: "",
+        arrangementStart: "",
+        arrangementLength: "",
+        arrangementSplit: "",
+        split: "",
+        name: "Left Alone",
+      },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining(
+        "blank toSlot, arrangementStart, arrangementLength, " +
+          "arrangementSplit, split ignored — leave them out instead",
+      ),
+    );
   });
 
   it("updates audio clip properties", async () => {

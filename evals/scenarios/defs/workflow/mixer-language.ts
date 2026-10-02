@@ -52,6 +52,7 @@ interface MixerRead {
 
 export const mixerLanguage: EvalScenario = {
   id: "mixer-language",
+  tags: ["workflow"],
   description: "Set a track's gain, pan and solo from plain mixer language",
   kind: "regression",
   liveSet: "basic-midi-4-track",

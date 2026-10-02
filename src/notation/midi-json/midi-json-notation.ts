@@ -11,10 +11,9 @@
  * with short keys and defaults omitted, e.g.
  * `[{p:60,t:0,d:4,v:100},{p:62,t:1,d:1,v:90,vd:10,c:0.75}]`. Keys: `p` pitch,
  * `t` start, `d` duration, `v` velocity, `vd` velocity-deviation (omitted at 0),
- * `c` probability/chance (omitted at 1). interpret parses via a small Peggy
- * grammar (not eval) into the interpreter's internal `NoteEvent`; format
- * serializes back to the literal. Both are the MIDI JSON counterparts to
- * barbeat's interpret/format seams.
+ * `c` probability/chance (omitted at 1). interpret parses (not eval) into the
+ * interpreter's internal `NoteEvent`; format serializes back to the literal.
+ * Both are the MIDI JSON counterparts to barbeat's interpret/format seams.
  */
 
 import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
@@ -30,7 +29,7 @@ import {
 } from "#src/notation/midi-json/parser/midi-json-parser.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 const DEFAULT_DENOMINATOR = 4;
@@ -75,20 +74,7 @@ export function interpretMidiJson(
   input: string,
   options: MidiJsonInterpretOptions = {},
 ): NoteEvent[] {
-  if (!input.trim()) {
-    return [];
-  }
-
-  let parsed: MidiJsonRawNote[];
-
-  try {
-    parsed = parseMidiJson(input);
-  } catch (error) {
-    throw new Error(`Invalid MIDI JSON: ${errorMessage(error)}`, {
-      cause: error,
-    });
-  }
-
+  const parsed = parseMidiJsonNotes(input);
   const timeSigDenominator = options.timeSigDenominator ?? DEFAULT_DENOMINATOR;
   const events: NoteEvent[] = [];
   const dropped: string[] = [];
@@ -108,6 +94,25 @@ export function interpretMidiJson(
   warnDroppedNotes(dropped);
 
   return options.keepV0Deletes === true ? events : applyV0Deletions(events);
+}
+
+/**
+ * Parse a MIDI JSON array without checking its notes, so it warns nothing.
+ * @param input - MIDI JSON array string
+ * @returns The raw notes, unchecked
+ */
+export function parseMidiJsonNotes(input: string): MidiJsonRawNote[] {
+  if (!input.trim()) {
+    return [];
+  }
+
+  try {
+    return parseMidiJson(input);
+  } catch (error) {
+    throw new Error(`Invalid MIDI JSON: ${errorMessage(error)}`, {
+      cause: error,
+    });
+  }
 }
 
 // At most this many distinct reasons are named; the rest collapse into a count.

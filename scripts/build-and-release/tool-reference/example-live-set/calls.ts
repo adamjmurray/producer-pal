@@ -74,7 +74,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
 
   {
     toolName: "ppal-create-device",
-    args: { deviceName: "Saturator", path: "t1" },
+    args: { device: "Saturator", path: "t1" },
   },
   {
     toolName: "ppal-read-device",

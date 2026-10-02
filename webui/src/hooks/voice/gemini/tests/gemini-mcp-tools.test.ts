@@ -21,7 +21,7 @@ import {
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
 // connectAndListTools stays real — it owns the close-on-catalog-failure path.
-vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
+vi.mock(import("#webui/chat/helpers/mcp-client-connection"), () =>
   mcpClientHelpersMock(),
 );
 

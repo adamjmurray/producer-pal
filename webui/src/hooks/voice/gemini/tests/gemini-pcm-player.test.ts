@@ -89,6 +89,17 @@ describe("GeminiPcmPlayer", () => {
     expect(ctx.gain.connect).toHaveBeenCalledWith(ctx.destination);
   });
 
+  it("reuses the running context on a second resume", async () => {
+    const { player, ctx } = await startedPlayer();
+
+    ctx.resume.mockClear();
+    await player.resume();
+
+    // Already running: no second context, and nothing to resume.
+    expect(FakeAudioContext.instances).toHaveLength(1);
+    expect(ctx.resume).not.toHaveBeenCalled();
+  });
+
   it("schedules chunks gaplessly against a running cursor", async () => {
     const { player, ctx } = await startedPlayer();
 

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Notation } from "#src/shared/notation";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 /**
  * Type definitions for provider settings and configuration.

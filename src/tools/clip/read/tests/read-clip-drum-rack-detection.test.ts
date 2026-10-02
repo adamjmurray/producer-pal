@@ -10,7 +10,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { isDrumRackTrack } from "#src/tools/clip/read/helpers/read-clip-helpers.ts";
+import { isDrumRackTrack } from "#src/tools/clip/read/helpers/clip-resolution.ts";
 
 /**
  * Register the track-0 object with the given top-level device children.

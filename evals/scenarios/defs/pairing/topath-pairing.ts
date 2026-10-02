@@ -6,25 +6,23 @@
 /**
  * Scenario: update-clip's destinations pair 1:1 and do NOT cycle.
  *
- * `duplicate` cycles a short `toPath` against `arrangementStart`; `update-clip`
- * does not, on purpose. One destination for two clips used to put both in the
- * same slot and destroy the first, so a model that carries the cycling habit
- * across tools loses a clip silently. Grades that it wrote one destination per
+ * One destination for two clips used to put both in the same slot and destroy
+ * the first; it's now refused. Grades that the model wrote one destination per
  * clip, and that all four slots ended up as a move rather than a copy.
  */
 
 import { type EvalScenario } from "../../types.ts";
 import {
-  clearClipSlots,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_CREATE_CLIP,
   TOOL_UPDATE_CLIP,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
+import { clearClipSlots } from "../clip/helpers/clip-turn-readers.ts";
 import {
   assertDestinationCounts,
   assertSlotOccupancy,
-} from "../path/path-scenario-helpers.ts";
+} from "../path/path-assertions.ts";
 
 /** Two clips move from Drums to Chords, staying in their scenes. */
 const SOURCE_SLOTS = ["t0/s0", "t0/s1"];
@@ -32,6 +30,7 @@ const DESTINATION_SLOTS = ["t2/s0", "t2/s1"];
 
 export const pathToPathPairing: EvalScenario = {
   id: "path-topath-pairing",
+  tags: ["pairing", "paths"],
   description: "update-clip pairs toPath 1:1 with the clips, without cycling",
   kind: "capability",
   liveSet: "basic-midi-4-track",

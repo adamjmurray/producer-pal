@@ -9,7 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { VoiceVolumeSlider } from "#webui/components/settings/controls/VoiceVolumeSlider";
-import { VOICE_VOLUME_MAX } from "#webui/hooks/settings/settings-helpers";
+import { VOICE_VOLUME_MAX } from "#webui/hooks/settings/helpers/voice-settings-storage";
 
 describe("VoiceVolumeSlider", () => {
   it("renders the current volume as a percentage in the label", () => {

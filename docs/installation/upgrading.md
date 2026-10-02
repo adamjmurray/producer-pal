@@ -1,3 +1,7 @@
+---
+outline: [2, 3]
+---
+
 # Upgrading Producer Pal
 
 Upgrading takes two steps for most people. The latest version is
@@ -8,11 +12,18 @@ v{{ $frontmatter.version }}
 
 Download the new
 [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-and put it where you saved the old one (usually your Live User Library),
-replacing the old file. Your Live Sets will pick up the new version
-automatically.
+and install it over the old one: open **User Library** (under Places) in Live's
+browser, go to **Presets → MIDI Effects → Max MIDI Effect**, and drag
+`Producer_Pal.amxd` into that folder:
 
-Check the version number in the device to confirm it worked.
+<img src="/img/install-amxd-to-user-library.png" alt="Producer_Pal.amxd in Live's browser, in User Library → Presets → MIDI Effects → Max MIDI Effect" width="300"/>
+
+Live asks whether to overwrite the old one. Click **OK**:
+
+<img src="/img/upgrade-amxd-in-user-library.png" alt="Live asking whether to overwrite the existing Producer_Pal.amxd" width="450"/>
+
+Reopen your Live Set to load the new version, then check the version number in
+the device to confirm it worked.
 
 ## 2. Restart your AI app
 
@@ -32,36 +43,55 @@ Claude Desktop also needs its extension updated:
 Everything else (the built-in chat, Claude Code, Codex, Gemini CLI, and other
 apps set up with `npx -y producer-pal@latest`) updates itself. No extra steps.
 
+## Less common situations
+
+Most people can skip this section. Each part only matters if it describes your
+setup.
+
+### Device saved outside the User Library
+
+Install it to the Max MIDI Effect folder as shown above from now on. Some
+features look for it there, like a coding agent adding Producer Pal to a Live
+Set, and more will. Your existing Sets still use the old copy: in each one,
+delete the Producer Pal device and add it again from the Max MIDI Effect folder.
+
+### Projects saved with "Collect All and Save"
+
+If **Files from User Library** was set to **Yes**, the project keeps its own
+copy of the device, so upgrading doesn't reach it. In each such project, delete
+the Producer Pal device and add it again from the Max MIDI Effect folder.
+
+<img src="/img/collect-all-and-save.png" alt="Live's Collect All and Save dialog with Files from User Library set to Yes" width="450"/>
+
+### Upgrading from a version before 2.1.0
+
+Copy your project context (the text in the device's Context tab) somewhere safe
+before replacing the device, then paste it into the new one. Since 2.1.0,
+project context is backed up in your Live Project folder and carries over on its
+own
+([one exception](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices)).
+
+### Using `npx producer-pal` without `@latest`
+
+Change it to `npx -y producer-pal@latest` so it always fetches the current
+version. See
+[`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version).
+
+### Calling Producer Pal from your own scripts
+
+Over [MCP](/guide/npx-cli), the [REST API](/guide/rest-api), or an
+[agent skill](/guide/skills), some input and output formats changed in 2.3.0.
+See the [Migration Guide](/guide/migration).
+
 ## If something's not working
 
 - Make sure you replaced the `.amxd` file, not added a second copy
-- Try deleting the Producer Pal device from your Set and adding it again
+- Try deleting the Producer Pal device from your Set and adding it again from
+  the Max MIDI Effect folder
 - Claude Desktop: make sure you uninstalled the old extension first
 - Restart your AI app completely and start a fresh conversation
 
 See the [Troubleshooting Guide](/support/troubleshooting) for more help.
-
-## Less common situations
-
-Most people can stop reading here. These only matter if one of them describes
-your setup.
-
-**Projects saved with "Collect All and Save".** Those projects keep their own
-copy of the device. Drag the new `.amxd` into them to replace it.
-
-**Upgrading from a version before 2.1.0.** Copy your project context (the text
-in the device's Context tab) somewhere safe before replacing the device, then
-paste it into the new one. Since 2.1.0, project context is backed up in your
-Live Project folder and carries over on its own
-([one exception](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices)).
-
-**Using `npx producer-pal` without `@latest`.** Change it to
-`npx -y producer-pal@latest` so it always fetches the current version. See
-[`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version).
-
-**Calling Producer Pal from your own scripts** (over [MCP](/guide/npx-cli), the
-[REST API](/guide/rest-api), or an [agent skill](/guide/skills))? Some input and
-output formats changed in 2.3.0. See the [Migration Guide](/guide/migration).
 
 ## Version history
 

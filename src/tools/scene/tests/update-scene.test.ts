@@ -13,25 +13,13 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { updateScene } from "../update-scene.ts";
+import { expectSceneSetToRed34 } from "./scene-assertions.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-
-async function withConsoleSpy(
-  fn: (spy: ReturnType<typeof vi.spyOn>) => void,
-): Promise<void> {
-  const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-  const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-  try {
-    fn(consoleSpy);
-  } finally {
-    consoleSpy.mockRestore();
-  }
-}
 
 describe("updateScene", () => {
   let scene1: RegisteredMockObject;
@@ -53,13 +41,7 @@ describe("updateScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(scene1.set).toHaveBeenCalledWith("name", "Updated Scene");
-    expect(scene1.set).toHaveBeenCalledWith("color", 16711680);
-    expect(scene1.set).toHaveBeenCalledWith("tempo", 140);
-    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
+    expectSceneSetToRed34(scene1, "Updated Scene", 140);
     expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
@@ -138,7 +120,7 @@ describe("updateScene", () => {
 
   it("refuses more names than scenes, naming both counts", () => {
     expect(() => updateScene({ id: "123,456", name: "A,B,C,D" })).toThrow(
-      "id and path names 2 entries but name names 4 entries.",
+      "id names 2 entries but name names 4 entries.",
     );
   });
 
@@ -177,22 +159,29 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("should log warning when scene ID doesn't exist", () => {
+  it("throws when the one scene ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateScene({ id: "nonexistent" });
-
-    expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(() => updateScene({ id: "nonexistent" })).toThrow(
+      'id "nonexistent" does not exist',
+    );
   });
 
-  it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
+  it("reports a dead id in its own slot and updates the rest", () => {
     mockNonExistentObjects();
 
     const result = updateScene({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123", path: "s0" });
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        detail: 'id "nonexistent" does not exist',
+      },
+    ]);
+    // The entry carries it, so the response doesn't say it twice.
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(scene1.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -209,6 +198,11 @@ describe("updateScene", () => {
     });
 
     expect(result).toStrictEqual([
+      {
+        id: "nonexistent",
+        ok: false,
+        detail: 'id "nonexistent" does not exist',
+      },
       { id: "123", path: "s0" },
       { id: "456", path: "s1" },
     ]);
@@ -216,7 +210,6 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(scene2.set).toHaveBeenCalledWith("name", "C");
     expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -278,48 +271,60 @@ describe("updateScene", () => {
     expect(scene3.set).not.toHaveBeenCalled();
   });
 
-  describe("color quantization verification", () => {
-    it("should emit warning when color is quantized by Live", async () => {
-      await withConsoleSpy((consoleSpy) => {
-        // Override get to return quantized color (different from input)
-        scene1.get.mockImplementation((prop: string) => {
-          if (prop === "color") {
-            return [16725558]; // #FF3636 (quantized from #FF0000)
-          }
+  describe("color", () => {
+    /**
+     * Read the scene's color back as Live would after quantizing it.
+     * @param value - The color Live answers with, as its packed integer
+     */
+    function sceneReadsColor(value: number): void {
+      scene1.get.mockImplementation((prop: string) =>
+        prop === "color" ? [value] : [0],
+      );
+    }
 
-          return [0];
-        });
+    it("reports the palette color Live snapped to on the scene's entry", () => {
+      sceneReadsColor(16725558); // #FF3636
 
-        updateScene({ id: "123", color: "#FF0000" });
+      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
 
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "Requested scene s0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
-        );
+    it("says nothing when the color lands as asked", () => {
+      sceneReadsColor(16711680); // #FF0000
+
+      expect(updateScene({ id: "123", color: "#ff0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
       });
     });
 
-    it("should not emit warning when color matches exactly", async () => {
-      await withConsoleSpy((consoleSpy) => {
-        // Override get to return exact color (same as input)
-        scene1.get.mockImplementation((prop: string) => {
-          if (prop === "color") {
-            return [16711680]; // #FF0000 (exact match)
-          }
+    it("says nothing about color when the call sent none", () => {
+      sceneReadsColor(16725558);
 
-          return [0];
-        });
-
-        updateScene({ id: "123", color: "#FF0000" });
-
-        expect(consoleSpy).not.toHaveBeenCalled();
+      expect(updateScene({ id: "123", name: "No color" })).toStrictEqual({
+        id: "123",
+        path: "s0",
       });
     });
 
-    it("should not verify color if color parameter is not provided", async () => {
-      await withConsoleSpy((consoleSpy) => {
-        updateScene({ id: "123", name: "No color update" });
+    it("reports a color it set but could not read back", () => {
+      scene1.get.mockImplementation((prop: string) => {
+        if (prop === "color") {
+          throw new Error("gone");
+        }
 
-        expect(consoleSpy).not.toHaveBeenCalled();
+        return [0];
+      });
+
+      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+        detail: "color #FF0000 was set but could not be read back: gone",
       });
     });
   });
@@ -352,14 +357,28 @@ describe("updateScene", () => {
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
 
-    it("does not focus when every id was skipped", () => {
+    it("does not focus when every scene was skipped", () => {
       mockNonExistentObjects();
 
-      // updatedScenes is empty, so `length > 0` guards the focus block; a
-      // mutated `>= 0`/`true` would enter it and crash on `.at(-1).id`.
-      const result = updateScene({ id: "nonexistent", focus: true });
+      // Nothing was written, so nothing is selected: the focus block is
+      // guarded on a scene having been reached at all.
+      const result = updateScene({
+        id: "nonexistent,also-gone",
+        focus: true,
+      });
 
-      expect(result).toStrictEqual([]);
+      expect(result).toStrictEqual([
+        {
+          id: "nonexistent",
+          ok: false,
+          detail: 'id "nonexistent" does not exist',
+        },
+        {
+          id: "also-gone",
+          ok: false,
+          detail: 'id "also-gone" does not exist',
+        },
+      ]);
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
   });

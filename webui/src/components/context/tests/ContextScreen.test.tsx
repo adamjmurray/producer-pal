@@ -700,6 +700,19 @@ describe("ContextScreen", () => {
       expect(lastEditorProps?.initialValue).toBe("MY DRAFT");
     });
 
+    it("labels the override pane generically when the tab names no label", () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "MY DRAFT";
+      render(
+        <ContextScreen
+          doc={buildHookValue()}
+          labels={{ ...TEST_LABELS, builtIn: "SHIPPED DEFAULT" }}
+        />,
+      );
+
+      expect(screen.getByText("Your override")).toBeTruthy();
+    });
+
     it("reveals the read-only built-in on request", async () => {
       renderWithBuiltIn();
 

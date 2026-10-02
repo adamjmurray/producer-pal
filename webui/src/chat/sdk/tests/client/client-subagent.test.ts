@@ -62,6 +62,7 @@ import {
   resetSubagentRateLimits,
 } from "#webui/chat/sdk/subagent/subagent-rate-limit";
 import {
+  buildSteppedStream,
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
@@ -222,18 +223,6 @@ describe("ChatSdkClient step budget", () => {
     vi.clearAllMocks();
   });
 
-  const steppedStream = (steps: number, finishReason: string) => {
-    const parts: Record<string, unknown>[] = [];
-
-    for (let i = 0; i < steps; i++) {
-      parts.push({ type: "finish-step" });
-    }
-
-    parts.push({ type: "finish", finishReason });
-
-    return parts;
-  };
-
   it("runs an orchestrator on the same budget as a plain chat", async () => {
     const client = new ChatSdkClient(
       "key",
@@ -243,7 +232,7 @@ describe("ChatSdkClient step budget", () => {
     await client.initialize();
     // Enabling subagents must not widen the budget: the number the user set is
     // the number every level of the turn runs on.
-    mockStreamParts(steppedStream(MAX_TOOL_STEPS, "tool-calls"));
+    mockStreamParts(buildSteppedStream(MAX_TOOL_STEPS, "tool-calls"));
 
     for await (const _ of client.sendMessage("hi")) {
       /* consume */
@@ -256,7 +245,7 @@ describe("ChatSdkClient step budget", () => {
     const client = new ChatSdkClient("key", createConfig({ maxSteps: 20 }));
 
     await client.initialize();
-    mockStreamParts(steppedStream(20, "tool-calls"));
+    mockStreamParts(buildSteppedStream(20, "tool-calls"));
 
     for await (const _ of client.sendMessage("hi")) {
       /* consume */

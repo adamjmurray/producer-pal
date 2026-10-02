@@ -95,14 +95,13 @@ numbers are needed.
 If a response somehow needs more than 100 chunks (~3 MB), Producer Pal refuses
 to send a corrupt blob. It replaces the payload with a clear "response too
 large" error instead. (You can find the chunking logic in
-[`mcp-response-utils.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/mcp-response-utils.ts).)
+[`mcp-responses.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/mcp-responses.ts).)
 
 ## Problem 2: getting warnings onto the right response
 
 The second problem is subtler. While a tool runs, the V8 code may want to warn
-the AI about something, like _"quantize parameter ignored for audio clip,"_ for
-example. Producer Pal uses warn-and-skip rather than hard failures, so these
-warnings need to reach the AI as part of the response.
+the AI about something, like a deprecated param it still accepted. A warning
+doesn't fail the call, so it needs to reach the AI as part of the response.
 
 But there's a catch: **a runtime's log and error output doesn't travel down
 patch cables.** When the `v8` object prints to the Max console, that text goes

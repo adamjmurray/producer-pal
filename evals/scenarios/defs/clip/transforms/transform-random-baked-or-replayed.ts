@@ -33,14 +33,14 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import { interpretMidiJson } from "#src/notation/midi-json/midi-json-notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
-  getTransforms,
   MSG_CONNECT,
   READ_DRUM_NOTES,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import { getTransforms } from "../helpers/clip-turn-readers.ts";
 
 /** Snare and hats in the Set's drum map. */
 const SNARE = 40;
@@ -48,6 +48,7 @@ const HATS = 44;
 
 export const transformRandomBakedOrReplayed: EvalScenario = {
   id: "transform-random-baked-or-replayed",
+  tags: ["transforms"],
   description:
     "Tell baked random velocities apart from Live's per-playback spread",
   kind: "capability",

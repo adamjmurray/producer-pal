@@ -6,7 +6,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  LONG_BLOCK_LINES,
+  commentDensity,
   scanCommentFile,
   scanComments,
   scanCommentTree,
@@ -35,6 +35,7 @@ describe("scanComments", () => {
       codeLines: 1,
       longestBlock: 0,
       longestBlockLine: 0,
+      blocks: [],
     });
   });
 
@@ -46,6 +47,7 @@ describe("scanComments", () => {
       codeLines: 1,
       longestBlock: 1,
       longestBlockLine: 7,
+      blocks: [],
     });
   });
 
@@ -57,6 +59,7 @@ describe("scanComments", () => {
       codeLines: 1,
       longestBlock: 2,
       longestBlockLine: 1,
+      blocks: [],
     });
   });
 
@@ -75,6 +78,7 @@ describe("scanComments", () => {
       codeLines: 1,
       longestBlock: 5,
       longestBlockLine: 1,
+      blocks: [],
     });
   });
 
@@ -92,6 +96,7 @@ describe("scanComments", () => {
       codeLines: 2,
       longestBlock: 0,
       longestBlockLine: 0,
+      blocks: [],
     });
   });
 
@@ -109,6 +114,7 @@ describe("scanComments", () => {
       codeLines: 5,
       longestBlock: 0,
       longestBlockLine: 0,
+      blocks: [],
     });
   });
 
@@ -120,6 +126,7 @@ describe("scanComments", () => {
       codeLines: 1,
       longestBlock: 0,
       longestBlockLine: 0,
+      blocks: [],
     });
   });
 
@@ -141,7 +148,29 @@ describe("scanComments", () => {
       codeLines: 2,
       longestBlock: 3,
       longestBlockLine: 3,
+      blocks: [],
     });
+  });
+
+  it("should report every block longer than maxBlockLines", () => {
+    const source = [
+      "// one",
+      "// two",
+      "const a = 1;",
+      "// three",
+      "// four",
+      "// five",
+      "const b = 2;",
+      "// six",
+      "// seven",
+      "// eight",
+      "// nine",
+    ].join("\n");
+
+    expect(scanComments(source, "source.ts", 2).blocks).toStrictEqual([
+      { line: 4, lines: 3 },
+      { line: 8, lines: 4 },
+    ]);
   });
 
   it("should end a block at a directive", () => {
@@ -158,6 +187,7 @@ describe("scanComments", () => {
       codeLines: 1,
       longestBlock: 2,
       longestBlockLine: 1,
+      blocks: [],
     });
   });
 
@@ -167,6 +197,7 @@ describe("scanComments", () => {
       codeLines: 0,
       longestBlock: 0,
       longestBlockLine: 0,
+      blocks: [],
     });
   });
 });
@@ -198,21 +229,23 @@ describe("scanCommentTree", () => {
 });
 
 describe("summarizeComments", () => {
-  it("should total the counts and locate the longest block", () => {
+  it("should total the counts and keep the longest block", () => {
     const stats = [
       {
         file: "a.ts",
         commentLines: 10,
         codeLines: 20,
-        longestBlock: LONG_BLOCK_LINES,
+        longestBlock: 8,
         longestBlockLine: 4,
+        blocks: [],
       },
       {
         file: "b.ts",
         commentLines: 5,
         codeLines: 30,
-        longestBlock: LONG_BLOCK_LINES + 2,
+        longestBlock: 10,
         longestBlockLine: 9,
+        blocks: [{ line: 9, lines: 10 }],
       },
       {
         file: "c.ts",
@@ -220,6 +253,7 @@ describe("summarizeComments", () => {
         codeLines: 3,
         longestBlock: 1,
         longestBlockLine: 1,
+        blocks: [],
       },
     ];
 
@@ -227,10 +261,7 @@ describe("summarizeComments", () => {
       files: 3,
       commentLines: 16,
       codeLines: 53,
-      longestBlock: LONG_BLOCK_LINES + 2,
-      longestBlockLine: 9,
-      longBlockFiles: 2,
-      longestBlockFile: "b.ts",
+      longestBlock: 10,
     });
   });
 
@@ -240,9 +271,16 @@ describe("summarizeComments", () => {
       commentLines: 0,
       codeLines: 0,
       longestBlock: 0,
-      longestBlockLine: 0,
-      longBlockFiles: 0,
-      longestBlockFile: "",
     });
+  });
+});
+
+describe("commentDensity", () => {
+  it("should report comment lines per code line to 3 decimals", () => {
+    expect(commentDensity({ commentLines: 17, codeLines: 32 })).toBe(0.531);
+  });
+
+  it("should report zero for a file with no code", () => {
+    expect(commentDensity({ commentLines: 4, codeLines: 0 })).toBe(0);
   });
 });

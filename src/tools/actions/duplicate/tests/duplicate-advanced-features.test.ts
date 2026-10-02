@@ -11,6 +11,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
   registerSessionClipDuplication,
+  registerTrackCopySet,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   registerArrangementClip,
@@ -44,14 +45,12 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     });
 
     // The new duplicated track at index 2
-    registerNewTrack(2, {
-      available_output_routing_types: [
-        { display_name: "Master", identifier: "master_id" },
-        { display_name: "Synth", identifier: "synth_1_id" },
-        { display_name: "Synth", identifier: "synth_2_id" },
-        { display_name: "Bass", identifier: "bass_id" },
-      ],
-    });
+    registerNewTrack(2, [
+      { display_name: "Master", identifier: "master_id" },
+      { display_name: "Synth", identifier: "synth_1_id" },
+      { display_name: "Synth", identifier: "synth_2_id" },
+      { display_name: "Bass", identifier: "bass_id" },
+    ]);
 
     // Test that the function doesn't crash with duplicate names
     const result = await duplicate({
@@ -60,19 +59,20 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       routeToSource: true,
     });
 
-    expectTrackResult(result);
+    expectTrackResult(
+      result,
+      'source track t1 (id track2): armed it, set its input to "No Input"',
+    );
   });
 
   it("should handle unique track names without crashing (backward compatibility)", async () => {
     registerSourceTrackWithRouting("track1", livePath.track(0), "UniqueTrack");
     registerMockObject("live_set", { path: livePath.liveSet });
 
-    registerNewTrack(1, {
-      available_output_routing_types: [
-        { display_name: "Master", identifier: "master_id" },
-        { display_name: "UniqueTrack", identifier: "unique_track_id" },
-      ],
-    });
+    registerNewTrack(1, [
+      { display_name: "Master", identifier: "master_id" },
+      { display_name: "UniqueTrack", identifier: "unique_track_id" },
+    ]);
 
     const result = await duplicate({
       type: "track",
@@ -80,10 +80,13 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       routeToSource: true,
     });
 
-    expectTrackResult(result);
+    expectTrackResult(
+      result,
+      'source track t0 (id track1): armed it, set its input to "No Input"',
+    );
   });
 
-  it("should warn when track is not found in routing options", async () => {
+  it("says on the copy's entry when the source name is not an output option", async () => {
     registerSourceTrackWithRouting(
       "track1",
       livePath.track(0),
@@ -91,23 +94,22 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     );
     registerMockObject("live_set", { path: livePath.liveSet });
 
-    const newTrack = registerNewTrack(1, {
-      available_output_routing_types: [
-        { display_name: "Master", identifier: "master_id" },
-        { display_name: "OtherTrack", identifier: "other_track_id" },
-      ],
-    });
+    const newTrack = registerNewTrack(1, [
+      { display_name: "Master", identifier: "master_id" },
+      { display_name: "OtherTrack", identifier: "other_track_id" },
+    ]);
 
-    await duplicate({
+    const result = (await duplicate({
       type: "track",
       id: "track1",
       routeToSource: true,
-    });
+    })) as { detail?: string };
 
-    // Should warn about not finding the track
-    expect(capturedWarnings()).toContain(
-      'Could not find track "NonExistentTrack" t0 (id track1) in routing options',
+    expect(result.detail).toContain(
+      'not routed to the source: no output option named "NonExistentTrack"',
     );
+    // The copy's entry carries it, so nothing warns about it.
+    expect(capturedWarnings()).toStrictEqual([]);
 
     // Should not set output routing with NonExistentTrack identifier
     expect(newTrack.set).not.toHaveBeenCalledWith(
@@ -231,21 +233,8 @@ describe("duplicate - focus functionality", () => {
 });
 
 describe("duplicate - comma-separated names", () => {
-  /**
-   * Set up source track and two new tracks for naming tests.
-   * @returns The two new track mocks
-   */
-  function setupTwoNewTracks() {
-    registerMockObject("track1", { path: livePath.track(0) });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    const newTrack1 = registerNewTrack(1);
-    const newTrack2 = registerNewTrack(2);
-
-    return { newTrack1, newTrack2 };
-  }
-
   it("should assign different names to each track when comma-separated", async () => {
-    const { newTrack1, newTrack2 } = setupTwoNewTracks();
+    const { tracks } = registerTrackCopySet(["track1"]);
 
     const result = await duplicate({
       type: "track",
@@ -254,13 +243,14 @@ describe("duplicate - comma-separated names", () => {
       name: "Lead,Pad",
     });
 
-    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
-    expect(newTrack2.set).toHaveBeenCalledWith("name", "Pad");
+    // Each copy lands right after the source, so the one made last sits first.
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "Lead");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "Pad");
     expect(result).toHaveLength(2);
   });
 
   it("should not set name for extras beyond the comma-separated list", async () => {
-    const { newTrack1, newTrack2 } = setupTwoNewTracks();
+    const { tracks } = registerTrackCopySet(["track1"]);
 
     await duplicate({
       type: "track",
@@ -270,8 +260,8 @@ describe("duplicate - comma-separated names", () => {
     });
 
     // Single name (no comma) applies to all
-    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
-    expect(newTrack2.set).toHaveBeenCalledWith("name", "Lead");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "Lead");
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "Lead");
   });
 });
 
@@ -302,12 +292,16 @@ function registerSourceTrackWithRouting(
     properties: {
       name,
       current_monitoring_state: 0,
-      input_routing_type: { display_name: "All Ins" },
+      input_routing_type: JSON.stringify({
+        input_routing_type: { display_name: "All Ins" },
+      }),
       arm: 0,
-      available_input_routing_types: [
-        { display_name: "No Input", identifier: "no_input_id" },
-        { display_name: "All Ins", identifier: "all_ins_id" },
-      ],
+      available_input_routing_types: JSON.stringify({
+        available_input_routing_types: [
+          { display_name: "No Input", identifier: "no_input_id" },
+          { display_name: "All Ins", identifier: "all_ins_id" },
+        ],
+      }),
     },
   });
 }
@@ -315,12 +309,12 @@ function registerSourceTrackWithRouting(
 /**
  * Register a new (duplicated) track with standard empty properties.
  * @param trackIndex - Track index for the new track
- * @param extraProps - Additional properties to merge
+ * @param outputRoutingTypes - The output routing options the track reports
  * @returns The registered mock object
  */
 function registerNewTrack(
   trackIndex: number,
-  extraProps?: Record<string, unknown>,
+  outputRoutingTypes?: Array<{ display_name: string; identifier: string }>,
 ): RegisteredMockObject {
   return registerMockObject(`live_set/tracks/${trackIndex}`, {
     path: livePath.track(trackIndex),
@@ -328,7 +322,15 @@ function registerNewTrack(
       devices: [],
       clip_slots: [],
       arrangement_clips: [],
-      ...extraProps,
+      // Live hands routing lists back JSON-encoded, and getProperty parses
+      // them; a bare array reads as no routing options at all.
+      ...(outputRoutingTypes == null
+        ? {}
+        : {
+            available_output_routing_types: JSON.stringify({
+              available_output_routing_types: outputRoutingTypes,
+            }),
+          }),
     },
   });
 }
@@ -336,11 +338,13 @@ function registerNewTrack(
 /**
  * Assert the result matches the expected track duplication shape.
  * @param result - The duplicate() return value
+ * @param detail - What the copy's entry should say beyond its own fields
  */
-function expectTrackResult(result: unknown): void {
+function expectTrackResult(result: unknown, detail: string): void {
   expect(result).toStrictEqual({
     path: expect.any(String),
     id: expect.any(String),
     clips: expect.any(Array),
+    detail,
   });
 }

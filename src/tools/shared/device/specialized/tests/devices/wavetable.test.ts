@@ -8,7 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it, type Mock } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedActions,
   applySpecializedParamWrite,
@@ -25,8 +25,10 @@ import {
   PARAM_IDS,
   registerStandardParamMocks,
   registerWavetable,
+  registerWavetableAddingTarget,
 } from "./wavetable-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 describe("Wavetable pseudo-params — read", () => {
   it("reads all three filterRouting values by index", () => {
@@ -114,15 +116,16 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("filter_routing", 2);
   });
 
-  it("warns and skips invalid filterRouting", () => {
+  it("refuses invalid filterRouting", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "filterRouting", "bogus");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "filterRouting", "bogus"),
+      "filterRouting",
+      "not a valid filterRouting",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid filterRouting"),
-    );
   });
 
   it("writes monoPoly poly to index 1", () => {
@@ -133,15 +136,16 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
   });
 
-  it("warns and skips invalid monoPoly", () => {
+  it("refuses invalid monoPoly", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "monoPoly", "stereo");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "monoPoly", "stereo"),
+      "monoPoly",
+      "not a valid monoPoly",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid monoPoly"),
-    );
   });
 
   it("writes polyVoices count as its catalog index", () => {
@@ -158,16 +162,17 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("poly_voices", 3);
   });
 
-  it("warns and skips polyVoices not in the catalog", () => {
+  it("refuses polyVoices not in the catalog", () => {
     const device = registerWavetable();
 
     // 10 is a plausible-looking count but not a valid Wavetable option.
-    applySpecializedParamWrite(device, "polyVoices", 10);
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "polyVoices", 10),
+      "polyVoices",
+      "polyVoices",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("polyVoices"),
-    );
   });
 
   it("writes unisonMode enum to index", () => {
@@ -178,15 +183,16 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("unison_mode", 4);
   });
 
-  it("warns and skips invalid unisonMode", () => {
+  it("refuses invalid unisonMode", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "unisonMode", "unknown");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "unisonMode", "unknown"),
+      "unisonMode",
+      "not a valid unisonMode",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid unisonMode"),
-    );
   });
 
   it("writes unisonVoiceCount as a raw count within range", () => {
@@ -197,18 +203,19 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("unison_voice_count", 8);
   });
 
-  it("warns and skips non-integer unisonVoiceCount", () => {
+  it("refuses non-integer unisonVoiceCount", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "unisonVoiceCount", "abc");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "unisonVoiceCount", "abc"),
+      "unisonVoiceCount",
+      "unisonVoiceCount",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unisonVoiceCount"),
-    );
   });
 
-  it("maps osc engine labels to indices and warns on an invalid label", () => {
+  it("maps osc engine labels to indices and refuses an invalid label", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "osc1Engine", "Modern");
@@ -219,15 +226,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc1Engine", "Wavefold");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc1Engine", "Wavefold"),
+      "osc1Engine",
+      "osc1Engine",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc1Engine"),
-    );
   });
 
-  it("writes osc1Category by name and warns on invalid", () => {
+  it("writes osc1Category by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     expect(
@@ -241,17 +249,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "osc1Category", "Unknown"),
-    ).toStrictEqual([]);
+      "osc1Category",
+      "osc1Category",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc1Category"),
-    );
   });
 
-  it("writes osc2Category by name and warns on invalid", () => {
+  it("writes osc2Category by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "osc2Category", "Bass");
@@ -263,15 +270,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc2Category", "NoSuch");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc2Category", "NoSuch"),
+      "osc2Category",
+      "osc2Category",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc2Category"),
-    );
   });
 
-  it("writes osc1Wavetable by name and warns on invalid", () => {
+  it("writes osc1Wavetable by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     expect(
@@ -282,17 +290,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "osc1Wavetable", "No Wave"),
-    ).toStrictEqual([]);
+      "osc1Wavetable",
+      "osc1Wavetable",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc1Wavetable"),
-    );
   });
 
-  it("writes osc2Wavetable by name and warns on invalid", () => {
+  it("writes osc2Wavetable by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "osc2Wavetable", "Triangle");
@@ -301,12 +308,13 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc2Wavetable", "No Wave");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc2Wavetable", "No Wave"),
+      "osc2Wavetable",
+      "osc2Wavetable",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc2Wavetable"),
-    );
   });
 
   // The first entry in each list is a real choice, so the not-found guard must
@@ -334,18 +342,15 @@ describe("Wavetable pseudo-params — write", () => {
   it("lists the available categories and wavetables when a name is unknown", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Category", "Nope");
-    applySpecializedParamWrite(device, "osc1Wavetable", "Nope");
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `not a valid osc1Category. Available: ${OSC_CATEGORIES.join(", ")}`,
-      ),
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc1Category", "Nope"),
+      "osc1Category",
+      `not a valid osc1Category. Available: ${OSC_CATEGORIES.join(", ")}`,
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `not a valid osc1Wavetable. Available: ${OSC1_WAVETABLES.join(", ")}`,
-      ),
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc1Wavetable", "Nope"),
+      "osc1Wavetable",
+      `not a valid osc1Wavetable. Available: ${OSC1_WAVETABLES.join(", ")}`,
     );
   });
 });
@@ -407,12 +412,14 @@ describe("Wavetable actions — setModulation", () => {
     ["param missing", "Nonexistent", 1, "Nonexistent"],
     // is_parameter_modulatable returns 0: param exists but mod isn't supported.
     ["param not modulatable", "Osc 1 Pos", 0, "not modulatable"],
-  ])("warns and skips setModulation when %s", (_, target, mod, msg) => {
+  ])("skips setModulation when %s", (_, target, mod, msg) => {
     const device = registerWavetable({}, buildModMethods([], {}, mod as 0 | 1));
 
-    applySpecializedActions(device, [`setModulation('${target}', 0, 0.5)`]);
+    const results = applySpecializedActions(device, [
+      `setModulation('${target}', 0, 0.5)`,
+    ]);
 
-    expectModulationNotSet(device, msg);
+    expectModulationNotSet(device, results, msg);
   });
 
   it.each([
@@ -420,11 +427,12 @@ describe("Wavetable actions — setModulation", () => {
     ["amount NaN", "('Volume', 0, 'notanumber')", "amount"],
     ["amount > 1", "('Volume', 0, 5)", "amount must be in -1..1"],
     ["amount < -1", "('Volume', 0, -2)", "amount must be in -1..1"],
-  ])("warns and skips invalid setModulation: %s", (_, args, msg) => {
+  ])("skips invalid setModulation: %s", (_, args, msg) => {
     const device = registerWavetable({}, buildModMethods(["Volume"]));
 
-    applySpecializedActions(device, [`setModulation${args}`]);
-    expectModulationNotSet(device, msg);
+    const results = applySpecializedActions(device, [`setModulation${args}`]);
+
+    expectModulationNotSet(device, results, msg);
   });
 });
 
@@ -432,96 +440,162 @@ describe("Wavetable actions — clearModulation", () => {
   it("calls set_modulation_value with 0 when target is present", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(device, ["clearModulation('Osc 1 Pos', 2)"]);
+    const results = applySpecializedActions(device, [
+      "clearModulation('Osc 1 Pos', 2)",
+    ]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 2, 0);
+    expect(results).toStrictEqual([
+      { action: "clearModulation('Osc 1 Pos', 2)" },
+    ]);
   });
 
-  it("warns and skips when target is not in matrix", () => {
+  it("reports nothing to clear when the target is not in the matrix", () => {
+    // The cell is already unrouted, so the call got what it asked for: a
+    // normal entry with a reason, not a skip.
     const device = registerWavetable({}, buildModMethods([]));
 
-    applySpecializedActions(device, ["clearModulation('Missing', 0)"]);
+    const results = applySpecializedActions(device, [
+      "clearModulation('Missing', 0)",
+    ]);
 
-    expectModulationNotSet(device, "Missing");
-  });
-
-  it("warns on a source index out of range", () => {
-    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
-
-    applySpecializedActions(device, ["clearModulation('Osc 1 Pos', 13)"]);
-
-    expectModulationNotSet(device, "clearModulation source");
-  });
-});
-
-describe("Wavetable actions — addModulationTarget", () => {
-  it("calls add_parameter_to_modulation_matrix for a known param", () => {
-    const device = registerWavetable({}, buildModMethods([]));
-
-    applySpecializedActions(device, ["addModulationTarget('Osc 1 Pos')"]);
-
-    expect(device.call).toHaveBeenCalledWith(
-      "add_parameter_to_modulation_matrix",
-      expect.anything(),
-    );
-  });
-
-  it.each([
-    ["not found", "Unknown Param", 1, "Unknown Param"],
-    // is_parameter_modulatable returns 0: param exists but mod isn't supported.
-    ["not modulatable", "Osc 1 Pos", 0, "not modulatable"],
-  ])(
-    "warns and skips addModulationTarget when param is %s",
-    (_, name, mod, msg) => {
-      const device = registerWavetable(
-        {},
-        buildModMethods([], {}, mod as 0 | 1),
-      );
-
-      applySpecializedActions(device, [`addModulationTarget('${name}')`]);
-
-      expect(device.call).not.toHaveBeenCalledWith(
-        "add_parameter_to_modulation_matrix",
-        expect.anything(),
-      );
-      expect(capturedWarnings()).toContainEqual(expect.stringContaining(msg));
-    },
-  );
-});
-
-describe("Wavetable actions — argument validation", () => {
-  it.each([
-    ["setModulation('Volume')", "setModulation requires 3 arguments"],
-    ["clearModulation('Volume')", "clearModulation requires 2 arguments"],
-    ["addModulationTarget()", "addModulationTarget requires 1 argument"],
-  ])("warns when %s has too few arguments", (action, message) => {
-    const device = registerWavetable({}, buildModMethods(["Volume"]));
-
-    applySpecializedActions(device, [action]);
-
-    expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
-  });
-
-  it("warns when a found target still cannot be added to the matrix", () => {
-    // 'Volume' exists as a param child, but the (no-op) add never registers it,
-    // so the re-resolve still fails → "could not add to matrix".
-    const device = registerWavetable({}, buildModMethods([]));
-
-    applySpecializedActions(device, ["setModulation('Volume', 0, 0.5)"]);
-
-    expect(device.call).toHaveBeenCalledWith(
-      "add_parameter_to_modulation_matrix",
-      expect.anything(),
-    );
     expect(device.call).not.toHaveBeenCalledWith(
       "set_modulation_value",
       expect.anything(),
       expect.anything(),
       expect.anything(),
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("could not add to matrix"),
+    expect(results).toStrictEqual([
+      {
+        action: "clearModulation('Missing', 0)",
+        detail:
+          'target "Missing" is not in the modulation matrix — nothing to clear',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("skips a source index out of range", () => {
+    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
+
+    const results = applySpecializedActions(device, [
+      "clearModulation('Osc 1 Pos', 13)",
+    ]);
+
+    expectModulationNotSet(device, results, 'source "13" is invalid');
+  });
+});
+
+describe("Wavetable actions — addModulationTarget", () => {
+  it("calls add_parameter_to_modulation_matrix for a known param", () => {
+    // The add has to land in the matrix: the action re-resolves the target
+    // afterwards and reports a target the matrix still doesn't hold.
+    const device = registerWavetableAddingTarget();
+
+    const results = applySpecializedActions(device, [
+      "addModulationTarget('Osc 1 Pos')",
+    ]);
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
     );
+    expect(results).toStrictEqual([
+      { action: "addModulationTarget('Osc 1 Pos')" },
+    ]);
+  });
+
+  it("says so when the add does not land in the matrix", () => {
+    // The (no-op) add never registers the target, so the re-resolve fails.
+    const device = registerWavetable({}, buildModMethods([]));
+
+    expect(
+      applySpecializedActions(device, ["addModulationTarget('Osc 1 Pos')"]),
+    ).toStrictEqual([
+      {
+        action: "addModulationTarget('Osc 1 Pos')",
+        ok: false,
+        detail: 'parameter "Osc 1 Pos" — could not add to matrix',
+      },
+    ]);
+  });
+
+  it("says nothing changed for a target already in the matrix", () => {
+    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
+
+    const results = applySpecializedActions(device, [
+      "addModulationTarget('Osc 1 Pos')",
+    ]);
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(results).toStrictEqual([
+      {
+        action: "addModulationTarget('Osc 1 Pos')",
+        detail: 'parameter "Osc 1 Pos" is already in the modulation matrix',
+      },
+    ]);
+  });
+
+  it.each([
+    ["not found", "Unknown Param", 1, "Unknown Param"],
+    // is_parameter_modulatable returns 0: param exists but mod isn't supported.
+    ["not modulatable", "Osc 1 Pos", 0, "not modulatable"],
+  ])("skips addModulationTarget when param is %s", (_, name, mod, msg) => {
+    const device = registerWavetable({}, buildModMethods([], {}, mod as 0 | 1));
+
+    const results = applySpecializedActions(device, [
+      `addModulationTarget('${name}')`,
+    ]);
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(results).toStrictEqual([
+      expect.objectContaining({
+        action: `addModulationTarget('${name}')`,
+        ok: false,
+        detail: expect.stringContaining(msg),
+      }),
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+});
+
+describe("Wavetable actions — argument validation", () => {
+  it.each([
+    [
+      "setModulation('Volume')",
+      "requires 3 arguments (target, source, amount)",
+    ],
+    ["clearModulation('Volume')", "requires 2 arguments (target, source)"],
+    ["addModulationTarget()", "requires 1 argument (parameterName)"],
+  ])("skips %s for too few arguments", (action, reason) => {
+    const device = registerWavetable({}, buildModMethods(["Volume"]));
+
+    expect(applySpecializedActions(device, [action])).toStrictEqual([
+      { action, ok: false, detail: reason },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says so when a found target still cannot be added to the matrix", () => {
+    // 'Volume' exists as a param child, but the (no-op) add never registers it,
+    // so the re-resolve still fails → "could not add to matrix".
+    const device = registerWavetable({}, buildModMethods([]));
+
+    const results = applySpecializedActions(device, [
+      "setModulation('Volume', 0, 0.5)",
+    ]);
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expectModulationNotSet(device, results, "could not add to matrix");
   });
 });
 
@@ -651,7 +725,7 @@ describe("Wavetable via read-device", () => {
   it("includes pseudo-params without the modulation scan when include is params", () => {
     registerReadableWavetable();
 
-    const result = readDevice({ id: "wt-1", include: ["params"] });
+    const result = readOneDevice({ id: "wt-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "filterRouting",
@@ -672,7 +746,7 @@ describe("Wavetable via read-device", () => {
   it("includes options and modulations when include contains options", () => {
     registerReadableWavetable({}, { is_parameter_modulatable: () => 1 });
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "wt-1",
       include: ["params", "options"],
     });

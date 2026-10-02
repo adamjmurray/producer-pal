@@ -19,6 +19,7 @@ import {
   getToolWarnings,
   parseToolResult,
   parseToolResultWithWarnings,
+  readLocators,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -132,8 +133,16 @@ describe("ppal-playback", () => {
       startTime: "5|1",
     });
 
+    // Playback began where the caller put it, so the result says nothing about
+    // it. A later call that names no position is the one that reports it.
     expect(playFrom.playing).toBe(true);
-    expect(playFrom.startTime).toBe("5|1");
+    expect(playFrom.startTime).toBeUndefined();
+
+    await playback({ action: "stop" });
+
+    expect((await playback({ action: "play-arrangement" })).startTime).toBe(
+      "5|1",
+    );
 
     await playback({ action: "stop" });
   });
@@ -144,11 +153,15 @@ describe("ppal-playback", () => {
       startTime: "9|1",
     });
 
-    // Where the next play begins, which is the whole point of the call. The
-    // playhead doesn't move, and isn't reported: Live updates it too late for
-    // this request to read it back.
-    expect(set.startTime).toBe("9|1");
+    // It landed where the caller put it, so nothing reports — least of all the
+    // playhead, which doesn't move and which Live updates too late to read back.
+    expect(set.startTime).toBeUndefined();
     expect(set.playing).toBe(false);
+
+    // The next play begins there, and that call is the one that says so.
+    expect((await playback({ action: "play-arrangement" })).startTime).toBe(
+      "9|1",
+    );
 
     await playback({ action: "stop" });
   });
@@ -237,7 +250,8 @@ describe("ppal-playback", () => {
     const stopped = await playback({ action: "stop", startTime: "9|1" });
 
     expect(stopped.playing).toBe(false);
-    expect(stopped.startTime).toBe("9|1");
+    // Parked where the caller put it, so the stop says nothing about it.
+    expect(stopped.startTime).toBeUndefined();
 
     const playing = await playback({ action: "play-arrangement" });
 
@@ -283,6 +297,26 @@ describe("ppal-playback", () => {
     expect(slid.loopEnd).toBeUndefined();
 
     await playback({ action: "update-arrangement", loop: false });
+  });
+
+  it("names loopStart, not loopEnd, when a pickup slides it before 1|1", async () => {
+    // Regression: a pickup bar resolves to a negative position, and only
+    // loopStart was named — the refusal used to blame loopEnd and print a
+    // value ("1|1") nothing in the call computed.
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: {
+        action: "play-arrangement",
+        loopStart: "1|1-n1/4",
+      },
+    });
+
+    const warnings = getToolWarnings(refused);
+
+    expect(warnings.some((w) => w.includes("loopStart"))).toBe(true);
+    expect(warnings.some((w) => w.includes("loopEnd"))).toBe(false);
+
+    await playback({ action: "stop" });
   });
 
   it("refuses an inverted loop whole, leaving the loop off", async () => {
@@ -357,8 +391,16 @@ describe("ppal-playback", () => {
       startTime: "5|1",
     });
 
-    expect(set.startTime).toBe("5|1");
+    // The position landed where it was put, so that goes unsaid too.
+    expect(set.startTime).toBeUndefined();
     expect(set.loop).toBeUndefined();
+
+    // The call that names no position is the one that reports it.
+    expect((await playback({ action: "play-arrangement" })).startTime).toBe(
+      "5|1",
+    );
+
+    await playback({ action: "stop" });
   });
 
   it("plays and stops session clips", async () => {
@@ -417,6 +459,46 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
+  // A call naming two clips answers for both, in the order it named them, so a
+  // bad id costs the caller that one clip and nothing else.
+  it("keeps a bad id's slot when stopping two clips", async () => {
+    const clip = await createSessionClip(0, "C3");
+
+    await sleep(100);
+
+    const stopped = await playback({
+      action: "stop-session-clips",
+      id: `999999,${clip}`,
+    });
+
+    expect(stopped.clips).toHaveLength(2);
+    expect(stopped.clips?.[0]).toStrictEqual({
+      id: "999999",
+      ok: false,
+      detail: 'id "999999" does not exist',
+    });
+    expect(stopped.clips?.[1]).toStrictEqual({
+      id: clip,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
+    });
+
+    await playback({ action: "stop" });
+  });
+
+  // The lone target got nothing done, and there is no list for its entry to
+  // hold a place in, so the reason comes back as the call's error.
+  it("errors on a single bad id instead of reporting a stop", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "stop-session-clips", id: "999999" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      'id "999999" does not exist',
+    );
+  });
+
   it("plays a scene by path", async () => {
     const playingScene = await playback({
       action: "play-scene",
@@ -425,7 +507,6 @@ describe("ppal-playback", () => {
 
     expect(playingScene.playing).toBe(true);
     expect(playingScene.scene?.path).toBe("s0");
-    expect(playingScene.scene?.name).toBe("Intro");
 
     await playback({ action: "stop" });
   });
@@ -441,16 +522,19 @@ describe("ppal-playback", () => {
 
     expect(byClip.scene?.id).toMatch(/\S/);
     expect(byClip.scene?.path).toBe("s0");
-    expect(byClip.scene?.name).toBe("Intro");
 
     await playback({ action: "stop" });
   });
 
-  it("names an unnamed scene by its number, as Live shows it", async () => {
-    const unnamed = await playback({ action: "play-scene", path: "s7" });
+  // play-scene changes no name, so it reports none: the path and id say which
+  // scene fired, and ppal-read-scene is where a name comes from.
+  it("reports the scene by id and path only", async () => {
+    const played = await playback({ action: "play-scene", path: "s7" });
 
-    expect(unnamed.scene?.path).toBe("s7");
-    expect(unnamed.scene?.name).toBe("8");
+    expect(played.scene).toStrictEqual({
+      id: expect.stringMatching(/\S/),
+      path: "s7",
+    });
 
     await playback({ action: "stop" });
   });
@@ -492,9 +576,14 @@ describe("ppal-playback", () => {
   });
 
   it("starts the arrangement from a locator id", async () => {
+    // Live's own id, so it differs per Set — it has to come from the read.
+    const chorus = (await readLocators(ctx.client!)).find(
+      (l) => l.name === "Chorus",
+    );
+
     const playing = await playback({
       action: "play-arrangement",
-      startTime: "loc:locator-2",
+      startTime: `loc:${chorus!.id}`,
     });
 
     expect(playing.startTime).toBe("17|1");
@@ -551,7 +640,8 @@ describe("ppal-playback", () => {
 interface PlaybackResult {
   playing: boolean;
   startTime?: string;
-  scene?: { id: string; path?: string; name: string };
+  scene?: { id: string; path?: string };
+  clips?: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;

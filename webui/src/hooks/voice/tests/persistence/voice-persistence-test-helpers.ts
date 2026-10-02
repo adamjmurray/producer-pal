@@ -186,6 +186,27 @@ export async function setupForeignTextRecord(
 }
 
 /**
+ * Save a one-turn voice record, point the URL hash at it, and render the hook
+ * with a mutable live history, settled and ready for the next turn.
+ * @returns The saved record plus the rendered hook view
+ */
+export async function loadSavedVoiceSession(): Promise<
+  VoicePersistenceHistoryView & { record: ConversationRecord }
+> {
+  const record = await saveVoiceRecord({
+    voiceHistory: [userTextItem("first turn")],
+  });
+
+  window.location.hash = record.id;
+
+  const view = renderVoicePersistenceWithHistory();
+
+  await waitForEffects();
+
+  return { record, ...view };
+}
+
+/**
  * Continue a previously saved voice record (hash load → Stop → Talk) while
  * current settings point at `model`: adds one more transcript turn, lets the
  * autosave debounce fire, and reads the record back so the caller can check

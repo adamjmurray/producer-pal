@@ -26,6 +26,7 @@ import {
   assertLengthenedInPlace,
   assertLengthenedToFullLength,
   type LengthenResult,
+  NO_MORE_CONTENT,
   testLengthenClipTo4Bars,
 } from "../helpers/arrangement-lengthening-test-helpers.ts";
 import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
@@ -56,11 +57,37 @@ async function expectLengthenedTo4Bars(
   assert(result, expectedLengtheningClips[track]!);
 }
 
-/** Assert a single clip extended in place (same ID, no tiles), with warnings. */
-const assertInPlaceWarned = (
+/** A clip that couldn't grow at all fails the call, and says why. */
+const assertInPlaceUnchanged = (
   result: LengthenResult,
   expected: ExpectedClip[],
-): void => assertLengthenedInPlace(result, expected, true);
+): void => {
+  expect(result.failed).toBe(true);
+  assertLengthenedInPlace(
+    result,
+    expected,
+    `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
+  );
+};
+
+/** A clip that grew but not all the way says where it landed. */
+const assertInPlaceCapped = (
+  result: LengthenResult,
+  expected: ExpectedClip[],
+): void => {
+  expect(result.failed).toBe(false);
+  assertLengthenedInPlace(
+    result,
+    expected,
+    new RegExp(`^arrangementLength landed at .+: ${NO_MORE_CONTENT}$`),
+  );
+};
+
+/** Unwarped clips are a mix of the two, so only the shared half is pinned. */
+const assertInPlaceRanOut = (
+  result: LengthenResult,
+  expected: ExpectedClip[],
+): void => assertLengthenedInPlace(result, expected, NO_MORE_CONTENT);
 
 describe("MIDI Looped Clips Lengthening (t0-t8)", () => {
   it.each(midiLoopedTestCases)("lengthens t$track: $name", ({ track }) =>
@@ -72,7 +99,7 @@ describe("MIDI Unlooped Clips Lengthening (t9-t14)", () => {
   // Extends cleanly via loop_end — the one family that must NOT warn.
   it.each(midiUnloopedTestCases)("lengthens t$track: $name", ({ track }) =>
     expectLengthenedTo4Bars(track, "midi", (result, expected) =>
-      assertLengthenedInPlace(result, expected, false),
+      assertLengthenedInPlace(result, expected, null),
     ),
   );
 });
@@ -87,7 +114,8 @@ describe("Audio Unlooped Warped Clips - No Hidden Content (t24,t26,t28)", () => 
   // Lengthening skipped — no additional file content to reveal.
   it.each(audioUnloopedWarpedNoHiddenCases)(
     "skips lengthening t$track: $name (no additional content)",
-    ({ track }) => expectLengthenedTo4Bars(track, "audio", assertInPlaceWarned),
+    ({ track }) =>
+      expectLengthenedTo4Bars(track, "audio", assertInPlaceUnchanged),
   );
 });
 
@@ -95,16 +123,15 @@ describe("Audio Unlooped Warped Clips - Hidden Content (t25,t27,t29)", () => {
   // Capped at the file content boundary — can't reach the 4-bar target.
   it.each(audioUnloopedWarpedHiddenCases)(
     "caps lengthening t$track: $name (extends to file boundary)",
-    ({ track }) => expectLengthenedTo4Bars(track, "audio", assertInPlaceWarned),
+    ({ track }) => expectLengthenedTo4Bars(track, "audio", assertInPlaceCapped),
   );
 });
 
 describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
-  // Every clip warns: no-hidden clips "no additional content",
-  // hidden-content clips "capped at file boundary".
+  // A mix: some clips can't grow at all, some are capped short of 4 bars.
   it.each(audioUnwarpedTestCases)(
     "lengthens t$track: $name (capped at file boundary via loop_end)",
     ({ track }) =>
-      expectLengthenedTo4Bars(track, "audio", assertInPlaceWarned, 200),
+      expectLengthenedTo4Bars(track, "audio", assertInPlaceRanOut, 200),
   );
 });

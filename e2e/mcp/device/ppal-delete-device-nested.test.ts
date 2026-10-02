@@ -33,7 +33,8 @@ const ctx = setupMcpTestContext();
 interface DeleteResult {
   id: string;
   type: string;
-  deleted: boolean;
+  ok?: false;
+  detail?: string;
 }
 
 describe("ppal-delete nested rack device ordering", () => {
@@ -56,7 +57,7 @@ describe("ppal-delete nested rack device ordering", () => {
     const reverb = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Reverb", path: `${rack}/pC1/c0/d1` },
+        arguments: { device: "Reverb", path: `${rack}/pC1/c0/d1` },
       }),
     );
 
@@ -81,7 +82,7 @@ describe("ppal-delete nested rack device ordering", () => {
     );
 
     expect(deleted).toHaveLength(3);
-    expect(deleted.every((r) => r.deleted)).toBe(true);
+    expect(deleted.every((r) => r.ok === undefined)).toBe(true);
 
     // Every targeted device must actually be gone — including the Reverb a buggy
     // comparator would leave alive after the index shift.

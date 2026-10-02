@@ -13,6 +13,7 @@ import { type EvalScenario } from "../../types.ts";
 
 export const connectToAbleton: EvalScenario = {
   id: "connect-to-ableton",
+  tags: ["workflow"],
   description: "Connect to Ableton Live and retrieve Producer Pal skills",
   kind: "regression",
   liveSet: "basic-midi-4-track",

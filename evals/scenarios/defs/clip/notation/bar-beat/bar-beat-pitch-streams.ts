@@ -23,7 +23,7 @@ import {
   clipStateAssertion,
   notesMatch,
   type ExpectedNote,
-} from "../../helpers/clip-scenario-helpers.ts";
+} from "../../helpers/clip-note-assertions.ts";
 import {
   createClipScenario,
   LEAD_TRACK,

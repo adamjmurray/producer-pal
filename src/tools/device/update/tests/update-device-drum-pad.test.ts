@@ -26,9 +26,14 @@ interface RackMocks {
  * Register a drum rack on t0/d0 whose C1 pad holds `chainCount` chains.
  * @param chainCount - Chains stacked on C1
  * @param withPads - false builds a rack with no DrumPad objects (a virtual pad)
+ * @param padNote - The pad's MIDI note
  * @returns The C1 DrumPad and its chains
  */
-function registerDrumRack(chainCount: number, withPads = true): RackMocks {
+function registerDrumRack(
+  chainCount: number,
+  withPads = true,
+  padNote = 36,
+): RackMocks {
   const chainIds = Array.from({ length: chainCount }, (_, i) => `chain-${i}`);
 
   registerMockObject("drumrack-id", {
@@ -44,7 +49,7 @@ function registerDrumRack(chainCount: number, withPads = true): RackMocks {
   const pad = withPads
     ? registerMockObject("pad-36", {
         type: "DrumPad",
-        properties: { note: 36 },
+        properties: { note: padNote },
       })
     : null;
 
@@ -86,6 +91,24 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ id: "pad-36" });
   });
 
+  it("gives each chain its own mappedPitch", () => {
+    const { chains } = registerDrumRack(2);
+
+    updateDevice({ id: "chain-0,chain-1", mappedPitch: "C3,D3" });
+
+    expect(chains[0]?.set).toHaveBeenCalledWith("out_note", 60);
+    expect(chains[1]?.set).toHaveBeenCalledWith("out_note", 62);
+  });
+
+  it("refuses an unreadable mappedPitch entry before touching a chain", () => {
+    const { chains } = registerDrumRack(2);
+
+    expect(() =>
+      updateDevice({ id: "chain-0,chain-1", mappedPitch: "C3,nope" }),
+    ).toThrow('invalid note name "nope" for mappedPitch');
+    expect(chains[0]?.set).not.toHaveBeenCalled();
+  });
+
   it("broadcasts chokeGroup and mappedPitch to every chain on the pad", () => {
     const { chains } = registerDrumRack(2);
 
@@ -119,10 +142,11 @@ describe("updateDevice - bare drum pad paths", () => {
   it("skips the per-layer settings on a stacked pad and names the chain paths", () => {
     const { chains } = registerDrumRack(2);
 
-    updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" });
-
-    expect(capturedWarnings()).toContain(
-      "t0/d0/pC1 (id pad-36) has 2 layers, so per-layer settings " +
+    // They were the whole call, so nothing landed on the pad.
+    expect(() =>
+      updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" }),
+    ).toThrow(
+      "the pad has 2 layers, so per-layer settings " +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
         "t0/d0/pC1/c1.",
     );
@@ -130,6 +154,21 @@ describe("updateDevice - bare drum pad paths", () => {
     for (const chain of chains) {
       expect(chain.set).not.toHaveBeenCalledWith("name", "Kick");
     }
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps the pad's entry when something else did land", () => {
+    registerDrumRack(2);
+
+    expect(
+      updateDevice({ path: "t0/d0/pC1", name: "Kick", mute: true }),
+    ).toStrictEqual({
+      id: "pad-36",
+      detail:
+        "the pad has 2 layers, so per-layer settings (name) were skipped. " +
+        "Set them on t0/d0/pC1/c0, t0/d0/pC1/c1.",
+    });
   });
 
   it("applies the per-layer settings when the pad holds one chain", () => {
@@ -142,12 +181,13 @@ describe("updateDevice - bare drum pad paths", () => {
     });
 
     expect(chains[0]?.set).toHaveBeenCalledWith("name", "Kick");
-    // The chain's mixer read-back rides along, so a single-layer pad reports
-    // the level that landed the same way a chain path does.
+    // The chain's mixer report rides along, so a single-layer pad says what
+    // Live kept the same way a chain path does.
     expect(result).toStrictEqual({
       id: "pad-36",
       chainIds: ["chain-0"],
       gainDb: -6.02,
+      detail: "gainDb read back as shown, not as sent",
     });
   });
 
@@ -165,32 +205,71 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ chainIds: ["chain-0", "chain-1"] });
   });
 
-  it("warns and skips a pad with no chains, by path as well as by id", () => {
+  it("refuses a pad with no chains, by path as well as by id", () => {
     const { pad } = registerDrumRack(0);
-
-    const result = updateDevice({ path: "t0/d0/pC1", mute: true });
 
     // Live drops the write — set returns 1 and the read-back stays 0 — so a
     // result here would say a mute happened that didn't.
-    expect(capturedWarnings()).toContain(
+    expect(() => updateDevice({ path: "t0/d0/pC1", mute: true })).toThrow(
       "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
         "to update — Live ignores writes to an empty pad",
     );
     expect(pad?.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual([]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns once, not once per layer, for a device-only property", () => {
+  // A sample is the one write that makes an empty pad's chain, so these cover
+  // what happens when it can't.
+  it("refuses an empty pad Live gives no note for", () => {
+    // Addressed by id, so nothing has checked the pad's note: 200 is outside
+    // the MIDI range, and a chain made on no note would sound nowhere.
+    registerDrumRack(0, true, 200);
+
+    expect(() =>
+      updateDevice({
+        id: "pad-36",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      }),
+    ).toThrow("has no chains, so there is nothing to update");
+  });
+
+  it("refuses an empty pad Live makes no chain on", () => {
+    // The rack answers nothing to insert_chain, so the pad is still empty and
+    // the sample has nowhere to land.
+    registerDrumRack(0);
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      }),
+    ).toThrow("has no chains, so there is nothing to update");
+  });
+
+  // The rack's return chains belong to the rack, so a send naming none is a
+  // fact about the pad the call named — its own entry says it (ADR-0042).
+  it("names a send naming no return chain in the pad's error", () => {
+    registerDrumRack(1);
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1",
+        sends: [{ return: "Nope", gainDb: -6 }],
+      }),
+    ).toThrow(
+      'no send landed — "Nope": no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Once for the pad, not once per layer: the first chain carries the full
+  // options and the rest only take what broadcasts.
+  it("names a device-only property once for the whole pad", () => {
     registerDrumRack(2);
 
-    updateDevice({ path: "t0/d0/pC1", macroCount: 4 });
-
-    expect(
-      capturedWarnings().filter((warning) =>
-        warning.startsWith(
-          "'macroCount' not applicable to DrumChain t0/d0/pC1/c0 (id ",
-        ),
-      ),
-    ).toHaveLength(1);
+    expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: 4 })).toThrow(
+      "macroCount not applicable to a drum pad chain",
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

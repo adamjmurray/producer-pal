@@ -3,13 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
-import { type ArrangementLane } from "./helpers/object-path-coord.ts";
-import { arrangementPath, slotPath } from "./helpers/object-path-helpers.ts";
-import { songMeter } from "./helpers/song-meter.ts";
+import { type ArrangementLane } from "./helpers/object-path-position.ts";
+import {
+  arrangementPath,
+  arrangementPositionPath,
+  slotPath,
+} from "./helpers/object-paths.ts";
 import { formatObjectPath } from "./object-path.ts";
 
 const SCENE = /^live_set scenes (\d+)$/;
@@ -77,6 +79,19 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
   return devicePathForApi(api, path);
 }
 
+/**
+ * Whether an id still names the object at the path a result gave it. Looked up
+ * fresh every time, never off an object the caller kept: a dead one goes on
+ * reporting its id, and `exists()` with it, so only a new lookup reads the
+ * empty path that says it is gone (dev/live-api/object-reuse.md).
+ * @param id - The id the result reported
+ * @param path - The path the result reported
+ * @returns True when the object is still there
+ */
+export function stillAtPath(id: string, path: string): boolean {
+  return objectPathForApi(LiveAPI.from(id)) === path;
+}
+
 /** A container a call named by path, with the object that spelling resolved to. */
 export interface WrittenContainer {
   /** The object the spelling resolved to — must be `api`'s direct parent, and
@@ -96,7 +111,7 @@ export interface WrittenContainer {
  * `written` names the object's direct parent as the call spelled it, and that
  * spelling is used in place of the derived one. Only a pad spelling is
  * substituted — it is the one path with a second numbering. See
- * dev/Object-Paths.md.
+ * dev/tools/object-paths/results-and-errors.md.
  * @param api - The object to name
  * @param written - The call's spelling of the object's parent, if any
  * @returns `{ path }`, or `{}` for an object the grammar can't spell
@@ -170,21 +185,6 @@ export function pathTargetLabel(
 }
 
 /**
- * {@link targetLabel} for an object a caller has only the id of. The lookup
- * costs a Live API call, so don't reach for it where the object is at hand.
- *
- * A dead id reports itself as 0, so the caller's own id is kept when the lookup
- * lands nowhere — better a stale id than a wrong one.
- * @param id - The object's Live API id
- * @returns `t1/d0 (id 7)`, or `id 7` alone when it has no path to spell
- */
-export function targetLabelForId(id: string): string {
-  const api = LiveAPI.from(id);
-
-  return api.exists() ? targetLabel(api) : `id ${id}`;
-}
-
-/**
  * The parent half of a path a warning spells out for a child that has no id of
  * its own — a drum pad, a device slot a copy failed to fill. Not
  * {@link targetLabel}: another segment can't be appended past its id.
@@ -223,21 +223,12 @@ function arrangementClipPath(
   trackIndex: number,
   laneIndex: string | undefined,
 ): string {
-  const { numerator, denominator } = songMeter();
   const lane: ArrangementLane =
     laneIndex == null
       ? { kind: "track", trackIndex }
       : { kind: "take-lane", trackIndex, laneIndex: Number(laneIndex) };
 
-  return formatObjectPath({
-    kind: "arrangement-position",
-    lane,
-    position: abletonBeatsToBarBeat(
-      api.getProperty("start_time") as number,
-      numerator,
-      denominator,
-    ),
-  });
+  return arrangementPositionPath(lane, api.getProperty("start_time") as number);
 }
 
 /**

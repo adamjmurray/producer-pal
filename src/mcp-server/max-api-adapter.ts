@@ -7,13 +7,13 @@
 
 import crypto from "node:crypto";
 import Max from "max-api";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatErrorResponse,
   reassembleChunks,
   WARNING_PREFIX,
   type McpErrorCode,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
@@ -135,23 +135,20 @@ function callLiveApi(
 
     pendingRequests.set(requestId, {
       resolve,
+      // Every other path clears this timer first, so a request is still pending.
       timeout: setTimeout(() => {
-        if (pendingRequests.has(requestId)) {
-          pendingRequests.delete(requestId);
-          // Always resolve (not reject) with the standard error format.
-          // Tag with the "timeout" discriminator so the REST route can map it
-          // to HTTP 504 (other formatErrorResponse calls stay untagged).
-          // The message must not read as "nothing happened": V8 runs the tool
-          // synchronously with no cancellation channel, so the Set is likely
-          // still being mutated as this resolves.
-          resolve(
-            formatErrorResponse(
-              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms. ` +
-                `Live may still be applying it — wait, then re-read before acting.`,
-              "timeout",
-            ),
-          );
-        }
+        pendingRequests.delete(requestId);
+        // Resolve, never reject, and tag it "timeout" so the REST route maps
+        // it to HTTP 504. The message must not read as "nothing happened": V8
+        // runs the tool synchronously with no cancellation channel, so the Set
+        // is likely still being mutated as this resolves.
+        resolve(
+          formatErrorResponse(
+            `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms. ` +
+              `Live may still be applying it — wait, then re-read before acting.`,
+            "timeout",
+          ),
+        );
       }, effectiveTimeoutMs),
     });
   });

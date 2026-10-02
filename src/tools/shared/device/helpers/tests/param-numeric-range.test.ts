@@ -166,4 +166,21 @@ describe("sentinelRawValue", () => {
 
     expect(sentinelRawValue(plain!, "A")).toBeNull();
   });
+
+  it("matches the sentinel's leading word alone, ignoring the rest of the label", () => {
+    // Compressor's Ratio reads "inf : 1" at its top; a model naming the
+    // sentinel plausibly sends just "inf".
+    const ratio = readNumericRange(
+      paramWithLabels((raw) =>
+        raw >= 6 ? "inf : 1" : `${raw.toFixed(1)} : 1`,
+      ),
+      0,
+      6,
+      "1.0 : 1",
+      "inf : 1",
+    );
+
+    expect(sentinelRawValue(ratio!, "inf")).toBe(6);
+    expect(sentinelRawValue(ratio!, "Inf")).toBe(6);
+  });
 });

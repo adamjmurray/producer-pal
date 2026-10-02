@@ -9,17 +9,17 @@
  * bandwidth and a stereo width — so only real Live can show the write hitting
  * both.
  *
- * See dev/Device-Param-Labels.md.
+ * See dev/live-api/device-param-labels.md.
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-device-duplicate-param-name
  */
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
-  getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
+import { callForParamError } from "../helpers/device-param-test-helpers.ts";
 
 interface ParamInfo {
   id: string;
@@ -48,24 +48,24 @@ async function readWidths(deviceId: string): Promise<ParamInfo[]> {
 }
 
 describe("a device with two params of the same name", () => {
-  it("skips the write and names both ids", async () => {
+  // The param was all the call asked, so skipping it fails the call.
+  it("skips the write and names both ids in the error", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Corpus", "t2");
     const before = await readWidths(deviceId);
 
     expect(before).toHaveLength(2);
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: { id: deviceId, params: [{ name: "Width", value: "50" }] },
+    const message = await callForParamError(ctx.client!, "ppal-update-device", {
+      id: deviceId,
+      params: [{ name: "Width", value: "50" }],
     });
-    const warning = getToolWarnings(result).find((text) =>
-      text.includes('param "Width" names 2 params'),
-    );
 
-    expect(warning, "no ambiguous-name warning").toBeDefined();
+    expect(message).toContain('no param landed — "Width": ');
+    expect(message).toContain("names 2 params");
+    expect(message).toContain("Send {id, value} to pick one");
 
     for (const param of before) {
-      expect(warning).toContain(`id ${param.id}`);
+      expect(message).toContain(`id ${param.id}`);
     }
 
     // Neither param moved: the old behavior wrote the first match, clamping 50

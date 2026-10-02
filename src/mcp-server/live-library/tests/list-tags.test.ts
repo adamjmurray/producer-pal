@@ -44,7 +44,7 @@ describe("listTags", () => {
 
       expect(result.dbAvailable).toBe(false);
       expect(result.tags).toHaveLength(0);
-      expect(result.reason).toContain("Failed to read Live database");
+      expect(result.detail).toContain("Failed to read Live database");
     } finally {
       broken.cleanup();
     }

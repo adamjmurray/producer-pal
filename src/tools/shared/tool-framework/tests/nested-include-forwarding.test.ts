@@ -8,13 +8,13 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock(import("#src/tools/clip/read/read-clip.ts"), async (importOriginal) => {
   const actual = await importOriginal();
 
-  return { ...actual, readClip: vi.fn(actual.readClip) };
+  return { ...actual, readOneClip: vi.fn(actual.readOneClip) };
 });
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
 import { mockTrackProperties } from "#src/tools/track/read/tests/helpers/read-track-test-helpers.ts";
 import { setupTrackPathMappedMocks } from "#src/tools/track/read/tests/helpers/read-track-path-mapped-test-helpers.ts";
@@ -79,10 +79,10 @@ describe("include forwarding to nested clip reads", () => {
 
 /**
  * Every include option handed to a nested clip read.
- * @returns The options, flattened across the readClip calls
+ * @returns The options, flattened across the readOneClip calls
  */
 function forwardedIncludes(): string[] {
-  const calls = vi.mocked(readClip).mock.calls;
+  const calls = vi.mocked(readOneClip).mock.calls;
 
   expect(calls.length).toBeGreaterThan(0);
 

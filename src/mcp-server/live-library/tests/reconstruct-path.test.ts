@@ -187,6 +187,47 @@ describe("resolveAbsolutePaths", () => {
     });
   });
 
+  it("writes a '/' in a name as ':', the name on disk", () => {
+    insertRow(1, 0, "/");
+    insertRow(2, 1, "Folder a/b");
+    insertRow(3, 2, "File a/b.adv");
+
+    expect(resolveAbsolutePaths(db, [3]).get(3)).toStrictEqual({
+      path: "/Folder a:b/File a:b.adv",
+      truncated: false,
+      folder: "Folder a/b",
+    });
+  });
+
+  it("gives a file named '(3/4)' and a folder '(3' holding '4)' different paths", () => {
+    insertRow(1, 0, "/");
+    insertRow(2, 1, "Amb (3/4).adv");
+    insertRow(3, 1, "Amb (3");
+    insertRow(4, 3, "4).adv");
+
+    const map = resolveAbsolutePaths(db, [2, 4]);
+
+    expect(map.get(2)?.path).toBe("/Amb (3:4).adv");
+    expect(map.get(4)?.path).toBe("/Amb (3/4).adv");
+  });
+
+  it("keeps a name's accents as stored", () => {
+    insertRow(1, 0, "/");
+    insertRow(2, 1, "Te\u0301st.adv");
+
+    expect(resolveAbsolutePaths(db, [2]).get(2)?.path).toBe("/Te\u0301st.adv");
+  });
+
+  it("leaves a Windows drive root alone", () => {
+    insertRow(1, 0, "C:");
+    insertRow(2, 1, "Users");
+    insertRow(3, 2, "kick.wav");
+
+    expect(resolveAbsolutePaths(db, [3]).get(3)?.path).toBe(
+      "C:/Users/kick.wav",
+    );
+  });
+
   it("resolves multiple files in a single query", () => {
     insertRow(1, 0, "/");
     insertRow(2, 1, "a");

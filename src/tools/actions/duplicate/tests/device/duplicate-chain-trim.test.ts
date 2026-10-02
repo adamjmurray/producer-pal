@@ -16,6 +16,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import { registerCarryLiveSet } from "./chain-copy-fixtures.ts";
 
 const RACK = livePath.track(0).device(0);
 const SOURCE_CHAIN = `${RACK} chains 0`;
@@ -97,17 +98,8 @@ function setupTrimmedChain(kind: RackKind) {
   // the pad spelling of the destination path is read back off this.
   const pad = drum ? { in_note: PAD_NOTE } : {};
 
-  const liveSet = registerMockObject("live_set", {
-    path: livePath.liveSet,
-    properties: { tracks: children("track-0") },
-    methods: {
-      duplicate_track: () => null,
-      delete_track: () => null,
-      move_device: () => null,
-    },
-  });
+  const liveSet = registerCarryLiveSet();
 
-  registerMockObject("track-0", { path: livePath.track(0) });
   registerRack(kind);
 
   registerMockObject("chain-0", {

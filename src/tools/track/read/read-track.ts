@@ -17,35 +17,43 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
+import {
+  readFanOut,
+  type ReadResult,
+} from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-field.ts";
+import { readOneTakeLane, takeLaneRead } from "./helpers/read-take-lane.ts";
 import {
   resolveReadTrackTarget,
   type ReadTrackArgs,
-} from "./helpers/read-track-target-helpers.ts";
+} from "./helpers/read-track-targets.ts";
 import {
   categorizeDevices,
   readDevicesFlat,
   type CategorizedDevices,
-} from "./helpers/read-track-device-helpers.ts";
+} from "./helpers/track-devices.ts";
+import {
+  countArrangementClips,
+  countSessionClips,
+  readArrangementClips,
+  readSessionClips,
+  readTakeLanes,
+  type ReadTakeLaneResult,
+} from "./helpers/track-clips.ts";
+import { getInstrumentName } from "./helpers/instrument-name.ts";
 import {
   addOptionalBooleanProperties,
   addProducerPalHostInfo,
   addRoutingInfo,
   addSlotIndices,
   addStateIfNotDefault,
-  countArrangementClips,
-  countSessionClips,
-  getInstrumentName,
-  handleNonExistentTrack,
   drumModeForTrack,
-  readArrangementClips,
+  handleNonExistentTrack,
   readMixerProperties,
-  readSessionClips,
-  readTakeLanes,
-  type ReadTakeLaneResult,
-} from "./helpers/read-track-helpers.ts";
+} from "./helpers/track-optional-fields.ts";
 
 interface ReadTrackGenericArgs {
   track: LiveAPI;
@@ -84,15 +92,42 @@ interface NestedClipReads {
 }
 
 /**
- * Read comprehensive information about a track
+ * Read comprehensive information about the track(s) a call names
  * @param args - The parameters
  * @param context - Internal context object (supplies the active notation)
- * @returns Track information
+ * @returns One track, or one entry per track named
  */
 export function readTrack(
   args: ReadTrackArgs = {},
   context: Partial<ToolContext> = {},
+): ReadResult<Record<string, unknown>> {
+  return readFanOut(
+    args,
+    {
+      object: "track",
+      idAlias: "trackId",
+      oneTargetParams: ["trackIndex", "trackType"],
+    },
+    (one) => readOneTrack(one, context),
+  );
+}
+
+/**
+ * Read comprehensive information about one track, or the take lane a call names
+ * @param args - The parameters
+ * @param context - Internal context object (supplies the active notation)
+ * @returns Track information, or the lane's
+ */
+export function readOneTrack(
+  args: ReadTrackArgs = {},
+  context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
+  const lane = takeLaneRead(args);
+
+  if (lane != null) {
+    return readOneTakeLane(lane, args.include, context.notation);
+  }
+
   const { track, category, trackIndex } = resolveReadTrackTarget(args);
 
   return readTrackGeneric({
@@ -268,6 +303,20 @@ function addDrumMapFromDevices(
 }
 
 /**
+ * Put what a part of the read couldn't do on the track's own entry.
+ * @param result - The track's entry
+ * @param detail - What to say, or undefined when there's nothing
+ */
+function addDetail(
+  result: Record<string, unknown>,
+  detail: string | undefined,
+): void {
+  if (detail != null) {
+    appendDetail(result, detail);
+  }
+}
+
+/**
  * Generic track reader that works with any track type. This is an internal helper function
  * used by readTrack to read comprehensive information about tracks.
  * @param args - The parameters
@@ -322,18 +371,19 @@ export function readTrackGeneric({
     ...(includeColor && { color: track.getColor() }),
   };
 
-  addOptionalBooleanProperties(result, track, canBeArmed);
+  addOptionalBooleanProperties(result, track, canBeArmed, isGroup);
 
-  // Instrument name (always included if present)
   const instrumentName = getInstrumentName(trackDevices);
 
   if (instrumentName != null) {
     result.instrument = instrumentName;
   }
 
-  // Add mixer properties if requested
   if (includeMixer) {
-    Object.assign(result, readMixerProperties(track, returnTracks));
+    const { detail, ...mixer } = readMixerProperties(track, returnTracks);
+
+    Object.assign(result, mixer);
+    addDetail(result, detail);
   }
 
   if (groupId) {
@@ -398,6 +448,7 @@ export function readTrackGeneric({
     const categorized = categorizeDevices(trackDevices, { chainsHidden: true });
 
     addDrumMapFromDevices(result, categorized, notation);
+    addDetail(result, categorized.detail);
   }
 
   addSlotIndices(result, track, category);

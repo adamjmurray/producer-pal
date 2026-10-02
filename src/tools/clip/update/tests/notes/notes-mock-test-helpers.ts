@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 /**
  * Build a raw note as returned by the Live API (with the extra props that are
@@ -27,6 +28,8 @@ export function rawNote(pitch: number, startTime: number, noteId: number) {
   };
 }
 
+const REGION_END_PROPS = new Set(["length", "end_marker", "loop_end"]);
+
 /**
  * Build a mock clip that returns `existingNotes` from get_notes_extended and
  * captures every note passed to add_new_notes into the returned `addedNotes`.
@@ -46,7 +49,10 @@ export function makeNotesMockClip<T extends object = Record<string, number>>(
 } {
   const addedNotes: T[] = [];
   const mockClip = {
-    getProperty: vi.fn((prop: string) => (prop === "length" ? length : 0)),
+    // The region runs from 0 to `length`; everything else reads 0.
+    getProperty: vi.fn((prop: string) =>
+      REGION_END_PROPS.has(prop) ? length : 0,
+    ),
     call: vi.fn((method: string, ...args: unknown[]) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: existingNotes });
@@ -61,4 +67,17 @@ export function makeNotesMockClip<T extends object = Record<string, number>>(
   };
 
   return { mockClip, addedNotes };
+}
+
+/**
+ * Register a Live Set in a scale rooted at C, so a transform can read its
+ * pitch classes.
+ * @param intervals - Scale intervals above the root
+ */
+export function registerScaledLiveSet(intervals: number[]): void {
+  registerMockObject("live_set", {
+    path: "live_set",
+    type: "Song",
+    properties: { scale_mode: 1, root_note: 0, scale_intervals: intervals },
+  });
 }

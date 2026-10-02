@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -63,14 +63,18 @@ export {
   libraryTypeOneshot,
 } from "./workflow/library/library-filters.ts";
 export { librarySearchFanout } from "./workflow/library/library-search-fanout.ts";
-export { locatorNavigation } from "./workflow/locator-navigation.ts";
+export { locatorNavigation } from "./workflow/locator-navigation/locator-navigation.ts";
 export { liveApiEscapeHatch } from "./workflow/live-api-escape-hatch.ts";
 export { mixerLanguage } from "./workflow/mixer-language.ts";
 export { deviceDrumKit } from "./device/device-drum-kit.ts";
+export { deviceKitByName } from "./device/device-kit-by-name.ts";
+export { deviceLibraryPadSamples } from "./device/device-library-pad-samples.ts";
 export { drumPadForceGuard } from "./device/drum-pad-force-guard.ts";
 export { deviceSoundDesign } from "./device/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate, duplicateLoop } from "./clip/duplicate.ts";
+export { mutedNotesHidden } from "./clip/muted-notes-hidden.ts";
+export { sceneCopyBackToBack } from "./clip/scene-copy-back-to-back.ts";
 export { durationArgGrammar } from "./clip/notation/duration-arg-grammar.ts";
 export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quarter.ts";
 export {
@@ -118,13 +122,15 @@ export {
   colorListPairing,
   duplicateDestinationPairing,
 } from "./pairing/list-pairing.ts";
+export {
+  trackListBatching,
+  trackNameCommaPairing,
+} from "./pairing/track-list-pairing.ts";
 export { pathTrackSceneAddress } from "./path/path-track-scene-address.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
 export { rackPadOps } from "./device/rack-pad-ops.ts";
-export {
-  writeTrustEchoedResult,
-  writeTrustSilentResult,
-} from "./result/write-result-trust.ts";
+export { partialFailureHonesty } from "./result/partial-failure-honesty.ts";
+export { writeTrustSilentResult } from "./result/write-result-trust.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";

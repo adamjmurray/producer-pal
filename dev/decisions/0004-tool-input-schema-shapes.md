@@ -13,7 +13,8 @@ caller can pass either. We probed how models actually fill these shapes
 ## Decision
 
 A "one or many" param is always an array; a single-element array is fine. Never
-`z.union([string, array])`. `dev/Tool-Schemas.md` carries the full shape guide.
+`z.union([string, array])`. `dev/tools/tool-schemas.md` carries the full shape
+guide.
 
 ## Alternatives rejected
 

@@ -4,11 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
+import {
+  MAX_REQUEST_IMAGES,
+  MISTRAL_MAX_REQUEST_IMAGES,
+} from "#webui/chat/sdk/build-model-messages";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import {
   type ChatClientConfig,
+  type ChatImage,
   type ChatMessage,
   type SubagentConfigOverride,
 } from "#webui/chat/sdk/types";
@@ -16,7 +21,7 @@ import {
   resolveLockedNotation,
   resolveLockedSmallModelMode,
   resolveMaxToolSteps,
-} from "#webui/hooks/chat/helpers/streaming-helpers";
+} from "#webui/hooks/chat/helpers/streaming/locked-settings";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -314,6 +319,10 @@ export const chatAdapter: ChatAdapter<
       providerOptions,
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(provider, overrideThinking, model),
+      maxRequestImages:
+        provider === "mistral"
+          ? MISTRAL_MAX_REQUEST_IMAGES
+          : MAX_REQUEST_IMAGES,
       chatHistory,
       subagentConfig,
       // The user's per-turn step budget, pinned for the life of this client:
@@ -342,8 +351,16 @@ export const chatAdapter: ChatAdapter<
     return message.role === "user" ? message.content.trim() : undefined;
   },
 
-  createUserMessage(text: string): ChatMessage {
-    return { role: "user", content: text };
+  extractUserImages(message: ChatMessage): ChatImage[] | undefined {
+    return message.role === "user" ? message.images : undefined;
+  },
+
+  createUserMessage(text: string, images?: ChatImage[]): ChatMessage {
+    return {
+      role: "user",
+      content: text,
+      ...(images?.length ? { images } : {}),
+    };
   },
 
   createCompactionSummary(summary: string): ChatMessage {

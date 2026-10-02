@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type ClipReasons } from "./entries/clip-reasons.ts";
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -15,7 +16,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -192,7 +193,11 @@ export function setupArrangementClipPath(
       create_midi_clip: () => {
         tempMidiCounter += 1;
 
-        return `id temp_midi_${String(tempMidiCounter)}`;
+        const tempId = `temp_midi_${String(tempMidiCounter)}`;
+
+        registerMockObject(tempId, { type: "Clip" });
+
+        return `id ${tempId}`;
       },
       delete_clip: () => null,
     },
@@ -294,17 +299,20 @@ export function setupMidiClipMock(
   opts: MidiClipMockOptions = {},
 ): void {
   clip.get.mockImplementation(
-    createPropertyGetImpl({
-      is_arrangement_clip: 0,
-      is_midi_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      // A real clip always has one, and duplicateLoop reports it. Without a
-      // default the result reads back "0bar" and looks like a bug in the code
-      // under test rather than a gap in the fixture.
-      length: 8,
-      ...opts,
-    }),
+    createPropertyGetImpl(
+      {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        // A real clip always has one, and duplicateLoop reports it. Without a
+        // default the result reads back "0bar" and looks like a bug in the code
+        // under test rather than a gap in the fixture.
+        length: 8,
+        ...opts,
+      },
+      storedPropertyGet(clip),
+    ),
   );
 }
 
@@ -319,17 +327,20 @@ export function setupAudioClipMock(
   opts: Record<string, unknown> = {},
 ): void {
   clip.get.mockImplementation(
-    createPropertyGetImpl({
-      is_arrangement_clip: 0,
-      is_midi_clip: 0,
-      is_audio_clip: 1,
-      // Warped by default: markers are beats, like every other clip type.
-      // Override to 0 for the seconds-valued markers of an unwarped clip.
-      warping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      ...opts,
-    }),
+    createPropertyGetImpl(
+      {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        // Warped by default: markers are beats, like every other clip type.
+        // Override to 0 for the seconds-valued markers of an unwarped clip.
+        warping: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        ...opts,
+      },
+      storedPropertyGet(clip),
+    ),
   );
 }
 
@@ -378,6 +389,22 @@ export function setupMockProperties(
   mock.get.mockImplementation(
     createPropertyGetImpl(props, fallbackGet ?? undefined),
   );
+}
+
+/**
+ * Read a property the registration itself kept, so a clip reads back what the
+ * code under test wrote to it (setColor, above all).
+ * @param clip - Registered mock clip
+ * @returns Fallback for properties the fixture doesn't pin
+ */
+function storedPropertyGet(
+  clip: RegisteredMockObject,
+): (prop: string) => unknown[] {
+  return (prop: string) => {
+    const stored = clip.properties[prop];
+
+    return [stored === undefined ? 0 : stored];
+  };
 }
 
 /**
@@ -463,6 +490,46 @@ export function assertBoundaryDetection(
 }
 
 /**
+ * The note write a clip gets: everything in the window removed, then the given
+ * list added. The window varies with clip length; clip-notes.test.ts pins it.
+ * @param clip - The clip mock
+ * @param notes - The notes that should have been added
+ */
+export function expectNotesWritten(
+  clip: RegisteredMockObject,
+  notes: unknown[],
+): void {
+  expect(clip.call).toHaveBeenCalledWith(
+    "remove_notes_extended",
+    0,
+    128,
+    expect.any(Number),
+    expect.any(Number),
+  );
+  expect(clip.call).toHaveBeenCalledWith("add_new_notes", { notes });
+}
+
+/**
+ * A clip holding more content than the target extends in place: end_marker is
+ * left alone, loop_end moves to the target, and one clip comes back
+ * (unwrapSingleResult hands a one-element array back as a single object).
+ * @param clip - The clip mock
+ * @param result - The updateClip response
+ * @param clipId - The clip id the response should name
+ * @param loopEnd - Where loop_end should land, in beats
+ */
+export function expectExtendedInPlace(
+  clip: RegisteredMockObject,
+  result: unknown,
+  clipId: string,
+  loopEnd: number,
+): void {
+  expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+  expect(clip.set).toHaveBeenCalledWith("loop_end", loopEnd);
+  expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
+}
+
+/**
  * Stand in for what rescanSplitClips sees after a split: the track's
  * arrangement_clips answers with one real fresh clip plus a non-existent one
  * (id "0") that the exists() filter has to drop.
@@ -490,4 +557,15 @@ export function stubSplitRescan(freshClipId: string): void {
 
     return origGet ? origGet(prop) : [0];
   });
+}
+
+/**
+ * What one clip's own entry will say about its update, for a test driving a
+ * helper that collects the reasons out of band.
+ * @param reasons - What each clip had to say
+ * @param clipId - The clip
+ * @returns Its reasons, joined the way the entry reads them
+ */
+export function joinedClipReason(reasons: ClipReasons, clipId: string): string {
+  return (reasons.said.get(clipId) ?? []).join("; ");
 }

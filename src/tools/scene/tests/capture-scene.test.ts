@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -16,15 +18,22 @@ import { captureScene } from "../capture-scene.ts";
  * right after it.
  * @param selectedIndex - Index of the selected scene
  * @param tracks - The live_set's tracks child list
+ * @param sceneCount - How many scenes already exist (default: enough to cover selectedIndex)
  * @returns The live_set and the newly inserted scene
  */
 function setupCaptureMocks(
   selectedIndex = 1,
   tracks: unknown[] = [],
+  sceneCount = selectedIndex + 1,
 ): { liveSet: RegisteredMockObject; newScene: RegisteredMockObject } {
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks },
+    properties: {
+      tracks,
+      scenes: children(
+        ...Array.from({ length: sceneCount }, (_, i) => `scene${i}`),
+      ),
+    },
   });
 
   registerMockObject("live_set/view/selected_scene", {
@@ -169,5 +178,62 @@ describe("captureScene", () => {
         { id: "live_set/tracks/2/clip_slots/1/clip", path: "t2/s1" },
       ],
     });
+  });
+
+  it("pads with empty scenes when sceneIndex is past the end", () => {
+    const appView = registerMockObject("live_set/view", {
+      path: livePath.view.song,
+    });
+
+    registerMockObject("live_set/scenes/3", {
+      path: livePath.scene(3),
+    });
+
+    // Only scenes 0 and 1 exist; s5 (sceneIndex 4) is past the end. Selecting
+    // scene 3 (sceneIndex - 1) is what makes the insert land at 4.
+    const { liveSet } = setupCaptureMocks(3, [], 2);
+
+    const result = captureScene({ sceneIndex: 4 });
+
+    // Pads indices 2 and 3, then selects scene 3 so the insert lands at 4.
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", -1);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", -1);
+    expect(liveSet.call).toHaveBeenCalledTimes(3);
+
+    expect(appView.set).toHaveBeenCalledWith(
+      "selected_scene",
+      "id live_set/scenes/3",
+    );
+
+    expect(result.sceneIndex).toBe(4);
+  });
+
+  it("refuses a sceneIndex that would exceed the maximum allowed scenes", () => {
+    const { liveSet } = setupCaptureMocks(0, [], 0);
+
+    expect(() => captureScene({ sceneIndex: MAX_AUTO_CREATED_SCENES })).toThrow(
+      /would exceed the maximum allowed scenes/,
+    );
+
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("allows a sceneIndex up to exactly the maximum", () => {
+    registerMockObject("live_set/view", { path: livePath.view.song });
+
+    for (let i = 0; i < MAX_AUTO_CREATED_SCENES; i++) {
+      registerMockObject(`live_set/scenes/${String(i)}`, {
+        path: livePath.scene(i),
+      });
+    }
+
+    // Selecting scene MAX-2 (sceneIndex - 1) makes the insert land at MAX-1.
+    const { liveSet } = setupCaptureMocks(MAX_AUTO_CREATED_SCENES - 2, [], 0);
+
+    expect(() =>
+      captureScene({ sceneIndex: MAX_AUTO_CREATED_SCENES - 1 }),
+    ).not.toThrow();
+
+    expect(liveSet.call).toHaveBeenCalledWith("capture_and_insert_scene");
   });
 });

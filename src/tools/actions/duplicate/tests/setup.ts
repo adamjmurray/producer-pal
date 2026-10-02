@@ -15,6 +15,10 @@ interface MockClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  /** Set only on a clip the update couldn't carry out */
+  ok?: false;
+  /** Why the update didn't go as asked */
+  detail?: string;
 }
 
 /**

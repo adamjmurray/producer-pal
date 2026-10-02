@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "./helpers/device-label-helpers.ts";
+import { parseLabel } from "./helpers/param-label-parsing.ts";
 
 /**
  * A unit Live knows but never reports. `DeviceParameter` exposes no unit at
@@ -32,8 +32,13 @@ export interface KnownParamUnit {
 // them, and they are not Erosion's `Filter Width`, which is octaves over
 // 0.1-2.5 — Beat Repeat, Delay, Filter Delay and Overdrive `Filter Width`,
 // Corpus `Width`, Reverb `Input Width`, Roar `FB Width` and `Env Width`.
-// See dev/Device-Param-Labels.md.
+// See dev/live-api/device-param-labels.md.
 const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
+  // Labels run "999" then "1.00k": a bare k for thousands, and no "Hz".
+  Analog: {
+    "F1 Freq": { unit: "Hz", min: 30, max: 22000 },
+    "F2 Freq": { unit: "Hz", min: 30, max: 22000 },
+  },
   Corpus: {
     "LFO Rate": { unit: "Hz", min: 0.01, max: 10 },
     Tune: { unit: "Hz", min: 16.35, max: 4186 },

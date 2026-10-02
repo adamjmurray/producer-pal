@@ -99,6 +99,7 @@ function padNames(result: unknown): string[] {
 
 export const deleteTargets: EvalScenario = {
   id: "delete-targets",
+  tags: ["workflow"],
   description: "Delete a device, a scene and a drum pad from plain language",
   kind: "regression",
   liveSet: "basic-midi-4-track",

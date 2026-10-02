@@ -1,0 +1,219 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, it, expect, vi } from "vitest";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
+import {
+  connectClient,
+  filterOverrides,
+  resolveInitConnection,
+  validateMcpConnection,
+} from "#webui/hooks/chat/helpers/streaming/connect-client";
+import { type ChatClient } from "#webui/hooks/chat/use-chat-types";
+
+interface MockMessage {
+  role: string;
+  content: string;
+}
+
+describe("connectClient", () => {
+  /** A connect that lands only when the returned `land` is called */
+  function pendingClient() {
+    let land = () => {};
+    let fail = (_error: Error) => {};
+    const client = {
+      initialize: () =>
+        new Promise<void>((resolve, reject) => {
+          land = resolve;
+          fail = reject;
+        }),
+    } as ChatClient<MockMessage>;
+
+    return { client, land: () => land(), fail: (e: Error) => fail(e) };
+  }
+
+  it("publishes the connect while it runs and clears it once it lands", async () => {
+    const pendingInitRef: { current: Promise<void> | null } = {
+      current: null,
+    };
+    const { client, land } = pendingClient();
+    const connecting = connectClient(client, pendingInitRef);
+
+    expect(pendingInitRef.current).not.toBeNull();
+
+    land();
+    await connecting;
+
+    expect(pendingInitRef.current).toBeNull();
+  });
+
+  it("clears the published connect when the connection fails", async () => {
+    // Left published, every later turn would await a promise that already
+    // rejected instead of connecting a fresh client.
+    const pendingInitRef: { current: Promise<void> | null } = {
+      current: null,
+    };
+    const { client, fail } = pendingClient();
+    const connecting = connectClient(client, pendingInitRef);
+
+    fail(new Error("MCP down"));
+
+    await expect(connecting).rejects.toThrow("MCP down");
+    expect(pendingInitRef.current).toBeNull();
+  });
+
+  it("leaves a newer connect published when an older one settles", async () => {
+    const pendingInitRef: { current: Promise<void> | null } = {
+      current: null,
+    };
+    const first = pendingClient();
+    const second = pendingClient();
+    const firstConnect = connectClient(first.client, pendingInitRef);
+    const secondConnect = connectClient(second.client, pendingInitRef);
+    const published = pendingInitRef.current;
+
+    first.land();
+    await firstConnect;
+
+    // The second init owns the ref now. Clearing it would let a turn stream
+    // on a client whose MCP connection hasn't landed.
+    expect(pendingInitRef.current).toBe(published);
+
+    second.land();
+    await secondConnect;
+
+    expect(pendingInitRef.current).toBeNull();
+  });
+});
+
+describe("validateMcpConnection", () => {
+  it("should pass for connected status", async () => {
+    await expect(
+      validateMcpConnection("connected", null, vi.fn()),
+    ).resolves.toBeUndefined();
+  });
+
+  it("should throw for error status", async () => {
+    const checkMcp = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      validateMcpConnection("error", "Test error", checkMcp),
+    ).rejects.toThrow("MCP connection failed");
+    expect(checkMcp).toHaveBeenCalled();
+  });
+});
+
+describe("filterOverrides", () => {
+  const defaults = {
+    thinking: "Default",
+  };
+
+  it("returns undefined when no overrides provided", () => {
+    expect(filterOverrides(undefined, defaults)).toBeUndefined();
+  });
+
+  it("returns undefined when all overrides match defaults", () => {
+    const result = filterOverrides({ thinking: "Default" }, defaults);
+
+    expect(result).toBeUndefined();
+  });
+
+  it("returns thinking when it differs from defaults", () => {
+    const result = filterOverrides({ thinking: "Max" }, defaults);
+
+    expect(result).toStrictEqual({
+      thinking: "Max",
+    });
+  });
+});
+
+describe("resolveInitConnection", () => {
+  const locked = {
+    activeProvider: null,
+    activeModel: null,
+    activeSystemInstruction: null,
+    activeNotation: null,
+    activeSmallModelMode: null,
+    activeEnabledTools: null,
+  };
+  const fallback = {
+    provider: "openai" as const,
+    model: "gpt-4o",
+    enabledTools: { "ppal-library": false },
+  };
+  const resolveConnection = () => ({ apiKey: "sk-test" });
+
+  it("passes the locked notation through to the adapter and back out", () => {
+    const init = resolveInitConnection(
+      { ...locked, activeNotation: "stark" },
+      fallback,
+      resolveConnection,
+      { notation: "barbeat" },
+    );
+
+    expect(init.extraParams.lockedNotation).toBe("stark");
+    expect(init.notation).toBe("stark");
+  });
+
+  it("locks the current notation for a conversation that has none yet", () => {
+    const init = resolveInitConnection(locked, fallback, resolveConnection, {
+      notation: "barbeat",
+    });
+
+    expect(init.extraParams.lockedNotation).toBeNull();
+    expect(init.notation).toBe("barbeat");
+  });
+
+  it("passes the locked small-model mode through to the adapter and back out", () => {
+    const init = resolveInitConnection(
+      { ...locked, activeSmallModelMode: true },
+      fallback,
+      resolveConnection,
+      { smallModelMode: false },
+    );
+
+    expect(init.extraParams.lockedSmallModelMode).toBe(true);
+    expect(init.smallModelMode).toBe(true);
+  });
+
+  it("locks the current small-model mode for a conversation that has none yet", () => {
+    const init = resolveInitConnection(locked, fallback, resolveConnection, {
+      smallModelMode: true,
+    });
+
+    expect(init.extraParams.lockedSmallModelMode).toBeNull();
+    expect(init.smallModelMode).toBe(true);
+  });
+
+  it("reconnects a restored conversation on the toolset it ran with", () => {
+    const init = resolveInitConnection(
+      { ...locked, activeEnabledTools: { "ppal-duplicate": false } },
+      fallback,
+      resolveConnection,
+    );
+
+    expect(init.enabledTools).toStrictEqual({ "ppal-duplicate": false });
+  });
+
+  it("locks the current toolset for a conversation that has none yet", () => {
+    const init = resolveInitConnection(locked, fallback, resolveConnection);
+
+    expect(init.enabledTools).toStrictEqual({ "ppal-library": false });
+  });
+
+  it("locks the step budget in force when the client is built", () => {
+    const init = resolveInitConnection(locked, fallback, resolveConnection, {
+      maxToolSteps: 60,
+    });
+
+    expect(init.maxToolSteps).toBe(60);
+  });
+
+  it("falls back to the default budget when the caller sets none", () => {
+    const init = resolveInitConnection(locked, fallback, resolveConnection);
+
+    expect(init.maxToolSteps).toBe(DEFAULT_MAX_TOOL_STEPS);
+  });
+});

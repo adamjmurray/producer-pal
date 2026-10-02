@@ -19,7 +19,7 @@ import { createDeviceMockProperties } from "./helpers/read-track-device-test-hel
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
 function createSoloedMidiTrackProperties(
   overrides: Record<string, unknown> = {},
@@ -95,13 +95,11 @@ function registerSessionClipMocksForTrack2(): void {
   });
 }
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   it("throws when the track does not exist", () => {
     registerMockObject("0", { path: livePath.track(99), type: "Track" });
 
-    expect(() => readTrack({ trackIndex: 99 })).toThrow(
-      "trackIndex 99 does not exist",
-    );
+    expect(() => readOneTrack({ trackIndex: 99 })).toThrow('no track at "t99"');
   });
 
   it("returns track information for MIDI tracks", () => {
@@ -112,7 +110,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result).toStrictEqual({
       ...expectedSoloedMidiTrackResult(),
@@ -130,7 +128,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result.name).toBe("5678");
   });
@@ -155,7 +153,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 1 });
+    const result = readOneTrack({ trackIndex: 1 });
 
     expect(result).toStrictEqual({
       id: "track2",
@@ -188,7 +186,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 1 });
+    const result = readOneTrack({ trackIndex: 1 });
 
     expect(result).toStrictEqual({
       arrangementClipCount: 0,
@@ -217,7 +215,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result).toStrictEqual({
       ...expectedSoloedMidiTrackResult(),
@@ -243,11 +241,11 @@ describe("readTrack", () => {
       properties: mockTrackProperties(),
     });
 
-    const result = readTrack({ trackIndex: 1 });
+    const result = readOneTrack({ trackIndex: 1 });
 
     expect(result.hasProducerPalDevice).toBe(true);
 
-    const result2 = readTrack({ trackIndex: 0 });
+    const result2 = readOneTrack({ trackIndex: 0 });
 
     expect(result2.hasProducerPalDevice).toBeUndefined();
   });
@@ -271,12 +269,12 @@ describe("readTrack", () => {
     });
 
     // Instrument is always omitted when no instrument exists
-    const hostResult = readTrack({ trackIndex: 1 });
+    const hostResult = readOneTrack({ trackIndex: 1 });
 
     expect(hostResult.hasProducerPalDevice).toBe(true);
     expect(hostResult).not.toHaveProperty("instrument");
 
-    const regularResult = readTrack({ trackIndex: 0 });
+    const regularResult = readOneTrack({ trackIndex: 0 });
 
     expect(regularResult.hasProducerPalDevice).toBeUndefined();
     expect(regularResult).not.toHaveProperty("instrument");
@@ -286,7 +284,7 @@ describe("readTrack", () => {
     registerTrackWithClipSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
-    const result = readTrack({ trackIndex: 2, include: ["session-clips"] });
+    const result = readOneTrack({ trackIndex: 2, include: ["session-clips"] });
 
     expect(result).toStrictEqual({
       id: "track3",
@@ -339,7 +337,7 @@ describe("readTrack", () => {
       ],
     });
 
-    const result = readTrack(
+    const result = readOneTrack(
       { trackIndex: 2, include: ["session-clips", "notes"] },
       { notation: "stark" },
     );
@@ -370,6 +368,7 @@ describe("readTrack", () => {
       properties: {
         is_arrangement_clip: 1,
         start_time: 0,
+        end_time: 8,
       },
     });
     registerMockObject("arr_clip2", {
@@ -378,10 +377,15 @@ describe("readTrack", () => {
       properties: {
         is_arrangement_clip: 1,
         start_time: 16,
+        end_time: 32,
       },
     });
+    registerMockObject("live-set", {
+      path: "live_set",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 2,
       include: ["arrangement-clips"],
     });
@@ -389,22 +393,26 @@ describe("readTrack", () => {
     const arrangementClips = result.arrangementClips as Array<{
       id: string;
       path: string;
+      arrangementLength: string;
     }>;
 
     expect(arrangementClips).toHaveLength(2);
     expect(arrangementClips[0]!.id).toBe("arr_clip1");
     expect(arrangementClips[1]!.id).toBe("arr_clip2");
     // The path is where the clip starts, so it survives the strip that drops
-    // what the parent track already said.
+    // what the parent track already said. arrangementLength says how far it
+    // runs, without asking for the timing include.
     expect(arrangementClips[0]!.path).toBe("t2[1|1]");
     expect(arrangementClips[1]!.path).toBe("t2[5|1]");
+    expect(arrangementClips[0]!.arrangementLength).toBe("2bar");
+    expect(arrangementClips[1]!.arrangementLength).toBe("4bar");
   });
 
   it("returns sessionClipCount when session-clips is not included", () => {
     registerTrackWithClipSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 2,
       include: ["notes"],
     });
@@ -427,7 +435,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 2,
       include: ["notes"],
     });
@@ -450,7 +458,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 1,
       include: ["notes"],
     });
@@ -480,7 +488,7 @@ describe("readTrack", () => {
       }),
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result.instrument).toBe("Analog");
   });
@@ -505,7 +513,7 @@ describe("readTrack", () => {
       }),
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result.instrument).toBe("Drum Rack");
   });
@@ -529,7 +537,7 @@ describe("readTrack", () => {
       }),
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result.instrument).toBeUndefined();
   });
@@ -542,7 +550,7 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result.instrument).toBeUndefined();
   });
@@ -550,7 +558,7 @@ describe("readTrack", () => {
   it("returns empty sessionClips for a return track when session-clips is included", () => {
     registerEmptyReturnTrack();
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       trackType: "return",
       include: ["session-clips"],
@@ -562,7 +570,7 @@ describe("readTrack", () => {
   it("returns empty arrangementClips for a return track when arrangement-clips is included", () => {
     registerEmptyReturnTrack();
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       trackType: "return",
       include: ["arrangement-clips"],

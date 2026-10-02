@@ -18,7 +18,7 @@ import {
   unexpectedArgsWarning,
 } from "#src/tools/shared/tool-framework/unexpected-args.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
-import { paramNamesSomething } from "#src/tools/shared/utils.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
@@ -152,7 +152,12 @@ export function defineTool(
         }
 
         // The value was honored; this only steers the caller to the real name.
-        for (const text of hiddenParamWarnings(usedHidden, hiddenParams)) {
+        // Examples read the validated args, so an index sent as "3" reads as 3.
+        for (const text of hiddenParamWarnings(
+          usedHidden,
+          hiddenParams,
+          validated,
+        )) {
           result.content.push({ type: "text", text });
         }
 

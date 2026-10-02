@@ -10,7 +10,7 @@
 //
 // This builds the reproducible test bed surveyed by scan-all-devices.ts. See
 // the "Reproducing the scan" section of
-// dev/Specialized-Devices.md.
+// dev/live-api/specialized-devices/README.md.
 //
 // Usage: node scripts/live-api/scan-live-api/setup-all-devices.ts [--url=http://localhost:3350/mcp]
 
@@ -167,7 +167,7 @@ async function addDevices(
 
     try {
       await callTool(client, "ppal-create-device", {
-        deviceName: name,
+        device: name,
         path: pathFor(i),
       });
       console.log(" ✓");

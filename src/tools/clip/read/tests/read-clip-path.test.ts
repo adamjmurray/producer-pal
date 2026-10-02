@@ -13,7 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
@@ -22,7 +22,7 @@ import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 // null, must not be read as having named t0/s0. z.coerce.number() turns both a
 // null and a blank into 0, so this goes through the schema the tool registers,
 // not straight to the handler.
-describe("readClip location params through the tool schema", () => {
+describe("readOneClip location params through the tool schema", () => {
   const params = resolveToolSchema(
     toolDefReadClip.toolOptions.inputSchema,
     {},
@@ -34,7 +34,7 @@ describe("readClip location params through the tool schema", () => {
 
     expect(args.trackIndex).toBeUndefined();
     expect(args.sceneIndex).toBeUndefined();
-    expect(() => readClip(args)).toThrow("id or path is required");
+    expect(() => readOneClip(args)).toThrow("id or path is required");
   });
 
   // A blank is refused where the null is dropped: a number has no empty value,
@@ -46,7 +46,27 @@ describe("readClip location params through the tool schema", () => {
   });
 });
 
-describe("readClip path param", () => {
+/**
+ * Register a 4/4 Set whose track 1 holds one arrangement clip starting at 5|1.
+ */
+function setupArrangementClipAt5_1(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+  setupMidiClipMock({
+    path: livePath.track(1).arrangementClip(0),
+    clipId: "arr_clip",
+    clipProps: { name: "Verse", start_time: 16, is_arrangement_clip: 1 },
+  });
+  registerMockObject("track_1", {
+    path: livePath.track(1),
+    type: "Track",
+    properties: { arrangement_clips: children("arr_clip") },
+  });
+}
+
+describe("readOneClip path param", () => {
   it("reads the clip at a clip slot", () => {
     setupMidiClipMock({
       trackIndex: 1,
@@ -54,7 +74,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    const result = readClip({ path: "t1/s1" });
+    const result = readOneClip({ path: "t1/s1" });
 
     expect(result.name).toBe("Test Clip");
   });
@@ -62,7 +82,7 @@ describe("readClip path param", () => {
   // A track holds one clip per scene, so a path without a scene names nothing
   // in particular.
   it("rejects a bare track path", () => {
-    expect(() => readClip({ path: "t1" })).toThrow(
+    expect(() => readOneClip({ path: "t1" })).toThrow(
       'invalid path "t1" - a track has no one clip',
     );
   });
@@ -72,7 +92,7 @@ describe("readClip path param", () => {
   it("rejects a well-formed path that points at no track", () => {
     mockNonExistentObjects();
 
-    expect(() => readClip({ path: "t99/s0" })).toThrow('no track at "t99"');
+    expect(() => readOneClip({ path: "t99/s0" })).toThrow('no track at "t99"');
   });
 
   // A take lane holds many clips, so the lane alone still names none in
@@ -80,7 +100,7 @@ describe("readClip path param", () => {
   // reports. The error names the session spelling because that is what a bare
   // lane most often means here.
   it("rejects a take lane path and names what to send instead", () => {
-    expect(() => readClip({ path: "t1/l0" })).toThrow(
+    expect(() => readOneClip({ path: "t1/l0" })).toThrow(
       'invalid path "t1/l0" - take lanes hold arrangement clips; ' +
         'name a clip slot as "t<track>/s<scene>" (e.g., "t1/s0")',
     );
@@ -89,25 +109,22 @@ describe("readClip path param", () => {
   // The round trip a result relies on: read-clip reports "t1[5|1]" for an
   // arrangement clip, and that same string reads it back.
   it("reads an arrangement clip by where it starts", () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
-    setupMidiClipMock({
-      path: livePath.track(1).arrangementClip(0),
-      clipId: "arr_clip",
-      clipProps: { name: "Verse", start_time: 16, is_arrangement_clip: 1 },
-    });
-    registerMockObject("track_1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { arrangement_clips: children("arr_clip") },
-    });
+    setupArrangementClipAt5_1();
 
-    const result = readClip({ path: "t1[5|1]" });
+    const result = readOneClip({ path: "t1[5|1]" });
 
     expect(result.name).toBe("Verse");
     expect(result.path).toBe("t1[5|1]");
+  });
+
+  // Two spellings of one clip is not a conflict; two clips is. The id check
+  // below reads the id, so only the path branch can catch this.
+  it("refuses an id naming a different clip than an arrangement path", () => {
+    setupArrangementClipAt5_1();
+
+    expect(() => readOneClip({ path: "t1[5|1]", id: "stale" })).toThrow(
+      'id "stale" and path "t1[5|1]" name different clips',
+    );
   });
 
   it("throws when no clip starts at the position named", () => {
@@ -121,7 +138,7 @@ describe("readClip path param", () => {
       properties: { arrangement_clips: children() },
     });
 
-    expect(() => readClip({ path: "t1[9|1]" })).toThrow(
+    expect(() => readOneClip({ path: "t1[9|1]" })).toThrow(
       'no clip at path "t1[9|1]"',
     );
   });
@@ -137,7 +154,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ path: "1/1" }).name).toBe("Test Clip");
+    expect(readOneClip({ path: "1/1" }).name).toBe("Test Clip");
     expect(warn).toHaveBeenCalledWith(
       'path "1/1" is the old slot spelling; use "t1/s1"',
     );
@@ -150,7 +167,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ slot: "1/1" }).name).toBe("Test Clip");
+    expect(readOneClip({ slot: "1/1" }).name).toBe("Test Clip");
   });
 
   // The alias read-clip already accepted undeclared, now a real hidden param.
@@ -161,7 +178,9 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ trackIndex: 1, sceneIndex: 1 }).name).toBe("Test Clip");
+    expect(readOneClip({ trackIndex: 1, sceneIndex: 1 }).name).toBe(
+      "Test Clip",
+    );
   });
 
   // A slot that names nothing is not a second clip, so it can't shadow the
@@ -175,7 +194,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ slot: ",", trackIndex: 1, sceneIndex: 1 }).name).toBe(
+    expect(readOneClip({ slot: ",", trackIndex: 1, sceneIndex: 1 }).name).toBe(
       "Test Clip",
     );
     expect(warn).toHaveBeenCalledWith('slot "," names nothing');
@@ -196,14 +215,15 @@ describe("readClip path param", () => {
       clipProps: { name: "From slot" },
     });
 
-    expect(() => readClip({ path: "t1/s1", slot: "2/3" })).toThrow(
+    expect(() => readOneClip({ path: "t1/s1", slot: "2/3" })).toThrow(
       "path and slot both name a clip; use path alone (slot is deprecated)",
     );
   });
 
-  // Regression: clipId won in silence, so a model pasting a stale id beside a
-  // fresh path got the stale clip back — reported at its own slot, with nothing
-  // said about the path it asked for.
+  // readClip reads an id and a path as two clips; this is readOneClip's own
+  // guard, for a caller handing it one target. The id used to win in silence,
+  // so a stale one pasted beside a fresh path read the stale clip and reported
+  // its own slot as if that's what was asked for.
   it("refuses an id naming a different clip than path", () => {
     setupMidiClipMock({
       trackIndex: 1,
@@ -218,8 +238,18 @@ describe("readClip path param", () => {
       clipProps: { name: "From clipId" },
     });
 
-    expect(() => readClip({ path: "t1/s1", id: "stale" })).toThrow(
+    expect(() => readOneClip({ path: "t1/s1", id: "stale" })).toThrow(
       "path and id name different clips; use one",
+    );
+  });
+
+  // An id naming nothing is the id check's error to report, not the slot
+  // check's — otherwise a dead id reads as a different clip than the path.
+  it("leaves an id naming nothing to the id check", () => {
+    mockNonExistentObjects();
+
+    expect(() => readOneClip({ path: "t1/s1", id: "ghost" })).toThrow(
+      'id "ghost" does not exist',
     );
   });
 
@@ -231,7 +261,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ path: "t1/s1", id: "fresh" }).name).toBe("Test Clip");
+    expect(readOneClip({ path: "t1/s1", id: "fresh" }).name).toBe("Test Clip");
   });
 
   // The guard used to run on the path branch alone, so the other two spellings
@@ -253,7 +283,7 @@ describe("readClip path param", () => {
       clipProps: { name: "From id" },
     });
 
-    expect(() => readClip({ ...location, id: "stale" })).toThrow(
+    expect(() => readOneClip({ ...location, id: "stale" })).toThrow(
       `${param} and id name different clips; use one`,
     );
   });
@@ -269,7 +299,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ ...location, id: "fresh" }).name).toBe("Test Clip");
+    expect(readOneClip({ ...location, id: "fresh" }).name).toBe("Test Clip");
   });
 
   // Both addressing params are published side by side ("provide this or path"),
@@ -290,7 +320,7 @@ describe("readClip path param", () => {
 
       const named = param === "id" ? { path: "t1/s1" } : { id: "123" };
 
-      expect(readClip({ ...named, [param]: "null" }).name).toBe("Test Clip");
+      expect(readOneClip({ ...named, [param]: "null" }).name).toBe("Test Clip");
       expect(warn).toHaveBeenCalledWith(`${param} "null" names nothing`);
     },
   );
@@ -305,7 +335,7 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ clipId: "123" }).name).toBe("Test Clip");
+    expect(readOneClip({ clipId: "123" }).name).toBe("Test Clip");
   });
 
   // trackIndex/sceneIndex are permanent aliases, not deprecated, so they warn
@@ -319,9 +349,9 @@ describe("readClip path param", () => {
       clipProps: { name: "From path" },
     });
 
-    expect(readClip({ path: "t1/s1", trackIndex: 2, sceneIndex: 3 }).name).toBe(
-      "From path",
-    );
+    expect(
+      readOneClip({ path: "t1/s1", trackIndex: 2, sceneIndex: 3 }).name,
+    ).toBe("From path");
     expect(warn).toHaveBeenCalledWith(
       'trackIndex/sceneIndex ignored — "path" already names the clip',
     );

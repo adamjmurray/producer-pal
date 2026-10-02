@@ -14,6 +14,7 @@ import {
 } from "#webui/chat/sdk/build-model-messages";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { AssistantToolCall } from "#webui/components/chat/assistant/tool-calls/AssistantToolCall";
+import { expectDisclosureClasses } from "#webui/components/chat/assistant/tests/disclosure-assertions";
 
 const TEST_TOOL_NAMES: Record<string, string> = {
   "ppal-read-live-set": "Read Live Set",
@@ -51,11 +52,8 @@ describe("AssistantToolCall", () => {
 
     it("has correct base styling classes", () => {
       render(<AssistantToolCall {...defaultProps} />);
-      const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-zinc-200");
-      expect(details!.className).toContain("dark:bg-zinc-700");
-      expect(details!.className).toContain("font-mono");
+      expectDisclosureClasses("font-mono");
     });
   });
 
@@ -206,26 +204,6 @@ describe("AssistantToolCall", () => {
 
       expect(summary.textContent).toContain("something broke");
     });
-
-    it("shows clean error in summary for MCP content array with error", () => {
-      const result = JSON.stringify([
-        {
-          type: "text",
-          text: JSON.stringify({ error: "No clip in this slot" }),
-        },
-      ]);
-
-      render(
-        <AssistantToolCall
-          {...defaultProps}
-          result={result}
-          isError={undefined}
-        />,
-      );
-      const summary = document.querySelector("summary")!;
-
-      expect(summary.textContent).toContain("No clip in this slot");
-    });
   });
 
   describe("error expanded view", () => {
@@ -363,46 +341,6 @@ describe("AssistantToolCall", () => {
       const allText = document.body.textContent;
 
       expect(allText).toContain("inner string content");
-    });
-  });
-
-  describe("heuristic error detection", () => {
-    it("detects soft error via 'error' key in result JSON when isError unset", () => {
-      const softErrorResult = JSON.stringify({
-        error: "No clip in this slot",
-        id: null,
-        type: null,
-        trackIndex: 0,
-        sceneIndex: 5,
-      });
-
-      render(
-        <AssistantToolCall
-          {...defaultProps}
-          result={softErrorResult}
-          isError={undefined}
-        />,
-      );
-      const details = document.querySelector("details");
-
-      expect(details!.className).toContain("border-red-500");
-      expect(screen.getByText(/tool failed:/)).toBeDefined();
-    });
-
-    it("does not false-positive on normal results without error key", () => {
-      const normalResult = JSON.stringify({ id: "1", name: "Track" });
-
-      render(
-        <AssistantToolCall
-          {...defaultProps}
-          result={normalResult}
-          isError={undefined}
-        />,
-      );
-      const details = document.querySelector("details");
-
-      expect(details!.className).not.toContain("border-red-500");
-      expect(details!.className).not.toContain("border-yellow-500");
     });
   });
 

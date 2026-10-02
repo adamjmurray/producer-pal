@@ -202,19 +202,26 @@ export function createSplittingCallMock(): SplittingCallState {
     }
 
     if (method === "create_midi_clip") {
-      // Register temp clip
-      registerMockObject("temp_1", {
-        path: livePath.track(0).arrangementClip(1),
-        type: "Clip",
-      });
-
-      return ["id", "temp_1"];
+      return createTempClip();
     }
 
     return undefined;
   });
 
   return state;
+}
+
+/**
+ * Register the holding-area clip `create_midi_clip` makes during a split.
+ * @returns The new clip's id, in the shape Live returns
+ */
+function createTempClip(): string[] {
+  registerMockObject("temp_1", {
+    path: livePath.track(0).arrangementClip(1),
+    type: "Clip",
+  });
+
+  return ["id", "temp_1"];
 }
 
 /**
@@ -344,7 +351,7 @@ export function overrideWithDuplicateCounter(
     }
 
     if (method === "create_midi_clip") {
-      return ["id", "temp_1"];
+      return createTempClip();
     }
 
     return undefined;

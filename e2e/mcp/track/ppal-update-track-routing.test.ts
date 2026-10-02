@@ -7,7 +7,7 @@
  * E2E tests for ppal-update-track routing writes.
  * Routing identifiers are assigned by Live per Set and per machine, so every
  * test reads the available options first and never hardcodes an id.
- * Uses: e2e-test-set (t8, the empty MIDI track with no instrument)
+ * Uses: e2e-test-set (t8, the empty MIDI track with no instrument, and t10)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- track/ppal-update-track-routing
@@ -18,7 +18,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -203,6 +203,39 @@ describe("ppal-update-track routing", () => {
     await updateRouting(before.id, {
       outputRoutingType: originalTypeId,
       outputRoutingChannel: originalChannelId,
+    });
+  });
+
+  // Routing is a string, so it pairs one per track like name does.
+  it("gives each track its own output routing type", async () => {
+    const first = await readRouting(EMPTY_MIDI_TRACK);
+    const second = await readRouting(CHILD_TRACK);
+    const firstOriginal = first.outputRoutingType!.outputId!;
+    const secondOriginal = second.outputRoutingType!.outputId!;
+    const firstTarget = first.availableOutputRoutingTypes!.find(
+      (t) => t.outputId !== firstOriginal,
+    );
+    const secondTarget = second.availableOutputRoutingTypes!.find(
+      (t) =>
+        t.outputId !== secondOriginal && t.outputId !== firstTarget?.outputId,
+    );
+
+    expect(firstTarget).toBeDefined();
+    expect(secondTarget).toBeDefined();
+
+    await updateRouting(`${first.id},${second.id}`, {
+      outputRoutingType: `${firstTarget!.outputId},${secondTarget!.outputId}`,
+    });
+
+    expect((await readRouting(EMPTY_MIDI_TRACK)).outputRoutingType?.name).toBe(
+      firstTarget!.name,
+    );
+    expect((await readRouting(CHILD_TRACK)).outputRoutingType?.name).toBe(
+      secondTarget!.name,
+    );
+
+    await updateRouting(`${first.id},${second.id}`, {
+      outputRoutingType: `${firstOriginal},${secondOriginal}`,
     });
   });
 });

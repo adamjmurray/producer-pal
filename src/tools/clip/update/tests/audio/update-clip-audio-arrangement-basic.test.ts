@@ -8,6 +8,7 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   assertBoundaryDetection,
   assertSourceClipEndMarker,
+  expectExtendedInPlace,
   mockContext,
   setupArrangementAudioClip,
   setupSessionTilingMock,
@@ -104,6 +105,26 @@ async function runBoundary8Case(
   );
 }
 
+const NO_MORE_CONTENT = "the audio file has no more content to show";
+const NO_AUDIO_SHOWN =
+  "arrangementLength unchanged: the clip shows no audio to lengthen";
+
+/**
+ * Set up a warped audio clip whose start and end markers meet, so it shows no
+ * audio.
+ * @param clipId - Clip ID
+ */
+function setupZeroContentClip(clipId: string): void {
+  setupArrangementAudioClip(
+    0,
+    clipId,
+    warpedAudioOpts(4.0, "Zero Content Clip", {
+      end_marker: 0.0,
+      loop_end: 0.0,
+    }),
+  );
+}
+
 describe("Unlooped warped audio clips - skip when no additional content", () => {
   // These clips show all file content (end_marker = file boundary = 8)
   // No hidden content → nothing to reveal → skip
@@ -113,28 +134,44 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
   ];
 
   it.each(noHiddenCases)(
-    "should skip lengthening when file too short (clip %s: %s)",
+    "refuses a lone arrangementLength when the file is too short (clip %s: %s)",
     async (clipId, sourceEndTime, name) => {
       const cId = clipId as string;
-
-      // File boundary = 8, target = 14 → insufficient
-      const { clip, result, mockCreate } = await runBoundary8Case(
+      const clip = setupArrangementAudioClip(
+        0,
         cId,
-        sourceEndTime,
-        name,
+        warpedAudioOpts(sourceEndTime as number, name as string),
       );
+      const { mockCreate } = setupSessionTilingMock(8);
 
-      // Source clip NOT modified (no end_marker extension)
+      // File boundary = 8, target = 14 → nothing to add, and nothing else asked
+      await expect(
+        updateClip({ id: cId, arrangementLength: "3bar+n/2" }, mockContext),
+      ).rejects.toThrow(`arrangementLength unchanged: ${NO_MORE_CONTENT}`);
       expect(clip.set).not.toHaveBeenCalledWith(
         "end_marker",
         expect.anything(),
       );
-
-      // unwrapSingleResult returns single object for single-element arrays
-      expect(result).toStrictEqual({ id: cId, path: "t0[1|1]" });
       mockCreate.mockRestore();
     },
   );
+
+  it("keeps the entry, with the reason, when a rename lands beside it", async () => {
+    setupArrangementAudioClip(0, "661", warpedAudioOpts(8.0, "No Hidden"));
+    const { mockCreate } = setupSessionTilingMock(8);
+
+    const result = await updateClip(
+      { id: "661", arrangementLength: "3bar+n/2", name: "Renamed" },
+      mockContext,
+    );
+
+    expect(result).toStrictEqual({
+      id: "661",
+      path: "t0[1|1]",
+      detail: `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
+    });
+    mockCreate.mockRestore();
+  });
 });
 
 describe("Unlooped warped audio clips - cap when file partially sufficient", () => {
@@ -165,7 +202,11 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
 
       // Single clip returned (extended in place via loop_end, no tiles)
       // unwrapSingleResult returns single object for single-element arrays
-      expect(result).toStrictEqual({ id: cId, path: "t0[1|1]" });
+      expect(result).toStrictEqual({
+        id: cId,
+        path: "t0[1|1]",
+        detail: `arrangementLength landed at 2bar: ${NO_MORE_CONTENT}`,
+      });
       mockCreate.mockRestore();
     },
   );
@@ -215,37 +256,31 @@ describe("Unlooped warped audio clips - defensive guards", () => {
       mockContext,
     );
 
-    // end_marker should NOT be shrunk from 40 to 14
-    expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
-
-    // loop_end set to target: loopStart(0) + 14 = 14.0
-    expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
-
-    // Single clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
+    // end_marker stays at 40; loop_end lands on loopStart(0) + target(14).
+    expectExtendedInPlace(clip, result, clipId, 14.0);
     mockCreate.mockRestore();
   });
 
-  it("should handle zero-length audio content without infinite loop", async () => {
-    const clipId = "710";
+  it("refuses a lone arrangementLength on a clip that shows no audio", async () => {
+    setupZeroContentClip("710");
 
-    setupArrangementAudioClip(
-      0,
-      clipId,
-      warpedAudioOpts(4.0, "Zero Content Clip", {
-        end_marker: 0.0, // Zero-length content
-        loop_end: 0.0,
-      }),
-    );
+    await expect(
+      updateClip({ id: "710", arrangementLength: "3bar+n/2" }, mockContext),
+    ).rejects.toThrow(NO_AUDIO_SHOWN);
+  });
+
+  it("keeps the zero-content clip's entry, with the reason, when a rename lands", async () => {
+    setupZeroContentClip("710");
 
     const result = await updateClip(
-      { id: clipId, arrangementLength: "3bar+n/2" },
+      { id: "710", arrangementLength: "3bar+n/2", name: "Renamed" },
       mockContext,
     );
 
-    // Should return just the source clip (no tiles from zero-length content)
-    // unwrapSingleResult returns a single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
+    expect(result).toStrictEqual({
+      id: "710",
+      path: "t0[1|1]",
+      detail: NO_AUDIO_SHOWN,
+    });
   });
 });

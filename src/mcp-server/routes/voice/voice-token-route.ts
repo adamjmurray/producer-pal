@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Express, type Request, type Response } from "express";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { rejectCrossOriginWrite } from "../../helpers/http/request-origin.ts";
 import * as console from "../../node-for-max-logger.ts";
 

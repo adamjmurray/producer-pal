@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { toLiveApiId } from "../utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * Copies a session clip into another slot, reporting the copy only when Live
@@ -40,6 +40,16 @@ export function copyClipToSlot(
 }
 
 /**
+ * How a result says a copy landed on the clip a slot already held. One wording
+ * for every tool that copies into a slot.
+ * @param destPath - The slot the copy landed in
+ * @returns The note for that copy's entry
+ */
+export function clipOverwriteNote(destPath: string): string {
+  return `overwrote the existing clip at ${destPath}`;
+}
+
+/**
  * Says why a track won't take a copy of a clip, for a warning the caller words
  * itself. Live declines these copies without reporting anything, so checking
  * first is the only way to name the reason.
@@ -59,6 +69,12 @@ export function clipCopyBlocker(
   // to a duplicate that quietly copies nothing.
   if (!track.exists()) {
     return `track ${arrangementPath(trackIndex)} does not exist`;
+  }
+
+  // Before the type read too: a group reports no MIDI input, so it would be
+  // called an audio track.
+  if ((track.getProperty("is_foldable") as number) > 0) {
+    return `track ${targetLabel(track)} is a group track; it holds no clips`;
   }
 
   const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;

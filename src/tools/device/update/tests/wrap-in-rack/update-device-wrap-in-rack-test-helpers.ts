@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   livePath,
@@ -77,15 +78,17 @@ export function registerThrowingTrack0(): RegisteredMockObject {
  * Register the "new-rack" mock whose chain list grows by one per insert_chain
  * call, so the wrap code's chain-creation loop bounds become observable.
  * @param initialChainCount - How many chains the rack reports before any insert
+ * @param path - Where the rack sits; a real device slot lets it be deleted
  * @returns The registered rack mock
  */
 export function registerGrowingChainRack(
   initialChainCount: number,
+  path: PathLike = "new-rack",
 ): RegisteredMockObject {
   let chainCount = initialChainCount;
 
   const rack = registerMockObject("new-rack", {
-    path: "new-rack",
+    path,
     type: "RackDevice",
     properties: { chains: [] },
   });
@@ -116,25 +119,80 @@ export function registerGrowingChainRack(
   return rack;
 }
 
+/** Picks moves by device id and target id, both "id X". */
+export type MoveFilter = (id: string, to: string) => boolean;
+
 /**
- * Register chain mocks resolvable by the rack's "${rack.path} chains ${i}" path.
- * @param count - How many chains to register, starting at chain-0
+ * Make a mock track or chain hold whatever live_set's move_device calls moved
+ * into it, less what they moved out, so read-backs see the moves.
+ * @param liveSet - The live_set mock the moves go through
+ * @param container - The track or chain mock
+ * @param ignores - Which moves Live silently ignores, by device and target id
+ * @param initial - Ids of the devices it holds before any move
  */
-export function registerRackChains(count: number): void {
-  for (let i = 0; i < count; i++) {
-    registerMockObject(`chain-${i}`, {
-      type: "Chain",
-      path: `new-rack chains ${i}`,
-    });
-  }
+export function followMoves(
+  liveSet: RegisteredMockObject,
+  container: RegisteredMockObject,
+  ignores: MoveFilter = () => false,
+  initial: string[] = [],
+): void {
+  const target = `id ${container.id}`;
+
+  container.get.mockImplementation((prop: string) => {
+    if (prop !== "devices") {
+      return [0];
+    }
+
+    const held = initial.map((id) => `id ${id}`);
+
+    for (const [method, id, to, index] of liveSet.call.mock.calls) {
+      if (method !== "move_device" || ignores(id, to)) {
+        continue;
+      }
+
+      if (held.includes(id)) {
+        held.splice(held.indexOf(id), 1);
+      }
+
+      if (to === target) {
+        held.splice(index, 0, id);
+      }
+    }
+
+    return held.flatMap((id) => id.split(" "));
+  });
+}
+
+/**
+ * Register the rack's chain 0, holding what live_set moves into it.
+ * @param liveSet - The live_set mock the moves go through
+ * @param ignores - Which moves Live silently ignores
+ * @returns The chain mock
+ */
+export function registerTrackingChain(
+  liveSet: RegisteredMockObject,
+  ignores?: MoveFilter,
+): RegisteredMockObject {
+  const chain = registerMockObject("chain-0", {
+    type: "Chain",
+    path: "new-rack chains 0",
+  });
+
+  followMoves(liveSet, chain, ignores);
+
+  return chain;
 }
 
 /**
  * Register the live_set mock supporting the temp-track lifecycle used by
- * instrument wrapping, plus the temp track it creates.
+ * instrument wrapping, plus the temp track it creates, which holds what moves
+ * onto it.
+ * @param ignores - Which moves Live silently ignores on the temp track
  * @returns The registered live_set mock
  */
-export function registerTempTrackMocks(): RegisteredMockObject {
+export function registerTempTrackMocks(
+  ignores?: MoveFilter,
+): RegisteredMockObject {
   const liveSet = registerMockObject("live-set", {
     path: "live_set",
     methods: {
@@ -143,9 +201,11 @@ export function registerTempTrackMocks(): RegisteredMockObject {
     },
   });
 
-  registerMockObject("temp-track", {
+  const tempTrack = registerMockObject("temp-track", {
     path: livePath.track(1),
   });
+
+  followMoves(liveSet, tempTrack, ignores);
 
   return liveSet;
 }

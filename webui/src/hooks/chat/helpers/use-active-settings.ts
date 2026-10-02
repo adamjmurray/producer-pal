@@ -5,7 +5,7 @@
 
 import { useCallback, useState } from "preact/hooks";
 import { type Notation } from "#src/shared/notation";
-import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
+import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
 import { type Provider } from "#webui/types/settings";
 
 /** State for the "locked" settings of the current conversation */

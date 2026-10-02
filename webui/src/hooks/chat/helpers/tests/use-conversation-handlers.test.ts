@@ -10,32 +10,7 @@ import { renderHook, act } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
-
-/**
- * Create a mock conversation manager with async methods.
- * @param overrides - Optional method overrides
- * @returns Mock manager
- */
-function createMockManager(
-  overrides: Partial<UseConversationsReturn> = {},
-): UseConversationsReturn {
-  return {
-    conversations: [],
-    activeConversationId: null,
-    notification: null,
-    dismissNotification: vi.fn(),
-    saveCurrentConversation: vi.fn().mockResolvedValue(undefined),
-    switchConversation: vi.fn().mockResolvedValue(undefined),
-    startNewConversation: vi.fn().mockResolvedValue(undefined),
-    deleteConversation: vi.fn().mockResolvedValue(undefined),
-    deleteAllConversations: vi.fn().mockResolvedValue(undefined),
-    deleteUnbookmarkedConversations: vi.fn().mockResolvedValue(undefined),
-    renameConversation: vi.fn().mockResolvedValue(undefined),
-    toggleBookmark: vi.fn().mockResolvedValue(undefined),
-    refreshList: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  };
-}
+import { createMockConversationsManager } from "#webui/test-utils/conversation-test-helpers";
 
 /**
  * Render the handlers over a fresh mock manager and its two callback spies.
@@ -47,7 +22,7 @@ function renderHandlers(
   overrides: Partial<UseConversationsReturn> = {},
   isAssistantResponding = false,
 ) {
-  const manager = createMockManager(overrides);
+  const manager = createMockConversationsManager(overrides);
   const stop = vi.fn();
   const clearViewingMode = vi.fn();
   const { result } = renderHook(() =>

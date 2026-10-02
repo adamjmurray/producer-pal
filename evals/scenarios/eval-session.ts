@@ -13,7 +13,6 @@ import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.t
 import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
-import { printStepUsage } from "#evals/chat/shared/formatting.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
@@ -24,8 +23,13 @@ import {
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
-import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
-import { logTurnStart } from "./helpers/eval-session-base.ts";
+import {
+  type StepTiming,
+  type TokenUsage,
+  toStepTiming,
+  toTokenUsage,
+} from "#webui/chat/sdk/types.ts";
+import { logTurnStart } from "./helpers/turn-logging.ts";
 import {
   buildSeededMessages,
   type SeededTurn,
@@ -138,6 +142,7 @@ export async function createEvalSession(
       messages.push({ role: "user", content: message });
 
       const stepUsages: TokenUsage[] = [];
+      const stepTimings: StepTiming[] = [];
 
       const result = streamText({
         model,
@@ -149,28 +154,30 @@ export async function createEvalSession(
         // Errors are rendered (in red) by processCliStream via the stream's
         // "error" part; suppress the SDK's default raw dump.
         onError: () => {},
+        // The usage line itself is printed by processCliStream, off the
+        // finish-step part that carries both usage and timings.
         onStepEnd: (event) => {
-          const usage = toTokenUsage(event.usage);
-
-          stepUsages.push(usage);
-
-          if (options.usage) {
-            printStepUsage(usage, prevUsage, event.toolCalls.length === 0);
-          }
-
-          prevUsage = usage;
+          stepUsages.push(toTokenUsage(event.usage));
+          // Empty when nothing was measurable, so the two arrays stay aligned
+          // and each rate keeps the step's output tokens as its weight.
+          stepTimings.push(toStepTiming(event.performance) ?? {});
         },
       });
 
       const turnResult = await processCliStream(result, {
         showUsage: options.usage,
+        prevUsage,
         erroredToolCallIds,
       });
+
+      // Carry the last step's usage into the next turn so its "new content"
+      // figure counts the user's next message.
+      prevUsage = stepUsages.at(-1) ?? prevUsage;
 
       // On a stream error, result.responseMessages rejects; the error was already
       // shown by processCliStream. Skip history so the scenario can grade the miss.
       if (turnResult.error != null) {
-        return { ...turnResult, stepUsages };
+        return { ...turnResult, stepUsages, stepTimings };
       }
 
       // Append generated messages to history for multi-turn. See the note in
@@ -178,7 +185,7 @@ export async function createEvalSession(
       // while finalStep.response.messages holds only the last step's.
       messages.push(...(await result.responseMessages));
 
-      return { ...turnResult, stepUsages };
+      return { ...turnResult, stepUsages, stepTimings };
     },
 
     close: async () => {

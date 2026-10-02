@@ -4,9 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  ensureSceneCountForIndex,
+  validateSceneIndexCap,
+} from "./helpers/scene-slots.ts";
 
 interface CapturedClip {
   id: string;
@@ -16,6 +20,8 @@ interface CapturedClip {
 export interface CaptureSceneResult {
   id: string;
   path: string;
+  /** The empty scenes the capture had to add first, when it added any */
+  created?: string;
   clips: CapturedClip[];
 }
 
@@ -43,11 +49,16 @@ export function captureScene({
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const appView = LiveAPI.from(livePath.view.song);
+  let padded: string | null = null;
 
   if (sceneIndex != null) {
     // capture_and_insert_scene inserts after the selection, so select the scene
     // before the target index. "s+" resolves to the scene count, whose
-    // predecessor is the last scene.
+    // predecessor is the last scene. An index past the end has no predecessor
+    // to select, so pad with empty scenes first, same as create mode.
+    validateSceneIndexCap([sceneIndex]);
+    padded = ensureSceneCountForIndex(liveSet, sceneIndex);
+
     const scene = LiveAPI.from(livePath.scene(sceneIndex - 1));
 
     appView.setProperty("selected_scene", toLiveApiId(scene.id));
@@ -92,6 +103,7 @@ export function captureScene({
   return {
     id: newScene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
+    ...(padded == null ? {} : { created: padded }),
     sceneIndex: newSceneIndex,
     clips,
   };

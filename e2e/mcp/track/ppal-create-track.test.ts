@@ -17,24 +17,72 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
+  type CreateTrackResult,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 
 describe("ppal-create-track", () => {
   /**
-   * How many tracks the Set holds right now.
-   * @returns The track count
+   * The Set's tracks and return tracks, as read-live-set reports them.
+   * @returns The read result
    */
-  async function trackCount(): Promise<number> {
-    const set = parseToolResult<LiveSetResult>(
+  async function readSet(): Promise<LiveSetResult> {
+    return parseToolResult<LiveSetResult>(
       await ctx.client!.callTool({
         name: "ppal-read-live-set",
         arguments: { include: ["tracks"] },
       }),
     );
+  }
 
-    return set.tracks?.length ?? 0;
+  /**
+   * How many tracks the Set holds right now.
+   * @returns The track count
+   */
+  async function trackCount(): Promise<number> {
+    return (await readSet()).tracks?.length ?? 0;
+  }
+
+  /**
+   * Every track's name, in Set order.
+   * @returns The track names, first to last
+   */
+  async function tracks(): Promise<{ id: string; name: string }[]> {
+    return ((await readSet()).tracks ?? []).map(({ id, name }) => ({
+      id,
+      name,
+    }));
+  }
+
+  async function trackNames(): Promise<string[]> {
+    return (await tracks()).map((track) => track.name);
+  }
+
+  /**
+   * The name Live gave the track at a path.
+   * @param path - The track's path
+   * @returns The name read back
+   */
+  async function nameAt(path: string): Promise<string> {
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path },
+      }),
+    );
+
+    return track.name;
+  }
+
+  /**
+   * The send letter Live will give the next return track.
+   * @returns The letter
+   */
+  async function nextReturnLetter(): Promise<string> {
+    return String.fromCharCode(
+      65 + ((await readSet()).returnTracks?.length ?? 0),
+    );
   }
 
   it("creates midi, audio, and return tracks", async () => {
@@ -115,6 +163,43 @@ describe("ppal-create-track", () => {
     ]);
   });
 
+  it("reports the name Live lands on when it prefixes the send letter", async () => {
+    const letter = await nextReturnLetter();
+
+    // A bare name comes back with the send letter in front of it, so the entry
+    // says what the track is actually called.
+    const prefixed = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", name: "Delay" },
+      }),
+    );
+
+    expect(prefixed.name).toBe(`${letter}-Delay`);
+    expect(prefixed.detail).toBe(
+      "Live prefixes a return track's name with its send letter",
+    );
+
+    await sleep(100);
+    expect(await nameAt(prefixed.path!)).toBe(prefixed.name);
+
+    // A name already starting with the new return's own letter is stripped
+    // before the write, so it lands as asked and the entry says nothing.
+    const ownLetter = await nextReturnLetter();
+    const asAsked = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", name: `${ownLetter}-Tape` },
+      }),
+    );
+
+    expect(asAsked.name).toBeUndefined();
+    expect(asAsked.detail).toBeUndefined();
+
+    await sleep(100);
+    expect(await nameAt(asAsked.path!)).toBe(`${ownLetter}-Tape`);
+  });
+
   it("creates tracks with custom properties", async () => {
     // Test 1: Create track with custom name
     const namedResult = await ctx.client!.callTool({
@@ -176,6 +261,31 @@ describe("ppal-create-track", () => {
     expect(atIndex.path).toBe("t0");
   });
 
+  // Live creates nothing for an index past the end, so the index is clamped to
+  // the end before the call. The offset stays well under the 100-track cap the
+  // tool refuses above.
+  it("reports the last index for a track asked for past the end", async () => {
+    const before = await trackCount();
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: `t${String(before + 20)}`, name: "Past The End" },
+      }),
+    );
+
+    expect(created.path).toBe(`t${String(before)}`);
+
+    await sleep(100);
+    expect(await nameAt(created.path!)).toBe("Past The End");
+
+    await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { id: created.id, type: "track" },
+    });
+    await sleep(100);
+    expect(await trackCount()).toBe(before);
+  });
+
   it("creates multiple tracks in batch", async () => {
     // Get initial track count
     const initialResult = await ctx.client!.callTool({
@@ -185,10 +295,10 @@ describe("ppal-create-track", () => {
     const initial = parseToolResult<LiveSetResult>(initialResult);
     const initialTrackCount = initial.tracks?.length ?? 0;
 
-    // Test 1: Create multiple tracks with count
+    // Test 1: Create multiple tracks with a path list
     const batchResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { count: 2 },
+      arguments: { path: "t+,t+" },
     });
     const batch = parseBatchResult<CreateTrackResult>(batchResult, 2);
 
@@ -198,7 +308,7 @@ describe("ppal-create-track", () => {
     // Test 2: Create multiple tracks with comma-separated names
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { count: 2, name: "Kick,Snare" },
+      arguments: { path: "t+,t+", name: "Kick,Snare" },
     });
     const multiName = parseToolResult<CreateTrackResult[]>(multiNameResult);
 
@@ -237,7 +347,7 @@ describe("ppal-create-track", () => {
     // Test 4: Create multiple tracks with comma-separated colors
     const multiColorResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { count: 2, name: "Red,Green", color: "#FF0000,#00FF00" },
+      arguments: { path: "t+,t+", name: "Red,Green", color: "#FF0000,#00FF00" },
     });
     const multiColor = parseToolResult<CreateTrackResult[]>(multiColorResult);
 
@@ -271,15 +381,120 @@ describe("ppal-create-track", () => {
     // Created: 2 batch + 2 multi-name + 2 multi-color = 6
     expect(finalTrackCount).toBeGreaterThan(initialTrackCount);
   });
+
+  describe("path lists", () => {
+    it("appends one track per entry", async () => {
+      const before = await trackCount();
+      const batch = parseBatchResult<CreateTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "t+,t+,t+", name: "List A,List B,List C" },
+        }),
+        3,
+      );
+
+      expect(batch.map((track) => track.path)).toStrictEqual([
+        `t${String(before)}`,
+        `t${String(before + 1)}`,
+        `t${String(before + 2)}`,
+      ]);
+
+      await sleep(100);
+      expect((await trackNames()).slice(before)).toStrictEqual([
+        "List A",
+        "List B",
+        "List C",
+      ]);
+    });
+
+    // The second entry names the place the first one just took, so it lands
+    // after it: list order is creation order, left to right.
+    it("inserts two at one index in list order", async () => {
+      // Compare ids: Live renumbers default "N-MIDI" names when tracks shift.
+      const before = (await tracks()).map((track) => track.id);
+      const batch = parseBatchResult<CreateTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "t1,t1", name: "Insert First,Insert Second" },
+        }),
+        2,
+      );
+
+      expect(batch.map((track) => track.path)).toStrictEqual(["t1", "t2"]);
+
+      await sleep(100);
+      const after = await tracks();
+
+      expect(after.slice(1, 3).map((track) => track.name)).toStrictEqual([
+        "Insert First",
+        "Insert Second",
+      ]);
+      // Everything else stayed where it was
+      expect(
+        [...after.slice(0, 1), ...after.slice(3)].map((track) => track.id),
+      ).toStrictEqual(before);
+    });
+
+    it("mixes a return track into the list", async () => {
+      const batch = parseBatchResult<CreateTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "t+,rt+", name: "Mixed Track,Mixed Return" },
+        }),
+        2,
+      );
+
+      expect(batch[0]!.path).toMatch(/^t\d+$/);
+      expect(batch[1]!.path).toMatch(/^rt\d+$/);
+
+      await sleep(100);
+      const returnTrack = parseToolResult<ReadTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: batch[1]!.path },
+        }),
+      );
+
+      // Live prefixes a return's name with its own letter.
+      expect(returnTrack.name).toMatch(/^[A-L]-Mixed Return$/);
+    });
+
+    // count still works for a caller who hasn't moved to a list, and says so.
+    it("still repeats a single path for count", async () => {
+      const { data, warnings } = parseToolResultWithWarnings<
+        CreateTrackResult[]
+      >(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "t+", count: 2, name: "Counted A,Counted B" },
+        }),
+      );
+
+      expect(data).toHaveLength(2);
+      expect(warnings.join("\n")).toContain('param "count" is deprecated');
+    });
+
+    it("refuses count sent with a path list", async () => {
+      const before = await trackCount();
+      const text = extractToolResultText(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "t+,t+", count: 2 },
+        }),
+      );
+
+      expect(text).toContain("count");
+      expect(text).toContain("path names 2");
+
+      await sleep(100);
+      expect(await trackCount()).toBe(before);
+    });
+  });
 });
 
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
-}
-
-interface CreateTrackResult {
-  id: string;
-  path?: string;
+  returnTracks?: Array<{ id: string; name: string }>;
 }
 
 interface ReadTrackResult {

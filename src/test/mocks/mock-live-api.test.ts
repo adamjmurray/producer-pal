@@ -8,6 +8,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  type RegisteredMockObject,
   clearMockRegistry,
   lookupMockObject,
   registerMockObject,
@@ -169,18 +170,8 @@ describe("Mock LiveAPI Infrastructure", () => {
   // properties, so retargeting left both pointing at the previous target.
   describe("retargeting", () => {
     it("rebinds get, set, and call to the new target", () => {
-      const first = registerMockObject("track-0", {
-        path: livePath.track(0),
-        type: "Track",
-      });
-      const second = registerMockObject("track-1", {
-        path: livePath.track(1),
-        type: "Track",
-      });
+      const { first, second, api } = retargetTrack0To1();
 
-      const api = new LiveAPI(String(livePath.track(0)));
-
-      api.goto(String(livePath.track(1)));
       api.get("name");
       api.set("name", "New Name");
       api.call("duplicate_clip_to");
@@ -194,19 +185,7 @@ describe("Mock LiveAPI Infrastructure", () => {
     });
 
     it("drops a property the new target doesn't define", () => {
-      registerMockObject("track-0", {
-        path: livePath.track(0),
-        type: "Track",
-        properties: { customProp: "first" },
-      });
-      registerMockObject("track-1", {
-        path: livePath.track(1),
-        type: "Track",
-      });
-
-      const api = new LiveAPI(String(livePath.track(0)));
-
-      api.goto(String(livePath.track(1)));
+      const { api } = retargetTrack0To1({ customProp: "first" });
 
       expect(
         (api as unknown as Record<string, unknown>).customProp,
@@ -264,3 +243,30 @@ describe("Mock LiveAPI Infrastructure", () => {
     });
   });
 });
+
+/**
+ * Track 0 and track 1, with an api built on track 0 and retargeted to track 1.
+ * @param properties - Properties track 0 defines
+ * @returns Both track mocks and the retargeted api
+ */
+function retargetTrack0To1(properties: Record<string, unknown> = {}): {
+  first: RegisteredMockObject;
+  second: RegisteredMockObject;
+  api: LiveAPI;
+} {
+  const first = registerMockObject("track-0", {
+    path: livePath.track(0),
+    type: "Track",
+    properties,
+  });
+  const second = registerMockObject("track-1", {
+    path: livePath.track(1),
+    type: "Track",
+  });
+
+  const api = new LiveAPI(String(livePath.track(0)));
+
+  api.goto(String(livePath.track(1)));
+
+  return { first, second, api };
+}

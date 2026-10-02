@@ -14,16 +14,14 @@
  */
 
 import { argText } from "../../arg-text.ts";
-import { lastSuccessfulToolCall } from "../../../assertions/index.ts";
+import { requireSuccessfulToolCall } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import {
-  assertNotesRead,
-  TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { TOOL_UPDATE_CLIP } from "../helpers/clip-tool-constants.ts";
 
 /**
  * Everything a model wrote to place notes in one turn: `transforms`, `notes`
@@ -36,12 +34,7 @@ import {
  * @returns The joined argument text
  */
 function noteWritingArgs(turns: EvalTurnResult[], turn: number): string {
-  const call = lastSuccessfulToolCall(turns, turn, TOOL_UPDATE_CLIP);
-
-  if (!call) {
-    throw new Error(`${TOOL_UPDATE_CLIP} not found in turn ${turn}`);
-  }
-
+  const call = requireSuccessfulToolCall(turns, turn, TOOL_UPDATE_CLIP);
   const text = ["transforms", "notes", "preTransforms"]
     .map((param) => argText(call.args[param]))
     .filter((value) => value !== "")
@@ -180,6 +173,7 @@ function assertReRandomizingSnare(): EvalAssertion {
 
 export const velocityShaping: EvalScenario = {
   id: "velocity-shaping",
+  tags: ["transforms"],
   description: "Write drum velocities by hand: per-note crescendo, then vA-B",
   kind: "capability",
   requires: { transforms: true },

@@ -21,12 +21,21 @@
 // schema that gets published.
 
 import { type ZodType } from "zod";
-import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
+import { WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 import {
   describeWithTags,
   getSchemaTag,
   tagSchema,
 } from "#src/tools/shared/tool-framework/schema-tags.ts";
+
+/**
+ * An example value for the replacement, worked out from the args the call
+ * actually sent, so the warning names the path this call meant rather than a
+ * made-up one. Returns undefined when the args don't determine it.
+ */
+export type ExampleFromArgs = (
+  args: Record<string, unknown>,
+) => string | undefined;
 
 interface DeprecatedParamBase {
   /**
@@ -46,8 +55,9 @@ export type DeprecationInfo =
   | (DeprecatedParamBase & {
       /** Param name to use instead, named in the warning. */
       replacedBy: string;
-      /** Example value for the replacement, shown in the warning. */
-      example?: string;
+      /** Example value for the replacement, shown in the warning. A function
+       * reads it off the call's own args. */
+      example?: string | ExampleFromArgs;
       guidance?: undefined;
     })
   | (DeprecatedParamBase & {
@@ -158,11 +168,13 @@ export function collectHiddenParams(
  * the conversation already says which call it belongs to.
  * @param usedKeys - Hidden params the caller actually sent, in schema order
  * @param hidden - Hidden-param info keyed by param name
+ * @param args - The args the call sent, for an example read off them
  * @returns Warning texts, empty when nothing hidden was sent
  */
 export function hiddenParamWarnings(
   usedKeys: string[],
   hidden: Record<string, HiddenParamInfo>,
+  args: Record<string, unknown> = {},
 ): string[] {
   const warnings: string[] = [];
   const aliasGroups = new Map<
@@ -180,7 +192,7 @@ export function hiddenParamWarnings(
     if (info.kind === "deprecated") {
       warnings.push(
         `${WARNING_PREFIX}param "${key}" is deprecated and will be removed; ` +
-          deprecationAdvice(info) +
+          deprecationAdvice(info, args) +
           (info.note == null ? "" : `. ${info.note}`),
       );
       continue;
@@ -221,12 +233,21 @@ export function hiddenParamWarnings(
  * The advice half of a deprecation warning: the replacement param, or the
  * guidance for a param that has none.
  * @param info - The deprecation
+ * @param args - The args the call sent, for an example read off them
  * @returns Text following "will be removed; "
  */
-function deprecationAdvice(info: DeprecatedParamInfo): string {
-  return info.replacedBy == null
-    ? info.guidance
-    : `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, info.example)}`;
+function deprecationAdvice(
+  info: DeprecatedParamInfo,
+  args: Record<string, unknown>,
+): string {
+  if (info.replacedBy == null) {
+    return info.guidance;
+  }
+
+  const example =
+    typeof info.example === "function" ? info.example(args) : info.example;
+
+  return `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, example)}`;
 }
 
 /**

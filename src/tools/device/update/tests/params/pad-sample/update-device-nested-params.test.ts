@@ -1,0 +1,631 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it } from "vitest";
+import {
+  type RegisteredMockObject,
+  children,
+  expectParamRefused,
+  expectValueSet,
+  livePath,
+  noParamLanded,
+  paramsOf,
+  registerContinuousParam,
+  registerMockObject,
+  updateDevice,
+} from "../../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  KICK,
+  registerCreatedSimpler,
+  registerDrumRackWithC1,
+  registerDrumRackWithDrumSamplerOnC1,
+  registerDrumSamplerOn,
+  registerPadRack,
+  registerUnbuiltPadChain,
+} from "./pad-sample-fixtures.ts";
+
+// A pad's sample has three addresses: the rack plus a "pC1/sample" param name,
+// the pad or layer itself, and the instrument's own device path — which is the
+// one read-device prints. All three have to say the same thing about the same
+// write.
+
+/**
+ * A Drum Rack whose first chain holds one device carrying one parameter.
+ * @param deviceClass - The nested device's class_display_name
+ * @param paramId - Mock id of the parameter on it
+ * @param withPaths - Give the chain and device their own Live paths
+ */
+function registerRackWithNestedDevice(
+  deviceClass: string,
+  paramId: string,
+  withPaths = false,
+): void {
+  const chainPath = livePath.track(0).device(0).chain(0);
+
+  registerMockObject("drum-rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: { chains: ["id", "reg-chain"], can_have_drum_pads: 1 },
+  });
+  registerMockObject("reg-chain", {
+    path: withPaths ? chainPath : undefined,
+    type: "Chain",
+    properties: { devices: ["id", "reg-dev"] },
+  });
+  registerMockObject("reg-dev", {
+    path: withPaths ? chainPath.device(0) : undefined,
+    type: "Device",
+    properties: {
+      class_display_name: deviceClass,
+      parameters: children(paramId),
+    },
+  });
+}
+
+describe("updateDevice - path-prefixed pseudo-params", () => {
+  it("loads a sample into a drum pad by addressing the rack", () => {
+    const chain = registerDrumRackWithC1();
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(LiveAPI.from("id new-simpler").call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/snare.wav",
+    );
+  });
+
+  it("refuses a path-prefixed param with an empty name after '/'", () => {
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: [], can_have_drum_pads: 1 },
+    });
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        params: [{ name: "pC1/d0/", value: "/snare.wav" }],
+      }),
+    ).toThrow('params entry "pC1/d0/" has an empty name after "/"');
+  });
+
+  it("sets a real slash-named param (Dry/Wet) by name, not as a path", () => {
+    registerMockObject("dev1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { parameters: children("drywet-param") },
+    });
+    // Reverb/Delay/Glue Compressor expose a parameter literally named
+    // "Dry/Wet". The "/" must NOT route this to path-prefixed pseudo-param
+    // handling (which would split it into prefix "Dry" + param "Wet" and drop
+    // the write); it has to resolve as an ordinary DeviceParameter by name.
+    const param = registerContinuousParam("drywet-param", { name: "Dry/Wet" });
+
+    updateDevice({ id: "dev1", params: [{ name: "Dry/Wet", value: "50" }] });
+
+    expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
+  });
+
+  it("reports a param whose resolution throws and still applies later params", () => {
+    // Drum rack with no chains. Addressing a far-out chain index (c20) forces
+    // auto-creating past the cap, which throws. Each param is try-isolated, so
+    // the bad one must not abort the following (good) param in the same call.
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        chains: [],
+        can_have_drum_pads: 1,
+        parameters: children("macro-param"),
+      },
+    });
+    const macro = registerContinuousParam("macro-param", {
+      name: "Macro 1",
+      display: (v) => `${Number(v)} %`,
+    });
+
+    const result = updateDevice({
+      path: "t0/d0",
+      params: [
+        { name: "pC1/c20/sample", value: "/x.wav" }, // throws (exceeds chain cap)
+        { name: "Macro 1", value: "0.5" }, // must still be applied
+      ],
+    });
+
+    // The throw becomes that param's own entry, the way a target that throws
+    // becomes the target's.
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "pC1/c20/sample",
+        ok: false,
+        detail: "Cannot auto-create 21 drum pad chains (max: 16)",
+      },
+      { id: "macro-param", name: "Macro 1" },
+    ]);
+    expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
+  });
+
+  it("warns that a general path-prefixed param is deprecated, but still writes it", () => {
+    registerRackWithNestedDevice("Operator", "reg-param");
+
+    const param = registerContinuousParam("reg-param", { name: "Volume" });
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "c0/d0/Volume", value: "50" }],
+    });
+
+    expect(capturedWarnings()).toContainEqual(
+      'params name "c0/d0/Volume" is deprecated and will be removed; ' +
+        'use path "t0/d0/c0/d0" with name "Volume"',
+    );
+    expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
+  });
+
+  it("does not warn for the drum-pad sample shortcut", () => {
+    registerDrumRackWithC1();
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+    });
+
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("is deprecated"),
+    );
+  });
+
+  it("advises the working replacement for a slash-named param, even though resolution fails outright", () => {
+    // A slash-named param (e.g. Dry/Wet) reached through a path prefix is a
+    // known bug: resolution splits on the last "/", so "c0/d0/Dry/Wet" becomes
+    // prefix "c0/d0/Dry" + name "Wet", which navigates into nothing. The
+    // deprecation warning's advice is built by a DIFFERENT split (from the
+    // left, splitForAdvice) so it still names a path and name that work,
+    // even though this particular write can't succeed either way.
+    // With paths: the follow-up call below addresses the chain by path, which
+    // looks the object up by that literal path rather than walking the
+    // chains/devices lists.
+    registerRackWithNestedDevice("Reverb", "drywet-param", true);
+    const param = registerContinuousParam("drywet-param", { name: "Dry/Wet" });
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0",
+          params: [{ name: "c0/d0/Dry/Wet", value: "50" }],
+        }),
+      ),
+    ).toContain('"c0/d0/Dry/Wet": no device at "t0/d0/c0/d0/Dry"');
+
+    // The deprecation is about the spelling, which the error doesn't carry, so
+    // it stays a warning.
+    expect(capturedWarnings()).toStrictEqual([
+      'params name "c0/d0/Dry/Wet" is deprecated and will be removed; ' +
+        'use path "t0/d0/c0/d0" with name "Dry/Wet"',
+    ]);
+
+    // Proof the advice itself works: the suggested path and name reach the
+    // same param directly.
+    updateDevice({
+      path: "t0/d0/c0/d0",
+      params: [{ name: "Dry/Wet", value: "50" }],
+    });
+
+    expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
+  });
+});
+
+describe("updateDevice - pad instrument guard", () => {
+  it("skips a sample write onto a pad instrument and keeps the device", () => {
+    const chain = registerDrumRackWithDrumSamplerOnC1();
+
+    noParamLanded(() =>
+      updateDevice({
+        path: "t0/d0",
+        params: [{ name: "pC1/sample", value: "/snare.wav" }],
+      }),
+    );
+
+    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
+  });
+
+  // The skip is said once, in the error: a warning repeating it only spends
+  // the caller's context window.
+  it("carries the skip reason in the error, and warns nowhere", () => {
+    registerDrumRackWithDrumSamplerOnC1();
+
+    expectParamRefused(
+      () =>
+        updateDevice({
+          path: "t0/d0",
+          params: [{ name: "pC1/sample", value: "/snare.wav" }],
+        }),
+      "pC1/sample",
+      "sample write SKIPPED on pad t0/d0/pC1",
+    );
+  });
+
+  it("swaps the instrument for a Simpler and loads the sample under force", () => {
+    const chain = registerDrumRackWithDrumSamplerOnC1();
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+      force: true,
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expect(LiveAPI.from("id new-simpler").call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/snare.wav",
+    );
+  });
+
+  // The swap changed the Set, so the call can't throw as if nothing happened.
+  it("keeps the entry when the swap happened but the sample didn't load", () => {
+    const chain = registerDrumRackWithDrumSamplerOnC1();
+
+    registerCreatedSimpler().call.mockImplementation(() => undefined);
+
+    const result = updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+      force: true,
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expect(result).toStrictEqual({
+      id: "drum-rack",
+      path: "t0/d0",
+      params: [expect.objectContaining({ name: "pC1/sample", ok: false })],
+      detail: expect.stringContaining("with a Simpler to load the sample"),
+    });
+  });
+
+  it("keeps the entry when a Simpler was made but the sample didn't load", () => {
+    const chain = registerDrumRackWithC1();
+
+    registerCreatedSimpler().call.mockImplementation(() => undefined);
+
+    const result = updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(result).toStrictEqual({
+      id: "drum-rack",
+      path: "t0/d0",
+      params: [expect.objectContaining({ name: "pC1/sample", ok: false })],
+    });
+  });
+});
+
+/** The reason a pad holding a Drum Sampler gives, whichever way it's addressed. */
+const SWAP_REASON =
+  "sample write SKIPPED on pad t0/d0/pC1/c0 — it holds a Drum Sampler, " +
+  "whose sample the Live API can't set. Honoring the write REPLACES it with " +
+  "a Simpler, losing all its settings. Ask the user before passing " +
+  "force:true. To keep it: load the sample on another pad, or copy the " +
+  'instrument to a free pad first (ppal-duplicate type:"device").';
+
+describe("updateDevice - a sample addressed by the pad's own path", () => {
+  it("creates a Simpler on an empty pad and reports what it loaded", () => {
+    const [chain] = registerPadRack();
+
+    registerCreatedSimpler();
+
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      params: [{ name: "sample", value: KICK }],
+    });
+
+    expect(chain?.call).toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      path: "t0/d0/pC1",
+      params: [{ name: "sample", value: KICK }],
+    });
+  });
+
+  it("takes the same write on the layer's own path", () => {
+    registerPadRack();
+    registerCreatedSimpler();
+
+    expect(
+      updateDevice({
+        path: "t0/d0/pC1/c0",
+        params: [{ name: "sample", value: KICK }],
+      }),
+    ).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/pC1/c0",
+      params: [{ name: "sample", value: KICK }],
+    });
+  });
+
+  // Each entry on a pad is written on its own, so both would load.
+  it("loads only the last of two samples", () => {
+    registerPadRack();
+
+    const simpler = registerCreatedSimpler();
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      params: [
+        { name: "sample", value: "/snare.wav" },
+        { name: "Sample", value: KICK },
+      ],
+    });
+
+    expect(simpler.call).toHaveBeenCalledTimes(1);
+    expect(simpler.call).toHaveBeenCalledWith("replace_sample", KICK);
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "sample",
+        ok: false,
+        detail: 'set again by "Sample" later in the list',
+      },
+      { name: "sample", value: KICK },
+    ]);
+  });
+
+  it("skips a pad whose instrument has no settable sample, and says why in the error", () => {
+    const [chain] = registerPadRack();
+
+    registerDrumSamplerOn(chain as RegisteredMockObject);
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1",
+          params: [{ name: "sample", value: KICK }],
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${SWAP_REASON}`);
+    expect(capturedWarnings()).toHaveLength(0);
+    expect(chain?.call).not.toHaveBeenCalledWith("delete_device", 0);
+  });
+
+  it("replaces that instrument under force and loads the sample", () => {
+    const [chain] = registerPadRack();
+
+    registerDrumSamplerOn(chain as RegisteredMockObject);
+    registerCreatedSimpler();
+
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      params: [{ name: "sample", value: KICK }],
+      force: true,
+    });
+
+    expect(chain?.call).toHaveBeenCalledWith("delete_device", 0);
+    // The swap is destructive, so the pad's own entry says what it cost.
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      path: "t0/d0/pC1",
+      params: [{ name: "sample", value: KICK }],
+      detail:
+        "force:true — replaced a Drum Sampler on pad t0/d0/pC1 with a " +
+        "Simpler to load the sample. Its settings are gone.",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // A sample belongs to one layer, and under force the write would delete an
+  // instrument nobody named.
+  it("skips a stacked pad and names the layer paths to use instead", () => {
+    const chains = registerPadRack(2);
+    const reason =
+      "sample write SKIPPED on pad t0/d0/pC1 — it has 2 layers, so which " +
+      'one to load is ambiguous. Name one: "t0/d0/pC1/c0", "t0/d0/pC1/c1".';
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1",
+          params: [{ name: "sample", value: KICK }],
+          force: true,
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
+    expect(capturedWarnings()).toHaveLength(0);
+
+    for (const chain of chains) {
+      expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
+    }
+  });
+
+  // The samples are taken out of the list before the rest are written, so the
+  // two sets of entries come back from different places.
+  it("keeps the entries in the order the call sent them", () => {
+    registerPadRack(2);
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1",
+          params: [
+            { name: "Volume", value: "50" },
+            { name: "sample", value: KICK },
+          ],
+        }),
+      ),
+    ).toMatch(/^no param landed — "Volume": .*; "sample": /);
+  });
+
+  // A pad with no chain at all is where the rack's `pC1/sample` shortcut used
+  // to differ: it made the chain, and the pad path said Live ignores the write.
+  it("makes the chain a pad with none needs, by path and by id", () => {
+    for (const target of [{ path: "t0/d0/pC1" }, { id: "pad-36" }]) {
+      const rack = registerUnbuiltPadChain();
+
+      const result = updateDevice({
+        ...target,
+        params: [{ name: "sample", value: KICK }],
+      });
+
+      expect(rack.call).toHaveBeenCalledWith("insert_chain");
+      expect(LiveAPI.from("id new-simpler").call).toHaveBeenCalledWith(
+        "replace_sample",
+        KICK,
+      );
+      expect(result).toStrictEqual({
+        id: "pad-36",
+        path: "t0/d0/pC1",
+        params: [{ name: "sample", value: KICK }],
+      });
+    }
+  });
+
+  // Nothing else asks for a chain, so nothing else gets one.
+  it("still says an empty pad ignores a write that names no sample", () => {
+    const rack = registerUnbuiltPadChain();
+
+    expect(() => updateDevice({ path: "t0/d0/pC1", gainDb: -6 })).toThrow(
+      "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
+        "to update — Live ignores writes to an empty pad",
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Neither is written, so neither overrides the other.
+  it("refuses a param sent twice on a chain once per entry, by id where sent by id", () => {
+    registerPadRack();
+
+    const notApplicable =
+      "'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id chain-0)";
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1/c0",
+          params: [
+            { name: "Volume", value: "50" },
+            { name: "volume", value: "60" },
+            { id: "7", value: "1" },
+          ],
+        }),
+      ),
+    ).toBe(
+      `no param landed — "Volume": ${notApplicable}; ` +
+        `"volume": ${notApplicable}; "7": ${notApplicable}`,
+    );
+  });
+
+  it("still refuses every other param on a chain, in the error", () => {
+    registerPadRack();
+
+    expectParamRefused(
+      () =>
+        updateDevice({
+          path: "t0/d0/pC1/c0",
+          params: [{ name: "Volume", value: "50" }],
+        }),
+      "Volume",
+      "'params' not applicable to a drum pad chain t0/d0/pC1/c0",
+    );
+  });
+});
+
+describe("updateDevice - a sample addressed by the device's own path", () => {
+  it("says the device's sample can't be set, and names the pad call that can", () => {
+    const [chain] = registerPadRack();
+
+    registerDrumSamplerOn(chain as RegisteredMockObject);
+
+    const reason =
+      "sample write SKIPPED on t0/d0/pC1/c0/d0 (id ds-1) — it is a Drum " +
+      "Sampler, whose sample the Live API can't set. Loading a sample here " +
+      "REPLACES the device with a Simpler and loses all its settings, so ask " +
+      "the user first. The pad, not the device, is what takes a sample: " +
+      'path:"t0/d0" with params:[{name:"pC1/c0/sample", ' +
+      'value:"<the sample>"}].';
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1/d0",
+          params: [{ name: "sample", value: KICK }],
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  // A device path names a device that is already there. Creating or replacing
+  // one from it would make every read-device path a destructive address.
+  it("creates and replaces nothing", () => {
+    const [chain] = registerPadRack();
+    const drumSampler = registerDrumSamplerOn(chain as RegisteredMockObject);
+
+    noParamLanded(() =>
+      updateDevice({
+        path: "t0/d0/pC1/d0",
+        params: [{ name: "sample", value: KICK }],
+        force: true,
+      }),
+    );
+
+    expect(chain?.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expect(chain?.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(drumSampler.call).not.toHaveBeenCalledWith("replace_sample", KICK);
+  });
+
+  // The pad call targets the pad's instrument, so it leaves an effect alone —
+  // promising it would be replaced would be a lie.
+  it("leaves the destruction notice off a device that is not the instrument", () => {
+    const [chain] = registerPadRack();
+
+    (chain as RegisteredMockObject).properties.devices = children("arp-1");
+    registerMockObject("arp-1", {
+      path: livePath.track(0).device(0).chain(0).device(0),
+      type: "Device",
+      properties: { class_display_name: "Arpeggiator" },
+    });
+
+    const reason =
+      "sample write SKIPPED on t0/d0/pC1/c0/d0 (id arp-1) — it is an " +
+      "Arpeggiator, whose sample the Live API can't set. A pad's sample " +
+      "belongs to its instrument, not to this device — address the pad: " +
+      'path:"t0/d0" with params:[{name:"pC1/c0/sample", ' +
+      'value:"<the sample>"}].';
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          path: "t0/d0/pC1/d0",
+          params: [{ name: "sample", value: KICK }],
+        }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
+  });
+
+  it("says only that much for a device that is not on a pad", () => {
+    registerMockObject("op-1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { class_display_name: "Operator" },
+    });
+
+    const reason =
+      "sample write SKIPPED on t0/d0 (id op-1) — it is an Operator, whose " +
+      "sample the Live API can't set. Only a Simpler in single-sample mode " +
+      "has one to set.";
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({ id: "op-1", params: [{ name: "sample", value: KICK }] }),
+      ),
+    ).toBe(`no param landed — "sample": ${reason}`);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+});

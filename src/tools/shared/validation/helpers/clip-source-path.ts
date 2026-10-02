@@ -7,13 +7,13 @@
 // and so does one position on one arrangement lane — everything else an
 // arrangement path can spell names more than one, so a tool acting on a
 // specific clip refuses it and shows the complete form. Destinations take those
-// partials; see dev/Object-Paths.md, "Complete and partial".
+// partials; see dev/tools/object-paths/README.md, "Complete and partial".
 
 import {
   type ArrangementPosition,
   type CompleteArrangementPosition,
-} from "./object-path-coord.ts";
-import { requireClipPath, type ClipPath } from "./object-path-helpers.ts";
+} from "./object-path-position.ts";
+import { requireClipPath, type ClipPath } from "./object-paths.ts";
 import { pathError } from "./object-path-lexer.ts";
 import { formatObjectPath, type ObjectPath } from "../object-path.ts";
 

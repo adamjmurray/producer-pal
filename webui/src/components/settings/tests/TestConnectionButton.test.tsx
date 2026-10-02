@@ -18,7 +18,7 @@ vi.mock(import("#webui/utils/test-connection"), () => ({
 }));
 
 import { type ComponentProps } from "preact";
-import { TestConnectionButton } from "#webui/components/settings/TestConnectionButton";
+import { TestConnectionButton } from "#webui/components/settings/helpers/TestConnectionButton";
 
 const button = () =>
   screen.getByTestId("test-connection-button") as HTMLButtonElement;

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -114,22 +114,29 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("should log warning when track ID doesn't exist", () => {
+  it("throws when the one track ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateTrack({ id: "nonexistent" });
-
-    expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(() => updateTrack({ id: "nonexistent" })).toThrow(
+      'id "nonexistent" does not exist',
+    );
   });
 
-  it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
+  it("reports a dead id in its own slot and updates the rest", () => {
     mockNonExistentObjects();
 
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123", path: "t0" });
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        detail: 'id "nonexistent" does not exist',
+      },
+    ]);
+    // The entry carries it, so the response doesn't say it twice.
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(track123.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -146,6 +153,11 @@ describe("updateTrack", () => {
     });
 
     expect(result).toStrictEqual([
+      {
+        id: "nonexistent",
+        ok: false,
+        detail: 'id "nonexistent" does not exist',
+      },
       { id: "123", path: "t0" },
       { id: "456", path: "t1" },
     ]);
@@ -153,7 +165,6 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(track456.set).toHaveBeenCalledWith("name", "C");
     expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it
@@ -173,8 +184,19 @@ describe("updateTrack", () => {
   // against 2, and refused.
   it("refuses a trailing comma that leaves the lists uneven", () => {
     expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
-      "id and path names 3 entries but name names 2 entries.",
+      "id names 3 entries but name names 2 entries.",
     );
+  });
+
+  // One target reads every value whole, so their comma counts can't disagree.
+  it("reads each value whole for one target, whatever its commas", () => {
+    updateTrack({
+      id: "123",
+      name: "Bass, Sub",
+      outputRoutingType: "Low, End, Bus",
+    });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "Bass, Sub");
   });
 
   // A gap in a name list used to mean "leave this one alone", while the same
@@ -369,19 +391,19 @@ describe("updateTrack", () => {
     });
 
     describe("type-guarded routing and monitoring", () => {
-      it("warns and skips input routing on a return track but still applies output routing", () => {
+      it("skips input routing on a return track but still applies output routing", () => {
         const returnTrack = registerMockObject("ret1", {
           path: livePath.returnTrack(0),
           properties: { can_be_armed: 0 },
         });
 
-        updateTrack({
+        const result = updateTrack({
           id: "ret1",
           inputRoutingType: "17",
           outputRoutingType: "25",
         });
 
-        // Input routing exists only on regular non-group tracks: warn-and-skip.
+        // Input routing exists only on regular non-group tracks.
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",
           expect.anything(),
@@ -391,45 +413,75 @@ describe("updateTrack", () => {
           "output_routing_type",
           '{"output_routing_type":{"identifier":25}}',
         );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("input routing is only available"),
-        );
+        expect(result).toStrictEqual({
+          id: "ret1",
+          path: "rt0",
+          detail: "input routing is only available on regular non-group tracks",
+        });
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
-      it("warns and skips input routing on a group track", () => {
+      it("refuses input routing on a group track", () => {
         const groupTrack = registerMockObject("grp1", {
           path: livePath.track(5),
           properties: { is_foldable: 1 },
         });
 
-        updateTrack({ id: "grp1", inputRoutingType: "17" });
+        expect(() =>
+          updateTrack({ id: "grp1", inputRoutingType: "17" }),
+        ).toThrow(
+          "input routing is only available on regular non-group tracks",
+        );
 
         expect(groupTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",
           expect.anything(),
         );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("input routing is only available"),
-        );
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
-      it("warns and skips monitoring state on a non-armable track", () => {
+      it("refuses monitoring state on a non-armable track", () => {
         const returnTrack = registerMockObject("ret1", {
           path: livePath.returnTrack(0),
           properties: { can_be_armed: 0 },
         });
 
-        updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN });
+        expect(() =>
+          updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN }),
+        ).toThrow(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+        );
 
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "current_monitoring_state",
           expect.anything(),
         );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining(
-            "monitoringState is only available on armable",
-          ),
-        );
+        expect(capturedWarnings()).toStrictEqual([]);
+      });
+
+      // Two targets: the return track keeps its slot as a skip, in the order
+      // the call named them.
+      it("keeps a return track's slot when monitoringState was all it asked", () => {
+        registerMockObject("ret1", {
+          path: livePath.returnTrack(0),
+          properties: { can_be_armed: 0 },
+        });
+
+        expect(
+          updateTrack({
+            id: "123,ret1",
+            monitoringState: MONITORING_STATE.IN,
+          }),
+        ).toStrictEqual([
+          { id: "123", path: "t0" },
+          {
+            id: "ret1",
+            ok: false,
+            detail:
+              "monitoringState had no effect: return, main and group tracks have no monitoring",
+          },
+        ]);
+        expect(capturedWarnings()).toStrictEqual([]);
       });
     });
   });
@@ -451,106 +503,131 @@ describe("updateTrack", () => {
     it("leaves a regular track's name alone", () => {
       const track = registerMockObject("trk1", { path: livePath.track(0) });
 
-      updateTrack({ id: "trk1", name: "A-Delay" });
+      const result = updateTrack({ id: "trk1", name: "A-Delay" });
 
       expect(track.set).toHaveBeenCalledWith("name", "A-Delay");
+      expect(result).toStrictEqual({ id: "trk1", path: "t0" });
+    });
+
+    it("reports the name Live landed on when it prefixed the letter", () => {
+      const returnTrack = registerMockObject("ret3", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = updateTrack({ id: "ret3", name: "B-Side" });
+
+      // "B-Side" isn't return C's own letter, so it stays and Live prefixes it.
+      expect(returnTrack.set).toHaveBeenCalledWith("name", "B-Side");
+      expect(result).toStrictEqual({
+        id: "ret3",
+        path: "rt2",
+        name: "C-B-Side",
+        detail: "Live prefixes a return track's name with its send letter",
+      });
+    });
+
+    it("says nothing when the name lands as asked", () => {
+      registerMockObject("ret1", { path: livePath.returnTrack(0) });
+
+      const result = updateTrack({ id: "ret1", name: "A-Delay" });
+
+      expect(result).toStrictEqual({ id: "ret1", path: "rt0" });
+    });
+
+    it("reports the letter a bare name comes back with", () => {
+      registerMockObject("ret1", { path: livePath.returnTrack(0) });
+
+      const result = updateTrack({ id: "ret1", name: "Tape" });
+
+      expect(result).toStrictEqual({
+        id: "ret1",
+        path: "rt0",
+        name: "A-Tape",
+        detail: "Live prefixes a return track's name with its send letter",
+      });
     });
   });
 
-  describe("color quantization verification", () => {
-    it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-      // Override get to return quantized color (different from input)
-      track123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [16725558]; // #FF3636 (quantized from #FF0000)
-        }
-
-        return [0];
-      });
-
-      updateTrack({
-        id: "123",
-        color: "#FF0000",
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested track t0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+  describe("color", () => {
+    /**
+     * Read a track's color back as Live would after quantizing it.
+     * @param track - The registered mock track
+     * @param value - The color Live answers with, as its packed integer
+     */
+    function trackReadsColor(track: RegisteredMockObject, value: number): void {
+      track.get.mockImplementation((prop: string) =>
+        prop === "color" ? [value] : [0],
       );
+    }
 
-      consoleSpy.mockRestore();
+    it("reports the palette color Live snapped to on the track's entry", () => {
+      trackReadsColor(track123, 16725558); // #FF3636
+
+      expect(updateTrack({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "t0",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("says nothing when the color lands as asked", () => {
+      trackReadsColor(track123, 16711680); // #FF0000
 
-      // Override get to return exact color (same as input)
-      track123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [16711680]; // #FF0000 (exact match)
-        }
-
-        return [0];
-      });
-
-      updateTrack({
+      expect(updateTrack({ id: "123", color: "#FF0000" })).toStrictEqual({
         id: "123",
-        color: "#FF0000",
+        path: "t0",
       });
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
 
-    it("should emit warning for each track when updating multiple tracks", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("answers per track when several were recolored", () => {
+      trackReadsColor(track123, 1768495); // #1AFC2F
+      trackReadsColor(track456, 1768495);
 
-      const colorMock = (prop: string) => {
-        if (prop === "color") {
-          return [1768495]; // #1AFC2F (quantized from #00FF00)
-        }
-
-        return [0];
-      };
-
-      track123.get.mockImplementation(colorMock);
-      track456.get.mockImplementation(colorMock);
-
-      updateTrack({
-        id: "123,456",
-        color: "#00FF00",
-      });
-
-      expect(consoleSpy).toHaveBeenCalledTimes(2);
-      expect(consoleSpy).toHaveBeenNthCalledWith(
-        1,
-        "Requested track t0 (id 123) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
-      );
-      expect(consoleSpy).toHaveBeenNthCalledWith(
-        2,
-        "Requested track t1 (id 456) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
-      );
-
-      consoleSpy.mockRestore();
+      expect(updateTrack({ id: "123,456", color: "#00FF00" })).toStrictEqual([
+        {
+          id: "123",
+          path: "t0",
+          color: "#1AFC2F",
+          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+        },
+        {
+          id: "456",
+          path: "t1",
+          color: "#1AFC2F",
+          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+        },
+      ]);
     });
 
-    it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("says nothing about color when the call sent none", () => {
+      trackReadsColor(track123, 16725558);
 
-      updateTrack({
+      expect(updateTrack({ id: "123", name: "No color" })).toStrictEqual({
         id: "123",
-        name: "No color update",
+        path: "t0",
+      });
+    });
+
+    it("keeps the return track's rename reason alongside the color's", () => {
+      const returnTrack = registerMockObject("rt-1", {
+        path: livePath.returnTrack(0),
       });
 
-      expect(consoleSpy).not.toHaveBeenCalled();
+      trackReadsColor(returnTrack, 16725558); // #FF3636
 
-      consoleSpy.mockRestore();
+      expect(
+        updateTrack({ id: "rt-1", name: "Verb", color: "#FF0000" }),
+      ).toStrictEqual({
+        id: "rt-1",
+        path: "rt0",
+        name: "A-Verb",
+        color: "#FF3636",
+        detail:
+          "Live prefixes a return track's name with its send letter; " +
+          "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
     });
   });
 });

@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import {
+  isBareThousands,
+  parseLabel,
+} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import {
   recordedUnitSpelling,
   splitLeadingNumber,
@@ -51,7 +54,11 @@ export function normalizeParamValue(
     return rawValue;
   }
 
-  if (typeof parsed.value === "number" && parsed.unit != null) {
+  // A bare "k" ("0.8k") scales the number but names no unit.
+  if (
+    typeof parsed.value === "number" &&
+    (parsed.unit != null || isBareThousands(rawValue))
+  ) {
     return parsed.value;
   }
 

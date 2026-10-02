@@ -5,7 +5,7 @@
 
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-response-utils.ts";
+import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
 import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
 
 // max-api is already mocked globally in test-setup.ts

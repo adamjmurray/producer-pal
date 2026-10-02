@@ -5,8 +5,8 @@
 
 import { z } from "zod";
 import { DELETABLE_TYPES } from "#src/tools/constants.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDelete = defineTool("ppal-delete", {
@@ -25,16 +25,13 @@ export const toolDefDelete = defineTool("ppal-delete", {
       smallModel: "object ID to delete",
     }),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "path(s) to delete, comma-separated for multiple: tracks ('t0', 'rt1'), scenes ('s0'), session clips ('t0/s1'), arrangement clips by where they start ('t0[5|1]'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1'). Deleting shifts every later sibling down, so a path in the result is the address from before the call.",
       smallModel: "path to delete (e.g., 't0/s1' or 't0/d1')",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
       .enum(DELETABLE_TYPES)

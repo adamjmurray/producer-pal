@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
   aliasParam,
@@ -20,16 +21,17 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce.string().optional().describe("provide this or path"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("clip ID(s) to read, comma-separated for multiple"),
 
-    clipId: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases({ idAlias: "clipId" }),
     path: z.coerce
       .string()
       .optional()
       .describe(
-        "where the clip is, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip by where it starts, 't<track>[<position>]' (e.g., 't0[5|1]'). provide this or id",
+        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip by where it starts, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {
@@ -51,10 +53,10 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
         .default([]),
       {
         default:
-          'notes = MIDI data. timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. "*" = all',
+          'notes = MIDI data (muted notes are hidden and counted in mutedNotes; edits leave them alone). timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. "*" = all',
         smallModel: {
           description:
-            "notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color",
+            "notes = MIDI data (muted notes hidden, counted in mutedNotes). timing = loop/start/end markers. sample = audio file info. color",
           excludeEnumValues: ["warp", "*"],
         },
       },

@@ -16,6 +16,7 @@ import {
   resetDbCache,
 } from "#webui/lib/conversation-db";
 import * as transferModule from "#webui/lib/conversation-transfer";
+import * as textFileIo from "#webui/utils/text-file-io";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 const refreshList = vi.fn().mockResolvedValue(undefined);
@@ -71,11 +72,12 @@ function mockDownloadApis() {
 }
 
 /**
- * Mock file input creation so click() triggers onchange with the given file.
- * @param file - The file to provide via the input
+ * Mock file input creation so click() triggers onchange with the given files.
+ * An empty list is the picker being dismissed without choosing anything.
+ * @param files - The files to provide via the input
  * @returns A promise that resolves when onFileSelected completes
  */
-function mockFileInput(file: File): { settled: Promise<void> } {
+function mockFileInput(files: File[]): { settled: Promise<void> } {
   let resolveSettled: () => void;
   const settled = new Promise<void>((r) => {
     resolveSettled = r;
@@ -88,7 +90,7 @@ function mockFileInput(file: File): { settled: Promise<void> } {
     const el = origCreate(tag);
 
     if (tag === "input") {
-      Object.defineProperty(el, "files", { value: [file] });
+      Object.defineProperty(el, "files", { value: files });
 
       let handler: ((ev: Event) => void) | null = null;
 
@@ -203,7 +205,7 @@ describe("useConversationTransfer", () => {
    * @returns The renderHook return value (after import completes)
    */
   async function renderAndImport(file: File) {
-    const { settled } = mockFileInput(file);
+    const { settled } = mockFileInput([file]);
     const hook = renderTransferHook();
 
     await act(async () => {
@@ -278,6 +280,38 @@ describe("useConversationTransfer", () => {
       message: "Exported conversation",
       type: "success",
     });
+  });
+
+  it("leaves the slug out of the filename when the conversation is untitled", async () => {
+    vi.spyOn(transferModule, "exportConversation").mockResolvedValue({
+      json: "{}",
+      title: "",
+    });
+
+    const download = vi
+      .spyOn(textFileIo, "downloadTextFile")
+      .mockImplementation(() => undefined);
+    const hook = renderTransferHook();
+
+    await act(async () => {
+      await hook.result.current.handleExportOne("untitled-1");
+    });
+
+    expect(download.mock.calls[0]?.[0]).toMatch(
+      /^producer-pal-conversation-\d{4}-\d{2}-\d{2}\.json$/,
+    );
+  });
+
+  it("does nothing when the import picker is dismissed with no file", async () => {
+    mockFileInput([]);
+
+    const hook = renderTransferHook();
+
+    await act(async () => {
+      await hook.result.current.handleImport();
+    });
+
+    expect(hook.result.current.notification).toBeNull();
   });
 
   it("shows error when exporting non-existent conversation", async () => {

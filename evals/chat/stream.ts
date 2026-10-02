@@ -8,8 +8,14 @@
  * Processes stream events and prints to terminal with formatting.
  */
 
-import { type streamText } from "ai";
-import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
+import { type LanguageModelUsage, type streamText } from "ai";
+import { isQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
+import {
+  type StepPerformance,
+  type TokenUsage,
+  toStepTiming,
+  toTokenUsage,
+} from "#webui/chat/sdk/types.ts";
 import {
   continueThought,
   describeStreamError,
@@ -18,6 +24,7 @@ import {
   formatToolCall,
   formatToolResult,
   formatWarning,
+  printStepUsage,
   startThought,
 } from "./shared/formatting.ts";
 import {
@@ -35,6 +42,10 @@ interface StreamState {
   hadToolCalls: boolean;
   showUsage: boolean;
   stepCount: number;
+  /** Tool calls seen in the current step — drives the usage line's spacing. */
+  stepToolCalls: number;
+  /** Previous step's usage, for the usage line's "new content" figure. */
+  prevUsage?: TokenUsage;
   /** True once any reasoning-delta arrived — distinguishes a reasoning-only
    * turn (normal thinking-model finish) from a truly empty one. */
   sawReasoning: boolean;
@@ -49,7 +60,9 @@ interface StreamState {
  *
  * @param result - The streamText result to process
  * @param options - Processing options
- * @param options.showUsage - Whether usage is shown after steps (affects spacing)
+ * @param options.showUsage - Whether to print each step's usage line
+ * @param options.prevUsage - Usage of the last step of the previous turn, so
+ *   the first step's "new content" figure counts the new user message
  * @param options.erroredToolCallIds - Ids of calls whose MCP result carried
  *   `isError: true` (from `createMcpTools`). The flag can't ride on the result
  *   itself — that string is the model's context — so it arrives on the side.
@@ -57,7 +70,11 @@ interface StreamState {
  */
 export async function processCliStream(
   result: ReturnType<typeof streamText>,
-  options?: { showUsage?: boolean; erroredToolCallIds?: Set<string> },
+  options?: {
+    showUsage?: boolean;
+    prevUsage?: TokenUsage;
+    erroredToolCallIds?: Set<string>;
+  },
 ): Promise<TurnResult> {
   const state: StreamState = {
     text: "",
@@ -66,7 +83,9 @@ export async function processCliStream(
     hadToolCalls: false,
     showUsage: options?.showUsage ?? false,
     stepCount: 0,
+    stepToolCalls: 0,
     sawReasoning: false,
+    ...(options?.prevUsage != null && { prevUsage: options.prevUsage }),
     ...(options?.erroredToolCallIds != null && {
       erroredToolCallIds: options.erroredToolCallIds,
     }),
@@ -117,6 +136,13 @@ function handleStreamPart(
       break;
     case "start-step":
       handleStartStep(state);
+      break;
+    case "finish-step":
+      handleFinishStep(
+        part.usage as LanguageModelUsage | undefined,
+        part.performance as StepPerformance | undefined,
+        state,
+      );
       break;
     case "error":
       handleError(part.error, state);
@@ -213,6 +239,7 @@ function handleToolCall(
 ): void {
   state.toolCalls.push({ name: toolName, args: input, toolCallId });
   state.hadToolCalls = true;
+  state.stepToolCalls++;
 
   if (!isQuietMode()) {
     process.stdout.write(formatToolCall(toolName, input) + "\n");
@@ -251,12 +278,47 @@ function handleStartStep(state: StreamState): void {
   closeThought(state);
 
   state.stepCount++;
+  state.stepToolCalls = 0;
 
   // Add blank line between tool call results and follow-up content
   // (skip when usage is shown — usage line already provides the gap)
   if (state.hadToolCalls && !state.showUsage && !isQuietMode()) {
     process.stdout.write("\n");
   }
+}
+
+/**
+ * Handle finish-step: print the step's token usage and generation speed.
+ *
+ * This lives here rather than in streamText's onStepEnd callback: that callback
+ * runs while the part is still in flight, so its line could print ahead of the
+ * step's own output. Printing from the consume loop fixes the order.
+ *
+ * @param usage - The step's token usage, as the SDK reports it
+ * @param performance - The step's timings, as the SDK measured them
+ * @param state - Mutable stream state
+ */
+function handleFinishStep(
+  usage: LanguageModelUsage | undefined,
+  performance: StepPerformance | undefined,
+  state: StreamState,
+): void {
+  if (usage == null) {
+    return;
+  }
+
+  const stepUsage = toTokenUsage(usage);
+
+  if (state.showUsage) {
+    printStepUsage(
+      stepUsage,
+      state.prevUsage,
+      state.stepToolCalls === 0,
+      toStepTiming(performance),
+    );
+  }
+
+  state.prevUsage = stepUsage;
 }
 
 /**
@@ -273,7 +335,7 @@ function finishStream(state: StreamState): void {
 
   closeThought(state);
 
-  // Skip trailing newline when usage is shown — onStepEnd adds its own
+  // Skip trailing newline when usage is shown — the usage line adds its own
   if (!state.showUsage) {
     process.stdout.write("\n");
   }

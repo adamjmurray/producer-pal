@@ -5,7 +5,7 @@
 
 import { useCallback } from "preact/hooks";
 import { type Notation } from "#src/shared/notation";
-import { type ProviderStateSetters } from "#webui/hooks/settings/settings-helpers";
+import { type ProviderStateSetters } from "#webui/hooks/settings/helpers/provider-settings";
 import { type ChatPreset, type Provider } from "#webui/types/settings";
 
 /**

@@ -6,9 +6,12 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen } from "@testing-library/preact";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { EditorFooter } from "#webui/components/context/collection/collection-editor-parts";
+import {
+  EditorFooter,
+  NameField,
+} from "#webui/components/context/collection/collection-editor-parts";
 import { type SaveStatus } from "#webui/hooks/context/use-doc";
 
 /**
@@ -58,5 +61,25 @@ describe("EditorFooter save status text", () => {
     renderFooter("error", null);
 
     expect(screen.getByText("Save failed")).toBeTruthy();
+  });
+});
+
+describe("NameField rename", () => {
+  it("reverts to an empty slug on Escape when there is no stored name", () => {
+    const onChange = vi.fn();
+
+    render(
+      <NameField
+        isNew={false}
+        name="half-renamed"
+        placeholder="slug"
+        onChange={onChange}
+        onRename={vi.fn()}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByLabelText("Rename"), { key: "Escape" });
+
+    expect(onChange).toHaveBeenCalledWith("");
   });
 });

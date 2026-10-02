@@ -4,11 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -36,6 +35,7 @@ update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s)
 stop-session-clips: by id(s) or path(s)
+(both answer with one clips entry per id/path named, in order: {id, path}, or {id|path, ok:false, detail} for one that couldn't be reached)
 stop-all-session-clips: all
 stop: session and arrangement; takes startTime to park the next play`,
       ),
@@ -72,9 +72,7 @@ stop: session and arrangement; takes startTime to park the next play`,
         "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: z.coerce
       .string()
       .optional()
@@ -82,13 +80,13 @@ stop: session and arrangement; takes startTime to park the next play`,
         "clip slot(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
           "for play-scene, a scene 's<scene>' (e.g., 's3') or any position in it",
       ),
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
 
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
     }),
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: scenePathFromIndex,
     }),
   },
 });

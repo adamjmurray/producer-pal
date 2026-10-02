@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "../read-device.ts";
+import { readOneDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
 /** Simpler device props reused across tests */
@@ -21,7 +21,7 @@ const simplerDevice = {
 const LAYER1_CHAIN = {
   id: "chain-1",
   path: "t1/d0/pC1/c0",
-  type: "DrumChain",
+  type: "drum-chain",
   name: "Layer 1",
   color: "#00FF00",
   mappedPitch: "C3",
@@ -115,14 +115,14 @@ function setupCatchAllChainMocks() {
 
 /**
  * Assert a read result is the "device-1" Simpler instrument.
- * @param result - The readDevice result to check
+ * @param result - The readOneDevice result to check
  */
 function expectSimplerDeviceResult(result: Record<string, unknown>) {
   expect(result.id).toBe("device-1");
   expect(result.type).toBe("instrument: Simpler");
 }
 
-describe("readDevice with drum pad path", () => {
+describe("readOneDevice with drum pad path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -130,13 +130,12 @@ describe("readDevice with drum pad path", () => {
   it("should read drum pad by path", () => {
     setupKickPadMocks();
 
-    const result = readDevice({ path: "t1/d0/pC1", include: [] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: [] });
 
     expect(result).toStrictEqual({
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
-      note: 36,
       pitch: "C1",
       chainCount: 0,
     });
@@ -148,7 +147,7 @@ describe("readDevice with drum pad path", () => {
       padProperties: { "pad-36": { note: 36, name: 5678 } },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: [] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: [] });
 
     expect(result.name).toBe("5678");
   });
@@ -187,7 +186,7 @@ describe("readDevice with drum pad path", () => {
       });
     }
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["chains"] });
     const chains = result.chains as { id: string; path: string }[];
 
     expect(chains.map((c) => c.id)).toStrictEqual(["layer-a", "layer-b"]);
@@ -195,7 +194,7 @@ describe("readDevice with drum pad path", () => {
       "t1/d0/pC1/c0",
       "t1/d0/pC1/c1",
     ]);
-    expect(readDevice({ path: "t1/d0/pC1/c1", include: [] }).id).toBe(
+    expect(readOneDevice({ path: "t1/d0/pC1/c1", include: [] }).id).toBe(
       "layer-b",
     );
   });
@@ -203,7 +202,7 @@ describe("readDevice with drum pad path", () => {
   it("should read muted drum pad", () => {
     setupKickPadMocks({ padExtra: { mute: 1 } });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: [] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: [] });
 
     expect(result.state).toBe("muted");
   });
@@ -211,7 +210,7 @@ describe("readDevice with drum pad path", () => {
   it("should read soloed drum pad", () => {
     setupKickPadMocks({ padExtra: { solo: 1 } });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: [] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: [] });
 
     expect(result.state).toBe("soloed");
   });
@@ -229,7 +228,7 @@ describe("readDevice with drum pad path", () => {
       },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["chains"] });
 
     const chains = result.chains as Record<string, unknown>[];
 
@@ -237,7 +236,7 @@ describe("readDevice with drum pad path", () => {
     expect(chains[0]).toStrictEqual({
       id: "chain-1",
       path: "t1/d0/pC1/c0",
-      type: "DrumChain",
+      type: "drum-chain",
       name: "Layer 1",
       color: "#FF0000",
       mappedPitch: "C2",
@@ -264,13 +263,13 @@ describe("readDevice with drum pad path", () => {
       properties: { value: 0.25 },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["chains"] });
     const chains = result.chains as Record<string, unknown>[];
 
     expect(chains[0]).toStrictEqual({
       id: "chain-1",
       path: "t1/d0/pC1/c0",
-      type: "DrumChain",
+      type: "drum-chain",
       name: "Layer 1",
       mappedPitch: "C2",
       gainDb: -15,
@@ -301,7 +300,7 @@ describe("readDevice with drum pad path", () => {
       properties: { value: 0.5, display_value: -9 },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["chains"] });
     const chains = result.chains as Record<string, unknown>[];
 
     // Only the send that is turned up is listed, named after return chain B,
@@ -325,7 +324,7 @@ describe("readDevice with drum pad path", () => {
       deviceProperties: { "device-1": simplerDevice },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const result = readOneDevice({ path: "t1/d0/pC1", include: ["chains"] });
 
     const chains = result.chains as Array<Record<string, unknown>>;
 
@@ -348,7 +347,7 @@ describe("readDevice with drum pad path", () => {
       },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1/c0" });
+    const result = readOneDevice({ path: "t1/d0/pC1/c0" });
 
     expect(result).toStrictEqual({ ...LAYER1_CHAIN, devices: [] });
   });
@@ -367,7 +366,7 @@ describe("readDevice with drum pad path", () => {
       deviceProperties: { "device-1": simplerDevice },
     });
 
-    const result = readDevice({ path: "t1/d0/pC1/c0" });
+    const result = readOneDevice({ path: "t1/d0/pC1/c0" });
 
     expect(result).toStrictEqual({
       ...LAYER1_CHAIN,
@@ -384,7 +383,7 @@ describe("readDevice with drum pad path", () => {
   it("should throw error when drum pad not found", () => {
     setupKickPadMocks(); // C1, not C3
 
-    expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC3" })).toThrow(
       "Drum pad C3 not found",
     );
   });
@@ -392,7 +391,7 @@ describe("readDevice with drum pad path", () => {
   it("should throw error for invalid drum pad note name", () => {
     setupKickPadMocks();
 
-    expect(() => readDevice({ path: "t1/d0/pXYZ" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pXYZ" })).toThrow(
       /"pXYZ" names no drum pad/,
     );
   });
@@ -402,7 +401,7 @@ describe("readDevice with drum pad path", () => {
   it("should report the catch-all pad as not found", () => {
     setupKickPadMocks();
 
-    expect(() => readDevice({ path: "t1/d0/p*" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/p*" })).toThrow(
       "Drum pad * not found",
     );
   });
@@ -412,13 +411,25 @@ describe("readDevice with drum pad path", () => {
   it("reads the catch-all pad when a chain routes to it", () => {
     setupCatchAllChainMocks();
 
-    expect(readDevice({ path: "t1/d0/p*", include: [] })).toStrictEqual({
+    expect(readOneDevice({ path: "t1/d0/p*", include: [] })).toStrictEqual({
       path: "t1/d0/p*",
       name: "All Notes",
-      note: -1,
       pitch: "*",
       chainCount: 1,
     });
+  });
+
+  it("carries the catch-all pad's chains when chains were asked for", () => {
+    setupCatchAllChainMocks();
+
+    const pad = readOneDevice({ path: "t1/d0/p*", include: ["chains"] });
+    const chains = pad.chains as { id: string; path: string }[];
+
+    expect(chains).toHaveLength(1);
+    expect(chains[0]?.id).toBe("catch-all");
+    expect(chains[0]?.path).toBe("t1/d0/p*/c0");
+    // The chains replace the count a chainless read reports.
+    expect(pad.chainCount).toBeUndefined();
   });
 
   // read-device prints `p*/cN` for a catch-all chain, so it has to read one
@@ -426,7 +437,7 @@ describe("readDevice with drum pad path", () => {
   it("reads back the catch-all chain path it prints", () => {
     setupCatchAllChainMocks();
 
-    const rack = readDevice({
+    const rack = readOneDevice({
       path: "t1/d0",
       include: ["drum-pads", "chains"],
     });
@@ -438,7 +449,7 @@ describe("readDevice with drum pad path", () => {
     expect(pads[0]?.pitch).toBe("*");
     expect(pads[0]?.chains.map((c) => c.path)).toStrictEqual(["t1/d0/p*/c0"]);
 
-    const chain = readDevice({ path: "t1/d0/p*/c0", include: [] });
+    const chain = readOneDevice({ path: "t1/d0/p*/c0", include: [] });
 
     expect(chain.id).toBe("catch-all");
     expect(chain.path).toBe("t1/d0/p*/c0");
@@ -447,14 +458,14 @@ describe("readDevice with drum pad path", () => {
   it("reads a device inside the catch-all chain", () => {
     setupCatchAllChainMocks();
 
-    expectSimplerDeviceResult(readDevice({ path: "t1/d0/p*/d0" }));
-    expectSimplerDeviceResult(readDevice({ path: "t1/d0/p*/c0/d0" }));
+    expectSimplerDeviceResult(readOneDevice({ path: "t1/d0/p*/d0" }));
+    expectSimplerDeviceResult(readOneDevice({ path: "t1/d0/p*/c0/d0" }));
   });
 
   it("rejects a chain index past the catch-all's chains", () => {
     setupCatchAllChainMocks();
 
-    expect(() => readDevice({ path: "t1/d0/p*/c1" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/p*/c1" })).toThrow(
       "Invalid chain index in path: t1/d0/p*/c1",
     );
   });
@@ -463,7 +474,7 @@ describe("readDevice with drum pad path", () => {
   it("reports the catch-all as not found when no chain routes to it", () => {
     setupKickPadMocks();
 
-    expect(() => readDevice({ path: "t1/d0/p*/c0" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/p*/c0" })).toThrow(
       "Drum pad * not found",
     );
   });
@@ -471,7 +482,7 @@ describe("readDevice with drum pad path", () => {
   it("should throw error for invalid chain index in drum pad", () => {
     setupKickPadMocks({ padExtra: { chainIds: [] } });
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c5" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c5" })).toThrow(
       "Invalid chain index in path: t1/d0/pC1/c5",
     );
   });
@@ -481,7 +492,7 @@ describe("readDevice with drum pad path", () => {
     // mutant would fall through to an assertDefined error instead.
     setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c1" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c1" })).toThrow(
       "Invalid chain index in path: t1/d0/pC1/c1",
     );
   });
@@ -491,7 +502,7 @@ describe("readDevice with drum pad path", () => {
     // before any of this resolves against the rack.
     setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
 
-    expect(() => readDevice({ path: "t1/d0/pC1/cX" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/cX" })).toThrow(
       'invalid path "t1/d0/pC1/cX" - "cX" is not a device, chain, or drum pad',
     );
   });
@@ -499,7 +510,7 @@ describe("readDevice with drum pad path", () => {
   it("should read device inside drum pad chain", () => {
     setupKickPadWithChainDevice();
 
-    const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
+    const result = readOneDevice({ path: "t1/d0/pC1/c0/d0" });
 
     expectSimplerDeviceResult(result);
   });
@@ -509,7 +520,7 @@ describe("readDevice with drum pad path", () => {
 
     // "pC1/d0" omits the chain segment; chain 0 is implied (== "pC1/c0/d0"),
     // matching the write-side pad-property shortcut.
-    const result = readDevice({ path: "t1/d0/pC1/d0" });
+    const result = readOneDevice({ path: "t1/d0/pC1/d0" });
 
     expectSimplerDeviceResult(result);
   });
@@ -520,7 +531,7 @@ describe("readDevice with drum pad path", () => {
       chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
     });
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c0/d5" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c0/d5" })).toThrow(
       "Invalid device index in path: t1/d0/pC1/c0/d5",
     );
   });
@@ -529,7 +540,7 @@ describe("readDevice with drum pad path", () => {
     // One device (index 0); "d1" is one past the end (pins the `>=` bound).
     setupKickPadWithChainDevice();
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c0/d1" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c0/d1" })).toThrow(
       "Invalid device index in path: t1/d0/pC1/c0/d1",
     );
   });
@@ -537,7 +548,7 @@ describe("readDevice with drum pad path", () => {
   it("should throw for a non-numeric device segment", () => {
     setupKickPadWithChainDevice();
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
       'invalid path "t1/d0/pC1/c0/dX" - "dX" is not a device, chain, or drum pad',
     );
   });
@@ -604,7 +615,7 @@ function setupPadlessNestedRackMocks() {
 // The drumPads list is how a model finds out what pads exist, so it has to name
 // the path each pad answers to — the pads of a nested rack have no id, and the
 // path is then the only handle on them.
-describe("readDevice drumPads list", () => {
+describe("readOneDevice drumPads list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -612,13 +623,12 @@ describe("readDevice drumPads list", () => {
   it("names the path of every pad it lists", () => {
     setupCatchAllChainMocks();
 
-    const rack = readDevice({ path: "t1/d0", include: ["drum-pads"] });
+    const rack = readOneDevice({ path: "t1/d0", include: ["drum-pads"] });
 
     expect(rack.drumPads).toStrictEqual([
       {
         path: "t1/d0/p*",
         name: "All Notes",
-        note: -1,
         pitch: "*",
         chainCount: 1,
       },
@@ -641,14 +651,13 @@ describe("readDevice drumPads list", () => {
       },
     });
 
-    const rack = readDevice({ path: "t1/d0", include: ["drum-pads"] });
+    const rack = readOneDevice({ path: "t1/d0", include: ["drum-pads"] });
 
     expect(rack.drumPads).toStrictEqual([
       {
         id: "pad-36",
         path: "t1/d0/pC1",
         name: "Chain",
-        note: 36,
         pitch: "C1",
         chainCount: 1,
         hasInstrument: false,
@@ -672,26 +681,25 @@ describe("readDevice drumPads list", () => {
       },
     });
 
-    const pad = readDevice({ path: "t1/d0/p*", include: [] });
+    const pad = readOneDevice({ path: "t1/d0/p*", include: [] });
 
     expect(pad).toStrictEqual({
       path: "t1/d0/p*",
       name: "All Notes",
-      note: -1,
       pitch: "*",
       chainCount: 1,
       state: "muted",
       hasInstrument: false,
     });
     expect(
-      readDevice({ path: "t1/d0", include: ["drum-pads"] }).drumPads,
+      readOneDevice({ path: "t1/d0", include: ["drum-pads"] }).drumPads,
     ).toStrictEqual([pad]);
   });
 
   it("names the path of a nested rack's pad, which has no id", () => {
     setupPadlessNestedRackMocks();
 
-    const subRack = readDevice({
+    const subRack = readOneDevice({
       path: "t1/d0/pC1/c0/d0",
       include: ["drum-pads"],
     });
@@ -700,7 +708,6 @@ describe("readDevice drumPads list", () => {
       {
         path: "t1/d0/pC1/c0/d0/pC3",
         name: "Hat",
-        note: 60,
         pitch: "C3",
         chainCount: 1,
         hasInstrument: false,
@@ -714,7 +721,7 @@ describe("readDevice drumPads list", () => {
   it("resolves the nested pad path it printed", () => {
     setupPadlessNestedRackMocks();
 
-    const target = readDevice({ path: "t1/d0/pC1/c0/d0/pC3" });
+    const target = readOneDevice({ path: "t1/d0/pC1/c0/d0/pC3" });
 
     expect(target.id).toBe("sub-chain");
     expect(target.path).toBe("t1/d0/pC1/c0/d0/pC3");

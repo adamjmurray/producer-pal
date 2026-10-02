@@ -23,7 +23,7 @@ describe("createClip - audio properties", () => {
     });
 
     // Live stores gain on a non-dB scale, so assert the property was written
-    // rather than the exact curve value (gain-utils owns that conversion).
+    // rather than the exact curve value (gain-conversion owns that conversion).
     expect(clip.set).toHaveBeenCalledWith("gain", expect.any(Number));
   });
 

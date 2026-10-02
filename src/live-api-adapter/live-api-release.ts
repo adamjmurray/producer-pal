@@ -62,7 +62,7 @@
  * per full read from 0.39 — and buys it back as armed listeners, the cost this
  * file exists to remove. Taking the leak is the deliberate trade: it needs tens
  * of thousands of requests to matter, where the listeners slow Live down while
- * you work. See dev/LiveAPI-Performance.md.
+ * you work. See dev/live-api/performance.md.
  *
  * Pooling does not make the cost vanish, and measuring it as though it should
  * will read as failure. Visiting a path registers something too, so latency
@@ -76,7 +76,7 @@
  * (freepeer) and 3.5 s (collected) until the device was reloaded.
  */
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 const trackedObjects: LiveAPI[] = [];
@@ -184,6 +184,16 @@ export function requestMemo<T>(key: string, compute: () => T): T {
   memoizedValues.set(key, value);
 
   return value;
+}
+
+/**
+ * Forget one {@link requestMemo} value, so the next ask for that key recomputes
+ * it. For a value a write inside the same request can invalidate — a rack's
+ * chain list, say, after a chain is inserted or deleted on it.
+ * @param key - The key passed to {@link requestMemo}
+ */
+export function forgetRequestMemo(key: string): void {
+  memoizedValues.delete(key);
 }
 
 /** Forget everything memoized, so the next lookup of each resolves afresh. */

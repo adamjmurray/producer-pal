@@ -12,7 +12,10 @@ import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,
 } from "#webui/hooks/chat/helpers/use-sync-active-meta";
-import { type ActiveMeta, DEFAULT_META } from "#webui/lib/conversation-store";
+import {
+  type ActiveMeta,
+  DEFAULT_META,
+} from "#webui/lib/conversations/conversation-store";
 
 const ALL_NULL: SyncActiveMetaParams = {
   activeModel: null,
@@ -38,7 +41,7 @@ describe("useSyncActiveMeta", () => {
 
     renderHook(() =>
       useSyncActiveMeta(ref, {
-        activeModel: "claude-sonnet-5",
+        activeModel: "claude-sonnet-5-5",
         activeProvider: "anthropic",
         activeThinking: "high",
         activeSmallModelMode: false,
@@ -50,7 +53,7 @@ describe("useSyncActiveMeta", () => {
 
     expect(ref.current).toStrictEqual({
       ...DEFAULT_META,
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
       provider: "anthropic",
       thinking: "high",
       smallModelMode: false,

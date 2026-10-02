@@ -36,7 +36,14 @@ import {
   isSpawnToolResult,
 } from "./subagent/subagent-session";
 import { DEFAULT_MAX_TOOL_STEPS } from "./step-budget";
-import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
+import {
+  type ChatClientConfig,
+  type ChatMessage,
+  type UserMessage,
+  normalizeUserMessage,
+  toStepTiming,
+  toTokenUsage,
+} from "./types";
 
 /**
  * Default tool-step budget for any turn. Re-exported so callers and tests keep
@@ -291,19 +298,24 @@ export class ChatSdkClient {
   /**
    * Send a message and stream back the evolving chat history.
    * The AI SDK handles multi-step tool calling via stopWhen.
-   * @param message - User message text
+   * @param message - User message text, or text plus attached images
    * @param abortSignal - Signal to abort the stream
    * @param overrides - Per-message overrides for thinking
    * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
    * @yields Complete chat history after each stream update
    */
   async *sendMessage(
-    message: string,
+    message: UserMessage,
     abortSignal?: AbortSignal,
     overrides?: MessageOverrides,
     shouldInterrupt?: () => boolean,
   ): AsyncGenerator<ChatMessage[], void, unknown> {
-    const userMsg: ChatMessage = { role: "user", content: message };
+    const { text, images } = normalizeUserMessage(message);
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: text,
+      ...(images?.length ? { images } : {}),
+    };
 
     this.toolLimitReached = false;
     // MAX_SPAWNS bounds fan-out per turn, so the counter starts fresh here. A
@@ -430,6 +442,7 @@ export class ChatSdkClient {
       messages: buildModelMessages(
         this.chatHistory,
         isAnthropicThinkingEnabled(providerOptions),
+        this.config.maxRequestImages,
       ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(this.maxSteps),
@@ -444,6 +457,12 @@ export class ChatSdkClient {
 
           if (msg.role === "assistant" && count++ === stepIndex) {
             msg.usage = toTokenUsage(event.usage);
+
+            const timing = toStepTiming(event.performance);
+
+            if (timing) {
+              msg.timing = timing;
+            }
 
             if (event.response.modelId) {
               msg.responseModel = event.response.modelId;

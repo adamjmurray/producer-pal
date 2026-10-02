@@ -18,6 +18,7 @@ import { DEFAULT_NOTATION, isNotation } from "#src/shared/notation.ts";
 import { assembleSkills } from "#src/skills/build-skills.ts";
 import { resolveFragmentAlias } from "#src/skills/builtin-fragments.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
+import { withRemoteScriptAnswer } from "../helpers/skills-inject.ts";
 
 /**
  * Register the GET /skills-preview endpoint on the Express app. Query params
@@ -44,7 +45,7 @@ export function registerSkillsPreviewRoute(
   app: Express,
   getTools?: () => readonly string[],
 ): void {
-  app.get("/skills-preview", (req: Request, res: Response): void => {
+  app.get("/skills-preview", async (req: Request, res: Response) => {
     // Overrides can change on the device/filesystem between calls — never cache.
     res.set("Cache-Control", "no-store");
 
@@ -66,7 +67,11 @@ export function registerSkillsPreviewRoute(
     // silently truncated blob.
     const warnings: string[] = [];
     const { skills, dropped } = assembleSkills(
-      { notation, smallModelMode, tools: previewTools(req, getTools) },
+      await withRemoteScriptAnswer({
+        notation,
+        smallModelMode,
+        tools: previewTools(req, getTools),
+      }),
       readSkillOverrides(),
       (message) => warnings.push(message),
     );

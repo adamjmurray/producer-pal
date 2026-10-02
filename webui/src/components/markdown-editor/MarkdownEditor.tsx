@@ -21,7 +21,7 @@ import {
   frameClassName,
   notifyFocusChange,
   submitKeymap,
-} from "./markdown-editor-helpers";
+} from "./markdown-editor-config";
 
 /** Imperative handle a parent can hold to drive the editor between renders. */
 export interface MarkdownEditorHandle {

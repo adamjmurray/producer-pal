@@ -198,6 +198,23 @@ describe("voice-token route", () => {
     });
   });
 
+  it("falls back to default model when the request has no parsed body", async () => {
+    const { calls } = mockOpenAIFetch(async () =>
+      jsonResponse(200, { value: "ek_x", expires_at: 0 }),
+    );
+
+    // No Content-Type, so express.json() leaves req.body undefined.
+    const res = await REAL_FETCH(`${appState.baseUrl}/voice-token`, {
+      method: "POST",
+      headers: { "X-OpenAI-Key": "sk-test" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(JSON.parse(calls[0]!.init!.body as string)).toStrictEqual({
+      session: { type: "realtime", model: "gpt-realtime-2.1" },
+    });
+  });
+
   it("forwards upstream non-2xx with status and detail JSON", async () => {
     mockOpenAIFetch(async () =>
       jsonResponse(401, { error: { message: "Invalid API key" } }),

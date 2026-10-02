@@ -102,17 +102,18 @@ describe("playback play-scene target agreement", () => {
 
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
       playing: true,
-      scene: { id: "scene3", path: "s3", name: "Chorus" },
+      scene: { id: "scene3", path: "s3" },
     });
   });
 
-  // Live shows an unnamed scene as its number, and readScene says the same.
-  it("names an unnamed scene by its number", () => {
-    mockScene(3, undefined, "");
+  // play-scene changes no name, so it doesn't report one: id and path already
+  // say which scene fired, and ppal-read-scene has the name.
+  it("reports the scene by id and path only", () => {
+    mockScene(3, undefined, "Chorus");
 
     expect(playback({ action: "play-scene", sceneIndex: 3 })).toStrictEqual({
       playing: true,
-      scene: { id: "scene3", path: "s3", name: "4" },
+      scene: { id: "scene3", path: "s3" },
     });
   });
 
@@ -124,7 +125,7 @@ describe("playback play-scene target agreement", () => {
 
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
       playing: true,
-      scene: { id: "scene5", path: "s5", name: "Bridge" },
+      scene: { id: "scene5", path: "s5" },
     });
   });
 
@@ -376,7 +377,7 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      "t0[1|1] (id clip1) is in no scene (found Clip); action " +
+      "t0[1|1] (id clip1) is in no scene (found clip); action " +
         '"play-scene" takes a scene id or a session clip id',
     );
   });
@@ -390,8 +391,24 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      "t5 (id track9) is in no scene (found Track); action " +
+      "t5 (id track9) is in no scene (found track); action " +
         '"play-scene" takes a scene id or a session clip id',
+    );
+  });
+
+  it("leaves the type out for a class the tools never name", () => {
+    const warn = vi.spyOn(console, "warn");
+    const scene = mockScene(3);
+
+    registerMockObject("groove1", {
+      path: "live_set grooves 0",
+      type: "Groove",
+    });
+    playback({ action: "play-scene", sceneIndex: 3, id: "groove1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith(
+      'id groove1 is in no scene; action "play-scene" takes a scene id or a session clip id',
     );
   });
 

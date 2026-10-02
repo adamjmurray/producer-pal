@@ -67,9 +67,11 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
       notes: FOUR_BARS_OF_NOTES,
     });
 
-    // The documented route is a clean one — no warnings, same clip back, and
-    // the notes confirmed by count so the caller needn't re-read the clip.
+    // The documented route is a clean one — nothing to report anywhere, same
+    // clip back, and the notes confirmed by count so the caller needn't
+    // re-read the clip.
     expect(warnings).toStrictEqual([]);
+    expect(data.detail).toBeUndefined();
     expect(data.id).toBe(id);
     expect(data.noteCount).toBe(4);
 
@@ -111,6 +113,36 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     expect(lengthBeats(source[0]!)).toBeCloseTo(beats("1bar"), 5);
   });
 
+  // Growing into the lane destroys whatever is standing there, and Live says
+  // nothing about it — so the clip that grew has to.
+  it("says on the clip's entry what the tiles ran over", async () => {
+    const id = await createLoopingArrClip("161|1");
+    const buried = await createLoopingArrClip("163|1");
+
+    const result = await callTool(ctx.client!, "ppal-update-clip", {
+      id,
+      arrangementLength: "4bar",
+    });
+
+    await sleep(200);
+
+    const { data, warnings } =
+      parseToolResultWithWarnings<LengthenedClip[]>(result);
+
+    // The clip the call named is the first entry; the rest are its tiles.
+    expect(data[0]?.id).toBe(id);
+    expect(data[0]?.detail).toBe(
+      `overwrote the clip at t${EMPTY_MIDI_TRACK}[163|1]`,
+    );
+    expect(warnings).toStrictEqual([]);
+
+    // The row really did replace it: four clips, and none of them the old one.
+    const clips = clipsInBarRange(await readArrClips(), 161, 164);
+
+    expect(clips).toHaveLength(4);
+    expect(clips.map((clip) => clip.id)).not.toContain(buried);
+  });
+
   it("tiles when ppal-duplicate itself does the lengthening", async () => {
     const sourceId = await createLoopingArrClip("141|1");
 
@@ -149,6 +181,8 @@ async function createLoopingArrClip(position: string): Promise<string> {
 interface LengthenedClip {
   id: string;
   noteCount?: number;
+  /** What the lengthening had to say about this clip. */
+  detail?: string;
 }
 
 /**

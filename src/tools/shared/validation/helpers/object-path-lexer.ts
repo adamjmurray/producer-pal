@@ -8,7 +8,29 @@
 // the tail.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { locatorRef } from "#src/tools/shared/locator/song-position.ts";
 import { type ObjectPath } from "../object-path.ts";
+
+/**
+ * Why a tool that can't append a take lane refuses an `l+`. Here with
+ * {@link pathError} because every part of the grammar imports this file.
+ */
+export const NEW_TAKE_LANE_ADVICE =
+  '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do';
+
+/** Appends a chain to the rack (or drum pad) the rest of the path names. */
+export const NEW_CHAIN = "c+";
+
+/** Why a tool that only reads or writes an existing object can't take a `c+`. */
+export const NEW_CHAIN_ADVICE =
+  '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+
+/** Appends a device to the container the rest of the path names. */
+export const NEW_DEVICE = "d+";
+
+/** Why a tool that only reads or writes an existing object can't take a `d+`. */
+export const NEW_DEVICE_ADVICE =
+  '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
 
 const LEGACY_TRACK = /^(\d+)$/;
 const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
@@ -124,6 +146,11 @@ export function splitCoord(input: string, label: string): LexedPath {
   }
 
   const position = input.slice(open + 1, -1).trim();
+
+  // A locator name may hold brackets; a bar|beat never does.
+  if (position.includes("[") && locatorRef(position) == null) {
+    throw pathError(label, input, 'it hit an unexpected second "["');
+  }
 
   if (position === "") {
     throw pathError(

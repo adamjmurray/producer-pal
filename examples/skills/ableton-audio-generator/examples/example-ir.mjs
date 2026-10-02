@@ -14,7 +14,17 @@ import { resolve } from "node:path";
 import { declick, normalize, writeWav } from "../lib/audio-io.mjs";
 import { parseArgs } from "../lib/cli.mjs";
 
-const { opt, num, int } = parseArgs();
+const USAGE = `Usage: node examples/example-ir.mjs [options]
+
+  --out <dir>        output directory (default ./reverb-irs)
+  --decay <seconds>  tail length, 0.01–60 (default 1.8)
+  --predelay <ms>    0–5000 (default 20)
+  --size <factor>    early-reflection spacing, 0.01–10 (default 1)
+  --tone <0-1>       0 = dark tail, 1 = bright (default 0.5)
+  --er <0|1>         include discrete early reflections (default 1)
+  --sr <rate>        sample rate, 8000–192000 (default 48000)
+  --help, -h         show this help`;
+const { opt, num, int } = parseArgs(USAGE);
 const OUT = resolve(opt("--out", "./reverb-irs"));
 const DECAY = num("--decay", 1.8, 0.01, 60); // tail length in seconds (RT60-ish)
 const PREDELAY_MS = num("--predelay", 20, 0, 5000);

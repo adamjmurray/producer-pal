@@ -75,7 +75,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     searches: param(searchesInputSchema, {
       default:
-        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Each entry takes the same filters as a single search, plus an optional label; results come back in order, grouped per query (max 20)",
+        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Each entry takes the same filters as a single search, plus an optional label; results come back in order, grouped per query (max 20). One entry answers like a plain search, ungrouped",
       smallModel: null,
     }),
 
@@ -91,7 +91,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler, the rest are discovery-only). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sampleFolder)",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler; a preset or device-group result's path loads as `preset` on ppal-create-device/ppal-update-device).audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sampleFolder)",
       smallModel: {
         description:
           "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
@@ -109,7 +109,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     type: param(z.enum(LIBRARY_TYPE_VALUES).optional(), {
       default:
-        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
+        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=reverb IRs, including ones other searches hide. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
       smallModel:
         "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),
@@ -124,7 +124,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     similarTo: param(z.coerce.string().optional(), {
       default:
-        "findSimilar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Each result carries a `similarity` score (-1 to 1, ~1 = very similar).",
+        "findSimilar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Like Live's Show Similar Files, identical audio is listed once. Each result carries a `distance` (lower = more similar; no fixed scale).",
       smallModel: null,
     }),
 
@@ -160,7 +160,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     inFolder: param(z.coerce.string().optional(), {
       default:
-        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `reason` explaining the path wasn't found.",
+        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `detail` explaining the path wasn't found.",
       smallModel: "absolute folder path; returns immediate children only",
     }),
 

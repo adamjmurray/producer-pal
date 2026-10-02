@@ -13,7 +13,7 @@ vi.mock(import("#webui/utils/mcp-url"), async () => {
   return { getMcpUrl: voiceAppMocks.getMcpUrl };
 });
 
-vi.mock(import("#webui/utils/browser-detect"), async () => {
+vi.mock(import("#webui/utils/is-firefox"), async () => {
   const { voiceAppMocks } = await import("./voice-app-test-helpers");
 
   return { isFirefox: voiceAppMocks.isFirefox };

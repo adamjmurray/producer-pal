@@ -9,12 +9,16 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   END_OF_CHUNKS,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import {
   clearNodeRoutes,
   handleNodeRequest,
   registerNodeRoute,
 } from "./node-request-protocol.ts";
+import {
+  type ParsedNodeResponse,
+  parseSentNodeResponse,
+} from "../tests/config-dir-test-helpers.ts";
 
 vi.mock(import("../node-for-max-logger.ts"), () => ({
   log: vi.fn(),
@@ -23,30 +27,8 @@ vi.mock(import("../node-for-max-logger.ts"), () => ({
   error: vi.fn(),
 }));
 
-type ParsedNodeResponse = {
-  success: boolean;
-  result?: unknown;
-  error?: string;
-};
-
-/**
- * Reassemble and parse the response JSON sent via the chunked Max.outlet call.
- *
- * @returns Parsed response object
- */
-function parseSentResponse(): ParsedNodeResponse {
-  const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
-
-  expect(name).toBe("node_response");
-
-  const delimiterIndex = rest.indexOf(END_OF_CHUNKS);
-
-  expect(delimiterIndex).toBeGreaterThanOrEqual(0);
-
-  const chunks = rest.slice(0, delimiterIndex) as string[];
-
-  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
-}
+const parseSentResponse = (): ParsedNodeResponse<unknown> =>
+  parseSentNodeResponse<unknown>();
 
 describe("node-request-protocol", () => {
   beforeEach(() => {
@@ -245,6 +227,27 @@ describe("node-request-protocol", () => {
 
     expect(consoleMock.error).toHaveBeenCalledWith(
       expect.stringContaining("Route 'hang' timed out"),
+    );
+  });
+
+  it("gives a route registered with its own timeout that long", async () => {
+    vi.useFakeTimers();
+
+    registerNodeRoute("slow", () => new Promise(() => {}), 40_000);
+
+    const promise = handleNodeRequest(
+      "req-slow",
+      JSON.stringify({ route: "slow", args: {} }),
+    );
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(Max.outlet).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(25_000);
+    await promise;
+
+    expect(parseSentResponse().error).toMatch(
+      /Route 'slow' timed out after 40000ms/,
     );
   });
 

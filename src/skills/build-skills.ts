@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 import {
   builtinFragments,
@@ -11,6 +12,7 @@ import {
 import {
   audienceGatedFragments,
   gatedOutFragments,
+  remoteScriptGatedFragments,
   type SkillsAudience,
 } from "#src/skills/fragment-tool-gates.ts";
 import { fragmentRequires } from "#src/skills/fragment-requires.ts";
@@ -47,6 +49,12 @@ export interface BuildSkillsOptions {
    * person. Omit for the user-facing default.
    */
   audience?: SkillsAudience;
+  /**
+   * Whether the Producer Pal remote script answered, which lets create-device
+   * load plug-ins and Max for Live devices. Omitted counts as no, and drops the
+   * fragment teaching it.
+   */
+  remoteScript?: boolean;
 }
 
 /**
@@ -129,6 +137,7 @@ export function buildSkills(
  * @param options.smallModelMode - Whether small-model mode is active.
  * @param options.tools - The tools available to this caller (omit for no gating).
  * @param options.audience - Who the blob is for (omit for the user-facing chat).
+ * @param options.remoteScript - Whether the Producer Pal remote script answered.
  * @param overrides - Per-fragment user overrides (empty by default).
  * @param onWarn - Sink for non-fatal assembly warnings.
  * @returns The blob and the fragments gating dropped from it.
@@ -139,6 +148,7 @@ export function assembleSkills(
     smallModelMode = false,
     tools,
     audience,
+    remoteScript,
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
@@ -153,10 +163,13 @@ export function assembleSkills(
     ...gatedOutFragments(tools),
     ...audienceGatedFragments(audience),
   ]);
-  // Tool gating, audience gating, and the user's per-slot off switches empty a
-  // fragment in exactly the same way, so all three resolve through one set.
+  // Tool gating, audience gating, the remote script, and the user's per-slot
+  // off switches empty a fragment the same way, so all resolve through one set.
+  // The remote script stays out of `dropped`: the preview explains that list as
+  // tools switched off.
   const suppressed = new Set([
     ...gated,
+    ...remoteScriptGatedFragments(remoteScript),
     ...switchableOff(overrides.disabled ?? [], onWarn),
   ]);
 
@@ -336,11 +349,9 @@ function warnRetiredOverrides(
  * includes the head AND the sibling, so the authoring half ships twice — costing
  * context and, worse, restating guidance a later release may have changed.
  *
- * The split kept the head's name on purpose, so nothing else can catch this: the
- * override still resolves, and the document still assembles. The overlap itself
- * is the only evidence, which is why this looks for COPIED TEXT rather than
- * assuming every override of a split slot is stale — a fork made today carries
- * none of the sibling's prose and stays quiet.
+ * The split kept the head's name, so nothing else can catch this: the override
+ * still resolves and the document still assembles. The overlap is the only
+ * evidence, hence the search for COPIED TEXT — a fork made today stays quiet.
  *
  * Runs before assembly, so it can't know whether the active notation and level
  * include this slot at all — an override of `stark-standard` under bar|beat ships
@@ -368,7 +379,11 @@ function warnSplitOverrides(
       continue;
     }
 
-    const shared = staleSplitLines(body, builtIns[write] ?? "");
+    // Every split slot's sibling is a real slot, so it has a built-in body.
+    const shared = staleSplitLines(
+      body,
+      assertDefined(builtIns[write], `built-in fragment "${write}"`),
+    );
 
     if (shared.length === 0) {
       continue;

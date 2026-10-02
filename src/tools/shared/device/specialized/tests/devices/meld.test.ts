@@ -6,35 +6,24 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
-/**
- * Register a mock Meld device and return its LiveAPI.
- * @param properties - Property overrides (merged onto Meld defaults)
- * @returns The Meld LiveAPI object
- */
-function registerMeld(properties: Record<string, unknown> = {}): LiveAPI {
-  registerMockObject("meld-1", {
-    type: "MeldDevice",
-    properties: {
-      class_display_name: "Meld",
-      mono_poly: 0,
-      poly_voices: 1,
-      unison_voices: 0,
-      ...properties,
-    },
-  });
-
-  return LiveAPI.from("id meld-1");
-}
+const registerMeld = specializedDeviceMock("meld-1", "MeldDevice", {
+  class_display_name: "Meld",
+  mono_poly: 0,
+  poly_voices: 1,
+  unison_voices: 0,
+});
 
 describe("Meld pseudo-params", () => {
   describe("read", () => {
@@ -116,28 +105,28 @@ describe("Meld pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("poly_voices", 6);
     });
 
-    it("warns and skips when polyVoices is above range (7)", () => {
+    it("refuses when polyVoices is above range (7)", () => {
       const device = registerMeld();
 
-      expect(applySpecializedParamWrite(device, "polyVoices", 7)).toStrictEqual(
-        [],
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "polyVoices", 7),
+        "polyVoices",
+        "polyVoices",
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("polyVoices"),
-      );
     });
 
-    it("warns and skips when polyVoices is below range (0)", () => {
+    it("refuses when polyVoices is below range (0)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 0);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "polyVoices", 0),
+        "polyVoices",
+        "polyVoices",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("polyVoices"),
-      );
     });
   });
 
@@ -166,26 +155,28 @@ describe("Meld pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("unison_voices", 2);
     });
 
-    it("warns and skips when unisonVoices is above range (3)", () => {
+    it("refuses when unisonVoices is above range (3)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 3);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "unisonVoices", 3),
+        "unisonVoices",
+        "unisonVoices",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("unisonVoices"),
-      );
     });
 
-    it("warns and skips when unisonVoices is a non-integer", () => {
+    it("refuses when unisonVoices is a non-integer", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 1.5);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "unisonVoices", 1.5),
+        "unisonVoices",
+        "unisonVoices",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("unisonVoices"),
-      );
     });
   });
 });
@@ -193,36 +184,16 @@ describe("Meld pseudo-params", () => {
 // Integration through the read-device tool: confirms pseudo-params surface in
 // the `parameters` output and that Meld contributes no modulations/options.
 describe("Meld via read-device", () => {
-  /**
-   * Register a fully-readable mock Meld instrument by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableMeld(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("meld-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Meld",
-        class_display_name: "Meld",
-        type: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        mono_poly: 0,
-        poly_voices: 3,
-        unison_voices: 1,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableMeld = readableDeviceMock("meld-1", "Meld", 1, {
+    mono_poly: 0,
+    poly_voices: 3,
+    unison_voices: 1,
+  });
 
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableMeld();
 
-    const result = readDevice({ id: "meld-1", include: ["params"] });
+    const result = readOneDevice({ id: "meld-1", include: ["params"] });
 
     expect(result.parameters).toStrictEqual([
       { name: "monoPoly", value: "mono" },
@@ -235,7 +206,7 @@ describe("Meld via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableMeld();
 
-    const result = readDevice({ id: "meld-1", include: ["options"] });
+    const result = readOneDevice({ id: "meld-1", include: ["options"] });
 
     expect(
       (result.options as Record<string, unknown>).paramOptions,

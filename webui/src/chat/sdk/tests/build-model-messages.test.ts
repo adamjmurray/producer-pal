@@ -7,6 +7,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildModelMessages,
   endsOnAssistantTurn,
+  MAX_REQUEST_IMAGE_BYTES,
+  MAX_REQUEST_IMAGES,
+  MISTRAL_MAX_REQUEST_IMAGES,
+  OMITTED_IMAGE_TEXT,
 } from "#webui/chat/sdk/build-model-messages";
 import { toolStepHistory } from "#webui/chat/sdk/tests/client-test-helpers";
 import { type ChatMessage } from "#webui/chat/sdk/types";
@@ -379,5 +383,195 @@ describe("endsOnAssistantTurn", () => {
 
   it("is false for an empty history", () => {
     expect(endsOnAssistantTurn([])).toBe(false);
+  });
+});
+
+/**
+ * The file part an attached image is sent as.
+ * @param image - The attached image
+ * @returns The expected file part
+ */
+const filePart = (image: { mediaType: string; data: string }) => ({
+  type: "file",
+  mediaType: image.mediaType,
+  data: { type: "data", data: image.data },
+});
+
+describe("buildModelMessages with attached images", () => {
+  const png = { mediaType: "image/png", data: "AAA" };
+  const jpeg = { mediaType: "image/jpeg", data: "BBB" };
+
+  it("sends images as image parts ahead of the text", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "match this groove", images: [png, jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          filePart(png),
+          filePart(jpeg),
+          { type: "text", text: "match this groove" },
+        ],
+      },
+    ]);
+  });
+
+  it("omits the text part when only images were sent", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [png] },
+    ]);
+
+    expect(result).toStrictEqual([{ role: "user", content: [filePart(png)] }]);
+  });
+
+  it("merges consecutive user turns when the first carries images", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "like this", images: [png] },
+      { role: "user", content: "but slower" },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          filePart(png),
+          { type: "text", text: "like this\n\nbut slower" },
+        ],
+      },
+    ]);
+  });
+
+  it("merges consecutive user turns when the second carries images", () => {
+    const result = buildModelMessages([
+      {
+        role: "user",
+        content: "summary of earlier turns",
+        isCompactionSummary: true,
+      },
+      { role: "user", content: "like this", images: [jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          filePart(jpeg),
+          { type: "text", text: "summary of earlier turns\n\nlike this" },
+        ],
+      },
+    ]);
+  });
+
+  it("keeps every image when both merged turns carry one", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [png] },
+      { role: "user", content: "and this", images: [jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          filePart(png),
+          filePart(jpeg),
+          { type: "text", text: "and this" },
+        ],
+      },
+    ]);
+  });
+
+  it("emits no text part when merged image turns have no words at all", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [png] },
+      { role: "user", content: "", images: [jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: [filePart(png), filePart(jpeg)] },
+    ]);
+  });
+});
+
+describe("buildModelMessages image budget", () => {
+  // Two of these fit the budget; a third doesn't.
+  const bigImage = (fill: string) => ({
+    mediaType: "image/png",
+    data: fill.repeat(Math.floor(MAX_REQUEST_IMAGE_BYTES / 3) + 1),
+  });
+  const [a, b, c] = [bigImage("A"), bigImage("B"), bigImage("C")];
+  const omitted = { type: "text", text: OMITTED_IMAGE_TEXT };
+
+  it("keeps the newest images and replaces older ones with a note", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "first", images: [a] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "second", images: [b] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "third", images: [c] },
+    ]);
+
+    expect(result.map((message) => message.content)).toStrictEqual([
+      [omitted, { type: "text", text: "first" }],
+      "ok",
+      [filePart(b), { type: "text", text: "second" }],
+      "ok",
+      [filePart(c), { type: "text", text: "third" }],
+    ]);
+  });
+
+  it("leaves out images in the newest message once it passes the budget", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [a, b, c] },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: [filePart(a), filePart(b), omitted] },
+    ]);
+  });
+
+  it("stops at the image count limit even when the bytes fit", () => {
+    const small = (data: string) => ({ mediaType: "image/png", data });
+    const [x, y] = [small("x"), small("y")];
+    const newer = Array.from({ length: MAX_REQUEST_IMAGES - 1 }, (_, i) =>
+      small(`n${i}`),
+    );
+
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [x, y] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "", images: newer },
+    ]);
+
+    expect(result.map((message) => message.content)).toStrictEqual([
+      [filePart(x), omitted],
+      "ok",
+      newer.map(filePart),
+    ]);
+  });
+
+  it("words the note to fit either limit, size or count", () => {
+    expect(OMITTED_IMAGE_TEXT).toBe(
+      "[Image left out to keep the request within its limits]",
+    );
+  });
+
+  it("stops at a lower image count limit when one is given", () => {
+    const images = Array.from(
+      { length: MISTRAL_MAX_REQUEST_IMAGES + 1 },
+      (_, i) => ({ mediaType: "image/png", data: `m${i}` }),
+    );
+
+    const result = buildModelMessages(
+      [{ role: "user", content: "", images }],
+      false,
+      MISTRAL_MAX_REQUEST_IMAGES,
+    );
+
+    expect(result[0]?.content).toStrictEqual([
+      ...images.slice(0, -1).map(filePart),
+      omitted,
+    ]);
   });
 });

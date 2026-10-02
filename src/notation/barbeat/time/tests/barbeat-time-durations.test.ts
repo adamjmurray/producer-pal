@@ -264,18 +264,22 @@ describe("durationToAbletonBeats", () => {
     );
   });
 
-  it("rejects n-prefixed bar forms with a targeted <count>bar steer", () => {
-    // Convergent model hallucination (`n1bar` to fill a bar): the `n` sigil is
-    // only for denominator-bearing note values, bars are the bare `<count>bar` form.
-    for (const bad of ["n1bar", "n/1bar", "n3/4bar"]) {
+  it("accepts a bare-count n<count>bar as an alias for <count>bar", () => {
+    // Untaught tolerance (ADR-0018): a model reaching for the n sigil out of
+    // habit computes the same value as the bare `<count>bar` form.
+    expect(durationToAbletonBeats("n2bar", 4, 4)).toBe(
+      durationToAbletonBeats("2bar", 4, 4),
+    );
+  });
+
+  it("rejects n-fraction bar forms with a targeted steer", () => {
+    // `n/1bar`/`n3/4bar` are a convergent model hallucination — bars are the
+    // bare `<count>bar` form, and no bar count can be guessed from a fraction.
+    for (const bad of ["n/1bar", "n3/4bar"]) {
       expect(() => durationToAbletonBeats(bad, 4, 4)).toThrow(
-        /bar durations don't use the "n" prefix/,
+        /an n fraction and a bar count are different things/,
       );
     }
-
-    expect(() => durationToAbletonBeats("n2bar", 4, 4)).toThrow(
-      /write <count>bar \(e\.g\. 2bar\)/,
-    );
   });
 
   it("throws on bar:beat duration glyph (retired)", () => {

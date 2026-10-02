@@ -20,6 +20,7 @@ function makeScenario(requires?: ScenarioRequirements): EvalScenario {
     id: "test-scenario",
     description: "A test scenario",
     kind: "capability",
+    tags: ["workflow"],
     liveSet: "basic-midi-4-track",
     messages: ["Connect to Ableton"],
     assertions: [],

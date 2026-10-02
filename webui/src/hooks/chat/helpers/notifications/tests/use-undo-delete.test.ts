@@ -58,6 +58,21 @@ async function undoIntoError(result: UndoResult): Promise<void> {
   );
 }
 
+/**
+ * Render the hook with a refresh spy attached and one deleted record pushed.
+ * @param title - Title of the deleted conversation
+ * @returns The hook result and the refresh spy
+ */
+async function setupWithDeleted(title: string) {
+  const refreshList = vi.fn().mockResolvedValue(undefined);
+  const { result } = renderHook(() => useUndoDelete());
+
+  result.current.setRefreshList(refreshList);
+  await act(() => result.current.pushDeleted(makeRecord({ title })));
+
+  return { result, refreshList };
+}
+
 describe("useUndoDelete", () => {
   beforeEach(async () => {
     await resetDbCache();
@@ -233,12 +248,7 @@ describe("useUndoDelete", () => {
 
     vi.mocked(saveConversation).mockReturnValueOnce(savePending as never);
 
-    const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete());
-
-    result.current.setRefreshList(refreshList);
-
-    await act(() => result.current.pushDeleted(makeRecord({ title: "Once" })));
+    const { result, refreshList } = await setupWithDeleted("Once");
 
     const click = result.current.undoNotification!.action!.onClick;
 
@@ -291,12 +301,7 @@ describe("useUndoDelete", () => {
   });
 
   it("undo is a no-op when the stack was emptied before a stale click fires", async () => {
-    const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete());
-
-    result.current.setRefreshList(refreshList);
-
-    await act(() => result.current.pushDeleted(makeRecord({ title: "Gone" })));
+    const { result, refreshList } = await setupWithDeleted("Gone");
 
     // Capture the banner's undo handler, then dismiss so the stack is empty.
     const staleUndo = result.current.undoNotification!.action!.onClick;

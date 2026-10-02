@@ -24,7 +24,7 @@ import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
-import { setQuietMode } from "./helpers/output-config.ts";
+import { setQuietMode } from "./helpers/quiet-mode.ts";
 import { type ResultsByScenario } from "./helpers/reporting/report-table.ts";
 import {
   emitSkipped,
@@ -32,8 +32,17 @@ import {
   type RunContext,
 } from "./helpers/trials/run-trials.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
-import { parseRepeatCount } from "./helpers/trials/trial-helpers.ts";
-import { loadScenarios, printList } from "./load-scenarios.ts";
+import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
+import {
+  describeRunAbort,
+  neverStartedRuns,
+} from "./helpers/trials/run-abort.ts";
+import {
+  loadScenarios,
+  printList,
+  printTags,
+} from "./load-scenarios/load-scenarios.ts";
+import { parseTagArgs } from "./load-scenarios/scenario-tags.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
 
 collapseStdoutNewlines();
@@ -42,6 +51,8 @@ export type { ModelSpec, ModelSpec as JudgeOverride };
 
 interface CliOptions {
   test: string[];
+  /** Tag filter (repeatable; each value may be a comma list). */
+  tag: string[];
   model: string[];
   /** Enable small-model mode (basic skills tier + reduced param schemas). */
   smallModel?: boolean;
@@ -54,6 +65,7 @@ interface CliOptions {
   judge?: string;
   repeat?: string;
   list?: boolean;
+  listTags?: boolean;
   listModels?: string | boolean;
   all?: boolean;
   /** Run the ordering canary subset from evals/canary-scenarios.txt. */
@@ -116,8 +128,14 @@ program
     [],
   )
   .option(
+    "--tag <name>",
+    "Run scenarios carrying any of these tags (repeatable, comma-separated)",
+    collectValues,
+    [],
+  )
+  .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-3.6-flash, local/qwen3-8b)",
+    "Model(s) to test (e.g., gemini-3.8-flash, local/qwen3.8)",
     collectValues,
     [],
   )
@@ -146,6 +164,7 @@ program
     "Run each scenario N times to detect flaky results",
   )
   .option("-l, --list", "List available scenarios")
+  .option("--list-tags", "List scenario tags with their counts, then exit")
   .option(
     "--list-models [provider]",
     "List models for a provider (omit to list providers), then exit",
@@ -190,6 +209,12 @@ program
       );
     }
 
+    if (options.listTags) {
+      printTags();
+
+      return;
+    }
+
     if (options.list) {
       printList(buildRunEnv(options));
 
@@ -215,22 +240,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     );
   }
 
-  if (options.canary) {
-    if (options.all || options.test.length > 0) {
-      program.error("--canary cannot be combined with --all or --test");
-    }
-
-    options.test = readCanaryScenarios();
-    console.log(`Canary: ${options.test.length} scenarios`);
-  }
-
-  if (!options.all && options.test.length === 0) {
-    program.error("must specify -t, --test <id>, -a, --all, or --canary");
-  }
-
-  if (options.all && options.test.length > 0) {
-    program.error("--all and --test cannot be used together");
-  }
+  const tags = resolveSelection(options);
 
   const modelSpecs = options.model.map((model) =>
     parseModelArgOrExit(program, model),
@@ -255,6 +265,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   try {
     const scenarios = loadScenarios({
       testIds: options.all ? undefined : options.test,
+      tags,
     });
 
     if (scenarios.length === 0) {
@@ -305,6 +316,47 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 }
 
 /**
+ * Settle which scenarios the run asked for. `--canary` expands to its id list;
+ * `-t` and `--tag` narrow (both given, a scenario has to match both); `-a` takes
+ * everything and refuses to be narrowed.
+ *
+ * @param options - CLI options, mutated in place when --canary supplies the ids
+ * @returns The requested tags (empty when none)
+ */
+function resolveSelection(options: CliOptions): string[] {
+  const narrowed = options.test.length > 0 || options.tag.length > 0;
+
+  if (options.canary) {
+    if (options.all || narrowed) {
+      program.error("--canary cannot be combined with --all, --test or --tag");
+    }
+
+    options.test = readCanaryScenarios();
+    console.log(`Canary: ${options.test.length} scenarios`);
+
+    return [];
+  }
+
+  if (options.all && narrowed) {
+    program.error("--all cannot be combined with --test or --tag");
+  }
+
+  if (!options.all && !narrowed) {
+    program.error(
+      "must specify -t, --test <id>, --tag <name>, -a, --all, or --canary",
+    );
+  }
+
+  try {
+    return parseTagArgs(options.tag);
+  } catch (error) {
+    program.error(error instanceof Error ? error.message : String(error));
+
+    return [];
+  }
+}
+
+/**
  * Run all scenarios across models in the active run environment, collecting
  * results. The result map keeps its 3-level shape (scenario → model → label)
  * for the reporting layer; with a single run environment the innermost map has
@@ -328,10 +380,11 @@ async function runAllScenarios(
   // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
   // that wants the same one runs against it instead of paying another open.
   let lastOpenedLiveSet: string | null = null;
-  // Consecutive scenarios where nothing ran at all. Live has already retried
-  // and relaunched by this point, so the run is not going to recover — and a
-  // long unattended run would otherwise fill the results directory with
-  // scenarios nobody ever asked a model about.
+  // Consecutive scenarios where nothing ran at all. Either Live has already
+  // retried and relaunched and still isn't back, or the provider is refusing
+  // every request — the run is not going to recover, and a long unattended run
+  // would otherwise fill the results directory with scenarios nobody ever asked
+  // a model about.
   let consecutiveErrors = 0;
 
   for (const scenario of scenarios) {
@@ -370,34 +423,14 @@ async function runAllScenarios(
 
     resultsByScenario.set(scenario.id, modelResults);
 
-    consecutiveErrors = allRunsErrored(modelResults)
-      ? consecutiveErrors + 1
-      : 0;
+    const neverStarted = neverStartedRuns(modelResults);
+
+    consecutiveErrors = neverStarted.length > 0 ? consecutiveErrors + 1 : 0;
 
     if (consecutiveErrors >= MAX_CONSECUTIVE_SCENARIO_ERRORS) {
-      throw new Error(
-        `${consecutiveErrors} scenarios in a row never started — Live is not ` +
-          `recovering. Stopping so the rest of the run isn't scored blind. ` +
-          `Results so far are saved.`,
-      );
+      throw new Error(describeRunAbort(consecutiveErrors, neverStarted));
     }
   }
 
   return resultsByScenario;
-}
-
-/**
- * Whether every run of a scenario errored before the model took a turn.
- *
- * @param modelResults - The scenario's results, by model and label
- * @returns True when nothing ran
- */
-function allRunsErrored(
-  modelResults: Map<string, Map<string, JsonEvalResult[]>>,
-): boolean {
-  const runs = [...modelResults.values()].flatMap((byLabel) =>
-    [...byLabel.values()].flat(),
-  );
-
-  return runs.length > 0 && runs.every((run) => run.result === "error");
 }

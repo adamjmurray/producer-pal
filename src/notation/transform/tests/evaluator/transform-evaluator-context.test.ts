@@ -8,7 +8,7 @@ import {
   applyTransforms,
   evaluateTransform,
 } from "#src/notation/transform/transform-evaluator.ts";
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import {
   createContext,
   createTestNotes,
@@ -312,7 +312,7 @@ describe("Context Variables", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(n/1, sync)",
         createContext({ position: 2 }),
-        { "clip:position": 6 },
+        { _arrangementOrigin: 6 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(100, 10);
@@ -324,14 +324,32 @@ describe("Context Variables", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(n/1, 0.25, sync)",
         createContext(),
-        { "clip:position": 4 },
+        { _arrangementOrigin: 4 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(0, 10);
     });
 
+    it("maps note time through the start marker when it isn't at 1|1", () => {
+      // The clip sits at arrangement beat 6 with its start marker at beat 2,
+      // so a note at beat 2 plays at 6: phase 6/4 → 0.5, cos = -1. Adding the
+      // note time to the clip's position instead gives 8 → cos = 1.
+      const notes = createTestNotes([{ start_time: 2, velocity: 64 }]);
+
+      applyTransforms(notes, "velocity = 64 + 63 * cos(n/1, sync)", 4, 4, {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+        arrangementStart: 6,
+        startMarker: 2,
+      });
+
+      expect(notes[0]!.velocity).toBeCloseTo(1, 10);
+    });
+
     it("degrades to clip-relative when sync used on session clip", () => {
-      // Session clip (no clip:position): sync has no arrangement origin to
+      // Session clip (no arrangement origin): sync has nothing to
       // anchor phase, so the wave degrades to clip-relative — identical to
       // omitting sync — rather than skipping the assignment. Position 2,
       // period 4 → phase 0.5, cos(0.5) = -1 → -100, proving the LFO applies.
@@ -363,26 +381,26 @@ describe("Context Variables", () => {
 
     it("without sync, phase is clip-relative", () => {
       // Position 2, period 4 → phase = (2/4) % 1 = 0.5, cos(0.5) = -1
-      // clip.position is ignored when sync is not used
+      // The origin is ignored when sync is not used
       const result = evaluateTransform(
         "velocity += 100 * cos(n/1)",
         createContext({ position: 2 }),
-        { "clip:position": 8 },
+        { _arrangementOrigin: 8 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(-100, 10);
     });
 
-    it("sync at position 0 with clip.position 0 matches default", () => {
+    it("sync at position 0 with origin 0 matches default", () => {
       const synced = evaluateTransform(
         "velocity += 100 * cos(n/1, sync)",
         createContext(),
-        { "clip:position": 0 },
+        { _arrangementOrigin: 0 },
       );
       const unsynced = evaluateTransform(
         "velocity += 100 * cos(n/1)",
         createContext(),
-        { "clip:position": 0 },
+        { _arrangementOrigin: 0 },
       );
 
       expect(synced.velocity!.value).toBeCloseTo(unsynced.velocity!.value, 10);
@@ -394,7 +412,7 @@ describe("Context Variables", () => {
       const result = evaluateTransform(
         "velocity += 100 * tri(n/1, sync)",
         createContext(),
-        { "clip:position": 2 },
+        { _arrangementOrigin: 2 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(0, 10);
@@ -447,7 +465,7 @@ describe("Context Variables", () => {
           numerator: tc.num,
           denominator: tc.den,
         }),
-        { "clip:position": 0 },
+        { _arrangementOrigin: 0 },
       );
 
     // `n/4` = a quarter-note cycle. At a fixed absolute time, a synced LFO

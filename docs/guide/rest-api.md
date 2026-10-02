@@ -99,14 +99,15 @@ code that reads `body.result` unconditionally will break on exactly the case the
 :::
 
 Warnings surface as a separate `warnings` string array (or inline in the
-`result` text under `?format=compact`). The `ppal-update-*` tools use this when
-updating multiple objects: if any individual operation fails or is inapplicable
-(e.g. setting quantize on an audio clip), it emits a warning and continues with
-the rest.
+`result` text under `?format=compact`). They're only for what no result entry
+can carry. When a call names several objects and one can't be done as asked
+(e.g. setting quantize on an audio clip), that object's own entry says why in a
+`detail`, with `ok: false` if nothing was done to it, and the rest still go
+through.
 
-Read them. A misspelled optional param is dropped rather than refused, and the
-only sign is a warning naming it, so a script that ignores `warnings` reads a
-call that changed nothing as a success:
+Read the warnings too. A misspelled optional param is dropped rather than
+refused, and the only sign is a warning naming it, so a script that ignores
+`warnings` reads a call that changed nothing as a success:
 
 ```bash
 curl -X POST http://localhost:3350/api/tools/ppal-update-track \
@@ -305,8 +306,9 @@ modify them for your own integrations.
 ::: tip Upgrading an existing script?
 
 Several response fields moved in 2.3, and the index params these examples once
-used are removed in 2.4. See the [migration guide](/guide/migration), which
-comes with an adapter script for the mechanical cases.
+used are deprecated: they still work, with a warning, and will be removed. See
+the [migration guide](/guide/migration), which comes with an adapter script for
+the mechanical cases.
 
 :::
 

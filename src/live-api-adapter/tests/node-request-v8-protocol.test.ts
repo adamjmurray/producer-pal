@@ -8,7 +8,7 @@ import {
   MAX_CHUNK_SIZE,
   END_OF_CHUNKS,
   reassembleChunks,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import {
   handleNodeResponse,
   requestNode,
@@ -292,6 +292,36 @@ describe("node-request-v8-protocol", () => {
       );
     } finally {
       restoreTask();
+    }
+  });
+
+  it("waits as long as the request asks", async () => {
+    const scheduleCalls: number[] = [];
+    const restoreTracking = installTrackingTask(scheduleCalls);
+
+    try {
+      void requestNode("test.slow", {}, 45_000);
+
+      expect(scheduleCalls).toStrictEqual([45_000]);
+    } finally {
+      restoreTracking();
+    }
+
+    const captured: Array<() => void> = [];
+    const restoreCapturing = installCapturingTask(captured);
+
+    try {
+      const promise = requestNode("test.slow", {}, 45_000);
+
+      captured[0]!();
+
+      const response = await promise;
+
+      expect(response.error).toBe(
+        "node_request 'test.slow' timed out after 45000ms",
+      );
+    } finally {
+      restoreCapturing();
     }
   });
 

@@ -68,7 +68,11 @@ export function ConversationPanel({
   onDismissNotification,
 }: ConversationPanelProps) {
   return (
+    // A closed panel is only clipped and slid off-screen, so without `inert`
+    // every saved conversation's buttons stay in the tab path, ahead of the
+    // composer. `inert` keeps the slide animation that `hidden` would kill.
     <div
+      inert={!isOpen}
       className={`h-full shrink-0 overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:max-w-5xl sm:min-w-64 sm:grow sm:basis-64" : "w-0 sm:w-auto sm:min-w-0 sm:grow-0 sm:basis-0"}`}
     >
       <div

@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Mock, vi } from "vitest";
-import { type PathLike } from "#src/shared/live-api-path-builders.ts";
+import {
+  type PathLike,
+  type TrackPath,
+} from "#src/shared/live-api-path-builders.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   MockSequence,
@@ -187,35 +190,56 @@ export function storedParamValue(raw: number): number {
   return Math.fround(Number(raw.toPrecision(6)));
 }
 
+// Set by simulateMockWrites(); cleared with the registry.
+let keepAllWrites = false;
+
 /**
- * Create a set() mock. Writes to `value` and `display_value` land in
- * `properties` so a later get() sees them: code that reads a parameter back to
+ * Create a set() mock. Writes to `value`, `display_value` and `color` land in
+ * `properties` so a later get() sees them: code that reads a value back to
  * check the write took would otherwise see every write as rejected. Every other
- * property stays a pure spy.
+ * property stays a pure spy unless simulateMockWrites() is on.
  *
  * `value` is quantized the way Live quantizes a DeviceParameter write: rounded
  * to six significant digits, then snapped to a 32-bit float. A raw 0.8 reads
  * back as 0.800000011920929, and the display label rounds from there.
  *
- * `display_value` is stored verbatim — Live clamps and snaps it, and we have no
- * measurement of how. So this mock echoes, and a test that means to exercise a
- * read-back must make the parameter keep something else (override its `set`),
- * or it passes just as well against code that echoes the argument.
+ * `display_value` and `color` are stored verbatim — Live clamps a level and
+ * snaps a color to its palette, and we have no table for either. So this mock
+ * echoes, and a test that means to exercise a read-back must make the object
+ * keep something else (override its `set` or its `color` property), or it
+ * passes just as well against code that echoes the argument.
  * @param mock - The registration to write into
  * @returns Configured vi.fn() mock
  */
 function createSetMock(mock: RegisteredMockObject): Mock {
   return vi.fn().mockImplementation((property: string, ...args: unknown[]) => {
-    if (args.length !== 1 || typeof args[0] !== "number") {
+    const [written] = args;
+
+    if (args.length !== 1) {
       return;
     }
 
-    if (property === "value") {
-      mock.properties.value = storedParamValue(args[0]);
-    } else if (property === "display_value") {
-      mock.properties.display_value = args[0];
+    const keptVerbatim =
+      typeof written === "number" &&
+      (property === "display_value" || property === "color");
+    const keptByOptIn =
+      keepAllWrites &&
+      (typeof written === "number" || typeof written === "string");
+
+    if (typeof written === "number" && property === "value") {
+      mock.properties.value = storedParamValue(written);
+    } else if (keptVerbatim || keptByOptIn) {
+      mock.properties[property] = written;
     }
   }) as Mock;
+}
+
+/**
+ * Turn keeping every one-value write on or off (see simulateMockWrites).
+ * @param on - Whether set() keeps a write to any property
+ */
+export function setKeepAllMockWrites(on: boolean): void {
+  keepAllWrites = on;
 }
 
 /**
@@ -237,4 +261,24 @@ function createCallMock(
 
     return fallbackCall(method, args, mock.path);
   }) as Mock;
+}
+
+/**
+ * Path→id entries for one track's mixer device, volume, and panning, as a
+ * path-mapped mock setup wants them.
+ * @param trackPath - The track whose mixer these belong to
+ * @param suffix - Tells one track's mixer ids apart from another's
+ * @returns Entries to spread into a pathIdMap
+ */
+export function mixerPathIds(
+  trackPath: TrackPath,
+  suffix: string | number = 1,
+): Record<string, string> {
+  const mixer = trackPath.mixerDevice();
+
+  return {
+    [mixer]: `mixer_${String(suffix)}`,
+    [`${mixer} volume`]: `volume_param_${String(suffix)}`,
+    [`${mixer} panning`]: `panning_param_${String(suffix)}`,
+  };
 }

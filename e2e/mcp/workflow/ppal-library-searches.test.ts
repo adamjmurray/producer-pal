@@ -20,6 +20,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   parseToolResult,
   parseToolResultWithWarnings,
   setConfig,
@@ -41,7 +42,7 @@ type BatchQuery = Record<string, string | number | boolean>;
 interface BatchEntry {
   label: string;
   items: Array<{ name: string; source: string | null }>;
-  reason?: string;
+  detail?: string;
 }
 
 /** The fan-out response envelope. */
@@ -152,6 +153,35 @@ describe("ppal-library searches", () => {
     expect(result.results).toHaveLength(2);
     expect(result.results[0]?.items).toStrictEqual([]);
     expect(names(result.results[1])).toStrictEqual(["kick.aiff"]);
+  });
+
+  it("answers a lone search ungrouped, the way a plain search does", async () => {
+    await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+    const result = parseToolResult<BatchEntry & BatchResult>(
+      await ctx.client!.callTool({
+        name: "ppal-library",
+        arguments: {
+          searches: [{ label: "Kicks", source: "sampleFolder", query: "kick" }],
+        },
+      }),
+    );
+
+    // Nothing to group, so no results array and no label to group under.
+    expect(result).not.toHaveProperty("results");
+    expect(result).not.toHaveProperty("label");
+    expect(names(result)).toStrictEqual(["kick.aiff"]);
+  });
+
+  it("refuses an empty searches", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-library",
+      arguments: { searches: [], query: "kick" },
+    });
+
+    expect(getToolErrorMessage(result)).toContain(
+      "searches must name at least one search",
+    );
   });
 
   it("truncates past the query cap and warns", async () => {

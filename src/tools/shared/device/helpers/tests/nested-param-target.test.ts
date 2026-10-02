@@ -158,6 +158,111 @@ function registerEffectThenSimpler(): RegisteredMockObject {
   return chain;
 }
 
+/**
+ * A rack with one C1 pad chain whose device slot auto-creates a Simpler.
+ * @param deviceIds - What the chain already holds
+ * @returns The chain mock
+ */
+function registerInsertablePadChain(
+  deviceIds: string[] = [],
+): RegisteredMockObject {
+  registerRack(["chain-c1"]);
+
+  return registerDrumChain("chain-c1", 36, deviceIds, {
+    insert_device: () => ["id", "new-simpler"],
+  });
+}
+
+/** The Simpler an insert on that chain hands back. */
+function registerCreatedSimpler(): void {
+  registerDevice("new-simpler", "Simpler", "SimplerDevice");
+}
+
+/** The nested pad the writes below address: D1 on the rack in the C1 pad. */
+const NESTED_PAD = "pC1/c0/d0/pD1";
+const D1 = 38;
+
+interface NestedRacks {
+  inner: RegisteredMockObject;
+  outer: RegisteredMockObject;
+}
+
+/**
+ * Register a Drum Rack whose C1 pad holds a nested Drum Rack. The nested rack
+ * starts with `innerChainIds`; its insert_chain adds "inner-chain", the D1
+ * layer a write has to create.
+ * @param innerChainIds - Chains the nested rack already holds
+ * @param canHaveDrumPads - 0 makes the nested device a plain rack instead
+ * @returns The nested rack and the rack holding it
+ */
+function registerNestedRacks(
+  innerChainIds: string[] = [],
+  canHaveDrumPads = 1,
+): NestedRacks {
+  const chains = children(...innerChainIds);
+  const outer = registerMockObject("outer-rack", {
+    path: RACK_PATH,
+    type: "RackDevice",
+    properties: { can_have_drum_pads: 1, chains: children("outer-chain") },
+  });
+
+  registerMockObject("outer-chain", {
+    path: `${RACK_PATH} chains 0`,
+    type: "DrumChain",
+    properties: { in_note: 36, devices: children("inner-rack") },
+  });
+
+  const inner = registerMockObject("inner-rack", {
+    path: `${RACK_PATH} chains 0 devices 0`,
+    type: "RackDevice",
+    properties: {
+      can_have_drum_pads: canHaveDrumPads,
+      can_have_chains: 1,
+      chains,
+    },
+    methods: {
+      insert_chain: () => {
+        chains.push("id", "inner-chain");
+
+        return ["id", "inner-chain"];
+      },
+    },
+  });
+
+  return { inner, outer };
+}
+
+/**
+ * Register a nested rack whose D1 pad has no chain, plus the chain and Simpler
+ * a sample write has to make there.
+ * @returns The nested rack and the rack holding it
+ */
+function registerEmptyNestedPad(): NestedRacks {
+  const racks = registerNestedRacks();
+
+  registerDrumChain("inner-chain", D1, [], {
+    insert_device: () => ["id", "new-simpler"],
+  });
+  registerCreatedSimpler();
+
+  return racks;
+}
+
+/**
+ * Register a nested rack whose D1 pad holds two layers, each with a Simpler.
+ * @returns The nested rack and the rack holding it
+ */
+function registerStackedNestedPad(): NestedRacks {
+  const racks = registerNestedRacks(["layer-a", "layer-b"]);
+
+  registerDrumChain("layer-a", D1, ["simpler-a"]);
+  registerDrumChain("layer-b", D1, ["simpler-b"]);
+  registerDevice("simpler-a", "Simpler", "SimplerDevice");
+  registerDevice("simpler-b", "Simpler", "SimplerDevice");
+
+  return racks;
+}
+
 /** @returns A LiveAPI handle to the registered rack */
 function rack(): LiveAPI {
   return LiveAPI.from(RACK_PATH);
@@ -184,8 +289,8 @@ function deviceOf(target: NestedParamTarget): LiveAPI | null {
 }
 
 /**
- * Assert resolution skipped: it came back with a reason, said in both channels
- * — the param's own result entry and the warning.
+ * Assert resolution skipped: it came back with a reason, and warned nothing —
+ * the param's own result entry is where the reason is read.
  * @param target - The value returned by resolveNestedParamTarget
  * @param message - Substring the reason must contain
  */
@@ -193,7 +298,16 @@ function expectSkipped(target: NestedParamTarget, message: string): void {
   expect(target).toStrictEqual({
     reason: expect.stringContaining(message) as unknown as string,
   });
-  expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
+  expect(capturedWarnings()).toHaveLength(0);
+}
+
+/**
+ * The reason resolution skipped, for a test asserting more than one thing about it.
+ * @param target - The value returned by resolveNestedParamTarget
+ * @returns The reason, or "" when resolution did not skip
+ */
+function reasonOf(target: NestedParamTarget): string {
+  return "reason" in target ? target.reason : "";
 }
 
 /**
@@ -267,12 +381,9 @@ describe("resolveDrumChainSampleTarget", () => {
   });
 
   it("creates a Simpler on an empty chain", () => {
-    registerRack(["chain-c1"]);
-    const chain = registerDrumChain("chain-c1", 36, [], {
-      insert_device: () => ["id", "new-simpler"],
-    });
+    const chain = registerInsertablePadChain();
 
-    registerDevice("new-simpler", "Simpler", "SimplerDevice");
+    registerCreatedSimpler();
 
     const target = resolveDrumChainSampleTarget(
       LiveAPI.from("id chain-c1"),
@@ -299,10 +410,7 @@ describe("resolveDrumChainSampleTarget", () => {
   });
 
   it("skips another instrument with the same reason the rack shortcut gives", () => {
-    registerRack(["chain-c1"]);
-    const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-      insert_device: () => ["id", "new-simpler"],
-    });
+    const chain = registerInsertablePadChain(["ds-1"]);
 
     registerDevice("ds-1", "DrumSampler");
 
@@ -315,13 +423,10 @@ describe("resolveDrumChainSampleTarget", () => {
   });
 
   it("swaps that instrument for a Simpler under force", () => {
-    registerRack(["chain-c1"]);
-    const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-      insert_device: () => ["id", "new-simpler"],
-    });
+    const chain = registerInsertablePadChain(["ds-1"]);
 
     registerDevice("ds-1", "DrumSampler");
-    registerDevice("new-simpler", "Simpler", "SimplerDevice");
+    registerCreatedSimpler();
 
     const target = resolveDrumChainSampleTarget(
       LiveAPI.from("id chain-c1"),
@@ -340,12 +445,9 @@ describe("resolveNestedParamTarget", () => {
 
   describe("sample write to a drum-pad slot", () => {
     it("creates a Simpler on an empty pad", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, [], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain();
 
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       const target = resolveSampleTarget("pC1/d0");
 
@@ -366,10 +468,7 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("skips a non-Simpler instrument without force, leaving it intact", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["ds-1"]);
 
       registerDevice("ds-1", "DrumSampler");
 
@@ -380,28 +479,23 @@ describe("resolveNestedParamTarget", () => {
       expectNoDeviceInserted(chain);
     });
 
-    it("names force:true and the non-destructive alternatives in the skip warning", () => {
+    it("names force:true and the non-destructive alternatives in the skip reason", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, ["ds-1"]);
       registerDevice("ds-1", "DrumSampler");
 
-      resolveSampleTarget("pC1/d0");
+      const reason = reasonOf(resolveSampleTarget("pC1/d0"));
 
-      const warning = capturedWarnings().join("\n");
-
-      expect(warning).toContain("force:true");
-      expect(warning).toContain("another pad");
-      expect(warning).toContain('ppal-duplicate type:"device"');
+      expect(reason).toContain("force:true");
+      expect(reason).toContain("another pad");
+      expect(reason).toContain('ppal-duplicate type:"device"');
     });
 
     it("replaces a non-Simpler instrument with a Simpler under force, and says so", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["ds-1"]);
 
       registerDevice("ds-1", "DrumSampler");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       const target = resolveSampleTarget("pC1/d0", true);
 
@@ -416,13 +510,10 @@ describe("resolveNestedParamTarget", () => {
     // force is not device-specific: any instrument whose sample the Live API
     // can't set is swappable, not just the DrumSampler that motivated the guard.
     it("skips any other instrument without force, and swaps it under force", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["op-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["op-1"]);
 
       registerDevice("op-1", "Operator");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expectSkipped(resolveSampleTarget("pC1/d0"), "it holds an Operator");
       expectNoDeviceInserted(chain);
@@ -434,13 +525,10 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("skips a multi-sample Simpler without force, and swaps it under force", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ms-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["ms-1"]);
 
       registerMultiSampleSimpler("ms-1");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expectSkipped(
         resolveSampleTarget("pC1/d0"),
@@ -466,14 +554,11 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("deletes the instrument's own index under force, not device 0", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["arp-1", "op-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["arp-1", "op-1"]);
 
       registerMidiEffect("arp-1", "Arpeggiator");
       registerDevice("op-1", "Operator");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expect(deviceOf(resolveSampleTarget("pC1", true))?.id).toBe(
         "new-simpler",
@@ -487,13 +572,12 @@ describe("resolveNestedParamTarget", () => {
     // instrument nobody named.
     it("skips a stacked pad when no layer is named", () => {
       const first = registerStackedPad();
+      const target = resolveSampleTarget("pC1");
 
-      expectSkipped(resolveSampleTarget("pC1"), "it has 2 layers");
+      expectSkipped(target, "it has 2 layers");
       expectNoDeviceInserted(first);
       // The retries are param names relative to the rack, not pad paths.
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('"pC1/c0/sample", "pC1/c1/sample"'),
-      );
+      expect(reasonOf(target)).toContain('"pC1/c0/sample", "pC1/c1/sample"');
     });
 
     // A device index names no layer, so it settles nothing on a stacked pad.
@@ -513,15 +597,11 @@ describe("resolveNestedParamTarget", () => {
     // habit names the effect. Writing anyway would make the index look honored.
     it("skips when the device index is not the pad's instrument", () => {
       const chain = registerEffectThenSimpler();
+      const target = resolveSampleTarget("pC1/d0");
 
-      expectSkipped(
-        resolveSampleTarget("pC1/d0"),
-        "d0 is not its instrument, which is at d1",
-      );
+      expectSkipped(target, "d0 is not its instrument, which is at d1");
       expectNoDeviceInserted(chain);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('"pC1/sample"'),
-      );
+      expect(reasonOf(target)).toContain('"pC1/sample"');
     });
 
     it("keeps the named layer in the retry it suggests", () => {
@@ -533,25 +613,19 @@ describe("resolveNestedParamTarget", () => {
     // Nothing is there to contradict the index, and refusing would break the
     // build flow that loads a whole rack in one call.
     it("creates a Simpler on an empty pad whatever device index is written", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, [], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain();
 
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expect(deviceOf(resolveSampleTarget("pC1/d9"))?.id).toBe("new-simpler");
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
     });
 
     it("creates a Simpler on a pad holding only MIDI effects", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["arp-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["arp-1"]);
 
       registerMidiEffect("arp-1", "Arpeggiator");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       const target = resolveSampleTarget("pC1/d0");
 
@@ -559,7 +633,7 @@ describe("resolveNestedParamTarget", () => {
       expect(deviceOf(target)?.id).toBe("new-simpler");
     });
 
-    it("warns when the pad chain can't be resolved or created", () => {
+    it("says so when the pad chain can't be resolved or created", () => {
       registerRack([]);
 
       const target = resolveSampleTarget("pZ9/d0");
@@ -587,7 +661,7 @@ describe("resolveNestedParamTarget", () => {
       expect(rackMock.call).not.toHaveBeenCalledWith("insert_chain");
     });
 
-    it("warns when Simpler creation returns no id", () => {
+    it("says so when Simpler creation returns no id", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, [], {
         insert_device: () => ["id", undefined],
@@ -622,7 +696,7 @@ describe("resolveNestedParamTarget", () => {
       expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
-    it("warns when Simpler creation returns nothing at all", () => {
+    it("says so when Simpler creation returns nothing at all", () => {
       // insert_device returning undefined (not a tuple) must warn-skip, not
       // throw while indexing the missing result.
       registerRack(["chain-c1"]);
@@ -657,7 +731,7 @@ describe("resolveNestedParamTarget", () => {
       expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
-    it("warns when the prefix resolves to a chain, not a device", () => {
+    it("says so when the prefix resolves to a chain, not a device", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, []);
 
@@ -666,7 +740,7 @@ describe("resolveNestedParamTarget", () => {
       expectSkipped(target, "resolves to a chain");
     });
 
-    it("warns when no device is found at the prefix", () => {
+    it("says so when no device is found at the prefix", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, []);
 
@@ -717,5 +791,111 @@ describe("resolveNestedParamTarget", () => {
       expectSkipped(target, message);
       expectNoDeviceInserted(chain);
     });
+  });
+});
+// A `sample` write can address a pad on a Drum Rack nested in another rack's
+// pad. That pad behaves like one on the addressed rack: its chain and the
+// Simpler to hold the sample are made when they're missing.
+describe("sample write below a nested drum rack", () => {
+  it("creates the nested pad's chain and a Simpler to hold the sample", () => {
+    const { inner, outer } = registerEmptyNestedPad();
+
+    expect(deviceOf(resolveSampleTarget(NESTED_PAD))?.id).toBe("new-simpler");
+    // The chain lands on the rack that holds the pad, not on the outer one,
+    // whose own C1 chain is already there.
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // The outer pad's chain 0 is implied, exactly as it is at the top level.
+  it("creates it with the outer chain segment left out", () => {
+    const { inner } = registerEmptyNestedPad();
+
+    expect(deviceOf(resolveSampleTarget("pC1/d0/pD1"))?.id).toBe("new-simpler");
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("reuses the Simpler the nested pad already holds", () => {
+    const { inner } = registerNestedRacks(["held-chain"]);
+
+    registerDrumChain("held-chain", D1, ["held-simpler"]);
+    registerDevice("held-simpler", "Simpler", "SimplerDevice");
+
+    expect(deviceOf(resolveSampleTarget(`${NESTED_PAD}/d0`))?.id).toBe(
+      "held-simpler",
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("lists the nested pad's own layers when it is stacked", () => {
+    registerStackedNestedPad();
+
+    // The retries are param names the caller resends as-is, so they carry the
+    // whole prefix down to the nested pad.
+    expectSkipped(
+      resolveSampleTarget(NESTED_PAD),
+      `"${NESTED_PAD}/c0/sample", "${NESTED_PAD}/c1/sample"`,
+    );
+  });
+
+  it("writes the named layer of a stacked nested pad", () => {
+    registerStackedNestedPad();
+
+    expect(deviceOf(resolveSampleTarget(`${NESTED_PAD}/c1`))?.id).toBe(
+      "simpler-b",
+    );
+  });
+
+  // A rack inside a pad is only reachable through a chain that already holds
+  // it, so a walk that finds no device has nothing the write could create.
+  it("skips when the walk to the nested rack finds no device", () => {
+    const { inner } = registerEmptyNestedPad();
+
+    expectSkipped(
+      resolveSampleTarget("pC1/c0/d9/pD1"),
+      'no device at "t0/d0/pC1/c0/d9"',
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("skips a nested device that is not a Drum Rack, stranding no chain", () => {
+    const { inner } = registerNestedRacks([], 0);
+
+    expectSkipped(
+      resolveSampleTarget(NESTED_PAD),
+      `could not resolve or create drum pad "t0/d0/${NESTED_PAD}"`,
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // The cap on auto-created chains is the rack's, wherever the rack sits.
+  it("stops at the auto-create cap one level down too", () => {
+    const { inner } = registerEmptyNestedPad();
+
+    expect(() => resolveSampleTarget(`${NESTED_PAD}/c20`)).toThrow(
+      "Cannot auto-create 21 drum pad chains (max: 16)",
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("is the sample shortcut, so it is never reported as deprecated", () => {
+    expect(isDrumPadSampleShortcut(NESTED_PAD, "sample")).toBe(true);
+    expect(isDrumPadSampleShortcut(`${NESTED_PAD}/c1/d0`, "sample")).toBe(true);
+  });
+
+  it("leaves a non-sample param on read-only navigation", () => {
+    const { inner } = registerNestedRacks(["held-chain"]);
+
+    registerDrumChain("held-chain", D1, ["held-simpler"]);
+    registerDevice("held-simpler", "Simpler", "SimplerDevice");
+
+    const target = resolveNestedParamTarget(
+      rack(),
+      `${NESTED_PAD}/d0`,
+      "gainDb",
+    );
+
+    expect(deviceOf(target)?.id).toBe("held-simpler");
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });

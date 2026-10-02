@@ -5,17 +5,24 @@
 
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "./transform-warning-label.ts";
 import {
   GRID_EPSILON,
   MAX_NOTE_PIECES,
   splitNoteAtCuts,
   splitNotes,
-} from "./helpers/note-cut-helpers.ts";
-import { evaluateExpression } from "./helpers/transform-evaluator-helpers.ts";
-import { repeatNotes } from "./helpers/transform-repeat-helpers.ts";
-import { noteInTimeRange } from "./helpers/transform-time-range-helpers.ts";
+} from "./helpers/note-ops/note-cuts.ts";
+import {
+  type NoteOpResult,
+  skippedNoteOp,
+} from "./helpers/note-ops/note-op-result.ts";
+import { numericOpArg } from "./helpers/note-ops/numeric-op-arg.ts";
+import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
+import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
+import {
+  constantEvalContext,
+  evaluateExpression,
+} from "./helpers/transform-evaluation.ts";
 import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
 
 /**
@@ -31,18 +38,18 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param notes - Notes to operate on (mutated in place)
  * @param timeSigNumerator - Time signature numerator (musical beats per bar)
  * @param timeSigDenominator - Time signature denominator
- * @param arrangementStart - Clip's arrangement origin in musical beats (used by
+ * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
- * @returns Indices (in the rebuilt list) of notes the op produced/affected,
- *   so the caller can report a meaningful "transformed" count
+ * @returns The op's output for the matched notes (kept originals included), or
+ *   an empty list when the op was skipped
  */
 export function applyNoteOp(
   op: NoteOp,
   notes: NoteEvent[],
   timeSigNumerator: number,
   timeSigDenominator: number,
-  arrangementStart?: number,
-): number[] {
+  arrangementOrigin?: number,
+): NoteEvent[] {
   const beatScale = timeSigDenominator / 4; // Ableton beats -> musical beats
 
   // Partition by the op's selector (pitch range + time range).
@@ -57,9 +64,9 @@ export function applyNoteOp(
     }
   }
 
-  const produced =
+  const result =
     op.name === "split"
-      ? splitNotes(matched, op, timeSigDenominator, arrangementStart)
+      ? splitNotes(matched, op, timeSigDenominator, arrangementOrigin)
       : op.name === "ratchet"
         ? ratchetNotes(matched, op, timeSigNumerator, timeSigDenominator)
         : op.name === "repeat"
@@ -68,23 +75,12 @@ export function applyNoteOp(
 
   // Rebuild in place: passthrough + produced, re-sorted (a note-count op's
   // output can reorder relative to passthrough notes). sortNotes keeps identity.
-  const rebuilt = sortNotes([...passthrough, ...produced]);
+  const rebuilt = sortNotes([...passthrough, ...result.notes]);
 
   notes.length = 0;
   notes.push(...rebuilt);
 
-  // Report the indices of the op's output notes (distinct object refs) so the
-  // caller's transformed count reflects how many notes the op produced.
-  const producedSet = new Set(produced);
-  const indices: number[] = [];
-
-  for (let i = 0; i < notes.length; i++) {
-    if (producedSet.has(notes[i] as NoteEvent)) {
-      indices.push(i);
-    }
-  }
-
-  return indices;
+  return result.skipped ? [] : result.notes;
 }
 
 /**
@@ -132,14 +128,15 @@ function noteMatchesSelector(
  * @param op - The ratchet operation
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The ratcheted note list (children replace each divided note)
+ * @returns The ratcheted note list (children replace each divided note), or a
+ *   skipped result
  */
 function ratchetNotes(
   matched: NoteEvent[],
   op: NoteOp,
   numerator: number,
   denominator: number,
-): NoteEvent[] {
+): NoteOpResult {
   // ratchet args are always expressions (bar|beat points only reach `split`).
   const arg = op.args[0] as ExpressionNode | undefined;
 
@@ -148,7 +145,7 @@ function ratchetNotes(
       "ratchet() needs a count or note value, e.g. ratchet(2) or ratchet(n/16); skipping",
     );
 
-    return matched;
+    return skippedNoteOp(matched);
   }
 
   if (op.args.length > 1) {
@@ -160,7 +157,7 @@ function ratchetNotes(
   const plan = resolveRatchetPlan(arg, numerator, denominator);
 
   if (plan == null) {
-    return matched; // arg invalid — warn already emitted, pass through
+    return skippedNoteOp(matched); // arg invalid — warn already emitted, pass through
   }
 
   const out: NoteEvent[] = [];
@@ -217,7 +214,7 @@ function ratchetNotes(
     );
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /** Resolved ratchet plan: a fixed `count`, or a `grid` size in Ableton beats. */
@@ -244,38 +241,15 @@ function resolveRatchetPlan(
     typeof arg === "object" &&
     (arg.type === "nDuration" || arg.type === "barDuration");
 
-  // A bare top-level pitch literal (`ratchet(C2)`) is nonsensical as a count and
-  // would silently coerce to its MIDI number. Warn-and-skip it, mirroring the
-  // audio evaluator's pitch-as-value guard. A pitch literal nested in arithmetic
-  // is still resolved to a number below.
-  if (typeof arg === "object" && arg.type === "pitchLiteral") {
-    console.warn(
-      `pitch name "${arg.name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${arg.name}).`,
-    );
+  const value = numericOpArg(arg, numerator, denominator, {
+    pitchLiteral: (name) =>
+      `pitch name "${name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${name}).`,
+    unevaluable: (reason) =>
+      `ratchet() argument could not be evaluated (${reason}); skipping`,
+    notFinite: "ratchet() argument is not a number; skipping",
+  });
 
-    return null;
-  }
-
-  let value: number;
-
-  try {
-    // Args are constants (no per-note context). nDuration/barDuration evaluate
-    // to musical beats; a count evaluates to a number.
-    value = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
-  } catch (error) {
-    console.warn(
-      `ratchet() argument could not be evaluated (${errorMessage(error)}); skipping`,
-    );
-
-    return null;
-  }
-
-  if (!Number.isFinite(value)) {
-    console.warn("ratchet() argument is not a number; skipping");
-
+  if (value == null) {
     return null;
   }
 
@@ -368,18 +342,19 @@ const MERGE_TOLERANCE_SKIP_MESSAGE =
  * @param op - The merge operation (may carry a gap-tolerance argument)
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The merged notes (one per run within each pitch group)
+ * @returns The merged notes (one per run within each pitch group), or a
+ *   skipped result
  */
 function mergeNotes(
   matched: NoteEvent[],
   op: NoteOp,
   numerator: number,
   denominator: number,
-): NoteEvent[] {
+): NoteOpResult {
   const tolerance = resolveMergeTolerance(op, numerator, denominator);
 
   if (tolerance == null) {
-    return matched; // unusable tolerance — warn already emitted, pass through
+    return skippedNoteOp(matched); // unusable tolerance — warn already emitted, pass through
   }
 
   const byPitch = new Map<number, NoteEvent[]>();
@@ -400,7 +375,7 @@ function mergeNotes(
     out.push(...mergeRuns(group, tolerance));
   }
 
-  return out;
+  return { notes: out, skipped: false };
 }
 
 /**
@@ -444,10 +419,10 @@ function resolveMergeTolerance(
 
   if (typeof arg === "object" && arg.type === "nDuration") {
     // A note value is a pure constant — evaluates to musical beats, total.
-    const musicalBeats = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
+    const musicalBeats = evaluateExpression(
+      arg,
+      constantEvalContext(numerator, denominator),
+    );
 
     return musicalBeats * (4 / denominator); // musical -> Ableton beats
   }

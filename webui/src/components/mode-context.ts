@@ -34,6 +34,8 @@ export interface ModeAppProps {
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
   onOpenContext: () => void;
+  /** Open the context editor on its Instructions tab (the system prompt). */
+  onOpenInstructions: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;

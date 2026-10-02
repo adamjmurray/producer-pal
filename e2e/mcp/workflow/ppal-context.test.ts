@@ -245,7 +245,7 @@ describe("ppal-context (memory scope)", () => {
   });
 });
 
-/** Matches ContentResult from context-helpers.ts */
+/** Matches ContentResult from project-context-operations.ts */
 interface ContentResult {
   content: string;
 }

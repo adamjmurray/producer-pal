@@ -59,6 +59,33 @@ describe("resolveFileIdForPath", () => {
     expect(resolveFileIdForPath(db, "/Users/hat.aif")).toBe(3);
   });
 
+  it("reads a ':' in a segment as the '/' Live stores", () => {
+    insert(1, 0, "/");
+    insert(2, 1, "Folder a/b");
+    insert(3, 2, "File a/b.adv");
+    insert(4, 1, "Amb (3");
+    insert(5, 4, "4).adv");
+    insert(6, 1, "Amb (3/4).adv");
+
+    expect(resolveFileIdForPath(db, "/Folder a:b/File a:b.adv")).toBe(3);
+    expect(resolveFileIdForPath(db, "/Amb (3/4).adv")).toBe(5);
+    expect(resolveFileIdForPath(db, "/Amb (3:4).adv")).toBe(6);
+  });
+
+  it("matches a decomposed accent to the composed name Live stores", () => {
+    insert(1, 0, "/");
+    insert(2, 1, "T\u00e9st.adv");
+
+    expect(resolveFileIdForPath(db, "/Te\u0301st.adv")).toBe(2);
+  });
+
+  it("matches a decomposed name stored as is", () => {
+    insert(1, 0, "/");
+    insert(2, 1, "Te\u0301st.adv");
+
+    expect(resolveFileIdForPath(db, "/Te\u0301st.adv")).toBe(2);
+  });
+
   it("returns null when a path segment does not exist", () => {
     insert(1, 0, "C:\\");
 

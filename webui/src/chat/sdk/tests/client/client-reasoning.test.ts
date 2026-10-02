@@ -223,4 +223,111 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
       expect(callArgs.messages[1].content).toBe("Done");
     });
   });
+  describe("per-message thinking overrides", () => {
+    it("builds provider options from the override the message carries", async () => {
+      mockStreamParts([]);
+
+      const buildProviderOptions = vi.fn(() => ({
+        anthropic: { thinking: { type: "enabled", budgetTokens: 4096 } },
+      }));
+      const client = new ChatSdkClient(
+        "key",
+        createConfig({
+          buildProviderOptions,
+          providerOptions: { anthropic: { thinking: { type: "adaptive" } } },
+        }),
+      );
+
+      for await (const _ of client.sendMessage("Hello", undefined, {
+        thinking: "High",
+      })) {
+        /* consume */
+      }
+
+      expect(buildProviderOptions).toHaveBeenCalledWith("High");
+
+      const callArgs = (streamText as ReturnType<typeof vi.fn>).mock
+        .calls[0]![0] as { providerOptions: unknown };
+
+      expect(callArgs.providerOptions).toStrictEqual({
+        anthropic: { thinking: { type: "enabled", budgetTokens: 4096 } },
+      });
+    });
+
+    it("leaves the message unstamped when the overrides carry no thinking", async () => {
+      mockStreamParts([]);
+
+      const client = new ChatSdkClient("key", createConfig());
+      let last: ChatMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello", undefined, {})) {
+        last = history;
+      }
+
+      expect(last[0]!.thinkingOverride).toBeUndefined();
+    });
+  });
+
+  const stepUsage = (outputTokens: number) => ({
+    inputTokens: 10,
+    inputTokenDetails: {
+      noCacheTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    },
+    outputTokens,
+    outputTokenDetails: { textTokens: outputTokens, reasoningTokens: 0 },
+    totalTokens: 10 + outputTokens,
+  });
+
+  describe("per-step usage", () => {
+    it("stamps each step's usage onto that step's own assistant message", async () => {
+      (streamText as ReturnType<typeof vi.fn>).mockImplementation(
+        (opts: { onStepEnd?: (step: Record<string, unknown>) => void }) => {
+          async function* iterate(): AsyncIterable<Record<string, unknown>> {
+            yield {
+              type: "tool-call",
+              toolCallId: "tc1",
+              toolName: "ppal-connect",
+              input: {},
+            };
+            yield {
+              type: "tool-result",
+              toolCallId: "tc1",
+              toolName: "ppal-connect",
+              input: {},
+              output: "Connected",
+            };
+            opts.onStepEnd?.({
+              usage: stepUsage(2),
+              response: { modelId: "m1" },
+            });
+            yield { type: "start-step" };
+            yield { type: "text-delta", text: "Answer" };
+            // The second step has to walk PAST the first step's assistant message
+            // to find its own.
+            opts.onStepEnd?.({
+              usage: stepUsage(4),
+              response: { modelId: "m2" },
+            });
+          }
+
+          return { stream: iterate() };
+        },
+      );
+
+      const client = new ChatSdkClient("key", createConfig());
+      let last: ChatMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello")) {
+        last = history;
+      }
+
+      const assistants = last.filter((m) => m.role === "assistant");
+
+      expect(assistants).toHaveLength(2);
+      expect(assistants[0]!.responseModel).toBe("m1");
+      expect(assistants[1]!.responseModel).toBe("m2");
+    });
+  });
 });

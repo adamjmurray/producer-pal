@@ -7,6 +7,15 @@ import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
 import { obeat } from "./barbeat-parser-test-helpers.ts";
 
+/** `n1/3 C3 1|1,1+n/12,1+n/6` — a triplet of C3s across beat 1 of bar 1. */
+const TRIPLET_C3_BAR1 = [
+  { duration: 1 / 3 },
+  { pitch: 60 },
+  { bar: 1, beat: 1 },
+  { bar: 1, beat: obeat(1, 1, 12) },
+  { bar: 1, beat: obeat(1, 1, 6) },
+];
+
 describe("BarBeatScript Parser - beat lists", () => {
   describe("comma-separated beat lists", () => {
     it("parses note-value offset beats in comma-separated lists", () => {
@@ -114,13 +123,9 @@ describe("BarBeatScript Parser - beat lists", () => {
     });
 
     it("parses note-value durations with note-value offset positions", () => {
-      expect(parser.parse("n1/3 C3 1|1,1+n/12,1+n/6")).toStrictEqual([
-        { duration: 1 / 3 },
-        { pitch: 60 },
-        { bar: 1, beat: 1 },
-        { bar: 1, beat: obeat(1, 1, 12) },
-        { bar: 1, beat: obeat(1, 1, 6) },
-      ]);
+      expect(parser.parse("n1/3 C3 1|1,1+n/12,1+n/6")).toStrictEqual(
+        TRIPLET_C3_BAR1,
+      );
     });
   });
 
@@ -184,11 +189,7 @@ describe("BarBeatScript Parser - beat lists", () => {
       expect(
         parser.parse("n1/3 C3 1|1 1|1+n/12 1|1+n/6 D3 1|2 1|2+n/12 1|2+n/6"),
       ).toStrictEqual([
-        { duration: 1 / 3 },
-        { pitch: 60 },
-        { bar: 1, beat: 1 },
-        { bar: 1, beat: obeat(1, 1, 12) },
-        { bar: 1, beat: obeat(1, 1, 6) },
+        ...TRIPLET_C3_BAR1,
         { pitch: 62 },
         { bar: 1, beat: 2 },
         { bar: 1, beat: obeat(2, 1, 12) },

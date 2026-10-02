@@ -5,6 +5,7 @@
 
 import {
   formatDeviceSegment,
+  formatObjectPath,
   liveApiCollection,
   parseObjectPath,
   type ObjectPath,
@@ -12,17 +13,25 @@ import {
 import {
   requireDevicePath,
   trackSegmentPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { warnRackRelativeDrumChainSpelling } from "./device-drumpad-navigation.ts";
-import { cachedDevicePath } from "./with-device-path-cache.ts";
+import { resolveDeviceTypeSegments } from "./device-type-segments.ts";
+import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 
 export interface ResolvedPath {
+  /** The path by position, for a result: `t0/d0/pC1/inst` becomes
+   * `t0/d0/pC1/d0`. Left as written when a type segment named nothing, so an
+   * error quotes what the caller wrote rather than a fallback index. */
+  path: string;
   liveApiPath: string;
   targetType: TargetType;
   drumPadNote?: string;
   remainingSegments: string[];
+  /** What the container does hold, when a type segment (`inst`, `afx1`) named
+   * no device. The path resolves to nothing, and this is why. */
+  namesNothing?: string;
 }
 
 /**
@@ -49,19 +58,31 @@ export function resolveDevicePath(
   label = "path",
 ): ResolvedPath {
   const { root, segments } = requireDevicePath(path, label);
+  // A segment naming a device by type becomes the position it resolves to, so
+  // the walk below only ever indexes.
+  const { segments: canonical, namesNothing } = resolveDeviceTypeSegments(
+    root,
+    segments,
+  );
+  const spelled = formatObjectPath(
+    namesNothing == null ? { kind: "device", root, segments: canonical } : path,
+  );
+  const miss = namesNothing == null ? {} : { namesNothing };
 
   let liveApiPath = trackSegmentPath(root).toString();
   let targetType: TargetType = "device";
 
-  for (const [index, segment] of segments.entries()) {
+  for (const [index, segment] of canonical.entries()) {
     // Live indexes drum pads by MIDI note, so everything past one only resolves
     // against a live rack — hand the caller the tail to walk itself.
     if (segment.kind === "drum-pad") {
       return {
+        path: spelled,
         liveApiPath,
         targetType: "drum-pad",
         drumPadNote: segment.note,
-        remainingSegments: segments.slice(index + 1).map(formatDeviceSegment),
+        remainingSegments: canonical.slice(index + 1).map(formatDeviceSegment),
+        ...miss,
       };
     }
 
@@ -69,9 +90,33 @@ export function resolveDevicePath(
     targetType = segment.kind;
 
     if (segment.kind === "chain") {
-      warnRackRelativeDrumChainSpelling(cachedDevicePath(liveApiPath));
+      warnRackRelativeDrumChainSpelling(liveApiAtDevicePath(liveApiPath));
     }
   }
 
-  return { liveApiPath, targetType, remainingSegments: [] };
+  return {
+    path: spelled,
+    liveApiPath,
+    targetType,
+    remainingSegments: [],
+    ...miss,
+  };
+}
+
+/**
+ * What a path that found nothing reports, with why when a type segment is the
+ * reason it did.
+ * @param path - The path as the caller wrote it
+ * @param reason - What the container does hold, from a resolution's namesNothing
+ * @param label - Param name the path came from
+ * @returns The miss, for the entry or error that carries it
+ */
+export function nothingAtPath(
+  path: string,
+  reason?: string,
+  label = "path",
+): string {
+  const why = reason == null ? "" : `: ${reason}`;
+
+  return `nothing at ${label} "${path}"${why}`;
 }

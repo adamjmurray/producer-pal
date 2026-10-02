@@ -4,6 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  registerStackingTrack,
+  stackedLaneSpans,
+} from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
+import { duplicateToArrangementTarget } from "../arrangement-duplicate-target.ts";
 import {
   mockContext,
   setupArrangementClip,
@@ -269,6 +275,47 @@ describe("duplicateSelfOverlappingClip", () => {
     ).toThrow(/self-overlap dup-to-holding/);
   });
 });
+
+// A 4-bar clip at beat 8 copied back 1 bar, on a track that overwrites the way
+// Live does. The duplicate keeps what the copy doesn't cover; a move keeps none.
+describe("duplicateToArrangementTarget onto part of its own source", () => {
+  it("keeps the source's tail for a duplicate", () => {
+    expect(copyBackOneBar(false)).toStrictEqual([
+      [0, 4],
+      [4, 20],
+      [20, 24],
+    ]);
+  });
+
+  it("leaves no tail for a move, whose caller deletes the source", () => {
+    expect(copyBackOneBar(true)).toStrictEqual([
+      [0, 4],
+      [4, 20],
+    ]);
+  });
+});
+
+/**
+ * Copy the 4-bar clip of a stacking track to beat 4.
+ * @param movesSource - Whether the copy is a move
+ * @returns Every clip's [start, end] afterwards, in beats, sorted by start
+ */
+function copyBackOneBar(movesSource: boolean): Array<[number, number]> {
+  const [, fourBars] = registerStackingTrack([4, 16]);
+  const copy = duplicateToArrangementTarget(
+    LiveAPI.from(livePath.track(0)),
+    fourBars as string,
+    4,
+    true,
+    mockContext,
+    null,
+    movesSource,
+  );
+
+  expect(copy.exists()).toBe(true);
+
+  return stackedLaneSpans();
+}
 
 /**
  * Run the two-duplicate self-overlap workaround. The caller registers the source

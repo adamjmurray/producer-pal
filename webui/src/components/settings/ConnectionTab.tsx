@@ -10,14 +10,14 @@ import {
 import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
+import { ModelDocsLink } from "./helpers/ModelDocsLink";
+import { SmallModelToggle } from "./helpers/SmallModelToggle";
+import { ThinkingSelector } from "./helpers/ThinkingSelector";
 import {
-  ModelDocsLink,
-  SmallModelToggle,
-  ThinkingSelector,
   VoiceSettings,
   type VoiceSettingsProps,
-} from "./helpers/connection-tab-helpers";
-import { TestConnectionButton } from "./TestConnectionButton";
+} from "./helpers/VoiceSettings";
+import { TestConnectionButton } from "./helpers/TestConnectionButton";
 
 /** Connection settings plus every prop forwarded verbatim to `VoiceSettings`. */
 interface ConnectionTabProps extends VoiceSettingsProps {

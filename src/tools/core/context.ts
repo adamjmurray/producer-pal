@@ -4,16 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  type ContentResult,
   handleDeleteMemoryEntry,
-  handleReadGlobalContext,
   handleReadMemoryEntry,
   handleReadMemoryIndex,
+  handleWriteMemoryEntry,
+} from "./helpers/memory-entry-operations.ts";
+import {
+  type ContentResult,
+  handleReadGlobalContext,
   handleReadProjectContext,
   handleWriteGlobalContext,
-  handleWriteMemoryEntry,
   handleWriteProjectContext,
-} from "./context-helpers.ts";
+} from "./helpers/project-context-operations.ts";
 
 interface ContextArgs {
   action?: string;

@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { mixerPathIds } from "#src/test/mocks/mock-registry-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import {
@@ -23,9 +24,7 @@ function setupSingleTrackMixerMock({
     liveSetId: "live_set_id",
     pathIdMap: {
       [String(livePath.track(0))]: "track1",
-      [livePath.track(0).mixerDevice()]: "mixer_1",
-      [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
-      [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
+      ...mixerPathIds(livePath.track(0)),
       [String(livePath.masterTrack())]: "master",
     },
     objects: {
@@ -98,9 +97,7 @@ describe("readLiveSet - mixer properties", () => {
       liveSetId: "live_set_id",
       pathIdMap: {
         [String(livePath.returnTrack(0))]: "return1",
-        [livePath.returnTrack(0).mixerDevice()]: "mixer_1",
-        [`${livePath.returnTrack(0).mixerDevice()} volume`]: "volume_param_1",
-        [`${livePath.returnTrack(0).mixerDevice()} panning`]: "panning_param_1",
+        ...mixerPathIds(livePath.returnTrack(0)),
         [String(livePath.masterTrack())]: "master",
       },
       objects: {
@@ -151,9 +148,7 @@ describe("readLiveSet - mixer properties", () => {
       liveSetId: "live_set_id",
       pathIdMap: {
         [String(livePath.masterTrack())]: "master",
-        [livePath.masterTrack().mixerDevice()]: "mixer_1",
-        [`${livePath.masterTrack().mixerDevice()} volume`]: "volume_param_1",
-        [`${livePath.masterTrack().mixerDevice()} panning`]: "panning_param_1",
+        ...mixerPathIds(livePath.masterTrack()),
       },
       objects: {
         LiveSet: {
@@ -212,12 +207,8 @@ describe("readLiveSet - mixer properties", () => {
       pathIdMap: {
         [String(livePath.track(0))]: "track1",
         [String(livePath.track(1))]: "track2",
-        [livePath.track(0).mixerDevice()]: "mixer_1",
-        [livePath.track(1).mixerDevice()]: "mixer_2",
-        [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
-        [`${livePath.track(1).mixerDevice()} volume`]: "volume_param_2",
-        [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
-        [`${livePath.track(1).mixerDevice()} panning`]: "panning_param_2",
+        ...mixerPathIds(livePath.track(0)),
+        ...mixerPathIds(livePath.track(1), 2),
         [String(livePath.masterTrack())]: "master",
       },
       objects: {

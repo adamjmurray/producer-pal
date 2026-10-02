@@ -22,7 +22,7 @@
 //
 // Keying on the .als basename would also break the two things this must survive:
 // renaming a Set inside the folder, and moving the folder. That is the same
-// reason dev/memory-system/ppal-context-tool.md rejects a central ~/.producer-pal store keyed by
+// reason dev/tools/memory-system/ppal-context-tool.md rejects a central ~/.producer-pal store keyed by
 // set path. Deriving the sidecar name from a path re-introduces exactly the
 // fragility the design avoids; deriving it from the folder does not.
 //
@@ -54,7 +54,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "../../node-for-max-logger.ts";
 
 /** Filename of the project-context backup, dropped beside the Live Set. */

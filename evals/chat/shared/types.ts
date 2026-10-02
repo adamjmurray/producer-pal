@@ -6,7 +6,7 @@
 import { type Interface } from "node:readline";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 export type ReasoningSummary = "auto" | "concise" | "detailed";
 
@@ -23,10 +23,7 @@ export type ThinkingLevel =
 
 export interface ChatOptions {
   provider: EvalProvider;
-  api?: "chat" | "responses";
   model: string;
-  stream: boolean;
-  debug: boolean;
   thinking?: ThinkingLevel;
   thinkingSummary?: ReasoningSummary;
   randomness?: number;
@@ -46,6 +43,10 @@ export interface TurnResult {
   text: string;
   toolCalls: Array<ToolCall & { result?: string }>;
   stepUsages?: TokenUsage[];
+  /** Generation speed per step, index-aligned with `stepUsages` so a step's
+   *  rate can be weighted by the tokens it produced. A step the SDK could not
+   *  measure holds an empty entry. */
+  stepTimings?: StepTiming[];
   /** Error message if the stream emitted an "error" part during the turn */
   error?: string;
 }

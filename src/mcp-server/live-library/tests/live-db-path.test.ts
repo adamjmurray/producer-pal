@@ -8,6 +8,7 @@ import {
   findLiveFilesDbPath,
   findLivePluginsDbPath,
   liveDatabaseDir,
+  setRunningLiveMajor,
 } from "../live-db-path.ts";
 
 vi.mock(import("node:fs/promises"), () => ({
@@ -51,6 +52,32 @@ function mockStatMtimeOnce(mtimeMs: number): void {
   vi.mocked(fsMock.stat).mockResolvedValueOnce({
     mtimeMs,
   } as unknown as StatResult);
+}
+
+/**
+ * A database file for a second, hypothetical future Live major. No such
+ * release exists — the filename shape is inferred from how the Live 11 -> 12
+ * upgrade versioned these files, and it stands in for "another major is
+ * installed alongside the running one".
+ */
+const SYNTHETIC_FUTURE_MAJOR_DB = "Live-files-13003.db";
+
+/**
+ * Stat every entry from a name -> mtime map, failing for anything absent.
+ * Order-independent, unlike the `Once` queues, so a test can mock both DB
+ * kinds without depending on which one is read first.
+ *
+ * @param mtimes - Map of file name to mtime in ms
+ */
+function mockStatByName(mtimes: Record<string, number>): void {
+  vi.mocked(fsMock.stat).mockImplementation((path) => {
+    const name = String(path).split("/").pop() ?? "";
+    const mtimeMs = mtimes[name];
+
+    return mtimeMs == null
+      ? Promise.reject(new Error("ENOENT"))
+      : Promise.resolve({ mtimeMs } as unknown as StatResult);
+  });
 }
 
 describe("liveDatabaseDir", () => {
@@ -98,6 +125,7 @@ describe("findLiveFilesDbPath", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setPlatform("darwin");
+    setRunningLiveMajor(null);
   });
 
   afterEach(() => {
@@ -164,12 +192,54 @@ describe("findLiveFilesDbPath", () => {
 
     expect(result).toContain("Live-files-1218.db");
   });
+
+  it("prefers the running major over a higher-numbered other major", async () => {
+    mockReaddir("Live-files-12300.db", SYNTHETIC_FUTURE_MAJOR_DB);
+    mockStatMtime(1_000);
+
+    const result = await findLiveFilesDbPath(12);
+
+    expect(result).toContain("Live-files-12300.db");
+  });
+
+  it("picks the highest number within the running major", async () => {
+    mockReaddir(
+      "Live-files-12300.db",
+      "Live-files-12200.db",
+      SYNTHETIC_FUTURE_MAJOR_DB,
+    );
+    mockStatMtime(1_000);
+
+    const result = await findLiveFilesDbPath(12);
+
+    expect(result).toContain("Live-files-12300.db");
+  });
+
+  it("falls back to the highest number when no DB matches the major", async () => {
+    mockReaddir("Live-files-12300.db", SYNTHETIC_FUTURE_MAJOR_DB);
+    mockStatMtime(1_000);
+
+    const result = await findLiveFilesDbPath(11);
+
+    expect(result).toContain(SYNTHETIC_FUTURE_MAJOR_DB);
+  });
+
+  it("uses the major recorded by the last route call", async () => {
+    setRunningLiveMajor(12);
+    mockReaddir("Live-files-12300.db", SYNTHETIC_FUTURE_MAJOR_DB);
+    mockStatMtime(1_000);
+
+    const result = await findLiveFilesDbPath();
+
+    expect(result).toContain("Live-files-12300.db");
+  });
 });
 
 describe("findLivePluginsDbPath", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setPlatform("darwin");
+    setRunningLiveMajor(null);
   });
 
   afterEach(() => {
@@ -204,6 +274,58 @@ describe("findLivePluginsDbPath", () => {
     mockStatMtimeOnce(1_000);
 
     const result = await findLivePluginsDbPath();
+
+    expect(result).toContain("Live-plugins-2.db");
+  });
+
+  it("pairs with the chosen files DB by nearest mtime", async () => {
+    // Each install writes both DBs within about a second of exiting, so the
+    // newest plugins DB belongs to the other major here, not to the running one.
+    mockReaddir(
+      "Live-files-12300.db",
+      SYNTHETIC_FUTURE_MAJOR_DB,
+      "Live-plugins-1.db",
+      "Live-plugins-2.db",
+    );
+    mockStatByName({
+      "Live-files-12300.db": 100_000,
+      [SYNTHETIC_FUTURE_MAJOR_DB]: 999_999,
+      "Live-plugins-1.db": 999_998,
+      "Live-plugins-2.db": 100_002,
+    });
+
+    const result = await findLivePluginsDbPath(12);
+
+    expect(result).toContain("Live-plugins-2.db");
+  });
+
+  it("pairs with the other major's files DB when that one is running", async () => {
+    mockReaddir(
+      "Live-files-12300.db",
+      SYNTHETIC_FUTURE_MAJOR_DB,
+      "Live-plugins-1.db",
+      "Live-plugins-2.db",
+    );
+    mockStatByName({
+      "Live-files-12300.db": 100_000,
+      [SYNTHETIC_FUTURE_MAJOR_DB]: 999_999,
+      "Live-plugins-1.db": 999_998,
+      "Live-plugins-2.db": 100_002,
+    });
+
+    const result = await findLivePluginsDbPath(13);
+
+    expect(result).toContain("Live-plugins-1.db");
+  });
+
+  it("falls back to the newest plugins DB when there is no files DB", async () => {
+    mockReaddir("Live-plugins-1.db", "Live-plugins-2.db");
+    mockStatByName({
+      "Live-plugins-1.db": 1_000,
+      "Live-plugins-2.db": 9_000,
+    });
+
+    const result = await findLivePluginsDbPath(12);
 
     expect(result).toContain("Live-plugins-2.db");
   });

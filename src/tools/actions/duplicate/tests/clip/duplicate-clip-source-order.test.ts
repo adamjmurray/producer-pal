@@ -233,9 +233,8 @@ describe("duplicate clip fan-out order", () => {
   });
 
   it("still rejects an arrangementLength it can't parse", async () => {
-    // Ordering asks how far a copy reaches, so it parses the length too — but
-    // it must not be the one to decide a bad one, or a lane copy that ignores
-    // the param would start failing.
+    // Ordering asks how far a copy reaches, so it parses the length too; a bad
+    // one is refused before either runs.
     setupSource(true, SOURCE_AT_BAR_9);
 
     await expect(

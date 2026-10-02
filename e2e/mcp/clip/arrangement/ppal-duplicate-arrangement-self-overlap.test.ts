@@ -13,7 +13,8 @@
  *
  * Desired behavior for a 4-bar clip, +1 bar forward:
  *   - duplicate → 1-bar original (its first bar) + full 4-bar copy (2 clips)
- *   - move      → single full 4-bar clip at the new position (original gone)
+ *   - move      → single full 4-bar clip at the new position (original gone),
+ *                 and the same moving -1 bar (no tail left past the copy)
  *
  * Uses: e2e-test-set (t8 = empty MIDI track, t5 = audio track with sample)
  *
@@ -102,6 +103,27 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
 
     // The relocated clip keeps its bar-4 note (full length, not truncated).
+    const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
+
+    expect(movedNotes).toContain("B3");
+  });
+
+  it("move -1 bar leaves a single full 4-bar clip and no tail", async () => {
+    // 4-bar clip at 56|1 ([56|1, 60|1]), moved back to 55|1 — overlaps itself.
+    // The original's last bar (59|1) must not survive as a separate clip.
+    const base = await dupToArr(midi4barId, "56|1");
+
+    await moveArrClip(base.id, "55|1");
+
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 54, 61);
+
+    expect(clips).toHaveLength(1);
+
+    const moved = clips[0]!;
+
+    expect(arrangementStartOf(moved)).toBe("55|1");
+    expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
+
     const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
 
     expect(movedNotes).toContain("B3");

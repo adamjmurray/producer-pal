@@ -4,19 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useEffect } from "preact/hooks";
-import { type Notation } from "#src/shared/notation";
-import { type ActiveMeta, DEFAULT_META } from "#webui/lib/conversation-store";
-import { type Provider } from "#webui/types/settings";
+import {
+  type ActiveMeta,
+  type ConversationLockedSettings,
+  DEFAULT_META,
+} from "#webui/lib/conversations/conversation-store";
 
-export interface SyncActiveMetaParams {
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  activeThinking: string | null;
-  activeSmallModelMode: boolean | null;
-  activeSystemInstruction: string | null;
-  activeNotation: Notation | null;
-  activeEnabledTools: Record<string, boolean> | null;
-}
+/** The same settings ActiveMeta stores, named the way useChat exposes them. */
+export type SyncActiveMetaParams = {
+  [
+    K in keyof ConversationLockedSettings as `active${Capitalize<K>}`
+  ]: ConversationLockedSettings[K];
+};
 
 /**
  * Mirrors active chat metadata (model/provider/thinking/etc.) from useChat

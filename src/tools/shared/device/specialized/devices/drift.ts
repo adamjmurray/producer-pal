@@ -7,17 +7,19 @@ import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
   enumParam,
   readEnumByIndex,
+  readNumberByIndex,
+  readNumberProp,
   writeEnumByIndex,
   writeIntFromSet,
   writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import {
   type PseudoParam,
   type SpecializedDeviceSpec,
 } from "../specialized-device-types.ts";
 
 // Drift (DriftDevice, class_name "Drift"). See
-// dev/specialized-devices/instruments.md.
+// dev/live-api/specialized-devices/instruments.md.
 // Declarative mod matrix: each slot is an int `_index` property; the value
 // lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
 // and are NOT duplicated here.
@@ -91,25 +93,16 @@ function freeSlotSourceParam(
 }
 
 /**
- * Read the voice count from voice_count_index (returns the count value, not the
- * index).
- * @param device - LiveAPI device object
- * @returns The voice count (4, 8, 16, 24, or 32)
- */
-function readVoiceCount(device: LiveAPI): number | undefined {
-  const index = device.getProperty("voice_count_index") as number;
-
-  return VOICE_COUNTS[index];
-}
-
-/**
  * Write the voice count by writing its catalog index to voice_count_index.
- * Warns and skips when the value is not in the allowed set.
+ * Refuses a value outside the allowed set.
  * @param device - LiveAPI device object
  * @param value - Incoming value (must be 4, 8, 16, 24, or 32)
- * @returns True when the value was written, false when it was skipped
+ * @returns Why the value was refused, or null when it was written
  */
-function writeVoiceCount(device: LiveAPI, value: string | number): boolean {
+function writeVoiceCount(
+  device: LiveAPI,
+  value: string | number,
+): string | null {
   return writeIntFromSet(
     device,
     "voice_count_index",
@@ -125,15 +118,6 @@ function writeVoiceCount(device: LiveAPI, value: string | number): boolean {
 // pre-validate the range before device.set, matching Spectral Resonator.
 const PITCH_BEND_RANGE_MIN = 0;
 const PITCH_BEND_RANGE_MAX = 12;
-
-/**
- * Read pitch_bend_range from the device.
- * @param device - LiveAPI device object
- * @returns The pitch bend range in semitones
- */
-function readPitchBendRange(device: LiveAPI): number {
-  return device.getProperty("pitch_bend_range") as number;
-}
 
 export const driftSpec: SpecializedDeviceSpec = {
   displayNames: ["Drift"],
@@ -191,13 +175,14 @@ export const driftSpec: SpecializedDeviceSpec = {
     {
       name: "voiceCount",
       options: VOICE_COUNTS,
-      read: readVoiceCount,
+      read: (device) =>
+        readNumberByIndex(device, "voice_count_index", VOICE_COUNTS),
       write: writeVoiceCount,
     },
     {
       name: "pitchBendRange",
       options: `${PITCH_BEND_RANGE_MIN}-${PITCH_BEND_RANGE_MAX}`,
-      read: readPitchBendRange,
+      read: (device) => readNumberProp(device, "pitch_bend_range"),
       write: (device, value) =>
         writeIntInRange(
           device,

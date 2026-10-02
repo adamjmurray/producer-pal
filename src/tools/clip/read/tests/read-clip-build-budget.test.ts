@@ -21,14 +21,15 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerInstrumentRackFixture } from "#src/tools/track/read/tests/helpers/instrument-rack-fixture.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { inOneRequest } from "./read-clip-test-helpers.ts";
 
 /** How many chains the throwaway rack carries. */
@@ -57,48 +58,15 @@ const NOTES = [
 ];
 
 /**
- * How many objects the call resolved of one target shape.
- * @param shape - Target shape, indices written as `*`
- * @returns Resolutions of that shape
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
-}
-
-/**
  * A track whose only device is an instrument rack of CHAIN_COUNT chains with no
  * drum rack anywhere, holding CLIP_COUNT MIDI clips in its first session slots.
  */
 function setupTrackWithClips(): void {
-  const chainIds = Array.from(
-    { length: CHAIN_COUNT },
-    (_, i) => `rackChain${String(i)}`,
-  );
-
   registerMockObject("track-0", {
     path: livePath.track(0),
     properties: { devices: children("instrumentRack") },
   });
-  registerMockObject("instrumentRack", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: {
-      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      can_have_chains: 1,
-      can_have_drum_pads: 0,
-      class_name: "InstrumentGroupDevice",
-      chains: children(...chainIds),
-      return_chains: [],
-    },
-  });
-
-  for (const [i, chainId] of chainIds.entries()) {
-    registerMockObject(chainId, {
-      path: livePath.track(0).device(0).chain(i),
-      type: "Chain",
-      properties: { name: `Chain ${String(i)}`, devices: children() },
-    });
-  }
+  registerInstrumentRackFixture({ chainCount: CHAIN_COUNT });
 
   for (let sceneIndex = 0; sceneIndex <= EMPTY_CLIP_SCENE; sceneIndex++) {
     const notes = sceneIndex === EMPTY_CLIP_SCENE ? [] : NOTES;
@@ -200,7 +168,7 @@ describe("readClip build budget", () => {
     registerMockObject("scene9", { path: livePath.scene(9), properties: {} });
     mockNonExistentObjects();
 
-    readClip({ path: "t0/s9" });
+    expect(() => readClip({ path: "t0/s9" })).toThrow("no clip at t0/s9");
 
     // Nothing at the address: only now does telling an empty slot from a bad
     // one need the track and the scene, and it needs each of them once.

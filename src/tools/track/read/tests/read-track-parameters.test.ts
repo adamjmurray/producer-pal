@@ -26,7 +26,7 @@ import {
   createRackDeviceMockProperties,
 } from "./helpers/read-track-device-test-helpers.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
 /**
  * Register one empty chain under a device, the shape every chain-stripping case
@@ -47,7 +47,7 @@ function registerEmptyChain(
   });
 }
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   describe("id parameter", () => {
     it("reads track by id", () => {
       registerMockObject("123", {
@@ -60,7 +60,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ id: "123" });
+      const result = readOneTrack({ id: "123" });
 
       expect(result).toStrictEqual({
         id: "123",
@@ -83,7 +83,7 @@ describe("readTrack", () => {
         properties: mockTrackProperties({ name: "Track by ID" }),
       });
 
-      expect(readTrack({ trackId: "123" })).toStrictEqual({
+      expect(readOneTrack({ trackId: "123" })).toStrictEqual({
         arrangementClipCount: 0,
         deviceCount: 0,
         sessionClipCount: 0,
@@ -106,7 +106,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ id: "456" });
+      const result = readOneTrack({ id: "456" });
 
       expect(result).toStrictEqual({
         id: "456",
@@ -130,7 +130,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ id: "789" });
+      const result = readOneTrack({ id: "789" });
 
       expect(result).toStrictEqual({
         id: "789",
@@ -146,13 +146,13 @@ describe("readTrack", () => {
       mockNonExistentObjects();
 
       expect(() => {
-        readTrack({ id: "nonexistent" });
+        readOneTrack({ id: "nonexistent" });
       }).toThrow('id "nonexistent" does not exist');
     });
 
     it("throws error when neither id nor trackIndex provided", () => {
       expect(() => {
-        readTrack({});
+        readOneTrack({});
       }).toThrow("id or path is required");
     });
 
@@ -166,7 +166,7 @@ describe("readTrack", () => {
       });
 
       // trackType should be ignored when trackId is provided
-      const result = readTrack({ id: "999", trackType: "return" });
+      const result = readOneTrack({ id: "999", trackType: "return" });
 
       // Should read as regular track (from path) not return track
       expect(result.path).toBe("t0");
@@ -181,7 +181,7 @@ describe("readTrack", () => {
         properties: mockTrackProperties({ name: "By Path" }),
       });
 
-      expect(readTrack({ path: "t2" })).toStrictEqual({
+      expect(readOneTrack({ path: "t2" })).toStrictEqual({
         id: "123",
         path: "t2",
         type: "midi",
@@ -203,7 +203,7 @@ describe("readTrack", () => {
         }),
       });
 
-      expect(readTrack({ path: "rt1" })).toStrictEqual({
+      expect(readOneTrack({ path: "rt1" })).toStrictEqual({
         id: "456",
         path: "rt1",
         name: "Return by Path",
@@ -224,7 +224,7 @@ describe("readTrack", () => {
         }),
       });
 
-      expect(readTrack({ path: "mt" })).toStrictEqual({
+      expect(readOneTrack({ path: "mt" })).toStrictEqual({
         id: "789",
         path: "mt",
         name: "Main by Path",
@@ -239,11 +239,13 @@ describe("readTrack", () => {
     it("throws when the path names nothing", () => {
       mockNonExistentObjects();
 
-      expect(() => readTrack({ path: "t9" })).toThrow('nothing at path "t9"');
+      expect(() => readOneTrack({ path: "t9" })).toThrow(
+        'nothing at path "t9"',
+      );
     });
 
     it("throws when the path names something else", () => {
-      expect(() => readTrack({ path: "s0" })).toThrow(
+      expect(() => readOneTrack({ path: "s0" })).toThrow(
         'invalid path "s0" - names a scene, not a track',
       );
     });
@@ -252,7 +254,7 @@ describe("readTrack", () => {
       ["id", { id: "123" }],
       ["trackIndex", { trackIndex: 0 }],
     ])("refuses a path sent with %s", (_name, other) => {
-      expect(() => readTrack({ path: "t0", ...other })).toThrow(
+      expect(() => readOneTrack({ path: "t0", ...other })).toThrow(
         "path names the track on its own",
       );
     });
@@ -266,7 +268,7 @@ describe("readTrack", () => {
         properties: mockTrackProperties({ name: "Regular" }),
       });
 
-      const result = readTrack({ path: "t0", trackType: "return" });
+      const result = readOneTrack({ path: "t0", trackType: "return" });
 
       expect(result.path).toBe("t0");
     });
@@ -276,7 +278,7 @@ describe("readTrack", () => {
     it("includes drumMap but strips chains when using drum-map", () => {
       setupDrumRackMocks();
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "drum-map"],
       });
@@ -287,7 +289,7 @@ describe("readTrack", () => {
     it("drum racks don't have main chains even with chains included", () => {
       setupDrumRackMocks({ kickDeviceId: "kick_device2" });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "drum-map"],
       });
@@ -343,7 +345,7 @@ describe("readTrack", () => {
       registerEmptyChain("inst_chain", 1, "Inst Chain");
       registerEmptyChain("audio_chain", 2, "Audio Chain");
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "drum-map"],
       });
@@ -394,7 +396,7 @@ describe("readTrack", () => {
       });
       registerEmptyChain("chain1", 0, "Chain 1");
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "drum-map"],
       });
@@ -428,7 +430,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "drum-map"],
       });

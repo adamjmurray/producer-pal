@@ -121,14 +121,18 @@ third track, `t2/s3` a clip slot, `s3` a scene, `rt0` the first return track,
 report a path next to every id and the write tools accept one, so the AI can act
 on what it just read instead of looking it up again.
 
-An arrangement clip is addressed by where it starts: `t0[5|1]` is the clip at
-bar 5 on track 0, and `t0/l1[5|1]` the one on its second
-[take lane](#take-lanes). A position can name a locator rather than counting
-bars, `t0[loc:Chorus]`, which still lands right after you move that section.
+An arrangement clip is addressed by a position on the timeline: `t0[5|1]` is the
+clip playing at bar 5 on track 0, even if it started earlier, and `t0/l1[5|1]`
+the one on its second [take lane](#take-lanes). A position can name a locator
+rather than counting bars, `t0[loc:Chorus]`, which still lands right after you
+move that section.
 
-A `+` names a place that doesn't exist yet, for creating: `t+` appends a track,
-`s+` a scene. It's only ever the start of a path, and only the tool that creates
-that kind of object takes one.
+A `+` names a place that doesn't exist yet, for creating or moving: `t+` appends
+a track, `s+` a scene, `rt+` a return track, and deeper in a path `t0/d+` a
+device, `t0/d0/c+` a rack chain, and `t0/l+` a take lane.
+
+A device can also be named by kind: `t0/inst` is the track's instrument wherever
+it sits, and `t0/afx0` / `t0/mfx0` its first audio / MIDI effect.
 
 ## Take Lanes {#take-lanes}
 
@@ -146,9 +150,20 @@ cluttering the timeline.
   already has lanes, start after the last one a prior
   [Read Track](/features/tools#ppal-read-track) reported. Add
   [transforms](#transforms) to vary each one.
-- Take lanes are named in Live.
+- A whole lane goes onto another lane in a single
+  [Duplicate](/features/tools#ppal-duplicate): `type: "track"` with
+  `toPath: "t2/l0"` copies every clip at the position it already has, clips
+  only, and the two tracks must match MIDI/audio type. The source is a track
+  (`path: "t2"`, its main lane) or a take lane (`path: "t2/l0"`, or the lane's
+  id).
+- A take lane goes the other way too: give a take-lane source a bare track
+  `toPath` (`t2`, its own track or another) and its clips are promoted onto that
+  track's main lane, replacing whatever sits at those positions.
+- [Update Track](/features/tools#ppal-update-track) owns the lanes themselves:
+  `path: "t2/l+"` adds one, `path: "t2/l0"` with a `name` names an existing one,
+  and a lane takes no other track setting.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
-  `arrangement-clips` include).
+  `arrangement-clips` include), and reads one on its own from a lane path.
 - A take-lane clip can leave its lane, for another lane, another track, or a
   session slot: `toPath` on [Update Clip](/features/tools#ppal-update-clip)
   moves it, and [Duplicate](/features/tools#ppal-duplicate) copies it. Live's
@@ -158,7 +173,8 @@ cluttering the timeline.
   its notes, an audio clip from its sample. Envelope automation isn't preserved,
   and a warped audio clip comes back with the sample's default warp markers. The
   response says which applied.
-- Limits: 8 take lanes per track. A take-lane clip can't be split, resized, or
+- Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
+  Live past that still work. A take-lane clip can't be split, resized, or
   deleted through tools, and Producer Pal can't pick the active take or comp
   lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
   header to see them.

@@ -5,7 +5,7 @@
 
 import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
-import { getProviderName } from "./header-helpers";
+import { getProviderName } from "./provider-name";
 import { ContextIcon, SettingsIcon } from "./HeaderIcons";
 import { SmallModelIndicator } from "./SmallModelIndicator";
 import { ToolsIndicator } from "./ToolsIndicator";

@@ -62,6 +62,18 @@ describe("version agreement", () => {
 
     expect(/export const VERSION = "([^"]*)"/.exec(source)?.[1]).toBe(expected);
   });
+
+  it("remote-script/Producer_Pal/version.py matches", () => {
+    // The build stamps this line with package.json's version when it embeds
+    // the script, so a stale checked-in value means tests and the dev
+    // installer disagree with what the device ships.
+    const source = readFileSync(
+      path.join(projectRoot, "remote-script/Producer_Pal/version.py"),
+      "utf8",
+    );
+
+    expect(/^VERSION = "([^"]*)"/m.exec(source)?.[1]).toBe(expected);
+  });
 });
 
 interface VersionedJson {

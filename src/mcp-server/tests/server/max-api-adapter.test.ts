@@ -6,7 +6,7 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   callLiveApi,
@@ -247,6 +247,30 @@ describe("Max API Adapter", () => {
         ],
         isError: true,
       });
+    });
+
+    // The timeout already answered and dropped the request, so the late
+    // rejection has nothing left to clean up and must not throw on its way out.
+    it("should tolerate Max.outlet rejecting after the call timed out", async () => {
+      setTimeoutForTesting(2);
+
+      let rejectOutlet: (error: Error) => void = () => undefined;
+
+      Max.outlet = vi.fn().mockReturnValue(
+        new Promise((_resolve, reject) => {
+          rejectOutlet = reject;
+        }),
+      );
+
+      const result = await callLiveApi("test-tool", {});
+
+      expect(result.errorCode).toBe("timeout");
+
+      rejectOutlet(new Error("too late"));
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      // The timeout's answer stands.
+      expect(result.errorCode).toBe("timeout");
     });
 
     it("should merge compactOutput override into contextJSON", async () => {

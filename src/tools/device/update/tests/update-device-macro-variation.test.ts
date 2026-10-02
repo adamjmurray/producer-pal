@@ -9,6 +9,8 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
+import { updateMacroCount } from "../helpers/rack-macro-updates.ts";
 import { updateDevice } from "../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -37,37 +39,47 @@ describe("updateDevice - macroVariation", () => {
     });
   });
 
-  // An out-of-range index warns and aborts the whole action — not just the
-  // index-set — and the device is still reported.
+  // An out-of-range index aborts the whole action — not just the index-set —
+  // and the variation was all the call asked, so the lone target throws.
   function expectVariationIndexRejected(index: number): void {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "load",
-      macroVariationIndex: index,
-    });
+    expect(() =>
+      updateDevice({
+        id: "123",
+        macroVariation: "load",
+        macroVariationIndex: index,
+      }),
+    ).toThrow(`variation index ${index} is out of range (3 available)`);
 
-    expect(capturedWarnings()).toContain(
-      `variation index ${index} out of range on t0/d0 (id 123) (3 available)`,
-    );
     expect(rackDevice.set).not.toHaveBeenCalledWith(
       "selected_variation_index",
       expect.anything(),
     );
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    expect(capturedWarnings()).toStrictEqual([]);
   }
 
-  it("should reject non-rack devices with error", () => {
+  it("refuses a device that has no macro variations", () => {
+    expect(() => updateDevice({ id: "456", macroVariation: "create" })).toThrow(
+      "macro variations are only available on rack devices",
+    );
+
+    expect(nonRackDevice.call).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says so on the entry when something else landed", () => {
     const result = updateDevice({
       id: "456",
       macroVariation: "create",
+      name: "Renamed",
     });
 
-    expect(capturedWarnings()).toContain(
-      "macro variations only available on rack devices; skipping t0/d1 (id 456)",
-    );
-    expect(nonRackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
+    expect(result).toStrictEqual({
+      id: "456",
+      path: "t0/d1",
+      detail: "macro variations are only available on rack devices",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should reject out-of-range variation index", () => {
@@ -170,92 +182,73 @@ describe("updateDevice - macroVariation", () => {
     expect(rackDevice.call).toHaveBeenCalledWith("recall_selected_variation");
   });
 
-  it("should warn and ignore when macroVariationIndex provided alone", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariationIndex: 2,
-    });
-
-    expect(capturedWarnings()).toContain(
+  // The pair says nothing about any one device, so a call that can't be read
+  // is refused before any target is touched (ADR-0035).
+  it("refuses macroVariationIndex sent on its own", () => {
+    expect(() => updateDevice({ id: "123", macroVariationIndex: 2 })).toThrow(
       "macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
-    expect(rackDevice.set).not.toHaveBeenCalledWith(
-      "selected_variation_index",
-      expect.anything(),
-    );
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+
+    expect(rackDevice.set).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when 'load' provided without index", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "load",
-    });
-
-    expect(capturedWarnings()).toContain(
+  it("refuses 'load' with no index", () => {
+    expect(() => updateDevice({ id: "123", macroVariation: "load" })).toThrow(
       "macroVariation 'load' requires macroVariationIndex",
     );
+
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
-  it("should warn and skip when 'delete' provided without index", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "delete",
-    });
-
-    expect(capturedWarnings()).toContain(
+  it("refuses 'delete' with no index", () => {
+    expect(() => updateDevice({ id: "123", macroVariation: "delete" })).toThrow(
       "macroVariation 'delete' requires macroVariationIndex",
     );
+
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
-  it("should warn but still create when 'create' provided with index", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "create",
-      macroVariationIndex: 1,
-    });
+  it.each(["create", "revert", "randomize"])(
+    "refuses an index beside '%s', which takes none",
+    (action) => {
+      expect(() =>
+        updateDevice({
+          id: "123",
+          macroVariation: action,
+          macroVariationIndex: 1,
+        }),
+      ).toThrow(
+        `macroVariationIndex does nothing for macroVariation '${action}' — ` +
+          "only 'load' and 'delete' take one",
+      );
 
-    expect(capturedWarnings()).toContain(
-      "macroVariationIndex ignored for 'create' (variations always appended)",
-    );
-    // The index is ignored for 'create': it must NOT be written as a selection.
-    expect(rackDevice.set).not.toHaveBeenCalledWith(
-      "selected_variation_index",
-      expect.anything(),
-    );
-    expect(rackDevice.call).toHaveBeenCalledWith("store_variation");
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(rackDevice.call).not.toHaveBeenCalled();
+    },
+  );
+});
+describe("updateMacroCount", () => {
+  let nonRackDevice: RegisteredMockObject;
+
+  beforeEach(() => {
+    nonRackDevice = registerMockObject("non-rack", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { can_have_chains: 0 },
+    });
   });
 
-  it("should warn but still revert when 'revert' provided with index", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "revert",
-      macroVariationIndex: 1,
+  it("should refuse when device is not a rack", () => {
+    const deviceApi = LiveAPI.from(nonRackDevice.path);
+    const notes = newTargetNotes();
+
+    updateMacroCount(deviceApi, 8, notes);
+
+    expect(notes).toStrictEqual({
+      said: ["macroCount is only available on rack devices"],
+      refused: ["macroCount"],
+      unlanded: [],
     });
-
-    expect(capturedWarnings()).toContain(
-      "macroVariationIndex ignored for 'revert'",
-    );
-    expect(rackDevice.call).toHaveBeenCalledWith("recall_last_used_variation");
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
-  });
-
-  it("should warn but still randomize when 'randomize' provided with index", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "randomize",
-      macroVariationIndex: 1,
-    });
-
-    expect(capturedWarnings()).toContain(
-      "macroVariationIndex ignored for 'randomize'",
-    );
-    expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    expect(nonRackDevice.call).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

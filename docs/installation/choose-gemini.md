@@ -21,7 +21,7 @@ provider.
 
 ## Model Notes
 
-- Gemini 3.6 Flash or Gemini 3.1 Pro recommended
+- Gemini 3.8 Flash or Gemini 3.1 Pro recommended
 - Free tier: expect to hit rate limits quickly, even in short sessions
 - When you outgrow the free tier:
   - [OpenRouter](./chat-ui-other-providers#openrouter) with Gemini - simplest

@@ -12,10 +12,10 @@
  */
 import { describe, expect, it } from "vitest";
 import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../e2e-test-set.ts";
 import {
   type DeviceInfo,
   KIT,
-  RACKS_TEST_PATH,
   readKitPads,
 } from "./helpers/racks-test-helpers.ts";
 
@@ -85,6 +85,7 @@ describe("read-device on nested racks", () => {
 
     for (const pad of kit.drumPads ?? []) {
       expect(pad.path).toBe(`${KIT}/p${pad.pitch}`);
+      expect(pad).not.toHaveProperty("note");
     }
 
     const subKit = await read(SUB_KIT, { include: ["drum-pads"] });
@@ -92,6 +93,7 @@ describe("read-device on nested racks", () => {
 
     expect(hat?.id).toBeUndefined();
     expect(hat?.path).toBe(`${SUB_KIT}/pC3`);
+    expect(hat).not.toHaveProperty("note");
   });
 
   // A path can pass through two drum pads. The segments after the first pad's
@@ -179,7 +181,7 @@ describe("read-device on nested racks", () => {
     it("leaves out a pad holding an empty rack", async () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Instrument Rack", path: `${KIT}/pB1` },
+        arguments: { device: "Instrument Rack", path: `${KIT}/pB1` },
       });
 
       const kit = await read(KIT, { include: ["drum-map"] });

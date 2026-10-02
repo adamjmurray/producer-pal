@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   expectValueSet,
+  noParamLanded,
+  paramsOf,
   registerDeviceWithParams,
   registerMockObject,
   updateDevice,
@@ -84,22 +86,59 @@ describe("updateDevice - display-value search", () => {
     expect(displayFor(Math.fround(expectValueSet(param)))).toBe(2.2);
   });
 
+  // The value landed, so the entry reports it — with the reason it isn't the
+  // one asked for. No warning: the param's own entry carries it.
   it("clamps to the raw max when the target is above the display range", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "99" }] });
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ name: "Drive", value: "99" }],
+    });
 
     expect(expectValueSet(param)).toBe(1);
-    expect(capturedWarnings()).toContain(
-      't0/d0 (id dev1) param "Drive" (id db-param) only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value.',
-    );
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        id: "db-param",
+        name: "Drive",
+        value: 36,
+        detail:
+          "only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value",
+      },
+    ]);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("stays inside the bottom step when the target is below the display range", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "-99" }] });
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ name: "Drive", value: "-99" }],
+    });
 
     expect(displayFor(Math.fround(expectValueSet(param)))).toBe(-36);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
+    expect(paramsOf(result)).toStrictEqual([
+      expect.objectContaining({
+        detail: expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
+      }),
+    ]);
+  });
+
+  // The clamped value is what Live was offered, so losing the clamp note would
+  // leave the caller thinking the value it asked for was the one refused.
+  it("keeps the clamp note when Live then refuses the clamped value", () => {
+    param.set.mockImplementation(() => undefined);
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Drive", value: "99" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "Drive": was not changed — it still reads "0.0 dB". ' +
+        "Live ignores a value outside the parameter's range. It only goes " +
+        "from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value",
     );
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("says nothing about the range when the target is inside it", () => {
@@ -258,13 +297,19 @@ describe("updateDevice - a request Live silently drops", () => {
     });
   });
 
-  it("warns when the value never changed", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "10" }] });
-
-    expect(param.properties.value).toBe(1);
-    expect(capturedWarnings()).toContain(
-      't0/d0 (id dev1) param "Vintage" (id word-param) was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
+  it("says the value never changed", () => {
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Vintage", value: "10" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "Vintage": was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
     );
+    expect(param.properties.value).toBe(1);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("says nothing when the value does change", () => {
@@ -339,11 +384,17 @@ describe("updateDevice - a word at the max end of the range", () => {
   });
 
   it("names the word when a target overshoots the numbers", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Release", value: "3" }] });
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ name: "Release", value: "3" }],
+    });
 
-    expect(capturedWarnings()).toContain(
-      't0/d0 (id dev1) param "Release" (id sentinel-param) only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value.',
-    );
+    expect(paramsOf(result)).toStrictEqual([
+      expect.objectContaining({
+        detail:
+          'only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value',
+      }),
+    ]);
   });
 });
 
@@ -400,10 +451,15 @@ describe("updateDevice - display-value search on a descending range", () => {
     }
   });
 
-  it("warns in the param's own units when the target is off the end", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "9" }] });
+  it("says so in the param's own units when the target is off the end", () => {
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ name: "Above Ratio", value: "9" }],
+    });
 
-    expect(capturedWarnings().join("\n")).toContain("1 : 7.00");
+    expect(paramsOf(result)).toStrictEqual([
+      expect.objectContaining({ detail: expect.stringContaining("1 : 7.00") }),
+    ]);
   });
 });
 
@@ -413,9 +469,16 @@ describe("updateDevice - a display range collapsed to a point", () => {
     // one. Searching would land in the middle and report success from there.
     const param = registerRatioParam(() => "1 : 1.00");
 
-    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "1" }] });
-
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Above Ratio", value: "1" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "Above Ratio": reads "1 : 1.00" across its whole range, so there is no value to aim at and it was left alone',
+    );
     expect(param.set).not.toHaveBeenCalled();
-    expect(capturedWarnings().join("\n")).toContain("1 : 1.00");
   });
 });

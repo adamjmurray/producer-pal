@@ -72,9 +72,9 @@ const POSITION_CASES = [
 // transform `duration = ...` right-hand side.
 const DURATION_CASES = [
   {
-    name: "n-prefixed bar duration (n1bar)",
-    durToken: "n1bar",
-    phrase: 'bar durations don\'t use the "n" prefix',
+    name: "n-fraction bar duration (n3/4bar)",
+    durToken: "n3/4bar",
+    phrase: "an n fraction and a bar count are different things",
   },
 ] as const;
 
@@ -122,6 +122,11 @@ describe("grammar error-message parity across surfaces (L9)", () => {
     it('"1bar" duration parses on both surfaces', () => {
       expect(() => parseBarbeat("1bar", OPTS)).not.toThrow();
       expect(() => parseTransform("duration = 1bar", OPTS)).not.toThrow();
+    });
+
+    it('"n4bar" duration parses on both surfaces as an alias of "4bar"', () => {
+      expect(() => parseBarbeat("n4bar", OPTS)).not.toThrow();
+      expect(() => parseTransform("duration = n4bar", OPTS)).not.toThrow();
     });
   });
 });

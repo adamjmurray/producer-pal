@@ -4,15 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
-import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
+import { arrangementOrigin } from "./helpers/note-properties.ts";
+import {
+  type ClipContext,
+  type NoteProperties,
+} from "./helpers/transform-context.ts";
 import {
   applyBinaryOp,
-  type ClipContext,
   isNoteOp,
-  type NoteProperties,
   operatorDisplay,
-} from "./helpers/transform-evaluator-helpers.ts";
+} from "./helpers/transform-evaluation.ts";
 import {
   type ExpressionNode,
   type TransformAssignment,
@@ -348,21 +351,17 @@ function evaluateAudioExpression(
     funcNode.args,
     funcNode.sync,
     funcNode.raw,
-    0, // position
-    numerator, // timeSigNumerator (= clip beats-per-bar)
-    denominator, // timeSigDenominator
-    { start: 0, end: numerator }, // timeRange (one bar in musical beats)
-    clipProps,
-    (expr, pos, num, denom, range, _props) =>
-      evaluateAudioExpressionWithContext(
-        expr,
-        audioProperties,
-        clipContext,
-        pos,
-        num,
-        denom,
-        range,
-      ),
+    {
+      position: 0,
+      timeSigNumerator: numerator, // = clip beats-per-bar
+      timeSigDenominator: denominator,
+      timeRange: { start: 0, end: numerator }, // one bar in musical beats
+      noteProperties: clipProps,
+      // The audio path resolves variables from the clip, not from a note, so the
+      // per-note fields of the context handed back to us are ignored.
+      evaluateExpression: (expr) =>
+        evaluateAudioExpression(expr, audioProperties, clipContext),
+    },
   );
 }
 
@@ -440,31 +439,6 @@ function evaluateBinaryOp(
 }
 
 /**
- * Evaluate expression with context (for function callbacks)
- * @param node - Expression node to evaluate
- * @param audioProperties - Audio properties for variable access
- * @param clipContext - Optional clip-level context
- * @param _position - Position in beats (unused in audio context)
- * @param _timeSigNumerator - Time signature numerator (unused)
- * @param _timeSigDenominator - Time signature denominator (unused)
- * @param _timeRange - Time range (unused)
- * @param _timeRange.start - Start of time range
- * @param _timeRange.end - End of time range
- * @returns Evaluated numeric result
- */
-function evaluateAudioExpressionWithContext(
-  node: ExpressionNode,
-  audioProperties: AudioProperties,
-  clipContext: ClipContext | undefined,
-  _position: number,
-  _timeSigNumerator: number,
-  _timeSigDenominator: number,
-  _timeRange: { start: number; end: number },
-): number {
-  return evaluateAudioExpression(node, audioProperties, clipContext);
-}
-
-/**
  * Build NoteProperties from ClipContext for function evaluation in audio context
  * @param clipContext - Optional clip-level context
  * @returns NoteProperties with clip-level values for function access
@@ -484,6 +458,8 @@ function buildClipNoteProperties(clipContext?: ClipContext): NoteProperties {
   if (clipContext.arrangementStart != null) {
     props["clip:position"] = clipContext.arrangementStart;
   }
+
+  props._arrangementOrigin = arrangementOrigin(clipContext);
 
   return props;
 }

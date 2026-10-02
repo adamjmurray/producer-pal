@@ -13,12 +13,12 @@ import {
   saveVoiceLanguage,
   saveVoiceSpeed,
   saveVoiceVolume,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/voice-settings-storage";
 import {
   loadTurnDetection,
   saveTurnDetection,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { type VoiceModeSettingsFields } from "#webui/types/settings";
 
 export interface UseVoiceModeSettingsReturn extends VoiceModeSettingsFields {

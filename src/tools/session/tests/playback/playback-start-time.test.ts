@@ -18,9 +18,9 @@ describe("playback - arrangement start position", () => {
     liveSet = setupPlaybackLiveSet();
   });
 
-  it("reports the start position update-arrangement set", () => {
+  it("says nothing about a start position that landed where it was put", () => {
     // start_time mirrors the value this call sets (the mock's set() doesn't
-    // feed back into get), so the reported startTime is the actual state.
+    // feed back into get), so the read-back is the position asked for.
     liveSet = setupPlaybackLiveSet({ start_time: 32 });
 
     const result = playback({
@@ -29,7 +29,7 @@ describe("playback - arrangement start position", () => {
     });
 
     expectLiveSetProperty(liveSet, "start_time", 32); // bar 9 = 32 beats in 4/4
-    expect(result.startTime).toBe("9|1");
+    expect(result.startTime).toBeUndefined();
   });
 
   it("reports the Live Set's start position, not the requested one", () => {
@@ -64,7 +64,8 @@ describe("playback - arrangement start position", () => {
       startTime: "9|1",
     });
 
-    expect(result.startTime).toBe("9|1");
+    // The position landed, so nothing reports — least of all the playhead.
+    expect(result.startTime).toBeUndefined();
     expect(result).not.toHaveProperty("currentTime");
   });
 
@@ -138,7 +139,32 @@ describe("playback - arrangement start position", () => {
 
     const result = playback({ action: "stop", startTime: "9|1" });
 
+    // The write is what matters; it landed where it was put, so it goes unsaid.
     expectLiveSetProperty(liveSet, "start_time", 32);
-    expect(result.startTime).toBe("9|1");
+    expect(result.startTime).toBeUndefined();
+  });
+
+  it("says nothing about a tolerated spelling of the position it landed", () => {
+    // The caller's own spelling isn't what decides this: the beat it resolves
+    // to is, so a position written another way still reads as landed.
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
+    const result = playback({
+      action: "update-arrangement",
+      startTime: "9|1.0",
+    });
+
+    expectLiveSetProperty(liveSet, "start_time", 32);
+    expect(result.startTime).toBeUndefined();
+  });
+
+  it("reports a start position Live put somewhere else", () => {
+    // Live is free to clamp what it was given — here it answers bar 4 for a
+    // request of bar 9, and that is news the caller has no other way to get.
+    liveSet = setupPlaybackLiveSet({ start_time: 12 });
+
+    const result = playback({ action: "play-arrangement", startTime: "9|1" });
+
+    expect(result.startTime).toBe("4|1");
   });
 });

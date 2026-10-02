@@ -10,6 +10,7 @@ import {
   livePath,
   mockNonExistentObjects,
   mockWorkingDeviceMoves,
+  registerMacroRack,
   registerMockObject,
   registerParamMock,
   updateDevice,
@@ -62,7 +63,7 @@ describe("updateDevice", () => {
     ]);
   });
 
-  it("should skip non-existent devices with warning", () => {
+  it("reports a dead id in its own slot and writes the rest", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
@@ -70,14 +71,16 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(capturedWarnings()).toContain('target not found at id "999"');
     expect(result).toStrictEqual([
       { id: "123", path: "t0/d0" },
+      { id: "999", ok: false, detail: 'id "999" does not exist' },
       { id: "456", path: "t0/d1" },
     ]);
+    // The entries carry it, so nothing warns about a target twice.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should return empty array when all devices are invalid", () => {
+  it("reports every target when none of them is there", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
@@ -85,7 +88,18 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "998", ok: false, detail: 'id "998" does not exist' },
+      { id: "999", ok: false, detail: 'id "999" does not exist' },
+    ]);
+  });
+
+  it("throws when the one id it was given isn't there", () => {
+    mockNonExistentObjects();
+
+    expect(() => updateDevice({ id: "999", name: "Test" })).toThrow(
+      'id "999" does not exist',
+    );
   });
 
   it("should handle 'id ' prefixed device IDs", () => {
@@ -123,12 +137,12 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.8);
-      // The value comes back read from the param, so a param that snapped to a
-      // different step would report the step, not what was asked for.
+      // The param reads back the number asked for, so the entry names it and
+      // spends nothing repeating the value.
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ id: "789", name: "Param 789", value: 0.8 }],
+        params: [{ id: "789", name: "Param 789" }],
       });
     });
 
@@ -147,28 +161,19 @@ describe("updateDevice", () => {
         id: "123",
         path: "t0/d0",
         params: [
-          { id: "789", name: "Param 789", value: 0.3 },
-          { id: "790", name: "Param 790", value: 0.7 },
+          { id: "789", name: "Param 789" },
+          { id: "790", name: "Param 790" },
         ],
       });
     });
 
-    it("reports an id that reached no param, in the entry and a warning", () => {
+    it("names an id that reached no param in the error, and warns nowhere", () => {
       mockNonExistentObjects();
 
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "999", value: "0.5" }],
-      });
-
-      expect(capturedWarnings()).toContain(
-        'param "999" not found on t0/d0 (id 123)',
-      );
-      expect(result).toStrictEqual({
-        id: "123",
-        path: "t0/d0",
-        params: [{ name: "999", reason: "not found on t0/d0 (id 123)" }],
-      });
+      expect(() =>
+        updateDevice({ id: "123", params: [{ name: "999", value: "0.5" }] }),
+      ).toThrow('no param landed — "999": not found on t0/d0 (id 123)');
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     // A hole in the params list, the same shape a hole in a comma-separated
@@ -177,7 +182,7 @@ describe("updateDevice", () => {
     it("should refuse an entry with an empty name", () => {
       expect(() =>
         updateDevice({ id: "123", params: [{ name: "  ", value: "0.5" }] }),
-      ).toThrow("params entry 1 has an empty name");
+      ).toThrow("params entry 1 has neither a name nor an id");
     });
 
     it("should refuse an entry with an empty value", () => {
@@ -217,19 +222,23 @@ describe("updateDevice", () => {
       });
     });
 
-    it("should log error for invalid enum value", () => {
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "791", value: "InvalidValue" }],
-      });
-
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Warp Mode" (id 791): "InvalidValue" is not valid. ' +
-          "Options: Repitch, Fade, Jump",
-      );
-      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
-    });
+    // Neither a word nor a bare index is a label here, and a bare index used to
+    // skip the enum branch and binary-search a garbage raw value.
+    it.each(["InvalidValue", "1"])(
+      "reports %s as an invalid enum value, with the options",
+      (value) => {
+        expect(() =>
+          updateDevice({ id: "123", params: [{ name: "791", value }] }),
+        ).toThrow(
+          `no param landed — "791": "${value}" is not valid. Options: Repitch, Fade, Jump`,
+        );
+        expect(param791.set).not.toHaveBeenCalledWith(
+          "value",
+          expect.anything(),
+        );
+        expect(capturedWarnings()).toHaveLength(0);
+      },
+    );
 
     it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
       // A quantized selector whose labels are numbers (e.g. a "1"/"2"/"4"/"8"
@@ -259,22 +268,6 @@ describe("updateDevice", () => {
         path: "t0/d0",
         params: [{ id: "793", name: "Retrigger", value: "4" }],
       });
-    });
-
-    it("warns when a numeric input matches no quantized label", () => {
-      // A bare index that isn't a label (value_items are words) must warn with
-      // the options, not silently binary-search a garbage raw value.
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "791", value: "1" }],
-      });
-
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Warp Mode" (id 791): "1" is not valid. ' +
-          "Options: Repitch, Fade, Jump",
-      );
-      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
   });
 
@@ -336,11 +329,19 @@ describe("updateDevice", () => {
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
       expect(param792.set).toHaveBeenCalledWith("value", 0.25);
-      // The mock always reads back "C", so the reported value is center.
+      // The mock always reads back "C", so the param reports the center it
+      // holds rather than the -0.5 asked for, and says that is what happened.
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ id: "792", name: "Pan", value: 0 }],
+        params: [
+          {
+            id: "792",
+            name: "Pan",
+            value: 0,
+            detail: "value read back as shown, not as sent",
+          },
+        ],
       });
     });
 
@@ -389,17 +390,17 @@ describe("updateDevice", () => {
       expect(panDir.set).toHaveBeenCalledWith("value", -0.5); // half left
     });
 
-    it("warns and skips a non-pan string instead of writing NaN", () => {
-      updateDevice({
-        id: "123",
-        params: [{ name: "792", value: "hard-left" }],
-      });
-
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Pan" (id 792): "hard-left" is not a valid pan ' +
-          'value (use -1 to 1, or "50L"/"50R"/"C")',
+    it("reports a non-pan string instead of writing NaN", () => {
+      expect(() =>
+        updateDevice({
+          id: "123",
+          params: [{ name: "792", value: "hard-left" }],
+        }),
+      ).toThrow(
+        'no param landed — "792": "hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
       );
       expect(param792.set).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -410,12 +411,8 @@ describe("updateDevice", () => {
 
   describe("macroCount", () => {
     beforeEach(() => {
-      // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
-      device123 = registerMockObject("123", {
-        path: livePath.track(0).device(0),
-        type: "RackDevice",
-        properties: { can_have_chains: 1, visible_macro_count: 4 },
-      });
+      // id 123 is a rack showing 4 macros, id 456 a regular device
+      device123 = registerMacroRack("123", { count: 4 });
 
       device456 = registerMockObject("456", {
         path: livePath.track(0).device(1),
@@ -425,16 +422,11 @@ describe("updateDevice", () => {
     });
 
     it("should reject non-rack devices with error", () => {
-      const result = updateDevice({
-        id: "456",
-        macroCount: 8,
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'macroCount' not applicable to Device t0/d1 (id 456)",
+      expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
+        "macroCount not applicable to a device",
       );
       expect(device456.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should call add_macro when increasing count (macros added in pairs)", () => {
@@ -469,18 +461,62 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
-    it("should round odd counts up to next even and warn", () => {
+    it("should round odd counts up to next even and say so on the entry", () => {
       const result = updateDevice({
         id: "123",
         macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
       });
 
-      expect(capturedWarnings()).toContain(
-        "macro count on t0/d0 (id 123) rounded from 7 to 8 (macros come in pairs)",
-      );
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("add_macro");
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      // The count landed, just not the one asked for, so no `ok`.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        detail: "macroCount rounded from 7 to 8 (macros come in pairs)",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says where the count landed when a mapped rack keeps its macros", () => {
+      registerMacroRack("rack", { count: 8, mapped: true, floor: 8 });
+
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+        detail:
+          "macroCount landed at 8, not 4: Live keeps a mapped macro visible",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says where the count landed when nothing is mapped", () => {
+      registerMacroRack("rack", { count: 8, floor: 6 });
+
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+        detail: "macroCount landed at 6, not 4",
+      });
+    });
+
+    it("says which mapped macros a lowered count hid", () => {
+      registerMacroRack("rack", { count: 8, mapped: true });
+
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+        detail: "macros 5 to 8 hidden; any mappings on them are gone",
+      });
+    });
+
+    it("says nothing extra when a mapped rack takes the macros it is given", () => {
+      registerMacroRack("rack", { count: 4, mapped: true });
+
+      expect(updateDevice({ id: "rack", macroCount: 8 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+      });
     });
   });
 
@@ -500,17 +536,15 @@ describe("updateDevice", () => {
     });
 
     it("should reject devices without AB Compare support", () => {
-      const result = updateDevice({
-        id: "456",
-        abCompare: "b",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "A/B Compare not available on t0/d1 (id 456)",
+      // abCompare was the whole call, so nothing landed and a lone target
+      // throws rather than reporting a hit.
+      expect(() => updateDevice({ id: "456", abCompare: "b" })).toThrow(
+        "A/B Compare is not available here",
       );
+
       expect(device456.set).not.toHaveBeenCalled();
       expect(device456.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should set is_using_compare_preset_b to 0 for 'a'", () => {
@@ -594,14 +628,15 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
-      // move_device takes "id X" format for live object parameters
+      // A bare container appends, so the index is the track's device count.
+      // move_device takes "id X" format for live object parameters.
       expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id 123",
         "id track1",
-        0,
+        2,
       );
-      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d2" });
     });
 
     it("should move device to a specific position", () => {
@@ -634,51 +669,46 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123", path: "t0/d0/c1/d0" });
     });
 
-    it("should warn and skip when trying to move a Chain", () => {
+    it("should refuse a lone move of a Chain", () => {
+      // A plain Chain is neither a device nor a DrumChain, and a pad id names
+      // the whole pad now, so nothing here can move.
       registerMockObject("123", { type: "Chain" });
 
-      // Should not throw, just warn and continue with other updates
-      const result = updateDevice({
-        id: "123",
-        toPath: "t1",
-      });
+      expect(() => updateDevice({ id: "123", toPath: "t1" })).toThrow(
+        "a chain cannot be moved; move its devices instead",
+      );
 
-      // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
-      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
       expectNoMove();
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should warn and skip when trying to move a rack Chain", () => {
-      // Not a DrumPad: a pad id names the whole pad now, and a pad move is an
-      // in_note re-map that updateDrumPadGroup handles.
+    it("says on the entry that a Chain did not move, beside what did land", () => {
       registerMockObject("123", { type: "Chain" });
 
-      // Should not throw, just warn and continue with other updates
       const result = updateDevice({
         id: "123",
         toPath: "t1",
+        name: "Renamed",
       });
 
-      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expectNoMove();
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        detail: "a chain cannot be moved; move its devices instead",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should warn and skip when target path does not exist", () => {
+    it("should refuse a move when target path does not exist", () => {
       mockNonExistentObjects();
 
-      // Should not throw, just warn and continue with other updates
-      const result = updateDevice({
-        id: "123",
-        toPath: "t99",
-      });
-
-      // The missing container is reported and no move is attempted.
-      expect(capturedWarnings()).toContain(
-        'move target at path "t99" does not exist',
+      expect(() => updateDevice({ id: "123", toPath: "t99" })).toThrow(
+        'not moved: nothing at toPath "t99"',
       );
+
       expectNoMove();
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should allow combining move with other updates", () => {
@@ -693,30 +723,43 @@ describe("updateDevice", () => {
         "move_device",
         "id 123",
         "id track1",
-        0,
+        2,
       );
 
       // Should also set name
       expect(device123.set).toHaveBeenCalledWith("name", "Moved Device");
 
-      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d2" });
     });
   });
 
   describe("type validation", () => {
-    it("should warn and skip an object that is not a device, chain, or pad", () => {
+    it("refuses an object that is not a device, chain, or pad", () => {
       registerMockObject("999", {
         path: livePath.track(3),
         type: "Track",
       });
 
-      const result = updateDevice({ id: "999", name: "Nope" });
-
-      expect(capturedWarnings()).toContain(
-        "cannot update Track objects: t3 (id 999)",
+      // Nothing can be written to it, so the lone target is refused and the
+      // reason is the error rather than a warning.
+      expect(() => updateDevice({ id: "999", name: "Nope" })).toThrow(
+        "cannot update a track: t3 (id 999)",
       );
-      // Nothing is written to an unsupported object, and it drops from results.
-      expect(result).toStrictEqual([]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("keeps its slot when a writable target was named too", () => {
+      registerMockObject("999", { path: livePath.track(3), type: "Track" });
+
+      expect(updateDevice({ id: "999,123", name: "Nope" })).toStrictEqual([
+        {
+          id: "999",
+          ok: false,
+          detail: "cannot update a track: t3 (id 999)",
+        },
+        { id: "123", path: "t0/d0" },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

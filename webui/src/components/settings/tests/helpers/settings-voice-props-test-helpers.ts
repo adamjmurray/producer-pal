@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 /**
  * Build the shared VoiceSettings prop block (voice, language, volume, speed,

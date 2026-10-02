@@ -25,7 +25,7 @@ type DocTab = "project" | "global" | "instructions";
  * All context editor tabs: the doc tabs plus the multi-fragment Skills override
  * tab and the multi-entry Memory tab.
  */
-type ContextTab = DocTab | "skills" | "memory";
+export type ContextTab = DocTab | "skills" | "memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
@@ -37,7 +37,7 @@ const PROJECT_LABELS: ContextEditorLabels = {
   externalUpdateMessage: "Project context was updated outside the editor.",
   exportBasename: "producer-pal-project-context",
   description:
-    "Notes about this Ableton project, like its genre and song structure, included in every conversation. Saved in this project's Max for Live device (delete the device and it's gone). The AI can edit them too.",
+    "Notes about this Ableton project, like its genre and song structure, included in every conversation. Saved in this project's Max for Live device and mirrored to a file in your Live Project folder, so they survive deleting or upgrading the device. The AI can edit them too.",
 };
 
 const GLOBAL_LABELS: ContextEditorLabels = {
@@ -70,6 +70,8 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
 };
 
 interface ContextTabsProps {
+  /** Tab to open on; defaults to Project. Only read at mount. */
+  initialTab?: ContextTab;
   /** Close the overlay; omitted on the standalone `/context` page. */
   onClose?: () => void;
   /**
@@ -95,7 +97,7 @@ interface ContextTabsProps {
  * @returns Tabbed editor element
  */
 export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
-  const [tab, setTab] = useState<ContextTab>("project");
+  const [tab, setTab] = useState<ContextTab>(props.initialTab ?? "project");
   const projectContext = useProjectContext();
   const globalContext = useGlobalContext();
   const instructions = useSystemPrompt();

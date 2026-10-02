@@ -22,8 +22,8 @@ function expectNoteUpdateCalls(
     "get_notes_extended",
     0,
     128,
-    // Window varies with mock clip length; clip-notes.test.ts pins the exact
-    // [-length, 2*length] window. Here just assert read+remove spanned pitches.
+    // Window varies with the mock clip's region; clip-notes.test.ts pins it.
+    // Here just assert read+remove spanned pitches.
     expect.any(Number),
     expect.any(Number),
   );
@@ -199,8 +199,14 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 4 }); // 2 existing + 2 copied
   });
 
-  it("reports noteCount across read-clip's [-length, 2*length] window (near overhang counted, far overhang not)", async () => {
-    setupMidiClipMock(mocks.clip123, { length: 8 }); // 2 bars
+  it("reports noteCount across read-clip's window (near overhang counted, far overhang not)", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      length: 8, // 2 bars
+      start_marker: 0,
+      end_marker: 8,
+      loop_start: 0,
+      loop_end: 8,
+    });
 
     // Mock to track added notes and return the subset inside the requested
     // window. get_notes_extended args are (pitchStart, pitchSpan, timeStart,
@@ -240,7 +246,7 @@ describe("updateClip - Advanced note operations", () => {
     // at 8 are counted; F3 at beat 20 (> one clip-length past the end) is not.
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
 
-    // Window: from -length (-8) spanning length*3 (24), i.e. [-8, 16).
+    // Window: the region [0, 8) plus a clip-length each side, i.e. [-8, 16).
     expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,

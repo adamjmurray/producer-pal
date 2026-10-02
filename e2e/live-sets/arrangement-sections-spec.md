@@ -50,15 +50,16 @@ Set is in the arrangement.
 Five 8-bar sections. The names are the point — a scenario says "play from the
 chorus" and the model has to reach for the locator rather than compute a bar.
 
-| ID        | Name   | Position |
-| --------- | ------ | -------- |
-| locator-0 | Intro  | 1\|1     |
-| locator-1 | Verse  | 9\|1     |
-| locator-2 | Chorus | 17\|1    |
-| locator-3 | Bridge | 25\|1    |
-| locator-4 | Outro  | 33\|1    |
+| Name   | Position |
+| ------ | -------- |
+| Intro  | 1\|1     |
+| Verse  | 9\|1     |
+| Chorus | 17\|1    |
+| Bridge | 25\|1    |
+| Outro  | 33\|1    |
 
-Locator IDs are positional and shift if any earlier locator is added or removed.
+A locator's id is Live's own, so it differs per Set — read it from read-live-set
+rather than hardcoding one.
 
 ## Tracks
 

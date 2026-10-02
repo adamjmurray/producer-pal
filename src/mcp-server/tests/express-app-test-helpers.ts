@@ -35,6 +35,31 @@ export function makePostConfig(
     });
 }
 
+/**
+ * Start a fresh Express app on an ephemeral port, hand `run` its base URL, and
+ * close the server afterwards. Call `vi.resetModules()` first when the test
+ * needs the app built from an unprimed module graph.
+ *
+ * @param run - Receives the running app's base URL
+ * @returns Whatever `run` returns
+ */
+export async function withExpressApp<T>(
+  run: (baseUrl: string) => Promise<T>,
+): Promise<T> {
+  const { createExpressApp } = await import("../create-express-app.ts");
+  const app = createExpressApp();
+  const server = await new Promise<Server>((resolve) => {
+    const s = app.listen(0, () => resolve(s));
+  });
+  const port = (server.address() as AddressInfo).port;
+
+  try {
+    return await run(`http://localhost:${port}`);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
 interface ExpressAppTestState {
   server: Server | undefined;
   baseUrl: string;

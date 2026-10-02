@@ -17,20 +17,31 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  createGlueCompressor,
+  expectParamRefused,
+  writeParam,
+} from "../helpers/update-device-param-test-helpers";
+import {
   createTestDevice,
+  createTestDeviceAt,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
+import { readParam } from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
 describe("ppal-update-device param units", () => {
   describe("a param that reports its own unit", () => {
     it("writes a value in that unit", async () => {
-      const deviceId = await glueCompressor();
-      const { data, warnings } = await write(deviceId, "Threshold", "-20 dB");
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const { data, warnings } = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Threshold",
+        "-20 dB",
+      );
 
       expect(warnings).toStrictEqual([]);
       expect(data.params).toStrictEqual([
@@ -39,21 +50,27 @@ describe("ppal-update-device param units", () => {
     });
 
     it("refuses a value in a unit the param doesn't use", async () => {
-      const deviceId = await glueCompressor();
+      const deviceId = await createGlueCompressor(ctx.client!);
       // Dry/Wet is a percentage. The number alone is in range, so before the
       // unit was checked this wrote 50% and reported success.
-      const { data, warnings } = await write(deviceId, "Dry/Wet", "50 dB");
+      const written = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Dry/Wet",
+        "50 dB",
+      );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining('is measured in %, so "50 dB" was not written'),
-      ]);
+      expectParamRefused(
+        written,
+        "Dry/Wet",
+        'is measured in %, so "50 dB" was not written',
+      );
     });
   });
 
   describe("a param whose unit is recorded", () => {
     it("reports the recorded unit on a read", async () => {
-      const deviceId = await glueCompressor();
+      const deviceId = await createGlueCompressor(ctx.client!);
 
       expect(await readUnit(deviceId, "Attack")).toBe("ms");
       expect(await readUnit(deviceId, "Release")).toBe("s");
@@ -61,8 +78,13 @@ describe("ppal-update-device param units", () => {
 
     // Attack takes milliseconds, and this spelling is the one models reach for.
     it("writes a value in the recorded unit", async () => {
-      const deviceId = await glueCompressor();
-      const { data, warnings } = await write(deviceId, "Attack", "10 ms");
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const { data, warnings } = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Attack",
+        "10 ms",
+      );
 
       expect(warnings).toStrictEqual([]);
       expect(data.params).toStrictEqual([
@@ -75,7 +97,7 @@ describe("ppal-update-device param units", () => {
     // the value was not put back on the param's own scale. "0.5 s" used to be
     // read as 500, land past the 1.2 maximum, and clamp there.
     it("lands the same duration however it is spelled", async () => {
-      const deviceId = await glueCompressor();
+      const deviceId = await createGlueCompressor(ctx.client!);
       const bare = await writeValue(deviceId, "Release", "0.5");
       const seconds = await writeValue(deviceId, "Release", "0.5 s");
       const millis = await writeValue(deviceId, "Release", "500 ms");
@@ -86,13 +108,19 @@ describe("ppal-update-device param units", () => {
     });
 
     it("still refuses a unit measuring something else", async () => {
-      const deviceId = await glueCompressor();
-      const { data, warnings } = await write(deviceId, "Release", "50 %");
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const written = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Release",
+        "50 %",
+      );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining('is measured in s, so "50 %" was not written'),
-      ]);
+      expectParamRefused(
+        written,
+        "Release",
+        'is measured in s, so "50 %" was not written',
+      );
     });
   });
 
@@ -104,7 +132,12 @@ describe("ppal-update-device param units", () => {
 
       expect(await readUnit(deviceId, "Fine")).toBe("cents");
 
-      const { data, warnings } = await write(deviceId, "Fine", "20 ct");
+      const { data, warnings } = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Fine",
+        "20 ct",
+      );
 
       expect(warnings).toStrictEqual([]);
       expect(data.params).toStrictEqual([
@@ -121,7 +154,12 @@ describe("ppal-update-device param units", () => {
 
       expect(await readUnit(deviceId, "Shift")).toBe("semitones");
 
-      const { data, warnings } = await write(deviceId, "Shift", "2.5 st");
+      const { data, warnings } = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Shift",
+        "2.5 st",
+      );
 
       expect(warnings).toStrictEqual([]);
       expect(data.params).toStrictEqual([
@@ -134,62 +172,69 @@ describe("ppal-update-device param units", () => {
     });
   });
 
+  // Analog's F1 Freq reads "999", then "1.00k": a bare k for thousands and no
+  // "Hz". "22.0k" used to read as 22, giving a range of 30 to 22.
+  describe("a param whose labels use a bare k for thousands", () => {
+    it("reports a rising range in Hz", async () => {
+      const path = await createTestDeviceAt(ctx.client!, "Analog", "t8");
+      const param = await readFreq(path);
+
+      expect(param.unit).toBe("Hz");
+      expect(param.min).toBe(30);
+      expect(param.max).toBe(22000);
+    });
+
+    it.each(["800", "800 Hz", "0.8 kHz", "0.8k"])(
+      "lands %j on about 800 Hz",
+      async (value) => {
+        const path = await createTestDeviceAt(ctx.client!, "Analog", "t8");
+
+        await ctx.client!.callTool({
+          name: "ppal-update-device",
+          arguments: { path, params: [{ name: "F1 Freq", value }] },
+        });
+        await sleep(100);
+
+        // Live shows three digits at this size, so allow a step either side.
+        expect(Number((await readFreq(path)).value)).toBeCloseTo(800, -1);
+      },
+    );
+  });
+
   describe("a param that measures nothing", () => {
     // S/C EQ Q is a Q factor: a bare number with no unit recorded, because
     // there is no unit to record.
     it("refuses a unit, since there is none to check against", async () => {
-      const deviceId = await glueCompressor();
-      const { data, warnings } = await write(deviceId, "S/C EQ Q", "5 dB");
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const written = await writeParam(
+        ctx.client!,
+        deviceId,
+        "S/C EQ Q",
+        "5 dB",
+      );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining("never says what it measures"),
-      ]);
+      expectParamRefused(written, "S/C EQ Q", "never says what it measures");
     });
 
     it("writes that same param when the unit is left off", async () => {
-      const deviceId = await glueCompressor();
-      const { data, warnings } = await write(deviceId, "S/C EQ Q", "5");
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const { data, warnings } = await writeParam(
+        ctx.client!,
+        deviceId,
+        "S/C EQ Q",
+        "5",
+      );
+
+      const [entry] = data.params ?? [];
 
       expect(warnings).toStrictEqual([]);
-      expect(data.params).toStrictEqual([
-        { id: expect.any(String), name: "S/C EQ Q", value: expect.any(Number) },
-      ]);
+      // A bare number reports a value only where Live kept a different one, so
+      // what says the write landed is the entry naming the param with no `ok`.
+      expect(entry?.name).toBe("S/C EQ Q");
+      expect(entry?.ok).toBeUndefined();
     });
   });
 });
-
-/**
- * Create a Glue Compressor on the first track.
- * @returns The new device's id
- */
-function glueCompressor(): Promise<string> {
-  return createTestDevice(ctx.client!, "Glue Compressor", "t0");
-}
-
-/**
- * Write one param value and return the result with any warnings it raised.
- * @param deviceId - Device holding the parameter
- * @param name - Parameter to write
- * @param value - Value to request, unit and all
- * @returns The parsed result and its warnings
- */
-async function write(
-  deviceId: string,
-  name: string,
-  value: string,
-): Promise<{ data: UpdateDeviceResult; warnings: string[] }> {
-  const result = parseToolResultWithWarnings<UpdateDeviceResult>(
-    await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: { id: deviceId, params: [{ name, value }] },
-    }),
-  );
-
-  await sleep(100);
-
-  return result;
-}
 
 /**
  * Write one param value and return the value it landed on.
@@ -203,9 +248,13 @@ async function writeValue(
   name: string,
   value: string,
 ): Promise<number | string | undefined> {
-  const { data } = await write(deviceId, name, value);
+  await writeParam(ctx.client!, deviceId, name, value);
 
-  return data.params?.[0]?.value;
+  // Read back rather than taking the write's word: a bare number that lands as
+  // asked reports no value at all.
+  await sleep(100);
+
+  return (await readParam(ctx.client!, deviceId, name)).value;
 }
 
 /**
@@ -232,10 +281,33 @@ async function readUnit(
   return result.parameters?.find((p) => p.name === name)?.unit;
 }
 
-interface ReadDeviceResult {
-  parameters?: Array<{ name: string; unit?: string }>;
+/**
+ * Read Analog's F1 Freq as read-device reports it.
+ * @param path - Path of the Analog device
+ * @returns The parameter entry
+ */
+async function readFreq(path: string): Promise<FreqParam> {
+  const result = parseToolResult<ReadDeviceResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path, include: ["param-values"], paramSearch: "F1 Freq" },
+    }),
+  );
+  const found = result.parameters?.find((p) => p.name === "F1 Freq");
+
+  expect(found, 'no parameter named "F1 Freq"').toBeDefined();
+
+  return found as FreqParam;
 }
 
-interface UpdateDeviceResult {
-  params?: Array<{ id: string; name: string; value?: number | string }>;
+interface FreqParam {
+  name: string;
+  value?: number | string;
+  min?: number;
+  max?: number;
+  unit?: string;
+}
+
+interface ReadDeviceResult {
+  parameters?: FreqParam[];
 }

@@ -26,10 +26,10 @@ export interface RequestOverrides {
    * and format notes in the caller's notation rather than the device global.
    * Carried in the same contextJSON blob as the rest — V8's buildRequestContext
    * spreads it straight onto the per-request ToolContext. Filled on every call
-   * that goes through the enriched wrapper, MCP and REST alike (see
-   * notation-override.ts), so it is rarely absent in practice. MCP and REST
-   * both honor NOTATION_HEADER and fall back to the device global — see
-   * resolveRequestProfile, which is what keeps them from drifting.
+   * that goes through the enriched wrapper (buildEnrichedCall in
+   * create-express-app.ts), MCP and REST alike, so it is rarely absent in
+   * practice. Both honor NOTATION_HEADER and fall back to the device global —
+   * see resolveRequestProfile, which is what keeps them from drifting.
    */
   notation?: Notation;
 }

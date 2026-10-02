@@ -9,32 +9,50 @@ import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpe
 import {
   namedIdParam,
   namedPathParam,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseClipDestinationList,
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
-import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
+import { type ClipDestinations } from "./helpers/clip/clip-destinations.ts";
+import { focusIfRequested } from "./helpers/focus-if-requested.ts";
+import {
+  arrangementLengthMeter,
+  copyLabels,
+} from "./helpers/sources/copy-labels.ts";
+import { noteUnhonoredTrackToPath } from "./helpers/sources/duplicate-track.ts";
+import { sceneCopyCount } from "./helpers/sources/scene-arrangement-positions.ts";
 import {
   duplicateChainSources,
-  duplicateOneSource,
-} from "./helpers/sources/duplicate-run-source-helpers.ts";
+  duplicateEverySource,
+  regularTrackIndex,
+} from "./helpers/sources/duplicate-one-source.ts";
 import {
   planSources,
   resolveSourceClipDestinations,
-} from "./helpers/sources/duplicate-source-helpers.ts";
-import { markOverwrittenCopies } from "./helpers/clip/duplicate-overwrite-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
+  type SourceShare,
+} from "./helpers/sources/source-plan.ts";
+import {
+  duplicateTracksToLanes,
+  namesTakeLaneDestination,
+} from "./helpers/sources/duplicate-tracks-to-lanes.ts";
+import {
+  laneSourceIds,
+  namesLaneSource,
+} from "./helpers/sources/lane-sources.ts";
+import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
 import {
   hasArrangementPosition,
   resolveDestinationAndWarn,
+} from "./helpers/duplicate-destinations.ts";
+import {
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-} from "./helpers/duplicate-validation-helpers.ts";
+} from "./helpers/duplicate-input-validation.ts";
 
 interface DuplicateArgs {
   type: string;
@@ -75,7 +93,7 @@ interface DuplicateArgs {
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement position(s): bar|beat or `loc:<locator>`
  * @param args.locator - Deprecated locator ref(s); use arrangementStart
- * @param args.arrangementLength - Arrangement length
+ * @param args.arrangementLength - Span to fill: one for all, or one per copy
  * @param args.name - Name for duplicates
  * @param args.color - Color for all the copies, or comma-separated one per copy
  * @param args.withoutClips - Exclude clips
@@ -125,25 +143,32 @@ export async function duplicate(
   // Validate basic inputs
   validateBasicInputs(type, id, count, path);
 
-  // Auto-configure for routing back to source
-  ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
-    type,
-    routeToSource,
-    withoutClips,
-    withoutDevices,
-  ));
+  // A track copied onto a take lane — or off one, onto a track's main lane —
+  // lands its clips there instead of making a new track, so the params that
+  // make no sense for it don't warn or apply. It is also the only copy whose
+  // source can be a lane.
+  const fromLane = namesLaneSource(type, id, path, toPath);
+  const toTakeLane = namesTakeLaneDestination(type, toPath, fromLane);
+  const laneCopy = fromLane || toTakeLane;
+
+  if (!laneCopy) {
+    ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
+      type,
+      routeToSource,
+      withoutClips,
+      withoutDevices,
+    ));
+  }
 
   // One spelling from here down: a scene's whole destination is its position,
   // the deprecated locator folds onto the position it named, and every `loc:`
   // entry becomes the bar|beat it names. Nothing below knows any of that.
   const dest = settleDestination(type, toPath, arrangementStart, locator);
 
-  toPath = dest.toPath;
-  arrangementStart = dest.arrangementStart;
+  ({ toPath, arrangementStart } = dest);
+  count = sceneCopyCount(type, dest, count);
 
-  const hasArrangementParams = dest.onArrangement;
-  // An arrangement destination pairs across the sources — one covers them all,
-  // a list gives one per source — where a slot-shaped one is dealt out.
+  // Several sources take one destination each, in order (ADR-0031).
   const sources = planSources({
     type,
     id,
@@ -151,29 +176,24 @@ export async function duplicate(
     toPath,
     toSlot,
     arrangementStart,
-    onArrangement: type === "clip" && hasArrangementParams,
+    startParam: dest.startParam,
+    onArrangement: dest.onArrangement,
+    // A lane copy takes a lane source, which the track lookup rejects.
+    idPerPath: laneCopy ? laneSourceIds : undefined,
   });
 
-  // A bad id partway through a list would leave the copies before it behind, so
-  // check every source before the first one is made.
-  if (sources.length > 1) {
-    for (const source of sources) {
-      validateIdType(source.id, type);
-    }
-  }
+  validateSourceIds(type, sources, laneCopy);
 
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
   const clipDestinations =
     type === "clip"
-      ? resolveSourceClipDestinations(sources, hasArrangementParams)
+      ? resolveSourceClipDestinations(sources, dest.onArrangement)
       : null;
 
   const destination = resolveDestinationAndWarn({
     type,
-    // Every source's destination is the same kind, and the warnings are about
-    // the params rather than the places, so one of them speaks for the call.
-    clipDestinations: clipDestinations?.[0] ?? null,
+    clipDestinations: callClipDestinations(clipDestinations),
     count,
     toPath,
     toSlot,
@@ -183,63 +203,186 @@ export async function duplicate(
     takeLaneName,
     transforms,
     code,
+    laneCopy,
+    toTakeLane,
+    sourceCount: sources.length,
   });
 
-  const labels = copyLabels(name, color, sources.length);
+  const labels = copyLabels(
+    { name, color, arrangementLength },
+    sources.length,
+    arrangementLengthMeter(type, destination, arrangementLength),
+  );
 
-  // Both of these take comma-separated toPath for multiple destinations
-  if (type === "drum-pad" || type === "device" || type === "chain") {
-    return duplicateChainSources(type, sources, labels, count);
+  if (laneCopy) {
+    const laneCopies = duplicateTracksToLanes({
+      sources,
+      labels,
+      count,
+      params: { withoutClips, withoutDevices, routeToSource },
+      takeLaneName,
+    });
+
+    // Two destinations can be the same place, and the second create clears what
+    // the first put there.
+    markOverwrittenCopies(laneCopies);
+
+    return oneOrAll(laneCopies);
   }
 
-  const createdObjects: object[] = [];
+  // All three take comma-separated toPath for multiple destinations, and answer
+  // with one entry per destination named.
+  if (type === "drum-pad" || type === "device" || type === "chain") {
+    return oneOrAll(duplicateChainSources(type, sources, labels, count));
+  }
 
-  for (const [i, source] of sources.entries()) {
-    createdObjects.push(
-      ...(await duplicateOneSource({
-        type,
-        source,
-        destination,
-        clipDestinations: clipDestinations?.[i] ?? null,
-        count,
-        labels,
-        params: {
-          arrangementStart: source.arrangementStart,
-          arrangementLength,
-          withoutClips,
-          withoutDevices,
-          routeToSource,
-        },
-        takeLane,
-        takeLaneName,
-        context,
-      })),
-    );
+  const createdObjects = await duplicateEverySource({
+    type,
+    sources,
+    destination,
+    clipDestinations,
+    count,
+    labels,
+    params: { arrangementLength, withoutClips, withoutDevices, routeToSource },
+    takeLane,
+    takeLaneName,
+    context,
+  });
+
+  await finishCopies(
+    type,
+    createdObjects,
+    { toPath, destination, transforms, code },
+    context,
+  );
+
+  // Handle view switching if requested
+  focusIfRequested(focus, destination, type, createdObjects);
+
+  return oneOrAll(createdObjects);
+}
+
+/**
+ * What the entries still need once every copy is made.
+ * @param type - What was duplicated
+ * @param createdObjects - One entry per copy the call asked for
+ * @param params - The call's params that apply after the copy
+ * @param params.toPath - Destination path(s) as the caller wrote them
+ * @param params.destination - Where the copies went, e.g. "arrangement"
+ * @param params.transforms - Transforms to apply to clip copies
+ * @param params.code - Code to run on clip copies
+ * @param context - Per-request context
+ */
+async function finishCopies(
+  type: string,
+  createdObjects: object[],
+  params: {
+    toPath?: string;
+    destination?: string;
+    transforms?: string;
+    code?: string;
+  },
+  context: Partial<ToolContext>,
+): Promise<void> {
+  if (type === "track") {
+    noteUnhonoredTrackToPath(createdObjects, params.toPath);
+
+    return;
+  }
+
+  // Scene copies can land on each other's clips too. Session copies are left
+  // out: an inserted scene shifts earlier copies, which would read as buried.
+  if (type === "scene" && params.destination === "arrangement") {
+    markOverwrittenCopies(createdObjects);
+
+    return;
+  }
+
+  if (type !== "clip") {
+    return;
   }
 
   // A copy can land on one an earlier copy in this call just made. Say so in
   // that copy's own entry, before anything downstream spends an id that now
   // names nothing.
-  if (type === "clip") {
-    markOverwrittenCopies(createdObjects);
-  }
+  markOverwrittenCopies(createdObjects);
 
   // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
-  if (type === "clip" && (transforms != null || code != null)) {
+  if (params.transforms != null || params.code != null) {
     await applyTransformsToDuplicatedClips(
       createdObjects,
-      transforms,
-      code,
+      params.transforms,
+      params.code,
       context,
     );
   }
+}
 
-  // Handle view switching if requested
-  focusIfRequested(focus, destination, type, createdObjects);
+/**
+ * The one source's destinations that speak for the call's warnings, which are
+ * about the params rather than the places: one bound for the arrangement when
+ * any is, since that one reads the arrangement params.
+ * @param clipDestinations - One destination set per source, or null
+ * @returns The destinations that speak for the call, or null
+ */
+function callClipDestinations(
+  clipDestinations: ClipDestinations[] | null,
+): ClipDestinations | null {
+  return (
+    clipDestinations?.find((each) => each.destination === "arrangement") ??
+    clipDestinations?.[0] ??
+    null
+  );
+}
 
-  // Return single object or array based on results
-  if (createdObjects.length === 1) {
-    return createdObjects[0] as object;
+/**
+ * Checks every source of a list before the first copy is made: a bad id partway
+ * through would leave the copies before it behind. A lane copy does its own
+ * checking, since it plans every destination before creating anything, and its
+ * sources can be take lanes rather than tracks.
+ * @param type - What is being duplicated
+ * @param sources - The sources, in call order
+ * @param laneCopy - Whether the call copies clips lane to lane
+ */
+function validateSourceIds(
+  type: string,
+  sources: SourceShare[],
+  laneCopy: boolean,
+): void {
+  if (sources.length < 2 || laneCopy) {
+    return;
+  }
+
+  for (const source of sources) {
+    const object = validateIdType(source.id, type);
+
+    // A return track passes the type check, but Live can't copy it.
+    if (type === "track") {
+      regularTrackIndex(object);
+    }
+  }
+}
+
+/**
+ * The copy when the call asked for one, otherwise one entry per copy asked for.
+ *
+ * A lone copy that wasn't made has no list for its entry to hold a place in, so
+ * its detail goes back as the error it would have been (ADR-0042).
+ * @param createdObjects - One entry per copy the call asked for
+ * @returns The single entry, or all of them
+ * @throws Error when the call asked for one copy and it wasn't made
+ */
+function oneOrAll(createdObjects: object[]): object | object[] {
+  const [only] = createdObjects;
+
+  if (createdObjects.length === 1 && only != null) {
+    const skip = only as { ok?: false; detail?: string };
+
+    if (skip.ok === false) {
+      throw new Error(skip.detail);
+    }
+
+    return only;
   }
 
   return createdObjects;
@@ -291,14 +434,20 @@ function resolveArrangementStart(
  * @param rawToPath - Destination path(s) as the caller wrote them
  * @param rawStart - Position list as the caller wrote it
  * @param locator - Deprecated locator ref list, if sent
- * @returns The two params in one spelling, and whether they land on the song timeline
+ * @returns The two params in one spelling, whether they land on the song
+ * timeline, and which param the caller wrote the positions in
  */
 function settleDestination(
   type: string | undefined,
   rawToPath: string | undefined,
   rawStart: string | undefined,
   locator: string | undefined,
-): { toPath?: string; arrangementStart?: string; onArrangement: boolean } {
+): {
+  toPath?: string;
+  arrangementStart?: string;
+  onArrangement: boolean;
+  startParam: string;
+} {
   const scene = foldSceneDestination(type, rawToPath, rawStart);
   const toPath = scene.toPath;
   const arrangementStart = resolveArrangementStart(
@@ -311,6 +460,7 @@ function settleDestination(
     toPath,
     arrangementStart,
     onArrangement: namesArrangementPosition(type, toPath, arrangementStart),
+    startParam: scene.fromToPath ? "toPath" : "arrangementStart",
   };
 }
 
@@ -322,18 +472,30 @@ function settleDestination(
  * track a scene copy has no use for. Positions are spelled back as bar|beat
  * before they join arrangementStart's comma-separated list, so a locator name
  * holding a comma survives the trip.
+ *
+ * A scene's only destination is an arrangement position, so a toPath naming
+ * anything else (a track, a clip slot) can't be honored at all — the call is
+ * refused up front rather than silently duplicating into the session instead.
  * @param type - What is being duplicated
  * @param toPath - Destination path(s) as the caller wrote them
  * @param arrangementStart - Position list as the caller wrote it
- * @returns The two params, with a scene's coordinate moved across
+ * @returns The two params, with a scene's coordinate moved across, and
+ * whether the positions came from toPath
  */
 function foldSceneDestination(
   type: string | undefined,
   toPath: string | undefined,
   arrangementStart: string | undefined,
-): { toPath?: string; arrangementStart?: string } {
-  if (type !== "scene" || !pathCarriesPosition(toPath)) {
+): { toPath?: string; arrangementStart?: string; fromToPath?: true } {
+  if (type !== "scene" || toPath == null || toPath.trim() === "") {
     return { toPath, arrangementStart };
+  }
+
+  if (!pathCarriesPosition(toPath)) {
+    throw new Error(
+      `toPath "${toPath.trim()}" names no arrangement position; a scene's ` +
+        `only destination is one, written as "[5|1]"`,
+    );
   }
 
   refuseDoubledPosition(toPath, arrangementStart, "toPath");
@@ -349,13 +511,14 @@ function foldSceneDestination(
     }
 
     throw new Error(
-      `toPath "${toPath?.trim()}" names a lane, but a scene ` +
+      `toPath "${toPath.trim()}" names a lane, but a scene ` +
         `copies across every track; name the position alone, as "[5|1]"`,
     );
   }
 
   return {
     arrangementStart: entries.map((entry) => entry.position).join(","),
+    fromToPath: true,
   };
 }
 
@@ -378,8 +541,9 @@ function namesArrangementPosition(
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): boolean {
+  // No other type lands copies on the timeline.
   if (type !== "clip") {
-    return hasArrangementPosition(arrangementStart);
+    return type === "scene" && hasArrangementPosition(arrangementStart);
   }
 
   refuseDoubledPosition(toPath, arrangementStart, "toPath");

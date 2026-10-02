@@ -11,7 +11,7 @@
  *
  * The check is path-based, so it also covers a rack or chain the device sits
  * inside. It does NOT cover a drum pad: a pad's path (`... drum_pads N`) is not
- * a prefix of its chain's devices, so clearing the pad is still possible.
+ * a prefix of its chain's devices, so check the pad's chains instead.
  * @param object - The object about to be deleted, moved or duplicated
  * @returns True when the operation would take the Producer Pal device with it
  */

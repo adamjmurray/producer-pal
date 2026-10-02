@@ -11,7 +11,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import {
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -21,7 +21,6 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Standard properties for a 4-bar arrangement MIDI clip (beats 0-16). */
 const FOUR_BAR_CLIP_PROPS = {
@@ -44,6 +43,48 @@ function setupFourBarArrangementClip() {
   setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
 
   return { sourceClip, track };
+}
+
+/**
+ * A 4-bar clip 789 on track 0 whose move to bar 9 lands as clip 999.
+ * @param tempClipId - What create_midi_clip answers for the shortening temp clip
+ * @returns The track mock and the moved clip's id
+ */
+function setupMoveThenResize(tempClipId: string) {
+  const trackIndex = 0;
+  const movedClipId = "999";
+  const clips = setupArrangementClipPath(trackIndex, ["789", movedClipId]);
+  const track = requireMockTrack(trackIndex);
+  const sourceClip = clips.get("789");
+  const movedClip = clips.get(movedClipId);
+
+  if (sourceClip == null || movedClip == null) {
+    throw new Error("Expected source and moved clip mocks");
+  }
+
+  setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
+  setupMockProperties(movedClip, {
+    ...FOUR_BAR_CLIP_PROPS,
+    start_time: 32.0, // Moved to bar 9
+    end_time: 48.0,
+    trackIndex,
+  });
+
+  registerMockObject("temp-midi", { type: "Clip" });
+
+  overrideCall(track, function (method: string) {
+    if (method === "duplicate_clip_to_arrangement") {
+      return `id ${movedClipId}`;
+    }
+
+    if (method === "create_midi_clip") {
+      return tempClipId;
+    }
+
+    return USE_CALL_FALLBACK;
+  });
+
+  return { track, movedClipId };
 }
 
 describe("updateClip - arrangementLength (shortening only)", () => {
@@ -92,7 +133,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
-  it("should emit warning and ignore for session clips", async () => {
+  // Nothing else was asked of it, so the lone target's reason is the error.
+  it("refuses an arrangementLength aimed at a session clip", async () => {
     const track = registerMockObject("track-0-session-noop", {
       path: livePath.track(0),
       type: "Track",
@@ -105,18 +147,33 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       signature_denominator: 4,
     });
 
+    await expect(
+      updateClip({ id: "123", arrangementLength: "2bar" }),
+    ).rejects.toThrow("arrangementLength ignored: this is a session clip");
+    expect(track.call).not.toHaveBeenCalled();
+  });
+
+  // With a name to write, the name lands, so the clip keeps a real entry and
+  // carries the reason on it.
+  it("reports it on the entry when something else the call asked for lands", async () => {
+    setupMidiClipMock(defaultMocks.clip123, {
+      is_arrangement_clip: 0, // Session clip
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+    });
+
     const result = await updateClip({
       id: "123",
       arrangementLength: "2bar",
+      name: "Renamed Anyway",
     });
 
-    expect(capturedWarnings()).toContain(
-      "arrangementLength parameter ignored for session clip t0/s0 (id 123)",
-    );
-
-    expect(track.call).not.toHaveBeenCalled();
-
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: "arrangementLength ignored: this is a session clip",
+    });
   });
 
   it("should handle zero length with clear error", async () => {
@@ -150,46 +207,10 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
-  it("should allow both arrangementLength and arrangementStart (move then resize)", async () => {
-    // Order of operations: move FIRST, then resize
-    // This ensures lengthening operations use the new position for tile placement
-    const trackIndex = 0;
-    const movedClipId = "999";
-    const clips = setupArrangementClipPath(trackIndex, ["789", movedClipId]);
-    const track = requireMockTrack(trackIndex);
-    const sourceClip = clips.get("789");
-    const movedClip = clips.get(movedClipId);
-
-    expect(sourceClip).toBeDefined();
-    expect(movedClip).toBeDefined();
-
-    if (sourceClip == null || movedClip == null) {
-      throw new Error("Expected source and moved clip mocks");
-    }
-
-    setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
-    setupMockProperties(movedClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 32.0, // Moved to bar 9
-      end_time: 48.0, // Still 4 bars long (16 beats)
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
-
-    // Mock duplicate_clip_to_arrangement to return moved clip
-    overrideCall(track, function (method: string) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return `id ${movedClipId}`;
-      }
-
-      if (method === "create_midi_clip") {
-        return "id temp-midi";
-      }
-
-      return USE_CALL_FALLBACK;
-    });
+  it("shortens before moving when a call both moves and shortens", async () => {
+    // Moving first would copy all 4 bars to bar 9 and clear bars 9-13 there,
+    // then cut the copy back to 2 bars, leaving bars 11-13 empty.
+    const { track, movedClipId } = setupMoveThenResize("id temp-midi");
 
     const result = await updateClip({
       id: "789",
@@ -197,26 +218,52 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       arrangementStart: "9|1", // Move to bar 9
     });
 
-    // Should FIRST duplicate to new position (move operation)
+    const calls = vi.mocked(track.call).mock.calls.map(([method]) => method);
+
+    // The temp clip cuts the source where it sits: 0-16 to 0-8.
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8.0, 8.0);
     expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       32.0, // bar 9 in 4/4 = 32 beats
     );
-
-    // Should delete original after move
-    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
-
-    // Should THEN create temp clip to shorten (at moved position)
-    // Shortening from 32-48 to 32-40 means temp clip at position 40
-    expect(track.call).toHaveBeenCalledWith(
-      "create_midi_clip",
-      40.0, // newEndTime = 32 + 8 (2 bars)
-      8.0, // tempClipLength = 48 - 40 = 8
+    expect(calls.indexOf("create_midi_clip")).toBeLessThan(
+      calls.indexOf("duplicate_clip_to_arrangement"),
     );
+    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
 
     // The move landed it at beat 32, which 4/4 spells as bar 9.
     expect(result).toStrictEqual({ id: movedClipId, path: "t0[9|1]" });
+  });
+
+  // Shortening runs first, so a throw there leaves the clip unmoved.
+  it("doesn't move the clip when the shortening before the move throws", async () => {
+    const { track } = setupMoveThenResize("id 0");
+
+    await expect(
+      updateClip({
+        id: "789",
+        arrangementLength: "2bar",
+        arrangementStart: "9|1",
+      }),
+    ).rejects.toThrow("Live created no clip at t0");
+    expect(track.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("still refuses a resize that throws when no move landed", async () => {
+    const { track } = setupFourBarArrangementClip();
+
+    overrideCall(track, (method: string) =>
+      method === "create_midi_clip" ? "id 0" : USE_CALL_FALLBACK,
+    );
+
+    await expect(
+      updateClip({ id: "789", arrangementLength: "2bar" }),
+    ).rejects.toThrow("Live created no clip at t0");
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", async () => {

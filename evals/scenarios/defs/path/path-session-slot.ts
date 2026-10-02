@@ -13,14 +13,12 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
-import {
-  clearClipSlots,
-  MSG_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+import { MSG_CONNECT } from "../clip/helpers/clip-tool-constants.ts";
+import { clearClipSlots } from "../clip/helpers/clip-turn-readers.ts";
 import {
   assertClipCreatedAtPath,
   assertSlotOccupancy,
-} from "./path-scenario-helpers.ts";
+} from "./path-assertions.ts";
 
 /**
  * Chords is track 2 and the second scene is scene 1 — different numbers on
@@ -32,6 +30,7 @@ const TRANSPOSED_PATH = "t1/s2";
 
 export const pathSessionSlot: EvalScenario = {
   id: "path-session-slot",
+  tags: ["paths"],
   description: "Build a session clip slot path (t2/s1, not 1/2)",
   kind: "regression",
   liveSet: "basic-midi-4-track",

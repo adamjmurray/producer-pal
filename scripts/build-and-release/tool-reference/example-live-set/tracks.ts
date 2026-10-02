@@ -17,7 +17,7 @@ import {
   createSimpleRoutingMock,
 } from "#src/test/mocks/routing-test-helpers.ts";
 import { ID } from "./ids.ts";
-import { trackMethods } from "./writes.ts";
+import { trackMethods } from "./write-methods.ts";
 
 /** Track colors, as the packed RGB integer the Live API reports */
 const COLOR = {

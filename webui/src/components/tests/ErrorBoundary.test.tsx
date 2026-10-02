@@ -8,7 +8,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RenderErrorFallback } from "#webui/components/chat/assistant/helpers/message-list-helpers";
+import { RenderErrorFallback } from "#webui/components/chat/assistant/helpers/SafeMarkdown";
 import { ErrorBoundary } from "#webui/components/ErrorBoundary";
 
 function ThrowingChild(): never {

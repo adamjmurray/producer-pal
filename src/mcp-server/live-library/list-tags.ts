@@ -14,7 +14,7 @@
  * Read-only: SELECT statements only.
  */
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
@@ -23,6 +23,7 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import { COUNTED_FOR_TAG, IN_A_PLACE } from "./query/candidate-query.ts";
 
 export interface ListTagsArgs {
   limit?: number;
@@ -48,7 +49,7 @@ export async function listTags(
     return {
       dbAvailable: false,
       tags: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     };
   }
 
@@ -69,6 +70,8 @@ export async function listTags(
           `SELECT kw.name AS name, COUNT(*) AS cnt
            FROM keywords k
            JOIN files kw ON kw.file_id = k.keyw_id
+           JOIN files f ON f.file_id = k.file_id
+           WHERE ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
            GROUP BY k.keyw_id
            ORDER BY cnt DESC, kw.name ASC
            LIMIT ?`,
@@ -88,7 +91,7 @@ export async function listTags(
     return {
       dbAvailable: false,
       tags: [],
-      reason: `Failed to read Live database: ${errorMessage(error)}`,
+      detail: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
 }

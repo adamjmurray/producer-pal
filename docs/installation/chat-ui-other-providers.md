@@ -17,7 +17,8 @@ usage.
 
 1. Download
    [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-   and drag it to a MIDI track in Ableton Live
+   and [install it](/installation#install-the-device) to your User Library, then
+   drag it from there onto a MIDI track
 2. In the Producer Pal device, click "Open Chat UI"
 3. Configure your provider as described below
 4. Click "Quick Connect" and say "connect to ableton"
@@ -34,7 +35,7 @@ ways to run Claude.
 2. In the chat UI settings:
    - Provider: **Anthropic**
    - API Key: Your key
-   - Model: e.g., `claude-sonnet-5`
+   - Model: e.g., `claude-sonnet-5-5`
 
 ### OpenRouter
 
@@ -45,7 +46,7 @@ one place. Includes free and pay-as-you-go options.
 2. In the chat UI settings:
    - Provider: **OpenRouter**
    - API Key: Your key
-   - Model: e.g., `anthropic/claude-sonnet-5`, `google/gemini-3.6-flash`
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
 
 ### Mistral
 
@@ -67,7 +68,7 @@ For detailed setup, see the [dedicated OpenAI guide](./openai).
 2. In the chat UI settings:
    - Provider: **OpenAI**
    - API Key: Your key
-   - Model: e.g., `gpt-5.6-terra`
+   - Model: e.g., `gpt-6.1-sol`
 
 ::: tip Subscription Alternative
 

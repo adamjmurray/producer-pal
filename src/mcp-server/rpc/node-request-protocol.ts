@@ -11,38 +11,47 @@
  */
 
 import Max from "max-api";
-import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-response-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-responses.ts";
 import * as console from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
 
 /**
- * Max time a route handler may run before we synthesize a timeout failure.
- * Slightly longer than the V8-side request timeout (10s) so the V8 side
+ * Default max time a route handler may run before we synthesize a timeout
+ * failure. Slightly longer than the V8-side request timeout (10s) so the V8 side
  * times out first in the common case; this is a backstop that ensures Node
  * stops holding the handler's closure state and pending args indefinitely
  * if the handler itself hangs (e.g. SQLite deadlock).
  */
 const NODE_HANDLER_TIMEOUT_MS = 15_000;
 
+interface NodeRoute {
+  handler: NodeRouteHandler;
+  timeoutMs: number;
+}
+
 /** Registry of route name → handler */
-const routes = new Map<string, NodeRouteHandler>();
+const routes = new Map<string, NodeRoute>();
 
 /**
  * Register a route handler. Throws if the name is already registered.
  *
  * @param name - Route name (e.g. "library.searchSamples")
  * @param handler - Handler called with parsed args, returning the route's result
+ * @param timeoutMs - How long the handler may run. A longer one needs V8 to
+ *   wait longer too (requestNode's timeoutMs), or V8 gives up first.
  */
 export function registerNodeRoute(
   name: string,
   handler: NodeRouteHandler,
+  timeoutMs: number = NODE_HANDLER_TIMEOUT_MS,
 ): void {
   if (routes.has(name)) {
     throw new Error(`Route '${name}' is already registered`);
   }
 
-  routes.set(name, handler);
+  routes.set(name, { handler, timeoutMs });
 }
 
 /**
@@ -73,7 +82,7 @@ export async function handleNodeRequest(
     route = parsed.route;
     args = parsed.args;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     console.error(
       `Failed to parse node_request: ${message} [requestId=${requestId}]`,
@@ -87,9 +96,9 @@ export async function handleNodeRequest(
     return;
   }
 
-  const handler = routes.get(route);
+  const registered = routes.get(route);
 
-  if (!handler) {
+  if (!registered) {
     await sendNodeResponse(requestId, {
       success: false,
       error: `Unknown route: ${route}`,
@@ -100,8 +109,8 @@ export async function handleNodeRequest(
 
   try {
     const result = await runWithTimeout(
-      () => handler(args),
-      NODE_HANDLER_TIMEOUT_MS,
+      () => registered.handler(args),
+      registered.timeoutMs,
       route,
       requestId,
     );
@@ -151,9 +160,7 @@ async function runWithTimeout(
       timeoutPromise,
     ]);
   } finally {
-    if (timer != null) {
-      clearTimeout(timer);
-    }
+    clearTimeout(timer);
   }
 }
 

@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type SelectResult } from "#src/tools/session/select.ts";
-import type * as SharedUtils from "#src/tools/shared/utils.ts";
+import type * as LiveApiValues from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * Reset all mocks and set up default "nothing selected" state for select() tests.
@@ -370,15 +370,15 @@ export const viewMockFromLive = (liveApiView: string): string =>
   ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session";
 
 /**
- * Body for `vi.mock("#src/tools/shared/utils.ts", ...)` in select tests.
+ * Body for `vi.mock("#src/tools/shared/helpers/live-api-values.ts", ...)` in select tests.
  * Replaces `toLiveApiView`/`fromLiveApiView` with predictable test implementations.
  *
  * @param actual - The original module passed by vitest's `importOriginal`
  * @returns The patched module exports
  */
-export function selectSharedUtilsMockBody(
-  actual: typeof SharedUtils,
-): typeof SharedUtils {
+export function selectLiveApiValuesMockBody(
+  actual: typeof LiveApiValues,
+): typeof LiveApiValues {
   return {
     ...actual,
     toLiveApiView: vi.fn(viewMockToLive),
@@ -404,5 +404,22 @@ export function setupTrackOnlyViewState(): void {
     selectedScene: { exists: false },
     selectedClip: { exists: false },
     highlightedClipSlot: { exists: false },
+  });
+}
+
+/**
+ * Scene 3 and track 0's third slot, filled with a clip — the target the path
+ * and build-budget cases select by slot.
+ */
+export function registerFilledSlotObjects(): void {
+  registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
+  registerMockObject("clipslot_0_3", {
+    path: livePath.track(0).clipSlot(3),
+    type: "ClipSlot",
+    properties: { has_clip: 1 },
+  });
+  registerMockObject("clip_0_3", {
+    path: livePath.track(0).clipSlot(3).clip(),
+    type: "Clip",
   });
 }

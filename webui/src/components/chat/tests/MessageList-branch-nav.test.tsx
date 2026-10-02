@@ -13,7 +13,7 @@ import { MessageList } from "#webui/components/chat/MessageList";
 import {
   type BranchNavState,
   type BranchPoint,
-} from "#webui/lib/conversation-branch-helpers";
+} from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 
 vi.mock(import("#webui/components/chat/assistant/AssistantMessage"), () => ({

@@ -59,28 +59,20 @@ describe("stripTimestamps", () => {
   });
 
   it("preserves all other message properties", () => {
+    const parts: UIMessage["parts"] = [
+      { type: "thought", content: "Thinking..." },
+      { type: "text", content: "Response" },
+      { type: "tool", name: "test", args: { a: 1 }, result: "ok" },
+    ];
     const messages: UIMessage[] = [
-      {
-        role: "model",
-        parts: [
-          { type: "thought", content: "Thinking..." },
-          { type: "text", content: "Response" },
-          { type: "tool", name: "test", args: { a: 1 }, result: "ok" },
-        ],
-        rawHistoryIndex: 5,
-        timestamp: 9999,
-      },
+      { role: "model", parts, rawHistoryIndex: 5, timestamp: 9999 },
     ];
 
     const result = stripTimestamps(messages);
 
     expect(result[0]).toStrictEqual({
       role: "model",
-      parts: [
-        { type: "thought", content: "Thinking..." },
-        { type: "text", content: "Response" },
-        { type: "tool", name: "test", args: { a: 1 }, result: "ok" },
-      ],
+      parts,
       rawHistoryIndex: 5,
     });
   });

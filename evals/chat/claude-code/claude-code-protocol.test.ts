@@ -447,6 +447,41 @@ describe("parseClaudeCodeStream", () => {
   });
 });
 
+describe("parseClaudeCodeStream — generation speed", () => {
+  /**
+   * Parse a minimal turn carrying the given result fields.
+   * @param result - Fields to merge into the `result` event
+   * @returns The turn's timing, if any
+   */
+  function timingFor(result: Record<string, unknown>) {
+    return parseClaudeCodeStream(
+      jsonl([
+        { type: "result", subtype: "success", is_error: false, ...result },
+      ]),
+    ).timing;
+  }
+
+  it("divides output tokens by the CLI's model time", () => {
+    // duration_api_ms excludes tool execution, unlike duration_ms.
+    expect(
+      timingFor({
+        duration_ms: 9000,
+        duration_api_ms: 2000,
+        usage: { input_tokens: 25, output_tokens: 14 },
+      }),
+    ).toStrictEqual({ outputTokensPerSecond: 7 });
+  });
+
+  it.each([
+    ["no duration reported", { usage: { output_tokens: 14 } }],
+    ["a zero duration", { duration_api_ms: 0, usage: { output_tokens: 14 } }],
+    ["no output tokens", { duration_api_ms: 2000, usage: {} }],
+    ["no usage at all", { duration_api_ms: 2000 }],
+  ])("reports nothing for %s", (_label, result) => {
+    expect(timingFor(result)).toBeUndefined();
+  });
+});
+
 describe("countClaudeCodeSteps", () => {
   /**
    * Count the steps in an assistant event holding the given blocks.

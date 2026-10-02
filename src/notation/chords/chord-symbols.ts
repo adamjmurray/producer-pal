@@ -23,7 +23,7 @@
  * tones below it (a `9` chord includes its `7`). `""` = a bare major triad.
  */
 
-import { pitchClassToNumber } from "#src/shared/pitch.ts";
+import { clampMidi, pitchClassToNumber } from "#src/shared/pitch.ts";
 
 /** A chord symbol resolved to register-independent pitch material. */
 export interface ResolvedChord {
@@ -131,7 +131,7 @@ export function realizeChordSymbol(
     pitches.unshift(bassMidi);
   }
 
-  const clamped = pitches.map((p) => Math.max(0, Math.min(127, p)));
+  const clamped = pitches.map((p) => clampMidi(p));
 
   return [...new Set(clamped)].toSorted((a, b) => a - b);
 }

@@ -9,6 +9,7 @@ import {
 } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import * as console from "../node-for-max-logger.ts";
+import { pingRemoteScript } from "../rpc/remote-script/remote-script-client.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
@@ -37,9 +38,28 @@ export function withSkills(
   inner: CallLiveApiFunction,
   getContext: () => BuildSkillsOptions,
 ): WrappedCallLiveApi {
-  return withConnectAppend(inner, () =>
-    buildSkills(getContext(), readSkillOverrides(), (message) =>
-      console.warn(`Producer Pal Skills: ${message}`),
+  return withConnectAppend(inner, async () =>
+    buildSkills(
+      await withRemoteScriptAnswer(getContext()),
+      readSkillOverrides(),
+      (message) => console.warn(`Producer Pal Skills: ${message}`),
     ),
   );
+}
+
+/**
+ * Add whether the Producer Pal remote script answers, which decides whether the
+ * skills teach loading plug-ins and Max devices. The small-model document never
+ * teaches it, so small-model mode skips the ping.
+ *
+ * @param options - The rest of the skills context
+ * @returns The same options, with `remoteScript` set
+ */
+export async function withRemoteScriptAnswer(
+  options: BuildSkillsOptions,
+): Promise<BuildSkillsOptions> {
+  return {
+    ...options,
+    remoteScript: options.smallModelMode !== true && (await pingRemoteScript()),
+  };
 }

@@ -13,9 +13,10 @@ import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 // it was not in. Nothing caught it: the gate tests assert which tools WOULD
 // pull a fragment, never that a driver asks for one.
 describe("every fragment reaches a document", () => {
+  // With the remote script answering, since that only ever adds a fragment.
   const documents = NOTATIONS.flatMap((notation) =>
     [false, true].map((smallModelMode) =>
-      buildSkills({ notation, smallModelMode }),
+      buildSkills({ notation, smallModelMode, remoteScript: true }),
     ),
   );
 

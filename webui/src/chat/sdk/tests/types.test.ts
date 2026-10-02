@@ -6,7 +6,12 @@
 import { type LanguageModelUsage } from "ai";
 import { describe, expect, it } from "vitest";
 import { NOTATIONS } from "#src/shared/notation";
-import { type ChatClientConfig, toTokenUsage } from "#webui/chat/sdk/types";
+import {
+  type ChatClientConfig,
+  toStepTiming,
+  tokensPerSecond,
+  toTokenUsage,
+} from "#webui/chat/sdk/types";
 
 /**
  * Create a LanguageModelUsage with sensible defaults.
@@ -122,5 +127,59 @@ describe("toTokenUsage", () => {
       inputTokens: 100,
       outputTokens: 15,
     });
+  });
+});
+
+describe("toStepTiming", () => {
+  // The SDK clamps an unmeasurable rate to 0, so a 0 means "couldn't measure"
+  // and must be dropped.
+  it.each([
+    [
+      "keeps both measurements",
+      { timeToFirstOutputMs: 1234, effectiveOutputTokensPerSecond: 42.7 },
+      { timeToFirstTokenMs: 1234, outputTokensPerSecond: 42.7 },
+    ],
+    [
+      "drops a zeroed rate",
+      { timeToFirstOutputMs: 900, effectiveOutputTokensPerSecond: 0 },
+      { timeToFirstTokenMs: 900 },
+    ],
+    [
+      "drops a zeroed time to first token",
+      { timeToFirstOutputMs: 0, effectiveOutputTokensPerSecond: 30 },
+      { outputTokensPerSecond: 30 },
+    ],
+    ["no performance data at all", undefined, undefined],
+    // A non-streaming step: the SDK leaves both fields unset.
+    ["nothing measurable", {}, undefined],
+    [
+      "non-finite values",
+      {
+        timeToFirstOutputMs: Number.NaN,
+        effectiveOutputTokensPerSecond: Number.POSITIVE_INFINITY,
+      },
+      undefined,
+    ],
+    [
+      "negative values",
+      { timeToFirstOutputMs: -5, effectiveOutputTokensPerSecond: -1 },
+      undefined,
+    ],
+  ])("%s", (_label, performance, expected) => {
+    expect(toStepTiming(performance)).toStrictEqual(expected);
+  });
+});
+
+describe("tokensPerSecond", () => {
+  it.each([
+    ["a measurable rate", 14, 2000, 7],
+    ["no token count", undefined, 2000, undefined],
+    ["a zero token count", 0, 2000, undefined],
+    ["no duration", 14, undefined, undefined],
+    ["a zero duration", 14, 0, undefined],
+    ["a negative duration", 14, -2000, undefined],
+    ["a non-finite duration", 14, Number.NaN, undefined],
+  ])("%s", (_label, outputTokens, durationMs, expected) => {
+    expect(tokensPerSecond(outputTokens, durationMs)).toBe(expected);
   });
 });

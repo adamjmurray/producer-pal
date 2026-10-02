@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { type ContextTab } from "#webui/components/context/ContextTabs";
 import {
   type BackdropClickHandlers,
   useBackdropClick,
@@ -16,7 +17,9 @@ const CONTEXT_ANIMATION_MS = 150;
 export interface ContextOverlayState {
   contextOpen: boolean;
   contextClosing: boolean;
-  openContext: () => void;
+  /** The tab the editor mounts on, set by the last openContext call. */
+  contextTab: ContextTab;
+  openContext: (tab?: ContextTab) => void;
   closeContext: () => void;
   /** Spread onto the overlay element — press, release, and click all matter. */
   contextBackdrop: BackdropClickHandlers;
@@ -34,7 +37,12 @@ export interface ContextOverlayState {
 export function useContextOverlay(): ContextOverlayState {
   const [contextOpen, setContextOpen] = useState(false);
   const [contextClosing, setContextClosing] = useState(false);
-  const openContext = useCallback(() => setContextOpen(true), []);
+  const [contextTab, setContextTab] = useState<ContextTab>("project");
+  // Callers that want a specific tab pass it; everything else lands on Project.
+  const openContext = useCallback((tab: ContextTab = "project") => {
+    setContextTab(tab);
+    setContextOpen(true);
+  }, []);
   const closeContext = useCallback(() => {
     setContextClosing(true);
     setTimeout(() => {
@@ -93,6 +101,7 @@ export function useContextOverlay(): ContextOverlayState {
   return {
     contextOpen,
     contextClosing,
+    contextTab,
     openContext,
     closeContext,
     contextBackdrop,

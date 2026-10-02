@@ -7,11 +7,13 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SystemPromptNotice } from "#webui/components/chat/assistant/SystemPromptNotice";
 
 const PROMPT =
   "First line of the prompt.\nSecond line only shown when expanded.";
+
+const CUSTOMIZE = { name: "Customize system prompt" };
 
 describe("SystemPromptNotice", () => {
   it("collapses to the first line by default", () => {
@@ -24,6 +26,34 @@ describe("SystemPromptNotice", () => {
     expect(screen.getByRole("button").getAttribute("aria-expanded")).toBe(
       "false",
     );
+  });
+
+  it("omits the customize link when there is nowhere to send the user", () => {
+    render(<SystemPromptNotice systemInstruction={PROMPT} />);
+
+    expect(screen.queryByRole("button", CUSTOMIZE)).toBeNull();
+  });
+
+  it("opens the Instructions panel from the customize link", () => {
+    const onOpenInstructions = vi.fn();
+
+    render(
+      <SystemPromptNotice
+        systemInstruction={PROMPT}
+        onOpenInstructions={onOpenInstructions}
+      />,
+    );
+
+    const customize = screen.getByRole("button", CUSTOMIZE);
+
+    // The tooltip is where the "edits apply to new chats" caveat lives.
+    expect(customize.getAttribute("title")).toContain("new chats");
+    fireEvent.click(customize);
+    expect(onOpenInstructions).toHaveBeenCalledTimes(1);
+    // Customizing must not double as expanding the notice.
+    expect(
+      screen.getByRole("button", { expanded: false }).textContent,
+    ).toContain("System prompt");
   });
 
   it("expands to the full text and collapses again on toggle", () => {

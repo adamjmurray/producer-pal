@@ -7,7 +7,7 @@
 // while nothing in the batch renumbers devices. See with-device-path-cache.ts.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -107,11 +107,7 @@ function innerInserts(): number {
  * @returns Resolution count
  */
 function nestedDeviceResolves(): number {
-  return (
-    liveApiBuildStats().byShape.find(
-      ([shape]) => shape === "live_set tracks * devices * chains * devices *",
-    )?.[1] ?? 0
-  );
+  return resolves("live_set tracks * devices * chains * devices *");
 }
 
 describe("createDevice path cache", () => {
@@ -121,13 +117,13 @@ describe("createDevice path cache", () => {
   // no longer names the inner rack. That is refused up front now rather than
   // left to the cache: re-resolving would have found a real device at that
   // path and inserted into the wrong one.
-  it("refuses a path spelled through a chain an earlier append re-sorts", () => {
-    expect(() =>
+  it("refuses a path spelled through a chain an earlier append re-sorts", async () => {
+    await expect(
       createDevice({
-        deviceName: "Operator",
+        device: "Operator",
         path: `${NESTED}, t0/d0/c0, ${NESTED}`,
       }),
-    ).toThrow(`path entry "${NESTED}" is spelled through "t0/d0/c0"`);
+    ).rejects.toThrow(`path entry "${NESTED}" is spelled through "t0/d0/c0"`);
 
     // Refused before anything ran, so there is nothing to clean up.
     expect(innerInserts()).toBe(0);
@@ -135,9 +131,9 @@ describe("createDevice path cache", () => {
 
   // An audio effect goes on the end, so every path already resolved still
   // stands and the batch keeps sharing one walk.
-  it("keeps the cache when the append cannot move anything", () => {
-    createDevice({
-      deviceName: "Reverb",
+  it("keeps the cache when the append cannot move anything", async () => {
+    await createDevice({
+      device: "Reverb",
       path: `${NESTED}, t0/d0/c0, ${NESTED}`,
     });
 

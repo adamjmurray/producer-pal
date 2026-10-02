@@ -32,9 +32,16 @@ export function computeLoopDeadline(timeoutMs?: number): number | null {
     return null;
   }
 
-  const buffer = Math.min(LOOP_DEADLINE_BUFFER_MS, timeoutMs / 2);
+  return Date.now() + loopBudgetMs(timeoutMs);
+}
 
-  return Date.now() + timeoutMs - buffer;
+/**
+ * How long a request has before its loop deadline, from start.
+ * @param timeoutMs - The MCP request timeout
+ * @returns The timeout less its safety buffer
+ */
+export function loopBudgetMs(timeoutMs: number): number {
+  return timeoutMs - Math.min(LOOP_DEADLINE_BUFFER_MS, timeoutMs / 2);
 }
 
 /**

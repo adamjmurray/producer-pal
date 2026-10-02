@@ -166,6 +166,21 @@ describe("v8-max-console", () => {
       delete g.Dict;
     });
 
+    it("logs null and undefined as themselves", () => {
+      // In Max, Dict is defined, so the switch's Dict case isn't `case null`
+      // and a null prototype falls through to String() as it should.
+      class Dict {
+        name = "unused";
+      }
+
+      g.Dict = Dict;
+
+      log(null, undefined);
+      expect(consoleLogSpy).toHaveBeenCalledWith("null", "undefined");
+
+      delete g.Dict;
+    });
+
     it("tolerates a Dict without a stringify method (optional chaining)", () => {
       // `stringify?.()` must short-circuit to undefined instead of throwing when
       // a Dict-shaped object has no stringify method.

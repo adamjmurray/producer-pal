@@ -18,6 +18,7 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
+import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
 import {
   ALC_FILE_TYPE,
   ALC_MIDI_SUBTYPE,
@@ -32,7 +33,11 @@ import {
   resolveSource,
 } from "../library-filters.ts";
 import { type LibraryItem, type LibrarySearchArgs } from "../library-types.ts";
-import { type ResolvedPath } from "../reconstruct-path.ts";
+import {
+  nameFromPathSegment,
+  pathSegment,
+  type ResolvedPath,
+} from "../reconstruct-path.ts";
 
 /** Raw row shape selected by CANDIDATE_COLUMNS. */
 export interface SearchRow {
@@ -53,6 +58,24 @@ export const CANDIDATE_COLUMNS = `f.file_id, f.parent_id, f.name, f.use_count,
 export const CANDIDATE_FROM = `files f
   LEFT JOIN places p ON p.file_id = f.place_id`;
 
+/** SQL condition on files `f`: the file is (or sits in) a browser Place, not
+ * (for example) inside another installed Live version. A Place's root folder
+ * has place_id 0, so it's matched by its own file_id. */
+export const IN_A_PLACE = `(f.place_id IN (SELECT file_id FROM places)
+  OR f.file_id IN (SELECT file_id FROM places))`;
+
+/** SQL condition on files `f`: Live's library-wide views (All, categories)
+ * list it. They hide files with the lowest flags bit clear, such as packs' raw
+ * multisample sources and reverb IRs; searching a Place still shows those. */
+export const IN_LIBRARY_VIEWS = "(f.flags & 1) = 1";
+
+/** Live's tag for reverb IRs, most of which IN_LIBRARY_VIEWS would hide. */
+const IR_TAG = "Impulse Response";
+
+/** SQL condition for per-tag counts (keyword files `kw`, tagged files `f`):
+ * count what a search for that tag returns, which keeps hidden IRs. */
+export const COUNTED_FOR_TAG = `(${IN_LIBRARY_VIEWS} OR kw.name = '${IR_TAG}')`;
+
 /** A WHERE clause as accumulated conditions plus their positional params. */
 export interface CandidateWhere {
   where: string[];
@@ -66,11 +89,15 @@ export interface CandidateWhere {
  *
  * @param args - Filter parameters
  * @param parentId - Resolved file_id for the inFolder constraint, when present
+ * @param options - How the listing rules apply
+ * @param options.sourceShowsHidden - Whether a source filter also lists files
+ *   Live's library views hide. Off for findSimilar: Show Similar has no Place.
  * @returns Conditions and params (no ORDER BY, no LIMIT)
  */
 export function buildCandidateWhere(
   args: LibrarySearchArgs,
   parentId?: number,
+  { sourceShowsHidden = true }: { sourceShowsHidden?: boolean } = {},
 ): CandidateWhere {
   const where: string[] = [];
   const params: Array<string | number> = [];
@@ -96,6 +123,18 @@ export function buildCandidateWhere(
   } else {
     where.push(`f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})`);
     params.push(...fileTypeCodes);
+  }
+
+  // List what Live's browser lists. Browsing a folder shows everything, so
+  // inFolder skips both rules. A source filter works like searching a Place,
+  // and an IR search asks for exactly the files the flags rule hides.
+  if (parentId == null) {
+    where.push(IN_A_PLACE);
+    const placeSearch = sourceShowsHidden && args.source != null;
+
+    if (!placeSearch && !asksForIRs(args)) {
+      where.push(IN_LIBRARY_VIEWS);
+    }
   }
 
   if (args.deviceKind) {
@@ -186,8 +225,8 @@ export function buildCandidateWhere(
  *
  * Case sensitivity: segment lookups use `COLLATE NOCASE` so an LLM passing
  * "/users/..." on a case-insensitive macOS/Windows FS still resolves the
- * same row as "/Users/...". The ASCII-only restriction of SQLite's NOCASE
- * collation is fine here — Live's library paths are ASCII in practice.
+ * same row as "/Users/...". NOCASE folds ASCII only. A segment matches as
+ * given or with its accents composed, the form Live stores on macOS.
  *
  * @param db - Open database handle
  * @param absolutePath - Absolute path to resolve, with or without trailing slash
@@ -235,11 +274,14 @@ export function resolveFileIdForPath(
       continue;
     }
 
+    const name = nameFromPathSegment(seg);
     const row = db
       .prepare(
-        "SELECT file_id FROM files WHERE parent_id = ? AND name = ? COLLATE NOCASE LIMIT 1",
+        "SELECT file_id FROM files WHERE parent_id = ? AND (name = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) LIMIT 1",
       )
-      .get(currentId, seg) as { file_id: number } | undefined;
+      .get(currentId, name, name.normalize("NFC")) as
+      | { file_id: number }
+      | undefined;
 
     if (!row) {
       return null;
@@ -300,7 +342,7 @@ export function buildLibraryItem(
   const tags = tagsByFile.get(row.file_id) ?? [];
   const item: LibraryItem = {
     name: row.name,
-    path: resolved?.path ?? `/${row.name}`,
+    path: resolved?.path ?? `/${pathSegment(row.name)}`,
     kind: resolveKind(row.file_type),
     tags,
     useCount: row.use_count,
@@ -395,7 +437,8 @@ function buildLikePattern(query: string): string {
 }
 
 /**
- * Parse the comma-separated tags string into a trimmed, de-duped list.
+ * Parse the comma-separated tags string into a trimmed, de-duped list. `\,` is
+ * a comma inside a tag name.
  *
  * @param tags - Raw comma-separated string from the caller
  * @returns Array of unique non-empty tag names
@@ -405,10 +448,22 @@ function parseTags(tags: string | undefined): string[] {
     return [];
   }
 
-  const parts = tags
-    .split(",")
+  const parts = splitEntries(tags)
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
 
   return [...new Set(parts)];
+}
+
+/**
+ * Whether a search asks for reverb IRs, by type or by tag.
+ *
+ * @param args - Filter parameters
+ * @returns True for type impulse-response or an "Impulse Response" tag
+ */
+function asksForIRs(args: LibrarySearchArgs): boolean {
+  return (
+    args.type === "impulse-response" ||
+    parseTags(args.tags).some((t) => t.toLowerCase() === IR_TAG.toLowerCase())
+  );
 }

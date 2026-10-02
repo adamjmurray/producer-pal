@@ -9,6 +9,7 @@ import { type NoteEvent } from "../types.ts";
 import {
   drumPatternNotation,
   drumPatternNotes,
+  expectEmptyInputFormatsEmpty,
 } from "./barbeat-test-helpers.ts";
 import { formatNotation } from "./barbeat-format-notation.ts";
 import { interpretNotation } from "./interpreter/barbeat-interpreter.ts";
@@ -20,9 +21,7 @@ import { interpretNotation } from "./interpreter/barbeat-interpreter.ts";
  */
 describe("bar|beat formatNotation() re-export shim", () => {
   it("handles empty and null input", () => {
-    expect(formatNotation([])).toBe("");
-    expect(formatNotation(null)).toBe("");
-    expect(formatNotation(undefined)).toBe("");
+    expectEmptyInputFormatsEmpty(formatNotation);
   });
 
   it("formats notes with state changes", () => {

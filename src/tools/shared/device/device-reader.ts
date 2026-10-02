@@ -18,8 +18,8 @@ import {
   readABCompare,
   readDeviceParameters,
   readMacroVariations,
-} from "./helpers/device-reader-helpers.ts";
-import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
+} from "./helpers/device-reading.ts";
+import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
   applySpecializedInactiveStates,
@@ -60,7 +60,8 @@ interface DeviceWithChains {
 }
 
 interface DrumPadInfo {
-  note?: number;
+  /** The pad's MIDI note, -1 for the catch-all. Internal: never output. */
+  _note?: number;
   pitch: string;
   name: string;
   hasInstrument?: boolean;
@@ -154,10 +155,12 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
 
       const {
         _processedChains,
+        _note,
         chains: padChains,
         ...padRest
       } = drumPad as {
         _processedChains?: unknown;
+        _note?: unknown;
         chains?: unknown[];
       } & Record<string, unknown>;
 
@@ -269,7 +272,7 @@ export function getDrumMap(
  * @returns The drum-map key for this pad
  */
 function drumMapKey(drumPad: DrumPadInfo, notation?: Notation): string {
-  const midi = drumPad.note ?? -1;
+  const midi = drumPad._note ?? -1;
 
   if (midi < 0) {
     return drumPad.pitch;

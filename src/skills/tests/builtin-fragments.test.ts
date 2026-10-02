@@ -8,7 +8,11 @@ import {
   builtinFragments,
   resolveFragmentAlias,
 } from "#src/skills/builtin-fragments.ts";
-import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
+import {
+  isSkillSlotName,
+  SKILL_SLOT_NAMES,
+  SKILL_SLOTS,
+} from "#src/skills/skill-slots.ts";
 
 describe("builtinFragments", () => {
   afterEach(() => {
@@ -90,6 +94,21 @@ describe("builtinFragments", () => {
     for (const name of SKILL_SLOT_NAMES) {
       expect(frags[name]).toBe(SKILL_SLOTS[name].builtIn);
     }
+  });
+
+  it("adds only the documented non-slot fragments", () => {
+    // Everything else comes from SKILL_SLOTS, so this list IS the exceptions —
+    // a fragment landing here instead of in a slot is a user losing the ability
+    // to override it, which should be a decision, not a side effect.
+    const nonSlots = Object.keys(builtinFragments(true)).filter(
+      (name) => !isSkillSlotName(name),
+    );
+
+    expect(nonSlots).toStrictEqual([
+      "code-transforms",
+      "midi-json-standard-write",
+      "midi-json-basic-write",
+    ]);
   });
 });
 

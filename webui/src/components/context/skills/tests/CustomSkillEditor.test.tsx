@@ -18,6 +18,7 @@ import {
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
+import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
 import { makeManualGuard } from "#webui/components/context/collection/leave-guard-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
@@ -198,17 +199,37 @@ describe("CustomSkillEditor — new draft is not auto-saved on close", () => {
 });
 
 describe("CustomSkillEditor save", () => {
-  it("notifies onSaved with the saved name when Save succeeds", async () => {
+  /**
+   * Render the editor over a collection whose saveEntry answers `saved`, then
+   * click Save.
+   * @param saved - What saveEntry resolves to (null is a refused save)
+   * @returns The collection stub and the onSaved spy
+   */
+  function clickSaveWithResult(saved: CustomSkillView | null) {
     const collection = stubCollection(vi.fn());
 
-    collection.saveEntry = vi.fn().mockResolvedValue(ENTRY);
+    collection.saveEntry = vi.fn().mockResolvedValue(saved);
+
     const onSaved = vi.fn();
 
     renderEditor({ collection, entry: ENTRY, onSaved });
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
+    return { collection, onSaved };
+  }
+
+  it("notifies onSaved with the saved name when Save succeeds", async () => {
+    const { onSaved } = clickSaveWithResult(ENTRY);
+
     await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith(ENTRY.name));
+  });
+
+  it("does not notify onSaved when the save is refused", async () => {
+    const { collection, onSaved } = clickSaveWithResult(null);
+
+    await vi.waitFor(() => expect(collection.saveEntry).toHaveBeenCalled());
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });
 
@@ -220,6 +241,25 @@ describe("CustomSkillEditor delete confirmation", () => {
 
     await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledOnce());
     expect(deleteEntry).toHaveBeenCalledWith(ENTRY.name);
+  });
+
+  it("keeps the editor open when the delete itself fails", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    const deleteEntry = vi.fn().mockResolvedValue(false);
+    const onDeleted = vi.fn();
+
+    renderEditor({
+      collection: stubCollection(deleteEntry),
+      entry: ENTRY,
+      onDeleted,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await vi.waitFor(() => expect(deleteEntry).toHaveBeenCalledOnce());
+    // The skill is still there, so the parent must not clear its selection.
+    expect(onDeleted).not.toHaveBeenCalled();
   });
 
   it("aborts the delete when the confirm dialog is dismissed", async () => {
@@ -250,11 +290,8 @@ describe("CustomSkillEditor external update banner", () => {
       }),
     );
 
-    expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
+    reloadStaleEntry(BANNER_TEXT);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
-
-    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
     expect(
       screen.getByRole("textbox", { name: /Instructions/ }),
     ).toHaveProperty("value", "Voice with 9ths now.");

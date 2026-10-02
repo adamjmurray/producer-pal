@@ -51,7 +51,7 @@ import {
   VELOCITY_SOFT_MIN,
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface StarkInterpretOptions {
@@ -69,19 +69,7 @@ export function interpretNotation(
   starkExpression: string,
   _options: StarkInterpretOptions = {},
 ): NoteEvent[] {
-  if (!starkExpression || starkExpression.trim() === "") {
-    return [];
-  }
-
-  let ast;
-
-  try {
-    ast = parser.parse(starkExpression);
-  } catch (error) {
-    throw new Error(`Stark notation parse error: ${(error as Error).message}`, {
-      cause: error,
-    });
-  }
+  const ast = parseNotation(starkExpression);
 
   // Warn only when drum and pitched lines share a clip — that crosses the
   // Drum-Rack/instrument track boundary and is usually a mistake. Mixing pitched
@@ -115,6 +103,26 @@ export function interpretNotation(
   }
 
   return sorted;
+}
+
+/**
+ * Parse a Stark string without interpreting it, so it warns nothing. An
+ * unknown chord symbol still parses.
+ * @param starkExpression - Stark notation string
+ * @returns The parsed sections
+ */
+export function parseNotation(starkExpression: string): StarkSection[] {
+  if (!starkExpression || starkExpression.trim() === "") {
+    return [];
+  }
+
+  try {
+    return parser.parse(starkExpression);
+  } catch (error) {
+    throw new Error(`Stark notation parse error: ${(error as Error).message}`, {
+      cause: error,
+    });
+  }
 }
 
 // Drum sections carry a `midi`/`noteName` header; pitched sections do not.

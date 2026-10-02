@@ -37,9 +37,10 @@
  * letter) and the header (a drum name vs melody/bass). Chord symbols are
  * input-only, so a chord serializes as a [..] bracket stack, never a `chords:` line.
  *
- * The leaf primitives (pitch spelling, velocity glyphs, rest decomposition, line
- * classification) live in stark-serializer-helpers.ts; the line-default
- * FACTORING below is what keeps the read-back clean.
+ * The leaf primitives live in stark-note-formatting.ts (pitch spelling, velocity
+ * glyphs, line classification) and stark-duration-grid.ts (note-value snapping,
+ * rest decomposition); the line-default FACTORING below is what keeps the
+ * read-back clean.
  */
 
 import {
@@ -47,21 +48,23 @@ import {
   LINE_DEFAULT,
 } from "#src/notation/stark/stark-config.ts";
 import {
-  classifyPitchedLine,
   type DurationGridEntry,
-  drumChar,
-  drumHeader,
   durationEntry,
-  dynamicSuffix,
   floorDuration,
-  groupNotesByPitch,
-  groupSimultaneousNotes,
   MAX_GRID_BEATS,
-  octaveMarks,
-  pitchParts,
   restNoteValues,
   snapDuration,
-} from "#src/notation/stark/helpers/stark-serializer-helpers.ts";
+} from "#src/notation/stark/helpers/stark-duration-grid.ts";
+import {
+  classifyPitchedLine,
+  drumChar,
+  drumHeader,
+  dynamicSuffix,
+  groupNotesByPitch,
+  groupSimultaneousNotes,
+  octaveMarks,
+  pitchParts,
+} from "#src/notation/stark/helpers/stark-note-formatting.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";

@@ -29,12 +29,14 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../mcp-test-helpers";
+import { callForParamError } from "./helpers/device-param-test-helpers.ts";
 
 interface PseudoParam {
   id?: string;
   name: string;
   value?: unknown;
-  reason?: string;
+  ok?: boolean;
+  detail?: string;
   unit?: string;
   state?: string;
 }
@@ -135,6 +137,52 @@ async function updateDevice(
   await sleep(100);
 }
 
+/**
+ * Write a sample path to a device and hand back what the entry said about it.
+ * @param deviceId - The device to write to
+ * @param samplePath - The sample path to write
+ * @returns The result's param entries
+ */
+async function writeSample(
+  deviceId: string,
+  samplePath: string,
+): Promise<PseudoParam[] | undefined> {
+  const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        id: deviceId,
+        params: [{ name: "sample", value: samplePath }],
+      },
+    }),
+  );
+
+  await sleep(100);
+
+  return data.params;
+}
+
+/**
+ * Write a sample path that won't land. It is all the call asks, so the call
+ * fails.
+ * @param deviceId - The device to write to
+ * @param samplePath - The sample path to write
+ * @returns The error message
+ */
+async function failedSampleWrite(
+  deviceId: string,
+  samplePath: string,
+): Promise<string> {
+  const message = await callForParamError(ctx.client!, "ppal-update-device", {
+    id: deviceId,
+    params: [{ name: "sample", value: samplePath }],
+  });
+
+  await sleep(100);
+
+  return message;
+}
+
 describe("specialized devices: Drift", () => {
   it("round-trips mod-matrix slots and asserts the raw indices", async () => {
     // ppal-live-api is excluded from the default e2e tool whitelist; re-enable
@@ -202,26 +250,19 @@ describe("specialized devices: Drift", () => {
       ),
     ).toBe(12);
 
-    // 13 is out of range (max 12). Live silently reverts, so we warn-and-skip
-    // rather than write — the value must stay at 12.
-    const { data: refused, warnings } = parseToolResultWithWarnings<{
-      params?: PseudoParam[];
-    }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          id: id,
-          params: [{ name: "pitchBendRange", value: "13" }],
-        },
-      }),
-    );
+    // 13 is out of range (max 12). Live silently reverts, so we refuse the
+    // write rather than send it — the value must stay at 12. It was all the
+    // call asked, so the call fails, and nothing warns.
+    const refused = await callForParamError(ctx.client!, "ppal-update-device", {
+      id,
+      params: [{ name: "pitchBendRange", value: "13" }],
+    });
 
     await sleep(100);
 
-    expect(warnings.some((w) => w.includes("pitchBendRange"))).toBe(true);
-    // A refused write reports no value: an entry would say 12 was what the
-    // call wrote.
-    expect(refused.params).toBeUndefined();
+    expect(refused).toContain(
+      'no param landed — "pitchBendRange": pitchBendRange must be an integer 0-12 (got "13")',
+    );
     expect(
       paramValue(
         await readDevice(id, ["params"], "pitchBendRange"),
@@ -615,20 +656,13 @@ describe("specialized devices: Simpler", () => {
 
     // Absolute, so nothing refuses it up front — Live takes replace_sample,
     // finds no file, and loads nothing.
-    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { id, params: [{ name: "sample", value: missing }] },
-      }),
-    );
+    const message = await failedSampleWrite(id, missing);
 
-    await sleep(100);
-
-    // read-device omits an empty Simpler's sample too, so this entry is the
+    // read-device omits an empty Simpler's sample too, so this error is the
     // only thing anywhere that says the write never landed.
-    expect(data.params).toStrictEqual([
-      { name: "sample", reason: "written, but no value reads back" },
-    ]);
+    expect(message).toContain(
+      'no param landed — "sample": written, but no value reads back',
+    );
     expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
   });
 
@@ -641,24 +675,13 @@ describe("specialized devices: Simpler", () => {
     });
     await sleep(100);
 
-    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { id, params: [{ name: "sample", value: missing }] },
-      }),
-    );
-
-    await sleep(100);
+    const message = await failedSampleWrite(id, missing);
 
     // A loaded sample gives the read-back a path to report, and reporting it
     // as the value would read as a write that landed — the caller would only
     // notice by diffing it against the path it sent.
-    const [entry] = data.params ?? [];
-
-    expect(entry?.name).toBe("sample");
-    expect(entry).not.toHaveProperty("value");
-    expect(entry?.reason).toContain("not loaded");
-    expect(entry?.reason).toContain("sample.aiff");
+    expect(message).toContain('no param landed — "sample": not loaded');
+    expect(message).toContain("sample.aiff");
     // The sample it could not replace is still loaded.
     expect(String((await readDevice(id, ["sample"])).sample)).toContain(
       "sample.aiff",
@@ -676,16 +699,9 @@ describe("specialized devices: Simpler", () => {
     // Rewriting the path already loaded leaves the read-back where it was, so
     // only the path the call asked for tells this apart from a write that
     // never landed — which means Live has to report the path it was handed.
-    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { id, params: [{ name: "sample", value: SAMPLE_FILE }] },
-      }),
-    );
+    const params = await writeSample(id, SAMPLE_FILE);
 
-    await sleep(100);
-
-    expect(data.params).toStrictEqual([{ name: "sample", value: SAMPLE_FILE }]);
+    expect(params).toStrictEqual([{ name: "sample", value: SAMPLE_FILE }]);
   });
 
   it('include: ["*"] emits both the top-level sample field and the sample param entry', async () => {
@@ -810,7 +826,7 @@ describe("specialized devices: modulation-rate effects (inactiveWhen)", () => {
   // against real Live and asserts exactly one rate param stays active; a Live
   // enum reorder or a renamed param would break it (the unit tests can't, since
   // they run the same hardcoded mappings against mocks). See
-  // dev/Specialized-Devices.md.
+  // dev/live-api/specialized-devices/README.md.
 
   /**
    * Assert that, of the mutually-exclusive `group`, only `active` has no `state`

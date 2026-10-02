@@ -45,6 +45,11 @@ Chat UI (`ui-test-helpers.ts`, IndexedDB-backed):
   rename, star/unstar, delete (all backed by assertions against IndexedDB).
 - `conversation-branching.spec.ts`, `assistant-markdown.spec.ts` — edit/retry
   forks and assistant markdown rendering.
+- `chat-image-attachments.spec.ts` — attaching an image to the composer with the
+  file picker, and removing it again.
+- `chat-tab-order.spec.ts` — Tab reaches the composer before the transcript, a
+  closed history panel stays out of the tab path, and the composer still renders
+  below the transcript.
 
 Subagents (`subagent/subagent-test-helpers.ts`, scripted-LLM-backed) — the only
 specs here that drive the chat path:

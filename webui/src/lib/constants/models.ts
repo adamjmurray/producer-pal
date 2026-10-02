@@ -124,8 +124,8 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 }
 
 export const ANTHROPIC_MODELS = [
-  { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
-  { value: "claude-opus-5", label: "Claude Opus 5" },
+  { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
+  { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { value: "claude-fable-5-1", label: "Claude Fable 5.1" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   OTHER_MODEL_OPTION,
@@ -144,11 +144,9 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
 ];
 
 export const OPENAI_MODELS: ModelPresetItem[] = [
-  { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
-  { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
-  { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
+  { value: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
+  { value: "gpt-6-luna", label: "GPT-6 Luna" },
   { value: "gpt-6-astra", label: "GPT-6 Astra" },
-  { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   {
     value: OPENAI_REALTIME_MODEL,
     label: "GPT Realtime 2.1 (Voice)",
@@ -168,6 +166,16 @@ export const MISTRAL_MODELS = [
 export const OPENROUTER_MODELS = [
   // Paid models
   {
+    value: "anthropic/claude-sonnet-5.5",
+    label: "[Paid] Anthropic Claude Sonnet 5.5",
+  },
+  {
+    value: "anthropic/claude-opus-5.5",
+    label: "[Paid] Anthropic Claude Opus 5.5",
+  },
+  { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
+  { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
+  {
     value: "google/gemini-3.8-flash",
     label: "[Paid] Google Gemini 3.8 Flash",
   },
@@ -175,24 +183,14 @@ export const OPENROUTER_MODELS = [
     value: "google/gemini-3.1-pro-preview",
     label: "[Paid] Google Gemini 3.1 Pro",
   },
-  {
-    value: "anthropic/claude-sonnet-5",
-    label: "[Paid] Anthropic Claude Sonnet 5",
-  },
-  {
-    value: "anthropic/claude-opus-5",
-    label: "[Paid] Anthropic Claude Opus 5",
-  },
-  { value: "openai/gpt-5.6-terra", label: "[Paid] OpenAI GPT-5.6 Terra" },
-  { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
   { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
   {
-    value: "deepseek/deepseek-v4-flash-0731",
-    label: "[Paid] DeepSeek V4 Flash",
+    value: "deepseek/deepseek-v4.1-flash",
+    label: "[Paid] DeepSeek V4.1 Flash",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
-  { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
+  { value: "z-ai/glm-5.3", label: "[Paid] Z.ai GLM 5.3" },
   // Free models
   {
     value: "google/gemma-4-31b-it:free",

@@ -6,58 +6,54 @@
 // Addressing tracks and scenes by where they are instead of by id, so a caller
 // that just read a Set can act on what it found without carrying ids around.
 //
-// On a tool taking a list, a path that names the wrong kind of thing, or
-// nothing at all, warns and contributes nothing — the same as an id that
-// doesn't resolve, so one bad entry costs its own object rather than the whole
-// batch. A read naming one object has nothing left to return, so it throws.
-//
-// A hole in the list itself ("t0,,t1") is neither: nothing can line up against
-// a list whose length is a guess, so it throws before anything runs, like a
-// hole in `id`.
+// A lookup reports a miss rather than raising it: on a tool taking a list the
+// miss becomes that target's result entry. A read naming one object has nothing
+// left to return, so it throws instead.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  pathEntries,
-  trackSegmentPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+  existingId,
+  type IdLookup,
+} from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
+import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
+  CREATE_TRACK_ADVICE,
   isNewObjectPath,
-  NEW_OBJECT_NOUNS,
+  NEW_OBJECT_ADVICE,
   parseObjectPath,
+  type NewObjectSegment,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { deviceTailNoun } from "#src/tools/shared/validation/helpers/object-path-device-tail.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
- * Resolves track path(s) to the ids of the tracks they name.
- * @param paths - Comma-separated track paths (e.g. "t0,rt1,mt")
- * @param label - Param name the paths came from, for warnings
- * @returns One track id per path entry, null where a path named none
+ * The id of the track one path names, or the reason it names none.
+ * @param entry - One track path (e.g. "t0", "rt1", "mt")
+ * @param label - Param name the path came from, for the reason
+ * @returns The track's id, or why there isn't one
  */
-export function trackIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (path, entry) =>
-    trackAtPath(path, entry, label),
-  );
+export function trackIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(trackAtPath(parseObjectPath(entry, label), entry, label), {
+    noun: "track",
+    label,
+    entry,
+    advice: CREATE_TRACK_ADVICE,
+  });
 }
 
 /**
- * Resolves scene path(s) to the ids of the scenes they name.
- * @param paths - Comma-separated scene paths (e.g. "s0,s3")
- * @param label - Param name the paths came from, for warnings
- * @returns One scene id per path entry, null where a path named none
+ * The id of the scene one path names, or the reason it names none.
+ * @param entry - One scene path (e.g. "s3")
+ * @param label - Param name the path came from, for the reason
+ * @returns The scene's id, or why there isn't one
  */
-export function sceneIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (path, entry) =>
-    sceneAtPath(path, entry, label),
-  );
+export function sceneIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(sceneAtPath(parseObjectPath(entry, label), entry, label), {
+    noun: "scene",
+    label,
+    entry,
+  });
 }
 
 /**
@@ -72,6 +68,7 @@ export function trackApiAtPath(entry: string, label = "path"): LiveAPI {
     trackAtPath(parseObjectPath(entry, label), entry, label),
     entry,
     label,
+    CREATE_TRACK_ADVICE,
   );
 }
 
@@ -99,6 +96,8 @@ export function sceneApiAtPath(entry: string, label = "path"): LiveAPI {
  * @returns The track it names
  */
 function trackAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
+  refuseNewObject(path, entry, label, '"t<index>", "rt<index>", or "mt"');
+
   if (
     path.kind !== "track" &&
     path.kind !== "return-track" &&
@@ -122,6 +121,8 @@ function trackAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
  * @returns The scene it names
  */
 function sceneAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
+  refuseNewObject(path, entry, label, '"s<index>"');
+
   if (path.kind !== "scene") {
     throw pathError(
       label,
@@ -138,73 +139,81 @@ function sceneAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
  * @param object - What the path resolved to
  * @param entry - The path as written, for the error
  * @param label - Param name the path came from, for the error
+ * @param advice - Which tool makes one, appended when the path named nothing
  * @returns The object
  */
-function existing(object: LiveAPI, entry: string, label: string): LiveAPI {
+function existing(
+  object: LiveAPI,
+  entry: string,
+  label: string,
+  advice?: string,
+): LiveAPI {
   if (!object.exists()) {
-    throw new Error(`nothing at ${label} "${entry}"`);
+    const hint = advice == null ? "" : `; ${advice}`;
+
+    throw new Error(`nothing at ${label} "${entry}"${hint}`);
   }
 
   return object;
 }
 
 /**
- * Resolves each entry through a type-specific lookup, keeping one slot per
- * path so a caller pairing paths against another list keeps its positions.
- * @param paths - The raw path param
- * @param label - Param name the paths came from, for warnings
- * @param resolve - Turns a parsed path into the object it names, or throws
- * @returns One id per path entry, null where a path named none
+ * Refuses a "+" path on a lookup that only reaches objects that already exist,
+ * naming the tool that does take it.
+ * @param path - A parsed path
+ * @param entry - The path as written, for the error
+ * @param label - Param name the path came from, for the error
+ * @param spellings - How to name an existing object of the kind wanted
  */
-function idPerPath(
-  paths: string,
+function refuseNewObject(
+  path: ObjectPath,
+  entry: string,
   label: string,
-  resolve: (path: ObjectPath, entry: string) => LiveAPI,
-): Array<string | null> {
-  const ids: Array<string | null> = [];
-
-  for (const entry of pathEntries(paths, label)) {
-    try {
-      const object = resolve(parseObjectPath(entry, label), entry);
-
-      if (object.exists()) {
-        ids.push(object.id);
-        continue;
-      }
-
-      console.warn(`nothing at ${label} "${entry}"`);
-    } catch (error) {
-      console.warn(errorMessage(error));
-    }
-
-    ids.push(null);
+  spellings: string,
+): asserts path is Exclude<ObjectPath, NewObjectSegment> {
+  if (isNewObjectPath(path)) {
+    throw pathError(
+      label,
+      entry,
+      `${NEW_OBJECT_ADVICE[path.kind]}; name an existing one as ${spellings}`,
+    );
   }
-
-  return ids;
 }
 
 /**
  * Names what a path points at, for a message saying it's the wrong kind.
- * @param path - A parsed path
+ * @param path - A parsed path, "+" roots already refused
  * @returns What it names, as a noun phrase
  */
-function describePathKind(path: ObjectPath): string {
-  if (isNewObjectPath(path)) {
-    return NEW_OBJECT_NOUNS[path.kind];
-  }
-
+function describePathKind(path: Exclude<ObjectPath, NewObjectSegment>): string {
   switch (path.kind) {
+    case "track":
+    case "return-track":
+    case "master-track":
+      return "a track";
     case "scene":
       return "a scene";
     case "slot":
       return "a clip slot";
     case "take-lane":
       return "a take lane";
+    case "new-take-lane":
+      return "a new take lane";
     case "device":
-      return "a device";
+      return deviceTailNoun(path.segments);
+    case "new-device":
+      return "a new device";
+    case "new-chain":
+      return "a new chain";
     case "arrangement-position":
       return "an arrangement clip";
-    default:
-      return "a track";
+
+    // Unreachable; the `never` makes a new kind fail the typecheck rather than
+    // get a wrong noun.
+    default: {
+      const exhaustive: never = path;
+
+      return exhaustive;
+    }
   }
 }

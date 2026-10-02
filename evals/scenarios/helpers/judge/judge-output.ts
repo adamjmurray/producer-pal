@@ -8,7 +8,7 @@
  */
 
 import { styleText } from "node:util";
-import { isQuietMode } from "../output-config.ts";
+import { isQuietMode } from "../quiet-mode.ts";
 
 /**
  * Print judge info (model, criteria)

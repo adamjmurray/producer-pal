@@ -171,7 +171,7 @@ vi.mock(import("#webui/hooks/voice/gemini/gemini-voice-token"), () => ({
   fetchGeminiToken: h.fetchGeminiToken as never,
 }));
 
-import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import {
   useGeminiVoiceSession,
   type UseGeminiVoiceSessionParams,

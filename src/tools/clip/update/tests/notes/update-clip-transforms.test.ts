@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { registerScaledLiveSet } from "./notes-mock-test-helpers.ts";
 import {
   mockMergeNoteTracking,
   setupMidiClipMock,
@@ -13,6 +13,7 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 const C3 = {
   pitch: 60,
@@ -112,15 +113,35 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
-  it("warns and continues when a transform string is malformed", async () => {
+  // clip.index pairs by target, like name does, so an empty slot among the
+  // targets doesn't shift the clips after it.
+  it("counts clip.index/clip.count over the targets named, empty ones included", async () => {
+    mockNonExistentObjects();
+
     await updateClip({
-      id: "123, 456, 789",
-      transforms: "!!!bad!!!",
+      path: "t9/s9,t0/s0,t1/s1",
+      name: "A,B,C",
+      transforms: "velocity = clip.index * 20 + clip.count",
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to update clip t0/s0 (id 123)"),
-    );
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "B");
+    expect(addedVelocity(mocks.clip123)).toBe(23); // 1*20 + 3
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "C");
+    expect(addedVelocity(mocks.clip456)).toBe(43); // 2*20 + 3
+  });
+
+  // The throw lands in the clip's own slot, so the caller can tell which of the
+  // three it was — and the other two still come back.
+  it("keeps going when a transform string is malformed, refusing each clip", async () => {
+    const result = (await updateClip({
+      id: "123, 456, 789",
+      transforms: "!!!bad!!!",
+    })) as Array<{ id?: string; ok?: false; detail?: string }>;
+
+    expect(result[0]?.id).toBe("123");
+    expect(result[0]?.ok).toBe(false);
+    expect(result[0]?.detail).toContain("transform syntax error");
+    expect(result).toHaveLength(3);
   });
 });
 
@@ -153,15 +174,7 @@ describe("updateClip - transforms read the Live Set's scale", () => {
   // cover each way of asking for one: transforms, preTransforms, and notes
   // merged alongside a transform.
   beforeEach(() => {
-    registerMockObject("live_set", {
-      path: "live_set",
-      type: "Song",
-      properties: {
-        scale_mode: 1,
-        root_note: 0,
-        scale_intervals: [0, 2, 4, 5, 7, 9, 11], // C major
-      },
-    });
+    registerScaledLiveSet([0, 2, 4, 5, 7, 9, 11]); // C major
     mocks = setupUpdateClipMocks();
     setupMidiClipMock(mocks.clip123, { length: 4 });
     // C#3, which is out of C major.

@@ -27,7 +27,7 @@ The \`notes\` argument (and read-clip's returned notes) is a compact array-of-ob
 
 \`[{p:60,t:0,d:4,v:100},{p:62,t:1,d:1,v:90,vd:10,c:0.75}]\`
 
-Keys: \`p\` pitch 0-127 (C3 = middle C = MIDI 60, Ableton numbering; most other software calls this note C4), \`t\` start and \`d\` duration in musical beats, \`v\` velocity 1-127, optional \`vd\` velocity-deviation 0-127 (default 0) and \`c\` probability/chance 0-1 (default 1) — omit \`vd\`/\`c\` at their defaults.
+Keys: \`p\` pitch 0-127 (Ableton octave numbering, which the user's note names use too: C3 = middle C = 60, C4 = 72; most other software calls 60 C4), \`t\` start and \`d\` duration in musical beats, \`v\` velocity 1-127, optional \`vd\` velocity-deviation 0-127 (default 0) and \`c\` probability/chance 0-1 (default 1) — omit \`vd\`/\`c\` at their defaults.
 
 - \`t\` and \`d\` are absolute musical beats (a quarter = 1 beat in x/4): \`t:0\` is clip start, \`t:4\` is beat 5. Chords share a \`t\`.
 - \`v:0\` deletes instead of adding: it removes the note at that same \`p\`+\`t\` (already in the clip, or written earlier in this same array) and writes nothing. It applies to that one object only.

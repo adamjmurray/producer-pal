@@ -11,7 +11,7 @@ import { forceParsing } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { fireEvent, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { notifyFocusChange } from "#webui/components/markdown-editor/markdown-editor-helpers";
+import { notifyFocusChange } from "#webui/components/markdown-editor/markdown-editor-config";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,

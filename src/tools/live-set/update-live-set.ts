@@ -3,31 +3,35 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  barBeatToAbletonBeats,
-  validateBarBeatPosition,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
+import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { deleteLocator } from "./helpers/locator-deletes.ts";
 import {
-  findLocator,
-  getLocatorId,
-} from "#src/tools/shared/locator/locator-helpers.ts";
-import { parseTimeSignature, validateTempo } from "#src/tools/shared/utils.ts";
+  laterNamings,
+  namedLaterEntry,
+} from "./helpers/locator-later-namings.ts";
+import {
+  attemptLocator,
+  type LocatorOperation,
+  type LocatorTarget,
+  locatorTargets,
+  type SongMeter,
+} from "./helpers/locator-targets.ts";
+import {
+  createLocator,
+  renameLocator,
+  validateLocatorOperation,
+} from "./helpers/locator-updates.ts";
 import {
   applyScale,
   applyTempo,
-  cleanupTempClip,
-  extendSongIfNeeded,
-} from "./helpers/update-live-set-helpers.ts";
-import {
-  deleteLocator,
-  renameLocator,
-  stopPlaybackIfNeeded,
-  validateLocatorOperation,
-  waitForPlayheadPosition,
-} from "./helpers/update-live-set-locator-helpers.ts";
+  applyTimeSignature,
+  parseScale,
+} from "./helpers/tempo-and-scale-updates.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;
@@ -37,20 +41,6 @@ interface UpdateLiveSetArgs {
   locatorId?: string;
   locatorTime?: string;
   locatorName?: string;
-}
-
-interface LocatorOperationOptions {
-  locatorOperation: string;
-  locatorId?: string;
-  locatorTime?: string;
-  locatorName?: string;
-}
-
-interface CreateLocatorOptions {
-  locatorTime?: string;
-  locatorName?: string;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
 }
 
 // silenceWavPath is available on context at runtime but not declared in ToolContext
@@ -64,9 +54,9 @@ type UpdateLiveSetContext = Partial<ToolContext> & { silenceWavPath?: string };
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.scale - Scale in format "Root ScaleName"
  * @param args.locatorOperation - Locator operation: "create", "delete", or "rename"
- * @param args.locatorId - Locator ID for delete/rename
- * @param args.locatorTime - Bar|beat position for create/delete/rename
- * @param args.locatorName - Name for create/rename, or name filter for delete
+ * @param args.locatorId - Locator ID(s) for delete/rename, comma-separated
+ * @param args.locatorTime - Bar|beat position(s) for create/delete/rename, comma-separated
+ * @param args.locatorName - Name(s) for create/rename, or name filter(s) for delete
  * @param context - Internal context object with silenceWavPath for audio clips
  * @returns Updated Live Set information
  */
@@ -90,16 +80,38 @@ export async function updateLiveSet(
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
-  // optimistic result object that only include properties that are actually set
-  const result: Record<string, unknown> = {
-    id: liveSet.id,
-  };
-
   // Parse timeSignature up front so a malformed format fails before any
   // property is mutated, instead of throwing after a partial update (e.g. tempo
   // already applied). Mirrors updateClip's upfront validation.
   const parsedTimeSignature =
     timeSignature != null ? parseTimeSignature(timeSignature) : null;
+
+  // Split the locator lists before anything is written: an unreadable list or
+  // time is refused with the Set untouched. Times are read in the meter this
+  // call leaves the Set in.
+  const targets =
+    locatorOperation == null
+      ? []
+      : locatorTargets(
+          locatorOperation,
+          { locatorId, locatorTime, locatorName },
+          liveSet,
+          parsedTimeSignature == null
+            ? readMeter(liveSet)
+            : {
+                timeSigNumerator: parsedTimeSignature.numerator,
+                timeSigDenominator: parsedTimeSignature.denominator,
+              },
+        );
+
+  // optimistic result object that only include properties that are actually set
+  const result: Record<string, unknown> = {
+    id: liveSet.id,
+  };
+
+  // The scale covers the whole call, so one we can't read is refused here too,
+  // with the Set untouched. An empty string means disable, not a bad scale.
+  const parsedScale = scale == null || scale === "" ? null : parseScale(scale);
 
   validateTempo(tempo);
 
@@ -108,202 +120,109 @@ export async function updateLiveSet(
   }
 
   if (parsedTimeSignature != null) {
-    liveSet.set("signature_numerator", parsedTimeSignature.numerator);
-    liveSet.set("signature_denominator", parsedTimeSignature.denominator);
-    result.timeSignature = `${parsedTimeSignature.numerator}/${parsedTimeSignature.denominator}`;
+    applyTimeSignature(liveSet, parsedTimeSignature, result);
   }
 
   if (scale != null) {
-    const respelledRoot = applyScale(liveSet, scale, result);
+    applyScale(liveSet, parsedScale, scale, result);
 
-    // applyScale warns and skips invalid input without setting result.scale.
-    // result.scale === "" means the scale was DISABLED (not applied), so the
-    // note must describe that distinctly rather than claiming a scale was
-    // applied.
-    if (result.scale != null) {
-      result.$meta ??= [];
-
-      const meta = result.$meta as string[];
-
-      meta.push(
-        result.scale === ""
-          ? "Scale disabled for selected clips and defaults for new clips."
-          : "Scale applied to selected clips and defaults for new clips.",
-      );
-
-      // Without this, a model that asked for F# sees Gb come back and retries,
-      // thinking the write failed.
-      if (respelledRoot != null) {
-        meta.push(
-          `Scale roots are spelled with flats, so ${respelledRoot.requestedRoot} comes back as ${respelledRoot.storedRoot} — same scale, set correctly.`,
-        );
-      }
-    }
+    result.$meta = [
+      parsedScale == null
+        ? "Scale disabled for selected clips and defaults for new clips."
+        : "Scale applied to selected clips and defaults for new clips.",
+    ];
   }
 
-  // Include scalePitches only when a non-empty scale was actually applied
-  // (result.scale is unset when applyScale skipped invalid input).
-  const shouldIncludeScalePitches = result.scale != null && result.scale !== "";
-
-  if (shouldIncludeScalePitches) {
-    const rootNote = liveSet.getProperty("root_note") as number;
+  if (parsedScale != null) {
+    // Only Live knows a scale name's intervals, so that read stays. The root is
+    // the pitch class the call just wrote, so don't read it back.
     const scaleIntervals = liveSet.getProperty("scale_intervals") as number[];
 
-    result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
+    result.scalePitches = intervalsToPitchClasses(
+      scaleIntervals,
+      parsedScale.scaleRootNumber,
+    ).join(",");
   }
 
   // Handle locator operations
   if (locatorOperation != null) {
-    const locatorResult = await handleLocatorOperation(
+    result.locator = await handleLocatorOperations(
       liveSet,
-      {
-        locatorOperation,
-        locatorId,
-        locatorTime,
-        locatorName,
-      },
+      locatorOperation as LocatorOperation,
+      targets,
       context,
+      tempo == null && timeSignature == null && scale == null,
     );
-
-    result.locator = locatorResult;
   }
 
   return result;
 }
 
 /**
- * Handle locator operations (create, delete, rename)
+ * Run the operation on every locator the call named, in order.
  * @param liveSet - The live_set LiveAPI object
- * @param options - Operation options
- * @param options.locatorOperation - "create", "delete", or "rename"
- * @param options.locatorId - Locator ID for delete/rename
- * @param options.locatorTime - Bar|beat position
- * @param options.locatorName - Name for create/rename or name filter for delete
+ * @param operation - "create", "delete", or "rename"
+ * @param targets - One target per locator named
  * @param context - Context object with silenceWavPath
- * @returns Result of the locator operation
+ * @param locatorsOnly - Whether the locators are all the call asked for
+ * @returns The locator's result when one was named, otherwise one entry each
+ * @throws Error when a lone locator got nothing done and nothing else was asked
  */
-async function handleLocatorOperation(
+async function handleLocatorOperations(
   liveSet: LiveAPI,
-  {
-    locatorOperation,
-    locatorId,
-    locatorTime,
-    locatorName,
-  }: LocatorOperationOptions,
+  operation: LocatorOperation,
+  targets: LocatorTarget[],
   context: UpdateLiveSetContext,
-): Promise<Record<string, unknown>> {
-  const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
-  const timeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
+  locatorsOnly: boolean,
+): Promise<unknown> {
+  // Read again: the meter Live holds now, after any timeSignature write.
+  const meter = readMeter(liveSet);
+  const namings =
+    targets.length > 1 ? laterNamings(liveSet, targets, meter) : [];
+  const entries: Array<Record<string, unknown>> = [];
 
-  switch (locatorOperation) {
-    case "create":
-      return await createLocator(
-        liveSet,
-        { locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
-        context,
-      );
-    case "delete":
-      return await deleteLocator(liveSet, {
-        locatorId,
-        locatorTime,
-        locatorName,
-        timeSigNumerator,
-        timeSigDenominator,
-      });
-    case "rename":
-      return renameLocator(liveSet, {
-        locatorId,
-        locatorTime,
-        locatorName,
-        timeSigNumerator,
-        timeSigDenominator,
-      });
-    default:
-      throw new Error(`Unknown locator operation: ${locatorOperation}`);
+  // Sequential: each operation moves the playhead, so they can't overlap.
+  for (const [index, target] of targets.entries()) {
+    const naming = namings[index];
+
+    if (naming != null) {
+      entries.push(namedLaterEntry(operation, target, naming));
+      continue;
+    }
+
+    const run = async (): Promise<Record<string, unknown>> => {
+      switch (operation) {
+        case "create":
+          return await createLocator(liveSet, target, meter, context);
+        case "delete":
+          return await deleteLocator(liveSet, target, meter);
+        default:
+          return renameLocator(liveSet, target, meter);
+      }
+    };
+
+    entries.push(await attemptLocator(target, run));
   }
+
+  // A lone refusal throws, unless tempo or other song state landed: an error
+  // would hide that.
+  const refusal = locatorsOnly ? loneRefusal(entries) : null;
+
+  if (refusal != null) {
+    throw new Error(refusal);
+  }
+
+  return unwrapSingleResult(entries);
 }
 
 /**
- * Create a locator at the specified position
+ * The song meter Live holds.
  * @param liveSet - The live_set LiveAPI object
- * @param options - Create options
- * @param options.locatorTime - Bar|beat position for the locator
- * @param options.locatorName - Optional name for the locator
- * @param options.timeSigNumerator - Time signature numerator
- * @param options.timeSigDenominator - Time signature denominator
- * @param context - Context object with silenceWavPath
- * @returns Created locator info
+ * @returns The meter a bar|beat is read in
  */
-async function createLocator(
-  liveSet: LiveAPI,
-  {
-    locatorTime,
-    locatorName,
-    timeSigNumerator,
-    timeSigDenominator,
-  }: CreateLocatorOptions,
-  context: UpdateLiveSetContext,
-): Promise<Record<string, unknown>> {
-  if (locatorTime == null) {
-    console.warn("locatorTime is required for create operation");
-
-    return {
-      operation: "skipped",
-      reason: "missing_locatorTime",
-    };
-  }
-
-  validateBarBeatPosition(locatorTime);
-  const targetBeats = barBeatToAbletonBeats(
-    locatorTime,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  // Check if a locator already exists at this position
-  const existing = findLocator(liveSet, { timeInBeats: targetBeats });
-
-  if (existing) {
-    console.warn(
-      `Locator already exists at ${locatorTime} (id: ${getLocatorId(existing.index)}), skipping create`,
-    );
-
-    return {
-      operation: "skipped",
-      reason: "locator_exists",
-      time: locatorTime,
-      existingId: getLocatorId(existing.index),
-    };
-  }
-
-  stopPlaybackIfNeeded(liveSet);
-
-  // Extend song if target is past current song_length
-  const tempClipInfo = extendSongIfNeeded(liveSet, targetBeats, context);
-
-  // Move playhead and wait for it to update (race condition fix)
-  liveSet.set("current_song_time", targetBeats);
-  await waitForPlayheadPosition(liveSet, targetBeats);
-
-  // Create locator at current playhead position
-  liveSet.call("set_or_delete_cue");
-
-  // Clean up temporary clip used to extend song
-  cleanupTempClip(tempClipInfo);
-
-  // Find the newly created locator to get its index and set name if provided
-  const found = findLocator(liveSet, { timeInBeats: targetBeats });
-
-  if (found && locatorName != null) {
-    found.locator.set("name", locatorName);
-  }
-
+function readMeter(liveSet: LiveAPI): SongMeter {
   return {
-    operation: "created",
-    time: locatorTime,
-    ...(locatorName != null && { name: locatorName }),
-    ...(found && { id: getLocatorId(found.index) }),
+    timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
+    timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
   };
 }

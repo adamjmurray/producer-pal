@@ -80,6 +80,7 @@ function reportsTempo(turns: EvalTurnResult[]): boolean {
 
 export const liveApiEscapeHatch: EvalScenario = {
   id: "live-api-escape-hatch",
+  tags: ["workflow"],
   description:
     "Reach for the Direct Live API only where no other tool can do the job",
   // Unguided by design, so getting here is judgment rather than instruction.

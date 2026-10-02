@@ -62,10 +62,16 @@ export function usePreferencesSettings(): PreferencesSettings {
  * @param display - Preferences settings to persist
  */
 export function savePreferencesSettings(display: PreferencesSettings): void {
-  const s = (key: string, value: boolean) =>
-    localStorage.setItem(`${KEY_PREFIX}${key}`, String(value));
+  saveFlag("show_timestamps", display.showTimestamps);
+  saveFlag("show_help_links", display.showHelpLinks);
+  saveFlag("show_token_usage", display.showTokenUsage);
+}
 
-  s("show_timestamps", display.showTimestamps);
-  s("show_help_links", display.showHelpLinks);
-  s("show_token_usage", display.showTokenUsage);
+/**
+ * Saves one boolean preference to localStorage
+ * @param key - Key without the prefix
+ * @param value - Value to store
+ */
+function saveFlag(key: string, value: boolean): void {
+  localStorage.setItem(`${KEY_PREFIX}${key}`, String(value));
 }

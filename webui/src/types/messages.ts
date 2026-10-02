@@ -11,7 +11,7 @@
  * - Message formatter and chat client interfaces
  */
 
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 
 // UI Part Types
 // These represent the different types of content that can appear in a message
@@ -19,6 +19,14 @@ import { type TokenUsage } from "#webui/chat/sdk/types";
 export interface UITextPart {
   type: "text";
   content: string;
+}
+
+/** An image the user attached, rendered as a thumbnail in the user bubble. */
+export interface UIImagePart {
+  type: "image";
+  mediaType: string;
+  /** Base64 image bytes WITHOUT the `data:` URL prefix. */
+  data: string;
 }
 
 export interface UIThoughtPart {
@@ -56,6 +64,8 @@ export interface UIToolPart {
 export interface UIStepUsagePart {
   type: "step-usage";
   usage: TokenUsage;
+  /** Generation speed for this step, when the SDK could measure it. */
+  timing?: StepTiming;
 }
 
 export interface UIErrorPart {
@@ -71,6 +81,7 @@ export interface UICompactionPart {
 
 export type UIPart =
   | UITextPart
+  | UIImagePart
   | UIThoughtPart
   | UIToolPart
   | UIStepUsagePart
@@ -89,6 +100,8 @@ export interface UIMessage {
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */
   usage?: TokenUsage;
+  /** Generation speed for the last step of this message, when measurable */
+  timing?: StepTiming;
 }
 
 // Formatter Interface

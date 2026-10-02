@@ -11,7 +11,7 @@
 // clip never moves a track, so one object serves the whole call.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import {
   registerArrangementTrack,
@@ -24,15 +24,6 @@ const CLIPS = 8;
 
 /** Bar|beat starts for CLIPS clips, one per bar from bar 1. */
 const starts = Array.from({ length: CLIPS }, (_, i) => `${String(i + 1)}|1`);
-
-/**
- * How many times the call resolved a target of this shape.
- * @param shape - Target shape, indices replaced with `*`
- * @returns Resolution count
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
-}
 
 describe("createClip build budget", () => {
   beforeEach(setupArrangementClipMocks);

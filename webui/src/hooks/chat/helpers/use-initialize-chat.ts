@@ -8,7 +8,7 @@ import {
   connectClient,
   resolveInitConnection,
   validateMcpConnection,
-} from "#webui/hooks/chat/helpers/streaming-helpers";
+} from "#webui/hooks/chat/helpers/streaming/connect-client";
 import {
   type LockedSettingsInput,
   type UseActiveSettingsReturn,

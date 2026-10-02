@@ -112,6 +112,26 @@ distribution is in the probe's `=== details ===` output.)
   whole pipe-delimited string as a single array element. The takeaway is about
   prompt phrasing, not array support.
 
+### `name-or-id-entries` (added later)
+
+`params: array<object{name?, id?, value}>`, the update-device shape once an
+explicit `id` field joined `name`. Two optionals where exactly one is required
+is a union in all but name, so it was gated on this run.
+
+| model                 | result                                                    |
+| --------------------- | --------------------------------------------------------- |
+| gemini-3.6-flash      | ok 3/3                                                    |
+| gpt-5-mini            | ok 3/3, unused field sent as `""`                         |
+| gpt-5-nano            | ok 2/3; one draw sent `id: "N/A"` and the id in both keys |
+| claude-haiku-4.5 (OR) | ok 3/3                                                    |
+| qwen3-8b (OR)         | ok 3/3 (needs `--auto`; its endpoint refuses `required`)  |
+| codex-code/luna (CLI) | ok 1/1                                                    |
+| mistral-small-latest  | no signal — account rate-limited on every variant         |
+
+Every model routed the ids into `id` and the names into `name`. The OpenAI habit
+of filling the unused field with `""` is why the tool treats a blank `name` or
+`id` as absent rather than as "both given".
+
 ### Agent-CLI snapshot
 
 **Date:** 2026-08-31 · **`codex-code/luna`, 1 draw per cell.** All eight
@@ -134,4 +154,4 @@ The conventions this probe was built to check out as **conservative-correct**:
 prefer `array<object>` for structured records, prefer a plain `array` over a
 `string | array` union (the union is the only shape that actively loses data —
 on Claude), and avoid dynamic object maps (they lose data on Gemini). See
-`dev/Tool-Schemas.md` for how these map onto tool design.
+`dev/tools/tool-schemas.md` for how these map onto tool design.

@@ -8,8 +8,12 @@ import {
   handleQuantization,
   QUANTIZE_GRID,
   QUANTIZE_GRID_ALIASES,
-} from "#src/tools/clip/update/helpers/update-clip-notes-helpers.ts";
+} from "#src/tools/clip/update/helpers/notes/note-updates.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;
@@ -68,9 +72,11 @@ describe("QUANTIZE_GRID_ALIASES", () => {
 
 describe("handleQuantization", () => {
   let mockClip: MockClip;
+  let reasons: ClipReasons;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    reasons = newClipReasons();
 
     mockClip = {
       id: "321",
@@ -81,7 +87,7 @@ describe("handleQuantization", () => {
   });
 
   it("should do nothing when no quantize param is provided", () => {
-    handleQuantization(mockClip, {});
+    handleQuantization(mockClip, reasons, {});
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
@@ -89,7 +95,7 @@ describe("handleQuantization", () => {
   it("should quantize fully when only quantizeGrid is provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    handleQuantization(mockClip, { quantizeGrid: "1/8" });
+    handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
 
     expect(mockClip.call).toHaveBeenCalledWith("quantize", 2, 1);
   });
@@ -97,7 +103,7 @@ describe("handleQuantization", () => {
   it("should keep an explicit quantize of 0 rather than defaulting to 1", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    handleQuantization(mockClip, { quantize: 0, quantizeGrid: "1/8" });
+    handleQuantization(mockClip, reasons, { quantize: 0, quantizeGrid: "1/8" });
 
     expect(mockClip.call).toHaveBeenCalledWith("quantize", 2, 0);
   });
@@ -105,19 +111,23 @@ describe("handleQuantization", () => {
   it("should quantize fully when only quantizePitch is provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    handleQuantization(mockClip, { quantizePitch: "C3" });
+    handleQuantization(mockClip, reasons, { quantizePitch: "C3" });
 
     expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 5, 1);
   });
 
-  it("should warn and skip for audio clips", () => {
+  it("should report the refusal on an audio clip's own entry", () => {
     mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
 
-    handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
+    handleQuantization(mockClip, reasons, {
+      quantize: 1,
+      quantizeGrid: "1/16",
+    });
 
-    expect(capturedWarnings()).toContain(
-      "quantize/quantizeGrid ignored for audio clip id 321: quantization is MIDI-only",
+    expect(reasons.said.get("321")?.join("; ")).toBe(
+      "quantize/quantizeGrid ignored: the clip is audio",
     );
+    expect(capturedWarnings()).toHaveLength(0);
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
@@ -126,27 +136,27 @@ describe("handleQuantization", () => {
   it("should name only the quantize params the caller sent", () => {
     mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
 
-    handleQuantization(mockClip, { quantizeGrid: "1/16" });
+    handleQuantization(mockClip, reasons, { quantizeGrid: "1/16" });
 
-    expect(capturedWarnings()).toContain(
-      "quantizeGrid ignored for audio clip id 321: quantization is MIDI-only",
+    expect(reasons.said.get("321")?.join("; ")).toBe(
+      "quantizeGrid ignored: the clip is audio",
     );
   });
 
   it("should name quantizePitch alone on an audio clip", () => {
     mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
 
-    handleQuantization(mockClip, { quantizePitch: "C3" });
+    handleQuantization(mockClip, reasons, { quantizePitch: "C3" });
 
-    expect(capturedWarnings()).toContain(
-      "quantizePitch ignored for audio clip id 321: quantization is MIDI-only",
+    expect(reasons.said.get("321")?.join("; ")).toBe(
+      "quantizePitch ignored: the clip is audio",
     );
   });
 
   it("should default to a 1/16 grid when quantizeGrid is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    handleQuantization(mockClip, { quantize: 1 });
+    handleQuantization(mockClip, reasons, { quantize: 1 });
 
     // 1/16 maps to grid value 5
     expect(mockClip.call).toHaveBeenCalledWith("quantize", 5, 1);
@@ -156,7 +166,10 @@ describe("handleQuantization", () => {
   it("should call quantize with correct grid value and amount", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    handleQuantization(mockClip, { quantize: 0.75, quantizeGrid: "1/16" });
+    handleQuantization(mockClip, reasons, {
+      quantize: 0.75,
+      quantizeGrid: "1/16",
+    });
 
     expect(mockClip.call).toHaveBeenCalledWith("quantize", 5, 0.75);
   });
@@ -164,7 +177,7 @@ describe("handleQuantization", () => {
   it("should call quantize_pitch when quantizePitch is provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    handleQuantization(mockClip, {
+    handleQuantization(mockClip, reasons, {
       quantize: 1,
       quantizeGrid: "1/8",
       quantizePitch: "C3",
@@ -173,7 +186,23 @@ describe("handleQuantization", () => {
     expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 2, 1);
   });
 
-  it.each([
+  /**
+   * Quantize with a grid string and check the value Live was handed.
+   * @param gridString - The grid the caller wrote
+   * @param expectedValue - Live's grid enum value
+   */
+  function expectGridValue(gridString: string, expectedValue: number): void {
+    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+
+    handleQuantization(mockClip, reasons, {
+      quantize: 1,
+      quantizeGrid: gridString,
+    });
+
+    expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
+  }
+
+  it.each<[string, number]>([
     ["1/4", 1],
     ["1/8", 2],
     ["1/8T", 3],
@@ -182,32 +211,14 @@ describe("handleQuantization", () => {
     ["1/16T", 6],
     ["1/16+1/16T", 7],
     ["1/32", 8],
-  ])(
-    "should work with grid value %s (maps to %i)",
-    (gridString, expectedValue) => {
-      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+  ])("should work with grid value %s (maps to %i)", expectGridValue);
 
-      handleQuantization(mockClip, { quantize: 1, quantizeGrid: gridString });
-
-      expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
-    },
-  );
-
-  it.each([
+  it.each<[string, number]>([
     ["n/4", 1],
     ["n/8", 2],
     ["n/12", 3],
     ["n/16", 5],
     ["n/24", 6],
     ["n/32", 8],
-  ])(
-    "should bridge n/N alias %s to grid value %i",
-    (gridString, expectedValue) => {
-      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-
-      handleQuantization(mockClip, { quantize: 1, quantizeGrid: gridString });
-
-      expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
-    },
-  );
+  ])("should bridge n/N alias %s to grid value %i", expectGridValue);
 });

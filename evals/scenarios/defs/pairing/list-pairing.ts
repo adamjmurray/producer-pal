@@ -27,10 +27,10 @@
  */
 
 import { argText } from "../arg-text.ts";
-import { colorReads } from "../color-reads.ts";
-import { clipStarts, asArrangementTrack } from "../arrangement-helpers.ts";
+import { colorReads } from "../helpers/color-reads.ts";
+import { clipStarts, asArrangementTrack } from "../arrangement-readback.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import { listEntries } from "../path/path-scenario-helpers.ts";
+import { listEntries } from "../path/path-assertions.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -39,7 +39,7 @@ import {
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
@@ -152,6 +152,7 @@ function assertArrangementBars(
 
 export const colorListPairing: EvalScenario = {
   id: "color-list-pairing",
+  tags: ["pairing"],
   description: "Six clips alternating two colors, without relying on cycling",
   kind: "regression",
   liveSet: "basic-midi-4-track",
@@ -175,6 +176,7 @@ export const colorListPairing: EvalScenario = {
 
 export const arrangementDestinationPairing: EvalScenario = {
   id: "arrangement-destination-pairing",
+  tags: ["pairing"],
   description:
     "Clips alternating across two arrangement tracks, without relying on cycling",
   kind: "regression",
@@ -198,6 +200,7 @@ export const arrangementDestinationPairing: EvalScenario = {
 
 export const duplicateDestinationPairing: EvalScenario = {
   id: "duplicate-destination-pairing",
+  tags: ["pairing"],
   description:
     "Copies alternating across two arrangement tracks, without relying on cycling",
   kind: "regression",

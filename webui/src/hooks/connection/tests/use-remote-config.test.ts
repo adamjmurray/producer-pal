@@ -300,7 +300,23 @@ describe("useRemoteConfig", () => {
     expect(result.current.serverLiveApiEnabled).toBe(false);
   });
 
-  it("skips failure revert when a newer POST has been initiated", async () => {
+  // Both failure channels: a POST that resolves non-OK, and one that rejects
+  // outright (offline, connection reset). Neither may revert over a newer POST.
+  it.each([
+    {
+      what: "skips failure revert when a newer POST has been initiated",
+      settlement: "failure" as const,
+      consoleArgs: [expect.stringContaining("skipping revert")],
+    },
+    {
+      what: "skips the revert when a rejected POST has already been superseded",
+      settlement: "rejection" as const,
+      consoleArgs: [
+        expect.stringContaining("skipping revert; newer request in flight"),
+        expect.anything(),
+      ],
+    },
+  ])("$what", async ({ settlement, consoleArgs }) => {
     const { result } = await setupRemoteConfigHook({
       smallModelMode: false,
       liveApiEnabled: false,
@@ -308,7 +324,7 @@ describe("useRemoteConfig", () => {
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const { settlePost1, refetches } = mockSupersededFirstPost("failure");
+    const { settlePost1, refetches } = mockSupersededFirstPost(settlement);
 
     let post1Promise!: Promise<void>;
 
@@ -329,44 +345,7 @@ describe("useRemoteConfig", () => {
 
     expect(refetches.count).toBe(0);
     expect(result.current.serverLiveApiEnabled).toBe(false);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skipping revert"),
-    );
-  });
-
-  // Same guard as above, on the other failure channel: a POST that rejects
-  // outright (offline, connection reset) must not revert over a newer one.
-  it("skips the revert when a rejected POST has already been superseded", async () => {
-    const { result } = await setupRemoteConfigHook({
-      smallModelMode: false,
-      liveApiEnabled: false,
-    });
-
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const { settlePost1, refetches } = mockSupersededFirstPost("rejection");
-
-    let post1Promise!: Promise<void>;
-
-    await act(() => {
-      post1Promise = result.current.postLiveApiEnabled(true);
-    });
-
-    await act(async () => {
-      await result.current.postLiveApiEnabled(false);
-    });
-
-    await act(async () => {
-      settlePost1();
-      await post1Promise;
-    });
-
-    expect(refetches.count).toBe(0);
-    expect(result.current.serverLiveApiEnabled).toBe(false);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skipping revert; newer request in flight"),
-      expect.anything(),
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(...consoleArgs);
   });
 
   it("reverts a failed POST even when a non-applying GET fired while it was in flight", async () => {

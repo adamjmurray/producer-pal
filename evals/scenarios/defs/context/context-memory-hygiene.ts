@@ -22,17 +22,20 @@ import {
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
-  assertContextWrite,
-  assertMemoryDeleted,
-  assertNoContextWrite,
   seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-scenario-setup.ts";
+import {
+  assertContextWrite,
+  assertNoContextWrite,
+} from "./helpers/context-write-assertions.ts";
+import { assertMemoryDeleted } from "./helpers/memory-assertions.ts";
 
 const FAVORITE_SYNTH = "favorite-synth";
 const JAMIE_COLLAB = "jamie-collab-deadline";
 
 export const contextMemoryUpdateNotDuplicate: EvalScenario = {
   id: "context-memory-update-not-duplicate",
+  tags: ["context"],
   description:
     "Reuses an existing memory name to update, instead of duplicating",
   kind: "regression",
@@ -85,6 +88,7 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
 
 export const contextMemoryDelete: EvalScenario = {
   id: "context-memory-delete",
+  tags: ["context"],
   description: "Deletes a memory the user says is finished with",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

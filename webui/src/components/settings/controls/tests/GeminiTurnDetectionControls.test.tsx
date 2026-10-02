@@ -12,7 +12,7 @@ import { GeminiTurnDetectionControls } from "#webui/components/settings/controls
 import {
   DEFAULT_GEMINI_VAD,
   DEFAULT_TURN_DETECTION,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 const settings = DEFAULT_TURN_DETECTION;
 

@@ -20,7 +20,7 @@
  */
 
 import vm from "node:vm";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   CODE_EXEC_TIMEOUT_MS,
   type SandboxResult,

@@ -9,7 +9,7 @@ import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import {
   type BranchNavState,
   type BranchPoint,
-} from "#webui/lib/conversation-branch-helpers";
+} from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
 import { MessageRow, type MessageRowProps } from "./assistant/MessageRow";
@@ -28,7 +28,11 @@ interface MessageListProps {
   /** Whether a manual compaction is in progress (footer shows "Compacting…") */
   isCompacting?: boolean;
   handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
+  handleEdit: (
+    messageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
   /** Compact-up-to-here; omitted in surfaces that don't support compaction (voice/demo) */
   handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;
@@ -40,6 +44,8 @@ interface MessageListProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  /** Opens the Instructions tab from that notice; omitted in voice/demo. */
+  onOpenInstructions?: () => void;
 }
 
 /**
@@ -76,6 +82,7 @@ export function MessageList({
   requestedModel,
   branchNav,
   systemInstruction,
+  onOpenInstructions,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -135,7 +142,10 @@ export function MessageList({
       data-testid="message-list"
     >
       {systemInstruction != null && (
-        <SystemPromptNotice systemInstruction={systemInstruction} />
+        <SystemPromptNotice
+          systemInstruction={systemInstruction}
+          onOpenInstructions={onOpenInstructions}
+        />
       )}
 
       {messages.map((message, originalIdx) => (

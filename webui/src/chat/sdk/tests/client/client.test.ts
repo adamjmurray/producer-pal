@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  type ChatMessage,
+  type StepPerformance,
+  type UserMessage,
+} from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -28,13 +32,18 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { generateText, streamText } from "ai";
-import { FAILED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
+import {
+  FAILED_TOOL_RESULT_TEXT,
+  OMITTED_IMAGE_TEXT,
+} from "#webui/chat/sdk/build-model-messages";
 import {
   ChatSdkClient,
   MAX_TOOL_STEPS,
   detectToolLimitReached,
 } from "#webui/chat/sdk/client";
 import {
+  buildSteppedStream,
+  connectToolCallHistory,
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
@@ -60,37 +69,15 @@ async function sendAndGetClient(
 }
 
 /**
- * Build a stream that completes the given number of steps and ends with the
- * given overall finishReason.
- * @param steps - Number of finish-step parts to emit
- * @param finishReason - finishReason for the final finish part
- * @returns Stream parts array
- */
-function buildSteppedStream(
-  steps: number,
-  finishReason: string,
-): Record<string, unknown>[] {
-  const parts: Record<string, unknown>[] = [];
-
-  for (let i = 0; i < steps; i++) {
-    parts.push({ type: "finish-step" });
-  }
-
-  parts.push({ type: "finish", finishReason });
-
-  return parts;
-}
-
-/**
  * Send a message through a new client with mocked stream parts.
  * Returns the final chat history snapshot.
  * @param parts - Stream parts to emit
- * @param message - User message text
+ * @param message - User message text, or text plus attached images
  * @returns Final chat history
  */
 async function sendWithParts(
   parts: Record<string, unknown>[],
-  message = "Hello",
+  message: UserMessage = "Hello",
 ): Promise<ChatMessage[]> {
   mockStreamParts(parts);
 
@@ -131,6 +118,7 @@ const DEFAULT_USAGE = {
  * @param options.text - Text to yield in the stream (default: "response")
  * @param options.modelId - Model ID for the response
  * @param options.overrides - Per-message overrides
+ * @param options.performance - Step performance the SDK reports, if any
  * @returns Final chat history
  */
 async function sendWithResponse(
@@ -138,6 +126,7 @@ async function sendWithResponse(
     text?: string;
     modelId?: string;
     overrides?: Parameters<ChatSdkClient["sendMessage"]>[2];
+    performance?: StepPerformance;
   } = {},
 ): Promise<ChatMessage[]> {
   const text = options.text ?? "response";
@@ -149,6 +138,7 @@ async function sendWithResponse(
       // Simulate SDK calling onStepEnd after step completes
       opts.onStepEnd?.({
         usage: DEFAULT_USAGE,
+        performance: options.performance,
         response: { modelId: options.modelId ?? "" },
       });
     }
@@ -197,7 +187,7 @@ async function sendToolError(error: unknown): Promise<ChatMessage[]> {
  * Send a message with pre-seeded chat history using an empty stream.
  * Returns the streamText call arguments for assertion.
  * @param chatHistory - Pre-seeded chat history
- * @param message - User message text
+ * @param message - User message text, or text plus attached images
  * @returns The first call arguments passed to streamText
  */
 async function sendWithHistory(
@@ -315,6 +305,44 @@ describe("ChatSdkClient", () => {
       const last = await sendWithParts([]);
 
       expect(last).toStrictEqual([{ role: "user", content: "Hello" }]);
+    });
+
+    it("records attached images on the user turn", async () => {
+      const images = [{ mediaType: "image/png", data: "AAA" }];
+      const last = await sendWithParts([], { text: "match this", images });
+
+      expect(last).toStrictEqual([
+        { role: "user", content: "match this", images },
+      ]);
+    });
+
+    it("sends no more images than the config's request cap", async () => {
+      const a = { mediaType: "image/png", data: "AAA" };
+      const b = { mediaType: "image/png", data: "BBB" };
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        stream: (async function* () {})(),
+      });
+
+      const client = new ChatSdkClient(
+        "key",
+        createConfig({ maxRequestImages: 1 }),
+      );
+
+      for await (const _ of client.sendMessage({ text: "", images: [a, b] })) {
+        /* consume */
+      }
+
+      const { messages } = vi.mocked(streamText).mock.calls[0]![0];
+
+      expect(messages?.[0]?.content).toStrictEqual([
+        {
+          type: "file",
+          mediaType: "image/png",
+          data: { type: "data", data: "AAA" },
+        },
+        { type: "text", text: OMITTED_IMAGE_TEXT },
+      ]);
     });
 
     it("processes text-delta stream parts", async () => {
@@ -488,10 +516,11 @@ describe("ChatSdkClient", () => {
       expect(last[1]!.responseModel).toBe("gpt-4o-mini");
     });
 
-    it("skips responseModel when response has no modelId", async () => {
+    it("skips responseModel and timing when the SDK reports neither", async () => {
       const last = await sendWithResponse({ text: "Hi" });
 
       expect(last[1]!.responseModel).toBeUndefined();
+      expect(last[1]!.timing).toBeUndefined();
     });
 
     it("captures usage on last assistant message", async () => {
@@ -550,6 +579,21 @@ describe("ChatSdkClient", () => {
       });
     });
 
+    it("attaches the step's generation speed when the SDK measured it", async () => {
+      const last = await sendWithResponse({
+        text: "Hi",
+        performance: {
+          timeToFirstOutputMs: 1200,
+          effectiveOutputTokensPerSecond: 42.4,
+        },
+      });
+
+      expect(last[1]!.timing).toStrictEqual({
+        timeToFirstTokenMs: 1200,
+        outputTokensPerSecond: 42.4,
+      });
+    });
+
     it("ignores unrecognized stream part types", async () => {
       const last = await sendWithParts([
         { type: "text-delta", text: "Hi" },
@@ -596,26 +640,10 @@ describe("ChatSdkClient", () => {
     });
 
     it("converts history with tool calls to model messages", async () => {
-      // Pre-seed history with assistant message containing tool calls
-      const chatHistory: ChatMessage[] = [
-        { role: "user", content: "Connect" },
-        {
-          role: "assistant",
-          content: "Connecting",
-          toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-          toolResults: [
-            {
-              id: "tc1",
-              name: "ppal-connect",
-              args: {},
-              result: "OK",
-              isError: false,
-            },
-          ],
-        },
-      ];
-
-      const callArgs = await sendWithHistory(chatHistory, "What happened?");
+      const callArgs = await sendWithHistory(
+        connectToolCallHistory("OK"),
+        "What happened?",
+      );
 
       // 4 messages: user, assistant (with tool calls), tool (results), new user
       expect(callArgs.messages).toHaveLength(4);
@@ -632,17 +660,7 @@ describe("ChatSdkClient", () => {
       // missing, and the turn's reconcile never ran. Sending again must still
       // pair the tool-call with a result, or Anthropic/OpenAI reject the request
       // (400) — and it must not claim a cancellation it can't know about.
-      const chatHistory: ChatMessage[] = [
-        { role: "user", content: "Connect" },
-        {
-          role: "assistant",
-          content: "Connecting",
-          toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-          // no toolResults — persisted mid-tool
-        },
-      ];
-
-      const callArgs = await sendWithHistory(chatHistory, "Retry");
+      const callArgs = await sendWithHistory(connectToolCallHistory(), "Retry");
 
       // user, assistant (tool-call), tool (synthesized result), new user
       expect(callArgs.messages).toHaveLength(4);

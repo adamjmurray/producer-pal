@@ -31,12 +31,13 @@ export type WrappedCallLiveApi = (
  * multiple blocks (e.g. skills then global context).
  *
  * @param inner - The underlying callLiveApi to wrap
- * @param produceBlock - Returns the block text to append, or null to skip
+ * @param produceBlock - Returns (or resolves to) the block text to append, or
+ *   null to skip
  * @returns A callLiveApi that appends the block to ppal-connect results
  */
 export function withConnectAppend(
   inner: CallLiveApiFunction,
-  produceBlock: () => string | null,
+  produceBlock: () => string | null | Promise<string | null>,
 ): WrappedCallLiveApi {
   return async (
     tool: string,
@@ -46,7 +47,7 @@ export function withConnectAppend(
     const result = (await inner(tool, args, overrides)) as McpResponse;
 
     if (tool === "ppal-connect" && !result.isError) {
-      const block = produceBlock();
+      const block = await produceBlock();
 
       if (block) {
         result.content.push({ type: "text", text: block });

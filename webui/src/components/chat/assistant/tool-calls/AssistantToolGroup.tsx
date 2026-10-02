@@ -3,8 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
-import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warning-helpers";
+import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warnings";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { type UIStepUsagePart, type UIToolPart } from "#webui/types/messages";
@@ -33,20 +32,16 @@ export function AssistantToolGroup({
   const otherCount = toolParts.length - 1;
 
   const hasPending = toolParts.some((t) => t.result == null);
-  const hasError = toolParts.some(
-    (t) => t.isError ?? (t.result != null && isErrorResult(t.result)),
-  );
-  const errorCount = toolParts.filter(
-    (t) => t.isError ?? (t.result != null && isErrorResult(t.result)),
-  ).length;
+  const errorCount = toolParts.filter((t) => t.isError).length;
+  const hasError = errorCount > 0;
   // Surface warn-and-skip warnings at the collapsed level too, mirroring
   // AssistantToolCall — otherwise a warning in a grouped (3+) run is invisible
   // until the user expands both the group and the individual call.
-  const warningCount = toolParts.reduce((sum, t) => {
-    const isError = t.isError ?? (t.result != null && isErrorResult(t.result));
-
-    return sum + (!isError && t.result ? extractWarnings(t.result).length : 0);
-  }, 0);
+  const warningCount = toolParts.reduce(
+    (sum, t) =>
+      sum + (!t.isError && t.result ? extractWarnings(t.result).length : 0),
+    0,
+  );
   const hasWarnings = warningCount > 0;
 
   const firstName = firstTool

@@ -37,10 +37,12 @@ import {
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
+  seedContext,
+} from "./helpers/context-scenario-setup.ts";
+import {
   assertContextWrite,
   assertNoContextWrite,
-  seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-write-assertions.ts";
 
 /** A prior decline, recorded as memory — what makes the offer one-shot. */
 const DECLINED = "declined-personal-context";
@@ -70,6 +72,7 @@ C++ VST plugin of their own.`;
 
 export const contextOnboardingOffer: EvalScenario = {
   id: "context-onboarding-offer",
+  tags: ["context"],
   description:
     "Invites a brand-new user to share their style, then saves it to global context",
   kind: "regression",
@@ -116,6 +119,7 @@ interrogates them with a long list of questions instead of a light offer.`,
 
 export const contextOnboardingNoImport: EvalScenario = {
   id: "context-onboarding-no-import",
+  tags: ["context"],
   description:
     "Offers to save what it already knows about the user, instead of installing it",
   kind: "regression",
@@ -161,6 +165,7 @@ user.`,
 
 export const contextOnboardingRecordsDecline: EvalScenario = {
   id: "context-onboarding-records-decline",
+  tags: ["context"],
   description: "Records a declined get-to-know-you offer so it never re-asks",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
@@ -196,6 +201,7 @@ keeps pitching the benefits of letting it remember things.`,
 
 export const contextOnboardingStaysQuiet: EvalScenario = {
   id: "context-onboarding-stays-quiet",
+  tags: ["context"],
   description: "Does not re-ask a user who already declined",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

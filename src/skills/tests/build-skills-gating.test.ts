@@ -456,3 +456,53 @@ describe("assembleSkills - dropped fragments", () => {
     expect(assembleSkills(options).skills).toBe(buildSkills(options));
   });
 });
+
+describe("buildSkills - remote script gating", () => {
+  const ALL_TOOLS = [...TOOL_NAMES];
+  const HEADING = "### Plug-Ins, Max for Live Devices & Presets";
+
+  it("teaches loading plug-ins only while the remote script answers", () => {
+    expect(buildSkills({ tools: ALL_TOOLS })).not.toContain(HEADING);
+    expect(
+      buildSkills({ tools: ALL_TOOLS, remoteScript: false }),
+    ).not.toContain(HEADING);
+    expect(buildSkills({ tools: ALL_TOOLS, remoteScript: true })).toContain(
+      HEADING,
+    );
+  });
+
+  it("puts it right after the devices guide", () => {
+    const skills = buildSkills({ tools: ALL_TOOLS, remoteScript: true });
+
+    expect(skills.indexOf(HEADING)).toBeGreaterThan(
+      skills.indexOf("### VST/AU Plugins"),
+    );
+    expect(skills.indexOf(HEADING)).toBeLessThan(
+      skills.indexOf("### Setting Parameters"),
+    );
+  });
+
+  it("never teaches it in small-model mode", () => {
+    expect(
+      buildSkills({ smallModelMode: true, remoteScript: true }),
+    ).not.toContain(HEADING);
+  });
+
+  it("still needs create-device or update-device", () => {
+    const tools = ALL_TOOLS.filter(
+      (name) => name !== "ppal-create-device" && name !== "ppal-update-device",
+    );
+
+    expect(buildSkills({ tools, remoteScript: true })).not.toContain(HEADING);
+  });
+
+  it("ships with update-device alone, which loads presets", () => {
+    const tools = ALL_TOOLS.filter((name) => name !== "ppal-create-device");
+
+    expect(buildSkills({ tools, remoteScript: true })).toContain(HEADING);
+  });
+
+  it("doesn't list it as dropped, since no tool setting explains it", () => {
+    expect(assembleSkills({ tools: ALL_TOOLS }).dropped).toStrictEqual([]);
+  });
+});

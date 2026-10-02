@@ -34,17 +34,29 @@ Nothing cycles. Cycling and broadcasting only disagree when both lists are
 longer than 1 and unequal — two destinations against three positions — which is
 the one case nobody writes on purpose.
 
-**Destinations are the exception, in one direction.** A clip slot holds one
-clip, so broadcasting a lone slot to three clips would destroy two of them.
-`pairExact` is for those; `pairValues` broadcasts, because an arrangement
-position holds any number of clips and a name is a property, not a place.
+**Destinations are the exception.** A lane or slot holds one object, so a lone
+destination sent to three sources would bury two of them. Destinations pair
+exactly: one source takes any number, several sources take one each, in order.
+Anything else — one for several, or a few per source — is refused before
+anything changes (`requireDestinationPerSource`).
+
+A bare arrangement position (`[5|1]`, or `arrangementStart` with no track) is
+not a whole destination: each clip lands at it on its own track. So it
+broadcasts to several clips, like a name. So does a track with no position when
+the positions pair one per clip. A track with one position (`t2[5|1]`, or `t2`
+with one `arrangementStart`) names one place again. Scenes share every track, so
+their positions always pair one per scene.
 
 ## Alternatives rejected
 
 - **Cycle everywhere.** Consistent, but a cycled destination overwrites, and a
   caller who miscounted gets a plausible-looking result instead of a warning.
 - **Pair exactly everywhere.** Would break the common `arrangementStart: "5|1"`
-  against several ids — one position for a batch is what a caller means.
+  against several clip ids — one position for a batch, each clip on its own
+  track, is what a caller means. Every other destination does pair exactly.
+- **Deal a longer list out a few per source** (`id: "c1,c2"` with four slots).
+  Nobody could predict which copy went where without counting, so it's refused
+  like any other mismatch.
 
 ## Consequences
 
@@ -59,10 +71,9 @@ position holds any number of clips and a name is a property, not a place.
   than building none. It lost because it would be a third rule, which is the
   thing this ADR exists to remove; the warning says exactly which positions got
   nothing.
-- duplicate's source list pairs the same way: with several `id`s, `toPath` and
-  `arrangementStart` give one arrangement destination per source, so a lone
-  destination still covers them all and a list never lands every source on every
-  spot.
+- duplicate's source list pairs the same way: with several `id`s, `toPath` names
+  one destination per source, and only a bare position covers them all. A list
+  never lands every source on every spot.
 
 ## What the evals found
 

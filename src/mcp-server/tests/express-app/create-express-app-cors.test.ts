@@ -3,10 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Server } from "node:http";
-import { type AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRIEFING_REQUEST_HEADER } from "#src/shared/config.ts";
+import { withExpressApp } from "../express-app-test-helpers.ts";
 
 /**
  * Sends a request to a freshly created Express app and returns the response.
@@ -26,13 +25,6 @@ async function requestApp(options: {
   headers?: Record<string, string>;
 }): Promise<Response> {
   const method = options.method ?? "OPTIONS";
-  const { createExpressApp } = await import("../../create-express-app.ts");
-  const app = createExpressApp();
-  const server = await new Promise<Server>((resolve) => {
-    const s = app.listen(0, () => resolve(s));
-  });
-  const port = (server.address() as AddressInfo).port;
-  const url = `http://localhost:${port}${options.path ?? "/mcp"}`;
   const headers: Record<string, string> = { ...options.headers };
 
   if (options.origin != null) {
@@ -44,11 +36,9 @@ async function requestApp(options: {
     headers["Access-Control-Request-Headers"] = "content-type";
   }
 
-  try {
-    return await fetch(url, { method, headers });
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  return await withExpressApp((baseUrl) =>
+    fetch(`${baseUrl}${options.path ?? "/mcp"}`, { method, headers }),
+  );
 }
 
 describe("MCP Express App - CORS", () => {

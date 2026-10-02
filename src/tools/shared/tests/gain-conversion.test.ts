@@ -1,0 +1,249 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, it, expect } from "vitest";
+import { LOOKUP_TABLE } from "#src/tools/shared/clip-gain-lookup/lookup-table.ts";
+import {
+  liveGainToDb,
+  dbToLiveGain,
+} from "#src/tools/shared/helpers/gain-conversion.ts";
+
+describe("gain-conversion", () => {
+  describe("liveGainToDb", () => {
+    it("should return -70 for gain = 0", () => {
+      expect(liveGainToDb(0)).toBe(-70);
+    });
+
+    it("should return ~0 dB for gain = 0.4 (unity)", () => {
+      // With lookup table, expect high accuracy
+      expect(liveGainToDb(0.4)).toBeCloseTo(0, 1);
+    });
+
+    it("should return 24 dB for gain = 1.0 (maximum)", () => {
+      expect(liveGainToDb(1.0)).toBe(24);
+    });
+
+    it("should handle mid-range values correctly", () => {
+      // With lookup table, expect < 0.5 dB error
+      expect(liveGainToDb(0.5)).toBeCloseTo(4, 0);
+      expect(liveGainToDb(0.6)).toBeCloseTo(8, 0);
+      expect(liveGainToDb(0.7)).toBeCloseTo(12, 0);
+    });
+
+    it("should handle low-range values with good accuracy", () => {
+      // Actual values from Live's lookup table
+      expect(liveGainToDb(0.3)).toBeCloseTo(-6.2, 0);
+      expect(liveGainToDb(0.35)).toBeCloseTo(-2.6, 0);
+    });
+
+    it("should handle very low gain values reasonably", () => {
+      // Even at very low levels, lookup table should be accurate
+      const result1 = liveGainToDb(0.1);
+      const result2 = liveGainToDb(0.05);
+
+      // Just verify they're in a reasonable range
+      expect(result1).toBeGreaterThan(-35);
+      expect(result1).toBeLessThan(-25);
+      expect(result2).toBeGreaterThan(-45);
+      expect(result2).toBeLessThan(-35);
+    });
+
+    it("should return -70 for negative gain values", () => {
+      expect(liveGainToDb(-0.1)).toBe(-70);
+    });
+
+    it("should return 24 dB for gain values greater than 1", () => {
+      expect(liveGainToDb(1.5)).toBe(24);
+      expect(liveGainToDb(2.0)).toBe(24);
+    });
+
+    it("should format dB values cleanly (2 decimal places, no trailing zeros)", () => {
+      // Test that formatting removes unnecessary precision
+      const gain = dbToLiveGain(-17);
+      const dB = liveGainToDb(gain);
+
+      // Should be exactly -17, not -17.00005187988281 or -17.00
+      expect(dB).toBe(-17);
+
+      // Test other clean values
+      expect(liveGainToDb(0.4)).toBe(0); // Not 0.00
+      expect(liveGainToDb(1.0)).toBe(24); // Not 24.00
+    });
+  });
+
+  describe("dbToLiveGain", () => {
+    it("should return 0 for -Infinity dB", () => {
+      expect(dbToLiveGain(-Infinity)).toBe(0);
+    });
+
+    it("should return ~0 for very low dB values", () => {
+      expect(dbToLiveGain(-70)).toBeCloseTo(0, 3);
+    });
+
+    it("should return ~0.4 for 0 dB (unity)", () => {
+      expect(dbToLiveGain(0)).toBeCloseTo(0.4, 2);
+    });
+
+    it("should return 1.0 for 24 dB (maximum)", () => {
+      expect(dbToLiveGain(24)).toBe(1.0);
+    });
+
+    it("should handle mid-range dB values correctly", () => {
+      // Expect high accuracy with lookup table
+      expect(dbToLiveGain(4)).toBeCloseTo(0.5, 2);
+      expect(dbToLiveGain(8)).toBeCloseTo(0.6, 2);
+      expect(dbToLiveGain(12)).toBeCloseTo(0.7, 2);
+    });
+
+    it("should handle critical mixing range (-18 to 0 dB) accurately", () => {
+      // This is the range users care most about
+      // Actual values from Live's lookup table
+      expect(dbToLiveGain(-18)).toBeCloseTo(0.187, 2);
+      expect(dbToLiveGain(-12)).toBeCloseTo(0.238, 2);
+      expect(dbToLiveGain(-6)).toBeCloseTo(0.302, 2);
+    });
+
+    it("should clamp values above 24 dB to 1.0", () => {
+      expect(dbToLiveGain(30)).toBe(1.0);
+      expect(dbToLiveGain(100)).toBe(1.0);
+    });
+
+    it("should clamp values below -70 dB to 0", () => {
+      expect(dbToLiveGain(-100)).toBe(0);
+    });
+
+    it("should return a positive gain at the lowest table dB (-69.7)", () => {
+      // -69.7 is the lowest non-null dB in the table (duplicated across the two
+      // lowest entries). The linear search must include it as a lower bound
+      // (entry.dB <= dB) rather than skip the null entry into it — either bug
+      // makes lowerIndex stay -1 and returns 0.
+      expect(dbToLiveGain(-69.7)).toBeGreaterThan(0);
+    });
+
+    it("should clamp +Infinity dB to 1.0 (not treat it as -Infinity)", () => {
+      expect(dbToLiveGain(Infinity)).toBe(1.0);
+    });
+
+    it("should handle extreme high dB values", () => {
+      expect(dbToLiveGain(50)).toBe(1.0);
+      expect(dbToLiveGain(1000)).toBe(1.0);
+    });
+  });
+
+  describe("edge cases with lookup table boundaries", () => {
+    it("should handle dB value at upper boundary of table (just under 24)", () => {
+      // Test a value very close to 24 dB where upperIndex might be the last entry
+      const gain = dbToLiveGain(23.9);
+
+      expect(gain).toBeGreaterThan(0.99);
+      expect(gain).toBeLessThan(1);
+    });
+
+    it("should handle very small positive gain near zero", () => {
+      // Test gain values near the first non-null entry in the lookup table
+      const dB = liveGainToDb(0.0001);
+
+      expect(dB).toBeLessThan(-60);
+    });
+
+    it("should handle gain value exactly at first lookup table entry after zero", () => {
+      // First entry after null at gain=0 is approximately 0.001953125
+      const dB = liveGainToDb(0.001953125);
+
+      expect(dB).toBeCloseTo(-65.7, 0);
+    });
+
+    it("should return lower.dB when upper.dB is null or -Infinity", () => {
+      // Test a very small gain value that falls between a valid lower entry
+      // and an invalid upper entry (if the table has any such gaps)
+      // The lookup table doesn't actually have this case, but test near boundary
+      const dB = liveGainToDb(0.0019);
+
+      // Should return a finite dB value from lower entry interpolation
+      expect(Number.isFinite(dB)).toBe(true);
+      expect(dB).toBeLessThan(-60);
+    });
+
+    it("should return the last valid gain when dB is very close to max", () => {
+      // Test case where we traverse entire table without finding upperIndex
+      // (i.e., target dB is at or near the maximum entry)
+      const gain = dbToLiveGain(23.99);
+
+      expect(gain).toBeGreaterThan(0.999);
+      expect(gain).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe("liveGainToDb null dB edge cases", () => {
+    it("should handle gain value between first entry (null dB) and second entry", () => {
+      // Gain value between 0 (null dB) and 0.00011 (-69.7 dB)
+      // This exercises the lower.dB === null, upper.dB !== null branch (line 65)
+      const dB = liveGainToDb(0.00005);
+
+      // Should return upper.dB since lower.dB is null
+      expect(dB).toBeCloseTo(-69.7, 0);
+    });
+
+    // Unreachable with the real lookup table.
+    // Only index 0 has dB:null, and the gain <= 0 early return prevents it
+    // from ever being an upper bound in binary search. So upper.dB is never null,
+    // and both-null is also impossible. These are defensive guards only.
+  });
+
+  describe("dbToLiveGain upperIndex === -1 edge case", () => {
+    it("should interpolate between last two entries for dB just under 24", () => {
+      // 23.95 dB falls between the second-to-last entry (dB=23.9) and the
+      // last entry (dB=24), so upperIndex IS found and interpolation occurs.
+      // The upperIndex === -1 branch (line 127) is unreachable because:
+      // - dB >= 24 is caught by the early return (line 98)
+      // - For any dB < 24, the last entry (dB=24) provides an upper bound
+      const gain = dbToLiveGain(23.95);
+
+      expect(gain).toBeGreaterThan(0.999);
+      expect(gain).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe("round-trip conversion", () => {
+    it("should round-trip accurately across full range", () => {
+      const testGains = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+
+      for (const gain of testGains) {
+        const dB = liveGainToDb(gain);
+        const gainBack = dbToLiveGain(dB);
+
+        // With lookup table, expect very good round-trip accuracy
+        expect(gainBack).toBeCloseTo(gain, 2);
+      }
+    });
+
+    it("should round-trip accurately for common dB values", () => {
+      const testDbValues = [-18, -12, -6, 0, 6, 12, 18, 24];
+
+      for (const dB of testDbValues) {
+        const gain = dbToLiveGain(dB);
+        const dbBack = liveGainToDb(gain);
+
+        // Expect < 0.5 dB round-trip error
+        expect(dbBack).toBeCloseTo(dB, 0);
+      }
+    });
+
+    it("should handle edge cases", () => {
+      // Test extreme values
+      expect(dbToLiveGain(liveGainToDb(0.001))).toBeGreaterThan(0);
+      expect(liveGainToDb(dbToLiveGain(-60))).toBeLessThan(-50);
+    });
+  });
+
+  describe("lookup table size", () => {
+    it("has the documented number of samples (locks the comment count)", () => {
+      // The lookup-table.ts and gain-conversion.ts header comments cite this count;
+      // pin it here so adding/removing samples forces a deliberate update
+      // instead of letting the comments drift apart (they previously disagreed:
+      // 529 vs 513, both wrong — the table has always had 528).
+      expect(LOOKUP_TABLE).toHaveLength(528);
+    });
+  });
+});

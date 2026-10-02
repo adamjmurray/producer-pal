@@ -143,7 +143,7 @@ describe("playback arrangement params on a session action", () => {
         action: "play-scene",
         sceneIndex: 3,
         startTime: "5|1",
-        startLocator: "locator-0",
+        startLocator: "26",
       }),
     ).not.toThrow();
   });

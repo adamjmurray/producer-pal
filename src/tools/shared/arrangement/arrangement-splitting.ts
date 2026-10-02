@@ -3,40 +3,41 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
+import {
+  isDeadlineExceeded,
+  stopForDeadline,
+} from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   warnNothingSplit,
   warnUnusedSplitPoints,
   type SplitMiss,
 } from "#src/tools/shared/arrangement/arrangement-splitting-warnings.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
+import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
   type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import {
   holdingAreaStartAfter,
   holdingAreaStartOnTrack,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   rescanSplitClips,
   type SplitClipRange,
 } from "./helpers/arrangement-splitting-rescan.ts";
-import {
-  targetLabel,
-  targetLabelForId,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface SplittingContext {
   silenceWavPath?: string;
   /** When the request's budget runs out; set once per request by the adapter. */
   deadline?: number | null;
+  /** Where to say what happened to a clip; unset drops what the split reports. */
+  reportClip?: ClipReporter;
 }
 
 /**
@@ -98,6 +99,7 @@ interface TrackSplitState {
  */
 function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const { clip, splitPoints, mode, context } = args;
+  const { reportClip } = context;
   const { splitClipRanges } = args;
 
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
@@ -108,8 +110,9 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    console.warn(
-      `Could not determine trackIndex for clip ${targetLabel(clip)}, skipping`,
+    reportClip?.refuse(
+      clip.id,
+      `${mode.param} ignored: could not find the clip's track`,
     );
 
     return false;
@@ -153,12 +156,6 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     trackIndex,
   );
 
-  splitClipRanges.set(originalClipId, {
-    trackIndex,
-    startTime: clipArrangementStart,
-    endTime: clipArrangementEnd,
-  });
-
   // Create boundaries: [0, ...splitPoints, clipLength]
   const boundaries = [0, ...validPoints, clipLength];
   const segmentCount = boundaries.length - 1;
@@ -182,14 +179,24 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   );
 
   if (!sourceClip.exists()) {
-    console.warn(
-      `Failed to duplicate clip ${targetLabelForId(originalClipId)} to holding area, aborting split`,
+    reportClip?.refuse(
+      originalClipId,
+      `${mode.param} ignored: Live refused the copy the cut works from`,
     );
 
     // The split failed, but the points were measured above, so what the caller
     // can say about unused points is unaffected.
     return true;
   }
+
+  // Registered only now that a cut is really going to happen: a clip in here is
+  // one the rescan hands back as pieces, which the caller reads as work that
+  // landed. An uncut clip must stay out or its refusal reads as a success.
+  splitClipRanges.set(originalClipId, {
+    trackIndex,
+    startTime: clipArrangementStart,
+    endTime: clipArrangementEnd,
+  });
 
   const sourceClipId = sourceClip.id;
 
@@ -213,6 +220,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const tailSegment = extractMiddleSegments({
     track,
     clipId: originalClipId,
+    mode,
     sourceClipId,
     boundaries,
     segmentCount,
@@ -288,8 +296,10 @@ function trackStateFor(
 
 interface ExtractMiddleSegmentsArgs {
   track: LiveAPI;
-  /** The clip being split, for warnings */
+  /** The clip being split, for its entry's reason */
   clipId: string;
+  /** The param the caller used, for that reason's wording */
+  mode: SplitMode;
   sourceClipId: string;
   boundaries: number[];
   segmentCount: number;
@@ -316,6 +326,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
   const {
     track,
     clipId,
+    mode,
     sourceClipId,
     boundaries,
     segmentCount,
@@ -325,17 +336,19 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
     isMidiClip,
     context,
   } = args;
+  const cutsMade = (reached: number): string =>
+    `${mode.param} made ${reached} of ${segmentCount - 1} cuts`;
 
   for (let i = 1; i < segmentCount - 1; i++) {
-    if (
-      stopForDeadline(
-        context.deadline,
-        () =>
-          `Ran out of time splitting clip ${clipId} after ${i} of ` +
-          `${segmentCount - 1} cuts; the rest of it is left whole. ` +
-          `Re-run to cut the rest.`,
-      )
-    ) {
+    // Checked, not warned: this is about the one clip being cut, so it goes on
+    // that clip's entry like the refusals below.
+    if (isDeadlineExceeded(context.deadline ?? null)) {
+      context.reportClip?.note(
+        clipId,
+        `${cutsMade(i)}: ran out of time, so the rest of the clip is left ` +
+          `whole; re-run to cut the rest`,
+      );
+
       return i;
     }
 
@@ -365,9 +378,9 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
       // notes gone. Returning hands the uncut rest back to the caller whole,
       // the same as the deadline and the catch below.
       if (!workClip.exists()) {
-        console.warn(
-          `Failed to cut segment ${i} of clip ${targetLabelForId(clipId)}: Live refused the ` +
-            `duplicate. The rest of the clip is left whole.`,
+        context.reportClip?.note(
+          clipId,
+          `${cutsMade(i)}: Live refused a copy, so the rest of the clip is left whole`,
         );
 
         return i;
@@ -406,9 +419,9 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
         true,
       );
     } catch (error) {
-      console.warn(
-        `Failed to cut segment ${i} of clip ${targetLabelForId(clipId)}: ${errorMessage(error)}. ` +
-          `The rest of the clip is left whole.`,
+      context.reportClip?.note(
+        clipId,
+        `${cutsMade(i)}: ${errorMessage(error)}; the rest of the clip is left whole`,
       );
 
       // The caller covers this segment's span with the tail, so the half-built
@@ -427,14 +440,15 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
 /**
  * Perform splitting of arrangement clips at specified positions.
  *
- * Uses partial-success model: if a clip fails to split, it is skipped and a
- * warning is emitted. This is consistent with update-clip error handling patterns.
+ * Uses partial-success model: a clip that fails to split is skipped, and says
+ * so on its own result entry.
  *
  * @param arrangementClips - Array of arrangement clips to split
  * @param splitPoints - Parsed bar|beat positions in beats, read per `mode`
  * @param clips - Array to update with fresh clips after splitting
  * @param _context - Internal context object
  * @param mode - Whether positions are song-timeline or clip-relative
+ * @returns The pieces each cut clip became, by the id it was cut at
  */
 export function performSplitting(
   arrangementClips: LiveAPI[],
@@ -442,7 +456,7 @@ export function performSplitting(
   clips: LiveAPI[],
   _context: SplittingContext,
   mode: SplitMode,
-): void {
+): Map<string, LiveAPI[]> {
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
   const usedPoints = new Set<number>();
@@ -490,9 +504,10 @@ export function performSplitting(
     } catch (error) {
       // Whatever Live refused, the rest of the batch is still worth cutting.
       // This clip is left as it fell; the rescan below reports what survived.
-      console.warn(
-        `${mode.param} failed for clip ${targetLabelForId(clipId)}: ${errorMessage(error)}. ` +
-          `It may be left partly cut, with a copy past the end of the arrangement.`,
+      _context.reportClip?.note(
+        clipId,
+        `${mode.param} failed: ${errorMessage(error)}; the clip may be left ` +
+          `partly cut, with a copy past the end of the arrangement`,
       );
     }
   }
@@ -511,5 +526,5 @@ export function performSplitting(
     warnUnusedSplitPoints(splitPoints, usedPoints, mode);
   }
 
-  rescanSplitClips(splitClipRanges, clips);
+  return rescanSplitClips(splitClipRanges, clips);
 }

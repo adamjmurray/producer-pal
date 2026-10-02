@@ -249,3 +249,13 @@ describe("AssistantToolGroup", () => {
     });
   });
 });
+
+describe("AssistantToolGroup with no tool parts", () => {
+  it("names the group generically when the group holds only step-usage", () => {
+    const { summary } = renderGroup([
+      { type: "step-usage", usage: { inputTokens: 100, outputTokens: 50 } },
+    ]);
+
+    expect(summary.textContent).toContain("tools");
+  });
+});

@@ -43,11 +43,18 @@ So you can ask for _"make the drums dark purple"_ and it just works.
 There's a wrinkle. Live snaps colors to a **fixed palette of about 70
 swatches**, so the color you ask for isn't always the color you get. A thin
 wrapper hands back a different number and leaves the AI confused. Producer Pal
-reads the color back after setting it, and when Live has quantized it, says so
-([`color-verification-helpers.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/color-verification-helpers.ts)):
+reads the color back after setting it, and when Live has snapped it, puts the
+color it landed on in that clip's own result
+([`landed-color.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/helpers/landed-color.ts)):
 
-> Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live
-> uses a fixed color palette.
+```json
+{
+  "id": "123",
+  "path": "t0/s0",
+  "color": "#FF3636",
+  "detail": "color #FF0000 is not in Live's palette; landed as #FF3636"
+}
+```
 
 ## Device knobs in real units
 
@@ -87,7 +94,7 @@ Asking for it gets you 10 or 11, whichever is nearer, rather than always down.
 and it doesn't clamp it. It silently _ignores_ you and leaves the knob where it
 was. So every parameter write is read back afterward, and one that didn't take
 says so
-([`param-write-helpers.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-write-helpers.ts)):
+([`param-writing.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-writing.ts)):
 
 > param "Drive" was not changed. It still reads "0.0 dB". Live ignores a value
 > outside the parameter's range.
@@ -138,7 +145,7 @@ reach for to fake it are walled off:
   overlaps the _middle_ of an existing one, Live truncates at the overlap and
   **throws away everything after it**. It does not split into a "before" and an
   "after." (These constraints are documented in the project's
-  [Arrangement-Operations](https://github.com/adamjmurray/producer-pal/blob/main/dev/Arrangement-Operations.md)
+  [Arrangement-Operations](https://github.com/adamjmurray/producer-pal/blob/main/dev/live-api/arrangement-operations.md)
   notes, hard-won by probing real Ableton behavior.)
 
 So Producer Pal builds split out of the one primitive that _does_ work reliably,

@@ -1,0 +1,71 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it } from "vitest";
+import { extractErrorSummary } from "./tool-call-error-summary";
+
+describe("extractErrorSummary", () => {
+  describe("Error prefix", () => {
+    it("strips the error prefix from a JSON-stringified error", () => {
+      const result = JSON.stringify("Error: trackIndex 99 does not exist");
+
+      expect(extractErrorSummary(result)).toBe("trackIndex 99 does not exist");
+    });
+
+    it("strips the error prefix from a plain string", () => {
+      expect(extractErrorSummary("Error: trackIndex 99 does not exist")).toBe(
+        "trackIndex 99 does not exist",
+      );
+    });
+
+    it("keeps a colon in the reason itself", () => {
+      expect(extractErrorSummary("Error: bad note: C99")).toBe("bad note: C99");
+    });
+  });
+
+  describe("timeout prefix", () => {
+    it("strips timeout prefix from JSON-stringified error", () => {
+      const result = JSON.stringify(
+        "Tool call 'ppal-read-track' timed out after 30000ms",
+      );
+
+      expect(extractErrorSummary(result)).toBe("timed out after 30000ms");
+    });
+  });
+
+  describe("MCP error prefix", () => {
+    it("strips MCP error code prefix", () => {
+      const result = JSON.stringify(
+        "MCP error -32602: Tool nonexistent-tool not found",
+      );
+
+      expect(extractErrorSummary(result)).toBe(
+        "Tool nonexistent-tool not found",
+      );
+    });
+
+    it("returns 'Invalid arguments' for input validation errors", () => {
+      const result = JSON.stringify(
+        'MCP error -32602: Input validation error: Invalid arguments for tool ppal-read-track: [\n  {\n    "expected": "number"\n  }\n]',
+      );
+
+      expect(extractErrorSummary(result)).toBe("Invalid arguments");
+    });
+  });
+
+  describe("fallback", () => {
+    it("returns null for unrecognized format", () => {
+      expect(extractErrorSummary("some unknown error text")).toBeNull();
+    });
+
+    it("returns null for normal success result", () => {
+      expect(extractErrorSummary('{"id":"1","name":"Track"}')).toBeNull();
+    });
+
+    it("handles malformed JSON-quoted string gracefully", () => {
+      expect(extractErrorSummary('"unclosed string')).toBeNull();
+    });
+  });
+});

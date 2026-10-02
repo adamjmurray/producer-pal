@@ -42,12 +42,11 @@ mostly succeeds.
   parameter (which has no path of its own) is named by its device's path and id
   plus its own name and id, not by a device path glued to a parameter id.
   `targetLabel()` in `object-path-for-api.ts` is the one place that spells it,
-  with `targetLabelForId()` where only an id is at hand and `pathTargetLabel()`
-  where the caller wrote a path. The id is dropped only when there is no object
-  to have one: a create that failed, or a path that resolved to nothing — then
-  the path alone, in quotes, since it's the caller's own text. The path is
-  dropped only when the grammar can't spell one (a Live locator). Create-clip
-  has neither yet, so it names the destination it's headed for plus its ordinal
-  in the batch (`clip t0/s1 (2 of 5)`), which is also the `clip.index` a
-  transform saw. A whole-call param error is different: nothing was skipped in
-  particular, so it stays unqualified.
+  with `pathTargetLabel()` where the caller wrote a path. The id is dropped only
+  when there is no object to have one: a create that failed, or a path that
+  resolved to nothing — then the path alone, in quotes, since it's the caller's
+  own text. The path is dropped only when the grammar can't spell one (a Live
+  locator). Create-clip has neither yet, so it names the destination it's headed
+  for plus its ordinal in the batch (`clip t0/s1 (2 of 5)`), which is also the
+  `clip.index` a transform saw. A whole-call param error is different: nothing
+  was skipped in particular, so it stays unqualified.

@@ -8,7 +8,8 @@
  * accidental, and octave (absolute number and/or `'`/`,` marks) into MIDI.
  */
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
+import { clampMidi } from "#src/shared/pitch.ts";
 
 /** A pitched token's spelling, as the grammar produces it. */
 export interface StarkPitchSpelling {
@@ -129,9 +130,4 @@ function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
   }
 
   return base;
-}
-
-// Clamp a computed pitch to the valid MIDI range.
-function clampMidi(midi: number): number {
-  return Math.max(0, Math.min(127, midi));
 }

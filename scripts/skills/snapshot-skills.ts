@@ -9,7 +9,7 @@
 // it's a scratch artifact for iterating on the fragment carve, not a committed
 // baseline.
 //
-//   npm run skills:snapshot                 write dev/skills-snapshots, print the report
+//   npm run skills:snapshot                 write tmp/skills-snapshots, print the report
 //   npm run skills:snapshot -- --out DIR    write somewhere else (keep a "before")
 //   npm run skills:snapshot -- --diff DIR   write, then show what changed vs DIR
 
@@ -22,14 +22,14 @@ import {
   compareCorpora,
   CORPUS_MARKER,
   formatChanges,
-  parseArgs,
-} from "./snapshot-helpers.ts";
+  parseSnapshotArgs,
+} from "./corpus-snapshot.ts";
 
 const PROJECT_ROOT = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-const DEFAULT_DIR = path.join(PROJECT_ROOT, "dev/skills-snapshots");
+const DEFAULT_DIR = path.join(PROJECT_ROOT, "tmp/skills-snapshots");
 
 await main();
 
@@ -57,9 +57,9 @@ async function main(): Promise<void> {
  *
  * @returns The parsed arguments
  */
-function parseOrExit(): ReturnType<typeof parseArgs> {
+function parseOrExit(): ReturnType<typeof parseSnapshotArgs> {
   try {
-    return parseArgs(process.argv.slice(2), DEFAULT_DIR);
+    return parseSnapshotArgs(process.argv.slice(2), DEFAULT_DIR);
   } catch (error: unknown) {
     console.error(`skills:snapshot: ${(error as Error).message}`);
 

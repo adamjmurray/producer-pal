@@ -293,7 +293,7 @@ describe("transformAnthropicRequest", () => {
 
   describe("forced disabled thinking", () => {
     it("injects disabled thinking when omitted on adaptive-by-default models", async () => {
-      const parsed = await transform({ model: "claude-sonnet-5" });
+      const parsed = await transform({ model: "claude-sonnet-5-5" });
 
       expect(parsed.thinking).toStrictEqual({ type: "disabled" });
     });
@@ -319,7 +319,7 @@ describe("transformAnthropicRequest", () => {
 
     it("does not override adaptive thinking with disabled", async () => {
       const parsed = await transform({
-        model: "claude-sonnet-5",
+        model: "claude-sonnet-5-5",
         thinking: { type: "adaptive" },
       });
 
@@ -511,7 +511,7 @@ describe("transformOpenRouterRequest", () => {
 
   it("marks the last block of an array-form last message", async () => {
     const parsed = await transform({
-      model: "anthropic/claude-opus-5",
+      model: "anthropic/claude-opus-5.5",
       messages: [
         { role: "system", content: "sys" },
         {

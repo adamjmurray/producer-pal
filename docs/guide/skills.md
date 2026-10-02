@@ -133,6 +133,21 @@ Because the skill is just a thin pointer + bootstrap, it stays correct as
 Producer Pal evolves: new tools, schema changes, and skill updates land in
 `ppal-connect`'s response automatically.
 
+### Adding Producer Pal to a Live Set
+
+If the open Live Set has no Producer Pal device, the agent can add it, on macOS
+or Windows:
+
+```bash
+node ppal.mjs --add-to-live-set
+```
+
+It adds a MIDI track with the device, and does nothing if Producer Pal is
+already running. The agent asks first unless you asked for Producer Pal. This
+needs the [remote script](/guide/remote-script) installed and selected in Live,
+and the device installed in your User Library's Max MIDI Effect folder (see
+[installing](/installation#install-the-device)).
+
 ### Notation and small-model mode
 
 Producer Pal encodes MIDI notes in one of three
@@ -223,24 +238,33 @@ into the skill folder.
 
 ## Companion skills
 
-The `producer-pal` skill is the connection. Two more skills build on it:
+The `producer-pal` skill is the connection. Five more skills come with it:
 
 - **`ableton-audio-generator`**: synthesize audio from scratch with plain
   Node.js DSP and place it in Live: drum kits and Drum Racks, samples for
   Simpler, wavetables, reverb impulse responses, and open-ended clips like
   drones and textures. The agent writes the DSP for what you asked for; a shared
   library handles WAV encoding so custom algorithms are cheap to try.
-- **`ableton-analyze-audio`**: get audio back out of Live, in two halves that
-  work independently. **Render** the mix, a single track, or one Session clip to
-  a file: macOS only, but no API key needed, which also makes it the way to get
-  a plain bounce or stem on disk. **Analyze** any audio file with Google's
-  Gemini API for feedback on timbre, mix, and arrangement: any platform, no
-  Ableton involved, needs a `GEMINI_API_KEY`. The analysis is one short script
-  against one HTTP endpoint, so swapping in a different audio-capable model or
-  service is a small edit.
+- **`ableton-export-audio`**: get audio back out of Live. Bounce the mix, a
+  single track, or one Session clip to a file. macOS only, no API key needed.
+- **`ableton-analyze-audio`**: listen to any audio file with Google's Gemini API
+  for feedback on timbre, mix, and arrangement: any platform, no Ableton
+  involved, needs a `GEMINI_API_KEY`. It uses the export skill to get the file
+  out of Live first. The analysis is one short script against one HTTP endpoint,
+  so swapping in a different audio-capable model or service is a small edit.
+- **`ableton-read-als`**: read Live Set files straight from disk, without
+  opening Live or needing the device in the Set. Tracks, device chains with
+  racks and macros, parameters, clips, mixer, routing, scenes. Point it at a
+  whole projects folder to compare many Sets at once, like "what master chain do
+  I usually use?". Live 11 and 12 files, any platform, read-only.
+- **`ableton-open-live-set`**: open a Live Set by path, or create a new one, and
+  wait until it has loaded, answering the dialogs in the way. It never throws
+  away unsaved changes or crash-recovered work unless you agree. It can also add
+  Producer Pal to that Set, or to the one open now, through the Producer Pal
+  [remote script](/guide/remote-script). macOS only; opening needs no device.
 
 <a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
-has all three. Unzip it the same way:
+has all six. Unzip it the same way:
 
 ```bash
 curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
@@ -248,13 +272,15 @@ unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
 ```
 
 Same global-vs-project choice as above: unzip into a project's own skills folder
-(`.claude/skills/`) to scope all three to that project.
+(`.claude/skills/`) to scope them all to that project.
 
-::: warning One part needs macOS
+::: warning Two skills need macOS
 
-`ableton-analyze-audio`'s **render** step drives Live's Export dialog with
-AppleScript, since Live has no render API. Everything else in the bundle (audio
-generation and the Gemini analysis) runs anywhere Node does.
+`ableton-export-audio` and `ableton-open-live-set` drive Live's dialogs with
+AppleScript: export because Live has no render API, open because opening a Set
+means answering Live's save and crash-recovery prompts. Everything else in the
+bundle (audio generation, Gemini analysis, reading `.als` files) runs anywhere
+Node does.
 
 :::
 

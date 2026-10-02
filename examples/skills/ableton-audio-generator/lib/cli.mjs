@@ -7,11 +7,18 @@
 // argument when you hear it.
 
 /**
- * Build flag readers bound to an argument list.
+ * Build flag readers bound to an argument list. With `usage` given, `--help`
+ * or `-h` prints it and exits 0 before any file is written.
+ * @param {string} [usage] help text
  * @param {string[]} [argv] defaults to this process's arguments
  * @returns {{opt: Function, num: Function, int: Function, flag: Function, fail: Function}} readers
  */
-export function parseArgs(argv = process.argv.slice(2)) {
+export function parseArgs(usage, argv = process.argv.slice(2)) {
+  if (usage != null && (argv.includes("--help") || argv.includes("-h"))) {
+    process.stdout.write(usage.trimEnd() + "\n");
+    process.exit(0);
+  }
+
   /**
    * Read a string flag. A flag with no value — last token, or immediately
    * followed by another --flag — is a malformed invocation, not a request for

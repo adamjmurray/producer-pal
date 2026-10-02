@@ -130,7 +130,7 @@ And `npm run check:build` additionally validates:
 
 ### Key oxlint limits
 
-- **325 lines** max per source file (650 for test files), ignoring blanks and
+- **375 lines** max per source file (650 for test files), ignoring blanks and
   comments — prevents files from growing too large for agents to work with
   effectively
 - **115 lines** max per function — forces decomposition into smaller, testable
@@ -150,7 +150,7 @@ And `npm run check:build` additionally validates:
   `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
   (or getting approval to raise the limit). Write directives with the `eslint-`
   prefix even though the linter is oxlint — the rule that requires a `-- reason`
-  only recognizes that spelling (see `dev/Linting.md`).
+  only recognizes that spelling (see `dev/quality/linting.md`).
 - **File size limits** force agents to split code into focused modules rather
   than growing monolithic files.
 - **Duplication limits** prevent copy-paste patterns that diverge over time.
@@ -185,8 +185,8 @@ Quick commands:
 - `npm run ui:dev` - Dev server at localhost:5173 with hot reload
 - `npm run ui:build` - Production build to `max-for-live-device/chat-ui.html`
 
-See [Chat-UI](dev/Chat-UI.md) for architecture, component structure, and
-detailed development workflows.
+See [Chat-UI](dev/clients/chat-ui/README.md) for architecture, component
+structure, and detailed development workflows.
 
 ## Documentation Site
 
@@ -201,7 +201,7 @@ Quick commands:
 
 **Clean URLs**: Use `/installation/chat-ui` not `/installation/chat-ui.html`.
 
-See [Documentation-Site](dev/Documentation-Site.md) for deployment,
+See [Documentation-Site](dev/process/documentation-site.md) for deployment,
 configuration, and content guidelines.
 
 ## Testing and Debugging
@@ -222,8 +222,8 @@ Quick commands:
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Live API
-tool, MCP Inspector setup, debugging tips, and testing workflows.
+See [Development-Tools](dev/quality/development-tools/README.md) for the CLI
+tool, Live API tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ### Portal Script (Internal Testing)
 
@@ -241,8 +241,9 @@ the `producer-pal` npm package. For local testing before publishing to npm:
 
 `.githooks/pre-push` guards pushes to `dev` so every commit gets its own CI
 build: one commit per push, no push while a build is in flight, and no push on
-top of a red or missing build. The test workflow cancels an in-progress run when
-a new push lands, so batching commits leaves earlier ones with no build at all.
+top of a red or missing build or any other red or unfinished check (CodeQL, the
+Netlify docs preview, ...). The test workflow cancels an in-progress run when a
+new push lands, so batching commits leaves earlier ones with no build at all.
 
 It's off by default. Enable it per clone:
 
@@ -262,6 +263,6 @@ it's about CI sequencing, and an unsigned commit is never what anyone meant.
 
 ## Releasing
 
-See [Releasing](dev/Releasing.md) for the complete release process, including
-version bumping, building, creating GitHub releases, testing checklists, and
-publishing to npm.
+See [Releasing](dev/process/releasing.md) for the complete release process,
+including version bumping, building, creating GitHub releases, testing
+checklists, and publishing to npm.

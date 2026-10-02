@@ -58,7 +58,11 @@ function resolveIncludes(content: string, fileDir: string): string {
         return `<!-- File not found: ${filePath} -->`;
       }
 
-      return readFileSync(resolvedPath, "utf-8").trimEnd();
+      // A partial can include another, relative to itself.
+      return resolveIncludes(
+        readFileSync(resolvedPath, "utf-8").trimEnd(),
+        path.dirname(resolvedPath),
+      );
     },
   );
 

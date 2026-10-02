@@ -8,7 +8,7 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
@@ -42,6 +42,7 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
+import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
 import { registerSkillsPreviewRoute } from "./routes/skills-preview-route.ts";
@@ -324,6 +325,11 @@ export function createExpressApp(): Express {
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error(`Error handling MCP request: ${String(error)}`);
+      // Echoed to the caller below: it's the only signal an MCP client gets
+      // when this route breaks. That's only safe because nothing on this path
+      // touches the filesystem or user data today (mirrors the `expose` note
+      // in error-handler-middleware.ts) — never let a message here carry a
+      // path or user content.
       res.status(500).json(internalError(errorMessage(error)));
     }
   });
@@ -395,6 +401,7 @@ export function createExpressApp(): Express {
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
   registerSkillsPreviewRoute(app, () => config.tools);
+  registerRemoteScriptSetupRoutes(app);
   // Raw callLiveApi, not the enriched one: the briefing composes its own blocks
   // in worker order and must not inherit the user-facing connect enrichment.
   registerSubagentBriefingRoute(app, () => config, callLiveApi);
@@ -433,9 +440,8 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // requestBody normalizes a missing/non-object body to {} so a bodyless POST
-  // /config (no Content-Type: application/json) is a benign no-op update
-  // instead of a TypeError → 500.
+  // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
+  // /config is a benign no-op update instead of a TypeError → 500.
   const incoming = requestBody(req) as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
@@ -473,19 +479,12 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   if (incoming.liveApiEnabled !== undefined) {
-    const next = Boolean(incoming.liveApiEnabled);
-    const beforeTools = config.tools;
+    applyLiveApiEnabled(Boolean(incoming.liveApiEnabled));
 
-    applyLiveApiEnabled(next);
-
-    if (config.tools !== beforeTools) {
-      outlets.push(() =>
-        Max.outlet("config", "tools", JSON.stringify(config.tools)),
-      );
-    }
-
-    outlets.push(() =>
-      Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+    // The whitelist is rebuilt either way, so it goes out with the flag.
+    outlets.push(
+      () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      () => Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
     );
   }
 

@@ -12,12 +12,9 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
-vi.mock(
-  import("#src/tools/device/update/helpers/update-device-helpers.ts"),
-  () => ({
-    moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
-  }),
-);
+vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
+  moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
+}));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
@@ -28,10 +25,25 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 import {
   type DeviceMove,
   moveDeviceToPath as moveDeviceToPathMock,
-} from "#src/tools/device/update/helpers/update-device-helpers.ts";
+} from "#src/tools/device/update/helpers/move-device.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+import {
+  registerSourceChain,
+  registerSourceRack,
+} from "./chain-copy-fixtures.ts";
 
 const RACK = livePath.track(0).device(0);
+
+/**
+ * Register the one device on the source chain, plus the temp track's copy of
+ * it that the carry takes across.
+ */
+function registerCarriedDevice(): void {
+  registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
+  registerMockObject("temp-device", {
+    path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
+  });
+}
 
 /**
  * Register a rack holding one chain, and the chain insert_chain will produce.
@@ -53,28 +65,9 @@ function setupRack(
 
   registerMockObject("live_set", { path: livePath.liveSet });
 
-  const rack = registerMockObject("rack-0", {
-    path: RACK,
-    type: "RackDevice",
-    properties: {
-      class_name: className,
-      has_macro_mappings: hasMacroMappings,
-      return_chains: [],
-    },
-    // insert_chain hands back the new chain's id.
-    methods: { insert_chain: () => ["id", "chain-new"] },
-  });
+  const rack = registerSourceRack({ className, hasMacroMappings });
 
-  registerMockObject("chain-0", {
-    path: `${RACK} chains 0`,
-    type: "Chain",
-    properties: {
-      name: "Source",
-      mute: 0,
-      solo: 0,
-      devices: children(...deviceIds),
-    },
-  });
+  registerSourceChain(deviceIds);
 
   const created = registerMockObject("chain-new", {
     path: `${RACK} chains 1`,
@@ -136,6 +129,22 @@ describe("duplicate - chain", () => {
     expect(created.set).toHaveBeenCalledWith("name", "Layer B");
   });
 
+  it("warns once that arrangement params do not apply to a chain", async () => {
+    setupRack();
+
+    await duplicate({
+      type: "chain",
+      id: "chain-0",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'arrangementStart/arrangementLength ignored: a chain has no arrangement position (type "chain")',
+    );
+  });
+
   it("refuses a rack return chain, saying why", async () => {
     setupRack();
     registerMockObject("return-chain-0", {
@@ -144,14 +153,25 @@ describe("duplicate - chain", () => {
       properties: { name: "A Reverb" },
     });
 
-    await duplicate({ type: "chain", id: "return-chain-0" });
-
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "is a rack return chain, which cannot be copied",
-    );
+    await expect(
+      duplicate({ type: "chain", id: "return-chain-0" }),
+    ).rejects.toThrow("is a rack return chain, which cannot be copied");
   });
 
-  it("refuses a destination rack of a different kind", async () => {
+  it("refuses a chain holding the Producer Pal device, creating nothing", async () => {
+    const { rack } = setupRack();
+
+    registerMockObject("this_device", { path: `${RACK} chains 0 devices 0` });
+
+    await expect(duplicate({ type: "chain", id: "chain-0" })).rejects.toThrow(
+      "it holds the Producer Pal device",
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // Live's class names ("AudioEffectGroupDevice") mean nothing to a caller, so
+  // the refusal names both racks the way Live's own browser does.
+  it("refuses a destination rack of a different kind, in rack-kind words", async () => {
     setupRack();
     registerMockObject("rack-1", {
       path: livePath.track(1).device(0),
@@ -159,10 +179,55 @@ describe("duplicate - chain", () => {
       properties: { class_name: "AudioEffectGroupDevice", return_chains: [] },
     });
 
-    await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" });
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" }),
+    ).rejects.toThrow(
+      "cannot copy a chain from t0/d0 (id rack-0) (an instrument rack) into " +
+        '"t1/d0" (an audio effect rack) — a rack only holds chains of its own kind',
+    );
+  });
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "a rack only holds chains of its own kind",
+  it("says a destination that is no rack at all is not one", async () => {
+    setupRack();
+    registerMockObject("rack-1", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: { class_name: "Reverb", return_chains: [] },
+    });
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" }),
+    ).rejects.toThrow('into "t1/d0" (not a rack)');
+  });
+
+  // The destination keeps its slot, so the caller can pair the entries against
+  // the toPath they sent.
+  it("keeps a refused destination's slot in a list", async () => {
+    setupRack();
+    registerMockObject("rack-1", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: { class_name: "AudioEffectGroupDevice", return_chains: [] },
+    });
+
+    const result = await duplicate({
+      type: "chain",
+      id: "chain-0",
+      toPath: "t0/d0,t1/d0",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "chain-new", path: "t0/d0/c1" },
+      {
+        path: "t1/d0",
+        ok: false,
+        detail: expect.stringContaining(
+          "a rack only holds chains of its own kind",
+        ),
+      },
+    ]);
+    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
+      "own kind",
     );
   });
 
@@ -194,10 +259,7 @@ describe("duplicate - chain", () => {
     setupRack({ deviceIds: ["d-0"] });
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
     vi.mocked(moveDeviceToPathMock).mockReturnValue({ outcome: "refused" });
 
     await duplicate({ type: "chain", id: "chain-0" });
@@ -222,10 +284,7 @@ describe("duplicate - chain", () => {
       path: `${RACK} chains 1 mixer_device volume`,
     });
 
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
 
     await duplicate({ type: "chain", id: "chain-0" });
 
@@ -235,8 +294,6 @@ describe("duplicate - chain", () => {
       "t0/d0/c1/d0",
       null,
       "t0/d0/c1/d0",
-      // The device that is really being copied, not the temp track's copy of it.
-      "t0/d0/c0/d0",
     );
   });
 
@@ -258,10 +315,7 @@ describe("duplicate - chain", () => {
       type: "Chain",
       properties: { name: "", mute: 0, solo: 0, devices: [] },
     });
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
 
     await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" });
 
@@ -270,11 +324,10 @@ describe("duplicate - chain", () => {
       "t2/d0/c1/d0",
       null,
       "t1/d0/c1/d0",
-      "t0/d0/c0/d0",
     );
   });
 
-  it("warns and skips when the rack refuses to make a chain", async () => {
+  it("refuses the call when the rack won't make a chain", async () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("rack-0", {
       path: RACK,
@@ -289,10 +342,7 @@ describe("duplicate - chain", () => {
       properties: { name: "Source", mute: 0, solo: 0, devices: [] },
     });
 
-    const result = await duplicate({ type: "chain", id: "chain-0" });
-
-    expect(result).toStrictEqual([]);
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+    await expect(duplicate({ type: "chain", id: "chain-0" })).rejects.toThrow(
       "could not create a chain",
     );
   });
@@ -351,46 +401,41 @@ describe("duplicate - chain", () => {
     expect(created.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });
 
-  it("warns when a toPath through a drum pad reaches no rack", async () => {
+  it("refuses a toPath through a drum pad that reaches no rack", async () => {
     setupRack();
 
-    await duplicate({
-      type: "chain",
-      id: "chain-0",
-      toPath: "t0/d0/pC1/d0",
-    });
-
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "no destination rack at toPath",
-    );
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t0/d0/pC1/d0" }),
+    ).rejects.toThrow("no destination rack at toPath");
   });
 
-  it("warns that macro mappings do not come along, but only when there are some", async () => {
+  it("says on the copy's entry that macro mappings do not come along", async () => {
     setupRack({ hasMacroMappings: 1 });
 
-    await duplicate({ type: "chain", id: "chain-0" });
+    const result = (await duplicate({ type: "chain", id: "chain-0" })) as {
+      detail?: string;
+    };
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "macro mappings",
-    );
+    expect(result.detail).toContain("macro mappings");
+    // The entry carries it, so nothing warns about it.
+    expect(vi.mocked(consoleMock.warn)).not.toHaveBeenCalled();
   });
 
   it("stays quiet about macros on a rack that has none", async () => {
     setupRack();
 
-    await duplicate({ type: "chain", id: "chain-0" });
+    const result = await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
-      "macro mappings",
-    );
+    expect(result).not.toHaveProperty("detail");
   });
+
   it("warns that count is ignored, since only one copy is made", async () => {
     setupRack();
 
     await duplicate({ type: "chain", id: "chain-0", count: 2 });
 
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "count parameter ignored for chain duplication",
+      "count 2 ignored: chain copies go one per toPath",
     );
   });
 
@@ -449,30 +494,52 @@ describe("duplicate - chain", () => {
     expect(drumRack.call).not.toHaveBeenCalledWith("insert_chain");
   });
 
-  it("warns when toPath names a chain rather than a rack", async () => {
+  it("refuses a toPath naming a chain rather than a rack", async () => {
     setupRack();
 
-    await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0/c0" });
-
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "no destination rack at toPath",
-    );
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0/c0" }),
+    ).rejects.toThrow("no destination rack at toPath");
   });
 
-  it("warns when toPath names a device that is not there", async () => {
+  it("says what the track holds when a toPath type segment names nothing", async () => {
+    setupRack();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: children() },
+    });
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t1/inst" }),
+    ).rejects.toThrow('nothing at toPath "t1/inst": t1 has no instrument');
+  });
+
+  // A toPath that doesn't parse has no trailing "c+" to strip, so the rack
+  // lookup gets it as written and reports the parse error itself — one
+  // message about the path, not two.
+  it("reports the parse error for a toPath that isn't a path at all", async () => {
     setupRack();
     mockNonExistentObjects();
 
-    await duplicate({ type: "chain", id: "chain-0", toPath: "t9/d9" });
-
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "no destination rack at toPath",
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "nonsense!" }),
+    ).rejects.toThrow(
+      'invalid path "nonsense!" - "nonsense!" is not a track or scene',
     );
   });
 
+  it("refuses a toPath naming a device that is not there", async () => {
+    setupRack();
+    mockNonExistentObjects();
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t9/d9" }),
+    ).rejects.toThrow("no destination rack at toPath");
+  });
+
   // The chain still gets made; only its devices are left behind, so the copy
-  // has to say so rather than look like it worked.
-  it("warns when the new chain has no addressable path", async () => {
+  // reports the chain it has and says what didn't finish.
+  it("reports a new chain that has no addressable path", async () => {
     setupRack({ deviceIds: ["d-0"] });
 
     // An empty path is what Live reports for an object that resolved to
@@ -483,14 +550,40 @@ describe("duplicate - chain", () => {
       properties: { name: "", mute: 0, solo: 0, devices: [] },
     });
 
-    await duplicate({ type: "chain", id: "chain-0" });
+    const result = await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+    expect(result).toStrictEqual({
+      id: "chain-new",
+      detail: expect.stringContaining("no addressable path"),
+    });
+    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
       "no addressable path",
     );
   });
 
-  it("stops copying devices when the temp track runs out of them", async () => {
+  // The chain is already in the rack by then, so losing it from the result
+  // would cost the caller a chain they now have to clean up by hand.
+  it("reports a chain whose devices could not all be copied across", async () => {
+    setupRack({ deviceIds: ["d-0"] });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerCarriedDevice();
+
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({
+      outcome: "unresolvable",
+      reason: "no chain there",
+    });
+
+    const result = await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(result).toStrictEqual({
+      id: "chain-new",
+      path: "t0/d0/c1",
+      detail:
+        "t0/d0/c0/d0 could not be copied into the new chain: no chain there",
+    });
+  });
+
+  it("says so when the temp track runs out of devices", async () => {
     setupRack({ deviceIds: ["d-0", "d-1"] });
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
@@ -498,8 +591,15 @@ describe("duplicate - chain", () => {
     // Nothing registered at the temp track, so its first device is missing.
     mockNonExistentObjects();
 
-    await duplicate({ type: "chain", id: "chain-0" });
+    const result = await duplicate({ type: "chain", id: "chain-0" });
 
+    // The chain exists, so it keeps its entry — short its devices, and saying so.
+    expect(result).toStrictEqual({
+      id: "chain-new",
+      path: "t0/d0/c1",
+      detail:
+        "t0/d0/c0/d0 could not be copied into the new chain: it is not on the temp track",
+    });
     expect(moveDeviceToPathMock).not.toHaveBeenCalled();
   });
 });

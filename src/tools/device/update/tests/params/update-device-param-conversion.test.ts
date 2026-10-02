@@ -103,7 +103,9 @@ describe("updateDevice - param conversion discriminators", () => {
         },
         methods: {
           str_for_value: (v: unknown) =>
-            Number(v) <= 0 ? "custom" : `${1000 * Number(v)} Hz`,
+            Number(v) <= 0
+              ? "custom"
+              : `${Number((1000 * Number(v)).toPrecision(6))} Hz`,
         },
       });
     });
@@ -160,6 +162,194 @@ describe("updateDevice - param conversion discriminators", () => {
       // Display 25 sits at raw 0.5. Uncoerced, parseLabel rejects the numeric
       // label, the search bails, and 25 is written as a raw value — 25x past max.
       expect(expectValueSet(param)).toBeCloseTo(0.5, 2);
+    });
+  });
+
+  // Max hands numeric labels back as numbers, so a list can be [1, 2] or
+  // ["Mono", 2, 4].
+  describe("enum labels Max returns as numbers", () => {
+    function registerEnum(items: (string | number)[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Delay Taps",
+          original_name: "Delay Taps",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["1", 0],
+      ["2", 1],
+    ])("writes %s on a numeric-only list", (value, index) => {
+      const param = registerEnum([1, 2]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Delay Taps", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it.each([
+      ["4", 2],
+      ["mono", 0],
+    ])("writes %s on a mixed list", (value, index) => {
+      const param = registerEnum(["Mono", 2, 4]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Delay Taps", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("refuses a value no number label matches, listing the options", () => {
+      registerEnum([1, 2]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Delay Taps", value: "3" }],
+        }),
+      ).toThrow('"3" is not valid. Options: 1, 2');
+    });
+  });
+
+  describe("enum labels that carry a unit or a bare k", () => {
+    function registerEnum(items: string[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Filter Slope",
+          original_name: "Filter Slope",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["24 dB", 1],
+      ["24", 1],
+      ["12 db", 0],
+    ])("writes %s by the label it names", (value, index) => {
+      const param = registerEnum(["12 dB", "24 dB"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Slope", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it.each([
+      ["12 dB", 0],
+      ["24 DB", 1],
+      ["24", 1],
+      ["12dB", 0],
+    ])("writes %s on labels with no space before the unit", (value, index) => {
+      const param = registerEnum(["12dB", "24dB"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Slope", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("writes 0.8 kHz on an 800 Hz label", () => {
+      const param = registerEnum(["400 Hz", "800 Hz"]);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Slope", value: "0.8 kHz" }],
+      });
+
+      expect(expectValueSet(param)).toBe(1);
+    });
+
+    it.each(["36", "24 ms"])("refuses %s on labels with no space", (value) => {
+      registerEnum(["12dB", "24dB"]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Filter Slope", value }],
+        }),
+      ).toThrow(`"${value}" is not valid. Options: 12dB, 24dB`);
+    });
+
+    it("writes a bare-k label as written", () => {
+      const param = registerEnum(["1k", "2k", "4k"]);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Slope", value: "2K" }],
+      });
+
+      expect(expectValueSet(param)).toBe(1);
+    });
+
+    it.each(["36", "24 ms"])(
+      "refuses %s, echoing what was written",
+      (value) => {
+        registerEnum(["12 dB", "24 dB"]);
+
+        expect(() =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Slope", value }],
+          }),
+        ).toThrow(`"${value}" is not valid. Options: 12 dB, 24 dB`);
+      },
+    );
+  });
+
+  describe("enum labels written with different case, spacing or hyphens", () => {
+    function registerEnum(items: string[]): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("enum-param") },
+      });
+
+      return registerMockObject("enum-param", {
+        properties: {
+          name: "Filter Type",
+          original_name: "Filter Type",
+          is_quantized: 1,
+          value_items: items,
+        },
+      });
+    }
+
+    it.each([
+      ["Lowpass", 0],
+      ["low pass", 0],
+      ["High pass", 1],
+      ["Band - pass", 2],
+    ])("writes %s", (value, index) => {
+      const param = registerEnum(["Low-pass", "High-pass", "Band-pass"]);
+
+      updateDevice({ id: "dev1", params: [{ name: "Filter Type", value }] });
+
+      expect(expectValueSet(param)).toBe(index);
+    });
+
+    it("refuses text that fits two options equally", () => {
+      registerEnum(["Low-pass", "Low pass"]);
+
+      expect(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Filter Type", value: "Lowpass" }],
+        }),
+      ).toThrow('"Lowpass" is not valid. Options: Low-pass, Low pass');
     });
   });
 

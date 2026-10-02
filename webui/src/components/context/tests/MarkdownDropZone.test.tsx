@@ -99,6 +99,17 @@ describe("MarkdownDropZone", () => {
     expect(screen.queryByText(OVERLAY_TEXT)).toBeNull();
   });
 
+  it("keeps the overlay up while the pointer crosses nested children", () => {
+    const { child } = renderZone();
+
+    // Two enters, one leave: the pointer moved onto a child, not out of the zone.
+    fireEvent.dragEnter(child, { dataTransfer: fileTransfer([]) });
+    fireEvent.dragEnter(child, { dataTransfer: fileTransfer([]) });
+    fireEvent.dragLeave(child, { dataTransfer: fileTransfer([]) });
+
+    expect(screen.getByText(OVERLAY_TEXT)).toBeTruthy();
+  });
+
   it("preventDefaults dragover so the region is a valid drop target", () => {
     const { child } = renderZone();
 

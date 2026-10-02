@@ -1,10 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
 
-export type TabId = "connection" | "presets" | "tools" | "preferences";
+export type TabId =
+  | "connection"
+  | "presets"
+  | "tools"
+  | "remote-script"
+  | "preferences";
 
 interface Tab {
   id: TabId;
@@ -21,6 +27,7 @@ const tabs: Tab[] = [
   { id: "connection", label: "Connection" },
   { id: "presets", label: "Presets" },
   { id: "tools", label: "Tools" },
+  { id: "remote-script", label: "Remote Script" },
   { id: "preferences", label: "Preferences" },
 ];
 

@@ -212,6 +212,26 @@ describe("Transform Parser - Expressions", () => {
       });
     });
 
+    it("parses a negated note value (-n/1) as 0 - n/1", () => {
+      const result = parseAssignments("velocity += cos(-n/1)");
+
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
+        type: "subtract",
+        left: 0,
+        right: { type: "nDuration", wholeNoteFraction: 1 },
+      });
+    });
+
+    it("parses a negated bar count (-2bar) as 0 - 2bar", () => {
+      const result = parseAssignments("velocity += cos(-2bar)");
+
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
+        type: "subtract",
+        left: 0,
+        right: { type: "barDuration", bars: 2 },
+      });
+    });
+
     it("parses a numeric expression period (beats)", () => {
       const result = parseAssignments("velocity += cos(2)");
 

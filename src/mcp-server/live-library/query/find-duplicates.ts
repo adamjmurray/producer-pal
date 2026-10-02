@@ -34,7 +34,7 @@ import {
   resolveInFolder,
   type SearchRow,
 } from "./candidate-query.ts";
-import { decodeFeatureVector } from "./fe-values-helpers.ts";
+import { decodeFeatureVector } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
 
 /** Default cap on duplicate groups returned (most-duplicated first). */
@@ -47,7 +47,7 @@ type DuplicateRow = SearchRow & { data: Uint8Array | null; hash: string };
  * Find groups of library files that share an audio fingerprint.
  *
  * @param args - Search filters scoping which files are checked
- * @returns Duplicate groups (most-duplicated first), or a graceful reason
+ * @returns Duplicate groups (most-duplicated first), or why there are none
  */
 export function findDuplicates(
   args: FindDuplicatesArgs = {},
@@ -56,12 +56,12 @@ export function findDuplicates(
     onMissing: () => ({
       dbAvailable: false,
       groups: [],
-      reason: "Live database not found",
+      detail: "Live database not found",
     }),
     onError: (message) => ({
       dbAvailable: false,
       groups: [],
-      reason: `Failed to read Live database: ${message}`,
+      detail: `Failed to read Live database: ${message}`,
     }),
     run: (db, stalenessRisk) => runFindDuplicates(db, stalenessRisk, args),
   });
@@ -93,7 +93,7 @@ function runFindDuplicates(
     return {
       ...base,
       groups: [],
-      reason:
+      detail:
         "duplicate detection uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
     };
   }
@@ -101,20 +101,20 @@ function runFindDuplicates(
   const resolved = resolveInFolder(db, args.inFolder);
 
   if (!resolved.ok) {
-    return { ...base, groups: [], reason: resolved.reason };
+    return { ...base, groups: [], detail: resolved.reason };
   }
 
   const { where, params } = buildCandidateWhere(args, resolved.parentId);
-  // Assumes one fe_values row per file (the spike found this holds across
-  // the library); a file with multiple rows would contribute more than once to a
-  // hash group. CAST hash to TEXT so SQLite renders the full 64-bit integer;
-  // reading it as a JS number would lose precision past 2^53 and could falsely
-  // merge or split groups. The hash is an opaque equality key — never arithmetic.
+  // Assumes one fe_values row per file; a second row would put the file in its
+  // hash group twice. CAST hash to TEXT so SQLite renders the full 64-bit
+  // integer — read as a JS number it loses precision past 2^53 and could
+  // falsely merge or split groups. It's an opaque equality key, never math.
+  // buildCandidateWhere always emits at least the file_type filter.
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data,
                       CAST(fv.hash AS TEXT) AS hash
                FROM ${CANDIDATE_FROM}
                JOIN fe_values fv ON fv.file_id = f.file_id
-               ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}`;
+               WHERE ${where.join(" AND ")}`;
   const rows = db.prepare(sql).all(...params) as unknown as DuplicateRow[];
 
   const dupGroups = groupByHash(rows);

@@ -8,7 +8,7 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { resolveLocatorRefToBeats } from "./locator-helpers.ts";
+import { resolveLocatorRefToBeats } from "./locators.ts";
 
 // The published prefix and its undocumented spelling, longest first so
 // "locator:" isn't read as "loc:" plus a stray "ator:". Matched

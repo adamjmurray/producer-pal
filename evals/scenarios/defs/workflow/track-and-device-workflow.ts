@@ -35,30 +35,37 @@ interface TrackSend {
  * @returns A state assertion over the track's sends
  */
 function assertDelaySend(): EvalAssertion {
-  const sends = (result: unknown) =>
-    ((result as { sends?: TrackSend[] }).sends ?? []).filter(
-      (send) => send.return === DELAY_RETURN,
-    );
-
   return {
     type: "state",
     tool: "ppal-read-track",
     args: { trackIndex: DRUMS_TRACK_INDEX, include: ["mixer"] },
     expect: (result) =>
-      sends(result).some(
+      delaySends(result).some(
         (send) => Math.abs((send.gainDb ?? -70) - SEND_DB) <= DB_TOLERANCE,
       ),
     explain: (result) =>
       `expected the Drums send to ${DELAY_RETURN} at ${SEND_DB} dB, got ${
-        sends(result)
+        delaySends(result)
           .map((send) => `${send.gainDb ?? "?"} dB`)
           .join(", ") || "no such send"
       }`,
   };
 }
 
+/**
+ * The track's sends to the delay return.
+ * @param result - A `ppal-read-track` result
+ * @returns The matching sends
+ */
+function delaySends(result: unknown): TrackSend[] {
+  return ((result as { sends?: TrackSend[] }).sends ?? []).filter(
+    (send) => send.return === DELAY_RETURN,
+  );
+}
+
 export const trackAndDeviceWorkflow: EvalScenario = {
   id: "track-and-device-workflow",
+  tags: ["workflow"],
   description:
     "Create track, add device, update properties, route sends to a new and an existing return",
   kind: "regression",

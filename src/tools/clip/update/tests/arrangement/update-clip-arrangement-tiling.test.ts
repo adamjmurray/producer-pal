@@ -19,6 +19,8 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   capturedWarnings,
   clearCapturedWarnings,
@@ -403,6 +405,63 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       { id: "789", path: "t0[1|1]" },
       { id: "1000", path: "t0[1|1]" },
       { id: "1001", path: "t0[1|1]" },
+    ]);
+  });
+
+  // A throw after some tiles landed must still report them, and what they ran
+  // over, on the clip's entry.
+  it("reports the tiles laid before one fails, and what they overwrote", async () => {
+    const trackIndex = 0;
+    const clips = setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    const sourceClip = clips.get("789");
+    const track = requireMockTrack(trackIndex);
+
+    if (sourceClip == null) {
+      throw new Error("Expected arrangement clip mock for 789");
+    }
+
+    setupMockProperties(
+      sourceClip,
+      arrangementMidiClipProps(trackIndex, { looping: 1, end_marker: 4.0 }),
+    );
+    setupMockProperties(requireMockObject("live_set"), { tracks: ["id", 0] });
+    registerMockObject("neighbour", {
+      path: livePath.track(trackIndex).arrangementClip(1),
+      type: "Clip",
+      properties: { start_time: 4.0, end_time: 8.0 },
+    });
+    track.properties.arrangement_clips = children("789", "neighbour");
+
+    let calls = 0;
+
+    overrideCall(track, function (method) {
+      if (method === "duplicate_clip_to_arrangement") {
+        calls++;
+
+        if (calls > 1) {
+          throw new Error("Live said no");
+        }
+
+        // The first tile lands on the neighbour, which Live deletes.
+        track.properties.arrangement_clips = children("789", "1000");
+
+        return "id 1000";
+      }
+
+      return USE_CALL_FALLBACK;
+    });
+
+    const result = await updateClip({ id: "789", arrangementLength: "3bar" });
+
+    expect(result).toStrictEqual([
+      {
+        id: "789",
+        path: "t0[1|1]",
+        detail:
+          "arrangementLength didn't finish: Live said no; " +
+          "overwrote the clip at t0[2|1]",
+      },
+      { id: "1000", path: "t0[1|1]" },
     ]);
   });
 });

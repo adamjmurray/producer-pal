@@ -114,6 +114,17 @@ describe("ContextTabs", () => {
     expect(screen.getByTestId("editor").textContent).toBe("PROJECT-DOC");
   });
 
+  it("mounts on the tab the caller asked for", () => {
+    render(<ContextTabs initialTab="instructions" />);
+
+    expect(
+      screen
+        .getByRole("button", { name: "Instructions" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
+  });
+
   it("switches to the Global tab and shows the global document", () => {
     render(<ContextTabs />);
 
@@ -239,6 +250,19 @@ describe("ContextTabs — leave guard on tab clicks", () => {
     expect(window.confirm).not.toHaveBeenCalled();
     // Still on Memory with the draft intact (the create form is present).
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+
+  it("keeps the editor open when the close confirm is dismissed", () => {
+    const onClose = vi.fn();
+
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    render(<ContextTabs onClose={onClose} />);
+
+    armMemoryDraft();
+    fireEvent.click(screen.getByLabelText("Close context editor"));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("prompts a discard when switching AWAY from a dirty new-memory draft", () => {

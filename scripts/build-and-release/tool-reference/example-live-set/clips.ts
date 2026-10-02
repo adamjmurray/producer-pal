@@ -11,7 +11,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { ID } from "./ids.ts";
-import { clipSlotMethods } from "./writes.ts";
+import { clipSlotMethods } from "./write-methods.ts";
 
 /** Clip colors, as the packed RGB integer the Live API reports */
 const COLOR = {

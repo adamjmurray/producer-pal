@@ -5,12 +5,14 @@
 
 import { type ReasoningPart } from "@ai-sdk/provider-utils";
 import {
+  type FilePart,
   type ModelMessage,
   type TextPart,
   type ToolCallPart,
   type ToolResultPart,
+  type UserModelMessage,
 } from "ai";
-import { type ChatMessage } from "./types";
+import { type ChatImage, type ChatMessage } from "./types";
 
 /**
  * Placeholder result for a tool call the user stopped before it returned.
@@ -28,6 +30,27 @@ export const CANCELED_TOOL_RESULT_TEXT =
  */
 export const FAILED_TOOL_RESULT_TEXT =
   "The request failed before this tool finished; it may or may not have run.";
+
+/**
+ * Most base64 image data one request may carry. Every turn re-sends its images,
+ * so without a cap a chat soon passes a provider's limit and every later turn
+ * fails. Gemini's 20 MB per request is the tightest we support; this leaves
+ * room for the text and tools.
+ */
+export const MAX_REQUEST_IMAGE_BYTES = 15 * 1024 * 1024;
+
+/**
+ * Most images one request may carry, whatever their size. Anthropic, OpenAI and
+ * Gemini allow 100+.
+ */
+export const MAX_REQUEST_IMAGES = 20;
+
+/** Mistral's API rejects a request with more than 8 images. */
+export const MISTRAL_MAX_REQUEST_IMAGES = 8;
+
+/** Stands in for an image left out by the byte or count cap. */
+export const OMITTED_IMAGE_TEXT =
+  "[Image left out to keep the request within its limits]";
 
 /** Why a tool-call was left without a result. */
 export type DanglingToolReason = "canceled" | "failed";
@@ -47,19 +70,22 @@ export type DanglingToolReason = "canceled" | "failed";
  * Consecutive user turns are merged into one. A compaction summary is a
  * synthetic user message, so the next real user message would otherwise sit
  * directly after it — Gemini and Mistral reject two user turns in a row (only
- * Anthropic/OpenAI tolerate it). Folding them into a single user turn keeps the
- * wire format valid for every provider while the UI still renders them
- * separately (the divider plus the user bubble).
+ * Anthropic/OpenAI tolerate it). The UI still renders them separately (the
+ * divider plus the user bubble). Merging also has to survive attached images,
+ * whose turn carries a content ARRAY rather than a string — see
+ * {@link mergeUserContent}.
  * @param history - Chat history to convert
  * @param includeReasoning - When true, re-emit captured signed reasoning blocks
  *   on assistant messages (only valid when the request enables thinking — see
  *   isAnthropicThinkingEnabled). Keeps the Anthropic cache prefix byte-stable
  *   across turns. Defaults to false so non-thinking requests are unchanged.
+ * @param maxImages - Most images the request may carry
  * @returns Array of ModelMessage for streamText
  */
 export function buildModelMessages(
   history: ChatMessage[],
   includeReasoning = false,
+  maxImages = MAX_REQUEST_IMAGES,
 ): ModelMessage[] {
   const messages: ModelMessage[] = [];
 
@@ -76,15 +102,17 @@ export function buildModelMessages(
 
   const modelHistory =
     lastSummaryIndex > 0 ? history.slice(lastSummaryIndex) : history;
+  const sentImages = imagesWithinBudget(modelHistory, maxImages);
 
   for (const msg of modelHistory) {
     if (msg.role === "user") {
       const last = messages.at(-1);
+      const content = buildUserContent(msg, sentImages);
 
-      if (last?.role === "user" && typeof last.content === "string") {
-        last.content = `${last.content}\n\n${msg.content}`;
+      if (last?.role === "user") {
+        last.content = mergeUserContent(last.content, content);
       } else {
-        messages.push({ role: "user", content: msg.content });
+        messages.push({ role: "user", content });
       }
 
       continue;
@@ -99,6 +127,119 @@ export function buildModelMessages(
   }
 
   return messages;
+}
+
+/** A user ModelMessage's content: plain text, or parts. */
+type UserContent = UserModelMessage["content"];
+
+/**
+ * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES} and `maxImages`,
+ * newest message first. Once one doesn't fit, it and everything after it are
+ * left out.
+ * @param history - The messages the request will carry
+ * @param maxImages - Most images the request may carry
+ * @returns The images to send
+ */
+function imagesWithinBudget(
+  history: ChatMessage[],
+  maxImages: number,
+): Set<ChatImage> {
+  const kept = new Set<ChatImage>();
+  let room = MAX_REQUEST_IMAGE_BYTES;
+
+  for (const msg of history.toReversed()) {
+    for (const image of msg.images ?? []) {
+      if (image.data.length > room || kept.size === maxImages) {
+        return kept;
+      }
+
+      kept.add(image);
+      room -= image.data.length;
+    }
+  }
+
+  return kept;
+}
+
+/**
+ * Build one user turn's content. Attached images become image parts ahead of
+ * the text; an images-only message emits no text part, because providers reject
+ * an empty one. With no images the content stays a plain string, so a chat
+ * without attachments sends exactly the shape it always did.
+ * @param msg - The user chat message
+ * @param sentImages - Images within the request budget; the rest become a note
+ * @returns Content for the user ModelMessage
+ */
+function buildUserContent(
+  msg: ChatMessage,
+  sentImages: Set<ChatImage>,
+): UserContent {
+  if (!msg.images?.length) {
+    return msg.content;
+  }
+
+  // A file part with an image media type, not the (deprecated) image part.
+  const parts: Array<FilePart | TextPart> = msg.images.map((image) =>
+    sentImages.has(image)
+      ? {
+          type: "file",
+          mediaType: image.mediaType,
+          data: { type: "data", data: image.data },
+        }
+      : { type: "text", text: OMITTED_IMAGE_TEXT },
+  );
+
+  if (msg.content) {
+    parts.push({ type: "text", text: msg.content });
+  }
+
+  return parts;
+}
+
+/**
+ * Fold a user turn into the one already on the wire: every image first, in
+ * order, then a single text part joining both texts. Two image-less turns stay
+ * a plain string.
+ * @param existing - Content of the user message already pushed
+ * @param incoming - Content of the user message being merged in
+ * @returns The combined content
+ */
+function mergeUserContent(
+  existing: UserContent,
+  incoming: UserContent,
+): UserContent {
+  const before = splitUserContent(existing);
+  const after = splitUserContent(incoming);
+  const images = [...before.images, ...after.images];
+  const text = [before.text, after.text].filter(Boolean).join("\n\n");
+
+  if (images.length === 0) {
+    return text;
+  }
+
+  return [...images, ...(text ? [{ type: "text" as const, text }] : [])];
+}
+
+/**
+ * Split a user content value into its images and its joined text.
+ * @param content - String or parts content
+ * @returns The image parts and the combined text
+ */
+function splitUserContent(content: UserContent): {
+  images: FilePart[];
+  text: string;
+} {
+  if (typeof content === "string") {
+    return { images: [], text: content };
+  }
+
+  return {
+    images: content.filter((part): part is FilePart => part.type === "file"),
+    text: content
+      .filter((part): part is TextPart => part.type === "text")
+      .map((part) => part.text)
+      .join("\n\n"),
+  };
 }
 
 /**

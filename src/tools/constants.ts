@@ -7,6 +7,11 @@ export const MAX_AUTO_CREATED_TRACKS = 100;
 export const MAX_AUTO_CREATED_SCENES = 1000;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
 export const MAX_SPLIT_POINTS = 32;
+/** Take lanes per track (total non-main lanes). Producer Pal's cap, not one of
+ * Live's. Here rather than beside the lane code because the e2e suites read it,
+ * and that module names the LiveAPI type, which e2e's typecheck has no
+ * declaration for. */
+export const MAX_TAKE_LANES = 10;
 // Enforced with boundedString(), not z.string().max() — see ADR-0021.
 export const MAX_CODE_LENGTH = 10_000;
 
@@ -24,7 +29,7 @@ export const TEMPO_REFUSAL = `Live's tempo range is ${MIN_TEMPO}-${MAX_TEMPO} BP
 // The param counts from 1 and the `l<n>` path segment counts from 0, so a
 // caller who reads "use path" as a rename writes the wrong lane — and takeLane
 // 0 isn't a take lane at all. Lives here rather than beside the conversion in
-// take-lane-helpers.ts: that module reaches for the LiveAPI global, and the
+// take-lanes.ts: that module reaches for the LiveAPI global, and the
 // tool defs that carry this note are typechecked Node-side too.
 export const TAKE_LANE_NOTE =
   'Lanes count from 0 in a path: takeLane 1 is "l0", and takeLane 0 is the main lane.';
@@ -79,6 +84,13 @@ export const DEVICE_TYPE = {
   MIDI_EFFECT_RACK: "midi-effect-rack",
 } as const;
 
+// What a read calls a rack chain. Not Live's class names: a result says only
+// what the tools publish.
+export const CHAIN_TYPE = {
+  CHAIN: "chain",
+  DRUM_CHAIN: "drum-chain",
+} as const;
+
 // Monitoring states for user-facing API
 export const MONITORING_STATE = {
   IN: "in",
@@ -120,6 +132,12 @@ export const LIVE_API_VIEW_NAMES = {
   DETAIL_CLIP: "Detail/Clip",
   DETAIL_DEVICE_CHAIN: "Detail/DeviceChain",
 } as const;
+
+// Said by every scale a call can't be read from. Naming the valid values is not
+// enough on its own, the same way it isn't for tempo: a model told what's valid
+// picks the nearest one and reports a scale nobody asked for as done.
+export const SCALE_REFUSAL =
+  "Do not substitute a different scale; tell the user theirs is not one Live has.";
 
 export const VALID_SCALE_NAMES = [
   "Major",

@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import { updateDevice } from "../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
-// validateExclusiveParams only asks whether a param was sent, so an id or path
-// that parses to nothing gets past it and would update no device — reading as
+// A presence check only asks whether a param was sent, so an id or path that
+// parses to nothing gets past it and would update no device — reading as
 // "nothing to do". Refuse it instead.
 describe("updateDevice when id or path names nothing", () => {
   it("refuses an id of only commas and blanks", () => {

@@ -55,6 +55,17 @@ function addedNotes(clip: UpdateClipMocks["clip123"]): AddedNote[] {
   return last?.[1].notes ?? [];
 }
 
+/**
+ * The velocity each pitch ended up with after the last add_new_notes.
+ * @param clip - Registered mock clip
+ * @returns Velocity by pitch
+ */
+function velocityByPitch(
+  clip: UpdateClipMocks["clip123"],
+): Map<number, number> {
+  return new Map(addedNotes(clip).map((n) => [n.pitch, n.velocity]));
+}
+
 describe("updateClip - preTransforms", () => {
   let mocks: UpdateClipMocks;
 
@@ -102,8 +113,7 @@ describe("updateClip - preTransforms", () => {
       notes: "v110 G3 1|3", // new note at start_time 2, pitch 67
     });
 
-    const finalNotes = addedNotes(mocks.clip123);
-    const byPitch = new Map(finalNotes.map((n) => [n.pitch, n.velocity]));
+    const byPitch = velocityByPitch(mocks.clip123);
 
     expect(byPitch.get(60)).toBe(60); // existing C3, pre-mutated
     expect(byPitch.get(62)).toBe(60); // existing D3, pre-mutated
@@ -122,8 +132,7 @@ describe("updateClip - preTransforms", () => {
       transforms: "velocity += 5", // bumps survivors + new note
     });
 
-    const finalNotes = addedNotes(mocks.clip123);
-    const byPitch = new Map(finalNotes.map((n) => [n.pitch, n.velocity]));
+    const byPitch = velocityByPitch(mocks.clip123);
 
     expect(byPitch.has(60)).toBe(false); // killed by preTransforms
     expect(byPitch.get(62)).toBe(105); // surviving existing + post-transform bump
@@ -180,26 +189,27 @@ describe("updateClip - preTransforms", () => {
       preTransforms: "velocity = 50", // no range, no new notes → edit all in place
     });
 
-    const finalNotes = addedNotes(mocks.clip123);
-    const byPitch = new Map(finalNotes.map((n) => [n.pitch, n.velocity]));
+    const byPitch = velocityByPitch(mocks.clip123);
 
     expect(byPitch.get(60)).toBe(50);
     expect(byPitch.get(62)).toBe(50);
   });
 
-  it("warns and ignores preTransforms on audio clips", async () => {
+  it("reports ignored preTransforms on an audio clip's own entry", async () => {
     setupAudioClipMock(mocks.clip123, { length: 8 });
 
-    await updateClip({
+    // gainDb lands, so the ignored preTransforms is a reason on a real entry.
+    const result = await updateClip({
       id: "123",
       preTransforms: "1|1-1|4: velocity = 0",
       gainDb: -6,
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "preTransforms parameter ignored for audio clip t0/s0 (id 123)",
-      ),
-    );
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: "preTransforms ignored: the clip is audio",
+    });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

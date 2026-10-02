@@ -17,6 +17,7 @@ import {
   setupTrack,
   setupTrackWithQueuedMethods,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
+import { recordClipReports } from "./helpers/clip-report-recorder.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock the loop-deadline module to control deadline behavior
@@ -136,19 +137,29 @@ describe("tileClipToRange deadline", () => {
 
   it("reports how far it got so the caller can resume", () => {
     const { sourceClip, track } = setupTiling(16);
+    const { reports, reportClip } = recordClipReports();
 
     stopAfterChecks(2);
 
     tileClipToRange(sourceClip, track, 100, 64, {
       ...mockContext,
       deadline: 1,
+      reportClip,
     });
 
     // A bare "timed out" tells the caller nothing about what landed; the beat
-    // position is what makes the partial result actionable.
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("placed 8 of 16 tiles, reaching 132 beats"),
-    );
+    // position is what makes the partial result actionable. It goes on the
+    // clip's own entry, so no warning repeats it.
+    expect(reports).toStrictEqual([
+      {
+        kind: "note",
+        clipId: "100",
+        reason:
+          "ran out of time: placed 8 of 16 tiles, reaching 132 beats " +
+          "instead of 164; re-run to continue",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("clears nothing when it is already out of time on entry", () => {

@@ -63,14 +63,14 @@ describe("library tool — listPlugins action", () => {
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listPlugins",
-      {
+      expect.objectContaining({
         query: "serum",
         vendor: "xfer",
         format: "VST",
         category: undefined,
         subcategory: "synth",
         limit: 10,
-      },
+      }),
     );
   });
 

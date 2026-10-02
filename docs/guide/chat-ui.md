@@ -123,7 +123,8 @@ sections to see the AI's reasoning process:
 You can revise a conversation without losing where it was:
 
 - **Edit** a message you sent: hover over it and click the pencil icon, change
-  the text, and send.
+  the text, and send. Click ✕ on an attached image to send without it, for
+  example, when a model that can't read images keeps failing.
 - **Retry** an AI response: click the ↻ icon to generate a different response.
 
 Either action **branches** the conversation: Producer Pal keeps the original and
@@ -159,6 +160,11 @@ overrides it for individual messages.
 
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
+- **📎 Attach images** - Attach PNG, JPEG, GIF or WebP images (up to 10 per
+  message, 5 MB each). Large images are scaled down to 1568 px on the longest
+  side before sending. You can also paste an image or drop one on the text area.
+  Thumbnails appear above the input, each with an ✕ to remove it, and an image
+  can be sent with no text at all.
 
 The text area is a markdown editor, so **Tab** and **Shift+Tab** indent and
 outdent rather than moving focus. To leave it with the keyboard, press
@@ -528,6 +534,18 @@ effect in a **new conversation**. An open chat keeps reading and writing the
 notation it has been using all along, and reopening an old conversation resumes
 in whatever notation its notes were written in. The AI is never taught one
 notation and then handed notes in another.
+
+### Remote Script
+
+The Remote Script tab installs the optional Producer Pal
+[remote script](/guide/remote-script), which lets the AI load plug-ins, Max for
+Live devices, and presets. It shows whether the script is installed and whether
+Live is running it, and offers an update when your Producer Pal build has a
+newer one.
+
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Remote Script tab" width="500"/>
+
+See the [remote script guide](/guide/remote-script) to install and enable it.
 
 ### Preferences
 

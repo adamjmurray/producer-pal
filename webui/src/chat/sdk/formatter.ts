@@ -6,7 +6,7 @@
 import {
   addTextContent,
   markLastThoughtAsOpen,
-} from "#webui/chat/helpers/formatter-helpers";
+} from "#webui/chat/helpers/message-formatting";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
 import { type ChatMessage } from "./types";
 
@@ -31,16 +31,28 @@ function addReasoning(reasoning: string | undefined, parts: UIPart[]): void {
 
 /**
  * Add a user message's content to parts. Compaction summaries become a single
- * compaction part (rendered as a divider); normal user text becomes text.
+ * compaction part (rendered as a divider); normal user text becomes text,
+ * preceded by an image part per attachment (the bubble shows thumbnails above
+ * the text, matching what the model is sent).
  * @param msg - User message
  * @param parts - Parts array to add to
  */
 function addUserParts(msg: ChatMessage, parts: UIPart[]): void {
   if (msg.isCompactionSummary) {
     parts.push({ type: "compaction", content: msg.content });
-  } else {
-    addTextContent(parts, msg.content);
+
+    return;
   }
+
+  for (const image of msg.images ?? []) {
+    parts.push({
+      type: "image",
+      mediaType: image.mediaType,
+      data: image.data,
+    });
+  }
+
+  addTextContent(parts, msg.content);
 }
 
 /**
@@ -138,19 +150,38 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
       addTextContent(currentMessage.parts, msg.content);
       addToolParts(msg, currentMessage.parts);
 
-      if (msg.responseModel) {
-        currentMessage.responseModel = msg.responseModel;
-      }
-
-      if (msg.usage) {
-        currentMessage.usage = msg.usage;
-      }
+      copyStepMetadata(msg, currentMessage);
     }
   }
 
   markLastThoughtAsOpen(messages);
 
   return messages;
+}
+
+/**
+ * Copy a step's model id, usage and generation speed onto the UI message.
+ * @param msg - The raw assistant message for this step
+ * @param currentMessage - The UIMessage being built
+ */
+function copyStepMetadata(msg: ChatMessage, currentMessage: UIMessage): void {
+  if (msg.responseModel) {
+    currentMessage.responseModel = msg.responseModel;
+  }
+
+  if (!msg.usage) {
+    return;
+  }
+
+  currentMessage.usage = msg.usage;
+
+  // Timing belongs to the step its usage came from, so an untimed step has to
+  // drop the previous step's rather than keep showing it.
+  if (msg.timing) {
+    currentMessage.timing = msg.timing;
+  } else {
+    delete currentMessage.timing;
+  }
 }
 
 /**
@@ -167,6 +198,11 @@ function closeStepUsage(message: UIMessage): void {
     return;
   }
 
-  message.parts.push({ type: "step-usage", usage: message.usage });
+  message.parts.push({
+    type: "step-usage",
+    usage: message.usage,
+    ...(message.timing && { timing: message.timing }),
+  });
   message.usage = undefined;
+  message.timing = undefined;
 }

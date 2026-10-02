@@ -9,10 +9,8 @@
  */
 
 import { type EvalScenario } from "../../../types.ts";
-import {
-  assertNotesRead,
-  getTransforms,
-} from "../helpers/clip-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { getTransforms } from "../helpers/clip-turn-readers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -56,6 +54,7 @@ const SNARE = /E1/;
 
 export const drumTransforms: EvalScenario = {
   id: "drum-transforms",
+  tags: ["transforms"],
   description: "Apply velocity transforms to drum clip notes",
   kind: "capability",
   requires: { transforms: true },

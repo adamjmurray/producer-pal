@@ -110,6 +110,24 @@ export function getSettingsUrl(): string {
 }
 
 /**
+ * Gets the remote-script endpoint URL (whether the Producer Pal control surface
+ * is installed in Live's User Library, and whether Live is running it).
+ * @returns {string} The remote-script endpoint URL
+ */
+export function getRemoteScriptUrl(): string {
+  return serverUrl("/remote-script");
+}
+
+/**
+ * Gets the remote-script install endpoint URL (POST copies the bundled script
+ * into the given User Library).
+ * @returns {string} The remote-script install endpoint URL
+ */
+export function getRemoteScriptInstallUrl(): string {
+  return serverUrl("/remote-script/install");
+}
+
+/**
  * Gets the memory collection endpoint URL (lists every stored memory entry;
  * the LLM-managed ~/.producer-pal/memory/ collection).
  * @returns {string} The memory collection endpoint URL

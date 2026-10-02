@@ -58,6 +58,28 @@ async function runSearchBatch(
   return result;
 }
 
+type SingleSearchResult = Exclude<
+  Awaited<ReturnType<typeof library>>,
+  { results: unknown }
+>;
+
+/**
+ * Run a one-entry fan-out and narrow the union to the plain-search branch.
+ * @param searches - The one filter set
+ * @returns The library result, asserted to be ungrouped
+ */
+async function runLoneSearch(
+  searches: NonNullable<Parameters<typeof library>[0]>["searches"],
+): Promise<SingleSearchResult> {
+  const result = await library({ action: "search", searches });
+
+  if ("results" in result) {
+    throw new Error("expected a lone search to answer ungrouped");
+  }
+
+  return result;
+}
+
 /**
  * The names of the items one labeled result carries.
  * @param result - A fan-out search result
@@ -289,33 +311,23 @@ describe("library tool — searches fan-out", () => {
     warnSpy.mockRestore();
   });
 
-  // An empty array names no filters at all, so grouping nothing would just
-  // hide the mistake. Fall back to the single search the top-level params
-  // describe, and say so.
-  it("falls back to a single search when searches is empty, and warns", async () => {
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
+  // An empty array names no search at all, so running the top-level filters
+  // instead would just hide the mistake.
+  it("refuses an empty searches before searching anything", async () => {
     mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
 
-    const result = await library({
-      action: "search",
-      searches: [],
-      tags: "Kick",
-    });
+    await expect(
+      library({ action: "search", searches: [], tags: "Kick" }),
+    ).rejects.toThrow("searches must name at least one search");
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
 
-    expect("results" in result).toBe(false);
-    expect(result).toStrictEqual({
-      dbAvailable: true,
-      items: [{ path: "/db/kick.wav" }],
-    });
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("searches was empty"),
-    );
+  it("answers a lone search the way a plain search does", async () => {
+    mockKickAndSnare();
 
-    warnSpy.mockRestore();
+    expect(
+      await runLoneSearch([{ label: "Kicks", tags: "Kick" }]),
+    ).toStrictEqual({ dbAvailable: true, items: [dbItem("kick.wav")] });
   });
 
   it("warns and ignores searches on an action that has no use for it", async () => {
@@ -360,7 +372,7 @@ describe("library tool — searches fan-out", () => {
 
     expect(await library(args)).toStrictEqual({
       dbAvailable: true,
-      results: [{ label: "Kick", items: [dbItem("kick.wav")] }],
+      items: [dbItem("kick.wav")],
     });
   });
 
@@ -392,7 +404,7 @@ describe("library tool — searches fan-out", () => {
 
     expect(result).toStrictEqual({
       dbAvailable: true,
-      results: [{ label: "Kick", items: [dbItem("kick.wav")] }],
+      items: [dbItem("kick.wav")],
     });
   });
 
@@ -402,14 +414,17 @@ describe("library tool — searches fan-out", () => {
       result: {
         dbAvailable: false,
         items: [],
-        reason: "Live database not found",
+        detail: "Live database not found",
       },
     });
 
-    const result = await runSearchBatch([{ tags: "Kick" }]);
+    const result = await runLoneSearch([{ tags: "Kick" }]);
 
-    expect(result.dbAvailable).toBe(false);
-    expect(result.results[0]?.reason).toBe("Live database not found");
+    expect(result).toStrictEqual({
+      dbAvailable: false,
+      items: [],
+      detail: "Live database not found",
+    });
   });
 
   it("downgrades dbAvailable to false when only some queries find the DB missing", async () => {
@@ -423,7 +438,7 @@ describe("library tool — searches fan-out", () => {
         result: {
           dbAvailable: false,
           items: [],
-          reason: "Live database not found",
+          detail: "Live database not found",
         },
       });
 
@@ -439,7 +454,7 @@ describe("library tool — searches fan-out", () => {
     const result = await library(
       {
         action: "search",
-        searches: [{ source: "sampleFolder" }],
+        searches: [{ source: "sampleFolder" }, { source: "sampleFolder" }],
       },
       { sampleFolder: "/samples/" },
     );
@@ -490,7 +505,7 @@ describe("library tool — searches fan-out", () => {
       result: { dbAvailable: true, items: [] },
     });
 
-    const result = await runSearchBatch([{ tags: "Kick" }]);
+    const result = await runLoneSearch([{ tags: "Kick" }]);
 
     expect("stalenessRisk" in result).toBe(false);
   });
@@ -530,14 +545,17 @@ describe("library tool — searches fan-out", () => {
 
   it("omits the reason key on an entry whose query returned no reason", async () => {
     // A matched query with no diagnostic must yield { label, items } exactly —
-    // no reason: undefined leaking into the entry.
+    // no detail: undefined leaking into the entry.
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 
-    const result = await runSearchBatch([{ label: "Kicks", tags: "Kick" }]);
+    const result = await runSearchBatch([
+      { label: "Kicks", tags: "Kick" },
+      { label: "Snares", tags: "Snare" },
+    ]);
     const entry = result.results[0];
 
     expect(entry).toBeDefined();
-    expect(entry && "reason" in entry).toBe(false);
+    expect(entry && "detail" in entry).toBe(false);
   });
 
   it("preserves entries from other queries when a single query throws (per-query graceful degrade)", async () => {
@@ -567,7 +585,7 @@ describe("library tool — searches fan-out", () => {
       "kick.wav",
     ]);
     expect(result.results[1]?.items).toStrictEqual([]);
-    expect(result.results[1]?.reason).toBe("boom");
+    expect(result.results[1]?.detail).toBe("boom");
     expect(result.results[2]?.items.map((i) => i.name)).toStrictEqual([
       "hat.wav",
     ]);

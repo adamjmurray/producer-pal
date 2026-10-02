@@ -14,6 +14,7 @@ import {
   formatSubsectionHeader,
   formatUsageLine,
   pctColor,
+  stepTimingParts,
 } from "#evals/chat/shared/formatting.ts";
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
@@ -283,6 +284,23 @@ export function printResultBlock(result: JsonEvalResult): void {
   if (result.totalUsage) {
     console.log("  " + formatUsageLine(result.totalUsage));
   }
+
+  printSpeedLine(result);
+}
+
+/**
+ * Print the generation-speed line, when the run measured one.
+ *
+ * @param result - The eval result
+ */
+function printSpeedLine(result: JsonEvalResult): void {
+  const parts = stepTimingParts(result.totalTiming);
+
+  if (parts.length === 0) {
+    return;
+  }
+
+  console.log(`  Speed:      ${styleText("gray", parts.join(" · "))}`);
 }
 
 /**

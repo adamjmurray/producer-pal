@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -23,11 +24,14 @@ vi.mock(import("#webui/components/settings/controls/ModelSelector"), () => ({
   ),
 }));
 
-vi.mock(import("#webui/components/settings/TestConnectionButton"), () => ({
-  TestConnectionButton: () => (
-    <div data-testid="test-connection-button">Test Connection</div>
-  ),
-}));
+vi.mock(
+  import("#webui/components/settings/helpers/TestConnectionButton"),
+  () => ({
+    TestConnectionButton: () => (
+      <div data-testid="test-connection-button">Test Connection</div>
+    ),
+  }),
+);
 
 describe("ConnectionTab", () => {
   const defaultProps = {

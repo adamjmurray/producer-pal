@@ -10,13 +10,24 @@ import { renderHook } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 
+/**
+ * Render the hook with a starting active id.
+ * @param initialId - The active record id the hook mounts with
+ * @returns The clear spy and the rerender function
+ */
+function setup(initialId: string | null) {
+  const clear = vi.fn();
+  const { rerender } = renderHook(
+    ({ id }: { id: string | null }) => useClearViewingModeOnReset(id, clear),
+    { initialProps: { id: initialId } },
+  );
+
+  return { clear, rerender };
+}
+
 describe("useClearViewingModeOnReset", () => {
   it("clears when the active id transitions from set to null (delete reset)", () => {
-    const clear = vi.fn();
-    const { rerender } = renderHook(
-      ({ id }: { id: string | null }) => useClearViewingModeOnReset(id, clear),
-      { initialProps: { id: "rec-1" as string | null } },
-    );
+    const { clear, rerender } = setup("rec-1");
 
     expect(clear).not.toHaveBeenCalled();
 
@@ -26,11 +37,7 @@ describe("useClearViewingModeOnReset", () => {
   });
 
   it("does not clear when opening a foreign record (null then set, or set to set)", () => {
-    const clear = vi.fn();
-    const { rerender } = renderHook(
-      ({ id }: { id: string | null }) => useClearViewingModeOnReset(id, clear),
-      { initialProps: { id: null as string | null } },
-    );
+    const { clear, rerender } = setup(null);
 
     rerender({ id: "rec-1" }); // open a record
     rerender({ id: "rec-2" }); // switch to another
@@ -47,11 +54,7 @@ describe("useClearViewingModeOnReset", () => {
   });
 
   it("clears again on a subsequent set → null transition", () => {
-    const clear = vi.fn();
-    const { rerender } = renderHook(
-      ({ id }: { id: string | null }) => useClearViewingModeOnReset(id, clear),
-      { initialProps: { id: "rec-1" as string | null } },
-    );
+    const { clear, rerender } = setup("rec-1");
 
     rerender({ id: null });
     rerender({ id: "rec-2" });

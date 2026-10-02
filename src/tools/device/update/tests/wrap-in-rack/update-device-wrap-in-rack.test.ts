@@ -14,10 +14,11 @@ import {
 } from "../update-device-test-helpers.ts";
 import {
   INSERT_DEVICE_FAILURE,
+  followMoves,
   registerAudioEffectDevice,
   registerGrowingChainRack,
   registerInstrumentDevice,
-  registerRackChains,
+  registerTrackingChain,
   registerTempTrackMocks,
   registerThrowingTrack0,
   registerTrack0,
@@ -42,19 +43,24 @@ describe("updateDevice - wrapInRack", () => {
       properties: { type: 4 },
     });
 
-    // New rack created by insert_device
+    // New rack created by insert_device. A freshly created rack starts with
+    // one chain, matching Live's real behavior — deviceCount is read back off
+    // this list, not echoed from the input, so it has to reflect reality.
     newRack = registerMockObject("new-rack", {
       path: "new-rack",
       type: "RackDevice",
-      properties: { chains: children("chain-0", "chain-1") },
+      properties: { chains: children("chain-0") },
       methods: { insert_chain: () => ["id", "new-chain"] },
     });
 
-    // Chains inside the rack (paths match ${rack.path} chains ${i})
-    registerRackChains(2);
-
-    // live_set for move operations
+    // live_set for move operations; the rack's chain holds what it moves in
     liveSet = registerMockObject("live-set", { path: "live_set" });
+    registerTrackingChain(liveSet);
+    followMoves(liveSet, track0, undefined, [
+      "device-0",
+      "device-1",
+      "device-2",
+    ]);
   });
 
   it("should wrap a single audio effect in an Audio Effect Rack", () => {
@@ -91,6 +97,14 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
+  it("should report the new rack's path in the result", () => {
+    registerMockObject("new-rack", { path: livePath.track(0).device(9) });
+
+    const result = updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    expect((result as Record<string, unknown>).path).toBe("t0/d9");
+  });
+
   it("should wrap a single MIDI effect in a MIDI Effect Rack", () => {
     const result = updateDevice({
       path: "t0/d2",
@@ -111,40 +125,6 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should wrap multiple audio effects into one rack with multiple chains", () => {
-    const result = updateDevice({
-      path: "t0/d0,t0/d1",
-      wrapInRack: true,
-    });
-
-    // Should create Audio Effect Rack at first device's position
-    expect(track0.call).toHaveBeenCalledWith(
-      "insert_device",
-      "Audio Effect Rack",
-      0,
-    );
-
-    // Should move both devices into separate chains
-    expect(liveSet.call).toHaveBeenCalledWith(
-      "move_device",
-      "id device-0",
-      "id chain-0",
-      0,
-    );
-    expect(liveSet.call).toHaveBeenCalledWith(
-      "move_device",
-      "id device-1",
-      "id chain-1",
-      0,
-    );
-
-    expect(result).toStrictEqual({
-      id: "new-rack",
-      type: "audio-effect-rack",
-      deviceCount: 2,
-    });
-  });
-
   describe("instrument wrapping", () => {
     beforeEach(() => {
       // Instrument devices
@@ -160,9 +140,14 @@ describe("updateDevice - wrapInRack", () => {
       // live_set for move/create/delete operations, plus the temp track it
       // creates for instrument wrapping
       liveSet = registerTempTrackMocks();
-
-      // Register chains (paths match ${rack.path} chains ${i})
-      registerRackChains(2);
+      registerTrackingChain(liveSet);
+      followMoves(liveSet, track0, undefined, [
+        "device-0",
+        "device-1",
+        "device-2",
+        "device-3",
+        "device-4",
+      ]);
     });
 
     it("should wrap a single instrument in an Instrument Rack", () => {
@@ -202,32 +187,35 @@ describe("updateDevice - wrapInRack", () => {
       });
     });
 
-    it("should wrap multiple instruments into rack with multiple chains", () => {
-      const result = updateDevice({
-        path: "t0/d3,t0/d4",
-        wrapInRack: true,
-      });
+    it("should report the new rack's path in the result", () => {
+      // A distinct path stands in for where the rack lands, since the original
+      // device's own path is still registered and mustn't be displaced by it.
+      registerMockObject("new-rack", { path: livePath.track(0).device(9) });
 
-      // Should create Instrument Rack
-      expect(track0.call).toHaveBeenCalledWith(
+      const result = updateDevice({ path: "t0/d3", wrapInRack: true });
+
+      expect((result as Record<string, unknown>).path).toBe("t0/d9");
+    });
+
+    it("should refuse to wrap more than one instrument, before staging anything", () => {
+      // Live allows only one instrument per track, so a second move_device onto
+      // the staging track would silently no-op — refuse up front instead.
+      expect(() =>
+        updateDevice({
+          path: "t0/d3,t0/d4",
+          wrapInRack: true,
+        }),
+      ).toThrow(
+        'wrapInRack can wrap only one instrument at a time; 2 named: path "t0/d3", path "t0/d4"',
+      );
+
+      // Nothing should have been staged or created.
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_midi_track", -1);
+      expect(track0.call).not.toHaveBeenCalledWith(
         "insert_device",
-        "Instrument Rack",
-        3,
+        expect.anything(),
+        expect.anything(),
       );
-
-      // One chain is inserted per instrument (the reverse loop runs exactly
-      // deviceCount times) — a bound-off mutant makes too few or too many.
-      const insertChainCalls = newRack.call.mock.calls.filter(
-        (c: unknown[]) => c[0] === "insert_chain",
-      );
-
-      expect(insertChainCalls).toHaveLength(2);
-
-      expect(result).toStrictEqual({
-        id: "new-rack",
-        type: "instrument-rack",
-        deviceCount: 2,
-      });
     });
 
     it("should set rack name for instrument rack", () => {
@@ -245,7 +233,7 @@ describe("updateDevice - wrapInRack", () => {
       expect(r.type).toBe("instrument-rack");
     });
 
-    it("should warn and return null when toPath container does not exist for instrument wrap", () => {
+    it("refuses an instrument wrap whose toPath container is not there", () => {
       mockNonExistentObjects();
 
       // Re-register the instrument device so it can be resolved
@@ -255,16 +243,10 @@ describe("updateDevice - wrapInRack", () => {
       });
       const liveSetMock = registerTempTrackMocks();
 
-      const result = updateDevice({
-        path: "t0/d3",
-        wrapInRack: true,
-        toPath: "t99",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "wrapInRack: target container does not exist",
-      );
-      expect(result).toBeNull();
+      expect(() =>
+        updateDevice({ path: "t0/d3", wrapInRack: true, toPath: "t99" }),
+      ).toThrow('nothing at toPath "t99"');
+      expect(capturedWarnings()).toStrictEqual([]);
       // The check runs before anything is staged, so no temp track is made.
       expect(liveSetMock.call).not.toHaveBeenCalledWith(
         "create_midi_track",
@@ -272,7 +254,7 @@ describe("updateDevice - wrapInRack", () => {
       );
     });
 
-    it("should warn and return null for a toPath that won't resolve", () => {
+    it("refuses an instrument wrap for a toPath that won't resolve", () => {
       // Same as the effect wrap, but this branch stages instruments on a temp
       // track — so the bad toPath has to stop it before anything moves.
       mockNonExistentObjects();
@@ -280,16 +262,11 @@ describe("updateDevice - wrapInRack", () => {
       registerMockObject("track-0", { path: livePath.track(0) });
 
       const liveSetMock = registerTempTrackMocks();
-      const result = updateDevice({
-        path: "t0/d3",
-        wrapInRack: true,
-        toPath: "garbage",
-      });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("wrapInRack: invalid toPath"),
-      );
-      expect(result).toBeNull();
+      expect(() =>
+        updateDevice({ path: "t0/d3", wrapInRack: true, toPath: "garbage" }),
+      ).toThrow("invalid toPath");
+      expect(capturedWarnings()).toStrictEqual([]);
       expect(liveSetMock.call).not.toHaveBeenCalledWith(
         "create_midi_track",
         -1,
@@ -317,44 +294,22 @@ describe("updateDevice - wrapInRack", () => {
       );
     });
 
-    it("should restore stranded instruments to the source before deleting the temp track on failure", () => {
+    it("should restore the staged instrument to the source before deleting the temp track on failure", () => {
       // insert_device throws after the instrument is staged on the temp track
       track0 = registerThrowingTrack0();
 
-      liveSet = registerTempTrackMocks();
+      expect(() => updateDevice({ path: "t0/d3", wrapInRack: true })).toThrow(
+        INSERT_DEVICE_FAILURE,
+      );
 
-      // Temp track now holds the staged instrument (one device in slot 0)
-      registerMockObject("temp-track", {
-        path: livePath.track(1),
-        properties: { devices: children("device-3-on-temp") },
-      });
-      registerMockObject("device-3-on-temp", {
-        path: livePath.track(1).device(0),
-        type: "RackDevice",
-        properties: { type: 1 },
-      });
-
-      expect(() =>
-        updateDevice({
-          path: "t0/d3",
-          wrapInRack: true,
-        }),
-      ).toThrow(INSERT_DEVICE_FAILURE);
-
-      // The stranded instrument is moved back to its original container
-      // (track 0, position 3) rather than being deleted with the temp track
+      // Moved back to track 0, slot 3, rather than deleted with the temp track
       expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
-        "id device-3-on-temp",
+        "id device-3",
         "id track-0",
         3,
       );
-
-      // And the temp track is still cleaned up afterward
-      expect(liveSet.call).toHaveBeenCalledWith(
-        "delete_track",
-        expect.any(Number),
-      );
+      expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
     });
 
     it("should cleanup temp track when instrument wrap throws and cleanup also fails", () => {
@@ -385,9 +340,8 @@ describe("updateDevice - wrapInRack", () => {
       ).toThrow(INSERT_DEVICE_FAILURE);
     });
 
-    it("defaults the instrument-rack insert position to 0 for an append toPath", () => {
-      // toPath "t2" is a track (append), so resolveInsertionPath returns a null
-      // position and insert_device falls back to 0.
+    it("appends the instrument rack for a toPath with no index", () => {
+      // toPath "t2" names no index, so the rack goes on the end, like a move.
       const destTrack = registerMockObject("dest-track", {
         path: livePath.track(2),
         methods: { insert_device: () => ["id", "new-rack"] },
@@ -402,67 +356,113 @@ describe("updateDevice - wrapInRack", () => {
       expect(destTrack.call).toHaveBeenCalledWith(
         "insert_device",
         "Instrument Rack",
-        0,
       );
       expect((result as Record<string, unknown>).id).toBe("new-rack");
     });
 
-    it("stops restoring stranded instruments when a temp-track slot is empty", () => {
-      // With unregistered objects non-existent, the temp track reports a device
-      // but its slot 0 resolves to nothing, so the restore loop breaks at once.
-      mockNonExistentObjects();
-      registerInstrumentDevice("device-3", 3);
+    it("keeps the temp track when the instrument can't go back", () => {
       registerThrowingTrack0();
-      liveSet = registerTempTrackMocks();
-      registerMockObject("temp-track", {
-        path: livePath.track(1),
-        properties: { devices: children("phantom-device") },
-      });
+      // Live ignores the move back to track 0.
+      liveSet = registerTempTrackMocks((_id, to) => to === "id track-0");
 
       expect(() => updateDevice({ path: "t0/d3", wrapInRack: true })).toThrow(
-        INSERT_DEVICE_FAILURE,
+        `${INSERT_DEVICE_FAILURE}; the instrument was left on new track t1`,
       );
-
-      // The temp track is still cleaned up after the (no-op) restore.
-      expect(liveSet.call).toHaveBeenCalledWith(
-        "delete_track",
-        expect.any(Number),
-      );
+      expect(liveSet.call).not.toHaveBeenCalledWith("delete_track", 1);
     });
   });
 
-  it("should warn and return null when mixing MIDI and Audio effects", () => {
-    const result = updateDevice({
-      path: "t0/d0,t0/d2",
-      wrapInRack: true,
-    });
-
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: cannot mix MIDI and Audio effects in one rack",
+  it("refuses a wrap mixing MIDI and audio effects", () => {
+    expect(() =>
+      updateDevice({ path: "t0/d0,t0/d2", wrapInRack: true }),
+    ).toThrow(
+      "wrapInRack cannot mix MIDI and audio effects in one rack without an instrument",
     );
-    expect(result).toBeNull();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should place rack at toPath when provided", () => {
+  it("refuses update args a wrap would ignore, before touching anything", () => {
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        wrapInRack: true,
+        name: "Rack",
+        toPath: "t0/d0",
+        params: [{ name: "Gain", value: "1" }],
+        macroCount: 4,
+        color: "#FF0000",
+        mute: false,
+      }),
+    ).toThrow(
+      "wrapInRack cannot be used with params, macroCount, mute, color: wrap first, then update in another call",
+    );
+    expect(track0.call).not.toHaveBeenCalledWith(
+      "insert_device",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("refuses a wrap's ignored args before checking them on their own", () => {
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, sendGainDb: -3 }),
+    ).toThrow("wrapInRack cannot be used with sendGainDb");
+  });
+
+  it("wraps anyway when the other args set nothing", () => {
+    const result = updateDevice({
+      path: "t0/d0",
+      wrapInRack: true,
+      force: false,
+      params: [],
+      actions: [],
+      sends: [],
+    });
+
+    expect(track0.call).toHaveBeenCalledWith(
+      "insert_device",
+      "Audio Effect Rack",
+      0,
+    );
+    expect(result).toStrictEqual({
+      id: "new-rack",
+      type: "audio-effect-rack",
+      deviceCount: 1,
+    });
+  });
+
+  it.each(["t1", "t1/d+"])(
+    "appends the rack to the toPath %s, which names no index",
+    (toPath) => {
+      const track1 = registerMockObject("track-1", {
+        path: livePath.track(1),
+        methods: { insert_device: () => ["id", "new-rack"] },
+      });
+
+      const result = updateDevice({ path: "t0/d0", wrapInRack: true, toPath });
+
+      // No index means append; index 0 would put the rack first
+      expect(track1.call).toHaveBeenCalledWith(
+        "insert_device",
+        "Audio Effect Rack",
+      );
+      expect((result as Record<string, unknown>).id).toBe("new-rack");
+    },
+  );
+
+  it("inserts the rack at the index a toPath names", () => {
     const track1 = registerMockObject("track-1", {
       path: livePath.track(1),
       methods: { insert_device: () => ["id", "new-rack"] },
     });
 
-    const result = updateDevice({
-      path: "t0/d0",
-      wrapInRack: true,
-      toPath: "t1",
-    });
+    updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t1/d1" });
 
-    // Should create rack on track 1, not track 0
     expect(track1.call).toHaveBeenCalledWith(
       "insert_device",
       "Audio Effect Rack",
-      expect.any(Number),
+      1,
     );
-
-    expect((result as Record<string, unknown>).id).toBe("new-rack");
   });
 
   it("should set rack name when provided", () => {
@@ -494,90 +494,62 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should warn and return null when no devices found", () => {
+  // Nothing was wrapped, so there is no rack entry to carry why.
+  it.each([
+    ["nonexistent id", { id: "nonexistent" }, 'no device at "nonexistent"'],
+    ["missing container", { path: "t99/d0" }, 'no device at "t99/d0"'],
+    [
+      "c+ path",
+      { path: "t0/d0/c+" },
+      'invalid path "t0/d0/c+" - "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    ],
+    // No rack at t0/d0, so the pad names nothing.
+    [
+      "unresolvable drum-pad container",
+      { path: "t0/d0/pC1/d0" },
+      'no device at "t0/d0/pC1/d0"',
+    ],
+  ])("should refuse a wrap of a %s", (_label, args, reason) => {
     mockNonExistentObjects();
 
-    const result = updateDevice({
-      id: "nonexistent",
-      wrapInRack: true,
-    });
-
-    // The unresolved id is reported, then the empty set aborts the wrap.
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: device not found at "nonexistent"',
+    expect(() => updateDevice({ ...args, wrapInRack: true })).toThrow(
+      `wrapInRack found no devices to wrap: ${reason}`,
     );
-    expect(capturedWarnings()).toContain("wrapInRack: no devices found");
-    expect(result).toBeNull();
   });
 
-  it("should warn and return null when the device path's container is missing", () => {
+  it("refuses a wrap whose toPath container is not there", () => {
     mockNonExistentObjects();
 
-    const result = updateDevice({ path: "t99/d0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: device not found at "t99/d0"',
-    );
-    expect(result).toBeNull();
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t99" }),
+    ).toThrow('nothing at toPath "t99"');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should warn and return null when a drum-pad container can't be resolved", () => {
-    // "pC1" under a device that is not a Drum Rack: resolveContainer yields
-    // null, which is a different miss from the device simply not existing.
+  it("should refuse a wrap for a path that won't resolve", () => {
     mockNonExistentObjects();
 
-    const result = updateDevice({ path: "t0/d0/pC1/d0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: device not found at "t0/d0/pC1/d0"',
+    expect(() =>
+      updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true }),
+    ).toThrow(
+      'wrapInRack found no devices to wrap: no device at "t0/d0/c0/d0"',
     );
-    expect(result).toBeNull();
   });
 
-  it("should warn and return null when toPath container does not exist", () => {
-    mockNonExistentObjects();
-
-    const result = updateDevice({
-      path: "t0/d0",
-      wrapInRack: true,
-      toPath: "t99",
-    });
-
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: target container does not exist",
-    );
-    expect(result).toBeNull();
-  });
-
-  it("should warn and return null for a path that won't resolve", () => {
-    // The device the caller named, not the destination: it drops out with a
-    // warning like any other device that can't be found, rather than throwing.
-    mockNonExistentObjects();
-
-    const result = updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("wrapInRack: Device at path"),
-    );
-    expect(result).toBeNull();
-  });
-
-  // The sibling move warn-skips every one of these toPaths
-  // (update-device-move.test.ts), so a wrap must not throw the call away.
+  // A wrap makes one rack, so a toPath naming nowhere to put it leaves nothing
+  // to report on — unlike the sibling move, which skips and carries on.
   it.each([
     ["t99/d0/c0", 'Track in path "t99/d0/c0" does not exist'],
     ["t0/d5/c0", 'Device in path "t0/d5/c0" does not exist'],
     ["garbage", "invalid toPath"],
     ["t0/d0/c0", 'Device at path "t0/d0/c0" does not support chains'],
-  ])("should warn and return null for the toPath %s", (toPath, reason) => {
+  ])("refuses the wrap for the toPath %s", (toPath, reason) => {
     mockNonExistentObjects();
 
-    const result = updateDevice({ id: "device-0", wrapInRack: true, toPath });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`wrapInRack: ${reason}`),
-    );
-    expect(result).toBeNull();
+    expect(() =>
+      updateDevice({ id: "device-0", wrapInRack: true, toPath }),
+    ).toThrow(reason);
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(track0.call).not.toHaveBeenCalledWith(
       "insert_device",
       expect.anything(),
@@ -585,56 +557,53 @@ describe("updateDevice - wrapInRack", () => {
     );
   });
 
-  it("should warn and return null when device type is unrecognized", () => {
+  it("refuses a wrap of a device that is no kind of effect", () => {
     registerMockObject("device-0", {
       path: livePath.track(0).device(0),
       type: "Device",
       properties: { type: 0 },
     });
 
-    const result = updateDevice({
-      path: "t0/d0",
-      wrapInRack: true,
-    });
-
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: no valid effect devices found",
+    expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
+      "wrapInRack found no effect devices to wrap",
     );
-    expect(result).toBeNull();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should warn and skip the Producer Pal device", () => {
+  it("should refuse a wrap of the Producer Pal device", () => {
     registerMockObject("this_device", { path: livePath.track(0).device(0) });
 
-    const result = updateDevice({ id: "device-0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: cannot wrap the Producer Pal device t0/d0 (id device-0), skipping",
+    expect(() => updateDevice({ id: "device-0", wrapInRack: true })).toThrow(
+      "wrapInRack found no devices to wrap: the Producer Pal device " +
+        "t0/d0 (id device-0) cannot be wrapped",
     );
-    expect(capturedWarnings()).toContain("wrapInRack: no devices found");
-    expect(result).toBeNull();
   });
 
-  it("should warn and return null when an id resolves to a non-device object", () => {
+  it("should refuse a wrap when an id resolves to a non-device object", () => {
     // The object exists but its type doesn't end in "Device" (e.g. a Chain),
-    // so resolveDevices warns "is not a device" and skips it -> no devices.
-    registerMockObject("not-a-device", {
-      path: "some/path",
-      type: "Chain",
-    });
+    // so there is nothing to wrap.
+    registerMockObject("not-a-device", { path: "some/path", type: "Chain" });
 
-    const result = updateDevice({
-      id: "not-a-device",
-      wrapInRack: true,
-    });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: "not-a-device" is not a device (type: Chain)',
+    expect(() =>
+      updateDevice({ id: "not-a-device", wrapInRack: true }),
+    ).toThrow(
+      'wrapInRack found no devices to wrap: "not-a-device" is a chain, not a device',
     );
-    expect(result).toBeNull();
   });
 
-  it("should warn but continue when insert_chain fails", () => {
+  it("says on the rack's entry which devices did not make it in", () => {
+    registerMockObject("not-a-device", { path: "some/path", type: "Chain" });
+
+    expect(
+      updateDevice({ path: "t0/d0", id: "not-a-device", wrapInRack: true }),
+    ).toStrictEqual(
+      expect.objectContaining({
+        detail: '"not-a-device" is a chain, not a device',
+      }),
+    );
+  });
+
+  it("says on the rack's entry when Live makes no chain for a device", () => {
     // Override rack to have no pre-existing chains and fail on insert_chain
     newRack.get.mockImplementation((prop: string) => {
       if (prop === "chains") {
@@ -656,20 +625,20 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
-    // The failed chain insertion is reported (1/1), but the wrap continues.
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: failed to create chain 1/1",
-    );
-
-    // Result contains rack info even if chain creation failed
+    // deviceCount is read back from the rack's actual chains, not echoed from
+    // the input — since the chain was never created, it reports 0, not 1.
+    // The device that had nowhere to go says so on the rack's entry.
     expect(result).toStrictEqual({
-      deviceCount: 1,
+      deviceCount: 0,
       id: "new-rack",
       type: "audio-effect-rack",
+      detail:
+        'path "t0/d0" stayed put: Live made no chain for it; the new rack was left empty',
     });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should warn but continue when insert_chain returns a non-id array", () => {
+  it("treats a non-id insert_chain answer as no chain made", () => {
     // A returned array whose first element isn't "id" also counts as a failure.
     newRack.get.mockImplementation((prop: string) =>
       prop === "chains" ? [] : [0],
@@ -680,33 +649,27 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
 
-    // A returned array whose head isn't "id" is treated as a failure and warned.
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: failed to create chain 1/1",
-    );
-
+    // Read back, not echoed: the chain was never created, so this reports 0.
     expect(result).toStrictEqual({
-      deviceCount: 1,
+      deviceCount: 0,
       id: "new-rack",
       type: "audio-effect-rack",
+      detail:
+        'path "t0/d0" stayed put: Live made no chain for it; the new rack was left empty',
     });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should return null for a path that resolves to a container, not a device", () => {
-    // "t0" (no device index) resolves to the track container itself; a Track is
-    // not a device, so there is nothing to wrap.
-    expect(updateDevice({ path: "t0", wrapInRack: true })).toBeNull();
+  it("should refuse a path that resolves to a container, not a device", () => {
+    expect(() => updateDevice({ path: "t0", wrapInRack: true })).toThrow(
+      'invalid path "t0" - a track is not a device',
+    );
   });
 
   it("should create a chain when the rack starts with none", () => {
-    // Rack with no pre-existing chains; insert_chain succeeds with a valid id.
-    newRack.get.mockImplementation((prop: string) =>
-      prop === "chains" ? [] : [0],
-    );
-    newRack.call.mockImplementation((method: string) =>
-      method === "insert_chain" ? ["id", "new-chain"] : null,
-    );
-
+    // Rack with no pre-existing chains; insert_chain succeeds and the rack's
+    // chain list grows, so the deviceCount read-back sees it.
+    newRack = registerGrowingChainRack(0);
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
 
     expect(result).toStrictEqual({
@@ -721,7 +684,7 @@ describe("updateDevice - wrapInRack", () => {
     const oddDevice = registerMockObject("odd-device", {
       path: "live_set tracks 5",
       type: "Device",
-      properties: { type: 2 },
+      properties: { type: 2, devices: children("odd-device") },
       methods: { insert_device: () => ["id", "new-rack"] },
     });
 

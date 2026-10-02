@@ -29,13 +29,17 @@ export const READ_ERROR_MESSAGE = "Couldn't read that file";
 export const NOT_MARKDOWN_MESSAGE = "Not a markdown file";
 
 /**
- * Download a string as a file via a transient object-URL anchor. Mirrors the
- * conversation exporter's Blob → anchor → revoke pattern.
+ * Download a string as a file via a transient object-URL anchor.
  * @param filename - Suggested download filename
  * @param content - File body
+ * @param type - MIME type for the blob
  */
-export function downloadTextFile(filename: string, content: string): void {
-  const blob = new Blob([content], { type: "text/markdown" });
+export function downloadTextFile(
+  filename: string,
+  content: string,
+  type = "text/markdown",
+): void {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
 

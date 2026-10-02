@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -19,6 +20,9 @@ export {
 export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
 
 export const CONTEXT_DOCS_URL = "https://producer-pal.org/guide/context";
+
+export const REMOTE_SCRIPT_DOCS_URL =
+  "https://producer-pal.org/guide/remote-script";
 
 const ALL_MODELS = [
   ...ANTHROPIC_MODELS,

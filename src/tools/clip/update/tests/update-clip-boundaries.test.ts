@@ -72,7 +72,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
-  it("should warn when firstStart provided for non-looping clips", async () => {
+  it("reports firstStart on a non-looping clip's own entry", async () => {
     setupMidiClipMock(mocks.clip123, {
       looping: 0,
     });
@@ -85,11 +85,12 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(capturedWarnings()).toContain(
-      "firstStart parameter ignored for non-looping clip t0/s0 (id 123)",
-    );
-
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).toHaveLength(0);
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: "firstStart ignored: the clip is not looping",
+    });
   });
 
   it("should set end_marker for non-looping clips", async () => {
@@ -149,40 +150,31 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 });
 
-describe("updateClip - derived start warning (MIDI vs audio)", () => {
+// `length` with no `start` holds an unlooped clip's end and moves its start.
+// That is what the param means here, so a call that only changes the length
+// answers with a plain entry.
+describe("updateClip - length alone on a non-looping clip", () => {
   let mocks: UpdateClipMocks;
 
   beforeEach(() => {
     mocks = setupUpdateClipMocks();
-  });
-
-  it("emits warning for non-looping MIDI clip with mismatched derived start", async () => {
-    setupMidiClipMock(mocks.clip123, {
-      looping: 0,
-      start_marker: 0,
-      end_marker: 4,
-      length: 5, // derived start = 4 - 5 = -1 !== 0
-    });
-
-    await updateClip({ id: "123", length: "4bar" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("derived start"),
-    );
-  });
-
-  it("does NOT emit warning for non-looping audio clip with mismatched derived start", async () => {
     clearCapturedWarnings();
-
-    setupAudioClipMock(mocks.clip123, {
-      looping: 0,
-      start_marker: 0,
-      end_marker: 0.131,
-      length: 0.262, // derived start = 0.131 - 0.262 = -0.131 !== 0
-    });
-
-    await updateClip({ id: "123", length: "1bar" });
-
-    expect(capturedWarnings()).toHaveLength(0);
   });
+
+  it.each([
+    ["MIDI", setupMidiClipMock, { end_marker: 4, length: 5 }, "4bar"],
+    ["audio", setupAudioClipMock, { end_marker: 0.131, length: 0.262 }, "1bar"],
+  ])(
+    "says nothing about the start it derived on a %s clip",
+    async (_kind, setupMock, props, length) => {
+      setupMock(mocks.clip123, { looping: 0, start_marker: 0, ...props });
+
+      const result = (await updateClip({ id: "123", length })) as {
+        detail?: string;
+      };
+
+      expect(result.detail).toBeUndefined();
+      expect(capturedWarnings()).toHaveLength(0);
+    },
+  );
 });

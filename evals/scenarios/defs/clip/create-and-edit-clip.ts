@@ -8,12 +8,15 @@
  */
 
 import { getToolCalls } from "../../assertions/index.ts";
+import { requireToolCall } from "./helpers/clip-turn-readers.ts";
 import { type EvalScenario } from "../../types.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const SIXTEENTH_GRIDS = new Set(["1/16", "n/16"]);
 
 export const createAndEditClip: EvalScenario = {
   id: "create-and-edit-clip",
+  tags: ["clips"],
   description: "Create a drum clip, add notes, and quantize",
   kind: "regression",
   liveSet: "basic-midi-4-track",
@@ -35,22 +38,21 @@ export const createAndEditClip: EvalScenario = {
     // Turn 1: Clip creation
     { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
 
-    // Verify notes use bar|beat notation (regression test)
+    // Verify notes use bar|beat notation (regression test). Writing them with
+    // a follow-up update-clip on an empty new clip is a valid way to get there.
     {
       type: "custom",
-      description: "ppal-create-clip uses bar|beat notation in notes",
+      description: "turn 1 writes its notes in bar|beat notation",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 1);
-        const createCall = calls.find((c) => c.name === "ppal-create-clip");
-
-        if (!createCall) {
-          throw new Error("ppal-create-clip not found");
-        }
-
-        const notes = createCall.args.notes;
+        const notes = getToolCalls(turns, 1)
+          .filter(
+            (c) => c.name === "ppal-create-clip" || c.name === TOOL_UPDATE_CLIP,
+          )
+          .map((c) => c.args.notes)
+          .find((n) => n != null);
 
         if (typeof notes !== "string") {
-          throw new Error("notes parameter missing or not a string");
+          throw new Error("no notes string written in turn 1");
         }
 
         if (!/\d+\|\d/.test(notes)) {
@@ -69,23 +71,33 @@ export const createAndEditClip: EvalScenario = {
     // Turn 3: Quantization
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },
 
-    // Verify quantize parameter is used
+    // Any of the three ways to quantize counts: `quantize`, `quantizeGrid`
+    // alone (full strength), or a `quant()` transform.
     {
       type: "custom",
-      description: "ppal-update-clip uses quantize parameter",
+      description: "ppal-update-clip quantizes to 1/16",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 3);
-        const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
+        const { args } = requireToolCall(turns, 3, TOOL_UPDATE_CLIP, "last");
+        const grid = args.quantizeGrid as string | undefined;
 
-        if (!updateCall) {
-          throw new Error("ppal-update-clip not found in turn 3");
+        if (args.quantize != null || grid != null) {
+          if (grid != null && !SIXTEENTH_GRIDS.has(grid)) {
+            throw new Error(`quantized to ${grid}, not 1/16`);
+          }
+
+          return true;
         }
 
-        if (updateCall.args.quantize == null) {
-          throw new Error("Missing quantize parameter");
+        const transforms = args.transforms;
+
+        if (
+          typeof transforms === "string" &&
+          /quant\(\s*n\/16\s*\)/.test(transforms)
+        ) {
+          return true;
         }
 
-        return true;
+        throw new Error("no quantize, quantizeGrid or quant(n/16) transform");
       },
     },
 

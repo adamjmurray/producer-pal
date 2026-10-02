@@ -11,13 +11,14 @@ import { argText } from "../../arg-text.ts";
 import { expect } from "vitest";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalScenario } from "../../../types.ts";
-import { assertNamesTarget } from "../../path/path-scenario-helpers.ts";
-import { assertNotesRead } from "../helpers/clip-scenario-helpers.ts";
+import { assertNamesTarget } from "../../path/path-assertions.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const swingAndQuantize: EvalScenario = {
   id: "swing-and-quantize",
+  tags: ["transforms"],
   description: "Apply swing and quantize to existing MIDI clips",
   kind: "capability",
   requires: { transforms: true },
@@ -78,7 +79,7 @@ export const swingAndQuantize: EvalScenario = {
         const getSwingAmount = (turn: number): number => {
           const calls = getToolCalls(turns, turn);
 
-          const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
+          const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
 
           const transforms = argText(updateCall?.args.transforms);
           const match = swingPattern.exec(transforms);

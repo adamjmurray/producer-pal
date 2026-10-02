@@ -19,6 +19,7 @@ import { MAX_SPAWNS } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   createConfig,
+  failingAfterStream,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
 import { type ChatMessage } from "#webui/chat/sdk/types";
@@ -73,17 +74,7 @@ export function blockedAfterStream(
   gate: Promise<void>,
   error: unknown,
 ): { stream: AsyncIterable<Record<string, unknown>> } {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) {
-      yield p;
-    }
-
-    await gate;
-
-    throw error;
-  }
-
-  return { stream: iterate() };
+  return failingAfterStream(parts, error, gate);
 }
 
 /**

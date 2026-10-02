@@ -3,10 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 
 /**
  * Result of probing a device for its Simpler sample state. Callers branch on
@@ -63,75 +62,69 @@ export function probeSimplerSample(
 }
 
 /**
- * Replace the sample on a Simpler device. Warns and skips for non-Simpler
- * devices and for Simpler in multi-sample mode.
+ * Replace the sample on a Simpler device. Refuses a non-Simpler device and a
+ * Simpler in multi-sample mode.
  * @param device - LiveAPI device object
  * @param filePath - Absolute file path to load
- * @returns True when the sample was loaded, false when the write was skipped
+ * @returns Why the write was refused, or null when the sample was loaded
  */
-export function setSimplerSample(device: LiveAPI, filePath: string): boolean {
+export function setSimplerSample(
+  device: LiveAPI,
+  filePath: string,
+): string | null {
   const trimmed = filePath.trim();
 
   if (trimmed.length === 0) {
-    console.warn(`'sample' requires a non-empty file path`);
-
-    return false;
+    return `'sample' requires a non-empty file path`;
   }
 
   if (!isAbsolutePath(trimmed)) {
-    console.warn(`'sample' must be an absolute file path (got "${trimmed}")`);
-
-    return false;
+    return `'sample' must be an absolute file path (got "${trimmed}")`;
   }
 
-  if (!isWritableSimpler(device, "sample")) {
-    return false;
+  const unwritable = unwritableSimplerReason(device, "sample");
+
+  if (unwritable != null) {
+    return unwritable;
   }
 
   if (!supportsReplaceSample()) {
-    console.warn(
-      `'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`,
-    );
-
-    return false;
+    return `'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`;
   }
 
   device.call("replace_sample", trimmed);
 
-  return true;
+  return null;
 }
 
 /**
- * Set the gain (in dB) of the loaded sample on a Simpler device. Warns and
- * skips for non-Simpler devices, multi-sample mode, no loaded sample, or a
- * non-numeric value. The dB→linear mapping mirrors the read side
- * (`liveGainToDb`).
+ * Set the gain (in dB) of the loaded sample on a Simpler device. Refuses a
+ * non-Simpler device, multi-sample mode, no loaded sample, or a non-numeric
+ * value. The dB→linear mapping mirrors the read side (`liveGainToDb`).
  * @param device - LiveAPI device object
  * @param dB - Gain in decibels
- * @returns True when the gain was written, false when the write was skipped
+ * @returns Why the write was refused, or null when the gain was written
  */
-export function setSimplerGain(device: LiveAPI, dB: number): boolean {
+export function setSimplerGain(device: LiveAPI, dB: number): string | null {
   if (!Number.isFinite(dB)) {
-    console.warn(`'gainDb' must be a number (got "${dB}")`);
-
-    return false;
+    return `'gainDb' must be a number (got "${dB}")`;
   }
 
-  if (!isWritableSimpler(device, "gainDb")) {
-    return false;
+  const unwritable = unwritableSimplerReason(device, "gainDb");
+
+  if (unwritable != null) {
+    return unwritable;
   }
 
   const sample = device.getChildAt("sample", 0);
 
   if (sample?.getProperty("file_path") == null) {
-    console.warn(`'gainDb' requires a loaded sample`);
-
-    return false;
+    return `'gainDb' requires a loaded sample`;
   }
 
   sample.set("gain", dbToLiveGain(dB));
 
-  return true;
+  return null;
 }
 
 /**
@@ -170,30 +163,26 @@ function supportsReplaceSample(): boolean {
 }
 
 /**
- * Guard a Simpler single-sample write. Warns and returns false unless the
- * device is a Simpler in single-sample mode.
+ * Guard a Simpler single-sample write.
  * @param device - LiveAPI device object
- * @param param - Pseudo-param name for warning text (e.g. "sample", "gainDb")
- * @returns True when the device accepts single-sample writes
+ * @param param - Pseudo-param name for the reason text (e.g. "sample", "gainDb")
+ * @returns Why the device won't take the write, or null when it will
  */
-function isWritableSimpler(device: LiveAPI, param: string): boolean {
+function unwritableSimplerReason(
+  device: LiveAPI,
+  param: string,
+): string | null {
   const displayName = device.getProperty("class_display_name") as string;
 
   if (displayName !== DEVICE_CLASS.SIMPLER) {
-    console.warn(
-      `'${param}' only applies to Simpler devices (got ${displayName})`,
-    );
-
-    return false;
+    return `'${param}' only applies to Simpler devices (got ${displayName})`;
   }
 
   if ((device.getProperty("multi_sample_mode") as number) > 0) {
-    console.warn(`'${param}' is not supported on Simpler in multi-sample mode`);
-
-    return false;
+    return `'${param}' is not supported on Simpler in multi-sample mode`;
   }
 
-  return true;
+  return null;
 }
 
 /**

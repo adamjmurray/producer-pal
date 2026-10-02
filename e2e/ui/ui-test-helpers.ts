@@ -125,6 +125,32 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
+  // The rest of the context editor's endpoints. Nothing on the chat screen
+  // fetches these; they only fire once the context overlay mounts ContextTabs,
+  // which mounts every tab's hook at once. Empty payloads are enough — the
+  // editor's own behavior is covered by the /context suite.
+  await page.route("**/global-context", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ content: "" }),
+    }),
+  );
+  await page.route("**/skill-overrides", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ slots: [] }),
+    }),
+  );
+  await page.route("**/memory", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ entries: [] }),
+    }),
+  );
+
   // Update check (useUpdateCheck) — the server's cached answer, not GitHub. A
   // literal `null` body means "up to date", so no update link renders.
   await page.route("**/update", (route) =>

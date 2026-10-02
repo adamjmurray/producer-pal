@@ -126,68 +126,51 @@ interface AnthropicRequestBody {
 }
 
 /**
- * Custom fetch wrapper that rewrites the outgoing Anthropic Messages API request
- * body to (1) inject `display: "summarized"` for adaptive thinking and (2) add
- * prompt-caching breakpoints over the static prefix.
- *
- * Both are wire-level workarounds applied here rather than via AI SDK
- * providerOptions: the thinking `display` field isn't natively supported yet,
- * and placing `cache_control` precisely (system string, MCP-sourced tools,
- * generically-built messages) is far simpler on the final request than threading
- * it through the provider-agnostic message builder. Only Anthropic needs this —
- * OpenAI/Gemini/OpenRouter cache automatically and we never reorder their prefix.
- *
- * The body is only re-serialized when something actually changed, so requests
- * that need no transform pass through byte-for-byte.
- *
- * @param input - Fetch input (URL or Request)
- * @param init - Fetch init options
- * @returns Fetch response
+ * Rewrites the outgoing Anthropic request: `display: "summarized"` for adaptive
+ * thinking, and prompt-caching breakpoints over the static prefix. Both are
+ * wire-level because the AI SDK has no providerOptions for either — `display`
+ * isn't supported yet, and placing `cache_control` exactly is far simpler on
+ * the final request than through the provider-agnostic message builder.
  */
-export async function transformAnthropicRequest(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
-  if (init?.body && typeof init.body === "string") {
-    try {
-      const body = JSON.parse(init.body) as AnthropicRequestBody;
-      let modified = false;
+export const transformAnthropicRequest: RewritingFetch = rewritingFetch(
+  (body) => applyAnthropicRewrites(body as AnthropicRequestBody),
+);
 
-      if (body.thinking?.type === "adaptive" && !body.thinking.display) {
-        // "summarized" returns a human-readable summary of the thinking, but the
-        // block's signature still covers the full underlying reasoning. The
-        // signature — not the visible summary text — is Anthropic's source of
-        // truth, so replaying a captured summarized block verbatim with its
-        // original signature on later turns is supported (see build-model-messages
-        // buildAssistantContent, which re-emits the signed block as-is).
-        body.thinking.display = "summarized";
-        modified = true;
-      }
+/**
+ * Apply the Anthropic wire-level rewrites to a parsed request body.
+ * @param body - Parsed Anthropic request body (mutated in place)
+ * @returns True when anything changed
+ */
+function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
+  let modified = false;
 
-      if (shouldForceThinkingDisabled(body)) {
-        // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
-        // runs adaptive thinking. The app omits `thinking` only for the "Off"
-        // level, and the @ai-sdk/anthropic provider drops a providerOptions
-        // `{type:"disabled"}` before it reaches the wire, so make the choice
-        // explicit here to honor "Off". Legacy (Haiku) and always-on (Fable /
-        // Mythos, which 400 on disabled) models keep the omitted-thinking body.
-        body.thinking = { type: "disabled" };
-        modified = true;
-      }
-
-      if (addCacheControl(body)) {
-        modified = true;
-      }
-
-      if (modified) {
-        init = { ...init, body: JSON.stringify(body) };
-      }
-    } catch {
-      // Not JSON — pass through unchanged
-    }
+  if (body.thinking?.type === "adaptive" && !body.thinking.display) {
+    // "summarized" returns a human-readable summary of the thinking, but the
+    // block's signature still covers the full underlying reasoning. The
+    // signature — not the visible summary text — is Anthropic's source of
+    // truth, so replaying a captured summarized block verbatim with its
+    // original signature on later turns is supported (see build-model-messages
+    // buildAssistantContent, which re-emits the signed block as-is).
+    body.thinking.display = "summarized";
+    modified = true;
   }
 
-  return await fetch(input, init);
+  if (shouldForceThinkingDisabled(body)) {
+    // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
+    // runs adaptive thinking. The app omits `thinking` only for the "Off"
+    // level, and the @ai-sdk/anthropic provider drops a providerOptions
+    // `{type:"disabled"}` before it reaches the wire, so make the choice
+    // explicit here to honor "Off". Legacy (Haiku) and always-on (Fable /
+    // Mythos, which 400 on disabled) models keep the omitted-thinking body.
+    body.thinking = { type: "disabled" };
+    modified = true;
+  }
+
+  // Called before the OR, not inside it: the breakpoints go on every request,
+  // whether or not the thinking fields above changed.
+  const cached = addCacheControl(body);
+
+  return modified || cached;
 }
 
 /**
@@ -223,42 +206,43 @@ interface OpenRouterRequestBody {
 }
 
 /**
- * Custom fetch wrapper for the OpenRouter provider that injects `cache_control`
- * breakpoints for Anthropic and Gemini models. OpenRouter is a pass-through:
- * OpenAI/Grok/DeepSeek-family models cache automatically, but Anthropic and
- * Gemini require explicit breakpoints (the same as the direct Anthropic SDK
- * path) — without them, Claude/Gemini via OpenRouter get no prompt caching.
- *
- * Mirrors {@link transformAnthropicRequest}, but the body is OpenAI-chat-shaped
- * (a `messages` array with a `system`-role message; no separate `system`/`tools`
- * cache target), so breakpoints land on message content blocks. OpenRouter wants
- * `cache_control` inside content blocks; for Gemini only the LAST breakpoint is
- * honored (extra ones are safe), so the rolling tail covers the whole prefix.
- *
- * The body is only re-serialized when something changed, so non-Anthropic/Gemini
- * requests (and any that need no transform) pass through byte-for-byte.
- *
- * @param input - Fetch input (URL or Request)
- * @param init - Fetch init options
- * @returns Fetch response
+ * Rewrites the outgoing OpenRouter request with `cache_control` breakpoints for
+ * Anthropic and Gemini models, which don't cache without them. The body is
+ * OpenAI-chat-shaped, so breakpoints land inside message content blocks rather
+ * than on separate system/tools fields.
  */
-export async function transformOpenRouterRequest(
+export const transformOpenRouterRequest: RewritingFetch = rewritingFetch(
+  (body) => addOpenRouterCacheControl(body as OpenRouterRequestBody),
+);
+
+/** A fetch a provider can be handed in place of the global one. */
+type RewritingFetch = (
   input: RequestInfo | URL,
   init?: RequestInit,
-): Promise<Response> {
-  if (init?.body && typeof init.body === "string") {
-    try {
-      const body = JSON.parse(init.body) as OpenRouterRequestBody;
+) => Promise<Response>;
 
-      if (addOpenRouterCacheControl(body)) {
-        init = { ...init, body: JSON.stringify(body) };
+/**
+ * Build a fetch that rewrites the outgoing JSON body on its way out. A body
+ * that isn't JSON, or that `transform` leaves alone, goes out byte-for-byte.
+ * @param transform - Mutates the parsed body; returns true when it changed it
+ * @returns The fetch to hand the provider
+ */
+function rewritingFetch(transform: (body: unknown) => boolean): RewritingFetch {
+  return async (input, init) => {
+    if (init?.body && typeof init.body === "string") {
+      try {
+        const body: unknown = JSON.parse(init.body);
+
+        if (transform(body)) {
+          init = { ...init, body: JSON.stringify(body) };
+        }
+      } catch {
+        // Not JSON — pass through unchanged
       }
-    } catch {
-      // Not JSON — pass through unchanged
     }
-  }
 
-  return await fetch(input, init);
+    return await fetch(input, init);
+  };
 }
 
 /**
@@ -350,22 +334,15 @@ function ephemeral(): Record<string, unknown> {
  * static prefix (tools + system prompt + the ppal-connect skills blob) isn't
  * re-billed every turn. Two breakpoints, within Anthropic's limit of four:
  *
- * 1. Static head — on the system block. Anthropic renders `tools → system`, so a
- *    breakpoint here caches the tool definitions AND the system prompt together.
- *    Falls back to the last tool when there's no system prompt.
- * 2. Rolling tail — on the last content block of the last message. This caches
- *    the whole conversation prefix (including the ~9k-token ppal-connect skills
- *    result that lives in the message history) and grows incrementally each turn.
- *    It also degrades gracefully across compaction: the static head stays cached
- *    while only the tail re-caches from the new boundary forward.
+ * 1. Static head — on the system block. Anthropic renders `tools → system`, so
+ *    one breakpoint there covers both. Falls back to the last tool when there
+ *    is no system prompt.
+ * 2. Rolling tail — the last content block of the last message, which caches
+ *    the whole conversation prefix and grows each turn.
  *
- * Cross-turn note (adaptive thinking, the common case): the assistant turn that
- * calls a tool carries a signed thinking block. The SDK used to drop it on later
- * turns, diverging the prefix right after that turn so reads stopped at the
- * static head. That is now recovered: build-model-messages re-emits the signed
- * thinking block (gated on thinking being enabled), keeping the prefix byte-
- * stable so the rolling tail — including the ppal-connect skills blob — stays
- * cached. The head (tools + system) caches on every request regardless.
+ * The rolling tail only holds if the prefix stays byte-stable across turns,
+ * which is why build-model-messages re-emits the signed thinking block rather
+ * than dropping it. The head caches on every request regardless.
  *
  * @param body - Parsed Anthropic request body (mutated in place)
  * @returns True if any breakpoint was added

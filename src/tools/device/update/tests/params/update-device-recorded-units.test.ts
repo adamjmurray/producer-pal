@@ -4,15 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { readParameter } from "#src/tools/shared/device/helpers/param-reading.ts";
+import { knownParamUnit } from "#src/tools/shared/device/known-param-units.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   expectValueSet,
   livePath,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Some of Live's stock params display a bare number and nothing else, so what
 // they measure is recorded in known-param-units.ts. Glue Compressor is the
@@ -129,15 +132,17 @@ describe("updateDevice - recorded param units", () => {
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerRelease();
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Release", value: "50 %" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Release", value: "50 %" }],
+          }),
+        "Release",
+        'is measured in s, so "50 %" was not written',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('is measured in s, so "50 %" was not written'),
-      );
     });
   });
 
@@ -209,31 +214,33 @@ describe("updateDevice - recorded param units", () => {
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerFilterWidth();
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 Hz" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 Hz" }],
+          }),
+        "Filter Width",
+        'is measured in octaves, so "1.5 Hz" was not written',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          'is measured in octaves, so "1.5 Hz" was not written',
-        ),
-      );
     });
 
     it("refuses an unrecognized spelling", () => {
       const param = registerFilterWidth();
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 wobbles" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 wobbles" }],
+          }),
+        "Filter Width",
+        'could not interpret "1.5 wobbles"',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('could not interpret "1.5 wobbles"'),
-      );
     });
 
     // The range no longer matching drops the recorded entry (the range guard
@@ -243,15 +250,17 @@ describe("updateDevice - recorded param units", () => {
     it("refuses the recorded unit when the param's range no longer matches", () => {
       const param = registerBareParam("Erosion", "Filter Width", 0.1, 3);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Filter Width", value: "1.5 octaves" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Filter Width", value: "1.5 octaves" }],
+          }),
+        "Filter Width",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("never says what it measures"),
-      );
     });
   });
 
@@ -261,12 +270,17 @@ describe("updateDevice - recorded param units", () => {
   it("leaves a blend ratio unitless", () => {
     const param = registerBareParam("Hybrid Reverb", "Blend", 100, 0);
 
-    updateDevice({ id: "dev1", params: [{ name: "Blend", value: "50 %" }] });
+    expectParamRefused(
+      () =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Blend", value: "50 %" }],
+        }),
+      "Blend",
+      "never says what it measures",
+    );
 
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("never says what it measures"),
-    );
   });
 
   describe("the range guard", () => {
@@ -276,24 +290,159 @@ describe("updateDevice - recorded param units", () => {
     it("drops the entry when the param's range no longer matches", () => {
       const param = registerBareParam("Glue Compressor", "Attack", 0.01, 60);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Attack", value: "10 ms" }],
-      });
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Attack", value: "10 ms" }],
+          }),
+        "Attack",
+        "never says what it measures",
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("never says what it measures"),
-      );
     });
 
     it("leaves a param on another device alone", () => {
       const param = registerBareParam("Compressor", "Attack", 0.01, 30);
 
-      updateDevice({
-        id: "dev1",
-        params: [{ name: "Attack", value: "10 ms" }],
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "Attack", value: "10 ms" }],
+          }),
+        "Attack",
+        "never says what it measures",
+      );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+    });
+  });
+});
+
+// Analog's F1 Freq and F2 Freq read " 30", "173", "999", then "1.00k" ... "22.0k":
+// no "Hz" anywhere, and a bare k for thousands. Raw 0-1 maps to 30-22000 Hz
+// on a log scale.
+const MIN_HZ = 30;
+const MAX_HZ = 22000;
+
+function hzFor(raw: number): number {
+  return MIN_HZ * (MAX_HZ / MIN_HZ) ** raw;
+}
+
+function analogLabel(raw: unknown): string {
+  const hz = hzFor(Number(raw));
+
+  if (hz < 1000) {
+    return String(Math.round(hz)).padStart(3);
+  }
+
+  return hz < 10000
+    ? `${(hz / 1000).toFixed(2)}k`
+    : `${(hz / 1000).toFixed(1)}k`;
+}
+
+const analogProps = {
+  name: "F1 Freq",
+  original_name: "F1 Freq",
+  is_quantized: 0,
+  min: 0,
+  max: 1,
+};
+
+describe("Analog filter frequency", () => {
+  describe("recorded units", () => {
+    it("records both filters in Hz over 30-22000", () => {
+      for (const name of ["F1 Freq", "F2 Freq"]) {
+        expect(knownParamUnit("Analog", name, 30, 22000)?.unit).toBe("Hz");
+      }
+    });
+
+    it("drops the entry when the range differs", () => {
+      expect(knownParamUnit("Analog", "F1 Freq", 30, 22)).toBeNull();
+    });
+  });
+
+  describe("reading", () => {
+    it("reports a rising range in Hz", () => {
+      const path = `${livePath.track(0).device(0)} parameters 0`;
+
+      registerMockObject("param-1", {
+        path,
+        type: "DeviceParameter",
+        properties: {
+          ...analogProps,
+          is_enabled: 1,
+          state: 0,
+          automation_state: 0,
+          value: 1,
+        },
+        methods: { str_for_value: analogLabel },
       });
+
+      const result = readParameter(LiveAPI.from(path), "Analog");
+
+      // Before, "22.0k" read as 22, giving min 30 and max 22.
+      expect(result.min).toBe(30);
+      expect(result.max).toBe(22000);
+      expect(result.value).toBe(22000);
+      expect(result.unit).toBe("Hz");
+    });
+  });
+
+  describe("writing", () => {
+    function registerAnalog(deviceName = "Analog"): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: {
+          class_display_name: deviceName,
+          parameters: children("p1"),
+        },
+      });
+
+      return registerMockObject("p1", {
+        properties: { ...analogProps, value: 0 },
+        methods: { str_for_value: analogLabel },
+      });
+    }
+
+    function write(param: RegisteredMockObject, value: string): number {
+      param.set.mockClear();
+      updateDevice({ id: "dev1", params: [{ name: "F1 Freq", value }] });
+
+      return hzFor(expectValueSet(param));
+    }
+
+    it.each(["800", "800 Hz", "0.8 kHz", "0.8k", "0.8 K"])(
+      "lands '%s' on 800 Hz",
+      (value) => {
+        const param = registerAnalog();
+
+        expect(write(param, value)).toBeCloseTo(800, -1);
+      },
+    );
+
+    it("lands a value in the thousands", () => {
+      const param = registerAnalog();
+
+      expect(write(param, "5k")).toBeCloseTo(5000, -2);
+      expect(write(param, "12 kHz")).toBeCloseTo(12000, -2);
+    });
+
+    it("refuses a unit that isn't a frequency", () => {
+      const param = registerAnalog();
+
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "F1 Freq", value: "800 dB" }],
+          }),
+        "F1 Freq",
+        'is measured in Hz, so "800 dB" was not written',
+      );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     });

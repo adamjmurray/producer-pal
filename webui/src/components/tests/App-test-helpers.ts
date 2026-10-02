@@ -9,9 +9,10 @@ import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-t
 import { setStubLeaveGuard } from "./App-context-mocks";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
+import { createMockConversationsManager } from "#webui/test-utils/conversation-test-helpers";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
@@ -113,16 +114,9 @@ export function setupDefaultMocks(): void {
     checkMcpConnection: vi.fn(),
   });
   (useChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
-  (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
-    conversations: [],
-    activeConversationId: null,
-    saveCurrentConversation: vi.fn().mockResolvedValue(undefined),
-    switchConversation: vi.fn().mockResolvedValue(undefined),
-    startNewConversation: vi.fn().mockResolvedValue(undefined),
-    deleteConversation: vi.fn().mockResolvedValue(undefined),
-    renameConversation: vi.fn().mockResolvedValue(undefined),
-    toggleBookmark: vi.fn().mockResolvedValue(undefined),
-  });
+  (useConversations as ReturnType<typeof vi.fn>).mockReturnValue(
+    createMockConversationsManager(),
+  );
   (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
     viewState: {
       historyPanelOpen: false,

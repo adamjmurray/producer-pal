@@ -124,6 +124,14 @@ describe("ramp reach detection", () => {
     expect(warnings[0]).toContain("curve()");
   });
 
+  it("finds a ramp nested in another function's arguments", () => {
+    const { warnings } = reachWarnings(
+      "2|3-3|1: velocity = min(ramp(1, 127), 127)",
+    );
+
+    expect(warnings).toHaveLength(1);
+  });
+
   it("stays quiet for a non-ramp expression", () => {
     const { warnings } = reachWarnings("2|3-3|1: velocity = 64");
 
@@ -135,6 +143,31 @@ describe("ramp reach detection", () => {
     const { warnings } = reachWarnings("2|3-3|1: velocity = ramp(1, 127)", [
       {
         pitch: 68,
+        start_time: 6,
+        duration: 0.25,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+    ]);
+
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("stays quiet when the range has no span", () => {
+    // A range pinned to one instant (`2|3-2|3`) can match a chord, so two
+    // positions get through — but there is no span for a ramp to fall short of.
+    const { warnings } = reachWarnings("2|3-2|3: velocity = ramp(1, 127)", [
+      {
+        pitch: 60,
+        start_time: 6,
+        duration: 0.25,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+      {
+        pitch: 64,
         start_time: 6,
         duration: 0.25,
         velocity: 100,

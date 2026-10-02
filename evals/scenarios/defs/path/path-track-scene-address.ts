@@ -22,8 +22,8 @@ import { type EvalScenario } from "../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertCallResult, assertPathArg } from "./path-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
+import { assertCallResult, assertPathArg } from "./path-assertions.ts";
 
 const TOOL_READ_TRACK = "ppal-read-track";
 const TOOL_UPDATE_TRACK = "ppal-update-track";
@@ -41,6 +41,7 @@ function resultPath(result: Record<string, unknown>): string {
 
 export const pathTrackSceneAddress: EvalScenario = {
   id: "path-track-scene-address",
+  tags: ["paths"],
   description: "Reach a return track, the main track, and the end of the Set",
   kind: "capability",
   liveSet: "basic-midi-4-track",

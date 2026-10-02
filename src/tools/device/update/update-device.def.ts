@@ -6,13 +6,15 @@
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
-  description: "Update device(s), chain(s), or drum pad(s).",
+  description:
+    "Update device(s), chain(s), or drum pad(s). Params with no list form " +
+    "apply to every target.",
 
   annotations: {
     readOnlyHint: false,
@@ -27,38 +29,40 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
-        "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
+        "comma-separated path(s) (e.g., 't1/d0', 't1/inst', 't1/d0/c0', 't1/d0/pC1')",
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
-
     toPath: param(z.coerce.string().optional(), {
       default:
-        "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1'). To move a whole drum pad (chain trim, choke group and devices together), target the pad path (e.g. path 't0/d0/pC1', toPath 't0/d0/pD1') rather than its device; a pad move stays within one rack and layers onto an occupied destination rather than replacing it. Moving just a device carries its chain's trim only when the destination chain is empty and untouched, and warns otherwise",
+        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. To move a whole drum pad (trim, choke group, devices), target the pad path (path 't0/d0/pC1', toPath 't0/d0/pD1'); it stays in its rack and layers onto an occupied pad. A device moved alone keeps its chain's trim only into an empty, untouched chain",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per device, in order (not drum pads)",
+      default: "name, or comma-separated one per target (not drum pads)",
       smallModel: "display name (not drum pads)",
+    }),
+
+    // Needs the remote script, which small-model mode never uses.
+    preset: param(z.string().optional(), {
+      default:
+        "preset to load onto the device before the rest of the update (needs the Producer Pal remote script): a preset name, or a path from ppal-library; comma-separated one per target. A preset for another device, or a rack, replaces the device: its id changes and its automation is lost",
+      smallModel: null,
     }),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one — the response reports what each param reads as afterward. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
       // Simpler and Drum Rack pads, so the how has to ship with the promise.
       smallModel:
-        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number). A value snaps to the nearest one the param accepts; the response reports what it reads as. Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/sample'}",
+        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number). A value snaps to the nearest one the param accepts. Every param comes back as one entry: `{id, name}` when the value landed, the value it reads as when Live kept another, or `ok:false` and why nothing was written. Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/sample'}",
     }),
     // The escape hatch for the drum-pad instrument-swap guard
     // (nested-param-target.ts), and deliberately NOT taught in the skills: the
@@ -80,7 +84,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // a delimited string would be ambiguous. One action string per element.
     actions: param(z.array(z.string()).optional(), {
       default:
-        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)"',
+        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a `detail` when there was nothing to do, or `ok:false` and why nothing happened',
       smallModel: null,
     }),
     macroVariation: param(
@@ -97,7 +101,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
     macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
-      default: "Rack only: set visible macro count (0-16)",
+      default:
+        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up; the entry says where the count landed.",
       smallModel: null,
     }),
     abCompare: param(z.enum(["a", "b", "save"]).optional(), {
@@ -109,8 +114,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per chain, in order (chains only)",
+      default: "#RRGGBB, or comma-separated one per target (chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
     gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
@@ -131,7 +135,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     sendReturn: param(z.coerce.string().optional(), {
       default:
-        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"); requires sendGainDb',
+        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"), or comma-separated one per target; requires sendGainDb',
       smallModel: null,
     }),
     sends: param(sendsInputSchema, {
@@ -144,11 +148,13 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
     mappedPitch: param(z.string().optional(), {
-      default: "output MIDI note e.g. 'C3' (drum chains only)",
+      default:
+        "output MIDI note e.g. 'C3', or comma-separated one per target (drum chains only)",
       smallModel: null,
     }),
     wrapInRack: param(z.boolean().optional(), {
-      default: "Wrap device(s) in a new rack (auto-detects type from device)",
+      default:
+        "Wrap device(s) in a new rack (type auto-detected), in series in one chain: MIDI effects, instrument, audio effects, each kind in the order named. One instrument max; MIDI and audio effects together need an instrument",
       smallModel: null,
     }),
   },

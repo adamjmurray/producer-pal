@@ -10,6 +10,11 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  collectHiddenParams,
+  hiddenParamWarnings,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { toolDefCreateScene } from "../create-scene.def.ts";
 import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -46,6 +51,126 @@ describe("createScene by path", () => {
       path: "s2",
     });
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 2);
+  });
+
+  it("appends one scene per entry in a path list", () => {
+    expect(createScene({ path: "s+,s+", name: "Intro,Verse" })).toStrictEqual([
+      { id: "live_set/scenes/2", path: "s2" },
+      { id: "live_set/scenes/3", path: "s3" },
+    ]);
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 2);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", 3);
+  });
+
+  // The second entry names the same place as the first, and the first is
+  // already there by then, so it lands after it.
+  it("inserts two at one index in the order the list names them", () => {
+    expect(createScene({ path: "s0,s0" })).toStrictEqual([
+      { id: "live_set/scenes/0", path: "s0" },
+      { id: "live_set/scenes/1", path: "s1" },
+    ]);
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 0);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", 1);
+  });
+
+  // The gap is filled once, by the entry that reaches past the end; the second
+  // entry lands right after it with nothing left to fill.
+  it("fills the gap once for a path list past the end", () => {
+    for (let i = 4; i <= 6; i++) {
+      registerMockObject(`live_set/scenes/${i}`, { path: livePath.scene(i) });
+    }
+
+    expect(createScene({ path: "s5,s5" })).toStrictEqual([
+      // The gap filler is named too, so the call accounts for every scene it
+      // left behind.
+      { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+      { id: "live_set/scenes/6", path: "s6" },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledTimes(5);
+    expect(liveSet.call).toHaveBeenNthCalledWith(4, "create_scene", 5);
+    expect(liveSet.call).toHaveBeenNthCalledWith(5, "create_scene", 6);
+  });
+
+  describe("past the end", () => {
+    beforeEach(() => {
+      for (let i = 4; i <= 6; i++) {
+        registerMockObject(`live_set/scenes/${i}`, { path: livePath.scene(i) });
+      }
+    });
+
+    // s+ appends to the Set as it stands when it runs, after the scene the
+    // first entry padded out to.
+    it("appends s+ after an entry past the end", () => {
+      expect(createScene({ path: "s5,s+" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+        { id: "live_set/scenes/6", path: "s6" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 5],
+        ["create_scene", 6],
+      ]);
+    });
+
+    it("puts each entry at the index it names", () => {
+      expect(createScene({ path: "s5,s6" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+        { id: "live_set/scenes/6", path: "s6" },
+      ]);
+      expect(liveSet.call).toHaveBeenCalledTimes(5);
+    });
+
+    // The second insert goes in under the first, so the first ends up at s6.
+    it("puts each entry at the index it names in reverse order", () => {
+      expect(createScene({ path: "s6,s5" })).toStrictEqual([
+        { id: "live_set/scenes/5", path: "s6" },
+        { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 5],
+        ["create_scene", 5],
+      ]);
+    });
+
+    // The insert at s1 takes the place of one empty scene, so s5 stays at s5.
+    it("keeps an entry past the end in place around an insert inside", () => {
+      expect(createScene({ path: "s5,s1" })).toStrictEqual([
+        { id: "live_set/scenes/4", path: "s5", created: "s3-s4" },
+        { id: "live_set/scenes/1", path: "s1" },
+      ]);
+      expect(liveSet.call.mock.calls).toStrictEqual([
+        ["create_scene", -1],
+        ["create_scene", -1],
+        ["create_scene", 4],
+        ["create_scene", 1],
+      ]);
+    });
+  });
+
+  it("refuses count sent with a path list", () => {
+    expect(() => createScene({ path: "s+,s+", count: 2 })).toThrow(
+      'count repeats one path, but path names 2. Drop count and let path name each scene (e.g. path: "s+,s+").',
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("still repeats a single path for count", () => {
+    expect(createScene({ path: "s+", count: 2 })).toStrictEqual([
+      { id: "live_set/scenes/2", path: "s2" },
+      { id: "live_set/scenes/3", path: "s3" },
+    ]);
+  });
+
+  it("pairs a name list with the path list", () => {
+    expect(() => createScene({ path: "s+,s+", name: "Intro" })).not.toThrow();
+    expect(() => createScene({ path: "s+,s+", name: "A,B,C" })).toThrow(
+      "path names 2 scenes but name names 3 entries",
+    );
   });
 
   it("refuses a path that names no place for a scene", () => {
@@ -131,6 +256,22 @@ describe("createScene by path", () => {
       );
     });
 
+    it("refuses a path list, since capture makes one scene", () => {
+      expect(() => createScene({ path: "s1,s2", capture: true })).toThrow(
+        "capture makes one scene, but path names 2 places - send one",
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("refuses a path sent with sceneIndex", () => {
+      expect(() =>
+        createScene({ path: "s1", sceneIndex: 0, capture: true }),
+      ).toThrow(
+        "path says where the scene goes - don't send sceneIndex with it",
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
     it("refuses s0, which has no scene to insert after", () => {
       expect(() => createScene({ path: "s0", capture: true })).toThrow(
         "capture can't insert at s0 - it always inserts after an existing scene. Use s1 or later, or s+ to append",
@@ -138,5 +279,44 @@ describe("createScene by path", () => {
       expect(liveSet.call).not.toHaveBeenCalled();
       expect(appView.set).not.toHaveBeenCalled();
     });
+  });
+});
+
+// Read through the tool's own schema, so the example can't drift from the
+// param names create-scene actually uses.
+describe("createScene sceneIndex and count deprecation examples", () => {
+  const hidden = collectHiddenParams(
+    toolDefCreateScene.toolOptions.inputSchema,
+  );
+
+  // Both warnings name the path that makes the same three scenes at 2.
+  it("names every scene a count made", () => {
+    const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
+      sceneIndex: 2,
+      count: 3,
+    });
+
+    expect(warnings).toHaveLength(2);
+
+    for (const warning of warnings) {
+      expect(warning).toContain('(e.g. path: "s2,s2,s2")');
+    }
+  });
+
+  it("repeats s+ once per scene when nothing names a place", () => {
+    expect(hiddenParamWarnings(["count"], hidden, { count: 3 })[0]).toContain(
+      '(e.g. path: "s+,s+,s+")',
+    );
+  });
+
+  it("gives capture's one place, since capture ignores count", () => {
+    const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
+      sceneIndex: 2,
+      count: 3,
+      capture: true,
+    });
+
+    expect(warnings[0]).toContain('(e.g. path: "s2")');
+    expect(warnings[1]).not.toContain("e.g.");
   });
 });

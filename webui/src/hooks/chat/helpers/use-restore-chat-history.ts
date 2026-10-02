@@ -8,9 +8,9 @@ import { type UseInitializeChatReturn } from "#webui/hooks/chat/helpers/use-init
 import {
   type ChatAdapter,
   type ChatClient,
-  type ConversationLockedSettings,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
+import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
 import { type UIMessage } from "#webui/types/messages";
 
 /** What {@link useRestoreChatHistory} needs from the parent chat hook. */

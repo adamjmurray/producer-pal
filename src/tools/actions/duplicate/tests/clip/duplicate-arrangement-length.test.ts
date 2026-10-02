@@ -17,7 +17,6 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { createShortenedClipInHoldingMock, updateClipMock } from "../setup.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", async () => {
@@ -55,37 +54,6 @@ describe("duplicate - arrangementLength functionality", () => {
     // New implementation uses holding area for shortening
     // The mocked createShortenedClipInHolding and moveClipFromHolding handle the details
     // Just verify the result is correct - the holding area operations are tested in arrangement-tiling.test.js
-  });
-
-  it("warns when shortening an audio clip without a silence wav in context", async () => {
-    // Shortening an audio clip fills the holding area with a silent wav; without
-    // that path in context the operation may fail, so it warns and continues
-    // (MIDI shortening needs no wav, so it stays silent).
-    registerSourceClip({
-      length: 8,
-      looping: 0,
-      loop_start: 0,
-      loop_end: 8,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      is_midi_clip: 0,
-      warping: 1,
-      start_marker: 0,
-      end_marker: 8,
-    });
-    registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
-    registerMockObject("live_set", { path: livePath.liveSet });
-
-    await duplicate({
-      type: "clip",
-      id: "clip1",
-      arrangementStart: "5|1",
-      arrangementLength: "1bar",
-    });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("silenceWavPath missing in context"),
-    );
   });
 
   it("measures an unwarped audio clip by its markers, not its stale length", async () => {
@@ -141,6 +109,47 @@ describe("duplicate - arrangementLength functionality", () => {
     await expectDuplicateDelegatesLengthening(track0, "1bar+n/2"); // 6 beats - longer than original 4 beats
   });
 
+  // One source laid out A-A-AB: the list pairs per copy, as name does.
+  it("gives each copy of one source its own arrangementLength", async () => {
+    registerSourceClip({
+      length: 4,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 1,
+    });
+    setupLengthMocks();
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "2|1,4|1,6|1",
+      arrangementLength: "2bar,2bar,4bar",
+    });
+
+    expect(updateClipMock.mock.calls.map(([args]) => args)).toStrictEqual([
+      expect.objectContaining({ arrangementLength: "2bar" }),
+      expect.objectContaining({ arrangementLength: "2bar" }),
+      expect.objectContaining({ arrangementLength: "4bar" }),
+    ]);
+  });
+
+  it("refuses an arrangementLength list that doesn't match the copies", async () => {
+    registerSourceClip({ length: 4, looping: 1, is_midi_clip: 1 });
+    setupLengthMocks();
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "2|1,4|1",
+        arrangementLength: "2bar,2bar,4bar",
+      }),
+    ).rejects.toThrow(
+      "this call names 2 copies but arrangementLength names 3 entries",
+    );
+  });
+
   it("returns the lengthened clip even when updateClip resolves asynchronously (regression for missing await)", async () => {
     registerSourceClip({
       length: 4,
@@ -170,6 +179,40 @@ describe("duplicate - arrangementLength functionality", () => {
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
       path: "t0[5|1]",
+    });
+  });
+
+  it("keeps the reason updateClip put on a lengthened copy's entry", async () => {
+    registerSourceClip({
+      length: 4,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 1,
+    });
+
+    setupLengthMocks();
+
+    const reason =
+      "arrangementLength unchanged: the audio file has no more content to show";
+
+    updateClipMock.mockReturnValueOnce(
+      Promise.resolve([
+        { id: livePath.track(0).arrangementClip(0), detail: reason },
+      ]),
+    );
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar+n/2",
+    });
+
+    expect(result).toStrictEqual({
+      id: livePath.track(0).arrangementClip(0),
+      path: "t0[5|1]",
+      detail: reason,
     });
   });
 
