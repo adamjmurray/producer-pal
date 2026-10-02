@@ -337,7 +337,7 @@ describe("Transform Parser", () => {
 
     it("throws on unclosed parenthesis", () => {
       expect(() => parseAssignments("velocity += (10 + 5")).toThrow(
-        'but "(" found',
+        "but end of input found",
       );
     });
 
@@ -521,19 +521,19 @@ describe("Transform Parser", () => {
 
     it("rejects invalid audio property", () => {
       expect(() => parseAssignments("gain = audio.velocity")).toThrow(
-        'but "a" found',
+        'but "v" found',
       );
     });
 
     it("rejects invalid note property", () => {
       expect(() => parseAssignments("velocity = note.gain")).toThrow(
-        'but "n" found',
+        'but "g" found',
       );
     });
 
     it("rejects invalid clip property", () => {
       expect(() => parseAssignments("velocity = clip.invalid")).toThrow(
-        'but "c" found',
+        'but "i" found',
       );
     });
 
@@ -575,13 +575,13 @@ describe("Transform Parser", () => {
 
     it("rejects next.index (not a valid next property)", () => {
       expect(() => parseAssignments("velocity = next.index")).toThrow(
-        'but "n" found',
+        'but "i" found',
       );
     });
 
     it("rejects next.count (not a valid next property)", () => {
       expect(() => parseAssignments("velocity = next.count")).toThrow(
-        'but "n" found',
+        'but "c" found',
       );
     });
   });

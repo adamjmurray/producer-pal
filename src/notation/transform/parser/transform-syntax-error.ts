@@ -56,12 +56,24 @@ function describeExpected(expected: ExpectedItem[]): string {
     }
   }
 
+  // Where a value could start, every literal that can begin one is also
+  // expected; naming them all only buries the point. Keep the keywords and
+  // the closing paren, which a call can take there instead of a value.
+  if (names.has("expression")) {
+    const also = ['"sync"', '"raw"', '")"'].filter((name) => names.has(name));
+
+    return `expected ${["expression", ...also].join(", ")}.`;
+  }
+
   // Failing at the start of a statement lists every way one can begin.
   if (names.has("parameter name")) {
     return `expected a statement, like "velocity = 100", "C1: v80", or "ratchet(2)".`;
   }
 
-  return names.size > 0
-    ? `expected ${[...names].slice(0, 5).join(", ")}.`
-    : "unexpected text.";
+  // A list made only of literals is a closed set (`note.` + a property name),
+  // so show all of it; otherwise it is mostly noise, so keep the first few.
+  const closed = expected.every((item) => item.type === "literal");
+  const shown = closed ? [...names] : [...names].slice(0, 5);
+
+  return names.size > 0 ? `expected ${shown.join(", ")}.` : "unexpected text.";
 }

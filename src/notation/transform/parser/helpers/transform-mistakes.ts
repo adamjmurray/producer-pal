@@ -103,9 +103,23 @@ function mixedWildcardRange(line: FailedLine): string | null {
  * @returns Hint for a line ending in a math operator, as in `velocity = 100 +`
  */
 function danglingOperator(line: FailedLine): string | null {
-  const { rest } = line;
+  const { code, rest } = line;
 
-  return /^[+\-*/%]$/.test(rest)
-    ? `nothing after "${rest}" — add a value or remove it.`
+  // The parse stops at the operator (`velocity = -`, where it can't be
+  // subtraction) or just after it (`velocity = 1 +`).
+  if (/^[+\-*/%]$/.test(rest)) {
+    return `nothing after "${rest}" — add a value or remove it.`;
+  }
+
+  const head = code.trimEnd();
+  const op = head.slice(-1);
+
+  // `n/` is a half-written note value, not a division.
+  return rest === "" &&
+    head.includes("=") &&
+    "+-*/%".includes(op) &&
+    op !== "" &&
+    !/(?<![\w.])n[\d.]*.$/.test(head)
+    ? `nothing after "${op}" — add a value or remove it.`
     : null;
 }

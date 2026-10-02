@@ -100,4 +100,17 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
     );
     await expectNoClip(toPath);
   });
+
+  it("ppal-update-clip points a syntax error at the failing token", async () => {
+    const clipId = await createMidiClip(96, "v80 C3 1|1");
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "velocity = rand(1 2)" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('near "2)"');
+    expect(getToolErrorMessage(result)).toContain('expected ",", ")"');
+    expect((await readClipNotes(clipId)).match(/C3/g)).toHaveLength(1);
+  });
 });

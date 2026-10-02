@@ -137,7 +137,7 @@ describe("transform syntax error details", () => {
     ["G: v100", 'a pitch needs an octave, e.g. "G3: v100".'],
     [
       "velocity = 100 +",
-      'near "+": nothing after "+" — add a value or remove it.',
+      'at end of input: nothing after "+" — add a value or remove it.',
     ],
     [
       "where(velocity > 100): v80",
@@ -190,6 +190,135 @@ describe("transform syntax error details", () => {
   it("lists what the grammar accepts when no mistake matches", () => {
     expect(errorFor("velocity = 1 velocity = 2")).toContain(
       'near "velocity = 2": expected end of line.',
+    );
+  });
+});
+
+// A named rule would hide where inside it the parse failed, pointing every
+// error at the start of the expression or note op.
+describe("errors inside a call point at the failure", () => {
+  it.each([
+    [
+      "missing comma",
+      "velocity = rand(1 2)",
+      'position 18 (line 1, column 19) near "2)": expected ",", ")".',
+    ],
+    [
+      "missing comma in a nested call",
+      "velocity = rand(1, max(2 3))",
+      'position 25 (line 1, column 26) near "3))": expected ",", ")".',
+    ],
+    [
+      "missing comma after a variable",
+      "velocity = max(note.velocity 2)",
+      'near "2)": expected ",", ")".',
+    ],
+    [
+      "empty argument",
+      "velocity = rand(1,)",
+      'position 18 (line 1, column 19) near ")": expected expression.',
+    ],
+    [
+      "missing operand",
+      "velocity = 1 + * 2",
+      'position 15 (line 1, column 16) near "* 2": expected expression.',
+    ],
+    [
+      "missing operand inside parens",
+      "velocity = 2 * (3 + )",
+      'position 20 (line 1, column 21) near ")": expected expression.',
+    ],
+    [
+      "unclosed call",
+      "velocity = rand(1, max(2, 3)",
+      'position 28 (line 1, column 29) at end of input: unclosed "(" — add the missing ")".',
+    ],
+    [
+      "extra closing paren",
+      "velocity = rand(1, 2))",
+      'position 21 (line 1, column 22) near ")": expected end of line.',
+    ],
+    [
+      "function name without parens",
+      "velocity = rand",
+      'at end of input: expected "(".',
+    ],
+    [
+      "missing comma in split()",
+      "split(1|1 2|1)",
+      'position 10 (line 1, column 11) near "2|1)": expected ",", ")".',
+    ],
+    [
+      "missing comma in ratchet()",
+      "ratchet(1 2)",
+      'position 10 (line 1, column 11) near "2)": expected ",", ")".',
+    ],
+    [
+      "unclosed ratchet()",
+      "C1: ratchet(2",
+      'position 13 (line 1, column 14) at end of input: unclosed "(" — add the missing ")".',
+    ],
+    [
+      "bad position in split()",
+      "split(1|x)",
+      'position 6 (line 1, column 7) near "1|x)": expected bar|beat position, ")".',
+    ],
+    [
+      "lone minus",
+      "velocity = -",
+      'near "-": nothing after "-" — add a value or remove it.',
+    ],
+    ["trailing /* */ comment", "velocity = 1 + /* x */", 'nothing after "+"'],
+    [
+      "trailing comment ending in /",
+      "velocity = 1 + // a/",
+      'nothing after "+"',
+    ],
+    ["trailing // comment", "velocity = 1 + // c", 'nothing after "+"'],
+    ["trailing # comment", "velocity = 1 + # c", 'nothing after "+"'],
+    [
+      "all note properties",
+      "velocity += note.",
+      'expected "deviation", "velocity", "probability", "duration", "index", "pitch", "start", "count".',
+    ],
+    [
+      "all clip properties",
+      "velocity += clip.",
+      'expected "barDuration", "position", "duration", "index", "count".',
+    ],
+    [
+      "all next properties",
+      "velocity += next.",
+      'expected "deviation", "velocity", "probability", "duration", "pitch", "start".',
+    ],
+    ["all audio properties", "gain = audio.", 'expected "gain", "pitchShift".'],
+    [
+      "sync after a comma",
+      "velocity = cos(n/4, )",
+      'near ")": expected expression, "sync".',
+    ],
+    [
+      "raw after a comma",
+      "velocity = swing(0.05, )",
+      'near ")": expected expression, "raw".',
+    ],
+    [
+      "nothing after the =",
+      "velocity =",
+      'at end of input: nothing after "velocity ="',
+    ],
+    [
+      "half-written note value",
+      "velocity = n/",
+      'near "n/": expected expression.',
+    ],
+  ])("%s", (_name, source, expected) => {
+    expect(errorFor(source)).toContain(expected);
+  });
+
+  it("points at the failing line, not the first one", () => {
+    expect(errorFor("velocity = 1\nvelocity = rand(1 2)")).toContain(
+      'position 31 (line 2, column 19) near "2)"',
     );
   });
 });

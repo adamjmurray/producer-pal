@@ -209,8 +209,9 @@ start
 // A transform line is either a parameter assignment (the common case) or a
 // note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
-// No display name here or on whereClause: a name hides failures inside the rule,
-// so every syntax error would point at the start of the line.
+// No display name here or on whereClause, noteOp or expression: a name hides
+// failures inside the rule, so every syntax error would point at the start of
+// the line.
 statement
   = prefix:selectorPrefix? body:(noteOp / assignmentBody / badNoteOpWithoutParens) {
     const pitchRange = prefix?.pitchRange ?? null;
@@ -302,7 +303,7 @@ selectorSep
 // These are NOT expression functions; using one as a value raises a targeted
 // error (see badNoteOpInExpression). `split` takes a list of bar|beat positions
 // (not expressions), so it has its own rule rather than sharing argumentList.
-noteOp "note-count operation"
+noteOp
   = "split" "(" _ points:barBeatPointSyncList? _ ")" {
       return { kind: "noteOp", name: "split", args: points?.args ?? [], sync: points?.sync ?? false };
     }
@@ -668,7 +669,10 @@ comparisonOp
   / ">" { return ">"; }
   / "<" { return "<"; }
 
-expression "expression"
+// No display name here: a name hides failures inside the rule, so an error deep
+// in a call (`rand(1 2)`) would point at the start of the expression. Single
+// tokens are named instead (see `valueToken`).
+expression
   = additive
 
 // Left-associative: fold a head term with a list of (op, term) tails so
@@ -690,10 +694,19 @@ multiplicative
     );
   }
 
+// Calls, variables and parenthesized groups stay unnamed so a failure inside
+// them is reported where it happens. Every other form is a single token, grouped
+// under one name (`valueToken`).
 primary
   = functionCall
   / variable
-  / negatedDuration
+  / "(" _ expr:expression _ ")" { return expr; }
+  / valueToken
+
+// Named on purpose: a failure inside a single token is reported as "expected
+// expression" at the token's start, not as a missing digit mid-token.
+valueToken "expression"
+  = negatedDuration
   / nDuration
   / barDuration
   / pitchLiteral
@@ -703,7 +716,6 @@ primary
   / badVelocityShorthandInExpression
   / unknownFunction
   / number
-  / "(" _ expr:expression _ ")" { return expr; }
 
 // A leading `-` on a note value or bar count (`-n/1`, `-2bar`), so a backwards
 // waveform cycle can be written in musical units like a forward one. Desugars

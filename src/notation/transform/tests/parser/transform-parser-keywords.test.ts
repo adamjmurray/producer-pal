@@ -159,25 +159,25 @@ describe("Transform Parser - Function Keywords", () => {
 
     it("rejects sync on rand", () => {
       expect(() => parseAssignments("velocity += rand(sync)")).toThrow(
-        'but "r" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on ramp", () => {
       expect(() => parseAssignments("velocity += ramp(0, 1, sync)")).toThrow(
-        'but "r" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on round", () => {
       expect(() => parseAssignments("velocity += round(sync)")).toThrow(
-        'but "r" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on choose", () => {
       expect(() => parseAssignments("velocity += choose(1, 2, sync)")).toThrow(
-        'but "c" found',
+        'but "s" found',
       );
     });
   });
@@ -228,7 +228,7 @@ describe("Transform Parser - Function Keywords", () => {
         'but "r" found',
       );
       expect(() => parseAssignments("velocity += cos(n/4, raw)")).toThrow(
-        'but "c" found',
+        'but "r" found',
       );
     });
   });

@@ -339,7 +339,7 @@ describe("Transform - clipseq function", () => {
 
     it("rejects sync on clipseq", () => {
       expect(() => parser.parse("pitch += clipseq(1, 2, sync)")).toThrow(
-        'but "c" found',
+        'but "s" found',
       );
     });
   });

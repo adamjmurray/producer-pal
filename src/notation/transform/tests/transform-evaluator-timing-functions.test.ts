@@ -183,7 +183,9 @@ describe("Transform Evaluator - swing()", () => {
     it("rejects zero arguments (parse error)", () => {
       expect(() =>
         evaluateTransform("timing = swing()", createContext({ position: 0 })),
-      ).toThrow('position 9 (line 1, column 10) near "swing()"');
+      ).toThrow(
+        'position 15 (line 1, column 16) near ")": expected expression',
+      );
     });
 
     it("rejects three non-raw arguments (parse error)", () => {
@@ -192,7 +194,7 @@ describe("Transform Evaluator - swing()", () => {
           "timing = swing(0.05, n/4, 0.5)",
           createContext({ position: 0 }),
         ),
-      ).toThrow('near "swing(0.05, n/4, 0.5)"');
+      ).toThrow('near "0.5)": expected "raw"');
     });
   });
 });
