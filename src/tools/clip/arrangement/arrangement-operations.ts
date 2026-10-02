@@ -105,10 +105,11 @@ export function handleArrangementLengthOperation({
     const displaced = ledger.afterWrite(
       lane,
       [clip.id, ...result.map(({ id }) => id)],
-      undefined,
       {
-        start: currentStartTime,
-        end: currentStartTime + arrangementLengthBeats,
+        reach: {
+          start: currentStartTime,
+          end: currentStartTime + arrangementLengthBeats,
+        },
       },
     );
 

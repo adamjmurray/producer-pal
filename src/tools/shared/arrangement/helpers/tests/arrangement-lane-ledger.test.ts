@@ -284,8 +284,22 @@ describe("LaneLedger", () => {
     clearReads();
 
     expect(
-      ledger.afterWrite(MAIN, ["a"], undefined, { start: 0, end: 12 }),
+      ledger.afterWrite(MAIN, ["a"], { reach: { start: 0, end: 12 } }),
     ).toBe("shortened the clip at t0[4|1]");
+  });
+
+  // A move Live refuses after its landing was cleared leaves no clip to read.
+  it("reads what a write cleared when it left no clip on the lane", () => {
+    setMainLane([{ id: "n", start: 4, end: 12 }]);
+
+    const ledger = new LaneLedger();
+
+    ledger.scan(MAIN);
+    setMainLane([{ id: "n", start: 8, end: 12 }]);
+
+    expect(
+      ledger.afterWrite(MAIN, ["ghost"], { reach: { start: 0, end: 8 } }),
+    ).toBe("shortened the clip at t0[3|1]");
   });
 
   it("reports a clip an earlier write in the same call made", () => {
@@ -384,7 +398,7 @@ describe("LaneLedger", () => {
         path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
       },
     ]);
-    ledger.afterWrite(MAIN, ["new"], laneApi);
+    ledger.afterWrite(MAIN, ["new"], { api: laneApi });
 
     const built = clipsBuilt(from, builtAtScan);
 
@@ -496,5 +510,39 @@ describe("LaneLedger", () => {
 
       expect(wasRead("a")).toBe(true);
     });
+
+    it("scans the lane again after a read-back that threw", () => {
+      setMainLane([{ id: "a", start: 12, end: 20 }]);
+
+      const ledger = new LaneLedger();
+
+      vi.spyOn(ledger, "afterWrite").mockImplementationOnce(() => {
+        throw new Error("read failed");
+      });
+
+      expect(() =>
+        ledger.writeClip({ trackIndex: 0, takeLane: null }, null, () => ({
+          id: "new",
+        })),
+      ).toThrow("read failed");
+
+      clearReads();
+      ledger.scan(MAIN);
+
+      expect(wasRead("a")).toBe(true);
+    });
+  });
+
+  it("scans every lane again after forgetAll", () => {
+    setMainLane([{ id: "a", start: 12, end: 20 }]);
+
+    const ledger = new LaneLedger();
+
+    ledger.scan(MAIN);
+    ledger.forgetAll();
+    clearReads();
+    ledger.scan(MAIN);
+
+    expect(wasRead("a")).toBe(true);
   });
 });

@@ -144,6 +144,9 @@ export function handleArrangementStartOperation({
   // change clips without telling it.
   const lane = arrangementLaneOf(landing);
   const ledger = new LaneLedger();
+  // Read before the move: the landing clears this much even when Live then
+  // makes no copy, and the copy is the only other way to learn it.
+  const length = landedLength(clip);
 
   ledger.scan(lane);
 
@@ -161,6 +164,9 @@ export function handleArrangementStartOperation({
   const displaced = ledger.afterWrite(
     lane,
     newClip == null ? [clip.id] : [clip.id, newClip.id],
+    length == null
+      ? {}
+      : { reach: { start: targetBeats, end: targetBeats + length } },
   );
 
   if (displaced != null) {

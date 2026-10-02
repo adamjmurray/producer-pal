@@ -434,6 +434,7 @@ async function createClipAtIndex(
     // Apply code execution to the newly created clip
     if (code != null) {
       await applyCodeToCreatedClip(clipResult, code, index, totalCount);
+      ledger.forgetAll();
     }
 
     return clipResult;

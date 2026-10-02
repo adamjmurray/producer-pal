@@ -48,6 +48,12 @@ interface Reach {
   end: number;
 }
 
+/** What {@link LaneLedger.afterWrite} may be told besides the written ids. */
+interface AfterWriteOptions {
+  api?: LiveAPI;
+  reach?: Reach;
+}
+
 /** The arrangement lanes one call has written to, and what was on them. */
 export class LaneLedger {
   /** Every clip this call created or wrote, on any lane. */
@@ -66,7 +72,7 @@ export class LaneLedger {
   /**
    * Run a write that makes one clip, and say on that clip's entry what it did
    * to the clips already on the lane. The lane is read first, and dropped if
-   * the write throws, since it may have changed unseen.
+   * the write or the read-back throws, since it may have changed unseen.
    * @param destination - The track and lane written to, or null when nothing
    *   arrangement-side is (a session create), which just runs the write
    * @param api - The lane object, when the caller already has it
@@ -84,18 +90,20 @@ export class LaneLedger {
 
     const lane = arrangementLaneOf(destination);
 
-    this.scan(lane, api ?? undefined);
+    const laneApi = api ?? undefined;
+
+    this.scan(lane, laneApi);
 
     let entry: T;
+    let displaced: string | undefined;
 
     try {
       entry = write();
+      displaced = this.afterWrite(lane, [entry.id], { api: laneApi });
     } catch (error) {
       this.forget(lane);
       throw error;
     }
-
-    const displaced = this.afterWrite(lane, [entry.id], api ?? undefined);
 
     if (displaced != null) {
       appendDetail(entry, displaced);
@@ -114,20 +122,28 @@ export class LaneLedger {
   }
 
   /**
+   * Drop every lane, after an await: another request may have edited any of
+   * them meanwhile.
+   */
+  forgetAll(): void {
+    this.lanes.clear();
+  }
+
+  /**
    * What a write did to the clips already on the lane, in prose for the written
    * clip's own entry. Call once the written clips are in their final shape.
    * @param lane - The lane that was written to
    * @param written - Ids this write created or moved, which describe themselves
-   * @param api - The lane object, when the caller already has it
-   * @param reach - Everything the write may have cleared, when that can be
-   *   wider than the clips it left
+   * @param options - Optional extras
+   * @param options.api - The lane object, when the caller already has it
+   * @param options.reach - Everything the write may have cleared, when that
+   *   can be wider than the clips it left (or it left none)
    * @returns The effects, joined with "; ", or undefined when there were none
    */
   afterWrite(
     lane: ArrangementLane,
     written: readonly string[],
-    api: LiveAPI = laneObject(lane),
-    reach?: Reach,
+    { api = laneObject(lane), reach }: AfterWriteOptions = {},
   ): string | undefined {
     const wrote = new Set(written.map(fromLiveApiId));
     const state = this.stateOf(lane, api);
