@@ -224,11 +224,12 @@ async function duplicateOnLanes(
       count,
       params: { withoutClips, withoutDevices, routeToSource },
       takeLaneName,
+      lanes: context.lanes,
     });
 
     // Two destinations can be the same place, and the second create clears what
     // the first put there.
-    markOverwrittenCopies(laneCopies);
+    markOverwrittenCopies(laneCopies, context.lanes);
 
     return oneOrAll(laneCopies);
   }

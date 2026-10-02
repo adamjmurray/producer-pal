@@ -614,3 +614,77 @@ describe("arrangement clip duplication crash workaround", () => {
     });
   });
 });
+
+describe("a lengthened copy over an earlier copy in the same call", () => {
+  // The call keeps one view of the lane, so the lengthened copy must see the
+  // earlier copy: that copy says it was buried, and the lengthened one doesn't
+  // claim to have overwritten a clip its own call made.
+  it("buries the earlier copy and reports only what was already there", async () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+
+    // One bar each at bars 931, 933 and 935, and a one-bar looping source.
+    await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `${track}[931|1],${track}[933|1],${track}[935|1]`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+
+    const source = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}/s3`,
+          notes: "C3 1|1",
+          length: "1bar",
+          looping: true,
+        },
+      }),
+    ).id;
+
+    await sleep(200);
+
+    // The first copy replaces the clip at 933. The second is three bars, so it
+    // covers 931-933: the clip at 931, and the first copy.
+    const [first, second] = parseToolResult<
+      [DuplicateClipResult & { deleted?: boolean }, DuplicateClipResult]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source,
+          toPath: `${track}[933|1],${track}[931|1]`,
+          arrangementLength: "1bar,3bar",
+        },
+      }),
+    );
+
+    await sleep(200);
+
+    expect(first.deleted).toBe(true);
+    expect(first.detail).toBe(
+      `a later copy in this call landed on it; overwrote the clip at ${track}[933|1]`,
+    );
+    expect(firstDetail(second)).toBe(`overwrote the clip at ${track}[931|1]`);
+
+    const filled = clipsInBarRange(
+      await readArrClips(EMPTY_MIDI_TRACK),
+      931,
+      934,
+    );
+    const beats = filled.reduce(
+      (sum, clip) => sum + parseLengthToBeats(clip.arrangementLength as string),
+      0,
+    );
+
+    // Three bars from 931 are filled, and the clip at 935 was left alone.
+    expect(filled.map(arrangementStartOf)).toContain("931|1");
+    expect(beats).toBe(12);
+    expect(
+      clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 935, 935),
+    ).toHaveLength(1);
+  });
+});

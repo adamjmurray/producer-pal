@@ -34,6 +34,7 @@ import {
   parseObjectPath,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { skippedCopy } from "../minimal-clip-info.ts";
 import { type CopyMeter } from "../clip/copy-entries.ts";
 import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
@@ -64,6 +65,8 @@ export interface TracksToLanesArgs {
   count: number;
   params: DuplicateParams;
   takeLaneName: string | undefined;
+  /** The call's lanes, shared with everything else that writes to them. */
+  lanes?: LaneView;
 }
 
 /**
@@ -77,7 +80,7 @@ export function duplicateTracksToLanes(args: TracksToLanesArgs): object[] {
 
   const meter = songMeter();
   // Reads each lane once, so a copy can say what it overwrote.
-  const ledger = copyLedger();
+  const ledger = copyLedger(args.lanes);
 
   return planLaneCopies(args.sources, args.labels).map((copy) =>
     copy.target == null

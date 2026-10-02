@@ -377,6 +377,10 @@ async function processClipUpdateStep(
 
     return null;
   } catch (error) {
+    // Properties written before the throw can have resized the clip, which
+    // nothing reports on a failed turn.
+    params.context.lanes?.clipChanged(params.clip);
+
     return errorMessage(error);
   }
 }

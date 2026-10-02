@@ -151,24 +151,35 @@ export function handleArrangementStartOperation({
 
   ledger.scan(lane);
 
-  const newClip = placeMovedClip({
-    clip,
-    destination,
-    destTrackIndex,
-    targetBeats,
-    isMidiClip,
-    context,
-    reasons,
-  });
-  // The source describes itself: it is about to be cleared, and a move onto
-  // its own lane trims it on the way.
-  const displaced = ledger.afterWrite(
-    lane,
-    newClip == null ? [clip.id] : [clip.id, newClip.id],
-    length == null
-      ? {}
-      : { reach: { start: targetBeats, end: targetBeats + length } },
-  );
+  let newClip: LiveAPI | null;
+  let displaced: string | undefined;
+
+  try {
+    newClip = placeMovedClip({
+      clip,
+      destination,
+      destTrackIndex,
+      targetBeats,
+      isMidiClip,
+      context,
+      reasons,
+    });
+    // The source describes itself: it is about to be cleared, and a move onto
+    // its own lane trims it on the way.
+    displaced = ledger.afterWrite(
+      lane,
+      newClip == null ? [clip.id] : [clip.id, newClip.id],
+      length == null
+        ? {}
+        : { reach: { start: targetBeats, end: targetBeats + length } },
+    );
+  } catch (error) {
+    // The landing may have cleared and trimmed before it threw, and nothing
+    // will read the lane back, so the view forgets both lanes it touched.
+    ledger.forget(lane);
+    context.lanes?.clipChanged(clip);
+    throw error;
+  }
 
   if (displaced != null) {
     noteClipReason(reasons, clip.id, displaced);

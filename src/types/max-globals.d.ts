@@ -39,7 +39,9 @@ interface ToolContext {
   compactOutput?: boolean;
   /**
    * The arrangement lanes this request has read and written, shared by every
-   * arrangement write in it. Made by whichever one needs it first.
+   * arrangement write in it. Made by the outermost update-clip or duplicate
+   * call, which removes it when done; a helper given a context without one
+   * reads its lanes fresh.
    */
   lanes?: import("#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts").LaneView;
 }

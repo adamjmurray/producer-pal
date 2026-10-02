@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   DRUM_LOOP_8BAR_FILE,
+  parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
@@ -32,6 +33,8 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { readClipsOnTrack } from "../helpers/arrangement-lengthening-test-helpers.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 import {
   arrangementClipAt,
   createArrangementClip,
@@ -652,3 +655,86 @@ async function writeOneMutedNote(clipId: string): Promise<void> {
 
   await sleep(100);
 }
+
+interface UpdatedEntry {
+  id: string;
+  path?: string;
+  detail?: string;
+}
+
+/**
+ * The clips on the track that start within a run of bars, by start.
+ * @param clips - Every arrangement clip on the track
+ * @param fromBar - First bar of the run
+ * @param toBar - Last bar of the run
+ * @returns Each clip's [start, arrangementLength], in bar order
+ */
+function spansBetween(
+  clips: ReadClipResult[],
+  fromBar: number,
+  toBar: number,
+): Array<[string, string | undefined]> {
+  return clips
+    .map((clip) => [arrangementStartOf(clip), clip.arrangementLength] as const)
+    .filter(([start]) => {
+      const bar = Number(start?.split("|")[0]);
+
+      return bar >= fromBar && bar <= toBar;
+    })
+    .toSorted(
+      (a, b) => Number(a[0]?.split("|")[0]) - Number(b[0]?.split("|")[0]),
+    )
+    .map(([start, length]) => [start as string, length]);
+}
+
+describe("update-clip: an edit after another in the same call", () => {
+  it("lands a clip on the tail another clip was just shortened off", async () => {
+    // A fills bars 901-904; B is one bar at 911.
+    const created = parseToolResult<Array<{ id: string }>>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}[901|1],t${EMPTY_MIDI_TRACK}[911|1]`,
+          notes: "C3 1|1",
+          length: "4bar,1bar",
+          looping: true,
+        },
+      }),
+    );
+    const [a, b] = created.map(({ id }) => id) as [string, string];
+
+    await sleep(200);
+
+    // A shortens to one bar (staying where it is) and B moves to bar 903, which
+    // A covered until this call. B lands on free ground.
+    const result = parseToolResult<UpdatedEntry[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: `${a},${b}`,
+          arrangementLength: "1bar,1bar",
+          toPath: `t${EMPTY_MIDI_TRACK}[901|1],t${EMPTY_MIDI_TRACK}[903|1]`,
+        },
+      }),
+    );
+
+    await sleep(200);
+
+    const moved = result.find(
+      ({ path }) => path === `t${EMPTY_MIDI_TRACK}[903|1]`,
+    );
+
+    // Nothing sat in B's way, so its entry says nothing was overwritten.
+    expect(moved).toBeDefined();
+    expect(moved?.detail ?? "").not.toMatch(/overwrote|shortened|split/);
+
+    const { clips } = await readClipsOnTrack(ctx.client!, EMPTY_MIDI_TRACK);
+
+    // Both clips are one bar long, A where it was and B on A's old tail; bar
+    // 911 is empty now.
+    expect(spansBetween(clips, 901, 915)).toStrictEqual([
+      ["901|1", "1bar"],
+      ["903|1", "1bar"],
+    ]);
+  });
+});

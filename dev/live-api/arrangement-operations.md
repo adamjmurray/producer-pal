@@ -8,7 +8,7 @@ from scratch.
 
 ## Live API Constraints
 
-These constraints drive every design decision. When something seems
+These constraints drive every design decision; when something seems
 over-engineered, one of these is usually why.
 
 ### Arrangement length is Immutable for Looped Clips
@@ -175,17 +175,14 @@ can't reproduce Live's native shift.
 All complex arrangement operations use this pattern to isolate changes from
 adjacent clips:
 
-1. Find where the lane's last clip ends, to place a holding area beyond all
-   existing content
+1. Find the lane's last clip end (`LaneView.lastEnd`) to place a holding area
+   beyond all content
 2. Duplicate clip there (safe working space far from actual content)
 3. Perform trim/adjustment operations there
 4. Duplicate result to final arrangement position
 5. Clean up holding area copy
 
-What is on the lane comes from the call's `LaneView`
-(`arrangement-lane-view.ts`), which every write path shares; a write that leaves
-no clip behind (a temp-clip trim, a resize) must report its stretch to it. The
-holding area position is always dynamic — never hardcoded. A fixed large
+The holding area position is always dynamic — never hardcoded. A fixed large
 position would permanently bloat the arrangement length, causing unwanted
 zoom-out range and scrolling.
 
@@ -448,8 +445,7 @@ whole param is refused.
 | `arrangement-tiling-clips.ts`   | Low-level primitives (temp clips, session clip creation)  |
 | `arrangement-splitting.ts`      | Clip splitting algorithm                                  |
 | `arrangement-move.ts`           | Update-clip integration (move + lengthen orchestration)   |
-| `arrangement-lane-view.ts`      | What is on each lane, shared by every write in a call     |
+| `arrangement-lane-view.ts`      | What is on each lane; writes that leave no clip report it |
 
-All arrangement source files are under `src/tools/shared/arrangement/` or
-`src/tools/clip/arrangement/helpers/`. Test files are colocated under `tests/`
-subdirectories.
+Sources are under `src/tools/shared/arrangement/` or
+`src/tools/clip/arrangement/helpers/`; tests are colocated in `tests/`.

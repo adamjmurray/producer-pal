@@ -91,16 +91,26 @@ export function handleArrangementLengthOperation({
 
     ledger.scan(lane);
 
-    const result = handleArrangementLengthening({
-      clip,
-      isAudioClip,
-      arrangementLengthBeats,
-      currentArrangementLength,
-      currentStartTime,
-      currentEndTime,
-      context,
-      reasons,
-    });
+    let result: ClipIdResult[];
+
+    try {
+      result = handleArrangementLengthening({
+        clip,
+        isAudioClip,
+        arrangementLengthBeats,
+        currentArrangementLength,
+        currentStartTime,
+        currentEndTime,
+        context,
+        reasons,
+      });
+    } catch (error) {
+      // The clip may already have grown over its neighbours (the region is set
+      // in steps), and nothing will read the lane back, so the view forgets it.
+      ledger.forget(lane);
+      throw error;
+    }
+
     // The clip itself and every tile it laid describe themselves. Tiling clears
     // ahead of what lands, so everything up to the target counts as written.
     const displaced = ledger.afterWrite(
