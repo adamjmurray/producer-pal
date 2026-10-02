@@ -34,6 +34,7 @@ import {
 } from "./helpers/batch/run-clip-batch.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
+  foldTargetParams,
   targetCount,
   targetParamLabel,
   warnBlankTarget,
@@ -190,8 +191,11 @@ function clipTargets(
   values: ClipUpdateArgs,
   lanes: LaneView | undefined,
 ): ClipTargets {
+  // Folded once, so a param that names nothing warns once.
+  const folded = foldTargetParams(targets);
+
   validateListLengths([
-    { param: targetParamLabel(targets), count: targetCount(targets) },
+    { param: targetParamLabel(folded), count: targetCount(folded) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
     { param: "timeSignature", value: values.timeSignature },
@@ -208,7 +212,7 @@ function clipTargets(
     },
   ]);
 
-  const resolved = resolveClipTargets(targets, lanes);
+  const resolved = resolveClipTargets(folded, lanes);
 
   if (resolved.named.length === 0) {
     throw new Error("id or path is required");

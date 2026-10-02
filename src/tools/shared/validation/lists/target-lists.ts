@@ -33,6 +33,19 @@ export interface TargetParams {
 export type IdPerPath = (paths: string) => Array<string | null>;
 
 /**
+ * Both plural aliases folded onto `id` and `path`. A param that names nothing
+ * warns each time it is read, so a call folds once and passes the result on.
+ * @param targets - The call's id/ids and path/paths params
+ * @returns The same targets, named by the canonical params
+ */
+export function foldTargetParams(targets: TargetParams): TargetParams {
+  return {
+    id: namedIdParam(targets.id, targets.ids, "ids"),
+    path: namedPathParam(targets.path, targets.paths),
+  };
+}
+
+/**
  * How many objects a call names, without looking any of them up. Lists are
  * checked before anything touches Live, so this counts entries.
  * @param args - The call's id/ids and path/paths params

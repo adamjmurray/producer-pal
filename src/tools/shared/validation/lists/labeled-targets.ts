@@ -17,15 +17,12 @@ import {
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
+  foldTargetParams,
   type TargetParams,
   targetCount,
   targetParamLabel,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { parseNames } from "#src/tools/shared/validation/name-parsing.ts";
-import {
-  namedIdParam,
-  namedPathParam,
-} from "#src/tools/shared/helpers/param-presence.ts";
 
 /** The name and color lists a call paired against what it acts on. */
 export interface PairedLabels {
@@ -76,20 +73,25 @@ export function resolveLabeledTargets({
   color,
   extraLists = [],
 }: LabeledTargetsArgs): LabeledTargets {
-  if (targetCount(targets) === 0) {
+  // Folded once: every read of a param that names nothing says so, so reading
+  // them again below would repeat the warning.
+  const folded = foldTargetParams(targets);
+  const count = targetCount(folded);
+
+  if (count === 0) {
     throw new Error("id or path is required");
   }
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
   validateListLengths([
-    { param: targetParamLabel(targets), count: targetCount(targets) },
+    { param: targetParamLabel(folded), count },
     { param: "name", value: name },
     { param: "color", value: color },
     ...extraLists,
   ]);
 
-  const named = namedTargets(foldedTargets(targets));
+  const named = namedTargets(folded);
 
   // Paired against the targets named, not the ones that resolve, so name[k] and
   // color[k] still land on target k when an earlier one is skipped.
@@ -147,20 +149,5 @@ export function pairLabels({
   return {
     parsedNames: parseNames(name, count, noun),
     parsedColors: parseColors(color, count, noun),
-  };
-}
-
-// --- Helpers below main exports ---
-
-/**
- * Both plural aliases folded onto `id` and `path`, so each target is read once
- * under the name the rest of the call uses.
- * @param targets - The call's id/ids and path/paths params
- * @returns The same targets, named by the canonical params
- */
-function foldedTargets(targets: TargetParams): TargetParams {
-  return {
-    id: namedIdParam(targets.id, targets.ids, "ids"),
-    path: namedPathParam(targets.path, targets.paths),
   };
 }
