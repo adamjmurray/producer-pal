@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildModelMessages,
   endsOnAssistantTurn,
+  isMistralModelId,
   MAX_REQUEST_IMAGE_BYTES,
   MAX_REQUEST_IMAGES,
   MISTRAL_MAX_REQUEST_IMAGES,
@@ -531,6 +532,22 @@ describe("buildModelMessages image budget", () => {
     ]);
   });
 
+  it("skips an image that doesn't fit and still sends smaller, older ones", () => {
+    const small = { mediaType: "image/png", data: "tiny" };
+
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [small] },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "", images: [a, b, c] },
+    ]);
+
+    expect(result.map((message) => message.content)).toStrictEqual([
+      [filePart(small)],
+      "ok",
+      [filePart(a), filePart(b), omitted],
+    ]);
+  });
+
   it("stops at the image count limit even when the bytes fit", () => {
     const small = (data: string) => ({ mediaType: "image/png", data });
     const [x, y] = [small("x"), small("y")];
@@ -574,4 +591,20 @@ describe("buildModelMessages image budget", () => {
       omitted,
     ]);
   });
+});
+
+describe("isMistralModelId", () => {
+  it.each(["mistralai/mistral-large", "mistral/pixtral-12b", "Mistralai/X"])(
+    "matches %s",
+    (id) => {
+      expect(isMistralModelId(id)).toBe(true);
+    },
+  );
+
+  it.each(["gpt-4o", "anthropic/claude-sonnet-4.5", "openai/mistral-tuned"])(
+    "does not match %s",
+    (id) => {
+      expect(isMistralModelId(id)).toBe(false);
+    },
+  );
 });

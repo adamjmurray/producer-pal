@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  isMistralModelId,
   MAX_REQUEST_IMAGES,
   MISTRAL_MAX_REQUEST_IMAGES,
 } from "#webui/chat/sdk/build-model-messages";
@@ -162,7 +163,7 @@ export const chatAdapter: ChatAdapter<
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(provider, overrideThinking, model),
       maxRequestImages:
-        provider === "mistral"
+        provider === "mistral" || isMistralModelId(model)
           ? MISTRAL_MAX_REQUEST_IMAGES
           : MAX_REQUEST_IMAGES,
       chatHistory,
