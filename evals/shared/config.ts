@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -43,6 +44,27 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 }
 
 /**
+ * Read the server's current config via the /config endpoint.
+ *
+ * @returns The fields scenarios restore after changing them
+ */
+async function fetchConfig(): Promise<{
+  notation?: Notation;
+  liveApiEnabled?: boolean;
+}> {
+  const response = await fetch(CONFIG_URL);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get config: ${response.status}`);
+  }
+
+  return (await response.json()) as {
+    notation?: Notation;
+    liveApiEnabled?: boolean;
+  };
+}
+
+/**
  * Read the server's current notation via the /config endpoint.
  *
  * Used to snapshot the active notation before an assertion temporarily flips it,
@@ -52,15 +74,20 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
  * @returns The current notation, falling back to the default if unset
  */
 export async function getNotation(): Promise<Notation> {
-  const response = await fetch(CONFIG_URL);
-
-  if (!response.ok) {
-    throw new Error(`Failed to get config: ${response.status}`);
-  }
-
-  const config = (await response.json()) as { notation?: Notation };
+  const config = await fetchConfig();
 
   return config.notation ?? DEFAULT_NOTATION;
+}
+
+/**
+ * Whether the server currently exposes the Direct Live API tool.
+ *
+ * @returns True when `ppal-live-api` is enabled
+ */
+export async function getLiveApiEnabled(): Promise<boolean> {
+  const config = await fetchConfig();
+
+  return config.liveApiEnabled === true;
 }
 
 /**
