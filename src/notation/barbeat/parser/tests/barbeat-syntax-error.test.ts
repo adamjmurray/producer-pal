@@ -242,4 +242,62 @@ describe("bar|beat syntax errors", () => {
     expect(errorFor("C#3 [F#2 1|1")).toContain('unclosed "["');
     expect(errorFor("C3 1|1 /* */C#3 [E3 1|1")).toContain('unclosed "["');
   });
+
+  it("reads a token up to a comment, not through it", () => {
+    for (const notes of [
+      "v8.5#note",
+      "v8.5//note",
+      "v8.5/* x */",
+      "C3 /* x\n y */ v8.5",
+    ]) {
+      expect(errorFor(notes)).toContain('Got "v8.5".');
+    }
+
+    expect(errorFor("F#-1 n4.5 // x")).toContain("Got n4.5");
+    expect(errorFor("C#3 1|1 n4.5#C3")).toContain("Got n4.5");
+  });
+
+  it("reads a note name up to a comment, but keeps its sharp", () => {
+    expect(errorFor("C 1|1#x")).toContain("a note needs an octave: C3, not C");
+    expect(errorFor("C#")).toContain("C#3, not C#");
+    expect(errorFor("1|1 C# 3")).toContain("C#3, not C#");
+  });
+
+  it("ignores brackets in a comment that runs over lines", () => {
+    expect(errorFor("C3 /* [\n ( */ x")).not.toContain("unclosed");
+    expect(errorFor("C#3 /* [ \n ] */ [E3 1|1")).toContain('unclosed "["');
+    expect(errorFor("F#-1 [E3 1|1")).toContain('unclosed "["');
+  });
+
+  it("names a block comment that is never closed, ahead of bracket hints", () => {
+    const hint = 'unclosed "/*" comment — add "*/".';
+
+    expect(errorFor("C3 /* (")).toContain(hint);
+    expect(errorFor("C3 1|1 /* [ note")).toContain(hint);
+    expect(errorFor("C3 1|1\nE3 1|2 /* [\nF3 1|3")).toContain(hint);
+    expect(errorFor("C3 /* x */ 1|1 x")).not.toContain("unclosed");
+    expect(errorFor("x C3 1|1 /* (")).not.toContain("unclosed");
+  });
+
+  it("blames a missing beat, not a comment that opens at the failure", () => {
+    expect(errorFor("1|/* x")).toContain(
+      "a position needs a beat after the pipe, e.g. 1|1.",
+    );
+  });
+
+  // Hints run on the Max thread over input with no length cap.
+  it.each([
+    [
+      "a failure before many unclosed openers",
+      `C3 1|1 x ${"/* a ".repeat(50_000)}`,
+    ],
+    ["many unclosed openers then a bracket", `x ${"/* ".repeat(100_000)}[`],
+    ["many closed comments", `x ${"/* a */ ".repeat(50_000)}[`],
+  ])("stays fast on %s", (_name, notes) => {
+    const start = performance.now();
+
+    errorFor(notes);
+
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
 });

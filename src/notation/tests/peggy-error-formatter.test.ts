@@ -4,7 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { isBarbeatSharp } from "../barbeat/parser/helpers/barbeat-comments.ts";
 import {
+  commentFreeLine,
   editDistance,
   fixParses,
   formatSyntaxError,
@@ -86,8 +88,50 @@ describe("formatSyntaxError", () => {
 
 describe("hint helpers", () => {
   it("strips comments but keeps a sharp", () => {
-    expect(stripComments("C#3 1|1 // [ note")).toBe("C#3 1|1 ");
-    expect(stripComments("C3 /* ( */ 1|1 # )")).toBe("C3   1|1 ");
+    expect(stripComments("C#3 1|1 // [ note", isBarbeatSharp)).toBe("C#3 1|1 ");
+    expect(stripComments("C3 /* ( */ 1|1 # )", isBarbeatSharp)).toBe(
+      "C3   1|1 ",
+    );
+  });
+
+  it("follows the sharp rule it is given", () => {
+    const never = (): boolean => false;
+    const always = (): boolean => true;
+
+    expect(stripComments("a#b", never)).toBe("a");
+    expect(stripComments("a#b", always)).toBe("a#b");
+  });
+
+  it("keeps an unclosed block comment, as the grammars do", () => {
+    expect(stripComments("a /* b", isBarbeatSharp)).toBe("a /* b");
+    expect(stripComments("a /* b */ c /* d", isBarbeatSharp)).toBe(
+      "a   c /* d",
+    );
+  });
+
+  it("strips line comments up to the line end only", () => {
+    expect(stripComments("a // b\nc # d\r\ne", isBarbeatSharp)).toBe(
+      "a \nc \r\ne",
+    );
+  });
+
+  it("stays linear on many unclosed block openers", () => {
+    const start = performance.now();
+
+    stripComments("/*".repeat(50_000), isBarbeatSharp);
+
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it("finds the failing line without comments, even across lines", () => {
+    const source = "a /* x\ny */ b # c\nd e";
+
+    expect(
+      commentFreeLine({ source, offset: 20 } as SyntaxFailure, isBarbeatSharp),
+    ).toStrictEqual({ line: "d e", column: 2 });
+    expect(
+      commentFreeLine({ source, offset: 0 } as SyntaxFailure, isBarbeatSharp),
+    ).toStrictEqual({ line: "a   b ", column: 0 });
   });
 
   it("spots an unclosed bracket", () => {

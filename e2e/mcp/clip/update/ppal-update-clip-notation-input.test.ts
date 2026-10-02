@@ -48,24 +48,32 @@ describe("ppal-update-clip bar|beat input", () => {
 describe("ppal-update-clip bar|beat parse errors", () => {
   // A model reads the parse error to repair its notes, so the error must name
   // the fix — and the clip stays as it was.
-  it("names the fix for a note missing its octave and leaves the notes alone", async () => {
-    const clipId = await createMidiClip(2, "C3 1|1");
-    const before = await readClipNotes(clipId);
+  it.each([
+    ["a note missing its octave", "E 1|2", "a note needs an octave: E3, not E"],
+    [
+      "a bad value before a # comment, with a sharp earlier",
+      "C#3 v8.5#loud 1|2",
+      'Got "v8.5".',
+    ],
+  ])(
+    "names the fix for %s and leaves the notes alone",
+    async (_name, notes, hint) => {
+      const clipId = await createMidiClip(2, "C3 1|1");
+      const before = await readClipNotes(clipId);
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { id: clipId, notes: "E 1|2" },
-    });
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, notes },
+      });
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      "a note needs an octave: E3, not E",
-    );
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(hint);
 
-    await sleep(100);
+      await sleep(100);
 
-    expect(await readClipNotes(clipId)).toBe(before);
-  });
+      expect(await readClipNotes(clipId)).toBe(before);
+    },
+  );
 
   it("keeps the whole position in the spaced-pipe fix", async () => {
     const clipId = await createMidiClip(3, "C3 1|1");

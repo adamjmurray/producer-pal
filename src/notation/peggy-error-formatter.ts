@@ -59,40 +59,139 @@ export function formatSyntaxError(
 }
 
 /**
- * Remove comments so their text can't trigger a hint. `#` only starts a
- * comment after whitespace — `C#3` is a pitch. Scans with indexOf, not a
- * regex, so a line of thousands of `/*` stays linear.
- * @param text - One line of notation
+ * Tells whether a `#` is part of a note (a sharp) rather than a comment. Each
+ * grammar passes its own: both grammars start a comment at any `#`, and a
+ * sharp only counts where the grammar is reading a note.
+ */
+export type IsSharp = (text: string, index: number) => boolean;
+
+/**
+ * @param text - Notation text
+ * @param position - Where to look
+ * @param isSharp - The grammar's sharp rule
+ * @param lastClose - Offset of the last block-comment closer in `text`, or -1.
+ *   Scanners compute it once and pass it in: callers loop over every position,
+ *   and rescanning for an unclosed opener each time would be quadratic.
+ * @returns Where the comment starting at `position` ends, or null when none
+ *   starts there. As in the grammars, `//` and `#` run to the end of the line,
+ *   and a block comment that is never closed is not a comment.
+ */
+export function commentEnd(
+  text: string,
+  position: number,
+  isSharp: IsSharp,
+  lastClose: number,
+): number | null {
+  if (text.startsWith("/*", position)) {
+    return lastClose < position + 2
+      ? null
+      : text.indexOf("*/", position + 2) + 2;
+  }
+
+  if (
+    text.startsWith("//", position) ||
+    (text[position] === "#" && !isSharp(text, position))
+  ) {
+    const lineEnd = /[\r\n]/g;
+
+    lineEnd.lastIndex = position;
+
+    return lineEnd.exec(text)?.index ?? text.length;
+  }
+
+  return null;
+}
+
+/**
+ * Remove comments so their text can't trigger a hint. A block comment becomes
+ * one space.
+ * @param text - Notation text
+ * @param isSharp - The grammar's sharp rule
  * @returns The text without comments
  */
-export function stripComments(text: string): string {
+export function stripComments(text: string, isSharp: IsSharp): string {
   const pieces: string[] = [];
+  const lastClose = text.lastIndexOf("*/");
+  let kept = 0;
   let position = 0;
 
   while (position < text.length) {
-    const open = text.indexOf("/*", position);
+    const end = commentEnd(text, position, isSharp, lastClose);
 
-    if (open === -1) {
-      pieces.push(text.slice(position));
-      break;
+    if (end == null) {
+      position++;
+      continue;
     }
 
-    pieces.push(text.slice(position, open), " ");
-    const close = text.indexOf("*/", open + 2);
-
-    position = close === -1 ? text.length : close + 2;
+    pieces.push(
+      text.slice(kept, position),
+      text.startsWith("/*", position) ? " " : "",
+    );
+    kept = end;
+    position = end;
   }
 
-  let code = pieces.join("");
-  const lineComment = code.indexOf("//");
+  pieces.push(text.slice(kept));
 
-  if (lineComment !== -1) {
-    code = code.slice(0, lineComment);
+  return pieces.join("");
+}
+
+/**
+ * Hint for a `/*` that is never closed. The grammars don't read it as a
+ * comment, so the parse fails at or after it and the text there looks like
+ * code. A `/*` at the failure itself is skipped: the fault is what came
+ * before it. Takes precedence over bracket hints, which would blame text that
+ * was meant as comment.
+ * @param failure - Where the parse stopped
+ * @param isSharp - The grammar's sharp rule
+ * @returns The hint, or null when no unclosed `/*` comes before the failure
+ */
+export function unclosedCommentHint(
+  failure: SyntaxFailure,
+  isSharp: IsSharp,
+): string | null {
+  const { source, offset } = failure;
+  const lastClose = source.lastIndexOf("*/");
+  let position = 0;
+
+  while (position < offset && position < source.length) {
+    const end = commentEnd(source, position, isSharp, lastClose);
+
+    if (end != null) {
+      position = end;
+    } else if (source.startsWith("/*", position)) {
+      return 'unclosed "/*" comment — add "*/".';
+    } else {
+      position++;
+    }
   }
 
-  const hash = /(?:^|\s)#/.exec(code);
+  return null;
+}
 
-  return hash == null ? code : code.slice(0, hash.index + hash[0].length - 1);
+/**
+ * The failing line as the grammar reads it: comments removed (even ones that
+ * start on an earlier line), with the failure's column moved to match.
+ * @param failure - Where the parse stopped
+ * @param isSharp - The grammar's sharp rule
+ * @returns The comment-free line the failure is on, and the failure's column
+ *   in it
+ */
+export function commentFreeLine(
+  failure: SyntaxFailure,
+  isSharp: IsSharp,
+): { line: string; column: number } {
+  const { source, offset } = failure;
+  const code = stripComments(source, isSharp);
+  const position = stripComments(source.slice(0, offset), isSharp).length;
+  const lineStart =
+    position === 0 ? 0 : code.lastIndexOf("\n", position - 1) + 1;
+  const newline = code.indexOf("\n", position);
+  const line = code
+    .slice(lineStart, newline === -1 ? code.length : newline)
+    .replace(/\r$/, "");
+
+  return { line, column: position - lineStart };
 }
 
 /**

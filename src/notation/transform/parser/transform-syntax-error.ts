@@ -29,8 +29,8 @@ export function formatTransformSyntaxError(
     "transform syntax error",
     error,
     source,
-    ({ line, column, expected }) =>
-      diagnoseTransformMistake(line, column) ?? describeExpected(expected),
+    (failure) =>
+      diagnoseTransformMistake(failure) ?? describeExpected(failure.expected),
   );
 }
 

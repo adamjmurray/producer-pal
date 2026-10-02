@@ -4,17 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  commentFreeLine,
   firstWord,
   fixParses,
   type SyntaxFailure,
+  unclosedCommentHint,
   zeroDenominatorHint,
 } from "#src/notation/peggy-error-formatter.ts";
 import { parse } from "../barbeat-parser.ts";
 import { unmatchedBracket } from "./barbeat-brackets.ts";
+import { isBarbeatSharp } from "./barbeat-comments.ts";
 
 /** A bar|beat line that failed to parse, split where the parse stopped. */
 interface FailedLine {
-  /** The failing line */
+  /** The failing line, comments removed */
   line: string;
   /** The full notation text */
   source: string;
@@ -71,6 +74,12 @@ export function diagnoseBarbeatMistake(
   failure: SyntaxFailure,
   atItemStart: boolean,
 ): string | null {
+  const comment = unclosedCommentHint(failure, isBarbeatSharp);
+
+  if (comment != null) {
+    return comment;
+  }
+
   const failed = readFailedLine(failure);
   const checks = atItemStart ? [...CHECKS, ...ITEM_CHECKS] : CHECKS;
 
@@ -90,7 +99,8 @@ export function diagnoseBarbeatMistake(
  * @returns The line's parts
  */
 function readFailedLine(failure: SyntaxFailure): FailedLine {
-  const { line, column, source, offset } = failure;
+  const { source, offset } = failure;
+  const { line, column } = commentFreeLine(failure, isBarbeatSharp);
   const tokenStart = wordStart(line.slice(0, column));
   const previousStart = wordStart(line.slice(0, tokenStart).trimEnd());
   const head = line.slice(tokenStart, column);

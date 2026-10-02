@@ -5,9 +5,12 @@
 
 import {
   isUnclosed,
+  type SyntaxFailure,
+  unclosedCommentHint,
   zeroDenominatorHint,
 } from "#src/notation/peggy-error-formatter.ts";
 import { type FailedLine, readFailedLine } from "./failed-line.ts";
+import { isTransformSharp } from "./transform-comments.ts";
 import {
   afterParameterMistake,
   shorthandMathMistake,
@@ -40,15 +43,19 @@ const CHECKS: MistakeCheck[] = [
 
 /**
  * Name the likely mistake on a transform line that failed to parse.
- * @param line - The failing line's text
- * @param column - 0-based offset in the line where the parse failed
+ * @param failure - Where the parse stopped
  * @returns A short hint naming the fix, or null when no check is sure
  */
 export function diagnoseTransformMistake(
-  line: string,
-  column: number,
+  failure: SyntaxFailure,
 ): string | null {
-  const failed = readFailedLine(line, column);
+  const comment = unclosedCommentHint(failure, isTransformSharp);
+
+  if (comment != null) {
+    return comment;
+  }
+
+  const failed = readFailedLine(failure);
 
   for (const check of CHECKS) {
     const hint = check(failed);
