@@ -3,10 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildProviderOptions } from "#evals/chat/thinking-provider-options.ts";
 
 describe("buildProviderOptions for the Vercel gateway", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("uses the upstream provider's options from the model id", () => {
     expect(
       buildProviderOptions("vercel", "high", "anthropic/claude-sonnet-5.5"),
@@ -25,9 +29,23 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     });
   });
 
-  it("returns undefined for an upstream provider it has no mapping for", () => {
+  it("warns when an upstream provider has no mapping", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     expect(
-      buildProviderOptions("vercel", "high", "xai/grok-5"),
+      buildProviderOptions("vercel", "high", "spacexai/grok-5"),
     ).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("--thinking high ignored"),
+    );
+  });
+
+  it("does not warn when thinking is off", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(
+      buildProviderOptions("vercel", "off", "anthropic/claude-sonnet-5.5"),
+    ).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

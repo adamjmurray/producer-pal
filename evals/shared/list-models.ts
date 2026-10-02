@@ -19,8 +19,8 @@ import {
   validateApiKey,
 } from "#evals/shared/provider-configs.ts";
 
-/** OpenRouter exposes hundreds of models; cap the listing to keep it usable. */
-const OPENROUTER_MODEL_CAP = 50;
+/** OpenRouter and the Vercel gateway list hundreds of models; cap the listing. */
+const LARGE_LIST_MODEL_CAP = 50;
 
 const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
@@ -63,7 +63,8 @@ export async function listModels(
     return 1;
   }
 
-  const cap = arg === "openrouter" ? OPENROUTER_MODEL_CAP : null;
+  const cap =
+    arg === "openrouter" || arg === "vercel" ? LARGE_LIST_MODEL_CAP : null;
   const shown = cap != null ? allModels.slice(0, cap) : allModels;
   const countLabel =
     cap != null && allModels.length > cap

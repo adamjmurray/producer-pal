@@ -57,7 +57,7 @@ const OPENROUTER_EFFORT_MAP: Record<string, string> = {
 export function buildProviderOptions(
   provider: EvalProvider,
   thinking: ThinkingLevel | undefined,
-  model = "",
+  model: string,
 ): ProviderOptions | undefined {
   if (thinking == null) {
     return undefined;
@@ -75,7 +75,9 @@ export function buildProviderOptions(
     case "openrouter":
       return buildOpenRouterThinking(level);
     case "vercel":
-      return buildGatewayThinking(level, model);
+      return (
+        buildGatewayThinking(level, model) ?? warnGatewayIgnored(level, model)
+      );
     case "local":
       return undefined;
     // The agent CLIs carry their own reasoning configuration.
@@ -187,6 +189,23 @@ function buildGatewayThinking(
     default:
       return undefined;
   }
+}
+
+/**
+ * Warn that a requested thinking level had no effect on a gateway model.
+ *
+ * @param level - Thinking level string
+ * @param model - Gateway model id (`provider/model`)
+ * @returns Always undefined (no provider options)
+ */
+function warnGatewayIgnored(level: string, model: string): undefined {
+  if (level !== "off") {
+    console.warn(
+      `Warning: --thinking ${level} ignored — no thinking setting for ${model} on the Vercel gateway`,
+    );
+  }
+
+  return undefined;
 }
 
 /**

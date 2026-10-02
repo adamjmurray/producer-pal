@@ -86,6 +86,28 @@ describe("listModels", () => {
     expect(header).toContain("showing 50 of 75");
   });
 
+  it("caps the Vercel AI Gateway to 50 models and notes the total", async () => {
+    process.env.VERCEL_AI_GATEWAY_KEY = "test-key";
+    const many = Array.from({ length: 75 }, (_unused, index) => ({
+      id: `p/m${String(index).padStart(3, "0")}`,
+    }));
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: many }),
+      }),
+    );
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await listModels("vercel");
+
+    const header = log.mock.calls[0]?.[0] as string;
+
+    expect(header).toContain("showing 50 of 75");
+  });
+
   it("queries the Vercel AI Gateway models endpoint", async () => {
     process.env.VERCEL_AI_GATEWAY_KEY = "test-key";
     const fetchMock = vi.fn().mockResolvedValue({
