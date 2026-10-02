@@ -300,6 +300,25 @@ describe("AssistantToolCall", () => {
       expect(pre!.innerHTML).toContain("line1\nline2");
     });
 
+    it("keeps a literal backslash-n in a string value as written", () => {
+      const jsonResult = JSON.stringify({ path: "C:\\new\\dir", text: "a\nb" });
+
+      render(<AssistantToolCall {...defaultProps} result={jsonResult} />);
+      const text = document.querySelector("pre")!.textContent;
+
+      expect(text).toContain("C:\\\\new\\\\dir");
+      expect(text).toContain("a\nb");
+    });
+
+    it("keeps a literal backslash-n in a JSON-stringified string result", () => {
+      const jsonResult = JSON.stringify("C:\\new");
+
+      render(<AssistantToolCall {...defaultProps} result={jsonResult} />);
+      const text = document.querySelector("pre")!.textContent;
+
+      expect(text).toBe("C:\\new");
+    });
+
     it("renders non-JSON result as plain text", () => {
       render(
         <AssistantToolCall {...defaultProps} result="Plain text result" />,
