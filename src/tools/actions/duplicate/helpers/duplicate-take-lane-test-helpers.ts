@@ -73,7 +73,7 @@ export function registerTakeLaneSource(
 
 export interface SourceClipOptions {
   /** Extra clip properties merged over the defaults (e.g. `color`). */
-  extraProps?: Record<string, number>;
+  extraProps?: Record<string, unknown>;
   /** Custom get_notes_extended implementation (e.g. windowed pickup reads). */
   getNotesExtended?: (...args: unknown[]) => string;
 }
