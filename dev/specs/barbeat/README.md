@@ -330,7 +330,7 @@ examples. Read the one you need.
 | Spec                                       | Covers                                                   |
 | ------------------------------------------ | -------------------------------------------------------- |
 | [v0-deletion.md](v0-deletion.md)           | Deleting notes with `v0`                                 |
-| [repeat-patterns.md](repeat-patterns.md)   | `*n` repeat syntax                                       |
+| [repeat-patterns.md](repeat-patterns.md)   | `xN` repeat syntax                                       |
 | [pattern-brackets.md](pattern-brackets.md) | `[...]` streams and cursors                              |
 | [bar-copy.md](bar-copy.md)                 | `@` bar copy, tiling, `@clear`                           |
 | [internals.md](internals.md)               | Parsing rules, AST schema, interpreter output, precision |

@@ -34,10 +34,10 @@ The `raw` keyword skips auto-quantize entirely, applying swing to whatever
 position the note is currently at.
 
 ```
-timing = swing(0.05); // default swing: half the meter's beat (8th notes in 4/4)
-timing = swing(0.03, n/16); // 16th-note swing
-timing = swing(0.05, raw); // no auto-quantize
-timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
+timing = swing(0.05) // default swing: half the meter's beat (8th notes in 4/4)
+timing = swing(0.03, n/16) // 16th-note swing
+timing = swing(0.05, raw) // no auto-quantize
+timing = swing(0.05, n/16, raw) // 16th-note swing, no auto-quantize
 ```
 
 ### quant(grid)
@@ -50,10 +50,10 @@ with `timing =`.
   for `swing()`'s optional grid.
 
 ```
-timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
-timing = quant(n/16); // snap to 16th-note grid (0.25 beats in 4/4)
-timing = quant(n/4); // snap to quarter-note grid (1 beat in 4/4)
-timing = quant(n/12); // snap to triplet grid
+timing = quant(n/8) // snap to 8th-note grid (0.5 beats in 4/4)
+timing = quant(n/16) // snap to 16th-note grid (0.25 beats in 4/4)
+timing = quant(n/4) // snap to quarter-note grid (1 beat in 4/4)
+timing = quant(n/12) // snap to triplet grid
 ```
 
 ### legato([tolerance])

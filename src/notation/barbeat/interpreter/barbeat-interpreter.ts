@@ -39,7 +39,6 @@ import {
   calculatePositions,
   handlePitchEmission,
   trackForBarCopy,
-  type TimeElement,
 } from "./helpers/pitch-emission.ts";
 import {
   processDurationUpdate,
@@ -207,7 +206,7 @@ function processTimePosition(
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
   const positions = calculatePositions(
-    element as TimeElement,
+    element,
     state,
     beatsPerBar,
     timeSigDenominator,

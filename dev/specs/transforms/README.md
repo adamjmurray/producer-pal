@@ -4,47 +4,47 @@
 
 ```
 // Waveforms (sync is an optional trailing keyword, not an expression)
-cos(frequency, [phase], [sync]); // cosine wave — phase 0 starts at peak (1.0)
-sin(frequency, [phase], [sync]); // sine wave — phase 0 starts at zero, rising
-tri(frequency, [phase], [sync]); // triangle wave — phase 0 starts at zero, rising
-saw(frequency, [phase], [sync]); // sawtooth wave — phase 0 starts at zero, rising
-square(frequency, [phase], [pulseWidth], [sync]); // square wave — phase 0 starts high
-rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
-choose(a, b, ...); // random pick from arguments (at least 1)
-seq(a, b, ...); // cycle by note.index; clip-granular params (gain, pitchShift) have no note axis, so cycles by clip.index there (== clipseq)
-clipseq(a, b, ...); // cycle by clip.index (per clip across a batch); forces the clip axis even on per-note params
-ramp(start, end); // linear ramp over clip/time range
-curve(start, end, exponent); // exponential ramp over clip/time range
+cos(frequency, [phase], [sync]) // cosine wave — phase 0 starts at peak (1.0)
+sin(frequency, [phase], [sync]) // sine wave — phase 0 starts at zero, rising
+tri(frequency, [phase], [sync]) // triangle wave — phase 0 starts at zero, rising
+saw(frequency, [phase], [sync]) // sawtooth wave — phase 0 starts at zero, rising
+square(frequency, [phase], [pulseWidth], [sync]) // square wave — phase 0 starts high
+rand([min], [max]) // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
+choose(a, b, ...) // random pick from arguments (at least 1)
+seq(a, b, ...) // cycle by note.index; clip-granular params (gain, pitchShift) have no note axis, so cycles by clip.index there (== clipseq)
+clipseq(a, b, ...) // cycle by clip.index (per clip across a batch); forces the clip axis even on per-note params
+ramp(start, end) // linear ramp over clip/time range
+curve(start, end, exponent) // exponential ramp over clip/time range
 
 // Timing functions
-swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
-quant(grid); // quantize: snap to nearest grid point
-legato([tolerance]); // set duration to reach the next note's start time
+swing(amount, [grid], [raw]) // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
+quant(grid) // quantize: snap to nearest grid point
+legato([tolerance]) // set duration to reach the next note's start time
 
 // Scale functions (use the Live Set scale; pass-through if no scale is set)
-snap(pitch); // snap pitch to the nearest in-scale pitch
-step(basePitch, offset); // move basePitch by offset scale steps
+snap(pitch) // snap pitch to the nearest in-scale pitch
+step(basePitch, offset) // move basePitch by offset scale steps
 
 // Math functions
-round(value); // round to nearest integer
-floor(value); // round down to integer
-ceil(value); // round up to integer
-abs(value); // absolute value
-clamp(value, min, max); // clamp value to [min, max] range
-wrap(value, min, max); // wrap value into [min, max] range (modular arithmetic)
-reflect(value, min, max); // reflect/bounce value within [min, max] range
-min(a, b, ...); // minimum of 2+ values
-max(a, b, ...); // maximum of 2+ values
-pow(base, exponent); // base raised to exponent
+round(value) // round to nearest integer
+floor(value) // round down to integer
+ceil(value) // round up to integer
+abs(value) // absolute value
+clamp(value, min, max) // clamp value to [min, max] range
+wrap(value, min, max) // wrap value into [min, max] range (modular arithmetic)
+reflect(value, min, max) // reflect/bounce value within [min, max] range
+min(a, b, ...) // minimum of 2+ values
+max(a, b, ...) // maximum of 2+ values
+pow(base, exponent) // base raised to exponent
 
 // Note-count operations (statements, NOT expression functions — see below)
-ratchet(count); // divide each matched note into `count` equal pieces (a roll)
-ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
-repeat(offset, [copies]); // echo matched notes forward by `offset` (a note value or <count>bar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
-split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
-merge(); // span ALL same-pitch matched notes into one sustained note (default)
-merge(0); // glue only touching/overlapping same-pitch notes
-merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
+ratchet(count) // divide each matched note into `count` equal pieces (a roll)
+ratchet(noteValue) // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
+repeat(offset, [copies]) // echo matched notes forward by `offset` (a note value or <count>bar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
+split(barBeat, ..., [sync]) // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
+merge() // span ALL same-pitch matched notes into one sustained note (default)
+merge(0) // glue only touching/overlapping same-pitch notes
+merge(noteValue) // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
 **A call with the wrong arguments is refused up front** — the whole call fails
@@ -155,16 +155,16 @@ across clips on the global timeline.
 
 ```
 // Clip-relative (default) — phase resets at each clip start
-velocity += 20 * cos(4bar);
+velocity += 20 * cos(4bar)
 
 // Timeline-synced — continuous phase from 1|1
-velocity += 20 * cos(4bar, sync);
+velocity += 20 * cos(4bar, sync)
 
 // With phase offset and sync
-velocity += 20 * cos(4bar, 0.25, sync);
+velocity += 20 * cos(4bar, 0.25, sync)
 
 // square with all args and sync
-velocity += 20 * square(n/2, 0, 0.75, sync);
+velocity += 20 * square(n/2, 0, 0.75, sync)
 ```
 
 ## Waveform Behavior

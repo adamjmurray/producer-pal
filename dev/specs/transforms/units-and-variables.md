@@ -66,10 +66,10 @@ trailing dot is fine (`n3./4` == `n3/4`), as in bar|beat.
 `n<fraction>` evaluates to a number and composes in any expression:
 
 ```
-duration = n/8; // every note → an eighth note (any meter)
-duration += n/16; // lengthen each note by a sixteenth
-duration = n/4 + n/8; // a dotted quarter
-duration = note.duration + n/16;
+duration = n/8 // every note → an eighth note (any meter)
+duration += n/16 // lengthen each note by a sixteenth
+duration = n/4 + n/8 // a dotted quarter
+duration = note.duration + n/16
 ```
 
 The denominator is required (`n1`, `n0.5` are parse errors); same rule as in
@@ -90,10 +90,10 @@ the beats-per-bar count:
 as in authoring:
 
 ```
-timing += 1bar; // shift every note one bar later
-duration = 1bar; // each note fills a bar
-duration = 1bar + n/4; // a bar plus a quarter
-velocity += 20 * cos(1bar, sync); // a bar-length cycle
+timing += 1bar // shift every note one bar later
+duration = 1bar // each note fills a bar
+duration = 1bar + n/4 // a bar plus a quarter
+velocity += 20 * cos(1bar, sync) // a bar-length cycle
 ```
 
 `<count>bar` is the meter-aware half of the duration vocabulary; `n<fraction>`
