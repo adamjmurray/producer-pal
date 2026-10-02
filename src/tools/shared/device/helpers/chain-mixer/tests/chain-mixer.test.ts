@@ -302,6 +302,83 @@ describe("applyChainMixer", () => {
       expect(first?.set).not.toHaveBeenCalled();
     });
 
+    it("says on the entry when an id is also another return's name", () => {
+      // "rc-1" is the second return's id and the first one's name.
+      const [first, second] = registerChainWithSends(["rc-1", "b Reverb"]);
+
+      const applied = applyMixer({ sendGainDb: -12, sendReturn: "rc-1" });
+
+      expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      expect(first?.set).not.toHaveBeenCalled();
+      expect(applied.sends).toStrictEqual([
+        {
+          return: "b Reverb",
+          returnId: "rc-1",
+          gainDb: expect.any(Number),
+          detail: 'matched by id; "rc-1" is also the name of "rc-1"',
+        },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("keeps the clash on a send a later one replaced", () => {
+      registerChainWithSends(["rc-1", "b Reverb"]);
+
+      const applied = applyMixer({
+        sends: [
+          { return: "rc-1", gainDb: -6 },
+          { return: "b Reverb", gainDb: -9 },
+        ],
+      });
+
+      expect(applied.sends?.[0]).toStrictEqual({
+        return: "b Reverb",
+        returnId: "rc-1",
+        ok: false,
+        detail: expect.stringMatching(
+          /; matched by id; "rc-1" is also the name of "rc-1"$/,
+        ),
+      });
+    });
+
+    it("keeps the clash on a send refused for want of a send", () => {
+      // The first return's name is the third return's id.
+      registerChainWithSends(["rc-2", "b Reverb", "c Chorus"]);
+
+      expect(
+        applyMixer({ sendGainDb: -6, sendReturn: "rc-2" }).sends,
+      ).toStrictEqual([
+        {
+          return: "rc-2",
+          returnId: "rc-2",
+          ok: false,
+          detail:
+            'the chain has no send for this return; matched by id; "rc-2" is also the name of "rc-2"',
+        },
+      ]);
+    });
+
+    it("keeps the clash on a macro-mapped send's refusal", () => {
+      registerChainWithSends(["rc-1", "b Reverb"]);
+      registerMockObject("send-1", {
+        type: "DeviceParameter",
+        properties: { is_enabled: 0 },
+      });
+
+      expect(
+        applyMixer({ sendGainDb: -6, sendReturn: "rc-1" }).sends,
+      ).toStrictEqual([
+        {
+          return: "b Reverb",
+          returnId: "rc-1",
+          ok: false,
+          detail: expect.stringMatching(
+            /^gainDb is disabled.*; matched by id; "rc-1" is also the name of "rc-1"$/,
+          ),
+        },
+      ]);
+    });
+
     // The tools refuse a half pair before they reach a chain, so by here it is
     // "neither was sent": write nothing, and say nothing either.
     it("ignores only one of sendGainDb and sendReturn", () => {

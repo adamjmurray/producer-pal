@@ -8,6 +8,7 @@ import {
   publishedReadBack,
   readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
@@ -23,6 +24,8 @@ export interface IndexedSend extends SendEntry {
   name: string;
   /** The return's id, for the result entry */
   returnId: string;
+  /** Set when the return was spelled as two returns; goes on the entry */
+  clash?: string;
 }
 
 /** One send as a result reports it, keyed by the return that resolved. */
@@ -78,6 +81,22 @@ export function readSendBack(
     gainDb: landed,
     ...(detail == null ? {} : { detail }),
   };
+}
+
+/**
+ * Add what a send's return spelling had to say to its entry, keeping any detail
+ * already on it.
+ * @param entry - The send's entry
+ * @param clash - The clash `findReturnIndex` found, if any
+ * @returns The entry, with the clash in its detail
+ */
+export function withClash(
+  entry: SendResult,
+  clash: string | undefined,
+): SendResult {
+  return clash == null
+    ? entry
+    : { ...entry, detail: joinDetails([entry.detail, clash]) };
 }
 
 /**
@@ -212,7 +231,7 @@ export function withSupersededSends<T extends IndexedSend>(
         return: send.name,
         returnId: send.returnId,
         ok: false,
-        detail: namedAgain(),
+        detail: joinDetails([namedAgain(), send.clash]),
       });
     }
 

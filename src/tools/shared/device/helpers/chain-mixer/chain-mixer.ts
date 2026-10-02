@@ -20,6 +20,7 @@ import {
   readSendBack,
   readSendGainDb,
   refusedSend,
+  withClash,
   withSupersededSends,
 } from "#src/tools/shared/sends/send-list.ts";
 import {
@@ -55,6 +56,8 @@ export interface ChainMixerParams {
 /** What a chain mixer write landed, read back off the chain. */
 export interface ChainMixerApplied extends MixerApplied {
   sends?: SendResult[];
+  /** Sends that landed where the return's spelling also fit another return */
+  clashes?: { return: string; clash: string }[];
 }
 
 /** One send that was written, and the return chain it went to. */
@@ -166,12 +169,16 @@ export function applyChainMixer(
     applied.pan = pan;
   }
 
-  const sends = applyChainSends(chain, mixer, params);
+  const { sends, clashes } = applyChainSends(chain, mixer, params);
 
   refuseIfNoneLanded(notes, SEND_PARAMS, "send", sends, (send) => send.return);
 
   if (sends.length > 0) {
     applied.sends = sends;
+  }
+
+  if (clashes.length > 0) {
+    applied.clashes = clashes;
   }
 
   return applied;
@@ -195,8 +202,12 @@ export function applyChainMixerAside(
   const refusedSends = (applied.sends ?? [])
     .filter((send) => send.ok === false)
     .map((send) => `send "${send.return}" ${send.detail}`);
+  // A refused send already carries its clash in its detail.
+  const clashes = (applied.clashes ?? []).map(
+    ({ return: name, clash }) => `send "${name}" ${clash}`,
+  );
 
-  for (const said of [...own.said, ...refusedSends]) {
+  for (const said of [...own.said, ...refusedSends, ...clashes]) {
     noteTarget(notes, `${chainLabel(chain)}: ${said}`);
   }
 
@@ -229,7 +240,7 @@ function applyChainSend(
 ): WrittenChainSend | null {
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
-  const index = findReturnIndex(
+  const { index, clash } = findReturnIndex(
     names,
     send.return,
     returns.map((rc) => rc.id),
@@ -260,10 +271,13 @@ function applyChainSend(
 
   if (param == null) {
     refused.push(
-      refusedSend(
-        send.return,
-        returns[index]?.id,
-        "the chain has no send for this return",
+      withClash(
+        refusedSend(
+          send.return,
+          returns[index]?.id,
+          "the chain has no send for this return",
+        ),
+        clash,
       ),
     );
 
@@ -274,7 +288,10 @@ function applyChainSend(
 
   if (!isParamEnabled(param)) {
     refused.push(
-      refusedSend(info.name, info.id, `gainDb ${PARAM_DISABLED_REASON}`),
+      withClash(
+        refusedSend(info.name, info.id, `gainDb ${PARAM_DISABLED_REASON}`),
+        clash,
+      ),
     );
 
     return null;
@@ -282,7 +299,14 @@ function applyChainSend(
 
   param.set("display_value", send.gainDb);
 
-  return { ...send, index, name: info.name, returnId: info.id, param };
+  return {
+    ...send,
+    index,
+    name: info.name,
+    returnId: info.id,
+    param,
+    ...(clash == null ? {} : { clash }),
+  };
 }
 
 /**
@@ -291,13 +315,14 @@ function applyChainSend(
  * @param chain - Chain or DrumChain LiveAPI object
  * @param mixer - The chain's mixer device
  * @param params - Mixer values to set
- * @returns One entry per return that landed, plus one per send that didn't
+ * @returns One entry per return that landed, plus one per send that didn't,
+ *   and the clashes of the sends that landed
  */
 function applyChainSends(
   chain: LiveAPI,
   mixer: LiveAPI,
   params: ChainMixerParams,
-): SendResult[] {
+): Pick<Required<ChainMixerApplied>, "sends" | "clashes"> {
   const { sendGainDb, sendReturn } = params;
   const refused: SendResult[] = [];
 
@@ -328,14 +353,22 @@ function applyChainSends(
   const landed = new Map(
     winners.map((send) => [
       send.index,
-      readSendBack(send.param, send.name, send.returnId, send.gainDb),
+      withClash(
+        readSendBack(send.param, send.name, send.returnId, send.gainDb),
+        send.clash,
+      ),
     ]),
   );
 
-  return [
-    ...withSupersededSends(landed, collisions),
-    ...lastPerReturn(refused),
-  ];
+  return {
+    sends: [
+      ...withSupersededSends(landed, collisions),
+      ...lastPerReturn(refused),
+    ],
+    clashes: winners.flatMap((send) =>
+      send.clash == null ? [] : [{ return: send.name, clash: send.clash }],
+    ),
+  };
 }
 
 /**

@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
@@ -26,72 +25,74 @@ export function returnTrackPathIndex(value: string): number {
   }
 }
 
+/** The return a send named, and what its spelling had to say. */
+export interface ReturnMatch {
+  /** Index of the match, or -1 */
+  index: number;
+  /** Set when the value also named another return. For the send's own entry. */
+  clash?: string;
+}
+
 /**
- * Find the return (track or rack chain) a send refers to, by id or by name.
- *
- * An id wins: it is exact, and unlike a name it can't be shared by two returns
- * or shift when one is renamed. Only these returns' ids count, so a return
- * named after a number stays reachable by name.
- *
- * Otherwise the exact name, then a path (`pathIndex`, e.g. "rt0" is the first
- * return track), then its letter prefix — "A" matches "A-Reverb"
- * (return tracks) and "a Reverb" (rack return chains). Case-insensitive. An
- * exact name anywhere in the list beats a prefix match, so "Delay" finds
- * "Delay", not "Delay 2".
+ * Find the return (track or rack chain) a send names. Order: id, exact name,
+ * path (`pathIndex`, e.g. "rt0"), then letter prefix ("A" finds "A-Reverb" or
+ * "a Reverb"); case-insensitive (ADR-0056). An exact name beats a prefix, so
+ * "Delay" finds "Delay", not "Delay 2". Only these returns' ids count.
  * @param names - Return names in send order
- * @param sendReturn - Id, name, or letter to match
+ * @param sendReturn - Id, name, path, or letter to match
  * @param ids - Return ids in send order
- * @param pathIndex - Index `sendReturn` names as a path, if it is one. A name
- *   written exactly like a path still wins, so existing names keep working.
- * @returns Index of the match, or -1
+ * @param pathIndex - Index `sendReturn` names as a path, if it is one
+ * @returns The match, with a clash when the value also fit another return
  */
 export function findReturnIndex(
   names: string[],
   sendReturn: string,
   ids: string[] = [],
   pathIndex = -1,
-): number {
+): ReturnMatch {
   const wanted = sendReturn.toLowerCase();
 
   // Every name "starts with" the empty string, so without this an empty
   // sendReturn would match the first return that has a separator up front.
   if (wanted === "") {
-    return -1;
+    return { index: -1 };
   }
 
   const byId = ids.indexOf(sendReturn);
   const exact = names.findIndex((name) => name.toLowerCase() === wanted);
 
   if (byId !== -1) {
-    if (exact !== -1 && exact !== byId) {
-      console.warn(
-        `sendReturn "${sendReturn}" is the id of "${names[byId]}" and the name of another return; using the id`,
-      );
-    }
-
-    return byId;
+    return exact !== -1 && exact !== byId
+      ? {
+          index: byId,
+          clash: `matched by id; "${sendReturn}" is also the name of "${names[exact]}"`,
+        }
+      : { index: byId };
   }
+
+  const pathHit = pathIndex >= 0 && pathIndex < names.length;
 
   if (exact !== -1) {
-    if (pathIndex >= 0 && pathIndex < names.length && exact !== pathIndex) {
-      console.warn(
-        `sendReturn "${sendReturn}" is the name of "${names[exact]}" and also a path to "${names[pathIndex]}"; using the name`,
-      );
-    }
-
-    return exact;
+    return pathHit && exact !== pathIndex
+      ? {
+          index: exact,
+          clash: `matched by name; "${sendReturn}" is also a path to "${names[pathIndex]}"`,
+        }
+      : { index: exact };
   }
 
-  if (pathIndex >= 0 && pathIndex < names.length) {
-    return pathIndex;
+  if (pathHit) {
+    return { index: pathIndex };
   }
 
-  return names.findIndex((name) => {
-    const lower = name.toLowerCase();
-    const next = lower[wanted.length];
+  return {
+    index: names.findIndex((name) => {
+      const lower = name.toLowerCase();
+      const next = lower[wanted.length];
 
-    return lower.startsWith(wanted) && (next === "-" || next === " ");
-  });
+      return lower.startsWith(wanted) && (next === "-" || next === " ");
+    }),
+  };
 }
 
 /**

@@ -69,3 +69,12 @@ last. Rack return chains can't be created at all. A `c+` on a Drum Rack is
 refused and points at the pad spelling — a new, empty chain has no note, so it
 would land on the catch-all pad and sound on every note no pad claims. On a pad
 (`t0/d0/pC1/c+`) it appends a layer, which does have a note.
+
+## Naming a return in a send
+
+`sendReturn` and `sends[].return` take a return track's id, exact name, path
+(`rt0`) or letter prefix, tried in that order; first hit wins. Rack return
+chains take the same, minus the path. When a value also fits a second return (an
+id that is another return's name, or a name that is a path to another return),
+the winner is used and the send's own entry says so in `detail`
+([ADR-0056](../../decisions/0056-a-send-return-resolves-id-name-path-prefix.md)).

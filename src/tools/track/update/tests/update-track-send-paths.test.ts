@@ -75,12 +75,64 @@ describe("updateTrack - return tracks named by path", () => {
       properties: { name: "rt0" },
     });
 
-    updateTrack({ id: "123", sendGainDb: -6, sendReturn: "rt0" });
+    const result = updateTrack({
+      id: "123",
+      sendGainDb: -6,
+      sendReturn: "rt0",
+    });
 
     expect(send2.set).toHaveBeenCalledWith("display_value", -6);
     expect(send1.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toStrictEqual([
-      expect.stringContaining("using the name"),
-    ]);
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0",
+      sends: [
+        {
+          return: "rt0",
+          returnId: "return_B",
+          gainDb: expect.any(Number),
+          detail: 'matched by name; "rt0" is also a path to "A-Reverb"',
+        },
+      ],
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("puts the clash on the entry of a send that was refused", () => {
+    registerMockObject("return_B", {
+      path: livePath.returnTrack(1),
+      properties: { name: "rt0" },
+    });
+    registerMockObject("mixer_1", {
+      path: livePath.track(0).mixerDevice(),
+      properties: { sends: children("send_1") },
+    });
+
+    // The only send was refused, so the call throws what its entry says.
+    expect(() =>
+      updateTrack({ id: "123", sends: [{ return: "rt0", gainDb: -6 }] }),
+    ).toThrow(
+      /the track has no send for this return; matched by name; "rt0" is also a path to "A-Reverb"/,
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps the clash on a send a later one replaced", () => {
+    registerMockObject("return_B", {
+      path: livePath.returnTrack(1),
+      properties: { name: "rt0" },
+    });
+
+    const result = updateTrack({
+      id: "123",
+      sends: [
+        { return: "rt0", gainDb: -6 },
+        { return: "rt1", gainDb: -9 },
+      ],
+    }) as { sends: { detail: string }[] };
+
+    expect(result.sends[0]?.detail).toMatch(
+      /^named again later in this call; matched by name; "rt0" is also a path to "A-Reverb"$/,
+    );
   });
 });

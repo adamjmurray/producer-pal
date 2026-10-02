@@ -18,6 +18,7 @@ import {
   dedupeSendsByReturn,
   readSendBack,
   refusedSend,
+  withClash,
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import {
@@ -162,6 +163,16 @@ export function applyTrackSends(
  * @returns What the send now reads, or why nothing was written
  */
 function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
+  return withClash(writeTrackSend(track, send), send.clash);
+}
+
+/**
+ * Write one resolved send on one track, without its clash.
+ * @param track - Track object
+ * @param send - One send from {@link resolveTrackSends}
+ * @returns What the send now reads, or why nothing was written
+ */
+function writeTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
@@ -210,7 +221,7 @@ function matchReturn(
   unresolved: SendResult[],
 ): ResolvedSend | null {
   const names = returns.map((rt) => rt.name);
-  const index = findReturnIndex(
+  const { index, clash } = findReturnIndex(
     names,
     send.return,
     returns.map((rt) => rt.id),
@@ -242,5 +253,6 @@ function matchReturn(
     index,
     name: match.name,
     returnId: match.id,
+    ...(clash == null ? {} : { clash }),
   };
 }
