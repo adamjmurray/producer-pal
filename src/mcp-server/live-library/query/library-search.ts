@@ -218,10 +218,10 @@ function buildSearchQuery(
  *
  * Sort variants:
  *   - "name":      f.name ASC                                ↔ a.name.localeCompare(b.name)
- *   - "mod_date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
- *   - "use_count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
+ *   - "mod-date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
+ *   - "use-count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
  *
- * @param sort - Sort enum (defaults to use_count)
+ * @param sort - Sort enum (defaults to use-count)
  * @returns SQL fragment safe to inline (no params)
  */
 function orderByClause(sort: LibrarySearchArgs["sort"]): string {
@@ -229,11 +229,11 @@ function orderByClause(sort: LibrarySearchArgs["sort"]): string {
     return "f.name ASC";
   }
 
-  if (sort === "mod_date") {
+  if (sort === "mod-date") {
     return "f.mod_date DESC, f.name ASC";
   }
 
-  // Default use_count sort: stable tiebreakers so a fresh user (where most
+  // Default use-count sort: stable tiebreakers so a fresh user (where most
   // rows have use_count=0) doesn't fall back to whatever the index returns.
   return "f.use_count DESC, f.mod_date DESC, f.name ASC";
 }

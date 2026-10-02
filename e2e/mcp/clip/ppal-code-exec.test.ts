@@ -185,9 +185,10 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
         expect(clip.id, `${label}: clip should have id`).toBeDefined();
         expect(
-          warnings.some((w) => w.includes("Code execution failed")),
-          `${label}: should warn about code failure, got: ${JSON.stringify(warnings)}`,
-        ).toBe(true);
+          (clip as { detail?: string }).detail,
+          `${label}: the clip's entry should say the code failed`,
+        ).toContain("code failed");
+        expect(warnings, `${label}: should not warn`).toStrictEqual([]);
 
         await sleep(50);
 

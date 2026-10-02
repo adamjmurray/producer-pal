@@ -93,8 +93,8 @@ export const TOOL_EXAMPLES: ToolExample[] = [
     args: {
       path: "live_set",
       operations: [
-        { type: "getProperty", property: "tempo" },
-        { type: "getChildIds", property: "tracks" },
+        { type: "get-property", property: "tempo" },
+        { type: "get-child-ids", property: "tracks" },
       ],
     },
   },

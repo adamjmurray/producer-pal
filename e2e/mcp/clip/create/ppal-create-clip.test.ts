@@ -314,11 +314,10 @@ describe("ppal-create-clip", () => {
       parseToolResultWithWarnings<CreateClipResult>(byDuration);
 
     expect(data.transformed).toBe(64);
-    expect(warnings).toStrictEqual([
-      expect.stringContaining(
-        "64 note(s) deleted: transform drove duration to 0 or below",
-      ),
-    ]);
+    expect(data.detail).toContain(
+      "64 note(s) deleted: duration went to 0 or below",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 
   it("refuses a clip the track cannot hold", async () => {

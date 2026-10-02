@@ -47,7 +47,6 @@ import {
  * @param id - ID of the object
  * @param labels - The call's names and colors
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
- * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param context - Per-request context
@@ -59,7 +58,6 @@ export async function duplicateClipWithPositions(
   id: string,
   labels: CopyLabels,
   arrangementStart: string | undefined,
-  arrangementLength: string | undefined,
   takeLane: number | string | undefined,
   takeLaneName: string | undefined,
   context: Partial<ToolContext>,
@@ -75,7 +73,6 @@ export async function duplicateClipWithPositions(
     id,
     labels,
     arrangementStart,
-    arrangementLength,
     takeLane,
     takeLaneName,
     context,
@@ -94,7 +91,6 @@ export async function duplicateClipWithPositions(
  * @param id - ID of the object
  * @param labels - The call's names and colors
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
- * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param context - Per-request context
@@ -106,7 +102,6 @@ async function duplicateClipToArrangementPositions(
   id: string,
   labels: CopyLabels,
   arrangementStart: string | undefined,
-  arrangementLength: string | undefined,
   takeLane: number | string | undefined,
   takeLaneName: string | undefined,
   context: Partial<ToolContext>,
@@ -175,12 +170,7 @@ async function duplicateClipToArrangementPositions(
 
   const labelled = labelDuplicateDestinations(targetTracks, targetPositions);
 
-  const canPromote = warnRecreatedCopyLimits(
-    object,
-    targetTracks,
-    arrangementLength,
-    lanes,
-  );
+  const canPromote = canPromoteSource(object, targetTracks);
   // Both re-create routes rebuild the clip from its sample, so a source without
   // one can't take either. Read once: every destination's entry says it.
   const noSample = canRecreateClip(object)
@@ -385,38 +375,22 @@ function resolveSongPositions(
 }
 
 /**
- * Warns once per call about what re-creating a copy costs, and says whether a
- * take-lane source may be re-created on the main lane.
- *
- * Per call, not per copy: a mixed toPath like "t1,t1/l0" would otherwise repeat
- * every warning for every position.
+ * Whether a take-lane source may be re-created on the main lane. A take-lane
+ * source going there is re-created too, for the same reason a lane destination
+ * is: Live's arrangement duplicate can't do it. A source with no sample can't
+ * be promoted at all; each destination's own entry says so.
  * @param object - The source clip
  * @param targetTracks - Destination per copy
- * @param arrangementLength - The raw arrangementLength param
- * @param lanes - Take lanes resolved for this call
  * @returns Whether the source can be promoted to the main lane
  */
-function warnRecreatedCopyLimits(
+function canPromoteSource(
   object: LiveAPI,
   targetTracks: ArrangementTrack[],
-  arrangementLength: string | undefined,
-  lanes: Map<string, ResolvedDuplicateLane>,
 ): boolean {
-  // A take-lane source going to the main lane is re-created there too, for the
-  // same reason a lane destination is: Live's arrangement duplicate can't do it.
   const promotes =
     isTakeLaneClip(object) && targetTracks.some((t) => t.takeLane == null);
-  const canPromote = promotes && canRecreateClip(object);
 
-  if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
-    console.warn(
-      "arrangementLength ignored for the re-created copies (they keep the source clip's arrangement length)",
-    );
-  }
-
-  // A source with no sample can't be promoted at all; each destination's own
-  // entry says so, so nothing is warned here.
-  return canPromote;
+  return promotes && canRecreateClip(object);
 }
 
 /**

@@ -18,12 +18,6 @@ export function evaluateCurve(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length !== 3) {
-    throw new Error(
-      `Function curve() requires exactly 3 arguments: curve(start, end, exponent)`,
-    );
-  }
-
   const [start, end, exponent] = evaluateArgs(args, [0, 1, 2], ctx);
 
   if (exponent <= 0) {
@@ -40,12 +34,6 @@ export function evaluateCurve(
  * @returns base raised to the power of exponent
  */
 export function evaluatePow(args: ExpressionNode[], ctx: EvalContext): number {
-  if (args.length !== 2) {
-    throw new Error(
-      `Function pow() requires exactly 2 arguments: pow(base, exponent)`,
-    );
-  }
-
   const [base, exponent] = evaluateArgs(args, [0, 1], ctx);
   const result = Math.pow(base, exponent);
 
@@ -70,10 +58,6 @@ export function evaluateMinMax(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length < 2) {
-    throw new Error(`Function ${name}() requires at least 2 arguments`);
-  }
-
   const values = args.map((arg) => ctx.evaluateExpression(arg, ctx));
 
   return name === "min" ? Math.min(...values) : Math.max(...values);
@@ -92,12 +76,6 @@ export function evaluateMathFunction(
   ctx: EvalContext,
 ): number {
   if (name === "clamp" || name === "wrap" || name === "reflect") {
-    if (args.length !== 3) {
-      throw new Error(
-        `Function ${name}() requires exactly 3 arguments: ${name}(value, min, max)`,
-      );
-    }
-
     const [value, bound1, bound2] = evaluateArgs(args, [0, 1, 2], ctx);
 
     if (name === "clamp") {
@@ -126,12 +104,6 @@ export function evaluateMathFunction(
     const wrapped = (((value - lo) % period) + period) % period;
 
     return wrapped <= hi - lo ? wrapped + lo : period - wrapped + lo;
-  }
-
-  if (args.length !== 1) {
-    throw new Error(
-      `Function ${name}() requires exactly 1 argument: ${name}(value)`,
-    );
   }
 
   const value = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);

@@ -20,12 +20,6 @@ export function evaluateSwing(
   raw: boolean,
   ctx: EvalContext,
 ): number {
-  if (args.length === 0 || args.length > 2) {
-    throw new Error(
-      `Function swing() requires 1-2 arguments: swing(amount [, grid])`,
-    );
-  }
-
   const amount = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
 
   // Default grid is half a musical beat — the off-beat between the meter's
@@ -71,12 +65,6 @@ export function evaluateQuant(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length !== 1) {
-    throw new Error(
-      `Function quant() requires exactly 1 argument: quant(grid)`,
-    );
-  }
-
   const grid = parseGrid(args[0] as ExpressionNode, ctx, "quant");
 
   return Math.round(ctx.position / grid) * grid;
@@ -95,10 +83,6 @@ export function evaluateLegato(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length > 1) {
-    throw new Error("legato() accepts at most 1 argument (tolerance)");
-  }
-
   const legato = ctx.noteProperties._legatoContext;
 
   if (!legato) {
@@ -127,8 +111,8 @@ export function evaluateLegato(
   // No next note and no known clip end (e.g. the final note in a context that
   // doesn't supply a clip length): keep the note's current duration rather than
   // failing the whole transform.
-  console.warn(
-    "legato(): no next note and no clip end for the last note; keeping current duration",
+  console.clipDetail(
+    "legato(): last note has no next note or clip end; kept its duration",
   );
 
   // duration is always populated by buildNoteProperties for note transforms.

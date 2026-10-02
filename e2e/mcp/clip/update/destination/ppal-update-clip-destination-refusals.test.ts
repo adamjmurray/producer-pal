@@ -23,13 +23,13 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers.ts";
-import { createArrangementClip } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../../../mcp-test-helpers.ts";
+import { createArrangementClip } from "../../helpers/ppal-clip-transforms-test-helpers.ts";
 import {
   arrangementClipAt,
   readClipFully,
-} from "../helpers/clip-io-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+} from "../../helpers/clip-io-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -162,5 +162,26 @@ describe("ppal-update-clip destinations it can make nothing of", () => {
     expect(
       await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, position),
     ).toBeUndefined();
+  });
+
+  it("refuses a toPath that names nothing, leaving the clip and its rename alone", async () => {
+    const clipId = await createArrangementClip(ctx, "690|1", "C3 1|1", "1bar");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, toPath: ",", name: "Not Renamed" },
+    });
+
+    await sleep(200);
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'invalid toPath "," - it names nothing',
+    );
+
+    const clip = await readClipFully(ctx.client!, { id: clipId });
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}[690|1]`);
+    expect(clip.name).not.toBe("Not Renamed");
   });
 });

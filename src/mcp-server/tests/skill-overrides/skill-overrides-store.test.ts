@@ -5,7 +5,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   deleteSkillOverride,
   listSkillSlotStates,
@@ -13,6 +13,7 @@ import {
   readSkillSlotState,
   writeSkillOverride,
 } from "#src/mcp-server/helpers/skill-overrides-store.ts";
+import { warn } from "#src/mcp-server/node-for-max-logger.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
@@ -22,8 +23,22 @@ import {
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 import {
   expectProvenanceFrontmatter,
+  unreadableWays,
   useTempConfigDir,
 } from "../config-dir-test-helpers.ts";
+
+vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock(import("node:fs"), async (importOriginal) => {
+  const { withFsFaults } = await import("../config-dir-test-helpers.ts");
+
+  return withFsFaults(await importOriginal());
+});
 
 const getDir = useTempConfigDir();
 
@@ -58,6 +73,41 @@ describe("readSkillOverrides", () => {
       fragments: { "barbeat-standard": "My core." },
       disabled: [],
     });
+  });
+
+  describe.each(unreadableWays)("with an unreadable file ($way)", (blocker) => {
+    it.skipIf(!blocker.supported)(
+      "skips it with a warning and still loads the rest",
+      () => {
+        writeRaw("barbeat-standard", "good override");
+        writeRaw("stark-standard", "locked");
+        blocker.block(slotPath("stark-standard"));
+
+        expect(readSkillOverrides()).toStrictEqual({
+          fragments: { "barbeat-standard": "good override" },
+          disabled: [],
+        });
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining("stark-standard.md"),
+        );
+      },
+    );
+
+    it.skipIf(!blocker.supported)(
+      "fails open: a locked enabled:false file leaves the built-in on",
+      () => {
+        writeRaw("stark-standard", "---\nenabled: false\n---\n");
+        blocker.block(slotPath("stark-standard"));
+
+        expect(readSkillOverrides()).toStrictEqual({
+          fragments: {},
+          disabled: [],
+        });
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining("stark-standard.md"),
+        );
+      },
+    );
   });
 
   it("reads every .md as a fragment, including custom names a fork can @include", () => {

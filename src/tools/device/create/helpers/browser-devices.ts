@@ -244,7 +244,7 @@ async function loadOnto(
 
 /**
  * Move a loaded device to where the call named, with a native insert's
- * semantics: past the end appends and warns.
+ * semantics: 0 on an empty chain appends.
  * @param device - The loaded device, still on the temp track
  * @param target - Where it goes
  * @param deviceName - The device as the call named it
@@ -256,7 +256,7 @@ function moveIntoPlace(
   deviceName: string,
   path: string,
 ): void {
-  const { position } = insertionPosition(target, path, deviceName);
+  const { position } = insertionPosition(target);
   // No source chain: the device comes off a temp track, so there is no chain
   // mixer to carry or leave behind.
   const move = moveDeviceIntoContainer(

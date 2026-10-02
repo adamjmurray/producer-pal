@@ -143,7 +143,6 @@ export async function duplicateOneSource(
       id,
       labels,
       args.params.arrangementStart,
-      args.params.arrangementLength,
       args.takeLane,
       args.takeLaneName,
       context,

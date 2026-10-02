@@ -20,6 +20,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../../mcp-test-helpers.ts";
+import { readNoteDicts } from "../../helpers/clip-io-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -84,33 +85,6 @@ async function createClipWithMutedNote(sceneIndex: number): Promise<string> {
 }
 
 /**
- * A clip's notes as Live reports them, minus the note_id it assigns itself.
- * @param clipId - The clip's Live API id
- * @returns One dictionary per note, in Live's own shape
- */
-async function noteDicts(
-  clipId: string,
-): Promise<Array<Record<string, number>>> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-live-api",
-    arguments: {
-      path: `id ${clipId}`,
-      operations: [
-        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
-      ],
-    },
-  });
-  const [raw] = parseToolResult<{
-    results: Array<{ result: string }>;
-  }>(result).results;
-  const { notes } = JSON.parse(raw!.result) as {
-    notes: Array<Record<string, number>>;
-  };
-
-  return notes.map(({ note_id: _noteId, ...note }) => note);
-}
-
-/**
  * Read a clip's notes.
  * @param clipId - The clip's Live API id
  * @returns The read-clip result with notes included
@@ -133,8 +107,8 @@ async function readNotes(clipId: string): Promise<ReadClipResult> {
 async function updateClip(
   clipId: string,
   args: Record<string, unknown>,
-): Promise<{ noteCount?: number }> {
-  const result = parseToolResult<{ noteCount?: number }>(
+): Promise<{ noteCount?: number; detail?: string }> {
+  const result = parseToolResult<{ noteCount?: number; detail?: string }>(
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { id: clipId, ...args },
@@ -182,7 +156,7 @@ describe("muted notes", () => {
 
     expect(result.noteCount).toBe(2);
 
-    const dicts = await noteDicts(clipId);
+    const dicts = await readNoteDicts(ctx.client!, clipId);
     const muted = dicts.find((note) => note.pitch === E3);
 
     expect(dicts).toHaveLength(3);
@@ -199,7 +173,7 @@ describe("muted notes", () => {
     const result = await updateClip(clipId, { notes: "A3 1|2" });
 
     expect(result.noteCount).toBe(3);
-    expect(await noteDicts(clipId)).toContainEqual(
+    expect(await readNoteDicts(ctx.client!, clipId)).toContainEqual(
       expect.objectContaining({ pitch: E3, mute: 1, start_time: 2 }),
     );
     expect((await readNotes(clipId)).mutedNotes).toBe(1);
@@ -208,13 +182,24 @@ describe("muted notes", () => {
   it("are replaced by a note written at the same pitch and start", async () => {
     const clipId = await createClipWithMutedNote(3);
 
-    await updateClip(clipId, { notes: "E3 1|3" });
+    const result = await updateClip(clipId, { notes: "E3 1|3" });
 
-    const dicts = await noteDicts(clipId);
+    // Replacing a muted note is not a duplicate, so nothing is reported.
+    expect(result.detail).toBeUndefined();
+
+    const dicts = await readNoteDicts(ctx.client!, clipId);
 
     expect(dicts.filter((note) => note.pitch === E3)).toStrictEqual([
       expect.objectContaining({ mute: 0, start_time: 2 }),
     ]);
     expect((await readNotes(clipId)).mutedNotes).toBeUndefined();
+  });
+
+  it("are not counted as notes outside the region", async () => {
+    // G3 (beat 4) and the muted E3 (beat 3) both fall past a 2-beat region.
+    const clipId = await createClipWithMutedNote(5);
+    const result = await updateClip(clipId, { length: "n/2", notes: "A3 1|1" });
+
+    expect(result.detail).toBe("1 note is outside the region and won't play");
   });
 });

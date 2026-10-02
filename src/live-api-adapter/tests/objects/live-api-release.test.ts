@@ -296,7 +296,7 @@ describe("live-api release", () => {
 
     const first = LiveAPI.from(livePath.track(0));
 
-    // What the ppal-live-api set_mode operation leaves behind: follow the
+    // What the ppal-live-api set-mode operation leaves behind: follow the
     // object rather than the path.
     first.mode = 1;
 

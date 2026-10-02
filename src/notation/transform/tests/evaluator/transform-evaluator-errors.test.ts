@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -42,7 +43,7 @@ describe("Transform Evaluator Error Handling", () => {
       const notes = createTestNote();
 
       expect(() => applyTransforms(notes, "{ this is not valid", 4, 4)).toThrow(
-        'but "{" found',
+        'position 0 (line 1, column 1) near "{ this is not valid"',
       );
     });
   });
@@ -92,19 +93,7 @@ describe("Transform Evaluator Error Handling", () => {
     });
   });
 
-  describe("function argument validation", () => {
-    it("handles rand with too many arguments", () => {
-      expectTransformError("velocity = rand(0, 100, 50)");
-    });
-
-    it("handles ramp with too few arguments", () => {
-      expectTransformError("velocity = ramp(100)");
-    });
-
-    it("handles ramp with too many arguments", () => {
-      expectTransformError("velocity = ramp(0, 100, 1)");
-    });
-
+  describe("function arguments", () => {
     it("takes a zero period as phase 0 rather than erroring", () => {
       expect(
         evaluateTransform("velocity += cos(0)", DEFAULT_CONTEXT).velocity!
@@ -218,18 +207,6 @@ describe("Transform Evaluator Error Handling", () => {
       expect(typeof result).toBe("number");
     });
 
-    // The grammar's swingArgumentList only accepts 1-2 arguments, so these
-    // counts can only arrive from a hand-built AST — the guard is the contract
-    // for direct callers.
-    it.each([
-      [[], "no arguments"],
-      [[1, 2, 3], "three arguments"],
-    ])("rejects swing() with %s", (args) => {
-      expect(() => {
-        evaluateFunction("swing", args, false, false, createEvalContext());
-      }).toThrow("Function swing() requires 1-2 arguments");
-    });
-
     // evaluateFunction gates the math dispatch to the seven known names, so an
     // unhandled name only reaches the switch through a direct call.
     it("rejects an unknown math function name", () => {
@@ -247,64 +224,22 @@ describe("Transform Evaluator Error Handling", () => {
 
       expect(notes[0]!.velocity).toBe(100); // unchanged
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Audio parameters"),
+        "gain ignored: the clip is MIDI",
       );
     });
   });
 
-  describe("function argument validation - empty args and invalid params", () => {
-    it("handles choose with no arguments", () => {
-      expectTransformError("velocity = choose()");
-    });
-
-    it("handles seq with no arguments", () => {
-      expectTransformError("velocity = seq()");
-    });
-
-    it("handles curve with non-positive exponent", () => {
-      expectTransformError("velocity = curve(0, 100, 0)");
+  describe("function evaluation errors", () => {
+    it("handles curve with a non-positive exponent only known as it runs", () => {
+      // cos() is judged per note, so the exponent isn't refused up front
+      expectTransformError("velocity = curve(0, 100, cos(n/4) - 2)");
     });
   });
 
-  describe("math function error handling", () => {
+  describe("math function evaluation errors", () => {
     it.each([
-      ["round()", "round with no arguments"],
-      ["floor()", "floor with no arguments"],
-      ["abs()", "abs with no arguments"],
-      ["ceil()", "ceil with no arguments"],
-      ["round(1.5, 99)", "round with an extra argument"],
-      ["floor(1.5, 2)", "floor with an extra argument"],
-      ["abs(-1, 2)", "abs with an extra argument"],
-      ["ceil(1.5, 2)", "ceil with an extra argument"],
-      ["pow(2)", "pow with only one argument"],
       ["pow(0, -1)", "pow producing Infinity"],
       ["pow(-1, 0.5)", "pow producing NaN"],
-      ["min(60)", "min with only one argument"],
-      ["max(60)", "max with only one argument"],
-      ["clamp(50)", "clamp with only one argument"],
-      ["clamp(50, 0)", "clamp with only two arguments"],
-      ["clamp(50, 0, 100, 200)", "clamp with four arguments"],
-      ["wrap(50)", "wrap with only one argument"],
-      ["wrap(50, 0)", "wrap with only two arguments"],
-      ["wrap(50, 0, 100, 200)", "wrap with four arguments"],
-      ["reflect(50)", "reflect with only one argument"],
-      ["reflect(50, 0)", "reflect with only two arguments"],
-      ["reflect(50, 0, 100, 200)", "reflect with four arguments"],
-    ])("handles %s error", (expr) => {
-      expectTransformError(`velocity = ${expr}`);
-    });
-  });
-
-  describe("waveform argument validation", () => {
-    // sin/cos/tri/saw take period + optional phase (sync is a trailing keyword,
-    // not an arg); square also takes an optional pulseWidth. A further positional
-    // arg is now rejected rather than silently dropped.
-    it.each([
-      ["cos(n/4, 0, 0.9)", "cos with a 3rd positional argument"],
-      ["sin(n/4, 0, 0.9)", "sin with a 3rd positional argument"],
-      ["tri(n/4, 0, 0.9)", "tri with a 3rd positional argument"],
-      ["saw(n/4, 0, 0.9)", "saw with a 3rd positional argument"],
-      ["square(n/4, 0, 0.5, 0.9)", "square with a 4th positional argument"],
     ])("handles %s error", (expr) => {
       expectTransformError(`velocity = ${expr}`);
     });
@@ -321,12 +256,12 @@ describe("Transform Evaluator Error Handling", () => {
         { start_time: 3 },
       ]);
 
-      // round() rejects the extra arg for every selected note; the failure is
-      // note-invariant, so it must surface exactly once.
-      applyTransforms(notes, "velocity = round(1, 2)", 4, 4);
+      // audio.gain can't be read in a MIDI note context, for every selected
+      // note; the failure is note-invariant, so it must surface exactly once.
+      applyTransforms(notes, "velocity = audio.gain", 4, 4);
 
       const failureWarnings = capturedWarnings().filter((warning) =>
-        warning.includes("Failed to evaluate transform"),
+        warning.includes(" transform failed"),
       );
 
       expect(failureWarnings).toHaveLength(1);

@@ -571,27 +571,43 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
-  // The silent-no-op twin of duplicate's ",": update-clip warns rather than
-  // throwing, but it must not stay quiet about a move that never happened.
-  it.each([
-    // toPath is refused when its entries are split; toSlot reads as unset, so
-    // it never reaches a parser — a pairing check must not count it as sent.
-    ["toPath", 'invalid toPath "," - it names nothing'],
-    ["toSlot", 'toSlot "," names nothing'],
-  ])(
-    "should warn when %s was sent but names nothing",
-    async (param, reason) => {
-      setupMidiClipMock(mocks.clip123);
-      setupToSlotMocks();
+  // A toPath that names nothing can't be read, so the call is refused before
+  // anything runs; a toSlot is deprecated and reads as unset instead.
+  it("should refuse toPath sent as a bare comma, touching nothing", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
 
-      const result = await updateClip({ id: "123", [param]: "," });
+    await expect(
+      updateClip({ id: "123", toPath: ",", name: "Renamed" }),
+    ).rejects.toThrow('invalid toPath "," - it names nothing');
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(reason),
-      );
-      expect(result).not.toHaveProperty("slot");
-    },
-  );
+  it("should refuse a toSlot with extra parts, touching nothing", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    await expect(
+      updateClip({ id: "123", toSlot: "1/2/3", name: "Renamed" }),
+    ).rejects.toThrow(
+      'invalid toSlot "1/2/3" - expected trackIndex/sceneIndex format (e.g., "0/1")',
+    );
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("should read toSlot sent as a bare comma as no move", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({ id: "123", toSlot: "," });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining('toSlot "," names nothing'),
+    );
+    expect(result).not.toHaveProperty("slot");
+  });
 
   // The caller asked for no move. Say the param named nothing rather than
   // reporting a move that failed, and let the rest of the update land.
@@ -773,7 +789,10 @@ describe("updateClip - Basic operations", () => {
 
   it("should apply code exactly once per clip without a failure warning", async () => {
     setupMidiClipMock(mocks.clip123);
-    vi.mocked(applyCodeToSingleClip).mockResolvedValue(3);
+    vi.mocked(applyCodeToSingleClip).mockResolvedValue({
+      noteCount: 3,
+      droppedDuplicates: 0,
+    });
 
     const result = await updateClip({ id: "123", code: "return notes" });
 
@@ -871,19 +890,13 @@ describe("updateClip - splitting mutation coverage", () => {
     expect(resultIds).not.toContain("0");
   });
 
-  it("should not split (or throw) when the split format is invalid", async () => {
+  it("refuses, and splits nothing, when the split format is invalid", async () => {
     const clipId = "clip_1";
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // arrangementSplit is provided but unparseable, so splitPoints is null. The guard's
-    // splitPoints != null term must stay honored (forced-true / || mutants
-    // would call performSplitting with null and throw).
-    const result = await updateClip(
-      { id: clipId, arrangementSplit: "not-a-position" },
-      {},
-    );
-
-    expect(result).toBeDefined();
+    await expect(
+      updateClip({ id: clipId, arrangementSplit: "not-a-position" }, {}),
+    ).rejects.toThrow('Invalid arrangementSplit format: "not-a-position"');
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       expect.anything(),

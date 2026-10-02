@@ -60,7 +60,8 @@ A single trailing `d` (dotted, ×3/2) or `t` (triplet, ×2/3) suffix scales the
 note value, matching bar|beat: `n/4d` = dotted quarter (≡ `n3/8`), `n/4t` =
 quarter triplet (≡ `n/6`), `n/8t` = eighth triplet (≡ `n/12`). Mutually
 exclusive, non-stacking, and applies to any numerator (`n3/8d` = 9/16). Not the
-`.` glyph (bar|beat uses `.` for decimals).
+`.` glyph (bar|beat uses `.` for decimals). A numerator may be a decimal, and a
+trailing dot is fine (`n3./4` == `n3/4`), as in bar|beat.
 
 `n<fraction>` evaluates to a number and composes in any expression:
 
@@ -175,12 +176,12 @@ Access audio clip properties in expressions using the `audio.` prefix:
 Access clip and bar context in expressions:
 
 - `note.index` - 0-based order of note in clip (MIDI only)
-- `clip.duration` - Clip duration in musical beats (arrangement length for
-  arrangement clips, content length for session clips)
+- `clip.duration` - Length in musical beats of the region that plays (end minus
+  start, so 5|1 to 6|1 is 1 bar); for arrangement clips, the arrangement length
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
-  only; on session clips it resolves to 0 with a warning, since session clips
-  have no arrangement origin)
+  only; on session clips it resolves to 0 with a detail on the clip's entry,
+  since session clips have no arrangement origin)
 - `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
   longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
   6/8). Prefer the `<count>bar` literal: `1bar` == `clip.barDuration` and `4bar`

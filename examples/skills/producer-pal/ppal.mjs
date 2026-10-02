@@ -118,12 +118,10 @@ export async function callTool(name, args = {}, options = {}) {
 
 /**
  * POST /config — update device settings remotely and return the full updated
- * config. `patch` is a partial object; the server ignores unrecognized keys and
- * also silently ignores an invalid value for a known field (an unknown
- * `notation` is dropped, keeping the current setting; booleans are coerced). The
- * only field that rejects with a 400 is an invalid `tools` list. Because bad
- * values are dropped rather than reported, read the returned config to confirm a
- * setting actually took effect.
+ * config. `patch` is a partial object; unrecognized keys are ignored. A wrong
+ * type (e.g. the string "false" for a boolean) or an invalid value (an unknown
+ * `notation`, a bad `tools` list) is a 400 that names every bad field, and
+ * nothing in the patch is applied.
  *
  * Every setting here is GLOBAL to the device — it also moves the chat UI and any
  * connected MCP clients. Prefer the per-request `notation`, `disabledTools`, and

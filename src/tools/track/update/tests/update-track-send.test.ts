@@ -370,27 +370,23 @@ describe("updateTrack - send properties", () => {
       expect(send2.set).toHaveBeenCalledWith("display_value", -12);
     });
 
-    it("lets the list override the scalar pair on the same return", () => {
+    it("says on the pair's entry that the list replaced it", () => {
       // A send holds one value, so the caller has to be told which one held.
-      updateTrack({
+      const result = updateTrack({
         id: "123",
         sendGainDb: -6,
         sendReturn: "A",
         sends: [{ return: "A-Reverb", gainDb: -12 }],
       });
 
-      expect(capturedWarnings()).toContain(
-        'sends overrides sendGainDb/sendReturn: "A-Reverb" ended up at -12 dB',
-      );
+      expect(sendsOf(result)).toStrictEqual([REPLACED]);
+      expect(capturedWarnings()).toStrictEqual([]);
       expect(send1.set).toHaveBeenCalledWith("display_value", -12);
       expect(send1.set).not.toHaveBeenCalledWith("display_value", -6);
     });
 
-    it("keeps the last entry when two name the same return", () => {
-      // Live clamped both requests, so a warning quoting either is caught.
-      keepsParamValue(send1, -70);
-
-      updateTrack({
+    it("says on the earlier entry that a later one replaced it", () => {
+      const result = updateTrack({
         id: "123",
         sends: [
           { return: "A", gainDb: -6 },
@@ -398,19 +394,14 @@ describe("updateTrack - send properties", () => {
         ],
       });
 
-      // "ended up at" is a claim about the final state, so it names the level
-      // read back — not the one that won the argument list.
-      expect(capturedWarnings()).toContain(
-        'sends names one return more than once: "A-Reverb" ended up at -70 dB',
-      );
+      expect(sendsOf(result)).toStrictEqual([REPLACED]);
+      expect(capturedWarnings()).toStrictEqual([]);
       expect(send1.set).toHaveBeenCalledTimes(1);
       expect(send1.set).toHaveBeenCalledWith("display_value", -12);
     });
 
-    it("announces a collision once for a multi-track call", () => {
-      // The returns belong to the Live Set, so the clash is a fact about the
-      // call — repeating it down the track list says nothing new.
-      updateTrack({
+    it("reports the replaced entry on every track of a multi-track call", () => {
+      const result = updateTrack({
         id: "123,456",
         sends: [
           { return: "A", gainDb: -6 },
@@ -418,11 +409,11 @@ describe("updateTrack - send properties", () => {
         ],
       });
 
-      expect(
-        capturedWarnings().filter((warning) =>
-          warning.includes("names one return more than once"),
-        ),
-      ).toHaveLength(1);
+      expect(result).toStrictEqual([
+        { id: "123", path: "t0", sends: [REPLACED] },
+        { id: "456", path: "t1", sends: [REPLACED] },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("says nothing about a collision on a send that never landed", () => {
@@ -452,12 +443,12 @@ describe("updateTrack - send properties", () => {
       });
     });
 
-    it("announces a collision that lands on a later track but not the first", () => {
-      // A rack macro owns the colliding send on track 1 only, so the first
-      // track has nothing to name and the second one does.
+    it("skips the replaced entry on a track whose write was refused", () => {
+      // A rack macro owns the colliding send on track 1 only; its own entry
+      // already says why, so the replaced one adds nothing there.
       registerMockObject("send_2", { properties: { is_enabled: 0 } });
 
-      updateTrack({
+      const result = updateTrack({
         id: "123,456",
         sends: [
           { return: "A", gainDb: -6 },
@@ -466,12 +457,25 @@ describe("updateTrack - send properties", () => {
         ],
       });
 
-      expect(
-        capturedWarnings().filter((warning) =>
-          warning.includes("names one return more than once"),
-        ),
-      ).toStrictEqual([
-        'sends names one return more than once: "B-Delay" ended up at -12 dB',
+      const [refused, ok] = result as Array<ReturnType<typeof updateTrack>>;
+      const replaced = (entry: unknown): unknown[] =>
+        sendsOf(entry as ReturnType<typeof updateTrack>).filter(
+          (send) =>
+            (send as { detail?: string }).detail ===
+            "named again later in this call",
+        );
+
+      expect(capturedWarnings()).toStrictEqual([]);
+      expect(replaced(ok)).toHaveLength(1);
+      // The refused track's own entry says why; it adds nothing about the pair.
+      expect(replaced(refused)).toStrictEqual([]);
+      expect(sendsOf(refused as ReturnType<typeof updateTrack>)).toStrictEqual([
+        {
+          return: "B-Delay",
+          returnId: "return_B",
+          ok: false,
+          detail: expect.stringContaining("gainDb is disabled"),
+        },
       ]);
     });
   });
@@ -736,6 +740,13 @@ function expectSendRefused(
  * @param result - What updateTrack returned
  * @returns The sends array, or an empty one when it reported none
  */
+const REPLACED = {
+  return: "A-Reverb",
+  returnId: "return_A",
+  ok: false,
+  detail: "named again later in this call",
+};
+
 function sendsOf(result: ReturnType<typeof updateTrack>): unknown[] {
   return (result as { sends?: unknown[] }).sends ?? [];
 }

@@ -49,11 +49,17 @@ export function resolveToolSchema(
   // filterSchemaForSmallModel returns the schema unchanged when there is
   // nothing to exclude or override, so calling it unconditionally is a no-op
   // for tools/contexts without any active modes.
-  const validating = filterSchemaForSmallModel(
-    inputSchema,
-    resolved.excludeParams,
-    resolved.descriptionOverrides,
-    resolved.excludeEnumValues,
+  // Hiding an enum value never refuses it, so it is safe here too: it keeps an
+  // aliased enum's refusal (REST validates against this schema) in step with
+  // what is published.
+  const validating = unpublishEnumValues(
+    filterSchemaForSmallModel(
+      inputSchema,
+      resolved.excludeParams,
+      resolved.descriptionOverrides,
+      resolved.excludeEnumValues,
+    ),
+    resolved.unpublishedEnumValues,
   );
   const hidden = collectHiddenParams(validating);
   const hiddenKeys = Object.keys(hidden);

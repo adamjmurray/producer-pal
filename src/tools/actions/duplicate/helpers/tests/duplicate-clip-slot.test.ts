@@ -243,7 +243,6 @@ describe("duplicateClipWithPositions to clip slots", () => {
       undefined,
       undefined,
       undefined,
-      undefined,
       {},
     );
 

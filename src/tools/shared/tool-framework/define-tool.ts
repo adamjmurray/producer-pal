@@ -17,7 +17,10 @@ import {
   unexpectedArgKeys,
   unexpectedArgsWarning,
 } from "#src/tools/shared/tool-framework/unexpected-args.ts";
-import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
+import {
+  optionalParams,
+  unsetEmptyParams,
+} from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 
 // Re-export CallToolResult for use by callers
@@ -92,8 +95,12 @@ export function defineTool(
       smallModelMode,
     });
 
-    // Use loose() so extra args reach our handler (SDK would strip them otherwise)
-    const passthroughSchema = z.object(publishedSchema).loose();
+    // The SDK parses args against this before our handler runs, so a null or
+    // blank would already be coerced (null to 0 or "null") by the time
+    // unsetEmptyParams saw it. optionalParams applies the same rule here and
+    // leaves the JSON Schema unchanged. loose() lets extra args reach our
+    // handler (the SDK would strip them otherwise).
+    const passthroughSchema = z.object(optionalParams(publishedSchema)).loose();
 
     server.registerTool(
       name,

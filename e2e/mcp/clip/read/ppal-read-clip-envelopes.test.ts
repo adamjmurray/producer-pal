@@ -73,7 +73,12 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
       ).envelopes;
     }
 
-    it("reads back an envelope the remote script wrote", async () => {
+    /**
+     * Make a session clip and give it a volume envelope over the remote
+     * script's own route.
+     * @returns The clip's id
+     */
+    async function clipWithVolumeEnvelope(): Promise<string> {
       const id = await createClipInSlot(ctx, `${TRACK}/s0`, {
         notes: "C3 1|1",
         length: "1bar",
@@ -85,6 +90,12 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
         parameter: "volume",
         points: POINTS,
       });
+
+      return id;
+    }
+
+    it("reads back an envelope the remote script wrote", async () => {
+      const id = await clipWithVolumeEnvelope();
 
       expect(await readEnvelopes(id)).toStrictEqual([
         {
@@ -100,17 +111,7 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
     });
 
     it("leaves envelopes out of a '*' read", async () => {
-      const id = await createClipInSlot(ctx, `${TRACK}/s0`, {
-        notes: "C3 1|1",
-        length: "1bar",
-      });
-
-      await writeEnvelope({
-        track: TRACK,
-        slot: 0,
-        parameter: "volume",
-        points: POINTS,
-      });
+      const id = await clipWithVolumeEnvelope();
 
       expect(await readEnvelopes(id, ["*"])).toBeUndefined();
     });

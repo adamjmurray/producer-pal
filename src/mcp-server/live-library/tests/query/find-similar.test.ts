@@ -224,7 +224,7 @@ describe("findSimilar", () => {
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {
     await expectSampleFolderExplained(
-      () => findSimilar({ similarTo: SEED_KICK, source: "sampleFolder" }),
+      () => findSimilar({ similarTo: SEED_KICK, source: "sample-folder" }),
       (r) => r.items,
     );
   });

@@ -29,7 +29,6 @@ import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type WrittenContainer,
   pathField,
-  targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { moveDeviceToPath } from "./move-device.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
@@ -49,10 +48,10 @@ import {
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
-  isDeviceType,
-  isValidUpdateType,
-  liveObjectWords,
-} from "./update-target-types.ts";
+  isDeviceTreeType,
+  wrongTargetTypeMessage,
+} from "#src/tools/shared/device/device-target-types.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
 interface UpdateTargetResult extends ChainMixerReport {
@@ -350,10 +349,8 @@ function updateTarget(
   const type = target.type;
 
   // Validate type is updatable
-  if (!isValidUpdateType(type)) {
-    throw new Error(
-      `cannot update ${liveObjectWords(type)}: ${targetLabel(target)}`,
-    );
+  if (!isDeviceTreeType(type)) {
+    throw new Error(wrongTargetTypeMessage("update", target));
   }
 
   const notes = newTargetNotes();
@@ -378,7 +375,7 @@ function updateTarget(
     target.set("name", stripReturnChainLetter(target, options.name));
   }
 
-  if (!isDeviceType(type)) {
+  if (!isDeviceClass(type)) {
     // The chain's own mixer reads back here, so a clamped or snapped level is
     // visible instead of the caller's argument being assumed to have landed.
     const mixer = updateNonDeviceProperties(target, type, options, notes);
@@ -493,7 +490,7 @@ function moveTargetToPath(
     return {};
   }
 
-  if (isDeviceType(type)) {
+  if (isDeviceClass(type)) {
     return moveDevice(target, toPath, notes);
   }
 

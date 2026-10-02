@@ -38,7 +38,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     path: param(z.coerce.string().optional(), {
       default:
         "clip(s) to update instead of id, comma-separated: a clip slot 't<track>/s<scene>', " +
-        "or an arrangement clip by where it starts 't<track>[<position>]' (e.g., 't0/s1' or 't0[5|1],t2/s3')",
+        "or an arrangement clip covering a position 't<track>[<position>]' (e.g., 't0/s1' or 't0[5|1],t2/s3')",
       smallModel:
         "clip to update instead of id: 't0/s1', or 't0[5|1]' in the arrangement",
     }),
@@ -67,7 +67,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter; or comma-separated one per clip",
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter; or comma-separated one per clip. Without start, a non-looping clip keeps its end and moves its start to fit",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {

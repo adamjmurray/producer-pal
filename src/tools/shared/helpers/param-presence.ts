@@ -6,8 +6,8 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
-// "undefined" as a param's whole value. (A JSON null never gets this far —
-// unsetEmptyParams drops it before the schema coerces.)
+// "undefined" as a param's whole value. (A JSON null never gets this far — it
+// is dropped before the schema coerces, over MCP and REST alike.)
 const COERCED_NULLISH = new Set(["null", "undefined"]);
 
 /**
@@ -115,44 +115,6 @@ export function parseCommaSeparatedIds(ids?: string | null): string[] {
     .split(",")
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
-}
-
-/**
- * Sets properties on a target object, but only for non-null values
- * @param target - The object to set properties on
- * @param properties - Object with key-value pairs to set
- * @returns The target object (for chaining)
- */
-export function setAllNonNull(
-  target: Record<string, unknown>,
-  properties: Record<string, unknown>,
-): Record<string, unknown> {
-  for (const [key, value] of Object.entries(properties)) {
-    if (value != null) {
-      target[key] = value;
-    }
-  }
-
-  return target;
-}
-
-/**
- * Creates a new object with all non-null properties from the input object
- * @param obj - Object with key-value pairs
- * @returns New object containing only non-null properties
- */
-export function withoutNulls(
-  obj: Record<string, unknown>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (value != null) {
-      result[key] = value;
-    }
-  }
-
-  return result;
 }
 
 /**

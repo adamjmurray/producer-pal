@@ -312,43 +312,54 @@ describe("createDevice", () => {
         });
       });
 
-      it("should warn and append when position is past the end of the chain", async () => {
+      it("should refuse a position past the end of the chain, with no warning", async () => {
         const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
         track0 = registerTrack0WithExistingDevice();
 
-        const result = await createDevice({
-          path: "t0/d5",
-          device: "Compressor",
-        });
-
-        expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
-        expect(mockConsole.warn).toHaveBeenCalledWith(
-          expect.stringContaining(
-            'path "t0/d5" is past the end of the device chain (1 device), appending "Compressor" instead',
-          ),
+        await expect(
+          createDevice({ path: "t0/d5", device: "Compressor" }),
+        ).rejects.toThrow(
+          '"t0/d5" is past the end of a container holding 1 device',
         );
-        expect(result).toStrictEqual({
-          id: "device123",
-          path: "t0/d1",
-        });
+
+        expect(track0.call).not.toHaveBeenCalledWith(
+          "insert_device",
+          expect.anything(),
+        );
+        expect(mockConsole.warn).not.toHaveBeenCalled();
       });
 
-      it("counts the devices in the past-the-end warning in the plural", async () => {
-        const mockConsole = await import("#src/shared/max/v8-max-console.ts");
-
+      it("counts the devices in the past-the-end refusal in the plural", async () => {
         registerMockObject("track-0", {
           path: livePath.track(0),
           properties: { devices: children("device-a", "device-b") },
           methods: { insert_device: () => ["id", "device123"] },
         });
-        registerMockObject("device123", { path: livePath.track(0).device(2) });
 
-        await createDevice({ path: "t0/d5", device: "Compressor" });
+        await expect(
+          createDevice({ path: "t0/d5", device: "Compressor" }),
+        ).rejects.toThrow("holding 2 devices");
+      });
 
-        expect(mockConsole.warn).toHaveBeenCalledWith(
-          expect.stringContaining("(2 devices)"),
-        );
+      it("refuses only the past-the-end path of a list, on its own entry", async () => {
+        registerMockObject("track-0", {
+          path: livePath.track(0),
+          properties: { devices: children("device-a", "device-b") },
+          methods: { insert_device: () => ["id", "device123"] },
+        });
+        registerMockObject("device123", { path: livePath.track(0).device(0) });
+
+        expect(
+          await createDevice({ path: "t0/d9,t0/d0", device: "Compressor" }),
+        ).toStrictEqual([
+          {
+            path: "t0/d9",
+            ok: false,
+            detail: '"t0/d9" is past the end of a container holding 2 devices',
+          },
+          { id: "device123", path: "t0/d0" },
+        ]);
       });
 
       it("should create device on master track via path", async () => {

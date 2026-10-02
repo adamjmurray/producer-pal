@@ -40,12 +40,11 @@
     ahead of the bare-pitch body `C4`.
   - **No duplicates**: each segment kind may appear **at most once**. A repeated
     pitch, time, or `where()` (two pitch selectors AND-combine to the empty set)
-    is **warned-and-skipped**, not a hard error: that line is dropped with a
-    relayed `WARNING:` pointing at the fix — span pitches with a range
-    (`C3-E3`), use one time range, or combine predicates with `&&`/`||` inside
-    one `where(...)` — while the **other lines still apply**. (A hard parse
-    error would abort the whole `transforms` string; warn-and-skip preserves
-    partial success, matching the rest of the transform tool.)
+    **refuses the whole transform** before any clip is touched, with a message
+    pointing at the fix — span pitches with a range (`C3-E3`), use one time
+    range, or combine predicates with `&&`/`||` inside one `where(...)`. It is
+    the same mistake for every clip, so it is refused once, up front (see
+    [ADR-0055](../../decisions/0055-a-bad-transform-argument-is-refused-up-front.md)).
 
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3: velocity += 10`
@@ -60,11 +59,11 @@
     `pitch-class-grammar-parity.test.ts`.
   - A bare pitch name is a value only for the `pitch` parameter (`pitch = C4`),
     as a selector (`C3:`), or as a function argument (`min(C3, C5)`). Assigned
-    to any other parameter it is warned-and-skipped — not silently coerced to a
+    to any other parameter the transform is refused — not silently coerced to a
     MIDI number:
 
     ```
-    velocity = b2    // skipped with a warning (b2 is not a velocity)
+    velocity = b2    // refused (b2 is not a velocity)
     ```
 
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
@@ -163,14 +162,14 @@
     for ranges on the float-valued props (`duration`, `probability`, `start`).
   - **Evaluation**: the predicate is evaluated during note selection,
     AND-combined after the pitch/time filters. An evaluation failure (e.g. a
-    note missing the referenced property) warns and excludes the note, matching
-    warn-and-skip on the apply path. On audio clips (gain/pitchShift) a
-    note-property predicate warns and passes through, mirroring noteOp/audio
-    handling.
+    note missing the referenced property) excludes the note and says so on the
+    clip's entry, matching skip-and-report on the apply path. On audio clips
+    (gain/pitchShift) a note-property predicate is reported on the entry and
+    passes through, mirroring noteOp/audio handling.
 
 - **Range clamping**: Applied after modulation:
-  - velocity: capped at a max of 127; `<=0` deletes the note (like duration); no
-    minimum clamp (a positive sub-1 result is left as-is, not floored to 1)
+  - velocity: `<=0` deletes the note (like duration); anything else is held to
+    1-127 after all lines run (Live drops a note under 1, so 0.4 becomes 1)
   - timing: unclamped (can shift notes before/after original position)
   - probability: 0.0-1.0
   - duration: 0 or below deletes the note (like a v0 velocity), no minimum clamp

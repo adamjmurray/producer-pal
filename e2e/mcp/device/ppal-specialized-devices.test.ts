@@ -214,8 +214,8 @@ describe("specialized devices: Drift", () => {
         arguments: {
           path: `id ${id}`,
           operations: [
-            { type: "getProperty", property: "mod_matrix_source_1_index" },
-            { type: "getProperty", property: "mod_matrix_target_1_index" },
+            { type: "get-property", property: "mod_matrix_source_1_index" },
+            { type: "get-property", property: "mod_matrix_target_1_index" },
           ],
         },
       }),
@@ -303,8 +303,8 @@ describe("specialized devices: Drift", () => {
         arguments: {
           path: `id ${id}`,
           operations: [
-            { type: "getProperty", property: "voice_mode_index" },
-            { type: "getProperty", property: "voice_count_index" },
+            { type: "get-property", property: "voice_mode_index" },
+            { type: "get-property", property: "voice_count_index" },
           ],
         },
       }),
@@ -772,7 +772,7 @@ describe("specialized devices: Roar", () => {
         arguments: {
           path: `id ${id}`,
           operations: [
-            { type: "getProperty", property: "routing_mode_index" },
+            { type: "get-property", property: "routing_mode_index" },
             { type: "get", property: "routing_mode_list" },
           ],
         },

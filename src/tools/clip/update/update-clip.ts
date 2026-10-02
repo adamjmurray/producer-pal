@@ -118,6 +118,13 @@ export async function updateClip(
     arrangementLength,
     arrangementSplit,
     split,
+    timeSignature: args.timeSignature,
+    noteEdits: {
+      notationString: args.notes,
+      transformString: args.transforms,
+      preTransformString: args.preTransforms,
+      context,
+    },
     reasons,
     context,
   });

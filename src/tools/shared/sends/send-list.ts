@@ -3,12 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   differsAtPublishedResolution,
   publishedReadBack,
   readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
 
@@ -19,9 +20,12 @@ export const SEND_PARAMS = ["sends", "sendGainDb", "sendReturn"] as const;
 export interface IndexedSend extends SendEntry {
   /** Position in the sends list of the object being written */
   index: number;
-  /** The resolved return's own name. Warnings and results both name the return
-   * this way, so a warning can't point at a spelling the result never uses. */
+  /** The resolved return's own name, as a result names the return */
   name: string;
+  /** The return's id, for the result entry */
+  returnId: string;
+  /** Set when the return was spelled as two returns; goes on the entry */
+  clash?: string;
 }
 
 /** One send as a result reports it, keyed by the return that resolved. */
@@ -80,6 +84,22 @@ export function readSendBack(
 }
 
 /**
+ * Add what a send's return spelling had to say to its entry, keeping any detail
+ * already on it.
+ * @param entry - The send's entry
+ * @param clash - The clash `findReturnIndex` found, if any
+ * @returns The entry, with the clash in its detail
+ */
+export function withClash(
+  entry: SendResult,
+  clash: string | undefined,
+): SendResult {
+  return clash == null
+    ? entry
+    : { ...entry, detail: joinDetails([entry.detail, clash]) };
+}
+
+/**
  * The entry for a send nothing was written to. It has no level the call put
  * there, so it carries the detail in place of one.
  * @param name - The resolved return's name
@@ -122,18 +142,18 @@ export function readSendGainDb(
   };
 }
 
-/** What a dedupe decided: the entries that hold, and the clashes to announce. */
+/** What a dedupe decided: the entries that hold, and the ones they replaced. */
 export interface DedupedSends<T extends IndexedSend> {
   winners: T[];
-  collisions: SendCollision[];
+  collisions: SendCollision<T>[];
 }
 
 /** One return that more than one entry named. */
-export interface SendCollision {
+export interface SendCollision<T extends IndexedSend> {
   /** Position in the sends list, matching the winner's `index` */
   index: number;
-  /** True when the sendGainDb/sendReturn pair was the one overridden */
-  overrodeScalar: boolean;
+  /** The earlier entries the winner replaced, in the order they were named */
+  superseded: T[];
 }
 
 /**
@@ -141,79 +161,82 @@ export interface SendCollision {
  * `sends` list.
  *
  * A send holds one value, so the last entry naming a return is the one that
- * survives the call. Which returns clashed comes back rather than being
- * announced here: the warning names the level the send ended up at, and that
- * isn't known until the write has been read back.
+ * survives the call. The entries it replaced come back in `collisions`, for the
+ * result to say so (see {@link withSupersededSends}).
  * @param scalar - The sendGainDb/sendReturn pair once resolved, or null
  * @param list - Every `sends` entry that resolved, in the order it was sent
- * @returns One entry per return, and the returns that were named more than once
+ * @returns One entry per return, and the entries each one replaced
  */
 export function dedupeSendsByReturn<T extends IndexedSend>(
   scalar: T | null,
   list: T[],
 ): DedupedSends<T> {
   const byReturn = new Map<number, T>();
-  const collided = new Set<number>();
+  const superseded = new Map<number, T[]>();
   const scalarIndex = scalar?.index ?? null;
 
   for (const send of list) {
-    if (byReturn.has(send.index) || send.index === scalarIndex) {
-      collided.add(send.index);
+    const earlier = byReturn.get(send.index);
+    // The pair wrote first, so the list overwrites it.
+    const replaced =
+      earlier ?? (send.index === scalarIndex ? scalar : undefined);
+
+    if (replaced != null) {
+      const held = superseded.get(send.index) ?? [];
+
+      held.push(replaced);
+      superseded.set(send.index, held);
     }
 
     byReturn.set(send.index, send);
   }
 
-  // The pair wrote first and the list overwrote it, so the pair no longer
-  // describes the send — stop reporting a value it doesn't have.
-  const scalarHeld = scalarIndex != null && !collided.has(scalarIndex);
+  // The pair no longer describes a send the list overwrote — stop reporting a
+  // value it doesn't have.
+  const scalarHeld = scalar != null && !superseded.has(scalar.index);
   const winners = [...byReturn.values()];
 
   return {
-    winners: scalarHeld && scalar != null ? [scalar, ...winners] : winners,
-    collisions: [...collided].map((index) => ({
+    winners: scalarHeld ? [scalar, ...winners] : winners,
+    collisions: [...superseded].map(([index, replaced]) => ({
       index,
-      overrodeScalar: index === scalarIndex,
+      superseded: replaced,
     })),
   };
 }
 
 /**
- * Announce the returns that were named more than once, after the writes have
- * been read back so each names the level the send ended up at.
- *
- * Collisions are announced once for the whole call, and after the whole list
- * rather than as they happen: warning per write would name each level that lost
- * to the next one.
+ * Every send's entry, each preceded by the entries it replaced: a send named
+ * again later wasn't written, so it is `ok: false` and says so. A winner whose
+ * own write was refused already explains why nothing landed, so it brings no
+ * extra entries.
+ * @param landed - What each send that was written now reads, by its position
  * @param collisions - From {@link dedupeSendsByReturn}
- * @param landed - What each send that was written now reads, by its position.
- *   A collision whose write didn't land is skipped: there is no final level to
- *   name, and the refusal is already on that send's own entry.
- * @returns Whether anything was announced
+ * @returns The entries in the order the sends were named
  */
-export function warnSendCollisions(
-  collisions: SendCollision[],
+export function withSupersededSends<T extends IndexedSend>(
   landed: Map<number, SendResult>,
-): boolean {
-  let announced = false;
+  collisions: SendCollision<T>[],
+): SendResult[] {
+  const entries: SendResult[] = [];
 
-  for (const { index, overrodeScalar } of collisions) {
-    const entry = landed.get(index);
+  for (const [index, entry] of landed) {
+    const replaced =
+      entry.ok === false
+        ? []
+        : (collisions.find((c) => c.index === index)?.superseded ?? []);
 
-    if (entry == null || entry.ok === false) {
-      continue;
+    for (const send of replaced) {
+      entries.push({
+        return: send.name,
+        returnId: send.returnId,
+        ok: false,
+        detail: joinDetails([namedAgain(), send.clash]),
+      });
     }
 
-    const held = `"${entry.return}" ended up at ${String(entry.gainDb)} dB`;
-
-    console.warn(
-      overrodeScalar
-        ? `sends overrides sendGainDb/sendReturn: ${held}`
-        : `sends names one return more than once: ${held}`,
-    );
-
-    announced = true;
+    entries.push(entry);
   }
 
-  return announced;
+  return entries;
 }

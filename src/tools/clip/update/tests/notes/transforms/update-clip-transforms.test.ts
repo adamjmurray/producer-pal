@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { registerScaledLiveSet } from "./notes-mock-test-helpers.ts";
+import { registerScaledLiveSet } from "../notes-mock-test-helpers.ts";
 import {
   mockMergeNoteTracking,
   setupMidiClipMock,
@@ -130,18 +130,11 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip456)).toBe(43); // 2*20 + 3
   });
 
-  // The throw lands in the clip's own slot, so the caller can tell which of the
-  // three it was — and the other two still come back.
-  it("keeps going when a transform string is malformed, refusing each clip", async () => {
-    const result = (await updateClip({
-      id: "123, 456, 789",
-      transforms: "!!!bad!!!",
-    })) as Array<{ id?: string; ok?: false; detail?: string }>;
-
-    expect(result[0]?.id).toBe("123");
-    expect(result[0]?.ok).toBe(false);
-    expect(result[0]?.detail).toContain("transform syntax error");
-    expect(result).toHaveLength(3);
+  // One string for the whole call, so it is refused before any clip is touched.
+  it("refuses a malformed transform string for the whole call", async () => {
+    await expect(
+      updateClip({ id: "123, 456, 789", transforms: "!!!bad!!!" }),
+    ).rejects.toThrow("transform syntax error");
   });
 });
 
@@ -156,13 +149,30 @@ describe("updateClip - transforms name the clip they warn about", () => {
     mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
   });
 
+  // A count only known as the transform runs (rand) fails the same way for
+  // every clip
   it("tells two firings of the same reason apart", async () => {
-    await updateClip({ ids: "123,456", transforms: "gain = 3" });
+    await updateClip({ ids: "123,456", transforms: "ratchet(rand(0, 0))" });
 
-    expect(capturedWarnings()).toStrictEqual([
-      "clip t0/s0 (id 123): Audio parameters (gain, pitchShift) ignored for MIDI clips",
-      "clip t1/s1 (id 456): Audio parameters (gain, pitchShift) ignored for MIDI clips",
+    expect(
+      capturedWarnings().map((w) => w.split(": ratchet")[0]),
+    ).toStrictEqual(["clip t0/s0 (id 123)", "clip t1/s1 (id 456)"]);
+  });
+
+  // A fact about one clip's notes goes on that clip's entry, and is no warning.
+  it("puts a per-clip fact on that clip's entry", async () => {
+    const result = await updateClip({
+      ids: "123,456",
+      transforms: "duration = -1",
+    });
+
+    const fact = "1 note(s) deleted: duration went to 0 or below";
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ id: "123", detail: fact }),
+      expect.objectContaining({ id: "456", detail: fact }),
     ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 

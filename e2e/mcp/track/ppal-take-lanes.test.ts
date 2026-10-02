@@ -442,8 +442,8 @@ describe("take lanes", () => {
     expect(copy.name).toBe("Original Take");
     expect(copy.notes).toContain("C3");
 
-    // arrangementLength is meaningless on a take-lane duplicate: warn + ignore,
-    // but the clip is still created
+    // arrangementLength is meaningless on a take-lane duplicate: the copy's
+    // entry says it was ignored, and the clip is still created
     const lengthDup = parseToolResultWithWarnings<DuplicateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
@@ -456,10 +456,30 @@ describe("take lanes", () => {
       }),
     );
 
-    expect(lengthDup.warnings.join(" ")).toContain(
-      "arrangementLength ignored for the re-created copies",
+    expect(lengthDup.data.detail).toContain(
+      "arrangementLength ignored: the copy keeps the source's arrangement length",
     );
+    expect(lengthDup.warnings).toStrictEqual([]);
     expect(lengthDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[9|1]`);
+
+    // A mixed toPath: only the lane copy is re-created, so only its entry says
+    // arrangementLength was ignored; the main-lane copy honors it.
+    const mixed = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${EMPTY_MIDI_TRACK}[21|1],t${EMPTY_MIDI_TRACK}/l1[25|1]`,
+          arrangementLength: "2bar",
+        },
+      }),
+    );
+
+    expect(mixed.data).toHaveLength(2);
+    expect(mixed.data[0]!.detail ?? "").not.toContain("arrangementLength");
+    expect(mixed.data[1]!.detail).toContain("arrangementLength ignored");
+    expect(mixed.warnings).toStrictEqual([]);
 
     // An audio source is re-created from its sample. Warped on purpose, so the
     // warp-marker warning doesn't depend on the sample's own analysis file.
@@ -514,6 +534,33 @@ describe("take lanes", () => {
     expect(audioCopy.name).toBe("Original Sample");
     expect(audioCopy.sampleFile).toBe(SAMPLE_FILE);
     expect(audioCopy.warping).toBe(true);
+
+    // An audio copy takes the sample's length, so whether it matches the
+    // source depends on the sample. The entry gives exactly one length fact:
+    // the loss's "length is X, not Y", or "keeps the source's arrangement
+    // length" when it matched.
+    const audioLengthDup = parseToolResultWithWarnings<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: audioSource.id,
+          toPath: `t${audioTrackIndex}/l0[9|1]`,
+          arrangementLength: "2bar",
+        },
+      }),
+    );
+    const lengthDetail = audioLengthDup.data.detail ?? "";
+
+    expect(lengthDetail).toContain("arrangementLength ignored");
+    expect(lengthDetail).not.toContain(
+      "keeps the source clip's arrangement length",
+    );
+    expect(
+      lengthDetail.includes("length is ") !==
+        lengthDetail.includes("keeps the source's arrangement length"),
+    ).toBe(true);
+    expect(audioLengthDup.warnings).toStrictEqual([]);
   });
 
   // Live's duplicate_clip_to_arrangement no-ops on a take-lane SOURCE, so this

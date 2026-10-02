@@ -21,6 +21,7 @@ import {
   type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
+import { readTrackMixerId } from "../helpers/track-mixer-id-test-helpers.ts";
 import {
   callForParams,
   expectSkipThenValue,
@@ -44,6 +45,24 @@ async function rackWithOneChain(): Promise<string> {
   await sleep(150);
 
   return wrapped.id;
+}
+
+/**
+ * Read a device's name back from Live, once it has settled.
+ * @param deviceId - The device's id
+ * @returns The device's name
+ */
+async function readDeviceName(deviceId: string): Promise<string | undefined> {
+  await sleep(100);
+
+  const device = parseToolResult<ReadDeviceResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { id: deviceId },
+    }),
+  );
+
+  return device.name;
 }
 
 /**
@@ -236,15 +255,7 @@ describe("ppal-update-device", () => {
       { id: "99999", ok: false, detail: 'id "99999" does not exist' },
     ]);
 
-    await sleep(100);
-    const device = parseToolResult<ReadDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { id: deviceId },
-      }),
-    );
-
-    expect(device.name).toBe("Reached");
+    expect(await readDeviceName(deviceId)).toBe("Reached");
   });
 
   it("reports a path that names no device in its own slot", async () => {
@@ -260,6 +271,22 @@ describe("ppal-update-device", () => {
       expect.objectContaining({ id: deviceId }),
       { path: "t99/d99", ok: false, detail: 'nothing at path "t99/d99"' },
     ]);
+  });
+
+  it("keeps a slot for a track mixer id, which is not a device", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    const mixerId = await readTrackMixerId(ctx.client!, 0);
+    const entries = await updateTargets({
+      id: `${mixerId},${deviceId}`,
+      name: "Nope,Reached",
+    });
+
+    expect(entries).toStrictEqual([
+      { id: mixerId, ok: false, detail: expect.stringContaining("mixer") },
+      expect.objectContaining({ id: deviceId }),
+    ]);
+
+    expect(await readDeviceName(deviceId)).toBe("Reached");
   });
 
   it("wraps a device in a rack and manages macros and variations", async () => {

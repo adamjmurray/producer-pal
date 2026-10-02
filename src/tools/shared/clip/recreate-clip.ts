@@ -454,13 +454,6 @@ function snapshotAudioClip(
 }
 
 /**
- * The source's groove as the "id N" string `set` wants, or undefined when it
- * has none (setAll skips that). getChildIds gives the id without building the
- * Groove object.
- * @param sourceClip - The clip being copied
- * @returns The groove's id, or undefined
- */
-/**
  * Say so when a groove the source had didn't take. Live answers a `set` the
  * same way whether or not it landed, so the copy is read back; the groove pool
  * can't be filled through the API, so no test can prove the write works.
@@ -478,6 +471,13 @@ function noteGrooveLoss(
   }
 }
 
+/**
+ * The source's groove as the "id N" string `set` wants, or undefined when it
+ * has none (setAll skips that). getChildIds gives the id without building the
+ * Groove object.
+ * @param sourceClip - The clip being copied
+ * @returns The groove's id, or undefined
+ */
 function sourceGroove(sourceClip: LiveAPI): string | undefined {
   return sourceClip.getProperty("has_groove") === 1
     ? sourceClip.getChildIds("groove")[0]

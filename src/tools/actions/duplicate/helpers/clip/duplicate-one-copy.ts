@@ -10,6 +10,7 @@ import {
   takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
 import { getMinimalClipInfo } from "../minimal-clip-info.ts";
 import {
@@ -18,6 +19,10 @@ import {
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import {
+  arrangementSpan,
+  keptSpan,
+} from "#src/tools/shared/clip/arrangement-span.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 
 /** What one copy attempt produced: the clip (with a detail when it isn't quite
@@ -151,6 +156,8 @@ function recreateCopy(
   // Seeded with what a re-create is known to cost this source, then added to
   // with anything the copy itself turned out to lose.
   const losses = recreatedClipLosses(options.object);
+  // Read before the create, which can truncate the source itself.
+  const sourceSpan = arrangementSpan(options.object);
 
   try {
     const clip = recreateClip(
@@ -162,7 +169,15 @@ function recreateCopy(
       losses,
     );
 
-    return { copy: getMinimalClipInfo(clip, landedNote(kind, losses)) };
+    return {
+      copy: getMinimalClipInfo(
+        clip,
+        joinDetails([
+          landedNote(kind, losses),
+          ignoredLength(options, keptSpan(clip, sourceSpan)),
+        ]),
+      ),
+    };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
     // refusal would lose a clip the caller has to know about.
@@ -170,7 +185,10 @@ function recreateCopy(
       return {
         copy: getMinimalClipInfo(
           error.partialClip,
-          `the ${kind} copy is incomplete (${error.message})`,
+          joinDetails([
+            `the ${kind} copy is incomplete (${error.message})`,
+            ignoredLength(options, keptSpan(error.partialClip, sourceSpan)),
+          ]),
         ),
       };
     }
@@ -196,4 +214,25 @@ function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
   return kind === "take-lane"
     ? `re-created on the take lane${cost}; expand the take-lanes arrow on the track header in Live to see it`
     : `promoted to the main lane by re-creating it${cost}`;
+}
+
+/**
+ * The note for an arrangementLength a re-created copy was sent. It is never
+ * used: the copy is rebuilt from the source, not resized. The kept-length claim
+ * is made only when the copy's span was read back and matched.
+ * @param options - Everything the copy needs
+ * @param keptLength - Whether the copy's span was verified to match the source's
+ * @returns The note for the copy's entry, or undefined when none was sent
+ */
+function ignoredLength(
+  options: CopyOptions,
+  keptLength: boolean,
+): string | undefined {
+  if (options.arrangementLength == null) {
+    return undefined;
+  }
+
+  return keptLength
+    ? "arrangementLength ignored: the copy keeps the source's arrangement length"
+    : "arrangementLength ignored: a re-created copy isn't resized";
 }

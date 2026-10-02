@@ -8,7 +8,7 @@
 // is what the caller needs to write to the pad afterward.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readOneDevice } from "../read-device.ts";
+import { readOneDevice } from "../../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
 describe("readOneDevice with a drum pad id", () => {

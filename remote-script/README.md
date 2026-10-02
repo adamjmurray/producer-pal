@@ -7,7 +7,7 @@ presets, and load a preset in place of a device already in the Set. Prototype.
 Producer Pal's `ppal-create-device` uses it to load plug-ins, Max for Live
 devices and presets, and `ppal-update-device` to swap a preset onto a device.
 Without it, only native Live devices load. The model finds plug-ins with
-`ppal-library`'s `listPlugins` action, and Max devices by searching with
+`ppal-library`'s `list-plugins` action, and Max devices by searching with
 `kind: m4l-device`.
 
 To open or create a Set with Producer Pal in it, use the

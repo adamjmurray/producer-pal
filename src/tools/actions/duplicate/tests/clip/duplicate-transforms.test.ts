@@ -116,6 +116,40 @@ describe("duplicate - transforms/code", () => {
       ]);
     });
 
+    // A fact about one copy (here, notes a transform deleted) arrives on that
+    // copy's entry from the update, and never as a warning.
+    it("puts a per-copy transform fact on that copy's entry only", async () => {
+      setupTwoSlotDuplication();
+
+      const dest1 = "live_set/tracks/0/clip_slots/1/clip";
+      const dest2 = "live_set/tracks/0/clip_slots/2/clip";
+      const fact = "1 note(s) deleted: duration went to 0 or below";
+
+      updateClipMock.mockReturnValueOnce([
+        { id: dest1, noteCount: 3, transformed: 3, detail: fact },
+        { id: dest2, noteCount: 3, transformed: 3 },
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1, 0/2",
+        transforms: "duration -= clip.index",
+      });
+
+      expect(result).toStrictEqual([
+        {
+          id: dest1,
+          path: "t0/s1",
+          noteCount: 3,
+          transformed: 3,
+          detail: fact,
+        },
+        { id: dest2, path: "t0/s2", noteCount: 3, transformed: 3 },
+      ]);
+      expect(consoleMock.warn).not.toHaveBeenCalled();
+    });
+
     it("passes the code string through to updateClip", async () => {
       registerSessionClipDuplication({ destClipProperties: {} });
       const destId = "live_set/tracks/0/clip_slots/1/clip";
@@ -138,6 +172,88 @@ describe("duplicate - transforms/code", () => {
         path: "t0/s1",
         noteCount: 8,
       });
+    });
+
+    it("refuses transforms it can't read before copying anything", async () => {
+      const { sourceClipSlot } = registerSessionClipDuplication({
+        destClipProperties: {},
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toSlot: "0/1",
+          transforms: "velocity = = 1",
+        }),
+      ).rejects.toThrow("transform syntax error");
+
+      expect(updateClipMock).not.toHaveBeenCalled();
+      expect(sourceClipSlot.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to",
+        expect.anything(),
+      );
+    });
+
+    it("refuses a transform argument that is wrong for every copy before copying anything", async () => {
+      const { sourceClipSlot } = registerSessionClipDuplication({
+        destClipProperties: {},
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toSlot: "0/1",
+          transforms: "ratchet(1)",
+        }),
+      ).rejects.toThrow("ratchet() needs a count of 2 or more");
+
+      expect(updateClipMock).not.toHaveBeenCalled();
+      expect(sourceClipSlot.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to",
+        expect.anything(),
+      );
+    });
+
+    // 1|6-2|1 is a backwards range in 4/4 but valid in 6/8: the copy keeps its
+    // source's meter, so that decides.
+    function copyWithMeter(
+      num: number,
+      den: number,
+      transforms = "1|6-2|1: velocity = 10",
+    ): Promise<unknown> {
+      registerSessionClipDuplication({ destClipProperties: {} });
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { signature_numerator: num, signature_denominator: den },
+      });
+
+      return duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1",
+        transforms,
+      });
+    }
+
+    it("refuses a range the source's 4/4 can't read", async () => {
+      await expect(copyWithMeter(4, 4)).rejects.toThrow("Invalid time range");
+    });
+
+    it("accepts the same range in the source's 6/8", async () => {
+      await expect(copyWithMeter(6, 8)).resolves.toBeDefined();
+    });
+
+    // A bar is 4 beats in 4/4 and 6 in 6/4. A copy replaces what it lands on, so
+    // a source that can't read it refuses the call, as for a range above.
+    it("refuses a meter-dependent argument the source's meter makes bad", async () => {
+      const transform = "repeat(n/8, 1bar - 4)";
+
+      await expect(copyWithMeter(4, 4, transform)).rejects.toThrow(
+        "repeat() needs a copy count of 1 or more",
+      );
+      await expect(copyWithMeter(6, 4, transform)).resolves.toBeDefined();
     });
 
     it("does not call updateClip when no transforms/code are given", async () => {

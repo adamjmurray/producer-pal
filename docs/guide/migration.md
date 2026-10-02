@@ -133,7 +133,10 @@ it first.
   with a `toPath` that isn't an arrangement position is refused.
 - `ppal-update-clip` refuses one track-qualified `toPath` (`t0/s1`, `t0[5|1]`)
   for several clips. A bare `[5|1]` still moves every clip. `toPath` and the
-  deprecated `toSlot` sent together are refused too; 2.3 warned.
+  deprecated `toSlot` sent together are refused too, as are `arrangementSplit`
+  and the deprecated `split` together and a `toPath` it can't read; 2.3 warned.
+  A `slot` or `toSlot` with more than two parts (`"1/2/3"`) is refused instead
+  of using the first two.
 
 **More params split on commas.** With more than one target, these take one
 comma-separated value per target: `sampleFile`, `timeSignature`, `start`,
@@ -365,7 +368,7 @@ tool has always worked this way.
   `Instrument Rack`. Match on the start of the string.
 - **Reads round to Live's display precision.** Tempo, pan and sends are rounded
   like gain, and a tiny value no longer arrives as a numeric string.
-- **`ppal-library` shows what Live's browser shows.** `findSimilar` results
+- **`ppal-library` shows what Live's browser shows.** `find-similar` results
   carry `distance` (lower = closer, no fixed range) instead of `similarity`.
   Library-wide searches leave out copies inside other installed Live versions
   and files Live's All search hides; pass `inFolder` or `source` to reach them.
@@ -503,6 +506,30 @@ already do. The new clip's entry says so, with
 used to find only a clip starting at bar 5. It now finds the clip playing there,
 even one that started earlier. As a destination it still means where the new
 clip starts.
+
+**More per-target facts moved onto entries.** These used to be warnings; each is
+now `detail` on the target's entry, and `ok: false` where it was everything
+asked of that target:
+
+- `ppal-create-device` refuses an index past the end of the chain (`t0/d9` on a
+  two-device track), as `ppal-update-device` does, instead of appending.
+- A `sends` entry a later one replaced.
+- An `arrangementLength` ignored for a re-created `ppal-duplicate` copy.
+- A failed `code` on `ppal-update-clip`.
+- Transforms for the other kind of clip (`gain` on MIDI, `velocity` on audio).
+  `ppal-create-clip` says the same, and which params the new clip can't use, on
+  the created clip, never as `ok: false`.
+
+An audio clip's unparseable `transforms` now refuses the clip, so no other param
+lands, like a MIDI clip's.
+
+A `transforms` or `preTransforms` mistake that is the same for every clip is now
+refused up front, before any clip changes, by `ppal-create-clip`,
+`ppal-update-clip` and `ppal-duplicate`: a duplicate selector, a note name used
+as a number (`velocity = C3`), a function with the wrong number of arguments
+(`rand(0, 100, 50)`), `ratchet`, `repeat`, `merge` or `split` with the wrong
+arguments, or a `curve()` exponent of 0 or less. 2.3 warned and skipped that
+line.
 
 **`wrapInRack` puts every device in one chain.** The devices you name land in
 series in a single chain, the way Live's Group (Cmd/Ctrl+G) does it: MIDI

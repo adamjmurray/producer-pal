@@ -4,20 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
-import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
+import { formatTransformSyntaxError } from "./parser/transform-syntax-error.ts";
 import { applyTransformResult } from "./helpers/apply-transform-result.ts";
 import {
   buildNoteContext,
   selectAssignmentNotes,
 } from "./helpers/assignment-note-selection.ts";
-import {
-  rejectsPitchLiteralValue,
-  warnShortRamp,
-} from "./helpers/assignment-warnings.ts";
+import { warnShortRamp } from "./helpers/assignment-warnings.ts";
 import {
   arrangementOrigin,
   buildNoteProperties,
@@ -42,11 +39,13 @@ import {
   type TransformStatement,
   parse as parseTransform,
 } from "./parser/transform-parser.ts";
+import {
+  AUDIO_PARAMETERS,
+  wrongClipTypeStatements,
+} from "./transform-clip-type.ts";
+import { checkTransformArgs } from "./transform-arg-checks.ts";
 import { applyNoteOp } from "./transform-note-ops.ts";
 import { type TransformOutcome } from "./transformed-count.ts";
-
-// Audio-only parameters that should be skipped for MIDI clips
-const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
 
 /**
  * Apply transforms to a list of notes in-place
@@ -75,13 +74,8 @@ export function applyTransforms(
     timeSigNumerator,
   );
 
-  // Check for audio parameters and warn
-  const hasAudioParams = ast.some(
-    (a) => !isNoteOp(a) && AUDIO_PARAMETERS.has(a.parameter),
-  );
-
-  if (hasAudioParams) {
-    console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
+  for (const reason of wrongClipTypeStatements(ast, false).reasons) {
+    console.clipDetail(reason);
   }
 
   // Sort by start_time then pitch so note.index reflects musical order
@@ -106,14 +100,6 @@ export function applyTransforms(
   // note-count ops (ratchet/merge/split/repeat) whose output the next statement sees.
   for (let j = 0; j < ast.length; j++) {
     const stmt = ast[j] as TransformStatement;
-
-    // A duplicate selector segment (two pitch/time selectors, or two where()
-    // clauses) is warned-and-skipped rather than failing the whole transform:
-    // relay the parser's message and move on so the other lines still apply.
-    if (stmt.selectorWarning != null) {
-      console.warn(stmt.selectorWarning);
-      continue;
-    }
 
     // Note-count op (ratchet/merge/split/repeat): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
@@ -190,8 +176,9 @@ function applyTrackedNoteOp(
 
 /**
  * Delete notes where transforms reduced velocity to 0 or below, or duration to
- * 0 or below (consistent with v0 deletion in bar|beat notation). Touched notes
- * that go are dropped from `touched` and returned.
+ * 0 or below (consistent with v0 deletion in bar|beat notation), and raise a
+ * surviving velocity below 1 to 1. Touched notes that go are dropped from
+ * `touched` and returned.
  * @param notes - Notes to filter in place
  * @param touched - Set of notes the transforms touched
  * @returns The touched notes that were deleted
@@ -203,6 +190,11 @@ function deleteZeroedNotes(
   const surviving = notes.filter(
     (note) => note.velocity > 0 && note.duration > 0,
   );
+
+  // Live drops a note under velocity 1, so a positive value below it becomes 1.
+  for (const note of surviving) {
+    note.velocity = Math.max(1, note.velocity);
+  }
 
   if (surviving.length === notes.length) {
     return [];
@@ -216,8 +208,8 @@ function deleteZeroedNotes(
   ).length;
 
   if (droppedForDuration > 0) {
-    console.warn(
-      `${droppedForDuration} note(s) deleted: transform drove duration to 0 or below`,
+    console.clipDetail(
+      `${droppedForDuration} note(s) deleted: duration went to 0 or below`,
     );
   }
 
@@ -262,10 +254,6 @@ function applyAssignmentToNotes(
   clipContext: ClipContext | undefined,
   touched: Set<NoteEvent>,
 ): void {
-  if (rejectsPitchLiteralValue(assignment)) {
-    return;
-  }
-
   // The selected notes are those matching BOTH the pitch range AND the
   // time-range selector. Indexing and next.*/legato() are scoped to this set,
   // so a sub-range selector (e.g. one bar of a ratcheted hat run) gets a
@@ -366,11 +354,11 @@ function applyAssignmentToNotes(
       touched.add(note);
       appliedCount++;
     } catch (error) {
-      const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
+      const message = `${assignment.parameter} transform failed: ${errorMessage(error)}`;
 
       if (!warnedFailures.has(message)) {
         warnedFailures.add(message);
-        console.warn(message);
+        console.clipDetail(message);
       }
     }
   }
@@ -413,33 +401,43 @@ export function evaluateTransform(
 }
 
 /**
- * Parse a transform string, returning the AST. Throws on parse errors.
+ * Parse a transform string, returning the AST. Throws on parse errors and on a
+ * bad argument (see checkTransformArgs for which refuse the call and which fail
+ * only the clips whose meter makes them bad).
  * @param transformString - Transform expression string
  * @param timeSigDenominator - Time signature denominator; converts `±n`
  *   beat-position offsets in a `timeRange` to musical beats during the parse
- * @param timeSigNumerator - Time signature numerator (musical beats per bar);
- *   lets a `-n` range-bound offset borrow across a bar line during the parse
+ * @param timeSigNumerator - Time signature numerator (musical beats per bar), or
+ *   omitted as audio clips do; lets a `-n` range-bound offset borrow across a bar line during the parse
+ * @param clipType - The kind of clip the transform will run on
  * @returns Parsed AST
- * @throws Error with formatted message if parsing fails
+ * @throws Error with formatted message if parsing or the argument checks fail
  */
 export function tryParseTransform(
   transformString: string,
   timeSigDenominator: number,
-  timeSigNumerator: number,
+  timeSigNumerator?: number,
+  clipType: "midi" | "audio" = "midi",
 ): ReturnType<typeof parseTransform> {
+  let ast: TransformStatement[];
+
   try {
-    return parseTransform(transformString, {
+    ast = parseTransform(transformString, {
       timeSigDenominator,
       beatsPerBar: timeSigNumerator,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       throw new Error(
-        formatParserError(error as PeggySyntaxError, "transform"),
+        formatTransformSyntaxError(error as PeggySyntaxError, transformString),
         { cause: error },
       );
     }
 
     throw error;
   }
+
+  checkTransformArgs(ast, timeSigNumerator ?? 4, timeSigDenominator, clipType);
+
+  return ast;
 }

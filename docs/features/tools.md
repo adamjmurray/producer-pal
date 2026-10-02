@@ -96,20 +96,21 @@ Live, or make sure your standalone Max is up to date. See
   folder)
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
-- Sort by `use_count` (Live's persistent usage counter, which surfaces what you
-  actually use most), `mod_date`, or `name`
-- Enumerate available tags with `action: "listTags"` so the AI can discover the
+- Sort by `use-count` (Live's persistent usage counter, which surfaces what you
+  actually use most), `mod-date`, or `name`
+- Enumerate available tags with `action: "list-tags"` so the AI can discover the
   tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
-  Drums, Genres, …) with `action: "listCategories"`
+  Drums, Genres, …) with `action: "list-categories"`
 - Run many filtered searches in one call by passing `searches` (an array of
   query objects, each with its own filters); results grouped per query, so the
   AI can assemble a whole drum kit in one round trip
-- List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
+- List the VST/VST3/AU plug-ins Live knows about with `action: "list-plugins"`
   (filter by query, vendor, format, device kind, or subcategory)
-- Rank samples by audio similarity to a seed sample with `action: "findSimilar"`
-  (Live's own similarity index, not Producer Pal listening), or group library
-  samples with identical audio (re-shipped duplicates) with
-  `action: "findDuplicates"`. Both can be narrowed with the search filters
+- Rank samples by audio similarity to a seed sample with
+  `action: "find-similar"` (Live's own similarity index, not Producer Pal
+  listening), or group library samples with identical audio (re-shipped
+  duplicates) with `action: "find-duplicates"`. Both can be narrowed with the
+  search filters
 
 <!--@include: ../_generated/ppal-library-schema.md-->
 
