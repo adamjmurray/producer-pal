@@ -293,6 +293,20 @@ describe("view", () => {
       );
     });
 
+    it.each(["MixerDevice", "ChainMixerDevice"] as const)(
+      "throws error for a %s, which is not a device",
+      (type) => {
+        registerMockObject("mix_1", {
+          path: livePath.track(0).mixerDevice(),
+          type,
+        });
+
+        expect(() => select({ id: "id mix_1" })).toThrow(
+          'unsupported type "mixer"',
+        );
+      },
+    );
+
     it("throws error for unsupported type", () => {
       registerMockObject("app_thing", {
         path: "live_app",
@@ -300,7 +314,7 @@ describe("view", () => {
       });
 
       expect(() => select({ id: "id app_thing" })).toThrow(
-        'unsupported type "Application"',
+        "has an unsupported type",
       );
     });
   });

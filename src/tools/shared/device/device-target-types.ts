@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
@@ -19,9 +20,7 @@ const PROSE_WORDS: Record<string, string> = {
  * @returns True if type is one of those
  */
 export function isDeviceTreeType(type: string): boolean {
-  return (
-    type.endsWith("Device") || type.endsWith("Chain") || type === "DrumPad"
-  );
+  return isDeviceClass(type) || type.endsWith("Chain") || type === "DrumPad";
 }
 
 /**

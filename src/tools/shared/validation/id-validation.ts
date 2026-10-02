@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { targetLabel } from "./object-path-for-api.ts";
 
 /** What the tools call each Live class a path or id can reach. */
@@ -18,6 +19,8 @@ const TYPE_WORDS: Partial<Record<LiveObjectType, string>> = {
   DrumChain: "chain",
   DrumPad: "drum-pad",
   DeviceParameter: "device parameter",
+  MixerDevice: "mixer",
+  ChainMixerDevice: "mixer",
 };
 
 /**
@@ -73,7 +76,7 @@ export function typeMismatch(
  * @returns The published word, or null for a class the tools never name
  */
 export function publishedType(type: LiveObjectType): string | null {
-  return type.endsWith("Device") ? "device" : (TYPE_WORDS[type] ?? null);
+  return isDeviceClass(type) ? "device" : (TYPE_WORDS[type] ?? null);
 }
 
 /**
@@ -95,7 +98,7 @@ function isTypeMatch(
     case "clip":
       return actualType === "Clip";
     case "device":
-      return actualType.endsWith("Device");
+      return isDeviceClass(actualType);
     case "chain":
       return actualType === "Chain" || actualType === "DrumChain";
     case "drum-pad":

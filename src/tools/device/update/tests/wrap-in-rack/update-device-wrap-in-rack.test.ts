@@ -591,6 +591,20 @@ describe("updateDevice - wrapInRack", () => {
     );
   });
 
+  it.each(["MixerDevice", "ChainMixerDevice"] as const)(
+    "should refuse a wrap of a %s, which is not a device",
+    (type) => {
+      registerMockObject("mix-1", {
+        path: livePath.track(0).mixerDevice(),
+        type,
+      });
+
+      expect(() => updateDevice({ id: "mix-1", wrapInRack: true })).toThrow(
+        'wrapInRack found no devices to wrap: "mix-1" is a mixer, not a device',
+      );
+    },
+  );
+
   it("says on the rack's entry which devices did not make it in", () => {
     registerMockObject("not-a-device", { path: "some/path", type: "Chain" });
 

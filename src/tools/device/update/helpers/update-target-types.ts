@@ -12,15 +12,6 @@ import { liveObjectWords } from "#src/tools/shared/device/device-target-types.ts
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
- * Check if type is a device type
- * @param type - Live object type
- * @returns True if type ends with Device
- */
-export function isDeviceType(type: string): boolean {
-  return type.endsWith("Device");
-}
-
-/**
  * Check if type is a rack device
  * @param type - Live object type
  * @returns True if type is RackDevice

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
@@ -108,7 +109,6 @@ describe("validateIdType", () => {
       "WavetableDevice",
       "PluginDevice",
       "RackDevice",
-      "MixerDevice",
     ] as const;
 
     for (const subclass of deviceSubclasses) {
@@ -121,6 +121,19 @@ describe("validateIdType", () => {
       });
 
       expect(() => validateIdType(id, "device")).not.toThrow();
+    }
+  });
+
+  it("should not match a mixer to device type", () => {
+    for (const mixerType of ["MixerDevice", "ChainMixerDevice"] as const) {
+      registerMockObject("mixer_1", {
+        path: livePath.track(0).mixerDevice(),
+        type: mixerType,
+      });
+
+      expect(() => validateIdType("mixer_1", "device")).toThrow(
+        "is not a device (found mixer)",
+      );
     }
   });
 

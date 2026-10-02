@@ -17,6 +17,7 @@ import {
   resolveInsertionPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
@@ -324,7 +325,7 @@ function resolveDevices(
         reasons.push(
           `the Producer Pal device ${targetLabel(device)} cannot be wrapped`,
         );
-      } else if (device.type.endsWith("Device")) {
+      } else if (isDeviceClass(device.type)) {
         devices.push({ ...item, device });
       } else {
         reasons.push(

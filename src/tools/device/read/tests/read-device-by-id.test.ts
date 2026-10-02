@@ -66,6 +66,20 @@ describe("readDevice by id of something that is not a device", () => {
     );
   });
 
+  it.each(["MixerDevice", "ChainMixerDevice"] as const)(
+    "refuses a %s, which is not a device",
+    (type) => {
+      registerMockObject("mix-1", {
+        path: livePath.track(3).mixerDevice(),
+        type,
+      });
+
+      expect(() => readOneDevice({ id: "mix-1" })).toThrow(
+        "cannot read a mixer: id mix-1",
+      );
+    },
+  );
+
   it("keeps its slot when a readable target was named too", () => {
     registerMockObject("999", { path: livePath.track(3), type: "Track" });
     setupChainMock({ id: "chain-21" });

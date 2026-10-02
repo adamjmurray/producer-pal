@@ -11,6 +11,7 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
+import { readTrackMixerId } from "./helpers/track-mixer-id-test-helpers.ts";
 import {
   getToolErrorMessage,
   isToolError,
@@ -325,6 +326,14 @@ describe("ppal-read-device over a list of targets", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain("cannot read a track");
+  });
+
+  it("refuses a track mixer id, which is not a device", async () => {
+    const mixerId = await readTrackMixerId(ctx.client!, 0);
+    const result = await readDevices({ id: mixerId });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("cannot read a mixer");
   });
 
   it("returns a Drum Rack's pads with their layers for chains alone", async () => {

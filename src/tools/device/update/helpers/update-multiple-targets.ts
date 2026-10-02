@@ -51,7 +51,7 @@ import {
   isDeviceTreeType,
   wrongTargetTypeMessage,
 } from "#src/tools/shared/device/device-target-types.ts";
-import { isDeviceType } from "./update-target-types.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
 interface UpdateTargetResult extends ChainMixerReport {
@@ -375,7 +375,7 @@ function updateTarget(
     target.set("name", stripReturnChainLetter(target, options.name));
   }
 
-  if (!isDeviceType(type)) {
+  if (!isDeviceClass(type)) {
     // The chain's own mixer reads back here, so a clamped or snapped level is
     // visible instead of the caller's argument being assumed to have landed.
     const mixer = updateNonDeviceProperties(target, type, options, notes);
@@ -490,7 +490,7 @@ function moveTargetToPath(
     return {};
   }
 
-  if (isDeviceType(type)) {
+  if (isDeviceClass(type)) {
     return moveDevice(target, toPath, notes);
   }
 
