@@ -298,16 +298,21 @@ def _track_named(song, name):
 
 def _parse_track_index(value):
     """A 0-based track index, or None when absent."""
+    return parse_index(value, "track_index")
+
+
+def parse_index(value, name):
+    """A whole number >= 0, or None when absent. Anything else is a 400."""
     if value is None or value == "":
         return None
     if isinstance(value, bool):
-        raise RouteError(400, "track_index must be a whole number, got %r" % value)
+        raise RouteError(400, "%s must be a whole number, got %r" % (name, value))
     try:
         index = int(str(value).strip())
     except ValueError:
-        raise RouteError(400, "track_index must be a whole number, got %r" % value)
+        raise RouteError(400, "%s must be a whole number, got %r" % (name, value))
     if index < 0:
-        raise RouteError(400, "track_index must be 0 or more, got %s" % index)
+        raise RouteError(400, "%s must be 0 or more, got %s" % (name, index))
     return index
 
 

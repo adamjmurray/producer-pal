@@ -17,7 +17,7 @@ beats (quarter notes) from the clip start.
 import math
 import re
 
-from .routes import RouteError
+from .routes import RouteError, parse_index
 
 MAX_EVENTS = 1000
 EPSILON = 1e-6
@@ -55,7 +55,9 @@ def read(bridge, params):
 
     start = _num(params.get("from", 0))
     end = _num(params.get("to", MAX_TIME))
-    limit = min(int(params.get("limit", MAX_EVENTS)), MAX_EVENTS)
+    limit = MAX_EVENTS
+    if params.get("limit") is not None:
+        limit = min(_index(params["limit"], "limit", 1), MAX_EVENTS)
     events = list(env.events_in_range(start, end))
     out = []
     for i, event in enumerate(events[:limit]):
@@ -141,21 +143,19 @@ def clear(bridge, params):
 
 
 def _track(song, path):
-    if path == "mt":
-        return song.master_track
-    m = re.fullmatch(r"(rt|t)(\d+)", str(path or ""))
+    """A regular track. Return and master tracks have no clips to automate."""
+    m = re.fullmatch(r"t(\d+)", str(path or ""))
     if not m:
-        raise RouteError(400, "track must be t0, rt0 or mt")
-    tracks = song.return_tracks if m[1] == "rt" else song.tracks
-    i = int(m[2])
-    if i >= len(tracks):
+        raise RouteError(400, "track must be t0, t1... (return and master tracks have no clips)")
+    i = int(m[1])
+    if i >= len(song.tracks):
         raise RouteError(404, "no track %s" % path)
-    return tracks[i]
+    return song.tracks[i]
 
 
 def _clip(track, params):
     if "slot" in params:
-        i = int(params["slot"])
+        i = _index(params["slot"], "slot")
         if i >= len(track.clip_slots):
             raise RouteError(404, "no slot %s" % i)
         slot = track.clip_slots[i]
@@ -163,7 +163,7 @@ def _clip(track, params):
             raise RouteError(404, "slot %s is empty" % i)
         return slot.clip
     if "arrangement_index" in params:
-        i = int(params["arrangement_index"])
+        i = _index(params["arrangement_index"], "arrangement_index")
         if i >= len(track.arrangement_clips):
             raise RouteError(404, "no arrangement clip %s" % i)
         return track.arrangement_clips[i]
@@ -192,7 +192,7 @@ def _parameter(track, params):
         device = _device(track, params["device"])
         parameters = list(device.parameters)
         if isinstance(name, int) or str(name).isdigit():
-            i = int(name)
+            i = _index(name, "parameter")
             if i >= len(parameters):
                 raise RouteError(404, "no parameter %s" % i)
             return parameters[i]
@@ -253,6 +253,16 @@ def _describe(p):
     }
 
 
+def _index(value, name, minimum=0):
+    """A required whole number of at least `minimum`."""
+    i = parse_index(value, name)
+    if i is None:
+        raise RouteError(400, "%s must be a whole number" % name)
+    if i < minimum:
+        raise RouteError(400, "%s must be %d or more, got %s" % (name, minimum, i))
+    return i
+
+
 def _num(v):
     if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
         raise RouteError(400, "expected a finite number, got %r" % (v,))
@@ -260,9 +270,11 @@ def _num(v):
 
 
 def _points(params, param):
-    raw = params.get("points") or []
-    if not 1 <= len(raw) <= MAX_EVENTS:
+    raw = params.get("points")
+    if not isinstance(raw, list) or not 1 <= len(raw) <= MAX_EVENTS:
         raise RouteError(400, "give 1 to %d points" % MAX_EVENTS)
+    if not all(isinstance(p, dict) for p in raw):
+        raise RouteError(400, "each point must be an object with time and value")
     points = [
         (_num(p.get("time")), _num(p.get("value")), bool(p.get("jump", False)))
         for p in raw

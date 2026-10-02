@@ -190,10 +190,11 @@ empty, so write in Session and duplicate to the Arrangement. That copies the
 envelope into the track's automation lane, which stays after the clip is deleted
 but can't be read back.
 
-Common params: `track` (`t0`, `rt0`, `mt`), `slot` (0-based Session slot) or
-`arrangement_index`, and a parameter: `parameter` = `volume`, `pan`, `send0`..
-for the mixer, or `device` (`d0`, `d0/c1/d0` into rack chains) plus `parameter`
-as an exact name or 0-based index.
+Common params: `track` (`t0`, `t1`.. a regular track; return and master tracks
+have no clips), `slot` (0-based Session slot) or `arrangement_index`, and a
+parameter: `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device`
+(`d0`, `d0/c1/d0` into rack chains) plus `parameter` as an exact name or 0-based
+index.
 
 | Route    | Params                                 | Returns                                                                                                                   |
 | -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -206,8 +207,9 @@ Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
 device params are `0..1`); `display` is what Live shows. Each point ramps to the
 next; a point with `jump: true` holds the previous value until its time, then
 jumps (two events at one time, which is how Live stores a step). A quantized
-parameter holds each value until the next anyway. Capped at 1000 events per read
-or write.
+parameter holds each value until the next anyway. A read returns at most 1000
+events (`limit`, a positive whole number); a write takes at most 1000 points.
+Indexes must be whole numbers >= 0.
 
 ## How it works
 
