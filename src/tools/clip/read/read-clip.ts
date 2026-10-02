@@ -11,7 +11,7 @@ import { formatNotation } from "#src/notation/notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import { readAllClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
+import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
@@ -103,6 +103,8 @@ export interface ReadClipResult {
 
   // MIDI clip properties
   notes?: string;
+  /** How many muted notes are hidden from `notes`; edits leave them alone. */
+  mutedNotes?: number;
 
   // Audio clip properties
   gainDb?: number;
@@ -372,7 +374,8 @@ function processMidiClip(
   // The same window update-clip reads and rewrites, so a note shown here is
   // one an edit keeps. Notes more than a clip-length outside the region are
   // missed.
-  const notes = readAllClipNotes(clip) as unknown as NoteEvent[];
+  const { visible, muted } = readClipNotes(clip);
+  const notes = visible as unknown as NoteEvent[];
 
   // Nothing to spell means the answer is never used, so an empty clip must not
   // pay for the device-tree walk that produces it.
@@ -391,6 +394,10 @@ function processMidiClip(
 
   if (formatted) {
     result.notes = formatted;
+  }
+
+  if (muted.length > 0) {
+    result.mutedNotes = muted.length;
   }
 }
 

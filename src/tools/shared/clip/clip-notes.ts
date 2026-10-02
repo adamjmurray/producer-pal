@@ -11,20 +11,42 @@ export interface CopiedNote extends NoteEvent {
   release_velocity: number;
 }
 
-/**
- * Count the notes in a clip across the same window read-clip reads, so the two
- * agree — a pickup before the start and overhang past the end included.
- * @param clip - LiveAPI clip object
- * @returns Number of notes in the read window
- */
-export function getClipNoteCount(clip: LiveAPI): number {
-  return readAllClipNotes(clip).length;
+export interface ClipNotes {
+  visible: Record<string, unknown>[];
+  /** Hidden from the model; every edit leaves them in place */
+  muted: Record<string, unknown>[];
 }
 
 /**
- * Read every note in a clip's scan window as raw Live API note objects. Each
- * still carries note_id, so run them through {@link rawNotesToNoteEvents} or
- * {@link rawNotesToCopiedNotes} before re-adding.
+ * Count a clip's visible notes over read-clip's window, so the two agree.
+ * @param clip - LiveAPI clip object
+ * @returns Number of visible notes in the read window
+ */
+export function getClipNoteCount(clip: LiveAPI): number {
+  return readClipNotes(clip).visible.length;
+}
+
+/**
+ * Read a clip's raw notes split by mute. The model sees and edits `visible`; a
+ * write that removes all notes and re-adds them must put `muted` back.
+ * @param clip - LiveAPI clip object
+ * @returns The scan window's notes, split by mute
+ */
+export function readClipNotes(clip: LiveAPI): ClipNotes {
+  const visible: Record<string, unknown>[] = [];
+  const muted: Record<string, unknown>[] = [];
+
+  for (const note of readAllClipNotes(clip)) {
+    ((note.mute as number) > 0 ? muted : visible).push(note);
+  }
+
+  return { visible, muted };
+}
+
+/**
+ * Read every note in a clip's scan window, muted ones included, for copying a
+ * clip; what the model sees or edits wants {@link readClipNotes}. Strip
+ * note_id ({@link rawNotesToCopiedNotes}) before re-adding.
  * @param clip - LiveAPI clip object
  * @returns Raw note objects, or [] when the window holds no notes
  */
@@ -50,9 +72,9 @@ export function removeAllClipNotes(clip: LiveAPI): void {
 
 /**
  * Normalize raw notes from get_notes_extended into NoteEvents for add_new_notes.
- * Drops note_id, mute and release_velocity: code-exec rebuilds every note from
- * user code, which has nowhere to carry the last two. Anything that writes
- * back notes the call didn't touch wants {@link rawNotesToCopiedNotes}.
+ * Drops note_id, mute and release_velocity: code-exec rebuilds every visible
+ * note from user code, which has nowhere to carry the last two. Anything that
+ * writes back notes the call didn't touch wants {@link rawNotesToCopiedNotes}.
  * @param rawNotes - Note objects from get_notes_extended
  * @returns NoteEvents safe to pass to add_new_notes
  */

@@ -22,7 +22,7 @@ export function copyNoteToDestination(
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
   // Copy the whole note: an existing clip note carries fields bar|beat can't
-  // spell (mute, release velocity), and a copy shouldn't lose them.
+  // spell (release velocity), and a copy shouldn't lose them.
   const { relativeTime, originalBar: _originalBar, ...fields } = sourceNote;
   const copiedNote: NoteEvent = {
     ...fields,

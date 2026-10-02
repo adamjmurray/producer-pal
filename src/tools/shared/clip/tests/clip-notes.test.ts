@@ -9,6 +9,7 @@ import {
   rawNotesToCopiedNotes,
   rawNotesToNoteEvents,
   readAllClipNotes,
+  readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 
@@ -67,6 +68,14 @@ describe("getClipNoteCount", () => {
     expect(getClipNoteCount(clip)).toBe(0);
   });
 
+  it("doesn't count muted notes", () => {
+    const clip = makeClip(
+      JSON.stringify({ notes: [{ mute: 0 }, { mute: 1 }, {}] }),
+    );
+
+    expect(getClipNoteCount(clip)).toBe(2);
+  });
+
   it("reads the same window as read-clip (counts pickups/overhang)", () => {
     // length=4, so the window must be from -4 spanning 12 beats ([-4, 8]),
     // matching read-clip — not the old playable-only [0, 4]. This is what makes
@@ -111,6 +120,28 @@ describe("readAllClipNotes", () => {
     ).toStrictEqual([]);
     expect(readAllClipNotes(makeClip(JSON.stringify({})))).toStrictEqual([]);
     expect(readAllClipNotes(makeClip("null"))).toStrictEqual([]);
+  });
+});
+
+describe("readClipNotes", () => {
+  it("splits notes into visible and muted, keeping each note as read", () => {
+    const visible = { ...RAW_NOTE, mute: 0 };
+    const noFlag = { pitch: 62 };
+    const clip = makeClip(
+      JSON.stringify({ notes: [visible, RAW_NOTE, noFlag] }),
+    );
+
+    expect(readClipNotes(clip)).toStrictEqual({
+      visible: [visible, noFlag],
+      muted: [RAW_NOTE],
+    });
+  });
+
+  it("returns both empty for a clip without notes", () => {
+    expect(readClipNotes(makeClip(JSON.stringify({})))).toStrictEqual({
+      visible: [],
+      muted: [],
+    });
   });
 });
 

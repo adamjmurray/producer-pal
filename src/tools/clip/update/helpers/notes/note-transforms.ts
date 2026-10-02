@@ -17,7 +17,7 @@ import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,
   rawNotesToCopiedNotes,
-  readAllClipNotes,
+  readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
@@ -50,11 +50,12 @@ export function applyTransformsToExistingNotes(
 ): NoteUpdateResult {
   // Read the same window as read-clip, so a pickup before the clip start is
   // transformed too — `preTransforms: "v0"` must clear it.
-  const rawNotes = readAllClipNotes(clip);
+  // Muted notes are absent to the transforms and put back after.
+  const { visible, muted } = readClipNotes(clip);
 
   // A no-op, not a refusal: there was nothing to transform, so the clip is
   // already how the call asked for it and the entry keeps its noteCount.
-  if (rawNotes.length === 0) {
+  if (visible.length === 0) {
     const sent = [
       preTransformString != null ? "preTransforms" : null,
       transformString != null ? "transforms" : null,
@@ -63,15 +64,15 @@ export function applyTransformsToExistingNotes(
     noteClipReason(
       reasons,
       clip.id,
-      `${sent.join("/")} ignored: the clip has no notes`,
+      `${sent.join("/")} ignored: the clip has ${muted.length > 0 ? "only muted notes, which edits leave alone" : "no notes"}`,
     );
 
     return { noteCount: 0 };
   }
 
   // Copied whole (only note_id goes), so a note the transforms don't change is
-  // written back exactly as it was, mute and release velocity included.
-  const notes: NoteEvent[] = rawNotesToCopiedNotes(rawNotes);
+  // written back exactly as it was, release velocity included.
+  const notes: NoteEvent[] = rawNotesToCopiedNotes(visible);
 
   // applyTransforms mutates notes in place (and no-ops on an undefined string).
   const preOutcome = applyTransforms(
@@ -95,7 +96,9 @@ export function applyTransformsToExistingNotes(
   // transform can collapse two notes onto the same pitch+exact-onset (dedupe
   // keep-last resolves that deterministically instead of letting Live drop
   // one), and any remaining tail overlap is made safe by ascending order.
-  const written = sortNotes(dedupeNotesKeepingLast(notes));
+  const written = sortNotes(
+    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...notes]),
+  );
 
   if (written.length > 0) {
     clip.call("add_new_notes", { notes: written });
