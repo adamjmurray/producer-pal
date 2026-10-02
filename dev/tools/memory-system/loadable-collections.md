@@ -21,7 +21,10 @@ built generic so a second collection is a thin binding, not a rewrite:
   `list()`, `readSkillOverrides`) reads each file through `skipIfUnreadable`: an
   unreadable file is skipped with a console warning, so one bad file can't drop
   the rest. Single-file reads still throw, so an unreadable file is never taken
-  for an empty one and overwritten.
+  for an empty one and overwritten. The skills editor's list
+  (`GET /skill-overrides`) instead returns an unreadable slot with `readError`
+  set, which the editor shows as unreadable and not editable; writes still
+  throw.
 - **REST**: `src/mcp-server/routes/collection-route.ts`
   (`registerCollectionRoutes`) is a generic GET list / PUT create-or-update
   (with a create-only 409 guard) / DELETE per collection, origin-gated on writes

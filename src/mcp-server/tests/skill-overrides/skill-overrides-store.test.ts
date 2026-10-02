@@ -399,5 +399,53 @@ describe("listSkillSlotStates", () => {
     const states = listSkillSlotStates();
 
     expect(states.map((s) => s.name)).toStrictEqual([...SKILL_SLOT_NAMES]);
+    expect(states.every((s) => s.readError === null)).toBe(true);
+  });
+
+  describe.each(unreadableWays)("with an unreadable file ($way)", (blocker) => {
+    it.skipIf(!blocker.supported)(
+      "marks that slot with an error and still lists the rest",
+      () => {
+        writeRaw("barbeat-standard", "good override");
+        writeRaw("stark-standard", "locked");
+        blocker.block(slotPath("stark-standard"));
+
+        const states = listSkillSlotStates();
+        const locked = states.find((s) => s.name === "stark-standard");
+        const good = states.find((s) => s.name === "barbeat-standard");
+
+        expect(states).toHaveLength(SKILL_SLOT_NAMES.length);
+        expect(locked?.readError).toStrictEqual(expect.any(String));
+        expect(locked?.override).toBe("");
+        expect(locked?.builtIn).toBe(SKILL_SLOTS["stark-standard"].builtIn);
+        expect(good?.readError).toBeNull();
+        expect(good?.override).toBe("good override");
+      },
+    );
+
+    it.skipIf(!blocker.supported)(
+      "doesn't flag a slot whose -write sibling is the unreadable one",
+      () => {
+        writeRaw("barbeat-standard", "mine");
+        writeRaw("barbeat-standard-write", "locked");
+        blocker.block(slotPath("barbeat-standard-write"));
+
+        const states = listSkillSlotStates();
+
+        expect(
+          states.find((s) => s.name === "barbeat-standard")?.readError,
+        ).toBeNull();
+        expect(
+          states.find((s) => s.name === "barbeat-standard-write")?.readError,
+        ).toStrictEqual(expect.any(String));
+      },
+    );
+
+    it.skipIf(!blocker.supported)("keeps readSkillSlotState throwing", () => {
+      writeRaw("stark-standard", "locked");
+      blocker.block(slotPath("stark-standard"));
+
+      expect(() => readSkillSlotState("stark-standard")).toThrow(/EACCES/);
+    });
   });
 });
