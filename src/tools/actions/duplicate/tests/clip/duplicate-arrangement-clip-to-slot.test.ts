@@ -285,4 +285,33 @@ describe("duplicate - arrangement clip to a clip slot", () => {
       },
     ]);
   });
+
+  it("keeps the other slots when one copy fails", async () => {
+    registerSource();
+
+    registerSlot({ trackIndex: 1 }).methods.create_clip = () => {
+      throw new Error("Live is unhappy");
+    };
+
+    registerSlot({ trackIndex: 2 });
+
+    const result = await duplicate({
+      type: "clip",
+      id: SOURCE_ID,
+      toPath: "t1/s0,t2/s0",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        path: "t1/s0",
+        ok: false,
+        detail: "create failed at t1/s0 (Live is unhappy).",
+      },
+      {
+        id: NEW_ID,
+        path: "t2/s0",
+        detail: "re-created from the arrangement clip",
+      },
+    ]);
+  });
 });

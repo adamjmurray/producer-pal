@@ -69,4 +69,26 @@ describe("duplicateSceneToArrangementAtPositions - end to end", () => {
   it("steps by each copy's own length from a list", async () => {
     expect(await copyStarts(3, "2bar,1bar,4bar")).toStrictEqual([0, 8, 12]);
   });
+
+  it("keeps the place of a position that throws, and the ones around it", async () => {
+    vi.mocked(duplicateSceneToArrangement)
+      .mockResolvedValueOnce({ clips: [] })
+      .mockRejectedValueOnce(new Error("no room"))
+      .mockResolvedValueOnce({ clips: [] });
+
+    const result = await duplicateSceneToArrangementAtPositions(
+      LiveAPI.from("scene1"),
+      "scene1",
+      1,
+      copyLabels({}, 1),
+      { arrangementStart: "1|1,5|1,9|1" },
+      {},
+    );
+
+    expect(result).toStrictEqual([
+      { clips: [] },
+      { path: "[5|1]", ok: false, detail: "no room" },
+      { clips: [] },
+    ]);
+  });
 });

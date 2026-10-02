@@ -5,6 +5,7 @@
 
 // The clip shape every duplicate result reports a copy with.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type LandedSpan,
   nextLandingOrder,
@@ -13,6 +14,7 @@ import {
 import {
   appendDetail,
   type EntryWithDetail,
+  joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -90,6 +92,60 @@ export function getMinimalClipInfo(
     path: slotPath(trackIndex, sceneIndex),
     ...(detail != null && { detail }),
   };
+}
+
+/**
+ * Names, colors and reports a copy that already exists. A failure here can't
+ * unmake the copy, so it goes in the copy's own entry instead of being thrown.
+ * @param copy - The copy Live made
+ * @param name - Name for it, if any
+ * @param color - Color for it, if any
+ * @returns The copy's entry, with what failed in its detail
+ */
+export function finishCopy(
+  copy: LiveAPI,
+  name: string | undefined,
+  color: string | undefined,
+): MinimalClipInfo {
+  const failures: string[] = [];
+
+  try {
+    copy.setAll({ name, color });
+  } catch (error) {
+    failures.push(`name and color not applied: ${errorMessage(error)}`);
+  }
+
+  return readCopyBack(copy, () => joinDetails(failures));
+}
+
+/**
+ * The entry for a copy that already exists. A failure reading it back can't
+ * unmake it, so the entry keeps its id and says what failed instead of the
+ * copy being reported as refused.
+ * @param copy - The copy Live made
+ * @param detail - What to say about the copy, built once it is known to exist
+ * @returns The copy's entry
+ */
+export function readCopyBack(
+  copy: LiveAPI,
+  detail: () => string | undefined,
+): MinimalClipInfo {
+  let said: string | undefined;
+
+  try {
+    said = detail();
+
+    return getMinimalClipInfo(copy, said);
+  } catch (error) {
+    // The id is all that can still be read.
+    return {
+      id: copy.id,
+      detail: joinDetails([
+        said,
+        `couldn't read the copy back: ${errorMessage(error)}`,
+      ]),
+    };
+  }
 }
 
 /**

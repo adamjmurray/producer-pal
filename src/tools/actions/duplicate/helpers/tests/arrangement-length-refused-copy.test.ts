@@ -65,6 +65,74 @@ describe("duplicate - a copy that can't be lengthened", () => {
     expect(result).toStrictEqual(COPY);
   });
 
+  it("keeps a clip copy when reading it back after lengthening fails", async () => {
+    registerClipSource();
+
+    const track = registerTrackWithArrangementDup(0);
+    const makeCopy = track.methods
+      .duplicate_clip_to_arrangement as () => unknown;
+    let copied = false;
+
+    track.methods.duplicate_clip_to_arrangement = () => {
+      copied = true;
+
+      return makeCopy();
+    };
+
+    Object.defineProperty(track.properties, "arrangement_clips", {
+      get() {
+        if (copied) {
+          throw new Error("Live went away");
+        }
+
+        return children();
+      },
+    });
+    registerArrangementClip(0, 0, 16);
+    updateClipMock.mockResolvedValueOnce([{ id: COPY.id }]);
+
+    // The clip is on the track, so the failure goes on its entry.
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "5|1",
+        arrangementLength: "4bar",
+      }),
+    ).toStrictEqual({
+      id: COPY.id,
+      detail:
+        "couldn't finish reading the copy: Live went away; couldn't tell what it overwrote: Live went away",
+    });
+  });
+
+  it("keeps the copies it read when a later one can't be read back", async () => {
+    registerClipSource();
+    registerTrackWithArrangementDup(0, {
+      arrangement_clips: children(COPY.id, "odd"),
+    });
+    registerArrangementClip(0, 0, 16);
+    // An arrangement clip that names no track can't be reported.
+    registerMockObject("odd", {
+      path: livePath.liveSet,
+      properties: { is_arrangement_clip: 1 },
+    });
+    updateClipMock.mockResolvedValueOnce([{ id: COPY.id }, { id: "odd" }]);
+
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "5|1",
+        arrangementLength: "4bar",
+      }),
+    ).toStrictEqual({
+      id: COPY.id,
+      path: "t0[5|1]",
+      detail: expect.stringContaining("couldn't finish reading the copy: "),
+    });
+  });
+
   it("keeps a scene's copy when updateClip refuses its lone target", async () => {
     setupArrangementSceneMocks(1);
     registerClipSlot(0, 0, true, createStandardMidiClipMock({ length: 4 }));

@@ -18,15 +18,12 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import {
   assertTrackTakesLanes,
-  resolveTakeLane,
   takeLaneLabel,
   takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   pathEntries,
   takeLanePathEntry,
@@ -39,18 +36,19 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { skippedCopy } from "../minimal-clip-info.ts";
 import { type CopyMeter } from "../clip/copy-entries.ts";
-import {
-  copyLedger,
-  mainLaneOf,
-  takeLaneOf,
-} from "../clip/overwrites/copy-overwrites.ts";
+import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
 import {
   claimLabels,
   labelColor,
   labelName,
   type CopyLabels,
 } from "./copy-labels.ts";
-import { copyClipToLane } from "./copy-clip-to-lane.ts";
+import {
+  LANE_COPY_NOTE,
+  runLaneCopy,
+  type LanePlace,
+  type LaneTarget,
+} from "./copy-clip-to-lane.ts";
 import { laneSource, type LaneSource } from "./lane-sources.ts";
 import {
   refuseLaneOverwrites,
@@ -58,14 +56,6 @@ import {
 } from "./source-overwrites.ts";
 import { type SourceShare } from "./source-plan.ts";
 import { type DuplicateParams } from "./duplicate-one-source.ts";
-
-/** What a lane copy leaves behind, said once on the lane's own entry. */
-const LANE_COPY_NOTE =
-  "clips only: a take lane takes no devices, routing, mixer settings or session clips";
-
-/** The same, for a promote onto a track's main lane. */
-const MAIN_LANE_COPY_NOTE =
-  "clips only: the main lane takes no devices, routing, mixer settings or session clips";
 
 /** Everything a take-lane copy of a track reads off the call. */
 export interface TracksToLanesArgs {
@@ -90,7 +80,9 @@ export function duplicateTracksToLanes(args: TracksToLanesArgs): object[] {
   const ledger = copyLedger();
 
   return planLaneCopies(args.sources, args.labels).map((copy) =>
-    runLaneCopy(copy, args.takeLaneName, meter, ledger),
+    copy.target == null
+      ? skippedCopy(copy.entry, copy.refusal)
+      : runLaneCopy(copy.entry, copy.target, args.takeLaneName, meter, ledger),
   );
 }
 
@@ -123,26 +115,6 @@ export function namesTakeLaneDestination(
 }
 
 // --- Helpers below main exports ---
-
-/** Where one destination's clips go, once the checks have passed. */
-interface LanePlace {
-  trackIndex: number;
-  /** The take lane's index, or null for the track's own main lane. */
-  laneIndex: number | null;
-  /** The destination track. Planning and copying are one synchronous call, so
-   * this object lives no longer than the request that built it. */
-  track: LiveAPI;
-  /** `t2/l1` or `t2`: the cap check's key, and the path the entry reports. */
-  label: string;
-}
-
-/** A destination, and what goes on it. */
-interface LaneTarget extends LanePlace {
-  /** The source's clips, in order */
-  sourceClips: LiveAPI[];
-  name: string | undefined;
-  color: string | undefined;
-}
 
 /** One destination of one source: where its clips go, or why they can't. */
 type LaneCopy =
@@ -453,91 +425,6 @@ function refuseLanesPastCap(copies: LaneCopy[]): LaneCopy[] {
 
     return reason == null ? copy : refused(copy.entry, reason);
   });
-}
-
-/**
- * Copies one source's clips onto the lane its plan named, creating the lane
- * (and any before it) on the way, or onto a track's main lane.
- * @param copy - The plan for this destination
- * @param takeLaneName - Deprecated: name for a lane this call creates
- * @param meter - The song meter every position is spelled in
- * @param ledger - The call's arrangement lanes
- * @returns The destination's entry in the result
- */
-function runLaneCopy(
-  copy: LaneCopy,
-  takeLaneName: string | undefined,
-  meter: CopyMeter,
-  ledger: LaneLedger,
-): object {
-  if (copy.target == null) {
-    return skippedCopy(copy.entry, copy.refusal);
-  }
-
-  const { trackIndex, laneIndex, label, sourceClips, name, color } =
-    copy.target;
-  const { lane, created } = resolveCopyDestination(copy.target, takeLaneName);
-  const onLane = laneIndex != null;
-  const losses = new Set<string>();
-  // A create truncates whatever it lands on, so a clip already at the position
-  // is replaced, on a take lane as on the main one.
-  const clips = sourceClips.map((clip) =>
-    copyClipToLane(
-      clip,
-      {
-        lane,
-        where: onLane
-          ? takeLaneOf(trackIndex, laneIndex, lane)
-          : mainLaneOf(trackIndex, lane),
-        ledger,
-        label,
-        kind: onLane ? "take-lane" : "promoted",
-        meter,
-        name,
-        color,
-      },
-      losses,
-    ),
-  );
-
-  return {
-    id: lane.id,
-    path: label,
-    ...(created ? { created: true as const } : {}),
-    // resolveTakeLane names a lane only when it made it, so that is the one
-    // case the name is worth reporting.
-    ...(created && paramNamesSomething(takeLaneName)
-      ? { name: takeLaneName }
-      : {}),
-    clips,
-    detail: [onLane ? LANE_COPY_NOTE : MAIN_LANE_COPY_NOTE, ...losses].join(
-      "; ",
-    ),
-  };
-}
-
-/**
- * The object the clips are created on: the take lane, made if it isn't there
- * yet, or the track itself for its main lane. Both answer `create_midi_clip`
- * and `create_audio_clip`.
- * @param target - The plan for this destination
- * @param takeLaneName - Deprecated: name for a lane this call creates
- * @returns The destination, and whether this call made it
- */
-function resolveCopyDestination(
-  target: LaneTarget,
-  takeLaneName: string | undefined,
-): { lane: LiveAPI; created: boolean } {
-  const { track, laneIndex } = target;
-
-  if (laneIndex == null) {
-    return { lane: track, created: false };
-  }
-
-  const before = track.getChildCount("take_lanes");
-  const { lane } = resolveTakeLane(track, laneIndex, takeLaneName);
-
-  return { lane, created: laneIndex >= before };
 }
 
 /**

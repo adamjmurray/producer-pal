@@ -7,6 +7,7 @@
 // loops (scenes here, clips in duplicate-clip-with-positions) share when the
 // request's deadline cuts them short.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
@@ -24,6 +25,7 @@ import {
   calculateSceneLength,
   duplicateSceneToArrangement,
 } from "./duplicate-scene.ts";
+import { refusedCopy } from "../clip/copy-entries.ts";
 import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
 import { resolveArrangementPositions } from "../duplicate-destinations.ts";
 import { parseArrangementLength } from "../clip/arrangement-length.ts";
@@ -124,20 +126,33 @@ export async function duplicateSceneToArrangementAtPositions(
       break;
     }
 
-    const result = await duplicateSceneToArrangement(
-      id,
-      allPositions[i] as number, // bounded by loop
-      labelName(labels, i),
-      labelColor(labels, i),
-      withoutClips,
-      labelLength(labels, i),
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      context,
-      ledger,
-    );
+    const beats = allPositions[i] as number; // bounded by loop
 
-    createdObjects.push(result);
+    // A position that throws keeps its place, so the others still land.
+    try {
+      createdObjects.push(
+        await duplicateSceneToArrangement(
+          id,
+          beats,
+          labelName(labels, i),
+          labelColor(labels, i),
+          withoutClips,
+          labelLength(labels, i),
+          songTimeSigNumerator,
+          songTimeSigDenominator,
+          context,
+          ledger,
+        ),
+      );
+    } catch (error) {
+      createdObjects.push(
+        refusedCopy(
+          { beats },
+          { songTimeSigNumerator, songTimeSigDenominator },
+          errorMessage(error),
+        ),
+      );
+    }
   }
 
   return createdObjects;

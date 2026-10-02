@@ -13,6 +13,7 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  clearedBefore,
   copiedIds,
   copyClearing,
   copyClearingAsync,
@@ -178,5 +179,111 @@ describe("a copy that throws", () => {
     await copy(true);
 
     expect(rescans(ledger, where)).toBe(true);
+  });
+
+  it("forgets every lane after a failed copy that waited, and only then", async () => {
+    registerMockObject("other-clip", {
+      path: livePath.track(1).arrangementClip(0),
+      type: "Clip",
+      properties: { start_time: 0, end_time: 8 },
+    });
+    registerMockObject("other-track", {
+      path: livePath.track(1),
+      properties: { arrangement_clips: children("other-clip") },
+    });
+
+    const results: boolean[] = [];
+
+    const fail = async (waits: boolean): Promise<void> => {
+      const ledger = copyLedger();
+      const where = mainLaneOf(0, LiveAPI.from(livePath.track(0)));
+      const other = mainLaneOf(1, LiveAPI.from(livePath.track(1)));
+
+      ledger.scan(where.lane, where.api);
+      await expect(
+        copyClearingAsync(
+          ledger,
+          other,
+          { start: 0, end: 8 },
+          () => Promise.reject(new Error("no clip")),
+          () => [],
+          waits,
+        ),
+      ).rejects.toThrow("no clip");
+      results.push(rescans(ledger, where));
+    };
+
+    await fail(false);
+    await fail(true);
+
+    expect(results).toStrictEqual([false, true]);
+  });
+});
+
+describe("a copy that clears clips and then throws", () => {
+  let track: RegisteredMockObject;
+
+  beforeEach(() => {
+    clearMockRegistry();
+    mockNonExistentObjects();
+    registerMockObject("clip", {
+      path: livePath.track(0).arrangementClip(0),
+      type: "Clip",
+      properties: { start_time: 0, end_time: 8 },
+    });
+    track = registerMockObject("track", {
+      path: livePath.track(0),
+      properties: { arrangement_clips: children("clip") },
+    });
+  });
+
+  /**
+   * Run a copy that clears the clip on the lane and then throws.
+   * @param ledger - The call's ledger
+   * @returns What it threw
+   */
+  function clearThenThrow(ledger = copyLedger()): unknown {
+    try {
+      copyClearing(
+        ledger,
+        mainLaneOf(0, LiveAPI.from(livePath.track(0))),
+        { start: 0, end: 8 },
+        () => {
+          track.properties.arrangement_clips = children();
+          registerMockObject("clip", { path: "" });
+
+          throw new Error("no clip");
+        },
+        () => [],
+      );
+    } catch (error) {
+      return error;
+    }
+
+    return undefined;
+  }
+
+  it("throws the same words, with what it cleared", () => {
+    const error = clearThenThrow();
+
+    expect((error as Error).message).toBe("no clip");
+    expect(clearedBefore(error)).toBe("overwrote the clip at t0[1|1]");
+  });
+
+  it("throws the original when what it cleared can't be read", () => {
+    const ledger = copyLedger();
+
+    vi.spyOn(ledger, "afterWrite").mockImplementation(() => {
+      throw new Error("Live went away");
+    });
+
+    const error = clearThenThrow(ledger);
+
+    expect((error as Error).message).toBe("no clip");
+    expect(clearedBefore(error)).toBeUndefined();
+  });
+
+  it("says nothing was cleared for an error that wasn't one", () => {
+    expect(clearedBefore(new Error("plain"))).toBeUndefined();
   });
 });

@@ -125,7 +125,7 @@ describe("a scene copied to the arrangement", () => {
     });
   });
 
-  it("leaves the entry bare for a track that cleared nothing and got no copy", async () => {
+  it("names a track that cleared nothing and got no copy", async () => {
     registerScene();
 
     const first = registerLiveLane({ trackIndex: 0 });
@@ -135,6 +135,7 @@ describe("a scene copied to the arrangement", () => {
 
     expect(await copyScene("[5|1]")).toStrictEqual({
       clips: [{ id: "copy-1-0", path: "t1[5|1]" }],
+      detail: "Live made no copy on t0",
     });
   });
 });

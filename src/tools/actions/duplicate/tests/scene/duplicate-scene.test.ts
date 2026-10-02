@@ -308,6 +308,35 @@ describe("duplicate - a session scene copy that fails", () => {
     expect(liveSet.call).toHaveBeenLastCalledWith("duplicate_scene", 1);
   });
 
+  // The scene is in the Set by then, so the next copy has to count it.
+  it("keeps a copy that exists when naming it fails, and counts it", async () => {
+    const liveSet = sceneCopiesFailingAt([]);
+
+    registerMockObject("copyA", {
+      path: livePath.scene(1),
+    }).set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    const result = await duplicate({
+      type: "scene",
+      id: "scene1",
+      count: 2,
+      name: "A,B",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "copyA",
+        path: "s1",
+        clips: [],
+        detail: "the scene was made, but name refused",
+      },
+      { id: "copyB", path: "s2", clips: [] },
+    ]);
+    expect(liveSet.call).toHaveBeenLastCalledWith("duplicate_scene", 1);
+  });
+
   it("reports every copy when none landed", async () => {
     sceneCopiesFailingAt([1, 2]);
 

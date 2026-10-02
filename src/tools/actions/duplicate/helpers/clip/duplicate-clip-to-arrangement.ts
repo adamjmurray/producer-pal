@@ -7,10 +7,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import {
-  getMinimalClipInfo,
-  type MinimalClipInfo,
-} from "../minimal-clip-info.ts";
+import { finishCopy, type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { type CopyAttempt } from "./duplicate-one-copy.ts";
 import {
   createClipsForLength,
@@ -110,8 +107,7 @@ export async function duplicateClipToArrangement(
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
     // clip, matching the guards in arrangement-tiling and update-clip.
     if (newClip.exists()) {
-      newClip.setAll({ name, color });
-      duplicatedClips.push(getMinimalClipInfo(newClip));
+      duplicatedClips.push(finishCopy(newClip, name, color));
     }
   }
 

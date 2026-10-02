@@ -20,6 +20,7 @@ import {
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { recreateIntoSlot } from "#src/tools/shared/clip/recreate-into-slot.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -110,61 +111,76 @@ export function duplicateClipSlot(
     sourceSceneIndex,
   ),
 ): MinimalClipInfo | TargetSkip {
-  const { sourceClipSlot, sourceClip, tracks } = shared;
   const destination = slotPath(toTrackIndex, toSceneIndex);
 
-  // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
-  // of failing, so check first rather than reporting a copy that never happened.
-  // Before the slot, too: no scene should be made to reach a missing track.
-  const clipIsMidi = (sourceClip.getProperty("is_midi_clip") as number) > 0;
-  const blocker = clipCopyBlocker(
-    clipIsMidi,
-    toTrackIndex,
-    tracks.get(toTrackIndex),
-  );
+  return guardSlot(destination, (progress) => {
+    const { sourceClipSlot, sourceClip, tracks } = shared;
 
-  // An entry rather than a throw, so the other slots of a comma-separated
-  // toPath keep the copies they already made.
-  if (blocker != null) {
-    return skippedCopy(destination, blocker);
-  }
-
-  const prepared = prepareDestinationSlot(toTrackIndex, toSceneIndex);
-
-  if (typeof prepared === "string") {
-    return skippedCopy(destination, prepared);
-  }
-
-  const { clipSlot: destClipSlot, created } = prepared;
-
-  // Read before the copy: the clip that was there is gone once it lands, and
-  // the entry has to say the copy replaced it.
-  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
-
-  // Compares the destination's clip before and after, so a declined copy can't
-  // be reported as a success (and the slot's original clip can't be renamed).
-  const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
-
-  if (newClip == null) {
-    return skippedCopy(
-      destination,
-      withCreatedScenes("Live made no copy there", created),
+    // Live's duplicate_clip_to no-ops on a track that won't take the clip
+    // instead of failing, so check first rather than reporting a copy that
+    // never happened. Before the slot, too: no scene should be made to reach a
+    // missing track.
+    const clipIsMidi = (sourceClip.getProperty("is_midi_clip") as number) > 0;
+    const blocker = clipCopyBlocker(
+      clipIsMidi,
+      toTrackIndex,
+      tracks.get(toTrackIndex),
     );
-  }
 
-  newClip.setAll({ name, color });
+    // An entry rather than a throw, so the other slots of a comma-separated
+    // toPath keep the copies they already made.
+    if (blocker != null) {
+      return skippedCopy(destination, blocker);
+    }
 
-  const copy = getMinimalClipInfo(newClip);
+    const prepared = prepareDestinationSlot(toTrackIndex, toSceneIndex);
 
-  if (created != null) {
-    copy.created = created;
-  }
+    if (typeof prepared === "string") {
+      return skippedCopy(destination, prepared);
+    }
 
-  if (destinationWasOccupied) {
-    copy.detail = clipOverwriteNote(destination);
-  }
+    const { clipSlot: destClipSlot, created } = prepared;
 
-  return copy;
+    progress.created = created;
+
+    // Read before the copy: the clip that was there is gone once it lands, and
+    // the entry has to say the copy replaced it.
+    const destinationWasOccupied = Boolean(
+      destClipSlot.getProperty("has_clip"),
+    );
+
+    // Compares the destination's clip before and after, so a declined copy
+    // can't be reported as a success (and the slot's original clip can't be
+    // renamed).
+    const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
+
+    if (newClip == null) {
+      return skippedCopy(
+        destination,
+        withCreatedScenes("Live made no copy there", created),
+      );
+    }
+
+    progress.landed = newClip;
+
+    if (destinationWasOccupied) {
+      progress.note = clipOverwriteNote(destination);
+    }
+
+    newClip.setAll({ name, color });
+
+    const copy = getMinimalClipInfo(newClip);
+
+    if (created != null) {
+      copy.created = created;
+    }
+
+    if (progress.note != null) {
+      copy.detail = progress.note;
+    }
+
+    return copy;
+  });
 }
 
 /**
@@ -228,52 +244,105 @@ export function duplicateArrangementClipToSlots(
 
   return slots.map((slot, i) => {
     const destination = slotPath(slot.trackIndex, slot.sceneIndex);
-    const blocker = canRecreateClip(clip)
-      ? clipCopyBlocker(clipIsMidi, slot.trackIndex)
-      : "it's an audio clip with no sample file; drag it in Live's UI";
 
-    if (blocker != null) {
-      return skippedCopy(destination, blocker);
-    }
+    return guardSlot(destination, (progress) => {
+      const blocker = canRecreateClip(clip)
+        ? clipCopyBlocker(clipIsMidi, slot.trackIndex)
+        : "it's an audio clip with no sample file; drag it in Live's UI";
 
-    const prepared = prepareDestinationSlot(slot.trackIndex, slot.sceneIndex);
+      if (blocker != null) {
+        return skippedCopy(destination, blocker);
+      }
 
-    if (typeof prepared === "string") {
-      return skippedCopy(destination, prepared);
-    }
+      const prepared = prepareDestinationSlot(slot.trackIndex, slot.sceneIndex);
 
-    const losses = recreatedClipLosses(clip);
-    const recreated = recreateIntoSlot(
-      clip,
-      slot,
-      prepared.clipSlot,
-      { name: labelName(labels, i), color: labelColor(labels, i) },
-      losses,
-    );
+      if (typeof prepared === "string") {
+        return skippedCopy(destination, prepared);
+      }
 
-    if (!recreated.ok) {
-      return skippedCopy(
-        destination,
-        withCreatedScenes(recreated.reason, prepared.created),
+      progress.created = prepared.created;
+
+      const losses = recreatedClipLosses(clip);
+      const recreated = recreateIntoSlot(
+        clip,
+        slot,
+        prepared.clipSlot,
+        { name: labelName(labels, i), color: labelColor(labels, i) },
+        losses,
       );
-    }
 
-    const copy = getMinimalClipInfo(recreated.clip);
+      if (!recreated.ok) {
+        return skippedCopy(
+          destination,
+          withCreatedScenes(recreated.reason, prepared.created),
+        );
+      }
 
-    if (prepared.created != null) {
-      copy.created = prepared.created;
-    }
+      progress.landed = recreated.clip;
+      progress.note = [
+        ...(recreated.overwrote ? [clipOverwriteNote(destination)] : []),
+        `re-created from the arrangement clip${recreateLossesNote(losses)}`,
+      ].join("; ");
 
-    copy.detail = [
-      ...(recreated.overwrote ? [clipOverwriteNote(destination)] : []),
-      `re-created from the arrangement clip${recreateLossesNote(losses)}`,
-    ].join("; ");
+      const copy = getMinimalClipInfo(recreated.clip);
 
-    return copy;
+      if (prepared.created != null) {
+        copy.created = prepared.created;
+      }
+
+      copy.detail = progress.note;
+
+      return copy;
+    });
   });
 }
 
 // --- Helpers below main exports ---
+
+/** How far one slot's copy got, for the entry a throw leaves behind. */
+interface SlotProgress {
+  /** The scenes made to reach the slot */
+  created: string | null;
+  /** The copy, once it exists */
+  landed: LiveAPI | null;
+  /** What its entry says about it, once that is known */
+  note?: string;
+}
+
+/**
+ * Runs one slot's copy, so a throw keeps that slot's entry instead of costing
+ * the call the copies already made. Before the copy exists it is a skip; after,
+ * the clip is there, so it is a clip entry saying what failed.
+ * @param destination - The slot, as the path a copy there would report
+ * @param run - Makes the copy, noting its progress as it goes
+ * @returns The copy, or the entry saying none landed
+ */
+function guardSlot(
+  destination: string,
+  run: (progress: SlotProgress) => MinimalClipInfo | TargetSkip,
+): MinimalClipInfo | TargetSkip {
+  const progress: SlotProgress = { created: null, landed: null };
+
+  try {
+    return run(progress);
+  } catch (error) {
+    const reason = errorMessage(error);
+
+    if (progress.landed == null) {
+      return skippedCopy(
+        destination,
+        withCreatedScenes(reason, progress.created),
+      );
+    }
+
+    return {
+      id: progress.landed.id,
+      path: destination,
+      ...(progress.created != null && { created: progress.created }),
+      detail: joinDetails([progress.note, `the copy landed, but ${reason}`]),
+    };
+  }
+}
 
 /** A destination slot, and the scenes reaching it had to make. */
 interface PreparedSlot {

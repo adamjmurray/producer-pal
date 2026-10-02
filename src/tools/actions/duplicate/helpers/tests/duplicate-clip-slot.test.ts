@@ -195,6 +195,62 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("ok");
   });
 
+  it("reports a throw before the copy exists as a skip", () => {
+    const { sourceClipSlot } = setupSlotDuplication();
+
+    sourceClipSlot.methods.duplicate_clip_to = () => {
+      throw new Error("Live is unhappy");
+    };
+
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      detail: "Live is unhappy",
+    });
+  });
+
+  // The clip is in the slot by then, so a skip would lose it from the result.
+  it("keeps a copy that exists when naming it throws", () => {
+    const { sourceClipSlot } = setupSlotDuplication();
+    const makeCopy = sourceClipSlot.methods.duplicate_clip_to as () => null;
+
+    sourceClipSlot.methods.duplicate_clip_to = () => {
+      makeCopy();
+      registerMockObject(COPY_ID, {}).set.mockImplementation(() => {
+        throw new Error("name refused");
+      });
+
+      return null;
+    };
+
+    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+      id: COPY_ID,
+      path: "t1/s0",
+      detail: "the copy landed, but name refused",
+    });
+  });
+
+  it("keeps the overwrite note when a copy that replaced a clip can't be named", () => {
+    const { sourceClipSlot } = setupSlotDuplication({ destHasClip: 1 });
+    const makeCopy = sourceClipSlot.methods.duplicate_clip_to as () => null;
+
+    sourceClipSlot.methods.duplicate_clip_to = () => {
+      makeCopy();
+      registerMockObject(COPY_ID, {}).set.mockImplementation(() => {
+        throw new Error("name refused");
+      });
+
+      return null;
+    };
+
+    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+      id: COPY_ID,
+      path: "t1/s0",
+      detail:
+        "overwrote the existing clip at t1/s0; the copy landed, but name refused",
+    });
+  });
+
   // Without the landing check this walks into getMinimalClipInfo with an
   // unresolvable clip and throws an internal path error.
   it("reports instead of failing when no clip lands in the destination", () => {

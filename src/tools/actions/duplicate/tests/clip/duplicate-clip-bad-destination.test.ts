@@ -257,3 +257,93 @@ describe("duplicate clip - a toPath entry the clip can't go to", () => {
     expect(clip2.set).toHaveBeenCalledWith("color", 0x00ff00);
   });
 });
+
+// A copy that throws is the same: its destination keeps its place, and the
+// copies around it land.
+/**
+ * Register a destination track whose arrangement duplicate throws.
+ * @param trackIndex - Track index
+ */
+function registerThrowingTrack(trackIndex: number): void {
+  registerMockObject(`live_set/tracks/${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    properties: { has_midi_input: 1 },
+    methods: {
+      duplicate_clip_to_arrangement: () => {
+        throw new Error("Live is unhappy");
+      },
+    },
+  });
+}
+
+describe("duplicate clip - a copy that throws", () => {
+  it("keeps the copies on either side, with the skip in its own slot", async () => {
+    mockNonExistentObjects();
+    registerMidiSource();
+    registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+    registerArrangementClip(1, 0, 8);
+    registerThrowingTrack(2);
+    registerTrackWithArrangementDup(3, { has_midi_input: 1 });
+    registerArrangementClip(3, 0, 8);
+
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath: "t1,t2,t3",
+      }),
+    ).toStrictEqual([
+      { id: livePath.track(1).arrangementClip(0), path: "t1[3|1]" },
+      { path: "t2[3|1]", ok: false, detail: "Live is unhappy" },
+      { id: livePath.track(3).arrangementClip(0), path: "t3[3|1]" },
+    ]);
+  });
+
+  it("throws when the one copy it asked for failed", async () => {
+    mockNonExistentObjects();
+    registerMidiSource();
+    registerThrowingTrack(2);
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath: "t2",
+      }),
+    ).rejects.toThrow("Live is unhappy");
+  });
+
+  // The clip is on the track by then, so a skip would lose it from the result.
+  it("keeps a copy that exists when naming it fails", async () => {
+    mockNonExistentObjects();
+    registerMidiSource();
+    registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+    registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+    const failing = registerArrangementClip(1, 0, 8);
+
+    registerArrangementClip(2, 0, 8);
+    failing.set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath: "t1,t2",
+        name: "A",
+      }),
+    ).toStrictEqual([
+      {
+        id: livePath.track(1).arrangementClip(0),
+        path: "t1[3|1]",
+        detail: "name and color not applied: name refused",
+      },
+      { id: livePath.track(2).arrangementClip(0), path: "t2[3|1]" },
+    ]);
+  });
+});

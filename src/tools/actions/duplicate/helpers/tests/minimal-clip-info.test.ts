@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { getMinimalClipInfo } from "../minimal-clip-info.ts";
+import { finishCopy, getMinimalClipInfo } from "../minimal-clip-info.ts";
 
 describe("getMinimalClipInfo", () => {
   beforeEach(() => {
@@ -87,6 +87,50 @@ describe("getMinimalClipInfo", () => {
 
     expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
       "no clip slot for clip",
+    );
+  });
+});
+
+describe("finishCopy", () => {
+  it("names the copy and reports it", () => {
+    const clip = registerMockObject("copy", {
+      path: livePath.track(1).clipSlot(2).clip(),
+    });
+
+    expect(finishCopy(LiveAPI.from("copy"), "Verse", undefined)).toStrictEqual({
+      id: "copy",
+      path: "t1/s2",
+    });
+    expect(clip.set).toHaveBeenCalledWith("name", "Verse");
+  });
+
+  it("says what failed on the copy's entry instead of throwing", () => {
+    registerMockObject("copy", {
+      path: livePath.track(1).clipSlot(2).clip(),
+    }).set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    expect(finishCopy(LiveAPI.from("copy"), "Verse", undefined)).toStrictEqual({
+      id: "copy",
+      path: "t1/s2",
+      detail: "name and color not applied: name refused",
+    });
+  });
+
+  it("keeps the id when the copy can't be read back", () => {
+    registerMockObject("copy", {
+      path: livePath.liveSet,
+      properties: { is_arrangement_clip: 1 },
+    });
+
+    expect(
+      finishCopy(LiveAPI.from("copy"), undefined, undefined),
+    ).toStrictEqual(
+      expect.objectContaining({
+        id: "copy",
+        detail: expect.stringContaining("couldn't read the copy back: "),
+      }),
     );
   });
 });

@@ -18,7 +18,9 @@ import {
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
+  finishCopy,
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
@@ -116,8 +118,7 @@ export async function createClipsForLength(
       context as TilingContext,
     );
 
-    newClip.setAll({ name, color });
-    duplicatedClips.push(getMinimalClipInfo(newClip));
+    duplicatedClips.push(finishCopy(newClip, name, color));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
     // Routes a self-overlapping source through the holding area (overwrite
@@ -142,20 +143,31 @@ export async function createClipsForLength(
     const newClipId = newClip.id;
 
     if (arrangementLengthBeats > sourceClipLength) {
-      await lengthenClipAndCollectInfo(
-        track,
-        newClipId,
-        arrangementLengthBeats,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-        name,
-        color,
-        context,
-        duplicatedClips,
-      );
+      try {
+        await lengthenClipAndCollectInfo(
+          track,
+          newClipId,
+          arrangementLengthBeats,
+          songTimeSigNumerator,
+          songTimeSigDenominator,
+          name,
+          color,
+          context,
+          duplicatedClips,
+        );
+      } catch (error) {
+        // The copy exists, so a failure reading it back is on its entry.
+        const detail = `couldn't finish reading the copy: ${errorMessage(error)}`;
+        const [first] = duplicatedClips;
+
+        if (first == null) {
+          duplicatedClips.push({ id: newClipId, detail });
+        } else {
+          appendDetail(first, detail);
+        }
+      }
     } else {
-      newClip.setAll({ name, color });
-      duplicatedClips.push(getMinimalClipInfo(newClip));
+      duplicatedClips.push(finishCopy(newClip, name, color));
     }
   }
 

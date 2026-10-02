@@ -14,8 +14,9 @@ import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
-import { getMinimalClipInfo } from "../minimal-clip-info.ts";
+import { readCopyBack } from "../minimal-clip-info.ts";
 import {
+  clearedBefore,
   copiedIds,
   copyClearingAsync,
   copyReach,
@@ -88,13 +89,37 @@ export interface CopyOptions {
 }
 
 /**
- * Makes one arrangement copy, on a take lane or the main lane.
+ * Makes one arrangement copy, on a take lane or the main lane. A throw before
+ * the copy exists is the destination's refusal, so the other destinations still
+ * land. The steps after it report on the copy's own entry instead of throwing.
  * @param options - Everything the copy needs
  * @returns The created clip, or why this destination got none
  */
 export async function duplicateOneCopy(
   options: CopyOptions,
 ): Promise<CopyAttempt> {
+  try {
+    return await copyAtDestination(options);
+  } catch (error) {
+    // A copy that cleared clips before it threw changed the Set: the entry
+    // says so, and isn't a skip.
+    const cleared = clearedBefore(error);
+
+    return {
+      refused: errorMessage(error),
+      ...(cleared != null && { cleared }),
+    };
+  }
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Routes one copy to the way its destination and source need.
+ * @param options - Everything the copy needs
+ * @returns The created clip, or why this destination got none
+ */
+async function copyAtDestination(options: CopyOptions): Promise<CopyAttempt> {
   const { target, startBeats, lanes, object, id, tracks } = options;
 
   if (target.takeLane != null) {
@@ -155,8 +180,6 @@ export async function duplicateOneCopy(
     ),
   );
 }
-
-// --- Helpers below main exports ---
 
 /**
  * Runs one copy and says on its entry what it did to the clips already on its
@@ -230,8 +253,10 @@ function recreateCopy(
   // Read before the create, which can truncate the source itself.
   const sourceSpan = arrangementSpan(options.object);
 
+  let clip: LiveAPI;
+
   try {
-    const clip = recreateClip(
+    clip = recreateClip(
       options.object,
       destination,
       options.startBeats,
@@ -239,23 +264,12 @@ function recreateCopy(
       options.color,
       losses,
     );
-
-    return {
-      copy: getMinimalClipInfo(
-        clip,
-        joinDetails([
-          landedNote(kind, losses),
-          ignoredLength(options, keptSpan(clip, sourceSpan)),
-        ]),
-      ),
-    };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
     // refusal would lose a clip the caller has to know about.
     if (error instanceof PartialRecreateError) {
       return {
-        copy: getMinimalClipInfo(
-          error.partialClip,
+        copy: readCopyBack(error.partialClip, () =>
           joinDetails([
             `the ${kind} copy is incomplete (${error.message})`,
             ignoredLength(options, keptSpan(error.partialClip, sourceSpan)),
@@ -268,6 +282,16 @@ function recreateCopy(
       refused: `the ${kind} copy failed: ${errorMessage(error)}`,
     };
   }
+
+  // The clip exists, so a failure describing it is on its entry, not a refusal.
+  return {
+    copy: readCopyBack(clip, () =>
+      joinDetails([
+        landedNote(kind, losses),
+        ignoredLength(options, keptSpan(clip, sourceSpan)),
+      ]),
+    ),
+  };
 }
 
 /**

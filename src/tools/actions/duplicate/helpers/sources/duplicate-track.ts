@@ -280,17 +280,26 @@ function makeTrackCopy(
   const landing = landTrackCopy(trackIndex);
   const clips: MinimalClipInfo[] = [];
 
-  removeHostTrackDevice(trackIndex, landing, options.withoutDevices, notes);
+  // The copy exists from here on, so a failure is on its entry: a throw would
+  // report a skip for a track that is there.
+  try {
+    removeHostTrackDevice(trackIndex, landing, options.withoutDevices, notes);
 
-  // A group's copy brings its members' copies, which get the same treatment.
-  for (let offset = 0; offset < landing.added; offset++) {
-    const copied = LiveAPI.from(livePath.track(landing.index + offset));
+    // A group's copy brings its members' copies, which get the same treatment.
+    for (let offset = 0; offset < landing.added; offset++) {
+      const copied = LiveAPI.from(livePath.track(landing.index + offset));
 
-    if (options.withoutDevices === true) {
-      deleteAllDevices(copied);
+      if (options.withoutDevices === true) {
+        deleteAllDevices(copied);
+      }
+
+      clips.push(...processClipsForDuplication(copied, options.withoutClips));
     }
-
-    clips.push(...processClipsForDuplication(copied, options.withoutClips));
+  } catch (error) {
+    noteTarget(
+      notes,
+      `the track was made, but setting it up failed: ${errorMessage(error)}`,
+    );
   }
 
   const track = LiveAPI.from(livePath.track(landing.index));
@@ -314,16 +323,25 @@ function finishTrackCopy(
 ): TrackCopyEntry {
   const { track, notes } = copy;
 
-  if (label.name != null) {
-    track.set("name", label.name);
-  }
+  // The copy exists, so a failure here is on its entry rather than a throw that
+  // would drop every copy the call made.
+  try {
+    if (label.name != null) {
+      track.set("name", label.name);
+    }
 
-  if (label.color != null) {
-    track.setColor(label.color);
-  }
+    if (label.color != null) {
+      track.setColor(label.color);
+    }
 
-  if (routeToSource) {
-    configureRouting(track, sourceTrackIndex, notes);
+    if (routeToSource) {
+      configureRouting(track, sourceTrackIndex, notes);
+    }
+  } catch (error) {
+    noteTarget(
+      notes,
+      `the track was made, but naming, coloring or routing didn't finish: ${errorMessage(error)}`,
+    );
   }
 
   const detail = joinDetails(notes.said);

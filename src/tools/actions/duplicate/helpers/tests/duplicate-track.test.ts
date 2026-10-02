@@ -120,6 +120,50 @@ describe("duplicate-track", () => {
       expectDeleteDeviceCalls(newTrack, 3);
     });
 
+    // The track exists by then, so a skip would hide it from the caller.
+    it("keeps a copy that exists when stripping its devices throws", () => {
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
+          devices: children("device0"),
+          clip_slots: [],
+          arrangement_clips: [],
+        },
+      });
+
+      newTrack.methods.delete_device = () => {
+        throw new Error("Live is unhappy");
+      };
+
+      expect(
+        duplicateTrack(0, undefined, undefined, false, true),
+      ).toStrictEqual({
+        path: "t1",
+        id: "live_set/tracks/1",
+        clips: [],
+        detail: "the track was made, but setting it up failed: Live is unhappy",
+      });
+    });
+
+    it("keeps a copy that exists when naming it throws", () => {
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+      });
+
+      newTrack.set.mockImplementation(() => {
+        throw new Error("name refused");
+      });
+
+      expect(duplicateTrack(0, "New Track")).toStrictEqual({
+        path: "t1",
+        id: "live_set/tracks/1",
+        clips: [],
+        detail:
+          "the track was made, but naming, coloring or routing didn't finish: name refused",
+      });
+    });
+
     it("should delete clips when withoutClips is true", () => {
       const { newTrack } = registerDuplicatedTrackSlots(
         [true, false],

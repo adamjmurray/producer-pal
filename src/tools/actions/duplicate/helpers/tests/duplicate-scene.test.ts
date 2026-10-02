@@ -137,6 +137,22 @@ describe("duplicate-scene", () => {
       expect(scene.set).not.toHaveBeenCalledWith("name", expect.anything());
     });
 
+    // The scene exists by then, so a skip would hide it from the caller.
+    it("keeps a scene that exists when naming it throws", () => {
+      const { scene } = setupDuplicateSceneMocks();
+
+      scene.set.mockImplementation(() => {
+        throw new Error("name refused");
+      });
+
+      expect(duplicateScene(0, "New Scene")).toStrictEqual({
+        path: "s1",
+        id: "live_set/scenes/1",
+        clips: [],
+        detail: "the scene was made, but name refused",
+      });
+    });
+
     it("should set name when provided", () => {
       const { scene } = setupDuplicateSceneMocks();
 
@@ -299,54 +315,51 @@ describe("duplicate-scene", () => {
       expect(result).toStrictEqual({ clips: [] });
     });
 
-    it.each([
-      {
-        desc: "should use provided arrangementLength",
-        clipLength: 4,
-        liveSetExtra: {},
-        sceneName: undefined as string | undefined,
-        arrangementLength: "2bar" as string | undefined,
-        // Lengthening runs through updateClip, which these mocks stop short of,
-        // so the batch collects no clip.
-        expectedClipPath: undefined as string | undefined,
-      },
-      {
-        desc: "should use calculateSceneLength when arrangementLength is not provided",
-        clipLength: 8,
-        liveSetExtra: { signature_numerator: 4, signature_denominator: 4 },
-        sceneName: "Scene Name",
-        arrangementLength: undefined,
-        // start_time 16 in 4/4 is bar 5 beat 1.
-        expectedClipPath: "t0[5|1]",
-      },
-    ])(
-      "$desc",
-      async ({
-        clipLength,
-        liveSetExtra,
-        sceneName,
-        arrangementLength,
-        expectedClipPath,
-      }) => {
-        setupSceneToArrangementClipMocks(clipLength, liveSetExtra);
+    // Lengthening runs through updateClip, which these mocks stop short of, so
+    // no clip lands and the position is a skip.
+    it("skips the position when a lengthened copy lands no clip", async () => {
+      setupSceneToArrangementClipMocks(4, {});
 
-        const result = await duplicateSceneToArrangement(
-          "scene1",
-          16,
-          sceneName,
-          undefined,
-          false,
-          arrangementLength,
-          4,
-          4,
-        );
+      const result = await duplicateSceneToArrangement(
+        "scene1",
+        16,
+        undefined,
+        undefined,
+        false,
+        "2bar",
+        4,
+        4,
+      );
 
-        // The clip's own path is the only place the copy's position is
-        // reported; the batch carries none of its own.
-        expect(result).toHaveProperty("clips");
-        expect(result.clips[0]?.path).toBe(expectedClipPath);
-      },
-    );
+      expect(result).toStrictEqual({
+        path: "[5|1]",
+        ok: false,
+        detail: "no clip landed: Live made no copy on t0",
+      });
+    });
+
+    it("should use calculateSceneLength when arrangementLength is not provided", async () => {
+      setupSceneToArrangementClipMocks(8, {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      });
+
+      const result = (await duplicateSceneToArrangement(
+        "scene1",
+        16,
+        "Scene Name",
+        undefined,
+        false,
+        undefined,
+        4,
+        4,
+      )) as { clips: { path?: string }[] };
+
+      // The clip's own path is the only place the copy's position is
+      // reported; the batch carries none of its own. Start 16 in 4/4 is bar 5
+      // beat 1.
+      expect(result.clips[0]?.path).toBe("t0[5|1]");
+    });
 
     it("reports each clip as id and path, never the requested name", async () => {
       // The name lands on the clip itself, so reporting it back would echo an
@@ -367,7 +380,7 @@ describe("duplicate-scene", () => {
         4,
       );
 
-      expect(result.clips).toStrictEqual([
+      expect((result as { clips: object[] }).clips).toStrictEqual([
         { id: expect.any(String), path: "t0[5|1]" },
       ]);
     });

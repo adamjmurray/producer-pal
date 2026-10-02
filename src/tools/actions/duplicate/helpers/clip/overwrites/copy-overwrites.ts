@@ -19,6 +19,7 @@
 // next copy scans again. Update-clip scans the lane there anyway. A copy that
 // doesn't wait on it keeps the ledger.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   LaneLedger,
   type Reach,
@@ -37,6 +38,29 @@ export interface CopyLane {
 export interface CopiedClearing<T> {
   made: T;
   cleared: string | undefined;
+}
+
+/**
+ * A copy that threw after it may have cleared clips. The message is the
+ * original's, so a lone failure still throws the same words; `cleared` says
+ * what the write destroyed before it failed.
+ */
+export class ClearedThenFailedError extends Error {
+  readonly cleared: string;
+
+  constructor(original: unknown, cleared: string) {
+    super(errorMessage(original), { cause: original });
+    this.cleared = cleared;
+  }
+}
+
+/**
+ * What a failed copy cleared before it threw, if anything.
+ * @param error - What the copy threw
+ * @returns What it overwrote, shortened or split, or undefined when nothing
+ */
+export function clearedBefore(error: unknown): string | undefined {
+  return error instanceof ClearedThenFailedError ? error.cleared : undefined;
 }
 
 /** An entry that names a clip, or a group of clips. */
@@ -96,7 +120,8 @@ export function copyReach(startBeats: number, ...spans: number[]): Reach {
 /**
  * Run one copy and read what it did to the clips already on its lane. The lane
  * is dropped if the copy or the read-back throws, since it may have changed
- * unseen.
+ * unseen. A copy that throws after clearing clips throws a
+ * {@link ClearedThenFailedError}, so the failure still says what was destroyed.
  * @param ledger - The call's ledger
  * @param where - The lane the copy writes to
  * @param reach - Everything the copy may have cleared, whether or not it landed
@@ -113,12 +138,15 @@ export function copyClearing<T>(
 ): CopiedClearing<T> {
   ledger.scan(where.lane, where.api);
 
+  let made: T;
+
   try {
-    return readClearing(ledger, where, reach, write(), idsOf);
+    made = write();
   } catch (error) {
-    ledger.forget(where.lane);
-    throw error;
+    throw failedClearing(ledger, where, reach, error);
   }
+
+  return readClearing(ledger, where, reach, made, idsOf);
 }
 
 /**
@@ -142,18 +170,27 @@ export async function copyClearingAsync<T>(
 ): Promise<CopiedClearing<T>> {
   ledger.scan(where.lane, where.api);
 
+  let made: T;
+
   try {
-    const read = readClearing(ledger, where, reach, await write(), idsOf);
+    made = await write();
+  } catch (error) {
+    const failure = failedClearing(ledger, where, reach, error);
 
     if (waits) {
       ledger.forgetAll();
     }
 
-    return read;
-  } catch (error) {
-    ledger.forget(where.lane);
-    throw error;
+    throw failure;
   }
+
+  const read = readClearing(ledger, where, reach, made, idsOf);
+
+  if (waits) {
+    ledger.forgetAll();
+  }
+
+  return read;
 }
 
 /**
@@ -186,6 +223,34 @@ export function noteCleared(copy: object, cleared: string): void {
 // --- Helpers below main exports ---
 
 /**
+ * Reads what a copy that threw had already cleared, then drops the lane: the
+ * copy may have changed more than the read-back sees.
+ * @param ledger - The call's ledger
+ * @param where - The lane the copy wrote to
+ * @param reach - Everything the copy may have cleared
+ * @param error - What the copy threw
+ * @returns The error to throw: the original, or one that says what was cleared
+ */
+function failedClearing(
+  ledger: LaneLedger,
+  where: CopyLane,
+  reach: Reach,
+  error: unknown,
+): unknown {
+  let cleared: string | undefined;
+
+  try {
+    cleared = ledger.afterWrite(where.lane, [], { api: where.api, reach });
+  } catch {
+    // Nothing is known about what it did, so the failure stands as it was.
+  }
+
+  ledger.forget(where.lane);
+
+  return cleared == null ? error : new ClearedThenFailedError(error, cleared);
+}
+
+/**
  * @param ledger - The call's ledger
  * @param where - The lane the copy wrote to
  * @param reach - Everything the copy may have cleared
@@ -200,11 +265,24 @@ function readClearing<T>(
   made: T,
   idsOf: (made: T) => string[],
 ): CopiedClearing<T> {
-  return {
-    made,
-    cleared: ledger.afterWrite(where.lane, idsOf(made), {
-      api: where.api,
-      reach,
-    }),
-  };
+  // A failed read-back can't unmake the copy, and can't promise nothing was
+  // cleared either: the entry says what it couldn't tell, even for a copy Live
+  // declined, which then reads as changed rather than refused. The lane is
+  // dropped from the ledger.
+  try {
+    return {
+      made,
+      cleared: ledger.afterWrite(where.lane, idsOf(made), {
+        api: where.api,
+        reach,
+      }),
+    };
+  } catch (error) {
+    ledger.forget(where.lane);
+
+    return {
+      made,
+      cleared: `couldn't tell what it overwrote: ${errorMessage(error)}`,
+    };
+  }
 }

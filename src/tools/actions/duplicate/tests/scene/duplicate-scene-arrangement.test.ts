@@ -394,7 +394,7 @@ describe("duplicate - scene to the arrangement", () => {
     );
   });
 
-  it("should handle empty scenes gracefully", async () => {
+  it("answers a scene with no clips with a detail, not a skip", async () => {
     setupArrangementSceneMocks(2);
 
     registerClipSlot(0, 0, false);
@@ -407,7 +407,11 @@ describe("duplicate - scene to the arrangement", () => {
       arrangementStart: "5|1",
     })) as DuplicateSceneResult;
 
-    expect(result).toStrictEqual({ clips: [] });
+    // Nothing to copy is done, not failed: a lone one doesn't throw.
+    expect(result).toStrictEqual({
+      clips: [],
+      detail: "the scene has no clips",
+    });
   });
 
   it("should duplicate a scene to arrangement without clips when withoutClips is true", async () => {
