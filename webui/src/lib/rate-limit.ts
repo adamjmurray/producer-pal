@@ -29,17 +29,26 @@ export const DEFAULT_RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000] as const;
  */
 export const MAX_RETRY_ATTEMPTS = 5;
 
+/** "rate limit", "rate-limit", "rate_limit"; not "context limit" or "migrate limit". */
+const RATE_LIMIT_WORDS = /\brate[ _-]?limit/i;
+
 /**
  * Patterns that indicate a rate limit error in error messages
  */
 const RATE_LIMIT_PATTERNS = [
   /resource.*exhausted/i,
-  /rate.*limit/i,
+  RATE_LIMIT_WORDS,
   /quota.*exceeded/i,
   /exceeded.*quota/i,
   /too.*many.*requests/i,
-  /429/,
 ] as const;
+
+/**
+ * Out-of-credit errors: a 429 that waiting won't fix (OpenAI's
+ * `insufficient_quota`), so they fail right away instead of being retried.
+ */
+const PERMANENT_QUOTA_PATTERN =
+  /insufficient[_ ]quota|exceeded your current quota/i;
 
 /**
  * Detects if an error is a rate limit error and extracts relevant info
@@ -51,8 +60,9 @@ export function detectRateLimit(error: unknown): RateLimitInfo {
   const statusCode = extractStatusCode(error);
 
   const isRateLimited =
-    statusCode === 429 ||
-    RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(errorString));
+    !PERMANENT_QUOTA_PATTERN.test(errorString) &&
+    (statusCode === 429 ||
+      RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(errorString)));
 
   return {
     isRateLimited,
@@ -220,7 +230,7 @@ function formatRateLimitMessage(errorString: string): string {
     return "API quota exceeded. The request will be retried automatically.";
   }
 
-  if (/rate.*limit/i.test(errorString)) {
+  if (RATE_LIMIT_WORDS.test(errorString)) {
     return "Rate limit reached. The request will be retried automatically.";
   }
 

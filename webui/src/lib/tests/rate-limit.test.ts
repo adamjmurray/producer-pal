@@ -48,11 +48,33 @@ describe("detectRateLimit", () => {
   });
 
   it("detects quota exceeded message", () => {
-    const error = new Error("You exceeded your current quota");
+    const error = new Error("Quota exceeded for metric: requests per minute");
     const result = detectRateLimit(error);
 
     expect(result.isRateLimited).toBe(true);
   });
+
+  it.each([
+    "You exceeded your current quota, please check your plan and billing",
+    "Error code: insufficient_quota",
+  ])("does not retry out-of-credit errors: %s", (message) => {
+    expect(detectRateLimit(new Error(message)).isRateLimited).toBe(false);
+    expect(detectRateLimit({ status: 429, message }).isRateLimited).toBe(false);
+  });
+
+  it.each([
+    "Failed to generate content: request exceeds the context limit",
+    "Unknown tool toolu_01A4293x",
+  ])("does not treat unrelated text as a rate limit: %s", (message) => {
+    expect(detectRateLimit(new Error(message)).isRateLimited).toBe(false);
+  });
+
+  it.each(["rate limit reached", "rate-limit hit", "rate_limit_exceeded"])(
+    "detects rate limit wording: %s",
+    (message) => {
+      expect(detectRateLimit(new Error(message)).isRateLimited).toBe(true);
+    },
+  );
 
   it("detects too many requests message", () => {
     const error = new Error("Too many requests, please slow down");
