@@ -689,6 +689,7 @@ export interface ReadClipResult {
   detail?: string;
   noteCount?: number;
   notes?: string;
+  mutedNotes?: number;
   // Audio clip properties
   gainDb?: number;
   pitchShift?: number;

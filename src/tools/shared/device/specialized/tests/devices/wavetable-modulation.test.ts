@@ -10,12 +10,16 @@ import {
   MOD_SOURCES,
   readModulations,
 } from "../../devices/wavetable-modulation.ts";
-import { applySpecializedActions } from "../../specialized-device-registry.ts";
+import {
+  applySpecializedActions,
+  readSpecializedOptions,
+} from "../../specialized-device-registry.ts";
 import {
   buildModMethods,
   registerWavetable,
   registerWavetableAddingTarget,
 } from "./wavetable-test-helpers.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Edge cases of the Wavetable mod-matrix helpers: the index-0 boundaries (source
@@ -170,6 +174,95 @@ describe("modulation target resolution", () => {
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+});
+
+describe("param names Live pads with spaces", () => {
+  // Live pads some names ("Osc 1 Pos "); the name read must be the name to send.
+  /**
+   * Register a Wavetable whose "Osc 1 Pos" param is padded, and so is the
+   * matrix entry it gets when added.
+   * @param targets - Matrix target names, as Live reports them
+   * @param cells - Sparse non-zero cell map
+   * @returns The Wavetable LiveAPI object
+   */
+  function registerPadded(
+    targets: string[],
+    cells: Record<string, number> = {},
+  ): LiveAPI {
+    const device = registerWavetable(
+      {},
+      {
+        ...buildModMethods(targets, cells),
+        add_parameter_to_modulation_matrix: () => {
+          targets.push("Osc 1 Pos ");
+
+          return null;
+        },
+      },
+    );
+
+    registerMockObject("p1", { properties: { name: "Osc 1 Pos " } });
+
+    return device;
+  }
+
+  it("adds a target whose Live name is padded", () => {
+    const device = registerPadded([]);
+
+    const results = applySpecializedActions(device, [
+      "addModulationTarget('Osc 1 Pos')",
+    ]);
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      "id p1",
+    );
+    expect(results).toStrictEqual([
+      { action: "addModulationTarget('Osc 1 Pos')" },
+    ]);
+  });
+
+  it("sets a modulation on a target whose Live name is padded", () => {
+    const device = registerPadded([]);
+
+    applySpecializedActions(device, [
+      "setModulation('Osc 1 Pos', 'LFO 1', 0.5)",
+    ]);
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      "id p1",
+    );
+    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
+  });
+
+  it("finds a matrix entry whose Live name is padded", () => {
+    const device = registerPadded(["Osc 1 Pos "]);
+
+    applySpecializedActions(device, [
+      "setModulation('Osc 1 Pos', 'LFO 1', 0.5)",
+      "clearModulation('Osc 1 Pos', 'LFO 1')",
+    ]);
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
+    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0);
+  });
+
+  it("reports matrix targets and modulatable parameters trimmed", () => {
+    const device = registerPadded(["Osc 1 Pos "], { "0,3": 0.5 });
+
+    expect(readModulations(device)).toStrictEqual([
+      { target: "Osc 1 Pos", source: "LFO 1", amount: 0.5 },
+    ]);
+    expect(
+      (readSpecializedOptions(device) as Record<string, unknown>)
+        .modulatableParameters,
+    ).toContain("Osc 1 Pos");
   });
 });
 

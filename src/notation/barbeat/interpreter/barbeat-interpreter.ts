@@ -62,7 +62,7 @@ interface InterpretOptions {
    * Notes already in the clip, placed before the string's own: bar copy can
    * copy them and `v0` can delete them, and new notes still start from the
    * defaults. The survivors come back as the same objects, so fields bar|beat
-   * can't spell (mute, a downward velocity range) are kept.
+   * can't spell (release velocity, a downward velocity range) are kept.
    */
   existingNotes?: NoteEvent[];
 }

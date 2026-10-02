@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  formatParamName,
+  trimmedParamName,
+} from "#src/tools/shared/device/helpers/param-reading.ts";
 import { strForValue } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -34,27 +38,15 @@ export function matchParamsByName(
   parameters: LiveAPI[],
   name: string,
 ): LiveAPI[] {
-  const nameLower = name.toLowerCase();
+  const nameLower = name.trim().toLowerCase();
 
-  return parameters.filter((param) => {
-    const paramName = param.getName();
-
-    if (paramName.toLowerCase() === nameLower) {
-      return true;
-    }
-
-    // Also match formatted name "name (original_name)" for rack macros
-    const rawOriginalName = param.getProperty("original_name") as
-      | string
-      | number
-      | undefined;
-    const originalName = String(rawOriginalName ?? "");
-
-    return (
-      originalName !== paramName &&
-      `${paramName} (${originalName})`.toLowerCase() === nameLower
-    );
-  });
+  // Live pads some names ("A Fix On "), so both sides compare trimmed. The
+  // formatted form is "name (original_name)" for rack macros.
+  return parameters.filter(
+    (param) =>
+      trimmedParamName(param).toLowerCase() === nameLower ||
+      formatParamName(param).toLowerCase() === nameLower,
+  );
 }
 
 /**

@@ -9,6 +9,11 @@ import { interpretNotation, resolveNotation } from "#src/notation/notation.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import {
+  combineOutcomes,
+  countTransformed,
+  type TransformOutcome,
+} from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
@@ -16,7 +21,7 @@ import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   getClipNoteCount,
   rawNotesToCopiedNotes,
-  readAllClipNotes,
+  readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 import {
@@ -110,11 +115,11 @@ export function handleNoteUpdates(
 
   // Read the same window as read-clip, so a pickup before the clip start is
   // carried into the merge. Copied whole, so a note the call doesn't touch is
-  // written back exactly as it was, mute and release velocity included.
-  const rawExistingNotes = readAllClipNotes(clip);
-  const { notes: existingNotes, matchCount: preTransformCount } =
+  // written back exactly as it was. Muted notes sit out and are put back.
+  const { visible, muted } = readClipNotes(clip);
+  const { notes: existingNotes, outcome: preOutcome } =
     applyPreTransformsToExisting(
-      rawNotesToCopiedNotes(rawExistingNotes),
+      rawNotesToCopiedNotes(visible),
       preTransformString,
       timeSigNumerator,
       timeSigDenominator,
@@ -130,7 +135,7 @@ export function handleNoteUpdates(
   );
 
   // Apply transforms to notes if provided
-  const transformed = applyTransforms(
+  const postOutcome = applyTransforms(
     notes,
     transformString,
     timeSigNumerator,
@@ -138,23 +143,27 @@ export function handleNoteUpdates(
     clipContext,
   );
 
-  // Remove all notes and add new notes. Dedupe same-pitch+start collisions
-  // (new wins — new notes follow the existing ones in the combined array) then
-  // sort ascending by start_time so Live resolves every same-pitch overlap by
-  // truncation instead of deleting the earlier write. See note-sort.ts.
+  // Dedupe same-pitch+start collisions (new wins, over a muted note too), then
+  // sort by start so Live truncates same-pitch overlaps instead of deleting the
+  // earlier write. See note-sort.ts.
   removeAllClipNotes(clip);
 
-  const mergedNotes = sortNotes(dedupeNotesKeepingLast(notes));
+  const mergedNotes = sortNotes(
+    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...notes]),
+  );
 
   if (mergedNotes.length > 0) {
     clip.call("add_new_notes", { notes: mergedNotes });
   }
 
-  // Fall back to the preTransform match count when there's no transforms string,
-  // so a notes + preTransforms update still reports a count (not undefined).
+  // Both stages count: a note either one touched counts once, and a notes +
+  // preTransforms update still reports a count (not undefined).
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: transformed ?? preTransformCount,
+    transformed: countTransformed(
+      combineOutcomes(preOutcome, postOutcome),
+      mergedNotes,
+    ),
   };
 }
 
@@ -375,14 +384,14 @@ function withPreTransformed(
 
 /**
  * Apply preTransforms to existing notes in-place (mutates and filters v=0/d=0).
- * Returns the surviving notes plus the preTransform match count (undefined when
+ * Returns the surviving notes plus the preTransform outcome (undefined when
  * no preTransformString); no-ops when preTransformString is missing.
  * @param existingNotes - Existing notes as NoteEvents
  * @param preTransformString - Transform expressions, or undefined to skip
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
- * @returns The (possibly filtered) existing notes and the match count
+ * @returns The (possibly filtered) existing notes and the preTransform outcome
  */
 function applyPreTransformsToExisting(
   existingNotes: NoteEvent[],
@@ -390,12 +399,12 @@ function applyPreTransformsToExisting(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext: ClipContext | undefined,
-): { notes: NoteEvent[]; matchCount: number | undefined } {
+): { notes: NoteEvent[]; outcome: TransformOutcome | undefined } {
   if (preTransformString == null || existingNotes.length === 0) {
-    return { notes: existingNotes, matchCount: undefined };
+    return { notes: existingNotes, outcome: undefined };
   }
 
-  const matchCount = applyTransforms(
+  const outcome = applyTransforms(
     existingNotes,
     preTransformString,
     timeSigNumerator,
@@ -403,7 +412,7 @@ function applyPreTransformsToExisting(
     clipContext,
   );
 
-  return { notes: existingNotes, matchCount };
+  return { notes: existingNotes, outcome };
 }
 
 /**

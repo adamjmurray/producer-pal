@@ -9,13 +9,13 @@ import {
   createTestNote,
   createTestNotes,
   testNote,
-} from "./evaluator/transform-evaluator-test-helpers.ts";
+} from "../evaluator/transform-evaluator-test-helpers.ts";
 import {
   TOUCHING_C3_PAIR,
   TOUCHING_C3_TRIO,
   warnSpyWithNote,
   warnSpyWithNotes,
-} from "./transform-test-helpers.ts";
+} from "../transform-test-helpers.ts";
 
 // Asserts a repeat is rejected: the lone note passes through unchanged and a
 // warning containing `message` is emitted.

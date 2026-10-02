@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+import {
+  isBareThousands,
+  parseLabel,
+} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
   type KnownParamUnit,
@@ -74,9 +77,10 @@ export function displayValueForWrite(ctx: WriteUnitContext): ParamStep<number> {
   // "octaves", say) — that spelling stands for itself. No trailing text at
   // all is the documented no-unit case and is always allowed; anything else
   // still has to match the param's own recorded unit.
+  // A bare "k" is a multiplier already folded into inputValue, not a unit.
   const trailing = splitLeadingNumber(ctx.writtenText)?.trailing;
 
-  if (!trailing) {
+  if (!trailing || isBareThousands(ctx.writtenText.trim())) {
     return { value: ctx.inputValue };
   }
 

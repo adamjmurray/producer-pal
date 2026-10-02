@@ -4,6 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { readParameter } from "#src/tools/shared/device/helpers/param-reading.ts";
+import { knownParamUnit } from "#src/tools/shared/device/known-param-units.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 import {
   type RegisteredMockObject,
   children,
@@ -311,6 +314,134 @@ describe("updateDevice - recorded param units", () => {
           }),
         "Attack",
         "never says what it measures",
+      );
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+    });
+  });
+});
+
+// Analog's F1 Freq and F2 Freq read " 30", "173", "999", then "1.00k" ... "22.0k":
+// no "Hz" anywhere, and a bare k for thousands. Raw 0-1 maps to 30-22000 Hz
+// on a log scale.
+const MIN_HZ = 30;
+const MAX_HZ = 22000;
+
+function hzFor(raw: number): number {
+  return MIN_HZ * (MAX_HZ / MIN_HZ) ** raw;
+}
+
+function analogLabel(raw: unknown): string {
+  const hz = hzFor(Number(raw));
+
+  if (hz < 1000) {
+    return String(Math.round(hz)).padStart(3);
+  }
+
+  return hz < 10000
+    ? `${(hz / 1000).toFixed(2)}k`
+    : `${(hz / 1000).toFixed(1)}k`;
+}
+
+const analogProps = {
+  name: "F1 Freq",
+  original_name: "F1 Freq",
+  is_quantized: 0,
+  min: 0,
+  max: 1,
+};
+
+describe("Analog filter frequency", () => {
+  describe("recorded units", () => {
+    it("records both filters in Hz over 30-22000", () => {
+      for (const name of ["F1 Freq", "F2 Freq"]) {
+        expect(knownParamUnit("Analog", name, 30, 22000)?.unit).toBe("Hz");
+      }
+    });
+
+    it("drops the entry when the range differs", () => {
+      expect(knownParamUnit("Analog", "F1 Freq", 30, 22)).toBeNull();
+    });
+  });
+
+  describe("reading", () => {
+    it("reports a rising range in Hz", () => {
+      const path = `${livePath.track(0).device(0)} parameters 0`;
+
+      registerMockObject("param-1", {
+        path,
+        type: "DeviceParameter",
+        properties: {
+          ...analogProps,
+          is_enabled: 1,
+          state: 0,
+          automation_state: 0,
+          value: 1,
+        },
+        methods: { str_for_value: analogLabel },
+      });
+
+      const result = readParameter(LiveAPI.from(path), "Analog");
+
+      // Before, "22.0k" read as 22, giving min 30 and max 22.
+      expect(result.min).toBe(30);
+      expect(result.max).toBe(22000);
+      expect(result.value).toBe(22000);
+      expect(result.unit).toBe("Hz");
+    });
+  });
+
+  describe("writing", () => {
+    function registerAnalog(deviceName = "Analog"): RegisteredMockObject {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: {
+          class_display_name: deviceName,
+          parameters: children("p1"),
+        },
+      });
+
+      return registerMockObject("p1", {
+        properties: { ...analogProps, value: 0 },
+        methods: { str_for_value: analogLabel },
+      });
+    }
+
+    function write(param: RegisteredMockObject, value: string): number {
+      param.set.mockClear();
+      updateDevice({ id: "dev1", params: [{ name: "F1 Freq", value }] });
+
+      return hzFor(expectValueSet(param));
+    }
+
+    it.each(["800", "800 Hz", "0.8 kHz", "0.8k", "0.8 K"])(
+      "lands '%s' on 800 Hz",
+      (value) => {
+        const param = registerAnalog();
+
+        expect(write(param, value)).toBeCloseTo(800, -1);
+      },
+    );
+
+    it("lands a value in the thousands", () => {
+      const param = registerAnalog();
+
+      expect(write(param, "5k")).toBeCloseTo(5000, -2);
+      expect(write(param, "12 kHz")).toBeCloseTo(12000, -2);
+    });
+
+    it("refuses a unit that isn't a frequency", () => {
+      const param = registerAnalog();
+
+      expectParamRefused(
+        () =>
+          updateDevice({
+            id: "dev1",
+            params: [{ name: "F1 Freq", value: "800 dB" }],
+          }),
+        "F1 Freq",
+        'is measured in Hz, so "800 dB" was not written',
       );
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());

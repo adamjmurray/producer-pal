@@ -410,7 +410,7 @@ function warnRecreatedCopyLimits(
 
   if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
     console.warn(
-      "arrangementLength ignored for the re-created copies (they use the source clip's length)",
+      "arrangementLength ignored for the re-created copies (they keep the source clip's arrangement length)",
     );
   }
 
