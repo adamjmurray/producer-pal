@@ -11,12 +11,12 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-import { z } from "zod";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { parseNullLocationArgs } from "#src/tools/clip/helpers/tests/null-location-params-test-helpers.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import {
   registerArrangementTrack,
@@ -36,10 +36,8 @@ describe("createClip location params through the tool schema", () => {
 
   it("refuses a null trackIndex/sceneIndex instead of filling t0/s0", async () => {
     const raw = { trackIndex: null, sceneIndex: null };
-    const args = z.object(params).parse(unsetEmptyParams(raw, params));
+    const args = parseNullLocationArgs(params, raw);
 
-    expect(args.trackIndex).toBeUndefined();
-    expect(args.sceneIndex).toBeUndefined();
     await expect(createClip(args)).rejects.toThrow("path is required");
   });
 

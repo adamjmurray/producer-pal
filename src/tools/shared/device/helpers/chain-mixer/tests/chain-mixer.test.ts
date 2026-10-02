@@ -563,19 +563,25 @@ describe("applyChainMixer", () => {
         detail: "named again later in this call",
       };
 
-      it("lets the list win when it names the same return as the pair", () => {
+      // Applies a call whose last write to "a Delay" is -12 and expects the
+      // earlier write's entry to say it was replaced.
+      function expectFirstWriteReplaced(params: ChainMixerParams): void {
         const first = sendKeeping(-11.98);
 
-        const applied = applyMixer({
+        const applied = applyMixer(params);
+
+        expect(first.set).toHaveBeenLastCalledWith("display_value", -12);
+        expect(applied.sends).toStrictEqual([REPLACED, snappedSend(-11.98)]);
+        expect(capturedWarnings()).toStrictEqual([]);
+      }
+
+      it("lets the list win when it names the same return as the pair", () => {
+        // The pair is the one replaced, and says so on its own entry.
+        expectFirstWriteReplaced({
           sendGainDb: -3,
           sendReturn: "a Delay",
           sends: [{ return: "a Delay", gainDb: -12 }],
         });
-
-        expect(first.set).toHaveBeenLastCalledWith("display_value", -12);
-        // The pair is the one replaced, and says so on its own entry.
-        expect(applied.sends).toStrictEqual([REPLACED, snappedSend(-11.98)]);
-        expect(capturedWarnings()).toStrictEqual([]);
       });
 
       // A send holds one value, so the second write overwrites the first — and
@@ -584,19 +590,13 @@ describe("applyChainMixer", () => {
         ["the list names one twice", "a Delay"],
         ["two spellings name the same one", "a"],
       ])("reports the replaced entry when %s", (_case, secondReturn) => {
-        const first = sendKeeping(-11.98);
-
-        const applied = applyMixer({
+        // Named by the return that resolved, not by either spelling.
+        expectFirstWriteReplaced({
           sends: [
             { return: "a Delay", gainDb: -6 },
             { return: secondReturn, gainDb: -12 },
           ],
         });
-
-        expect(first.set).toHaveBeenLastCalledWith("display_value", -12);
-        // Named by the return that resolved, not by either spelling.
-        expect(applied.sends).toStrictEqual([REPLACED, snappedSend(-11.98)]);
-        expect(capturedWarnings()).toStrictEqual([]);
       });
 
       it("reports each entry a later one replaced", () => {

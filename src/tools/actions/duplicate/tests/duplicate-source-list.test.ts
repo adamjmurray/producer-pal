@@ -85,6 +85,35 @@ function registerTwoSlotSources(destinations: [number, number][]): void {
 }
 
 /**
+ * Copies two slot sources to t2/s0 and t3/s0 beside an arrangementStart, and
+ * expects both to land in the session with arrangementStart dropped.
+ * @param destination - The toPath or toSlot param naming both destinations
+ * @param warning - Text the arrangementStart-ignored warning must contain
+ */
+async function expectSessionCopiesBesideArrangementStart(
+  destination: { toPath: string } | { toSlot: string },
+  warning: string,
+): Promise<void> {
+  registerTwoSlotSources([
+    [2, 0],
+    [3, 0],
+  ]);
+
+  const result = await duplicate({
+    type: "clip",
+    id: "clipA,clipB",
+    ...destination,
+    arrangementStart: "5|1",
+  });
+
+  expect(result).toStrictEqual([
+    { id: "clipA-in-t2s0", path: "t2/s0" },
+    { id: "clipB-in-t3s0", path: "t3/s0" },
+  ]);
+  expect(capturedWarnings()).toContainEqual(expect.stringContaining(warning));
+}
+
+/**
  * Session clips to copy into the arrangement, one per track from 0 up, each in
  * scene 0. No duplicate_clip_to here: the arrangement copy runs off the track.
  * @param ids - Ids for the sources, in track order
@@ -122,26 +151,9 @@ describe("duplicate - a list of sources", () => {
     // the session however the position params read — shared out, one slot per
     // source, with arrangementStart dropped.
     it("shares toSlot out even beside an arrangement position", async () => {
-      registerTwoSlotSources([
-        [2, 0],
-        [3, 0],
-      ]);
-
-      const result = await duplicate({
-        type: "clip",
-        id: "clipA,clipB",
-        toSlot: "2/0,3/0",
-        arrangementStart: "5|1",
-      });
-
-      expect(result).toStrictEqual([
-        { id: "clipA-in-t2s0", path: "t2/s0" },
-        { id: "clipB-in-t3s0", path: "t3/s0" },
-      ]);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "arrangementStart ignored — toSlot names a clip slot",
-        ),
+      await expectSessionCopiesBesideArrangementStart(
+        { toSlot: "2/0,3/0" },
+        "arrangementStart ignored — toSlot names a clip slot",
       );
     });
 
@@ -494,24 +506,9 @@ describe("duplicate - a list of sources", () => {
     // With no arrangement entry at all, toPath wins: every copy goes to its
     // slot and arrangementStart is dropped with a warning.
     it("lands slot-only destinations in the session beside arrangementStart", async () => {
-      registerTwoSlotSources([
-        [2, 0],
-        [3, 0],
-      ]);
-
-      const result = await duplicate({
-        type: "clip",
-        id: "clipA,clipB",
-        toPath: "t2/s0,t3/s0",
-        arrangementStart: "5|1",
-      });
-
-      expect(result).toStrictEqual([
-        { id: "clipA-in-t2s0", path: "t2/s0" },
-        { id: "clipB-in-t3s0", path: "t3/s0" },
-      ]);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("arrangementStart ignored"),
+      await expectSessionCopiesBesideArrangementStart(
+        { toPath: "t2/s0,t3/s0" },
+        "arrangementStart ignored",
       );
     });
 

@@ -56,6 +56,14 @@ function duplicateTrack(
   return entry as TrackCopyEntry;
 }
 
+/**
+ * Duplicates track 0 with routeToSource on.
+ * @returns The copy's entry
+ */
+function duplicateWithRouteToSource(): TrackCopyEntry {
+  return duplicateTrack(0, undefined, undefined, false, false, true);
+}
+
 describe("duplicate-track", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -192,7 +200,7 @@ describe("duplicate-track", () => {
         },
       });
 
-      duplicateTrack(0, undefined, undefined, false, false, true);
+      duplicateWithRouteToSource();
 
       // Should arm source track
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
@@ -252,14 +260,7 @@ describe("duplicate-track", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      const result = duplicateTrack(
-        0,
-        undefined,
-        undefined,
-        false,
-        false,
-        true,
-      );
+      const result = duplicateWithRouteToSource();
 
       expect(result).not.toHaveProperty("detail");
       expect(capturedWarnings()).toStrictEqual([]);
@@ -289,14 +290,7 @@ describe("duplicate-track", () => {
         outputRouting,
       );
 
-      const result = duplicateTrack(
-        0,
-        undefined,
-        undefined,
-        false,
-        false,
-        true,
-      );
+      const result = duplicateWithRouteToSource();
 
       expect(result.detail).toBe(expectedReason);
       // The copy's entry carries it, so nothing warns about it.
@@ -331,14 +325,7 @@ describe("duplicate-track", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      const result = duplicateTrack(
-        0,
-        undefined,
-        undefined,
-        false,
-        false,
-        true,
-      );
+      const result = duplicateWithRouteToSource();
 
       expect(result.detail).toBe(expectedReason);
       expect(capturedWarnings()).toStrictEqual([]);

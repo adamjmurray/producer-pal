@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -14,6 +13,7 @@ import { playback } from "#src/tools/session/playback.ts";
 import {
   registerClipSlot,
   setupPlaybackLiveSet,
+  spyOnWarn,
 } from "./playback-test-helpers.ts";
 
 describe("playback target params on actions that have no target", () => {
@@ -26,7 +26,7 @@ describe("playback target params on actions that have no target", () => {
   // The transport command has to run. Parsing a leftover param the action never
   // reads turned "stop" into a format error and left Live playing.
   it("stops even when slots names nothing parseable", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     const result = playback({ action: "stop", slots: "bogus" });
 
@@ -45,7 +45,7 @@ describe("playback target params on actions that have no target", () => {
   });
 
   it("names every target param it ignored", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     playback({
       action: "stop-all-session-clips",
@@ -61,7 +61,7 @@ describe("playback target params on actions that have no target", () => {
   });
 
   it("says nothing when no target param was sent", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     playback({ action: "stop" });
 
@@ -86,7 +86,7 @@ describe("playback paths alias", () => {
   });
 
   it("keeps path and says paths went nowhere when they disagree", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     playback({ action: "play-session-clips", path: "t0/s1", paths: "t9/s9" });
 
@@ -97,7 +97,7 @@ describe("playback paths alias", () => {
   });
 
   it("names the ignored target as path on an action that takes none", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     playback({ action: "stop", paths: "t0/s1" });
 
@@ -118,7 +118,7 @@ describe("playback ids that names no clip", () => {
   // z.coerce.string() renders a JSON null as "null", so a caller that sent no
   // ids at all was refused for naming both ids and path.
   it("fires the path's clip when ids is a coerced null, and says so", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     playback({ action: "play-session-clips", path: "t0/s1", id: "null" });
 
@@ -127,7 +127,7 @@ describe("playback ids that names no clip", () => {
   });
 
   it("fires the path's clip when ids is blank, without a word", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     playback({ action: "play-session-clips", path: "t0/s1", id: "  " });
 
@@ -178,7 +178,7 @@ describe("playback ids that names no clip", () => {
   // The lone target got nothing done and there is no list for its entry to
   // hold a place in, so the reason comes back as the call's error.
   it("throws the reason when the only id names no clip", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
 
     registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
 

@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
+import { RAMP_ENDING_IN_JUMP } from "#src/notation/barbeat/envelope/tests/envelope-notation-test-helpers.ts";
 
 const FOUR_FOUR = { timeSigNumerator: 4, timeSigDenominator: 4 };
 const SIX_EIGHT = { timeSigNumerator: 6, timeSigDenominator: 8 };
@@ -26,11 +27,7 @@ describe("parseEnvelopeNotation", () => {
   it("takes two points at one time as a jump", () => {
     expect(
       parseEnvelopeNotation("1|1 0 ~ 3|1 0.25 ~ 3|1 0.9", FOUR_FOUR),
-    ).toStrictEqual([
-      { time: 0, value: 0, jump: false },
-      { time: 8, value: 0.25, jump: false },
-      { time: 8, value: 0.9, jump: true },
-    ]);
+    ).toStrictEqual(RAMP_ENDING_IN_JUMP);
   });
 
   it("ignores a display a read wrote", () => {

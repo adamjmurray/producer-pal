@@ -3,12 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import fs from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  findSourceFiles,
-  projectRoot,
+  forEachSourceFile,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -37,41 +34,27 @@ describe("JSDoc requirements", () => {
   it("should document every exported function declaration", () => {
     const violations: { file: string; reason: string }[] = [];
 
-    for (const tree of TREES) {
-      for (const file of findSourceFiles(path.join(projectRoot, tree))) {
-        const rel = path.relative(projectRoot, file);
+    forEachSourceFile(TREES, SELF, (_file, rel, lines) => {
+      for (const [i, line] of lines.entries()) {
+        const match = EXPORTED_FUNCTION.exec(line);
 
-        if (rel === SELF) {
+        if (
+          match == null ||
+          hasJsdocAbove(lines, i) ||
+          isSuppressed(lines, i)
+        ) {
           continue;
         }
 
-        const lines = fs.readFileSync(file, "utf8").split("\n");
+        // The capture is empty for `export default function () {}`.
+        const name = match[1] === "" ? "(default)" : match[1];
 
-        for (const [i, line] of lines.entries()) {
-          const match = EXPORTED_FUNCTION.exec(line);
-
-          if (match == null) {
-            continue;
-          }
-
-          if (hasJsdocAbove(lines, i)) {
-            continue;
-          }
-
-          if (isSuppressed(lines, i)) {
-            continue;
-          }
-
-          // The capture is empty for `export default function () {}`.
-          const name = match[1] === "" ? "(default)" : match[1];
-
-          violations.push({
-            file: `${rel}:${i + 1}`,
-            reason: `exported function ${name} has no JSDoc block`,
-          });
-        }
+        violations.push({
+          file: `${rel}:${i + 1}`,
+          reason: `exported function ${name} has no JSDoc block`,
+        });
       }
-    }
+    });
 
     throwOnFileViolations(
       violations,

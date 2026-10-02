@@ -14,6 +14,32 @@ import {
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+/**
+ * Register a device at t0/d0 whose one param is an enum.
+ * @param name - The param's name
+ * @param items - The labels Live reports for its values
+ * @returns The registered param
+ */
+function registerEnumParam(
+  name: string,
+  items: (string | number)[],
+): RegisteredMockObject {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children("enum-param") },
+  });
+
+  return registerMockObject("enum-param", {
+    properties: {
+      name,
+      original_name: name,
+      is_quantized: 1,
+      value_items: items,
+    },
+  });
+}
+
 // Discriminating cases for the param value-conversion pipeline. Each uses
 // str_for_value mappings crafted so that a single mutated branch produces an
 // observably different written value (or a warning instead of a write).
@@ -169,20 +195,7 @@ describe("updateDevice - param conversion discriminators", () => {
   // ["Mono", 2, 4].
   describe("enum labels Max returns as numbers", () => {
     function registerEnum(items: (string | number)[]): RegisteredMockObject {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("enum-param") },
-      });
-
-      return registerMockObject("enum-param", {
-        properties: {
-          name: "Delay Taps",
-          original_name: "Delay Taps",
-          is_quantized: 1,
-          value_items: items,
-        },
-      });
+      return registerEnumParam("Delay Taps", items);
     }
 
     it.each([
@@ -221,20 +234,7 @@ describe("updateDevice - param conversion discriminators", () => {
 
   describe("enum labels that carry a unit or a bare k", () => {
     function registerEnum(items: string[]): RegisteredMockObject {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("enum-param") },
-      });
-
-      return registerMockObject("enum-param", {
-        properties: {
-          name: "Filter Slope",
-          original_name: "Filter Slope",
-          is_quantized: 1,
-          value_items: items,
-        },
-      });
+      return registerEnumParam("Filter Slope", items);
     }
 
     it.each([
@@ -312,20 +312,7 @@ describe("updateDevice - param conversion discriminators", () => {
 
   describe("enum labels written with different case, spacing or hyphens", () => {
     function registerEnum(items: string[]): RegisteredMockObject {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("enum-param") },
-      });
-
-      return registerMockObject("enum-param", {
-        properties: {
-          name: "Filter Type",
-          original_name: "Filter Type",
-          is_quantized: 1,
-          value_items: items,
-        },
-      });
+      return registerEnumParam("Filter Type", items);
     }
 
     it.each([

@@ -55,6 +55,49 @@ async function readTrackMixer(trackId: string): Promise<ReadTrackResult> {
   );
 }
 
+/**
+ * The third track and the first return track, for send-collision cases.
+ * @returns The track's id and the return track's metadata
+ */
+async function trackAndFirstReturn(): Promise<{
+  trackId: string;
+  returnTrack: NonNullable<LiveSetResult["returnTracks"]>[number];
+}> {
+  const liveSet = await readTracks();
+
+  return {
+    trackId: liveSet.tracks![2]!.id,
+    returnTrack: liveSet.returnTracks![0]!,
+  };
+}
+
+/**
+ * Assert an update-track result flagged a send as replaced by a later entry,
+ * and that the later entry's gain is the one that stuck.
+ * @param result - The raw update-track result
+ * @param trackId - The track that was updated
+ * @param returnId - The return track the send points at
+ * @param gainDb - Expected gain of the track's first send
+ */
+async function expectSendReplaced(
+  result: unknown,
+  trackId: string,
+  returnId: string,
+  gainDb: number,
+): Promise<void> {
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual({
+    return: expect.any(String),
+    returnId,
+    ok: false,
+    detail: "named again later in this call",
+  });
+
+  const track = await readTrackMixer(trackId);
+
+  expect(track.sends![0]!.gainDb).toBeCloseTo(gainDb, 1);
+}
+
 describe("ppal-update-track", () => {
   it("updates track name, color, and gain", async () => {
     const liveSet = await readTracks();
@@ -552,9 +595,7 @@ describe("ppal-update-track", () => {
   });
 
   it("says on the pair's entry that a sends entry replaced it", async () => {
-    const liveSet = await readTracks();
-    const trackId = liveSet.tracks![2]!.id;
-    const returnTrack = liveSet.returnTracks![0]!;
+    const { trackId, returnTrack } = await trackAndFirstReturn();
 
     // The pair and the list name one return by two different spellings, so the
     // collision is only seen if both resolve to the same index.
@@ -565,26 +606,12 @@ describe("ppal-update-track", () => {
       sends: [{ return: returnTrack.name, gainDb: -15 }],
     });
 
-    expect(getToolWarnings(result)).toStrictEqual([]);
-    expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual(
-      {
-        return: expect.any(String),
-        returnId: returnTrack.id,
-        ok: false,
-        detail: "named again later in this call",
-      },
-    );
-
-    const track = await readTrackMixer(trackId);
-
     // The list is the later word, so the pair's -30 must not be what stuck.
-    expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);
+    await expectSendReplaced(result, trackId, returnTrack.id, -15);
   });
 
   it("says on the earlier entry that a later sends entry replaced it", async () => {
-    const liveSet = await readTracks();
-    const trackId = liveSet.tracks![2]!.id;
-    const returnTrack = liveSet.returnTracks![0]!;
+    const { trackId, returnTrack } = await trackAndFirstReturn();
 
     const result = await updateTrack({
       id: trackId,
@@ -594,19 +621,7 @@ describe("ppal-update-track", () => {
       ],
     });
 
-    expect(getToolWarnings(result)).toStrictEqual([]);
-    expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual(
-      {
-        return: expect.any(String),
-        returnId: returnTrack.id,
-        ok: false,
-        detail: "named again later in this call",
-      },
-    );
-
-    const track = await readTrackMixer(trackId);
-
-    expect(track.sends![0]!.gainDb).toBeCloseTo(-12, 1);
+    await expectSendReplaced(result, trackId, returnTrack.id, -12);
   });
 
   it("can never give a return track an all-digit name", async () => {

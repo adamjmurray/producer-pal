@@ -8,6 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
+  forEachSourceFile,
   projectRoot,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
@@ -397,29 +398,17 @@ function scanSpecifiers(
 ): Violation[] {
   const violations: Violation[] = [];
 
-  for (const file of findSourceFiles(path.join(projectRoot, tree))) {
-    const rel = path.relative(projectRoot, file);
-
-    if (rel === SELF) {
-      continue;
-    }
-
-    const lines = fs.readFileSync(file, "utf8").split("\n");
-
+  forEachSourceFile([tree], SELF, (file, rel, lines) => {
     for (const { value, line, dynamic } of specifiersIn(file)) {
       const reason = reject(value, dynamic);
 
-      if (reason == null) {
-        continue;
-      }
-
-      if (isSuppressed(lines, line - 1, rule)) {
+      if (reason == null || isSuppressed(lines, line - 1, rule)) {
         continue;
       }
 
       violations.push({ file: `${rel}:${line}`, reason });
     }
-  }
+  });
 
   return violations;
 }

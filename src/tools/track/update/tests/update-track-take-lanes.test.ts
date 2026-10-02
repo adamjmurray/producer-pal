@@ -26,6 +26,20 @@ function lane(laneIndex: number): RegisteredMockObject | undefined {
   return lookupMockObject(undefined, livePath.track(0).takeLane(laneIndex));
 }
 
+/**
+ * The result entry for lane 0 when a call set only color, which lanes ignore.
+ * @returns The expected entry
+ */
+function colorIgnoredEntry(): object {
+  return {
+    id: lane(0)!.id,
+    path: "t0/l0",
+    name: "Lane",
+    ok: false,
+    detail: "a take lane takes only name; ignored color",
+  };
+}
+
 describe("updateTrack take lane targets", () => {
   let track: RegisteredMockObject;
 
@@ -155,22 +169,7 @@ describe("updateTrack take lane targets", () => {
 
     const result = updateTrack({ path: "t0/l0,t0/l0", color: "#FF0000" });
 
-    expect(result).toStrictEqual([
-      {
-        id: lane(0)!.id,
-        path: "t0/l0",
-        name: "Lane",
-        ok: false,
-        detail: "a take lane takes only name; ignored color",
-      },
-      {
-        id: lane(0)!.id,
-        path: "t0/l0",
-        name: "Lane",
-        ok: false,
-        detail: "a take lane takes only name; ignored color",
-      },
-    ]);
+    expect(result).toStrictEqual([colorIgnoredEntry(), colorIgnoredEntry()]);
   });
 
   it("names a lane by the id it reported, with the same entry back", () => {
@@ -214,13 +213,7 @@ describe("updateTrack take lane targets", () => {
     const result = updateTrack({ id: lane(0)!.id, color: "#FF0000" });
 
     expect(lane(0)?.set).not.toHaveBeenCalledWith("color", expect.anything());
-    expect(result).toStrictEqual({
-      id: lane(0)!.id,
-      path: "t0/l0",
-      name: "Lane",
-      ok: false,
-      detail: "a take lane takes only name; ignored color",
-    });
+    expect(result).toStrictEqual(colorIgnoredEntry());
   });
 
   it("counts a lane named by id against the cap without adding to it", () => {

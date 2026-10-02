@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -149,4 +149,25 @@ function respond(res: http.ServerResponse, answer: FakeAnswer): void {
 
   res.writeHead(answer.status ?? 200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(answer.body));
+}
+
+/** What a reader that takes only .py files should return for the tree below. */
+export const PY_ONLY_SOURCE = {
+  "__init__.py": "top",
+  "nested/deep.py": "deep",
+};
+
+/**
+ * Write a remote-script tree: two .py files among local junk a reader must skip.
+ * @param dir - Existing directory to fill
+ */
+export function writeScriptTreeWithJunk(dir: string): void {
+  mkdirSync(join(dir, "__pycache__"));
+  mkdirSync(join(dir, "nested"));
+  writeFileSync(join(dir, "__init__.py"), "top", "utf8");
+  writeFileSync(join(dir, ".DS_Store"), "finder", "utf8");
+  writeFileSync(join(dir, "nested/notes.txt"), "scratch", "utf8");
+  writeFileSync(join(dir, "stale.pyc"), "bytecode", "utf8");
+  writeFileSync(join(dir, "__pycache__/a.pyc"), "bytecode", "utf8");
+  writeFileSync(join(dir, "nested/deep.py"), "deep", "utf8");
 }

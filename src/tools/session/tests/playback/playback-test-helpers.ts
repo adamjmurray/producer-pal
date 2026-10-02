@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { expect } from "vitest";
+import { expect, type MockInstance, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -41,6 +42,14 @@ interface ClipPathMapping {
 interface MultiClipMockResult {
   liveSet: RegisteredMockObject;
   clipSlots: RegisteredMockObject[];
+}
+
+/**
+ * Spy on the warnings a playback call raises.
+ * @returns The spy on `console.warn`
+ */
+export function spyOnWarn(): MockInstance<typeof console.warn> {
+  return vi.spyOn(console, "warn");
 }
 
 /**

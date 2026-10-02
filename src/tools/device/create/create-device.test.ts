@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -52,6 +52,32 @@ function registerTrack0WithExistingDevice(): RegisteredMockObject {
   registerMockObject("device123", { path: livePath.track(0).device(1) });
 
   return track;
+}
+
+function registerTrack0WithTwoDevices(): void {
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: { devices: children("device-a", "device-b") },
+    methods: { insert_device: () => ["id", "device123"] },
+  });
+}
+
+/**
+ * Register a container already holding one device, whose insert_device returns
+ * the id "device123".
+ * @param id - Mock id for the container
+ * @param path - The container's Live API path
+ * @returns The registered container mock
+ */
+function registerWithExistingDevice(
+  id: string,
+  path: PathLike,
+): RegisteredMockObject {
+  return registerMockObject(id, {
+    path,
+    properties: { devices: ["id", "existing-device"] },
+    methods: { insert_device: () => ["id", "device123"] },
+  });
 }
 
 function registerTrack0WithDevice123(): void {
@@ -268,11 +294,10 @@ describe("createDevice", () => {
       });
 
       it("should create device on return track via path", async () => {
-        const returnTrack = registerMockObject("rt-0", {
-          path: livePath.returnTrack(0),
-          properties: { devices: ["id", "existing-device"] },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
+        const returnTrack = registerWithExistingDevice(
+          "rt-0",
+          livePath.returnTrack(0),
+        );
 
         registerMockObject("device123", {
           path: livePath.returnTrack(0).device(0),
@@ -331,11 +356,7 @@ describe("createDevice", () => {
       });
 
       it("counts the devices in the past-the-end refusal in the plural", async () => {
-        registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("device-a", "device-b") },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
+        registerTrack0WithTwoDevices();
 
         await expect(
           createDevice({ path: "t0/d5", device: "Compressor" }),
@@ -343,11 +364,7 @@ describe("createDevice", () => {
       });
 
       it("refuses only the past-the-end path of a list, on its own entry", async () => {
-        registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("device-a", "device-b") },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
+        registerTrack0WithTwoDevices();
         registerMockObject("device123", { path: livePath.track(0).device(0) });
 
         expect(
@@ -412,11 +429,10 @@ describe("createDevice", () => {
             devices: ["id", "existing-device"],
           },
         });
-        const chain = registerMockObject("chain-0-handle", {
-          path: livePath.track(0).device(0).chain(0),
-          properties: { devices: ["id", "existing-device"] },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
+        const chain = registerWithExistingDevice(
+          "chain-0-handle",
+          livePath.track(0).device(0).chain(0),
+        );
 
         registerMockObject("device123", {
           path: livePath.track(0).device(0).chain(0).device(0),
@@ -443,11 +459,10 @@ describe("createDevice", () => {
             can_have_drum_pads: 0,
           },
         });
-        const returnChain = registerMockObject("rchain-0-handle", {
-          path: livePath.track(0).device(0).returnChain(0),
-          properties: { devices: ["id", "existing-device"] },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
+        const returnChain = registerWithExistingDevice(
+          "rchain-0-handle",
+          livePath.track(0).device(0).returnChain(0),
+        );
 
         registerMockObject("device123", {
           path: livePath.track(0).device(0).returnChain(0).device(0),

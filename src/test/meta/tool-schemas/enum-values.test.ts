@@ -3,11 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
+import { connectMcpClient as connect } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
 import { LIVE_API_OPERATION_ALIASES } from "#src/tools/advanced/live-api-operations.ts";
 import {
   LIBRARY_SORT_ALIASES,
@@ -55,33 +53,6 @@ function collectNonKebab(node: unknown, path: string, out: string[]): void {
   for (const [key, child] of Object.entries(record)) {
     collectNonKebab(child, `${path}.${key}`, out);
   }
-}
-
-/**
- * Connects an in-memory client to a server with the given mode.
- * @param profile - Server options
- * @returns The connected client
- */
-async function connect(profile: { smallModelMode?: boolean } = {}): Promise<{
-  client: Client;
-}> {
-  const callLiveApi = vi.fn(() =>
-    Promise.resolve({ content: [{ type: "text", text: "ok" }] }),
-  );
-  const server = createMcpServer(callLiveApi, {
-    ...profile,
-    liveApiEnabled: true,
-  });
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: "test", version: "0" });
-
-  await Promise.all([
-    server.connect(serverTransport),
-    client.connect(clientTransport),
-  ]);
-
-  return { client };
 }
 
 describe("tool enum values", () => {

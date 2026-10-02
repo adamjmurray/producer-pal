@@ -206,6 +206,25 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Call an MCP tool and let Live settle before returning.
+ * @param client - Connected MCP client
+ * @param name - Tool name (e.g. "ppal-duplicate")
+ * @param args - Tool arguments
+ * @returns Raw tool result
+ */
+export async function callToolAndSettle(
+  client: Client,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const result = await client.callTool({ name, arguments: args });
+
+  await sleep(100);
+
+  return result;
+}
+
+/**
  * MCP test context containing the client connection.
  * Use with setupMcpTestContext() to initialize.
  */
@@ -410,6 +429,22 @@ export async function readIdAtPath(
   );
 
   return object.id;
+}
+
+/**
+ * How many scenes the Set holds right now.
+ * @param client - Connected MCP client
+ * @returns The scene count
+ */
+export async function readSceneCount(client: Client): Promise<number> {
+  const liveSet = parseToolResult<{ scenes?: unknown[] }>(
+    await client.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["scenes"] },
+    }),
+  );
+
+  return liveSet.scenes?.length ?? 0;
 }
 
 /**

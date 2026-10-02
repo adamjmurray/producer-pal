@@ -94,17 +94,7 @@ describe("ppal-update-clip ignored params", () => {
   // Nothing else was asked of the one clip named, so the reason comes back as
   // the error rather than an entry nobody can pair against a list.
   it("refuses a lone clip whose only param it can do nothing with", async () => {
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Lone Refusal Track" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
-
-    await sleep(100);
-
-    const clipId = await createClipInSlot(ctx, `${track.path}/s0`, {
-      sampleFile: SAMPLE_FILE,
-    });
+    const clipId = await audioClipOnNewTrack("Lone Refusal Track");
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
@@ -122,13 +112,7 @@ describe("ppal-update-clip ignored params", () => {
   // pieces collapse onto the one target they share, and the call throws after
   // the clip has already been cut.
   it("keeps every piece of a split whose other param the clip ignored", async () => {
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Split Reason Track" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
-
-    await sleep(100);
+    const track = await createAudioTrack("Split Reason Track");
 
     const created = await ctx.client!.callTool({
       name: "ppal-create-clip",
@@ -179,17 +163,7 @@ describe("ppal-update-clip ignored params", () => {
     const midiId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s8`, {
       notes: "C3 1|1",
     });
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Wrong Type Transform Track" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
-
-    await sleep(100);
-
-    const audioId = await createClipInSlot(ctx, `${track.path}/s0`, {
-      sampleFile: SAMPLE_FILE,
-    });
+    const audioId = await audioClipOnNewTrack("Wrong Type Transform Track");
 
     // gain applies to the audio clip and is refused on the MIDI one
     const gain = parseToolResultWithWarnings<ReadClipResult[]>(
@@ -227,17 +201,7 @@ describe("ppal-update-clip ignored params", () => {
   });
 
   it("refuses an audio clip's unparseable transform like a MIDI clip's", async () => {
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Audio Parse Track" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
-
-    await sleep(100);
-
-    const clipId = await createClipInSlot(ctx, `${track.path}/s0`, {
-      sampleFile: SAMPLE_FILE,
-    });
+    const clipId = await audioClipOnNewTrack("Audio Parse Track");
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
@@ -248,3 +212,34 @@ describe("ppal-update-clip ignored params", () => {
     expect(getToolWarnings(result)).toStrictEqual([]);
   });
 });
+
+/**
+ * Create an audio track and let Live settle.
+ * @param name - Track name
+ * @returns The new track's metadata
+ */
+async function createAudioTrack(name: string): Promise<CreateTrackResult> {
+  const track = parseToolResult<CreateTrackResult>(
+    await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "audio", name },
+    }),
+  );
+
+  await sleep(100);
+
+  return track;
+}
+
+/**
+ * Put a sample clip in slot 0 of a new audio track.
+ * @param trackName - Name for the new track
+ * @returns The clip's id
+ */
+async function audioClipOnNewTrack(trackName: string): Promise<string> {
+  const track = await createAudioTrack(trackName);
+
+  return createClipInSlot(ctx, `${track.path}/s0`, {
+    sampleFile: SAMPLE_FILE,
+  });
+}

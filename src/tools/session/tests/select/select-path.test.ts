@@ -14,6 +14,10 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMainLaneClip,
+  registerTakeLaneClip,
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { select } from "#src/tools/session/select.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
@@ -648,7 +652,7 @@ describe("select by arrangement position", () => {
   // Nothing disagrees: the id names the very clip sitting on that spot.
   it("takes a clipId naming the clip the position covers", () => {
     setupTrackMock("clip_arr");
-    setupMainLaneClip("clip_arr", BAR_5);
+    registerMainLaneClip("clip_arr", BAR_5);
     setupSongViewMock();
     setupAppViewMock();
     setupLiveSetMock();
@@ -661,7 +665,7 @@ describe("select by arrangement position", () => {
   // A comma inside the brackets is part of the name, not a second target.
   it("takes a locator whose name holds a comma", () => {
     setupTrackMock("clip_arr");
-    setupMainLaneClip("clip_arr", BAR_5);
+    registerMainLaneClip("clip_arr", BAR_5);
     setupSongViewMock();
     setupAppViewMock();
 
@@ -678,7 +682,7 @@ describe("select by arrangement position", () => {
 
   it("takes a position on a take lane", () => {
     setupTrackMock();
-    setupTakeLaneClip("clip_take", BAR_5);
+    registerTakeLaneClip("clip_take", BAR_5);
 
     const songView = setupSongViewMock();
     const liveSet = setupLiveSetMock();
@@ -730,7 +734,7 @@ describe("select by arrangement position", () => {
   // select one clip and move the marker to another one's spot.
   it("refuses an id naming a clip off the spot the path names", () => {
     setupTrackMock("clip_arr");
-    setupMainLaneClip("clip_arr", BAR_5);
+    registerMainLaneClip("clip_arr", BAR_5);
     setupLiveSetMock();
     registerMockObject("clip_other", {
       path: livePath.track(0).clipSlot(0).clip(),
@@ -764,36 +768,6 @@ function setupTrackMock(...clipIds: string[]): void {
     path: livePath.track(0),
     type: "Track",
     properties: { arrangement_clips: children(...clipIds), has_midi_input: 1 },
-  });
-}
-
-/**
- * A one-bar clip on track 0's main arrangement lane.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- */
-function setupMainLaneClip(id: string, startTime: number): void {
-  registerMockObject(id, {
-    path: livePath.track(0).arrangementClip(0),
-    type: "Clip",
-    properties: { start_time: startTime, end_time: startTime + 4 },
-  });
-}
-
-/**
- * A one-bar clip on take lane 1 of track 0.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- */
-function setupTakeLaneClip(id: string, startTime: number): void {
-  registerMockObject(id, {
-    path: livePath.track(0).takeLane(1).arrangementClip(0),
-    type: "Clip",
-    properties: { start_time: startTime, end_time: startTime + 4 },
-  });
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(id) },
   });
 }
 
@@ -845,7 +819,7 @@ function setupArrangementMocks(clipStart: number): {
   liveSet: RegisteredMockObject;
 } {
   setupTrackMock("clip_arr");
-  setupMainLaneClip("clip_arr", clipStart);
+  registerMainLaneClip("clip_arr", clipStart);
 
   return {
     songView: setupSongViewMock(),

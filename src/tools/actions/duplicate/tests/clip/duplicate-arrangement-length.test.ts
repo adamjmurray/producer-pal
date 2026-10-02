@@ -151,15 +151,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("returns the lengthened clip even when updateClip resolves asynchronously (regression for missing await)", async () => {
-    registerSourceClip({
-      length: 4,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      is_midi_clip: 1,
-    });
-
-    setupLengthMocks();
+    setupLoopingLengthening();
 
     // The real updateClip is async. A caller that fails to await it would treat
     // the returned Promise as the clip array (Array.isArray === false) and drop
@@ -168,13 +160,7 @@ describe("duplicate - arrangementLength functionality", () => {
       Promise.resolve([{ id: livePath.track(0).arrangementClip(0) }]),
     );
 
-    const result = await duplicate({
-      type: "clip",
-      id: "clip1",
-
-      arrangementStart: "5|1",
-      arrangementLength: "1bar+n/2", // 6 beats - longer than original 4 beats
-    });
+    const result = await duplicateToLengthen();
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
@@ -183,15 +169,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("keeps the reason updateClip put on a lengthened copy's entry", async () => {
-    registerSourceClip({
-      length: 4,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      is_midi_clip: 1,
-    });
-
-    setupLengthMocks();
+    setupLoopingLengthening();
 
     const reason =
       "arrangementLength unchanged: the audio file has no more content to show";
@@ -202,12 +180,7 @@ describe("duplicate - arrangementLength functionality", () => {
       ]),
     );
 
-    const result = await duplicate({
-      type: "clip",
-      id: "clip1",
-      arrangementStart: "5|1",
-      arrangementLength: "1bar+n/2",
-    });
+    const result = await duplicateToLengthen();
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
@@ -386,6 +359,30 @@ function setupLengthMocks(): LengthMocks {
   registerMockObject("live_set", { path: livePath.liveSet });
 
   return { track0 };
+}
+
+// Duplicate "clip1" to bar 5 with an arrangementLength of 6 beats, longer than
+// the 4-beat source. Returns the duplicate() result.
+function duplicateToLengthen(): Promise<unknown> {
+  return duplicate({
+    type: "clip",
+    id: "clip1",
+    arrangementStart: "5|1",
+    arrangementLength: "1bar+n/2",
+  });
+}
+
+// A 4-beat looping MIDI source plus the setupLengthMocks track and Set.
+function setupLoopingLengthening(): RegisteredMockObject {
+  registerSourceClip({
+    length: 4,
+    looping: 1,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    is_midi_clip: 1,
+  });
+
+  return setupLengthMocks().track0;
 }
 
 // Duplicate "clip1" to bar 5 with an arrangementLength longer than the clip,

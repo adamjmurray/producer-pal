@@ -109,6 +109,27 @@ function registerSlot(
   });
 }
 
+/**
+ * A source and a one-scene Set whose create_scene brings the t1/s1 slot.
+ * @param opts - Test options
+ * @param opts.createFails - Whether the new slot refuses the copy
+ */
+function registerSceneCreatingSlot(opts: { createFails?: boolean } = {}): void {
+  registerSource();
+  registerSlot({ trackIndex: 1, sceneIndex: 0 });
+  registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { scenes: children("scene_0") },
+    methods: {
+      create_scene: () => {
+        registerSlot({ trackIndex: 1, sceneIndex: 1, ...opts });
+
+        return null;
+      },
+    },
+  });
+}
+
 describe("duplicate - arrangement clip to a clip slot", () => {
   it("re-creates the clip in the slot and says what it lost", async () => {
     registerSource({ hasEnvelopes: 1 });
@@ -219,19 +240,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
   });
 
   it("creates the scenes a slot past the last one needs", async () => {
-    registerSource();
-    registerSlot({ trackIndex: 1, sceneIndex: 0 });
-    registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { scenes: children("scene_0") },
-      methods: {
-        create_scene: () => {
-          registerSlot({ trackIndex: 1, sceneIndex: 1 });
-
-          return null;
-        },
-      },
-    });
+    registerSceneCreatingSlot();
 
     const result = await duplicate({
       type: "clip",
@@ -248,19 +257,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
   });
 
   it("names the scenes it made when a lone copy fails", async () => {
-    registerSource();
-    registerSlot({ trackIndex: 1, sceneIndex: 0 });
-    registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { scenes: children("scene_0") },
-      methods: {
-        create_scene: () => {
-          registerSlot({ trackIndex: 1, sceneIndex: 1, createFails: true });
-
-          return null;
-        },
-      },
-    });
+    registerSceneCreatingSlot({ createFails: true });
 
     await expect(
       duplicate({ type: "clip", id: SOURCE_ID, toPath: "t1/s1" }),

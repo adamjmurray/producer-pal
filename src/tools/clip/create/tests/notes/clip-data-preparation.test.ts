@@ -29,6 +29,22 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const FOUR_FOUR = { signature_numerator: 4, signature_denominator: 4 };
 
+/** A 4/4 Set whose track 0 refuses every arrangement create. */
+function registerFailingArrangementTrack(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: FOUR_FOUR,
+  });
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: {
+      create_midi_clip: () => {
+        throw new Error("boom");
+      },
+    },
+  });
+}
+
 describe("prepareClipData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -149,18 +165,7 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
   });
 
   it("addresses a failed arrangement clip by its position", async () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: FOUR_FOUR,
-    });
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      methods: {
-        create_midi_clip: () => {
-          throw new Error("boom");
-        },
-      },
-    });
+    registerFailingArrangementTrack();
 
     const result = await createClip({
       trackIndex: 0,
@@ -176,18 +181,7 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
 
   // A lone destination has no list for an entry to hold a place in (ADR-0042).
   it("throws when the call named one destination and it got no clip", async () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: FOUR_FOUR,
-    });
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      methods: {
-        create_midi_clip: () => {
-          throw new Error("boom");
-        },
-      },
-    });
+    registerFailingArrangementTrack();
 
     await expect(
       createClip({ trackIndex: 0, arrangementStart: "1|1", notes: "C3 1|1" }),

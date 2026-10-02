@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { registerC1PadRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 import {
   type RegisteredMockObject,
   children,
@@ -154,25 +155,7 @@ describe("updateDevice — pairing toPath with the targets", () => {
       type: "Track",
       properties: { devices: children("drum-rack") },
     });
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        chains: children("chain-0"),
-        can_have_drum_pads: 1,
-        drum_pads: children("pad-36"),
-      },
-    });
-    registerMockObject("pad-36", {
-      path: livePath.track(0).device(0).drumPad(36),
-      type: "DrumPad",
-      properties: { note: 36 },
-    });
-    registerMockObject("chain-0", {
-      path: livePath.track(0).device(0).chain(0),
-      type: "DrumChain",
-      properties: { in_note: 36, devices: children() },
-    });
+    registerC1PadRack();
     registerMockObject("track-1", {
       path: livePath.track(1),
       type: "Track",

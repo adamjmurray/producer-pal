@@ -49,29 +49,16 @@ describe("updateClip - transformed count", () => {
     );
   });
 
-  describe("transforms only", () => {
+  describe.each([
+    ["transforms only", {}],
+    ["notes and transforms", { notes: "E3 1|4" }],
+  ])("%s", (_scenario, extraArgs) => {
     it.each([
       ["a collapsed duplicate counts once", REPEAT_COLLIDES, 3],
       ["a skipped note op keeps earlier lines' notes", SKIPPED_RATCHET, 3],
       ["a note op elsewhere keeps earlier lines' notes", OP_ELSEWHERE, 4],
     ])("%s", async (_name, transforms, transformed) => {
-      const result = await updateClip({ id: "123", transforms });
-
-      expect(result).toStrictEqual(expect.objectContaining({ transformed }));
-    });
-  });
-
-  describe("notes and transforms", () => {
-    it.each([
-      ["a collapsed duplicate counts once", REPEAT_COLLIDES, 3],
-      ["a skipped note op keeps earlier lines' notes", SKIPPED_RATCHET, 3],
-      ["a note op elsewhere keeps earlier lines' notes", OP_ELSEWHERE, 4],
-    ])("%s", async (_name, transforms, transformed) => {
-      const result = await updateClip({
-        id: "123",
-        notes: "E3 1|4",
-        transforms,
-      });
+      const result = await updateClip({ id: "123", ...extraArgs, transforms });
 
       expect(result).toStrictEqual(expect.objectContaining({ transformed }));
     });

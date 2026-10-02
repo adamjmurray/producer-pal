@@ -16,6 +16,10 @@ import {
   updateDevice,
 } from "./update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  MIXER_TYPES,
+  registerMixer,
+} from "#src/tools/device/tests/helpers/non-device-fixtures.ts";
 
 describe("updateDevice", () => {
   let device123: RegisteredMockObject;
@@ -748,24 +752,18 @@ describe("updateDevice", () => {
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it.each(["MixerDevice", "ChainMixerDevice"] as const)(
-      "refuses a %s, which is not a device",
-      (type) => {
-        registerMockObject("mix-1", {
-          path: livePath.track(3).mixerDevice(),
-          type,
-        });
+    it.each(MIXER_TYPES)("refuses a %s, which is not a device", (type) => {
+      registerMixer(type);
 
-        expect(() => updateDevice({ id: "mix-1", name: "Nope" })).toThrow(
-          "cannot update a mixer: id mix-1",
-        );
-        expect(updateDevice({ id: "mix-1,123", name: "Nope" })).toStrictEqual([
-          { id: "mix-1", ok: false, detail: "cannot update a mixer: id mix-1" },
-          { id: "123", path: "t0/d0" },
-        ]);
-        expect(capturedWarnings()).toStrictEqual([]);
-      },
-    );
+      expect(() => updateDevice({ id: "mix-1", name: "Nope" })).toThrow(
+        "cannot update a mixer: id mix-1",
+      );
+      expect(updateDevice({ id: "mix-1,123", name: "Nope" })).toStrictEqual([
+        { id: "mix-1", ok: false, detail: "cannot update a mixer: id mix-1" },
+        { id: "123", path: "t0/d0" },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
 
     it("keeps its slot when a writable target was named too", () => {
       registerMockObject("999", { path: livePath.track(3), type: "Track" });

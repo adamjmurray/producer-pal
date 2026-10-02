@@ -22,6 +22,30 @@ const INTRO_VERSE = [
 /** Ids 26, 27, 28 at bars 1, 5, 9. */
 const INTRO_VERSE_DROP = [...INTRO_VERSE, { time: 32, name: "Drop" }];
 
+/** Three locators, the first and last named alike. */
+const VERSE_CHORUS_VERSE = [
+  { time: 0, name: "Verse" },
+  { time: 16, name: "Chorus" },
+  { time: 32, name: "Verse" },
+];
+
+/** Locators whose names have a comma in them, or are part of one. */
+const VERSE_PART_2_LOCATORS = [
+  { time: 0, name: "Verse, part 2" },
+  { time: 16, name: "Verse" },
+  { time: 32, name: "part 2" },
+];
+
+/** The entries for deleting id 26, once by id and again by its time. */
+const ID_26_NAMED_AGAIN_AT_1_1 = [
+  {
+    operation: "delete",
+    id: "26",
+    detail: 'named again as "1|1" later in this call',
+  },
+  { operation: "delete", id: "26" },
+];
+
 describe("updateLiveSet - locator lists", () => {
   let liveSet: RegisteredMockObject;
 
@@ -293,16 +317,15 @@ describe("updateLiveSet - locator targets", () => {
   }
 
   describe("delete by a name with a comma in it", () => {
-    it("deletes the locator named the whole value", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Verse, part 2" },
-        { time: 16, name: "Verse" },
-        { time: 32, name: "part 2" },
-      ]);
+    // Deleting the one locator named "Verse, part 2" leaves the other two.
+    async function expectOnlyVersePart2Deleted(
+      locatorName: string,
+    ): Promise<void> {
+      const set = simulateLocators(liveSet, VERSE_PART_2_LOCATORS);
 
       const result = await updateLiveSet({
         locatorOperation: "delete",
-        locatorName: "Verse, part 2",
+        locatorName,
       });
 
       expect(result.locator).toStrictEqual({
@@ -314,14 +337,14 @@ describe("updateLiveSet - locator targets", () => {
         { time: 16, name: "Verse" },
         { time: 32, name: "part 2" },
       ]);
+    }
+
+    it("deletes the locator named the whole value", async () => {
+      await expectOnlyVersePart2Deleted("Verse, part 2");
     });
 
     it("splits the value when no locator has the whole name", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Verse" },
-        { time: 16, name: "Chorus" },
-        { time: 32, name: "Verse" },
-      ]);
+      const set = simulateLocators(liveSet, VERSE_CHORUS_VERSE);
 
       const result = await updateLiveSet({
         locatorOperation: "delete",
@@ -336,26 +359,7 @@ describe("updateLiveSet - locator targets", () => {
     });
 
     it("reads \\, as a comma in the name", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Verse, part 2" },
-        { time: 16, name: "Verse" },
-        { time: 32, name: "part 2" },
-      ]);
-
-      const result = await updateLiveSet({
-        locatorOperation: "delete",
-        locatorName: "Verse\\, part 2",
-      });
-
-      expect(result.locator).toStrictEqual({
-        operation: "delete",
-        count: 1,
-        name: "Verse, part 2",
-      });
-      expect(set.locators()).toStrictEqual([
-        { time: 16, name: "Verse" },
-        { time: 32, name: "part 2" },
-      ]);
+      await expectOnlyVersePart2Deleted("Verse\\, part 2");
     });
 
     it("splits a list only at the commas not written \\,", async () => {
@@ -418,44 +422,22 @@ describe("updateLiveSet - locator targets", () => {
       expect(set.locators()).toStrictEqual([]);
     });
 
-    it("deletes a locator named by id and time once", async () => {
+    it.each([
+      [
+        "deletes a locator named by id and time once",
+        { locatorId: "26", locatorTime: "1|1" },
+      ],
+      ["deletes a time named twice once", { locatorTime: "1|1,1|1" }],
+    ])("%s", async (_name, target) => {
       const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
 
       const result = await updateLiveSet({
         locatorOperation: "delete",
-        locatorId: "26",
-        locatorTime: "1|1",
+        ...target,
       });
 
-      expect(result.locator).toStrictEqual([
-        {
-          operation: "delete",
-          id: "26",
-          detail: 'named again as "1|1" later in this call',
-        },
-        { operation: "delete", id: "26" },
-      ]);
+      expect(result.locator).toStrictEqual(ID_26_NAMED_AGAIN_AT_1_1);
       // A second toggle at 1|1 would have created a new locator there.
-      expect(cueToggles()).toBe(1);
-      expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
-    });
-
-    it("deletes a time named twice once", async () => {
-      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
-
-      const result = await updateLiveSet({
-        locatorOperation: "delete",
-        locatorTime: "1|1,1|1",
-      });
-
-      expect(result.locator).toStrictEqual([
-        {
-          operation: "delete",
-          id: "26",
-          detail: 'named again as "1|1" later in this call',
-        },
-        { operation: "delete", id: "26" },
-      ]);
       expect(cueToggles()).toBe(1);
       expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
     });
@@ -504,11 +486,7 @@ describe("updateLiveSet - locator targets", () => {
     });
 
     it("deletes every locator of a name, one of them named by id too", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Verse" },
-        { time: 16, name: "Chorus" },
-        { time: 32, name: "Verse" },
-      ]);
+      const set = simulateLocators(liveSet, VERSE_CHORUS_VERSE);
 
       const result = await updateLiveSet({
         locatorOperation: "delete",

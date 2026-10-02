@@ -62,16 +62,30 @@ function narrowJob(index: number): Job {
   };
 }
 
+/**
+ * Read the first two tracks' narrow jobs through a fake LOM.
+ * @param lom - The fake LOM to install
+ * @returns The recorded requests, the batch context, and the results
+ */
+async function batchTwoTracks(lom: FakeLom): Promise<{
+  calls: ReturnType<typeof installFakeLom>;
+  ctx: ReturnType<typeof createBatchContext>;
+  results: Awaited<ReturnType<typeof liveApiBatch>>;
+}> {
+  const calls = installFakeLom(lom);
+  const ctx = createBatchContext("http://fake");
+  const results = await liveApiBatch(ctx, [narrowJob(0), narrowJob(1)]);
+
+  return { calls, ctx, results };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("liveApiBatch", () => {
   it("carries several objects in one request", async () => {
-    const calls = installFakeLom(fakeLom());
-    const ctx = createBatchContext("http://fake");
-
-    const results = await liveApiBatch(ctx, [narrowJob(0), narrowJob(1)]);
+    const { calls, results } = await batchTwoTracks(fakeLom());
 
     expect(results).toStrictEqual([
       [["Drums"], [16711680], [1]],
@@ -108,10 +122,7 @@ describe("liveApiBatch", () => {
 
     lom.failing = new Set(["live_set tracks 1:color"]);
 
-    const calls = installFakeLom(lom);
-    const ctx = createBatchContext("http://fake");
-
-    const results = await liveApiBatch(ctx, [narrowJob(0), narrowJob(1)]);
+    const { calls, ctx, results } = await batchTwoTracks(lom);
 
     expect(results).toStrictEqual([
       [["Drums"], [16711680], [1]],

@@ -79,6 +79,18 @@ function registerDrumRack(
 }
 
 /**
+ * Register a Drum Rack with a kick on C1, a snare on D1 and an empty E1 pad.
+ * @returns The registered rack mock
+ */
+function registerKickSnareRack(): RegisteredMockObject {
+  return registerDrumRack([
+    { note: 36, chainIds: ["kick"] },
+    { note: 38, chainIds: ["snare"] },
+    { note: 40, chainIds: [] },
+  ]);
+}
+
+/**
  * Make copy_pad land: afterward the destination pad reports the chains listed
  * for its note. A note with no entry is left alone, standing in for a no-op.
  * @param rack - The rack mock
@@ -397,11 +409,7 @@ describe("duplicate - drum pad", () => {
 
   // copy_pad layers, so D1's own turn would copy C1's chains along with its own.
   it("refuses a copy onto another source pad before any copy", async () => {
-    const rack = registerDrumRack([
-      { note: 36, chainIds: ["kick"] },
-      { note: 38, chainIds: ["snare"] },
-      { note: 40, chainIds: [] },
-    ]);
+    const rack = registerKickSnareRack();
 
     await expect(
       duplicate({
@@ -419,11 +427,7 @@ describe("duplicate - drum pad", () => {
   });
 
   it("copies onto an earlier source pad once its turn has run", async () => {
-    const rack = registerDrumRack([
-      { note: 36, chainIds: ["kick"] },
-      { note: 38, chainIds: ["snare"] },
-      { note: 40, chainIds: [] },
-    ]);
+    const rack = registerKickSnareRack();
 
     await duplicate({
       type: "drum-pad",

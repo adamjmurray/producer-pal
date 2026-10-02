@@ -64,49 +64,33 @@ describe("listModels", () => {
     expect(output).toContain("gpt-5");
   });
 
-  it("caps openrouter to 50 models and notes the total", async () => {
-    process.env.OPENROUTER_KEY = "test-key";
-    const many = Array.from({ length: 75 }, (_unused, index) => ({
-      id: `m${String(index).padStart(3, "0")}`,
-    }));
+  it.each([
+    ["openrouter", "OPENROUTER_KEY", "openrouter", "m"],
+    ["the Vercel AI Gateway", "VERCEL_AI_GATEWAY_KEY", "vercel", "p/m"],
+  ])(
+    "caps %s to 50 models and notes the total",
+    async (_label, keyVar, provider, idPrefix) => {
+      process.env[keyVar] = "test-key";
+      const many = Array.from({ length: 75 }, (_unused, index) => ({
+        id: `${idPrefix}${String(index).padStart(3, "0")}`,
+      }));
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: many }),
-      }),
-    );
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ data: many }),
+        }),
+      );
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    await listModels("openrouter");
+      await listModels(provider);
 
-    const header = log.mock.calls[0]?.[0] as string;
+      const header = log.mock.calls[0]?.[0] as string;
 
-    expect(header).toContain("showing 50 of 75");
-  });
-
-  it("caps the Vercel AI Gateway to 50 models and notes the total", async () => {
-    process.env.VERCEL_AI_GATEWAY_KEY = "test-key";
-    const many = Array.from({ length: 75 }, (_unused, index) => ({
-      id: `p/m${String(index).padStart(3, "0")}`,
-    }));
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: many }),
-      }),
-    );
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    await listModels("vercel");
-
-    const header = log.mock.calls[0]?.[0] as string;
-
-    expect(header).toContain("showing 50 of 75");
-  });
+      expect(header).toContain("showing 50 of 75");
+    },
+  );
 
   it("queries the Vercel AI Gateway models endpoint", async () => {
     process.env.VERCEL_AI_GATEWAY_KEY = "test-key";

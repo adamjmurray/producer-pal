@@ -95,17 +95,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 15, 20);
 
     // A move leaves exactly one clip — the full copy at the new position.
-    expect(clips).toHaveLength(1);
-
-    const moved = clips[0]!;
-
-    expect(arrangementStartOf(moved)).toBe("16|1");
-    expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
-
-    // The relocated clip keeps its bar-4 note (full length, not truncated).
-    const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
-
-    expect(movedNotes).toContain("B3");
+    await expectSingleFullClip(clips, "16|1");
   });
 
   it("move -1 bar leaves a single full 4-bar clip and no tail", async () => {
@@ -117,16 +107,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
     const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 54, 61);
 
-    expect(clips).toHaveLength(1);
-
-    const moved = clips[0]!;
-
-    expect(arrangementStartOf(moved)).toBe("55|1");
-    expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
-
-    const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
-
-    expect(movedNotes).toContain("B3");
+    await expectSingleFullClip(clips, "55|1");
   });
 
   it("non-overlap duplicate still leaves two full clips (control)", async () => {
@@ -197,6 +178,28 @@ async function moveArrClip(id: string, position: string): Promise<void> {
     toPath: `[${position}]`,
   });
   await sleep(100);
+}
+
+/**
+ * Assert the range holds exactly one full-length 4-bar clip at the position,
+ * and that it kept its bar-4 note (not truncated).
+ * @param clips - Arrangement clips in the checked range
+ * @param start - Expected start in bar|beat format
+ */
+async function expectSingleFullClip(
+  clips: ReadClipResult[],
+  start: string,
+): Promise<void> {
+  expect(clips).toHaveLength(1);
+
+  const moved = clips[0]!;
+
+  expect(arrangementStartOf(moved)).toBe(start);
+  expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
+
+  const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
+
+  expect(movedNotes).toContain("B3");
 }
 
 /**

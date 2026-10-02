@@ -59,6 +59,23 @@ async function expectUpdatedNoteCount(
   expect(updated.noteCount).toBe(noteCount);
 }
 
+/**
+ * Apply an update-clip call and return the entry's `detail` line.
+ * @param args - update-clip arguments, including the clip id
+ * @returns The result's detail, if any
+ */
+async function updateClipDetail(
+  args: Record<string, unknown>,
+): Promise<string | undefined> {
+  const updated = parseToolResult<UpdateClipResult & { detail?: string }>(
+    await ctx.client!.callTool({ name: "ppal-update-clip", arguments: args }),
+  );
+
+  await sleep(100);
+
+  return updated.detail;
+}
+
 describe("ppal-update-clip preTransforms", () => {
   it("clears all existing notes with a bare preTransforms (no notes arg)", async () => {
     const clipId = await createMidiClip(0, "C3 D3 E3 1|1");
@@ -128,36 +145,26 @@ describe("ppal-update-clip notes outside the region", () => {
   it("counts the notes a shrink-only length cuts off", async () => {
     const clipId = await createMidiClip(0, "C3 1|1\nE3 2|1");
 
-    const updated = parseToolResult<UpdateClipResult & { detail?: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-clip",
-        arguments: { id: clipId, length: "1bar", notes: "G3 1|2" },
-      }),
-    );
+    const detail = await updateClipDetail({
+      id: clipId,
+      length: "1bar",
+      notes: "G3 1|2",
+    });
 
-    expect(updated.detail).toBe("1 note is outside the region and won't play");
+    expect(detail).toBe("1 note is outside the region and won't play");
   });
 
   it("counts the notes a far move leaves behind, and they return with the region", async () => {
     const clipId = await createMidiClip(0, "C3 1|1\nE3 2|1");
 
-    const updated = parseToolResult<UpdateClipResult & { detail?: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-clip",
-        arguments: {
-          id: clipId,
-          start: "5|1",
-          length: "2bar",
-          notes: "v0 C3 1|1\nG3 5|1",
-        },
-      }),
-    );
+    const detail = await updateClipDetail({
+      id: clipId,
+      start: "5|1",
+      length: "2bar",
+      notes: "v0 C3 1|1\nG3 5|1",
+    });
 
-    await sleep(100);
-
-    expect(updated.detail).toBe(
-      "2 notes are outside the region and won't play",
-    );
+    expect(detail).toBe("2 notes are outside the region and won't play");
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",

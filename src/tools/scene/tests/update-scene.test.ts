@@ -9,10 +9,9 @@ import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
-  registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { updateScene } from "../update-scene.ts";
+import { registerThreeScenes } from "./scene-fixtures.ts";
 import { expectSceneSetToRed34 } from "./scene-assertions.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -27,9 +26,7 @@ describe("updateScene", () => {
   let scene3: RegisteredMockObject;
 
   beforeEach(() => {
-    scene1 = registerMockObject("123", { path: livePath.scene(0) });
-    scene2 = registerMockObject("456", { path: livePath.scene(1) });
-    scene3 = registerMockObject("789", { path: livePath.scene(2) });
+    [scene1, scene2, scene3] = registerThreeScenes();
   });
 
   it("should update a single scene by ID", () => {

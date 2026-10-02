@@ -108,42 +108,29 @@ describe("duplicate - arrangementLength refused before any write", () => {
     }
   });
 
-  it("refuses a bad entry for a scene's later copy before the first", async () => {
-    setupArrangementSceneMocks(1);
-    registerClipSlot(0, 0, true, createStandardMidiClipMock());
-
-    const track0 = registerTrackWithArrangementDup(0);
-
-    registerArrangementClip(0, 0, 16);
-
-    await expect(
-      duplicate({
-        type: "scene",
-        id: "scene1",
-        arrangementStart: "5|1,9|1",
-        arrangementLength: "1bar,bogus",
-      }),
-    ).rejects.toThrow(BAD_FORMAT);
-
-    expectNoCopies(track0);
-  });
-
-  it("refuses a scene's bad entry when count makes the copies", async () => {
-    setupArrangementSceneMocks(1);
-    registerClipSlot(0, 0, true, createStandardMidiClipMock());
-
-    const track0 = registerTrackWithArrangementDup(0);
-
-    registerArrangementClip(0, 0, 16);
-
-    await expect(
-      duplicate({
-        type: "scene",
-        id: "scene1",
+  it.each([
+    {
+      desc: "refuses a bad entry for a scene's later copy before the first",
+      params: { arrangementStart: "5|1,9|1", arrangementLength: "1bar,bogus" },
+    },
+    {
+      desc: "refuses a scene's bad entry when count makes the copies",
+      params: {
         arrangementStart: "5|1",
         count: 2,
         arrangementLength: "1bar,bogus",
-      }),
+      },
+    },
+  ])("$desc", async ({ params }) => {
+    setupArrangementSceneMocks(1);
+    registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+    const track0 = registerTrackWithArrangementDup(0);
+
+    registerArrangementClip(0, 0, 16);
+
+    await expect(
+      duplicate({ type: "scene", id: "scene1", ...params }),
     ).rejects.toThrow(BAD_FORMAT);
 
     expectNoCopies(track0);

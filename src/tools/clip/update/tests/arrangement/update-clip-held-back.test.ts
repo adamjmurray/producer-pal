@@ -123,18 +123,7 @@ describe("a clip held back for an overwrite", () => {
   // off: 100 was planned as held back, but is refused, never deferred.
   it("skips a clip whose move was called off before it could be held back", async () => {
     setupTwoClipsOnOneTrack(true);
-    registerMockObject("102", {
-      path: livePath.track(0).arrangementClip(2),
-      type: "Clip",
-      properties: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: TARGET_BEATS,
-        end_time: TARGET_BEATS + 16,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    registerClipAtTarget("102");
 
     const result = await updateClip({
       id: `${FIRST},${SECOND},102`,
@@ -240,6 +229,25 @@ const TARGET_BEATS = 64;
 const GROUP = moveGroupKey({ trackIndex: 0, takeLane: null }, TARGET_BEATS);
 
 /**
+ * A clip sitting at the target position, in track 0's third arrangement slot.
+ * @param id - The clip's id
+ */
+function registerClipAtTarget(id: string): void {
+  registerMockObject(id, {
+    path: livePath.track(0).arrangementClip(2),
+    type: "Clip",
+    properties: {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: TARGET_BEATS,
+      end_time: TARGET_BEATS + 16,
+      signature_numerator: 4,
+      signature_denominator: 4,
+    },
+  });
+}
+
+/**
  * Two equal-length arrangement clips on one track, both about to be moved to
  * one position — so the first is the clip the optimizer expects the second to
  * land on top of.
@@ -280,18 +288,7 @@ function setupTwoClipsOnOneTrack(duplicateFails = false): RegisteredMockObject {
           return ["id", 0];
         }
 
-        registerMockObject(MOVED, {
-          path: livePath.track(0).arrangementClip(2),
-          type: "Clip",
-          properties: {
-            is_arrangement_clip: 1,
-            is_midi_clip: 1,
-            start_time: TARGET_BEATS,
-            end_time: TARGET_BEATS + 16,
-            signature_numerator: 4,
-            signature_denominator: 4,
-          },
-        });
+        registerClipAtTarget(MOVED);
 
         return ["id", MOVED];
       },

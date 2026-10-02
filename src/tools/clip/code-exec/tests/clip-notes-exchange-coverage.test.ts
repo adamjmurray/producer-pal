@@ -33,29 +33,24 @@ describe("applyNotesToClip dropped duplicates", () => {
     };
   }
 
-  it("drops nothing and warns nothing when there are no collisions", () => {
+  it.each([
+    {
+      desc: "drops nothing and warns nothing when there are no collisions",
+      notes: [note(0, 1, 100), note(1, 1, 100)],
+      expectedDropped: 0,
+    },
+    {
+      desc: "returns the count for one collision, and does not warn",
+      notes: [note(0, 1, 100), note(0, 2, 80)],
+      expectedDropped: 1,
+    },
+  ])("$desc", ({ notes, expectedDropped }) => {
     const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
     const { mockClip } = setupCollisionCase();
 
-    const dropped = applyNotesToClip(mockClip, [
-      note(0, 1, 100),
-      note(1, 1, 100),
-    ]);
+    const dropped = applyNotesToClip(mockClip, notes);
 
-    expect(dropped).toBe(0);
-    expect(warn).not.toHaveBeenCalled();
-  });
-
-  it("returns the count for one collision, and does not warn", () => {
-    const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
-    const { mockClip } = setupCollisionCase();
-
-    const dropped = applyNotesToClip(mockClip, [
-      note(0, 1, 100),
-      note(0, 2, 80),
-    ]);
-
-    expect(dropped).toBe(1);
+    expect(dropped).toBe(expectedDropped);
     expect(warn).not.toHaveBeenCalled();
   });
 

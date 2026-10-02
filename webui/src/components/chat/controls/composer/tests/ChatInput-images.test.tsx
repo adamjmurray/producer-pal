@@ -48,6 +48,20 @@ function clipboard(files: File[], text = "") {
 const editor = (): HTMLElement => screen.getByRole("textbox");
 
 /**
+ * Render the input and record the paste events that reach the editor.
+ * @returns A spy called for each paste that gets through
+ */
+function renderWatchingEditorPastes(): ReturnType<typeof vi.fn> {
+  render(<ChatInput {...defaultProps} />);
+
+  const reachedEditor = vi.fn();
+
+  editor().addEventListener("paste", reachedEditor);
+
+  return reachedEditor;
+}
+
+/**
  * Replace the chat input's text (happy-dom can't type into a contenteditable).
  * @param text - The new text
  */
@@ -117,11 +131,8 @@ describe("ChatInput image attachments", () => {
   });
 
   it("pastes both the text and the picture when there is no HTML", async () => {
-    render(<ChatInput {...defaultProps} />);
+    const reachedEditor = renderWatchingEditorPastes();
 
-    const reachedEditor = vi.fn();
-
-    editor().addEventListener("paste", reachedEditor);
     fireEvent.paste(editor(), {
       clipboardData: clipboard([makeFile("image.png", "image/png")], "C\tAm"),
     });
@@ -132,11 +143,8 @@ describe("ChatInput image attachments", () => {
   });
 
   it("lets a plain text paste reach the editor, but not an image paste", () => {
-    render(<ChatInput {...defaultProps} />);
+    const reachedEditor = renderWatchingEditorPastes();
 
-    const reachedEditor = vi.fn();
-
-    editor().addEventListener("paste", reachedEditor);
     fireEvent.paste(editor(), { clipboardData: clipboard([], "hello") });
 
     expect(reachedEditor).toHaveBeenCalled();

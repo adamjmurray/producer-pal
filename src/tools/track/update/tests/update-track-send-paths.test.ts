@@ -10,6 +10,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerReturnTracks } from "./send-return-fixtures.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -24,18 +25,7 @@ describe("updateTrack - return tracks named by path", () => {
       path: livePath.track(0).mixerDevice(),
       properties: { sends: children("send_1", "send_2") },
     });
-    registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: { return_tracks: children("return_A", "return_B") },
-    });
-    registerMockObject("return_A", {
-      path: livePath.returnTrack(0),
-      properties: { name: "A-Reverb" },
-    });
-    registerMockObject("return_B", {
-      path: livePath.returnTrack(1),
-      properties: { name: "B-Delay" },
-    });
+    registerReturnTracks();
     send1 = registerMockObject("send_1", {});
     send2 = registerMockObject("send_2", {});
   });

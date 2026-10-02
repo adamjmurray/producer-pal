@@ -11,6 +11,7 @@ import {
   keepsParamValue,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerReturnTracks } from "./send-return-fixtures.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -36,18 +37,7 @@ describe("updateTrack - send properties", () => {
       properties: { sends: children("send_3", "send_4") },
     });
 
-    registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: { return_tracks: children("return_A", "return_B") },
-    });
-    registerMockObject("return_A", {
-      path: livePath.returnTrack(0),
-      properties: { name: "A-Reverb" },
-    });
-    registerMockObject("return_B", {
-      path: livePath.returnTrack(1),
-      properties: { name: "B-Delay" },
-    });
+    registerReturnTracks();
 
     send1 = registerMockObject("send_1", {});
     send2 = registerMockObject("send_2", {});

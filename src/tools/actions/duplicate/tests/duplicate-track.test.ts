@@ -404,10 +404,17 @@ describe("duplicate - track duplication", () => {
       });
     });
 
-    it("should arm the source track when routeToSource is true", async () => {
+    /**
+     * Duplicates track1 with routeToSource, with the source armed or not.
+     * @param arm - Whether the source starts armed (1) or not (0)
+     * @returns The source track mock and the copy's detail
+     */
+    async function duplicateRoutedToSource(
+      arm: number,
+    ): Promise<{ sourceTrack: RegisteredMockObject; detail?: string }> {
       const { sourceTrack } = setupRoutingMocks({
         inputRoutingName: "Audio In",
-        arm: 0,
+        arm,
       });
 
       const result = (await duplicate({
@@ -415,29 +422,26 @@ describe("duplicate - track duplication", () => {
         id: "track1",
         routeToSource: true,
       })) as { detail?: string };
+
+      return { sourceTrack, detail: result.detail };
+    }
+
+    it("should arm the source track when routeToSource is true", async () => {
+      const { sourceTrack, detail } = await duplicateRoutedToSource(0);
 
       // Verify the source track was armed
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
 
       // It wasn't already armed, so the arm action is reported.
-      expect(result.detail).toContain("armed it");
+      expect(detail).toContain("armed it");
     });
 
     it("does not report arming a source track that was already armed", async () => {
-      const { sourceTrack } = setupRoutingMocks({
-        inputRoutingName: "Audio In",
-        arm: 1,
-      });
-
-      const result = (await duplicate({
-        type: "track",
-        id: "track1",
-        routeToSource: true,
-      })) as { detail?: string };
+      const { sourceTrack, detail } = await duplicateRoutedToSource(1);
 
       // Verify the source track was still set to armed (even though it already was)
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
-      expect(result.detail).not.toContain("armed it");
+      expect(detail).not.toContain("armed it");
     });
   });
 

@@ -3,21 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { toJsonSchemaCompat } from "@modelcontextprotocol/sdk/server/zod-json-schema-compat.js";
 import {
   type CallToolResult,
   type ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  createMcpServer,
-  STANDARD_TOOL_DEFS,
-} from "#src/mcp-server/create-mcp-server.ts";
+import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
 import { buildFallbackTools } from "#src/portal/fallback-tools.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { connectMcpClient as connect } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
@@ -35,45 +31,6 @@ const PROFILES: { smallModelMode?: boolean; notation?: Notation }[] = [
 const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
 
 type Profile = (typeof PROFILES)[number];
-
-/**
- * Connect a client to a server whose Live API call records its args.
- * @param profile - Server options
- * @returns The client and the recorded Live API calls
- */
-async function connect(profile: Profile = {}): Promise<{
-  client: Client;
-  callLiveApi: ReturnType<typeof vi.fn>;
-  received: unknown[];
-}> {
-  const callLiveApi = vi.fn(() =>
-    Promise.resolve({ content: [{ type: "text", text: "ok" }] }),
-  );
-  const server = createMcpServer(callLiveApi, {
-    ...profile,
-    liveApiEnabled: true,
-  });
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: "test", version: "0" });
-
-  await Promise.all([
-    server.connect(serverTransport),
-    client.connect(clientTransport),
-  ]);
-
-  // Keep each message as it came off the wire: the client's own parse
-  // reorders a schema's keys.
-  const received: unknown[] = [];
-  const onmessage = clientTransport.onmessage;
-
-  clientTransport.onmessage = (message, extra) => {
-    received.push(structuredClone(message));
-    onmessage?.(message, extra);
-  };
-
-  return { client, callLiveApi, received };
-}
 
 /**
  * The JSON Schema each tool published before its params were wrapped: the

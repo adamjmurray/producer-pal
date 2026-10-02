@@ -15,19 +15,8 @@ import {
   registerMockObject,
   updateDevice,
 } from "../../update-device-test-helpers.ts";
+import { registerDevice } from "./param-addressing-fixtures.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-
-/**
- * Register the device under test at t0/d0, holding the given params.
- * @param paramIds - Parameter mock ids, in the device's parameter order
- */
-function registerDevice(...paramIds: string[]): void {
-  registerMockObject("123", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children(...paramIds) },
-  });
-}
 
 describe("updateDevice - params by name", () => {
   let paramFreq: RegisteredMockObject;

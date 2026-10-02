@@ -103,6 +103,23 @@ async function sampleAt(path: string): Promise<string | undefined> {
 }
 
 /**
+ * Assert pad F1 holds exactly one device, a Simpler, and read its sample.
+ * @param rackPath - The Drum Rack's path
+ * @returns The Simpler's sample file path, or undefined when none is loaded
+ */
+async function sampleOfOnlySimplerOnPadF1(
+  rackPath: string,
+): Promise<string | undefined> {
+  const devices = (await readDrumPad(ctx.client!, `${rackPath}/pF1`))
+    .chains?.[0]?.devices;
+
+  expect(devices).toHaveLength(1);
+  expect(devices?.[0]?.type).toContain("Simpler");
+
+  return sampleAt(`${rackPath}/pF1/c0/d0`);
+}
+
+/**
  * The samples loaded on both layers of the D1 pad.
  * @param rackPath - The Drum Rack's path
  * @returns The two samples, in layer order
@@ -314,12 +331,7 @@ describe("a sample addressed by the pad's own path", () => {
     expect(warnings).toStrictEqual([]);
     expect(params).toStrictEqual([{ name: "sample", value: KICK_FILE }]);
 
-    const devices = (await readDrumPad(ctx.client!, `${rackPath}/pF1`))
-      .chains?.[0]?.devices;
-
-    expect(devices).toHaveLength(1);
-    expect(devices?.[0]?.type).toContain("Simpler");
-    expect(await sampleAt(`${rackPath}/pF1/c0/d0`)).toBe(KICK_FILE);
+    expect(await sampleOfOnlySimplerOnPadF1(rackPath)).toBe(KICK_FILE);
   });
 });
 
@@ -402,12 +414,7 @@ describe("a sample that doesn't load on an empty pad", () => {
         },
       ]);
 
-      const devices = (await readDrumPad(ctx.client!, `${rackPath}/pF1`))
-        .chains?.[0]?.devices;
-
-      expect(devices).toHaveLength(1);
-      expect(devices?.[0]?.type).toContain("Simpler");
-      expect(await sampleAt(`${rackPath}/pF1/c0/d0`)).toBeUndefined();
+      expect(await sampleOfOnlySimplerOnPadF1(rackPath)).toBeUndefined();
     });
   }
 });

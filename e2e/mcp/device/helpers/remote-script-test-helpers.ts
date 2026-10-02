@@ -5,7 +5,9 @@
 
 // What the E2E suites that need the Producer Pal remote script share.
 
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { beforeAll } from "vitest";
+import { callToolAndSettle, parseToolResult } from "../../mcp-test-helpers";
 import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers";
 
 const PORT = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
@@ -79,4 +81,26 @@ export function presetEndingIn(presets: Preset[], suffix: string): Preset {
  */
 export function presetName(name: string): string {
   return name.replace(/\.(?:adv|adg)$/, "");
+}
+
+/** What `ppal-read-device` returns for a device, as far as the tests look. */
+export interface DeviceRead {
+  id: string;
+  type: string;
+  name?: string;
+}
+
+/**
+ * Read a device.
+ * @param client - Connected MCP client
+ * @param path - The device's path
+ * @returns Its id, type and name
+ */
+export async function readDevice(
+  client: Client,
+  path: string,
+): Promise<DeviceRead> {
+  return parseToolResult<DeviceRead>(
+    await callToolAndSettle(client, "ppal-read-device", { path }),
+  );
 }

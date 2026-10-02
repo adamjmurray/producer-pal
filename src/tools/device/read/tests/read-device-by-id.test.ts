@@ -12,6 +12,10 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  MIXER_TYPES,
+  registerMixer,
+} from "#src/tools/device/tests/helpers/non-device-fixtures.ts";
 import { readDevice, readOneDevice } from "../read-device.ts";
 import { setupChainMock } from "./read-device-test-helpers.ts";
 import { setupDrumPadMocks } from "./drum/read-device-drum-mocks.ts";
@@ -66,19 +70,13 @@ describe("readDevice by id of something that is not a device", () => {
     );
   });
 
-  it.each(["MixerDevice", "ChainMixerDevice"] as const)(
-    "refuses a %s, which is not a device",
-    (type) => {
-      registerMockObject("mix-1", {
-        path: livePath.track(3).mixerDevice(),
-        type,
-      });
+  it.each(MIXER_TYPES)("refuses a %s, which is not a device", (type) => {
+    registerMixer(type);
 
-      expect(() => readOneDevice({ id: "mix-1" })).toThrow(
-        "cannot read a mixer: id mix-1",
-      );
-    },
-  );
+    expect(() => readOneDevice({ id: "mix-1" })).toThrow(
+      "cannot read a mixer: id mix-1",
+    );
+  });
 
   it("keeps its slot when a readable target was named too", () => {
     registerMockObject("999", { path: livePath.track(3), type: "Track" });

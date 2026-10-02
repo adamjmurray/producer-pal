@@ -114,6 +114,18 @@ function setupClip(
   );
 }
 
+const ONE_NOTE_OUTSIDE = expect.objectContaining({
+  detail: "1 note is outside the region and won't play",
+});
+
+/**
+ * Shrink the clip to one bar, rewriting its notes.
+ * @returns The updateClip result
+ */
+function shrinkToOneBar(): Promise<unknown> {
+  return updateClip({ id: "123", length: "1bar", notes: "C3 1|1" });
+}
+
 describe("updateClip - notes outside the region", () => {
   let mocks: UpdateClipMocks;
 
@@ -127,17 +139,9 @@ describe("updateClip - notes outside the region", () => {
   ])("counts notes a shrink-only length cuts off (%s)", async (_, region) => {
     setupClip(mocks, region, [0, 5]);
 
-    const result = await updateClip({
-      id: "123",
-      length: "1bar",
-      notes: "C3 1|1",
-    });
+    const result = await shrinkToOneBar();
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        detail: "1 note is outside the region and won't play",
-      }),
-    );
+    expect(result).toStrictEqual(ONE_NOTE_OUTSIDE);
   });
 
   it("counts notes a small start move leaves behind", async () => {
@@ -172,27 +176,15 @@ describe("updateClip - notes outside the region", () => {
   it("doesn't count muted notes outside the region", async () => {
     setupClip(mocks, LOOPING_8, [0, 5], [6, 7]);
 
-    const result = await updateClip({
-      id: "123",
-      length: "1bar",
-      notes: "C3 1|1",
-    });
+    const result = await shrinkToOneBar();
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        detail: "1 note is outside the region and won't play",
-      }),
-    );
+    expect(result).toStrictEqual(ONE_NOTE_OUTSIDE);
   });
 
   it("says nothing when only muted notes lie outside the region", async () => {
     setupClip(mocks, LOOPING_8, [0], [5]);
 
-    const result = await updateClip({
-      id: "123",
-      length: "1bar",
-      notes: "C3 1|1",
-    });
+    const result = await shrinkToOneBar();
 
     expect(result).not.toHaveProperty("detail");
   });
@@ -206,11 +198,7 @@ describe("updateClip - notes outside the region", () => {
       notes: "C3 5|1",
     });
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        detail: "1 note is outside the region and won't play",
-      }),
-    );
+    expect(result).toStrictEqual(ONE_NOTE_OUTSIDE);
   });
 
   it("says nothing when firstStart leaves every note inside the region", async () => {
@@ -247,11 +235,7 @@ describe("updateClip - notes outside the region", () => {
       LOOPING_8 as unknown as Record<string, unknown>,
     );
 
-    const result = await updateClip({
-      id: "123",
-      length: "1bar",
-      notes: "C3 1|1",
-    });
+    const result = await shrinkToOneBar();
 
     expect(JSON.stringify(result)).not.toContain("won't play");
   });

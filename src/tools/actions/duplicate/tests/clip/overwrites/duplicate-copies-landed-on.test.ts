@@ -215,18 +215,43 @@ describe("a copy whose rest a later copy cut again", () => {
     return { x, y, track };
   }
 
-  it("points at the rest a later copy cut short at the back", () => {
+  /**
+   * Land Z over 2|1-3|1 onward from 16 beats (to `zEnd`), land the pieces left
+   * of X, then mark overwrites.
+   * @param zEnd - Where Z ends, in beats
+   * @param pieces - X's leftover clips, as [id, start, end], by track index 3+
+   * @param order - Clip ids in the track's arrangement order
+   * @returns X's entry once marked
+   */
+  function markXAfterLaterCopy(
+    zEnd: number,
+    pieces: [string, number, number][],
+    order: string[],
+  ): unknown {
     const { x, y, track } = landFrontTrimmedCopy();
-    const z = landedCopy("z", 2, 16, 32);
+    const z = landedCopy("z", 2, 16, zEnd);
 
-    landedCopy("x-rest", 3, 8, 16);
-    track.properties.arrangement_clips = children("y", "x-rest", "z");
+    for (const [i, [id, start, end]] of pieces.entries()) {
+      landedCopy(id, 3 + i, start, end);
+    }
+
+    track.properties.arrangement_clips = children(...order);
 
     const result = [x, y, z];
 
     markOverwrittenCopies(result);
 
-    expect(result[0]).toStrictEqual({
+    return result[0];
+  }
+
+  it("points at the rest a later copy cut short at the back", () => {
+    const first = markXAfterLaterCopy(
+      32,
+      [["x-rest", 8, 16]],
+      ["y", "x-rest", "z"],
+    );
+
+    expect(first).toStrictEqual({
       id: "x-rest",
       path: "t1[3|1]",
       detail: TRIMMED,
@@ -236,17 +261,13 @@ describe("a copy whose rest a later copy cut again", () => {
   // A later copy whose span couldn't be read may have cut the rest, so what
   // is there can't be told apart from its own pieces.
   it("claims nothing past a later copy whose span is unknown", () => {
-    const { x, y, track } = landFrontTrimmedCopy();
-    const z = landedCopy("z", 2, 16, 16);
+    const first = markXAfterLaterCopy(
+      16,
+      [["x-rest", 8, 16]],
+      ["y", "x-rest", "z"],
+    );
 
-    landedCopy("x-rest", 3, 8, 16);
-    track.properties.arrangement_clips = children("y", "x-rest", "z");
-
-    const result = [x, y, z];
-
-    markOverwrittenCopies(result);
-
-    expect(result[0]).toStrictEqual({
+    expect(first).toStrictEqual({
       path: "t1[1|1]",
       deleted: true,
       detail: DELETED,
@@ -254,23 +275,16 @@ describe("a copy whose rest a later copy cut again", () => {
   });
 
   it("points at the end piece of a rest a later copy split", () => {
-    const { x, y, track } = landFrontTrimmedCopy();
-    const z = landedCopy("z", 2, 16, 20);
-
-    landedCopy("x-front", 3, 8, 16);
-    landedCopy("x-back", 4, 20, 32);
-    track.properties.arrangement_clips = children(
-      "y",
-      "x-front",
-      "z",
-      "x-back",
+    const first = markXAfterLaterCopy(
+      20,
+      [
+        ["x-front", 8, 16],
+        ["x-back", 20, 32],
+      ],
+      ["y", "x-front", "z", "x-back"],
     );
 
-    const result = [x, y, z];
-
-    markOverwrittenCopies(result);
-
-    expect(result[0]).toStrictEqual({
+    expect(first).toStrictEqual({
       id: "x-back",
       path: "t1[6|1]",
       detail: TRIMMED,

@@ -55,6 +55,20 @@ describe("updateDevice - params addressed by id", () => {
     });
   });
 
+  /**
+   * Expect Volume took only the last write, and the first entry says why not.
+   * @param result - What updateDevice returned
+   * @param detail - The reason the first entry carries
+   */
+  function expectOnlyLastWritten(result: unknown, detail: string): void {
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "1", ok: false, detail },
+      { id: "1", name: "Volume" },
+    ]);
+  }
+
   it("writes the param the id names", () => {
     const result = updateDevice({
       id: "dev1",
@@ -173,12 +187,7 @@ describe("updateDevice - params addressed by id", () => {
       ],
     });
 
-    expect(volume.set).toHaveBeenCalledTimes(1);
-    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
-    expect(paramsOf(result)).toStrictEqual([
-      { id: "1", ok: false, detail: "set again by id 1 later in the list" },
-      { id: "1", name: "Volume" },
-    ]);
+    expectOnlyLastWritten(result, "set again by id 1 later in the list");
   });
 
   it("reports an id that reaches nothing, sent twice, once per entry", () => {
@@ -205,12 +214,7 @@ describe("updateDevice - params addressed by id", () => {
   it("writes only the last of an id and a name reaching one param", () => {
     const result = updateDevice({ id: "dev1", params: sameParamTwice });
 
-    expect(volume.set).toHaveBeenCalledTimes(1);
-    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
-    expect(paramsOf(result)).toStrictEqual([
-      { id: "1", ok: false, detail: 'set again by "Volume" later in the list' },
-      { id: "1", name: "Volume" },
-    ]);
+    expectOnlyLastWritten(result, 'set again by "Volume" later in the list');
     expect(capturedWarnings()).toHaveLength(0);
   });
 

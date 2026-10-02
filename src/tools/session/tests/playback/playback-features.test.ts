@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -15,6 +14,7 @@ import {
   registerClipSlot,
   setupDefaultTimeSignature,
   setupPlaybackLiveSet,
+  spyOnWarn,
 } from "./playback-test-helpers.ts";
 
 describe("playback path param", () => {
@@ -50,7 +50,7 @@ describe("playback path param", () => {
   // What results said before 2.2.0, so a model pasting one back made a
   // well-founded guess: honor it, and warn to teach the spelling.
   it("honors the old unprefixed spelling, with a warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
     const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "0/1" });
@@ -64,7 +64,7 @@ describe("playback path param", () => {
   // A caller on the current param may still send the deprecated one as null;
   // counting the coerced "null" as a second target refused the call.
   it("fires what slots names when path is a coerced null", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
     const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "null", slots: "0/1" });
@@ -82,7 +82,7 @@ describe("playback path param", () => {
   // The same check, on a slots that named nothing. A comma is not a second
   // target, so refusing the call reported a conflict the caller never made.
   it("fires what path names when slots names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
     const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "t0/s1", slots: "," });

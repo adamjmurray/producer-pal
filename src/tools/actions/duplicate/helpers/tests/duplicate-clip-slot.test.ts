@@ -24,6 +24,58 @@ const COPY_ID = "61";
 const OCCUPANT_ID = "60";
 
 /**
+ * Registers the source clip and slot at t0/s0 and the destination track t1.
+ * @param opts - Test options
+ * @param opts.destClipPath - Path where the copy lands
+ * @param opts.copyLands - Whether duplicate_clip_to makes the copy
+ * @param opts.clipIsMidi - Whether the source clip is MIDI
+ * @param opts.destIsMidi - Whether the destination track takes MIDI
+ * @param opts.destIsFrozen - Whether the destination track is frozen
+ * @returns The source clip slot mock
+ */
+function registerSourceAndDestTrack(opts: {
+  destClipPath: string;
+  copyLands: boolean;
+  clipIsMidi?: number;
+  destIsMidi?: number;
+  destIsFrozen?: number;
+}): RegisteredMockObject {
+  const {
+    destClipPath,
+    copyLands,
+    clipIsMidi = 1,
+    destIsMidi = 1,
+    destIsFrozen = 0,
+  } = opts;
+
+  registerMockObject(SOURCE_CLIP_ID, {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: { is_midi_clip: clipIsMidi },
+  });
+
+  const sourceClipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 1 },
+    methods: {
+      duplicate_clip_to: () => {
+        if (copyLands) {
+          registerMockObject(COPY_ID, { path: destClipPath });
+        }
+
+        return null;
+      },
+    },
+  });
+
+  registerMockObject("live_set/tracks/1", {
+    path: livePath.track(1),
+    properties: { has_midi_input: destIsMidi, is_frozen: destIsFrozen },
+  });
+
+  return sourceClipSlot;
+}
+
+/**
  * Register a source clip in slot 0/0 and a destination slot, with
  * duplicate_clip_to creating a clip only when the copy is set to land.
  * Unregistered objects are non-existent, so the destination holds a clip only
@@ -59,29 +111,12 @@ function setupSlotDuplication(
   mockNonExistentObjects();
 
   const destClipPath = livePath.track(1).clipSlot(0).clip();
-
-  registerMockObject(SOURCE_CLIP_ID, {
-    path: livePath.track(0).clipSlot(0).clip(),
-    properties: { is_midi_clip: clipIsMidi },
-  });
-
-  const sourceClipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
-    path: livePath.track(0).clipSlot(0),
-    properties: { has_clip: 1 },
-    methods: {
-      duplicate_clip_to: () => {
-        if (copyLands) {
-          registerMockObject(COPY_ID, { path: destClipPath });
-        }
-
-        return null;
-      },
-    },
-  });
-
-  registerMockObject("live_set/tracks/1", {
-    path: livePath.track(1),
-    properties: { has_midi_input: destIsMidi, is_frozen: destIsFrozen },
+  const sourceClipSlot = registerSourceAndDestTrack({
+    destClipPath,
+    copyLands,
+    clipIsMidi,
+    destIsMidi,
+    destIsFrozen,
   });
 
   registerMockObject("live_set/tracks/1/clip_slots/0", {
@@ -278,28 +313,9 @@ describe("duplicateClipSlot past the last scene", () => {
 
     mockNonExistentObjects();
 
-    const destClipPath = livePath.track(1).clipSlot(3).clip();
-
-    registerMockObject(SOURCE_CLIP_ID, {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 1 },
-      methods: {
-        duplicate_clip_to: () => {
-          if (copyLands) {
-            registerMockObject(COPY_ID, { path: destClipPath });
-          }
-
-          return null;
-        },
-      },
-    });
-    registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { has_midi_input: 1, is_frozen: 0 },
+    registerSourceAndDestTrack({
+      destClipPath: livePath.track(1).clipSlot(3).clip(),
+      copyLands,
     });
 
     return registerMockObject("live-set", {

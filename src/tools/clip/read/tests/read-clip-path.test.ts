@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { z } from "zod";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
@@ -15,6 +14,7 @@ import {
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { parseNullLocationArgs } from "#src/tools/clip/helpers/tests/null-location-params-test-helpers.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
@@ -30,10 +30,8 @@ describe("readOneClip location params through the tool schema", () => {
 
   it("refuses a null trackIndex/sceneIndex instead of reading t0/s0", () => {
     const raw = { id: null, trackIndex: null, sceneIndex: null };
-    const args = z.object(params).parse(unsetEmptyParams(raw, params));
+    const args = parseNullLocationArgs(params, raw);
 
-    expect(args.trackIndex).toBeUndefined();
-    expect(args.sceneIndex).toBeUndefined();
     expect(() => readOneClip(args)).toThrow("id or path is required");
   });
 

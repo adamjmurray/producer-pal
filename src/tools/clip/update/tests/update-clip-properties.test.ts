@@ -284,6 +284,17 @@ describe("buildClipPropertiesToSet", () => {
       ...fields,
     }) as ClipPropsToSet;
 
+  // The keys every case writes first, ahead of the loop/marker fields.
+  const expectKeyOrder = (result: ClipPropsToSet, tail: string[]): void => {
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      ...tail,
+    ]);
+  };
+
   it("sets signature numerator/denominator from the time sig when timeSignature is present", () => {
     const result = build({
       timeSignature: "3/8",
@@ -328,15 +339,7 @@ describe("buildClipPropertiesToSet", () => {
       }),
     );
     // Order matters: loop_end is set first when expanding.
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "looping",
-      "loop_end",
-      "loop_start",
-    ]);
+    expectKeyOrder(result, ["looping", "loop_end", "loop_start"]);
   });
 
   it("sets loop_start before loop_end when not expanding (startBeats < both ends)", () => {
@@ -356,15 +359,7 @@ describe("buildClipPropertiesToSet", () => {
         loop_end: 16,
       }),
     );
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "looping",
-      "loop_start",
-      "loop_end",
-    ]);
+    expectKeyOrder(result, ["looping", "loop_start", "loop_end"]);
   });
 
   it("expands (loop_end first) when startBeats exactly equals an end", () => {
@@ -378,15 +373,7 @@ describe("buildClipPropertiesToSet", () => {
     });
 
     // Boundary: >= means equal still counts as expanding.
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "looping",
-      "loop_end",
-      "loop_start",
-    ]);
+    expectKeyOrder(result, ["looping", "loop_end", "loop_start"]);
     expect(result).toStrictEqual(
       expected({
         looping: true,
@@ -410,11 +397,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 2,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "looping",
       "end_marker",
       "loop_start",
@@ -438,11 +421,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 4,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "looping",
       "loop_end",
       "end_marker",
@@ -473,11 +452,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 5,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "looping",
       "loop_end",
       "end_marker",
@@ -510,15 +485,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 4,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "end_marker",
-      "start_marker",
-      "looping",
-    ]);
+    expectKeyOrder(result, ["end_marker", "start_marker", "looping"]);
     expect(result).toStrictEqual(
       expected({
         looping: false,
@@ -603,11 +570,7 @@ describe("buildClipPropertiesToSet", () => {
       ...Object.keys(unset).filter((key) => key !== "looping"),
       "looping",
     ]);
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "loop_end",
       "end_marker",
       "loop_start",
@@ -637,15 +600,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 4,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "start_marker",
-      "end_marker",
-      "looping",
-    ]);
+    expectKeyOrder(result, ["start_marker", "end_marker", "looping"]);
   });
 
   it("does not set loop_end when endBeats is null for a looping clip", () => {

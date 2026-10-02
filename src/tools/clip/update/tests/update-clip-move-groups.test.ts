@@ -28,6 +28,20 @@ function mainLane(trackIndex: number): ArrangementTrack {
   return { trackIndex, takeLane: null };
 }
 
+/**
+ * The span recorded when a clip's position can't be read: the whole lane.
+ * @param trackIndex - The track
+ * @returns The expected written span
+ */
+function wholeLane(trackIndex: number): object {
+  return {
+    lane: { kind: "track", trackIndex },
+    start: -Infinity,
+    end: Infinity,
+    order: expect.any(Number),
+  };
+}
+
 describe("update-clip-move-groups", () => {
   it("keys a lane and position, take lanes apart from the main one", () => {
     expect(moveGroupKey(mainLane(0), 16)).toBe("t0@16");
@@ -135,14 +149,7 @@ describe("recordResize", () => {
 
     recordResize(groups, clipAt(null), 4);
 
-    expect(writtenSpans(groups)).toStrictEqual([
-      {
-        lane: { kind: "track", trackIndex: 0 },
-        start: -Infinity,
-        end: Infinity,
-        order: expect.any(Number),
-      },
-    ]);
+    expect(writtenSpans(groups)).toStrictEqual([wholeLane(0)]);
   });
 
   it("records nothing for a clip on no track", () => {
@@ -169,12 +176,7 @@ describe("recordFailedLanding", () => {
         end: 24,
         order: expect.any(Number),
       },
-      {
-        lane: { kind: "track", trackIndex: 1 },
-        start: -Infinity,
-        end: Infinity,
-        order: expect.any(Number),
-      },
+      wholeLane(1),
     ]);
     expect(landedSpans(groups).size).toBe(0);
   });
@@ -213,13 +215,6 @@ describe("landedSpans", () => {
     });
 
     expect(landedSpans(groups).size).toBe(0);
-    expect(writtenSpans(groups)).toStrictEqual([
-      {
-        lane: { kind: "track", trackIndex: 0 },
-        start: -Infinity,
-        end: Infinity,
-        order: expect.any(Number),
-      },
-    ]);
+    expect(writtenSpans(groups)).toStrictEqual([wholeLane(0)]);
   });
 });

@@ -26,6 +26,10 @@ import {
   remoteScriptPath,
 } from "../remote-script-install.ts";
 import { readRemoteScriptSource } from "../remote-script-source.ts";
+import {
+  PY_ONLY_SOURCE,
+  writeScriptTreeWithJunk,
+} from "./remote-script-test-helpers.ts";
 
 const { homedir } = vi.hoisted(() => ({ homedir: vi.fn<() => string>() }));
 // Path prefixes whose fs calls should fail.
@@ -92,19 +96,9 @@ afterEach(() => {
 
 describe("readRemoteScriptSource", () => {
   it("reads .py files at any depth and leaves everything else out", () => {
-    mkdirSync(join(scratchDir, "__pycache__"));
-    mkdirSync(join(scratchDir, "nested"));
-    writeFileSync(join(scratchDir, "__init__.py"), "top", "utf8");
-    writeFileSync(join(scratchDir, ".DS_Store"), "finder", "utf8");
-    writeFileSync(join(scratchDir, "nested/notes.txt"), "scratch", "utf8");
-    writeFileSync(join(scratchDir, "stale.pyc"), "bytecode", "utf8");
-    writeFileSync(join(scratchDir, "__pycache__/a.pyc"), "bytecode", "utf8");
-    writeFileSync(join(scratchDir, "nested/deep.py"), "deep", "utf8");
+    writeScriptTreeWithJunk(scratchDir);
 
-    expect(readRemoteScriptSource(scratchDir)).toStrictEqual({
-      "__init__.py": "top",
-      "nested/deep.py": "deep",
-    });
+    expect(readRemoteScriptSource(scratchDir)).toStrictEqual(PY_ONLY_SOURCE);
   });
 });
 

@@ -173,8 +173,7 @@ describe("updateClip reports a clip the batch buried", () => {
     // The first mover's own copy is what the second one cleared, so its entry
     // names an id that is gone by the time the call answers.
     expect(result[0]?.path).toBe("t0/l0[5|1]");
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
     expect(result[1]?.deleted).toBeUndefined();
   });
 
@@ -223,8 +222,7 @@ describe("updateClip reports a clip the batch buried", () => {
     })) as ClipResult[];
 
     expect(result[1]?.detail).toContain("an incomplete clip was left");
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
   });
 
   it("reads nothing back for a batch that clears no span", async () => {
@@ -309,6 +307,15 @@ describe("a clip the call holds back for an overwrite", () => {
 });
 
 /**
+ * Expect an entry to say a later move buried its clip.
+ * @param entry - The clip's result entry
+ */
+function expectBuried(entry: ClipResult | undefined): void {
+  expect(entry?.deleted).toBe(true);
+  expect(entry?.detail).toContain(BURIED);
+}
+
+/**
  * Move every clip on the simulated track.
  * @param lengths - The clips' lengths in beats, in call order
  * @param starts - Where each one goes, in call order (default bar 101)
@@ -365,8 +372,7 @@ describe("a survivor a shorter clip landed on", () => {
   it("still reports a trimmed clip a later landing then buried", async () => {
     const result = await moveAll([8, 2, 16], ["101|1", "101|1", "100|1"]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
     expect(result[1]?.deleted).toBe(true);
     expect(result[2]?.path).toBe("t0[100|1]");
     expect(result[2]?.deleted).toBeUndefined();
@@ -378,8 +384,7 @@ describe("a survivor a shorter clip landed on", () => {
   it("does not mistake a landing at the trim point for the remainder", async () => {
     const result = await moveAll([8, 2, 12], ["101|1", "101|1", "101|3"]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
     expect(result[1]?.path).toBe("t0[101|1]");
     expect(result[2]?.path).toBe("t0[101|3]");
   });
@@ -405,8 +410,7 @@ describe("a survivor a shorter clip landed on", () => {
       ["101|1", "101|1", "102|1", "102|1"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
     expect(result[2]?.path).toBe("t0[103|1]");
     expect(result[2]?.detail).toContain("trimmed:");
     expect(stackedLaneClips()).toContain(result[2]?.id);
@@ -418,8 +422,7 @@ describe("a survivor a shorter clip landed on", () => {
   it("does not name a sibling's own landing as a remainder", async () => {
     const result = await moveAll([32, 8, 24], ["101|1", "101|1", "103|1"]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
     expect(result[2]?.path).toBe("t0[103|1]");
     expect(result[2]?.detail).not.toContain("trimmed:");
     expect(new Set(result.map((entry) => entry.id)).size).toBe(3);
@@ -519,8 +522,7 @@ describe("a sibling's pieces inside a clip's span", () => {
       ["101|1", "101|1", "102|1", "104|1", "102|3"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
     expect(result[2]?.path).toBe("t0[102|1]");
   });
 
@@ -531,8 +533,7 @@ describe("a sibling's pieces inside a clip's span", () => {
       ["101|1", "101|1", "102|1", "103|1"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
   });
 
   // The 6 cuts the front off the second 4, which landed inside the 16. What is
@@ -581,7 +582,6 @@ describe("a sibling's pieces inside a clip's span", () => {
       arrangementLength: "8bar,6bar,2bar,2bar",
     })) as ClipResult[];
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectBuried(result[0]);
   });
 });

@@ -4,21 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
-
-/**
- * @param source - Transform string expected to fail
- * @returns The error message it fails with
- */
-function errorFor(source: string): string {
-  try {
-    tryParseTransform(source, 4, 4);
-  } catch (error) {
-    return (error as Error).message;
-  }
-
-  throw new Error(`expected "${source}" to fail`);
-}
+import { errorFor } from "#src/notation/transform/parser/tests/transform-syntax-error-test-helpers.ts";
 
 // The hints read the failing line the way the grammar does: `#` starts a
 // comment anywhere, except as a sharp in a pitch (`C#3`).
