@@ -107,8 +107,8 @@ async function readNotes(clipId: string): Promise<ReadClipResult> {
 async function updateClip(
   clipId: string,
   args: Record<string, unknown>,
-): Promise<{ noteCount?: number }> {
-  const result = parseToolResult<{ noteCount?: number }>(
+): Promise<{ noteCount?: number; detail?: string }> {
+  const result = parseToolResult<{ noteCount?: number; detail?: string }>(
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { id: clipId, ...args },
@@ -190,5 +190,13 @@ describe("muted notes", () => {
       expect.objectContaining({ mute: 0, start_time: 2 }),
     ]);
     expect((await readNotes(clipId)).mutedNotes).toBeUndefined();
+  });
+
+  it("are not counted as notes outside the region", async () => {
+    // G3 (beat 4) and the muted E3 (beat 3) both fall past a 2-beat region.
+    const clipId = await createClipWithMutedNote(5);
+    const result = await updateClip(clipId, { length: "n/2", notes: "A3 1|1" });
+
+    expect(result.detail).toBe("1 note is outside the region and won't play");
   });
 });

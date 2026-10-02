@@ -33,14 +33,24 @@ export function getClipNoteCount(clip: LiveAPI): number {
  * @returns The scan window's notes, split by mute
  */
 export function readClipNotes(clip: LiveAPI): ClipNotes {
-  const visible: Record<string, unknown>[] = [];
-  const muted: Record<string, unknown>[] = [];
+  return splitByMute(readAllClipNotes(clip));
+}
 
-  for (const note of readAllClipNotes(clip)) {
-    ((note.mute as number) > 0 ? muted : visible).push(note);
-  }
-
-  return { visible, muted };
+/**
+ * Read the visible (unmuted) notes starting in a span. Any count of notes the
+ * model can see wants this, not {@link readClipNotesInSpan}: muted notes don't
+ * count.
+ * @param clip - LiveAPI clip object
+ * @param fromTime - Span start in beats
+ * @param timeSpan - Span length in beats
+ * @returns Raw visible note objects, or [] when the span holds none
+ */
+export function readVisibleClipNotesInSpan(
+  clip: LiveAPI,
+  fromTime: number,
+  timeSpan: number,
+): Record<string, unknown>[] {
+  return splitByMute(readClipNotesInSpan(clip, fromTime, timeSpan)).visible;
 }
 
 /**
@@ -119,6 +129,22 @@ export function rawNotesToCopiedNotes(
 }
 
 // --- Private helpers ---
+
+/**
+ * Split raw notes by their mute flag.
+ * @param notes - Raw note objects from get_notes_extended
+ * @returns The notes split into visible and muted
+ */
+function splitByMute(notes: Record<string, unknown>[]): ClipNotes {
+  const visible: Record<string, unknown>[] = [];
+  const muted: Record<string, unknown>[] = [];
+
+  for (const note of notes) {
+    ((note.mute as number) > 0 ? muted : visible).push(note);
+  }
+
+  return { visible, muted };
+}
 
 /**
  * The NoteEvent fields of one raw note.

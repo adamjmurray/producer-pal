@@ -36,11 +36,13 @@ const PLAIN_8: Region = { ...LOOPING_8, looping: 0 };
  * @param mocks - The update-clip mocks
  * @param region - The region the clip starts with
  * @param starts - Start beats of the notes the clip holds
+ * @param mutedStarts - Start beats of muted notes the clip also holds
  */
 function setupClip(
   mocks: UpdateClipMocks,
   region: Region,
   starts: number[],
+  mutedStarts: number[] = [],
 ): void {
   const state: Record<string, number> = {
     ...region,
@@ -49,6 +51,7 @@ function setupClip(
     signature_denominator: 4,
   };
   let held = starts;
+  let heldMuted = mutedStarts;
 
   setupMidiClipMock(mocks.clip123, {});
   mocks.clip123.get.mockImplementation((prop: string) => [
@@ -68,27 +71,42 @@ function setupClip(
 
       if (method === "get_notes_extended") {
         return JSON.stringify({
-          notes: held.filter(inWindow).map((start_time) => ({
-            pitch: 60,
-            start_time,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-            mute: 0,
-            release_velocity: 0,
-          })),
+          notes: [
+            ...held.map((start_time) => ({ start_time, mute: 0 })),
+            ...heldMuted.map((start_time) => ({ start_time, mute: 1 })),
+          ]
+            .filter((note) => inWindow(note.start_time))
+            .map((note) => ({
+              pitch: note.mute ? 61 : 60,
+              duration: 1,
+              velocity: 100,
+              probability: 1,
+              velocity_deviation: 0,
+              release_velocity: 0,
+              ...note,
+            })),
         });
       }
 
       if (method === "remove_notes_extended") {
         held = held.filter((beat) => !inWindow(beat));
+        heldMuted = heldMuted.filter((beat) => !inWindow(beat));
       }
 
       if (method === "add_new_notes") {
-        const { notes } = args[0] as { notes: { start_time: number }[] };
+        const { notes } = args[0] as {
+          notes: { start_time: number; mute?: number }[];
+        };
+        const isMuted = (n: { mute?: number }): boolean => (n.mute ?? 0) > 0;
 
-        held = [...held, ...notes.map((n) => n.start_time)];
+        held = [
+          ...held,
+          ...notes.filter((n) => !isMuted(n)).map((n) => n.start_time),
+        ];
+        heldMuted = [
+          ...heldMuted,
+          ...notes.filter(isMuted).map((n) => n.start_time),
+        ];
       }
 
       return {};
@@ -145,6 +163,34 @@ describe("updateClip - notes outside the region", () => {
     const result = await updateClip({
       id: "123",
       looping: false,
+      notes: "C3 1|1",
+    });
+
+    expect(result).not.toHaveProperty("detail");
+  });
+
+  it("doesn't count muted notes outside the region", async () => {
+    setupClip(mocks, LOOPING_8, [0, 5], [6, 7]);
+
+    const result = await updateClip({
+      id: "123",
+      length: "1bar",
+      notes: "C3 1|1",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "1 note is outside the region and won't play",
+      }),
+    );
+  });
+
+  it("says nothing when only muted notes lie outside the region", async () => {
+    setupClip(mocks, LOOPING_8, [0], [5]);
+
+    const result = await updateClip({
+      id: "123",
+      length: "1bar",
       notes: "C3 1|1",
     });
 

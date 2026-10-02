@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readClipNotesInSpan } from "#src/tools/shared/clip/clip-notes.ts";
+import { readVisibleClipNotesInSpan } from "#src/tools/shared/clip/clip-notes.ts";
 import { hasNoteEdits } from "./note-transforms.ts";
 import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
 
@@ -27,6 +27,7 @@ interface RegionNoteEdit {
 
 /**
  * Say on the clip's entry how many notes lie outside its region and won't play.
+ * Muted notes are left out of the count, as in every note count.
  * Checked after the call's writes, only when the call may move the region AND
  * edits notes: then the notes the model sees and the ones that play can differ.
  * @param edit - What the call sent, and where to say what it finds
@@ -60,7 +61,7 @@ export function reportNotesOutsideRegion(
     ? Math.min(startMarker, clip.getProperty("loop_start") as number)
     : startMarker;
   const to = clip.getProperty(looping ? "loop_end" : "end_marker") as number;
-  const count = readClipNotesInSpan(
+  const count = readVisibleClipNotesInSpan(
     clip,
     ALL_NOTES_FROM,
     ALL_NOTES_SPAN,
