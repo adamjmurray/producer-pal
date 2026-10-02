@@ -207,6 +207,37 @@ describe("take lanes as track-tool targets", () => {
     expect(track.takeLaneCount).toBe(3);
   });
 
+  it("refuses a lone lane the call asked nothing of it can take", async () => {
+    await updateTrack<UpdateTakeLaneResult>({
+      path: `t${EMPTY_MIDI_TRACK}/l+`,
+      name: "Take A",
+    });
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/l0`, gainDb: -3 },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "a take lane takes only name; ignored gainDb",
+    );
+
+    // In a list the same lane holds its slot as a skip
+    const skipped = await updateTrack<UpdateTakeLaneResult[]>({
+      path: `t${EMPTY_MIDI_TRACK}/l0,t${EMPTY_MIDI_TRACK}/l0`,
+      gainDb: -3,
+    });
+
+    expect(skipped).toStrictEqual(
+      [0, 1].map(() => ({
+        path: `t${EMPTY_MIDI_TRACK}/l0`,
+        ok: false,
+        detail: "a take lane takes only name; ignored gainDb",
+      })),
+    );
+  });
+
   it("refuses the whole call when the lanes would pass the cap", async () => {
     const refused = await ctx.client!.callTool({
       name: "ppal-update-track",

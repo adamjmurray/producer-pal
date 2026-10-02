@@ -39,7 +39,6 @@ export interface UpdateTakeLaneResult {
   /** The lanes this call made ("l3", or "l1-l3" when it filled the gap below
    * the one named), when it made any */
   created?: string;
-  ok?: false;
   detail?: string;
 }
 
@@ -94,7 +93,8 @@ export function paramsTakeLanesIgnore(args: object): string[] {
  * @param name - The name for it, or undefined to leave it alone
  * @param ignored - The params this lane can't use, from {@link paramsTakeLanesIgnore}
  * @returns The lane's entry in the result
- * @throws Error when the path names no track, or one with no take lanes
+ * @throws Error when the path names no track, or one with no take lanes, or
+ *   when the call asked nothing of the lane that it can take
  */
 export function updateTakeLane(
   spec: TakeLaneTargetSpec,
@@ -110,11 +110,14 @@ export function updateTakeLane(
   const created =
     laneIndex >= before ? createdRange("l", before, laneIndex) : null;
 
-  lane.setAll({ name });
+  // A lane the call made or named still got what it could give it, so the
+  // ignored params are a note on a hit. With nothing written, the target was
+  // refused: a lone one throws, and in a list it is a skip.
+  if (created == null && name == null && ignored.length > 0) {
+    throw new Error(ignoredParamsDetail(ignored));
+  }
 
-  // The lane still got what the call could give it when it was created or
-  // named, so the ignored params are a note on a hit rather than a skip.
-  const wrote = created != null || name != null;
+  lane.setAll({ name });
 
   return {
     id: lane.id,
@@ -123,16 +126,20 @@ export function updateTakeLane(
     // just written, or the one it kept.
     name: name ?? lane.getName(),
     ...(created == null ? {} : { created }),
-    ...(ignored.length === 0
-      ? {}
-      : {
-          ...(wrote ? {} : { ok: false as const }),
-          detail: `a take lane takes only name; ignored ${ignored.join(", ")}`,
-        }),
+    ...(ignored.length === 0 ? {} : { detail: ignoredParamsDetail(ignored) }),
   };
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * What a lane says about the params it can't use.
+ * @param ignored - The ignored params, in the caller's spelling
+ * @returns The detail
+ */
+function ignoredParamsDetail(ignored: string[]): string {
+  return `a take lane takes only name; ignored ${ignored.join(", ")}`;
+}
 
 /**
  * The lane a path entry names.
