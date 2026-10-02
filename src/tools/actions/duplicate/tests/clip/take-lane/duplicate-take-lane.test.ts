@@ -159,7 +159,9 @@ describe("duplicate take lane", () => {
 
   it("says on the copy's entry that arrangementLength was ignored, with no warning", async () => {
     registerLiveSet();
-    registerArrangementSource(true, [SOURCE_NOTE], {});
+    registerArrangementSource(true, [SOURCE_NOTE], {
+      extraProps: { end_time: 4 },
+    });
     registerTakeLaneTrack({ initialLanes: 0 });
 
     const result = await duplicate({
@@ -174,7 +176,7 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         detail: expect.stringContaining(
-          "arrangementLength ignored: a re-created copy keeps the source clip's arrangement length",
+          "arrangementLength ignored: the copy keeps the source's arrangement length",
         ),
       }),
     );

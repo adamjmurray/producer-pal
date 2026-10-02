@@ -19,6 +19,10 @@ import {
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import {
+  arrangementSpan,
+  keptSpan,
+} from "#src/tools/shared/clip/arrangement-span.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 
 /** What one copy attempt produced: the clip (with a detail when it isn't quite
@@ -152,6 +156,8 @@ function recreateCopy(
   // Seeded with what a re-create is known to cost this source, then added to
   // with anything the copy itself turned out to lose.
   const losses = recreatedClipLosses(options.object);
+  // Read before the create, which can truncate the source itself.
+  const sourceSpan = arrangementSpan(options.object);
 
   try {
     const clip = recreateClip(
@@ -166,7 +172,10 @@ function recreateCopy(
     return {
       copy: getMinimalClipInfo(
         clip,
-        joinDetails([landedNote(kind, losses), ignoredLength(options)]),
+        joinDetails([
+          landedNote(kind, losses),
+          ignoredLength(options, keptSpan(clip, sourceSpan)),
+        ]),
       ),
     };
   } catch (error) {
@@ -178,7 +187,7 @@ function recreateCopy(
           error.partialClip,
           joinDetails([
             `the ${kind} copy is incomplete (${error.message})`,
-            ignoredLength(options),
+            ignoredLength(options, keptSpan(error.partialClip, sourceSpan)),
           ]),
         ),
       };
@@ -208,13 +217,22 @@ function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
 }
 
 /**
- * What a re-created copy says about an arrangementLength it was sent: it is
- * rebuilt at the source clip's length.
+ * The note for an arrangementLength a re-created copy was sent. It is never
+ * used: the copy is rebuilt from the source, not resized. The kept-length claim
+ * is made only when the copy's span was read back and matched.
  * @param options - Everything the copy needs
+ * @param keptLength - Whether the copy's span was verified to match the source's
  * @returns The note for the copy's entry, or undefined when none was sent
  */
-function ignoredLength(options: CopyOptions): string | undefined {
-  return options.arrangementLength == null
-    ? undefined
-    : "arrangementLength ignored: a re-created copy keeps the source clip's arrangement length";
+function ignoredLength(
+  options: CopyOptions,
+  keptLength: boolean,
+): string | undefined {
+  if (options.arrangementLength == null) {
+    return undefined;
+  }
+
+  return keptLength
+    ? "arrangementLength ignored: the copy keeps the source's arrangement length"
+    : "arrangementLength ignored: a re-created copy isn't resized";
 }

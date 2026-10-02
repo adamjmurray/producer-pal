@@ -412,8 +412,10 @@ function copySpans(
 }
 
 /**
- * How long one arrangement copy is. A re-created copy — onto a take lane, or
- * off one — ignores arrangementLength and takes the source's own length.
+ * How long one arrangement copy is, as predicted. A re-created copy — onto a
+ * take lane, or off one — ignores arrangementLength, so it is taken as the
+ * source's own length. That is exact for MIDI; an audio copy gets its sample's
+ * length, which can't be known before it is made.
  * @param clip - The source clip
  * @param target - Where the copy lands
  * @param length - This copy's arrangementLength, if the call gave one
