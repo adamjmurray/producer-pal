@@ -71,7 +71,7 @@
     "knowledge-base": "node scripts/build-and-release/generate-knowledge-base.ts",
     "kb": "npm run knowledge-base",
     "dxt:clean": "rm -f claude-desktop-extension/*.mcpb claude-desktop-extension/*.js claude-desktop-extension/manifest.json claude-desktop-extension/LICENSE",
-    "dxt:build": "node scripts/build-and-release/build-claude-desktop-extension.ts",
+    "dxt:build": "node scripts/build-and-release/desktop-extension/build-claude-desktop-extension.ts",
     "version:bump": "npm run version:bump:patch",
     "version:bump:patch": "node scripts/build-and-release/bump-version.ts patch",
     "version:bump:minor": "node scripts/build-and-release/bump-version.ts minor",

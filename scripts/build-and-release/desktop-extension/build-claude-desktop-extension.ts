@@ -1,24 +1,19 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
-import {
-  type CallLiveApiFunction,
-  createMcpServer,
-} from "../../src/mcp-server/create-mcp-server.ts";
+import { getManifestTools } from "./desktop-extension-tools.ts";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
 
-const server = createMcpServer(null as unknown as CallLiveApiFunction);
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "../..");
+const rootDir = join(__dirname, "../../..");
 const desktopExtensionDir = join(rootDir, "claude-desktop-extension");
 
 console.log("Building MCP bundle...");
@@ -32,35 +27,11 @@ const rootPackageJson = JSON.parse(
 const version = rootPackageJson.version;
 
 // Generate tools from MCP server (excluding development-only ppal-live-api)
-const tools: { name: string; description: string }[] = [];
-
-interface RegisteredTool {
-  name: string;
-  description: string;
-  annotations?: { title?: string };
-}
-
-const registeredTools = (
-  server as unknown as { _registeredTools: Record<string, RegisteredTool> }
-)._registeredTools;
-
-for (const [name, toolInfo] of Object.entries(registeredTools)) {
-  const shortDescription = toolInfo.description.split("\n")[0] ?? "";
-
-  tools.push({
-    name: getDisplayName(toolInfo) || name,
-    description: shortDescription,
-  });
-}
+const tools = getManifestTools();
 
 // Read template and replace placeholders
 const template = readFileSync(
-  join(
-    __dirname,
-    "../..",
-    "claude-desktop-extension",
-    "manifest.template.json",
-  ),
+  join(rootDir, "claude-desktop-extension", "manifest.template.json"),
   "utf8",
 );
 const manifest = template
