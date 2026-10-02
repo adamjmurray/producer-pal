@@ -34,10 +34,11 @@ switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 
 ## Comma-separated params pair one way
 
-When a param varies per item, use `src/tools/shared/validation/list-pairing.ts`:
-one value covers every item, or exactly N pair 1:1 in order, and no entry may be
-empty. Anything else is refused before any work runs. Nothing cycles — including
-`color`, which used to (ADR-0031).
+When a param varies per item, use
+`src/tools/shared/validation/lists/list-pairing.ts`: one value covers every
+item, or exactly N pair 1:1 in order, and no entry may be empty. Anything else
+is refused before any work runs. Nothing cycles — including `color`, which used
+to (ADR-0031).
 
 `pairValues` / `valueForIndex` for values, `pairExact` for a destination that
 holds one item — broadcasting a lone clip slot to three clips would destroy two

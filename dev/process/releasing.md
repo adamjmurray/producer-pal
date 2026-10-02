@@ -78,9 +78,10 @@ The bump script writes the version to:
 
 1. `src/shared/config.ts` — the version the runtime reports (Max for Live device
    UI / MCP server), and the one the build itself uses
-2. `npm/package.json` — the `producer-pal` npm module's version
-3. `package.json` and `claude-desktop-extension/package.json`
-4. The `version` **and** `packages[""].version` fields of all three lockfiles
+2. `remote-script/Producer_Pal/version.py` — the remote script's version
+3. `npm/package.json` — the `producer-pal` npm module's version
+4. `package.json` and `claude-desktop-extension/package.json`
+5. The `version` **and** `packages[""].version` fields of all three lockfiles
    (npm keeps it twice per lockfile, and a hand-edit reliably misses one)
 
 `claude-desktop-extension/manifest.json` also carries a version — the one Claude

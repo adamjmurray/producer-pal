@@ -59,10 +59,10 @@ default.
 
 **Response Model Tracking:**
 
-After each stream completes, `ai-sdk-client.ts` captures the `modelId` from the
-API response metadata and stores it on the assistant `ChatMessage` as
-`responseModel`. This persists to IndexedDB automatically (optional field, no
-migration needed).
+After each stream completes, `ChatSdkClient` (`chat/sdk/client.ts`) captures the
+`modelId` from the API response metadata and stores it on the assistant
+`ChatMessage` as `responseModel`. This persists to IndexedDB automatically
+(optional field, no migration needed).
 
 When the response model differs meaningfully from the requested model — after
 normalizing org prefixes and date suffixes — `MessageList.tsx` shows a

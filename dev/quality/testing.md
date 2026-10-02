@@ -30,7 +30,7 @@ step.
   standard 375 / 115.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
-  split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
+  split — most of its files are tests, so `config/.jscpd-e2e.json` covers the
   whole tree at one threshold. Markdown is out of scope for all of them:
   `config/.jscpd-docs.json` scans the repo's prose in one pass, so a doc is
   measured once and never against a code threshold.

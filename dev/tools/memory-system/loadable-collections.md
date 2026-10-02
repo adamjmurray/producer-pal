@@ -29,7 +29,7 @@ built generic so a second collection is a thin binding, not a rewrite:
   (`registerCollectionRoutes`) is a generic GET list / PUT create-or-update
   (with a create-only 409 guard) / DELETE per collection, origin-gated on writes
   exactly like `POST /config`.
-- **Webui**: `webui/src/hooks/context/use-doc-collection.ts`
+- **Webui**: `webui/src/hooks/context/helpers/use-doc-collection.ts`
   (`useDocCollection`) and `webui/src/components/context/collection/` (
   `CollectionScreen` + editor/list parts) are the generic two-pane manager
   (list + per-item editor + polling + save/refresh race guard); a collection's

@@ -80,10 +80,13 @@ named for nothing, and the cap only goes down.
 
 ## Imports
 
-Always include `.ts` extensions matching the actual file type:
+In `src/`, always include `.ts` extensions. In `webui/`, never. To cross between
+top-level modules use the `#src/`, `#webui/`, `#evals/` aliases; a relative
+import must stay inside its own module (`webui/` bans `..` entirely). Enforced
+by `src/test/meta/import-restrictions.test.ts`.
 
 ```typescript
-import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
+import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
 ```
 
 Peggy-generated parsers are wrapped in TypeScript files (e.g.,
@@ -117,15 +120,14 @@ for (let i = 0; i < tracks.length; i++) {
 
 ## Tools
 
-Always pass args in `src/main.ts`:
+Tool handlers are dispatched in `src/live-api-adapter/live-api-adapter.ts`. Each
+takes `(args, ctx)`:
 
-```javascript
-tools: {
-  "ppal-create-clip": (args) => createClip(args),
-}
+```typescript
+"ppal-create-clip": (args, ctx) => createClip(args as any, ctx),
 ```
 
-Zod schemas: primitives/enums only. For lists, use comma-separated strings.
+Pick each param's Zod shape per `dev/tools/tool-schemas.md`.
 
 ## Live API
 

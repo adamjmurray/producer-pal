@@ -70,7 +70,7 @@ webui/
     ├── hooks/              # Custom React hooks (kebab-case)
     │   ├── chat/
     │   │   ├── use-chat.ts       # Core chat logic, streaming, retry
-    │   │   └── ai-sdk-adapter.ts # Provider config + error handling
+    │   │   └── adapter.ts        # Provider config + error handling
     │   ├── voice/
     │   │   ├── use-voice-mode-state.ts  # Orchestrates the voice hook graph
     │   │   ├── use-voice-session.ts     # OpenAI Realtime (WebRTC) backend

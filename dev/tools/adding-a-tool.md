@@ -39,7 +39,8 @@ them — this list is so you don't discover that one at a time.
 6. **Document it** in [docs/features/tools.md](../../docs/features/tools.md) — a
    hand-written section plus two generated partials: the schema table
    (`npm run docs:schemas`) and an example call (`npm run docs:examples`). The
-   tool count in the page's frontmatter description is hand-written too.
+   tool counts in `docs/features.md`, `docs/guide/optimizing.md` and
+   `docs/guide/chat-ui.md` are hand-written and untested: update them too.
 
 7. **Add an example call** to `TOOL_EXAMPLES`
    ([example-live-set/calls.ts](../../scripts/build-and-release/tool-reference/example-live-set/calls.ts)),

@@ -70,7 +70,7 @@ npm run fix  # Runs format + lint:fix
 Code quality checks must always pass:
 
 ```
-npm run check  # Runs all checks: lint + typecheck + format check + duplication + tests
+npm run check  # Runs all checks: lint + typecheck + format check + TypeScript-only + duplication + tests with coverage + schema size
 ```
 
 **Recommended workflow**: Run `npm run fix` before `npm run check` to
@@ -80,7 +80,7 @@ Or run checks individually:
 
 ```
 npm run lint
-npm run typecheck  # UI code only
+npm run typecheck  # All source trees
 npm test
 npm run format:check
 npm run duplication
@@ -172,7 +172,7 @@ ranges) to mitigate supply chain attacks. This is enforced at multiple levels:
 Dependabot cooldowns add a waiting period before PRs are created for newly
 released versions:
 
-- **14-day cooldown** for minor and patch updates
+- **7-day cooldown** for minor and patch updates
 - **30-day cooldown** for major version bumps
 - Security updates bypass cooldowns
 
@@ -218,7 +218,7 @@ Quick commands:
   Ableton Live)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
-**Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you
+**Important**: After changing tool descriptions in `src/tools/**/*.def.ts`, you
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
