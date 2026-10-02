@@ -757,7 +757,7 @@ describe("take lanes", () => {
 
     expect(isToolError(plus)).toBe(true);
     expect(getToolErrorMessage(plus)).toContain(
-      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+      '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"',
     );
   });
 

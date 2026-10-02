@@ -148,7 +148,7 @@ describe("updateTrack routing by name", () => {
       id: "123",
       path: "t0",
       detail:
-        '2 output_routing_type options are named "Bass"; used the first — ' +
+        '2 outputRoutingType options are named "Bass"; used the first — ' +
         "send the identifier (30, 31) to pick another",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -158,7 +158,7 @@ describe("updateTrack routing by name", () => {
     // The routing was the whole call, so nothing landed on the lone track.
     expect(() =>
       updateTrack({ id: "123", outputRoutingType: "Nowhere" }),
-    ).toThrow('the track has no output_routing_type named "Nowhere"');
+    ).toThrow('the track has no outputRoutingType named "Nowhere"');
 
     expect(track.set).not.toHaveBeenCalledWith(
       "output_routing_type",

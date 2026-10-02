@@ -240,3 +240,16 @@ describe("a create Live refuses over an existing clip", () => {
     );
   });
 });
+
+describe("an audio clip past the last arrangement position", () => {
+  it("is refused in bar|beat, not Ableton beats", async () => {
+    expect(
+      refusal(
+        await create({
+          path: `t${AUDIO_TRACK}[999999|1]`,
+          sampleFile: SAMPLE_FILE,
+        }),
+      ),
+    ).toContain("arrangementStart is past the last position Live allows (");
+  });
+});

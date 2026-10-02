@@ -359,7 +359,9 @@ describe("createClip - audio clips", () => {
           arrangementStart: "394202|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).rejects.toThrow("exceeds");
+      ).rejects.toThrow(
+        "arrangementStart is past the last position Live allows (394201|1)",
+      );
     });
 
     it("should throw error when track does not exist", async () => {
@@ -540,7 +542,9 @@ describe("createAudioArrangementClip (unit)", () => {
         MAX_ARRANGEMENT_POSITION_BEATS + 1,
         "/samples/loop.wav",
       ),
-    ).toThrow(/exceeds maximum/);
+    ).toThrow(
+      "arrangementStart is past the last position Live allows (394201|1)",
+    );
   });
 
   it("does NOT throw at exactly the maximum position (boundary: > not >=)", () => {

@@ -356,6 +356,14 @@ function parseTail(
 
   const first = tail[0] as string;
 
+  if (first === NEW_SCENE) {
+    throw pathError(
+      label,
+      input,
+      `${NEW_OBJECT_ADVICE["new-scene"]}; a clip slot is "t<track>/s<scene>" (e.g. "t0/s1")`,
+    );
+  }
+
   if (isTrackChild(first)) {
     return parseTrackChild(root, tail, label, input);
   }

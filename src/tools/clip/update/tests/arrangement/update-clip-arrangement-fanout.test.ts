@@ -240,7 +240,8 @@ describe("updateClip - a toPath coordinate", () => {
         ok: false,
         detail:
           'not moved: invalid toPath "t3/l+[5|1]" - "l+" takes no song ' +
-          'position; name the lane by index, as "t<track>/l<lane>"',
+          "position, and ppal-update-track appends lanes; name an existing lane " +
+          'by index, as "t<track>/l<lane>"',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

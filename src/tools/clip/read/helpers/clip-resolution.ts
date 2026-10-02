@@ -222,7 +222,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   }
 
   if (slot != null) {
-    const position = parseSlot(slot);
+    const position = parseSlot(slot, "slot");
 
     assertClipIdAtSlot(clipId, position, "slot");
 

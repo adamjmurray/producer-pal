@@ -781,7 +781,7 @@ badDeleteInExpression
 // than move the token — the same giving-up unknownFunction was added to stop.
 badVelocityShorthandInExpression
   = "v" min:unsignedInt "-" max:unsignedInt {
-    throw new Error(`v${min}-${max} is a shorthand, not a value — write it on its own line with the selector, e.g. "C1: v${min}-${max}", not "velocity = v${min}-${max}". It sets velocity and velocity_deviation together.`);
+    throw new Error(`v${min}-${max} is a shorthand, not a value — write it on its own line with the selector, e.g. "C1: v${min}-${max}", not "velocity = v${min}-${max}". It sets velocity and deviation together.`);
   }
   / "v" value:unsignedInt {
     throw new Error(`v${value} is a shorthand, not a value — write the bare number ("velocity = ${value}") or the shorthand on its own line ("C1: v${value}").`);

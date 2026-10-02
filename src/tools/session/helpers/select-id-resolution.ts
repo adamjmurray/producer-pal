@@ -162,7 +162,7 @@ export function resolveIdParam(id: string): ResolveIdResult {
 }
 
 /**
- * Parse a clipSlot string into trackIndex and sceneIndex
+ * Parse a slot string into trackIndex and sceneIndex
  * @param input - Slot string (e.g. "0/3")
  * @returns Parsed slot position
  */
@@ -170,7 +170,7 @@ export function parseClipSlot(input: string): {
   trackIndex: number;
   sceneIndex: number;
 } {
-  return parseSlot(input);
+  return parseSlot(input, "slot");
 }
 
 interface AutoDetailViewOptions {

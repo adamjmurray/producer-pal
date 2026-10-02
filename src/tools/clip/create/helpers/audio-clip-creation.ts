@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createInSessionSlot,
@@ -68,7 +69,7 @@ export function createAudioArrangementClip(
     arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS
   ) {
     throw new Error(
-      `arrangement position ${arrangementStartBeats} exceeds maximum allowed value of ${MAX_ARRANGEMENT_POSITION_BEATS}`,
+      `arrangementStart is past the last position Live allows (${maxArrangementBarBeat()})`,
     );
   }
 
@@ -89,4 +90,18 @@ export function createAudioArrangementClip(
   );
 
   return { clip, arrangementStartBeats };
+}
+
+/**
+ * The last arrangement position Live allows, as a bar|beat in the song's meter.
+ * @returns The position, e.g. "394201|1" in 4/4
+ */
+function maxArrangementBarBeat(): string {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  return abletonBeatsToBarBeat(
+    MAX_ARRANGEMENT_POSITION_BEATS,
+    liveSet.getProperty("signature_numerator") as number,
+    liveSet.getProperty("signature_denominator") as number,
+  );
 }

@@ -62,7 +62,7 @@ export function arrangementPosition(
       label,
       input,
       lane.kind === "new-take-lane"
-        ? '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"'
+        ? '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"'
         : `a song position needs an arrangement lane; expected "t<track>", ` +
             `"t<track>/l<lane>", or "[${position}]" on its own`,
     );

@@ -326,7 +326,7 @@ describe("createClip take lane paths", () => {
     await expect(
       createClip({ path: "t0/l+[1|1]", notes: "C3" }),
     ).rejects.toThrow(
-      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+      '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"',
     );
     await expect(createClip({ path: "t0/l+", notes: "C3" })).rejects.toThrow(
       '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do',
