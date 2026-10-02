@@ -486,6 +486,15 @@ of `overwritten`.
 
 `ppal-select`'s result is unchanged: what it reports is the selection it made.
 
+**`ppal-duplicate` keeps every target when one fails.** A failure at one
+position, track, lane or slot no longer aborts the call or loses the copies that
+landed. A scene copied to the arrangement where no clip landed is
+`{path: "[5|1]", ok: false, detail}` (a lone one throws), and where only some
+tracks landed, the position's `detail` names each that didn't. A scene with no
+clips answers `{clips: [], detail: "the scene has no clips"}` instead of a bare
+`{clips: []}`. A copy that exists but couldn't be finished (say, its name didn't
+apply) keeps its entry with a `detail` rather than becoming a skip.
+
 **A clip destination past the last scene makes the scenes up to it.**
 `ppal-create-clip` always did; `ppal-update-clip`'s `toPath` and
 `ppal-duplicate`'s `toPath` used to refuse one ("destination t1/s20 does not
