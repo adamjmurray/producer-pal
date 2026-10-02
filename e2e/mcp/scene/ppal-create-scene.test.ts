@@ -306,6 +306,19 @@ describe("ppal-create-scene", () => {
     });
   });
 
+  it("tells a capture caller that the deprecated count does nothing", async () => {
+    const { warnings } = parseToolResultWithWarnings<CaptureSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { capture: true, count: 2, name: "Counted Capture" },
+      }),
+    );
+
+    expect(warnings.join("\n")).toContain(
+      "Capture makes one scene and ignores count",
+    );
+  });
+
   /**
    * The Set's scenes in order.
    * @returns The scenes, first to last

@@ -30,7 +30,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where they go: 's+' appends, 's<index>' inserts there and shifts the rest down (s0 is the first scene, so a user's \"scene 3\" is s2). Comma-separated for several, one entry per scene, in order (e.g. 's+,s+' appends two, 's2,s2' inserts two at 2). Required when capture=false, optional when capture=true",
+        "where they go: 's+' appends, 's<index>' inserts there and shifts the rest down (s0 is the first scene, so a user's \"scene 3\" is s2). Comma-separated for several, one entry per scene, in order (e.g. 's+,s+' appends two, 's2,s2' inserts two at 2). Required when capture=false. With capture=true it takes one entry, and with none the new scene goes after the selected scene",
       smallModel:
         "required: 's+' to append, or 's<index>' to insert there and shift the rest down (s0 is the first scene, so a user's \"scene 3\" is s2)",
     }),
@@ -43,7 +43,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
       example: newScenePathFromCount,
-      note: "path names every scene, so repeat it once per scene instead of counting",
+      note: "path names every scene, so repeat it once per scene instead of counting. Capture makes one scene and ignores count",
     }),
 
     capture: param(z.boolean().default(false), {
@@ -59,7 +59,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: "#RRGGBB",
     }),
     tempo: param(z.coerce.number().optional(), {
-      default: "BPM (-1 disables when capturing)",
+      default: "BPM (-1 disables)",
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {

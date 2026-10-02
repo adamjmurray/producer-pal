@@ -319,4 +319,13 @@ describe("createScene sceneIndex and count deprecation examples", () => {
     expect(warnings[0]).toContain('(e.g. path: "s2")');
     expect(warnings[1]).not.toContain("e.g.");
   });
+
+  it("tells a capture caller that count does nothing", () => {
+    const [warning] = hiddenParamWarnings(["count"], hidden, {
+      count: 3,
+      capture: true,
+    });
+
+    expect(warning).toContain("Capture makes one scene and ignores count");
+  });
 });
