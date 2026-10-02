@@ -2,8 +2,8 @@
 
 ## Next
 
-- Automation: read and draw automation envelopes, so the AI can shape filter
-  sweeps, volume fades, and other changes over time.
+- Arrangement automation: read and draw automation on the track's timeline, so
+  the AI can shape filter sweeps, volume fades, and other changes across a song.
 - Copy all parameters from one device to another (e.g. apply the EQ curve from
   track A to tracks B and C)
 - Improved undo/redo support

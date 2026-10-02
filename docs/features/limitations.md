@@ -2,9 +2,8 @@
 title: Limitations
 description:
   What Producer Pal can't do, and the workarounds. No control over VST/AU
-  plug-in internals, no editing clip envelopes or automation, no audio analysis
-  or synthesis, no visibility into arrangement time signature changes, and one
-  drum pitch map per track.
+  plug-in internals, no audio analysis or synthesis, no visibility into
+  arrangement time signature changes, and one drum pitch map per track.
 ---
 
 # Limitations
@@ -45,13 +44,7 @@ them works fully: no mapping step, nothing to keep in sync.
 
 :::
 
-## Clip Envelopes and Automation Can't Be Edited
-
-Producer Pal cannot read, create, or edit **clip envelopes**, the curves drawn
-inside a clip for pitch bend, MIDI CC, or a device or mixer parameter. Track and
-device parameters like volume, pan, sends, and knobs can be set to static
-values, but not shaped over time. The same goes for **arrangement automation**,
-the curves drawn on the track's timeline rather than inside a clip.
+## Some Moves Drop Clip Envelopes
 
 Envelopes you already have are safe through most edits: they live in the clip,
 so they travel with it. The exception is any move that has to **re-create** the

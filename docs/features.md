@@ -62,7 +62,7 @@ the loop.
 Every tool, with its full parameter list:
 **[Tool Reference →](/features/tools)**
 
-What it can't do (automation, VST/AU plug-in internals, audio analysis):
+What it can't do (VST/AU plug-in internals, audio analysis):
 **[Limitations →](/features/limitations)**
 
 ## MIDI Notation {#custom-music-notation}
