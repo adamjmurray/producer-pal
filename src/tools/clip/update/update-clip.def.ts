@@ -177,7 +177,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "clip automation (session clips only), one '<target>: <notation>' line per parameter, broadcast across the clips. " +
         "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
         "notation: bar|beat points in the clip meter, '~' ramping to the next and '>' holding then jumping, e.g. '1|1 0 ~ 3|1 0.8 > 4|1 0.2'. " +
-        "Values are raw, not display units (ppal-read-device gives each parameter's range; most are 0..1). " +
+        "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max; an out-of-range value is refused with the real range. Mixer volume: 0.85 = 0 dB. " +
         "Each line REPLACES that parameter's whole envelope; a line with nothing after the colon ('472:') clears it",
       smallModel: null,
     }),
