@@ -10,6 +10,7 @@ import {
   OLLAMA_MODELS,
   OPENAI_MODELS,
   OPENROUTER_MODELS,
+  VERCEL_MODELS,
 } from "#webui/lib/constants/models";
 
 export {
@@ -30,6 +31,7 @@ const ALL_MODELS = [
   ...OPENAI_MODELS,
   ...MISTRAL_MODELS,
   ...OPENROUTER_MODELS,
+  ...VERCEL_MODELS,
   ...OLLAMA_MODELS,
 ];
 

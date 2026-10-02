@@ -43,7 +43,7 @@ The UI connects to two external services:
 - **Testing**: Vitest + @testing-library/preact
 - **API Integration**:
   - `ai` + `@ai-sdk/*` - Vercel AI SDK for all providers (Anthropic, Google,
-    OpenAI, Mistral, OpenRouter, Ollama)
+    OpenAI, Mistral, OpenRouter, Vercel AI Gateway, Ollama)
   - `@modelcontextprotocol/sdk` - MCP client for tool access
 - **Markdown Rendering**: marked library
 

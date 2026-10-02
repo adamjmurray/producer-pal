@@ -36,7 +36,8 @@ This makes them suitable only for local QA testing, not automated CI.
 ## Test Files
 
 - `quick-connect.spec.ts` - Tests Quick Connect across multiple providers/models
-  (includes OpenRouter paid models; free models excluded due to rate limits)
+  (includes OpenRouter paid models; free models excluded due to rate limits, and
+  the Vercel AI Gateway models)
 
 ## Adding New Provider/Model Tests
 

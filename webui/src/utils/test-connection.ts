@@ -16,6 +16,7 @@ const CLOUD_PROVIDERS = new Set<Provider>([
   "openai",
   "mistral",
   "openrouter",
+  "vercel",
 ]);
 
 const TIMEOUT_MS = 10_000;
@@ -54,6 +55,12 @@ const CONFIG_BUILDERS: Record<Provider, ConfigBuilder> = {
 
   openrouter: (apiKey) => ({
     url: "https://openrouter.ai/api/v1/auth/key",
+    headers: { Authorization: `Bearer ${apiKey}` },
+  }),
+
+  // The models list is public, so check the key against an endpoint that needs it
+  vercel: (apiKey) => ({
+    url: "https://ai-gateway.vercel.sh/v1/credits",
     headers: { Authorization: `Bearer ${apiKey}` },
   }),
 

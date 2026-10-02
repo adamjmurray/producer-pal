@@ -125,6 +125,20 @@ export function isLegacyNonThinkingModel(model: string): boolean {
 }
 
 /**
+ * Checks if an Anthropic model runs adaptive thinking when `thinking` is
+ * omitted (Sonnet 5+), so "Off" must send `{type: "disabled"}` explicitly.
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if omitting `thinking` would still think
+ */
+export function isAdaptiveByDefaultModel(model: string): boolean {
+  return (
+    !isLegacyThinkingModel(model) &&
+    !isAlwaysOnThinkingModel(model) &&
+    !isLegacyNonThinkingModel(model)
+  );
+}
+
+/**
  * Maps thinking UI setting to Anthropic effort level for adaptive thinking.
  * @param {string} thinking - Thinking mode setting from UI
  * @returns {AnthropicEffort | undefined} - effort level or undefined for Off
