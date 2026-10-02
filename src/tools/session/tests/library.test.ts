@@ -250,7 +250,7 @@ describe("library tool — action dispatch", () => {
     });
 
     await expect(library({ query: "kick" })).rejects.toThrow(
-      "library.search failed: Live database not found",
+      "Live database not found",
     );
   });
 
@@ -272,7 +272,7 @@ describe("library tool — action dispatch", () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({ success: true });
 
     await expect(library({ action: "list-tags" })).rejects.toThrow(
-      "library.listTags failed",
+      "unknown error",
     );
   });
 });

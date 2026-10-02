@@ -458,7 +458,7 @@ async function callRoute<T>(route: string, routeArgs: object): Promise<T> {
   const response = await requestNode<T>(route, { ...routeArgs, liveVersion });
 
   if (!response.success || !response.result) {
-    throw new Error(`${route} failed: ${response.error ?? "unknown error"}`);
+    throw new Error(response.error ?? "unknown error");
   }
 
   return response.result;

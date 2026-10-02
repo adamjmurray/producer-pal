@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
+  getToolErrorMessage,
   parseToolResult,
   parseToolResultWithWarnings,
   setConfig,
@@ -242,6 +243,21 @@ describe("ppal-context (memory scope)", () => {
         );
       }
     }
+  });
+
+  it("refuses an unusable name without naming the internal route", async () => {
+    const message = getToolErrorMessage(
+      await callContextTool({
+        action: "write",
+        scope: "memory",
+        name: "!!!",
+        description: "e2e refused memory",
+        content: "never stored",
+      }),
+    );
+
+    expect(message).toContain("name must contain letters or digits");
+    expect(message).not.toContain("memory.remember");
   });
 });
 

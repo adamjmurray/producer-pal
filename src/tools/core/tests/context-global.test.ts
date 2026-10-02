@@ -47,7 +47,7 @@ describe("context - global scope", () => {
 
       await expect(
         context({ action: "read", scope: "global" }),
-      ).rejects.toThrow("globalContext.read failed: disk on fire");
+      ).rejects.toThrow("disk on fire");
     });
   });
 
@@ -108,7 +108,7 @@ describe("context - global scope", () => {
 
       await expect(
         context({ action: "write", scope: "global", content: "x" }),
-      ).rejects.toThrow("globalContext.write failed: permission denied");
+      ).rejects.toThrow("permission denied");
     });
   });
 

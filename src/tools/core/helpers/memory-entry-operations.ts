@@ -24,9 +24,7 @@ export async function handleReadMemoryEntry(
 /**
  * Create or overwrite an indexed memory entry, then re-derive the index. The
  * Node side owns slug validation and index regeneration. Backs scope:memory
- * `write` (a name'd entry upsert). The wire route is still named
- * `memory.remember` — an internal identifier left for the terminology sweep, so
- * it doesn't reach the AI.
+ * `write` (a name'd entry upsert). The route is still named `memory.remember`.
  *
  * @param args - The memory to store
  * @param args.name - Desired memory name (slugified Node-side)
@@ -60,8 +58,7 @@ export async function handleWriteMemoryEntry(args: {
 
 /**
  * Delete an indexed memory entry (if present), then re-derive the index. Backs
- * scope:memory `delete`. The wire route is still named `memory.forget` — an
- * internal identifier left for the terminology sweep.
+ * scope:memory `delete`. The route is still named `memory.forget`.
  *
  * @param name - The memory name/slug to delete
  * @returns Content result with the regenerated index
@@ -78,9 +75,8 @@ export async function handleDeleteMemoryEntry(
 
 /**
  * Read the derived memory index (already injected on connect; this is an
- * explicit refresh). Backs scope:memory `read` with no `name`. The wire route
- * is still named `memory.list` — an internal identifier left for the
- * terminology sweep.
+ * explicit refresh). Backs scope:memory `read` with no `name`. The route is
+ * still named `memory.list`.
  *
  * @returns Content result with the current index
  */

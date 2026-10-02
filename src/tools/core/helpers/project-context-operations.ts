@@ -335,7 +335,7 @@ export async function callNodeContentRoute(
   const response = await requestNode<ContentResult>(route, args);
 
   if (!response.success || !response.result) {
-    throw new Error(`${route} failed: ${response.error ?? "unknown error"}`);
+    throw new Error(response.error ?? "unknown error");
   }
 
   return response.result;
