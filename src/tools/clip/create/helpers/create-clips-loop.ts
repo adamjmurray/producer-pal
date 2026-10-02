@@ -9,11 +9,11 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { ignoredParamsNote } from "#src/tools/clip/helpers/ignored-params-note.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   type ArrangementTrack,
@@ -40,6 +40,7 @@ import {
 } from "./create-clip-destinations.ts";
 import { type ClipPlan } from "./clip-plans.ts";
 import { processClipIteration } from "./clip-iteration.ts";
+import { applyCodeToCreatedClip } from "./created-clip-code.ts";
 import { type ClipResultObject } from "./created-clip-result.ts";
 import {
   type ClipTransformInputs,
@@ -69,6 +70,8 @@ export interface CreateClipsParams {
   songTimeSigDenominator: number;
   deadline: number | null | undefined;
   code: string | null;
+  /** The region params as sent: an audio clip's sample defines its region */
+  regionParams: Record<string, unknown>;
   /** Take lane per arrangement destination; no entry means the main lane */
   takeLanes: Map<string, LiveAPI>;
   /** Why each take lane that didn't fit was left out, by destination label */
@@ -154,6 +157,7 @@ function transformInputsFor(
   return {
     notes: plan.notes,
     clipLength: plan.clipLength,
+    droppedDuplicates: plan.droppedDuplicates,
     transformString: params.transformString,
     isAudio: plan.sampleFile != null,
     endBeats: plan.timing.endBeats,
@@ -316,16 +320,23 @@ async function createClipAtIndex(
   const pos = resolveIterationPosition(params, ref);
   const position = clipPositionLabel(view, pos);
 
+  // Its meter can't read the transform: this clip fails, the others go on.
+  if (plan.transformFailure != null) {
+    return skipEntry({ param: "path", value: position }, plan.transformFailure);
+  }
+
   // Apply the transform with this clip's context (clipseq/clip.index/etc.).
   // Falls back to the shared notes/length when there is no transform.
   //
   // The clip doesn't exist yet, so a transform warning can't name it by id the
   // way update-clip does. The destination plus the ordinal (which is the
   // clip.index the transform saw) says which one it was.
+  const skippedTransforms: string[] = [];
   const {
     notes: clipNotes,
     clipLength,
     transformedCount,
+    details: transformDetails,
   } = withClipWarningLabel(
     `clip ${position}${ordinalSuffix(index, totalCount)}`,
     () =>
@@ -335,6 +346,12 @@ async function createClipAtIndex(
         totalCount,
         pos.arrangementStartBeats,
       ),
+    // What a transform skips on this kind of clip goes on the clip's entry
+    (reason) => {
+      if (!skippedTransforms.includes(reason)) {
+        skippedTransforms.push(reason);
+      }
+    },
   );
 
   try {
@@ -394,24 +411,49 @@ async function createClipAtIndex(
       );
     }
 
+    // What the clip can't use of what was sent, said on its own entry
+    for (const note of [
+      ...transformDetails,
+      ...skippedTransforms,
+      ignoredParamsNote(...unusableParams(params, plan)),
+    ]) {
+      if (note != null) {
+        appendDetail(clipResult, note);
+      }
+    }
+
     // Apply code execution to the newly created clip
     if (code != null) {
-      const noteCount = await applyCodeToSingleClip(
-        clipResult.id,
-        code,
-        index,
-        totalCount,
-      );
-
-      if (noteCount != null) {
-        clipResult.noteCount = noteCount;
-      }
+      await applyCodeToCreatedClip(clipResult, code, index, totalCount);
     }
 
     return clipResult;
   } catch (error) {
     return skipEntry({ param: "path", value: position }, errorMessage(error));
   }
+}
+
+/**
+ * The params sent that do nothing on the clip a plan makes.
+ * @param params - All parameters for clip creation
+ * @param plan - The clip being made
+ * @returns The params, and what they were ignored for
+ */
+function unusableParams(
+  params: CreateClipsParams,
+  plan: ClipPlan,
+): [Record<string, unknown>, string] {
+  return plan.sampleFile
+    ? [params.regionParams, "audio clips - the sample defines the clip region"]
+    : [
+        {
+          warping: params.warping,
+          gainDb: params.gainDb,
+          pitchShift: params.pitchShift,
+          warpMode: params.warpMode,
+        },
+        "MIDI clips",
+      ];
 }
 
 /**

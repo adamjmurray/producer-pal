@@ -40,7 +40,7 @@ export interface MockLiveAPIContext {
  */
 function deriveId(path?: string): string | undefined {
   // An empty path reports "0" on Live 12.4.3, the same as any path that
-  // doesn't resolve — so exists() stays false after set_path "".
+  // doesn't resolve — so exists() stays false after set-path "".
   if (path === "") {
     return "0";
   }

@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
+import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 // Compressor (CompressorDevice). See
@@ -98,10 +99,10 @@ function readSidechainSourceTrackId(device: LiveAPI): string | null {
 }
 
 /**
- * Write sidechainSourceTrackId. Clears to "No Input" when value is null/empty.
+ * Write sidechainSourceTrackId (a track id or path). Clears to "No Input" when value is null/empty.
  * Refuses a track that doesn't exist or isn't a valid sidechain source.
  * @param device - LiveAPI device object
- * @param value - Track id string, "null", or ""
+ * @param value - Track id or path (t0, rt0, mt), "null", or ""
  * @returns Why the source was refused, or null when it was written
  */
 function writeSidechainSourceTrackId(
@@ -114,10 +115,10 @@ function writeSidechainSourceTrackId(
     return clearSidechainSource(device);
   }
 
-  const track = LiveAPI.from(toLiveApiId(strValue));
+  const { track, reason } = sourceTrack(strValue);
 
-  if (!track.exists()) {
-    return `sidechainSourceTrackId — track id "${strValue}" does not exist`;
+  if (track == null) {
+    return reason;
   }
 
   const trackName = track.getName();
@@ -133,6 +134,38 @@ function writeSidechainSourceTrackId(
   });
 
   return null;
+}
+
+/**
+ * Find the track a sidechainSourceTrackId names, by id or by path (t0, rt0, mt).
+ * @param value - Track id or path
+ * @returns The track, or why there isn't one
+ */
+function sourceTrack(
+  value: string,
+):
+  | { track: LiveAPI; reason?: undefined }
+  | { track?: undefined; reason: string } {
+  // Ids are numeric, so a leading "t", "rt" or "mt" can only be a path.
+  if (/^(t|rt|mt)/.test(value)) {
+    try {
+      const lookup = trackIdAtPath(value, "sidechainSourceTrackId");
+
+      if (lookup.id == null) {
+        return { reason: `sidechainSourceTrackId — ${lookup.reason}` };
+      }
+
+      return { track: LiveAPI.from(toLiveApiId(lookup.id)) };
+    } catch (error) {
+      return { reason: (error as Error).message };
+    }
+  }
+
+  const track = LiveAPI.from(toLiveApiId(value));
+
+  return track.exists()
+    ? { track }
+    : { reason: `sidechainSourceTrackId — track id "${value}" does not exist` };
 }
 
 /**

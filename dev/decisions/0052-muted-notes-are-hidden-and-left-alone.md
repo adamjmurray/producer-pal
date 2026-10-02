@@ -14,10 +14,11 @@ it didn't.
 **Muted notes don't exist to the model.** Live's `mute` flag (a note
 "deactivated" in the UI) is the line:
 
-- **Reads hide them.** `read-clip` leaves them out of `notes`. Every `noteCount`
-  leaves them out too, so a count always matches what a read shows. `read-clip`
-  reports how many it hid as `mutedNotes`, only when there are some, so a clip
-  holding only muted notes is not read as empty.
+- **Reads hide them.** `read-clip` leaves them out of `notes`. Every note count
+  (`noteCount`, notes outside the region) leaves them out too, so a count always
+  matches what a read shows. `read-clip` reports how many it hid as
+  `mutedNotes`, only when there are some, so a clip holding only muted notes is
+  not read as empty.
 - **Edits treat them as absent and leave them in place.** Transforms don't
   select, change, delete or count them, and neighbor functions (`legato`,
   `note.index`, ...) skip them. Merges, transform-only updates and `code`

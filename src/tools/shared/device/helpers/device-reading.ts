@@ -25,6 +25,8 @@ export interface ProcessChainsOptions {
   includeChains: boolean;
   includeReturnChains: boolean;
   includeDrumPads: boolean;
+  /** Passed to nested devices so a rack scan returns each Simpler's sample */
+  includeSample?: boolean;
   /** See ReadDeviceOptions.chainsHidden */
   chainsHidden?: boolean;
   depth: number;
@@ -115,6 +117,7 @@ function processRegularChains(
   const {
     includeChains,
     includeDrumPads,
+    includeSample = false,
     chainsHidden = false,
     depth,
     maxDepth,
@@ -133,6 +136,7 @@ function processRegularChains(
     const deviceOptions = {
       includeChains,
       includeDrumPads,
+      includeSample,
       chainsHidden,
       depth: depth + 1,
       maxDepth,
@@ -203,6 +207,7 @@ export function processDeviceChains(
     includeChains,
     includeReturnChains,
     includeDrumPads,
+    includeSample = false,
     depth,
     maxDepth,
     readDeviceFn,
@@ -227,6 +232,7 @@ export function processDeviceChains(
         maxDepth,
         readDeviceFn,
         devicePath,
+        includeSample,
       );
     } else {
       processRegularChains(device, deviceInfo, options);
@@ -244,6 +250,7 @@ export function processDeviceChains(
       maxDepth,
       readDeviceFn,
       devicePath,
+      includeSample,
     );
   }
 }
@@ -258,6 +265,7 @@ export function processDeviceChains(
  * @param maxDepth - Max depth
  * @param readDeviceFn - readDevice function
  * @param devicePath - Device path for building nested paths
+ * @param includeSample - Pass the sample include to nested devices
  */
 function processReturnChains(
   device: LiveAPI,
@@ -268,6 +276,7 @@ function processReturnChains(
   maxDepth: number,
   readDeviceFn: ReadDeviceFn,
   devicePath: string | undefined,
+  includeSample: boolean,
 ): void {
   const returnChains = device.getChildren("return_chains");
 
@@ -278,6 +287,7 @@ function processReturnChains(
   const deviceOptions = {
     includeChains,
     includeReturnChains,
+    includeSample,
     depth: depth + 1,
     maxDepth,
   };

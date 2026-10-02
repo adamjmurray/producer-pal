@@ -358,6 +358,7 @@ export function readDevice(
     includeChains,
     includeReturnChains,
     includeDrumPads,
+    includeSample,
     chainsHidden,
     depth,
     maxDepth,

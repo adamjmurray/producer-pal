@@ -28,7 +28,10 @@ import {
   insertNativeDevice,
   labelCreatedDevice,
 } from "./device-creation.ts";
-import { validateInsertionOrder } from "./device-insertion-order.ts";
+import {
+  refuseIndexInNewChain,
+  validateInsertionOrder,
+} from "./device-insertion-order.ts";
 import { type BrowserItem } from "./remote-script-contract.ts";
 
 /** What one path creates, and where that device comes from. */
@@ -116,6 +119,8 @@ function insertDevices(
   return writeFanOut(targets, (_target, index) => {
     const plan = plans[index] as DevicePlan;
 
+    refuseIndexInNewChain(plan.path);
+
     return labeled(insertNativeDevice(plan.device, plan.path), index, labels);
   });
 }
@@ -155,6 +160,8 @@ async function createOne(
   labels: DeviceLabels,
   timing: RequestTiming,
 ): Promise<CreateDeviceResult> {
+  refuseIndexInNewChain(plan.path);
+
   const created =
     plan.item == null
       ? insertNativeDevice(plan.device, plan.path)

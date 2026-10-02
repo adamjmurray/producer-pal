@@ -16,7 +16,7 @@ import {
   type PresetOutcome,
   resolveNamedTarget,
 } from "./helpers/update-multiple-targets.ts";
-import { isDeviceType } from "./helpers/update-target-types.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import {
   type DeviceUpdatePlan,
   type UpdateDeviceArgs,
@@ -106,7 +106,7 @@ function targetDevice(item: NamedTarget): LiveAPI | null {
   try {
     const resolved = resolveNamedTarget(item);
 
-    return resolved.kind === "object" && isDeviceType(resolved.target.type)
+    return resolved.kind === "object" && isDeviceClass(resolved.target.type)
       ? resolved.target
       : null;
   } catch {

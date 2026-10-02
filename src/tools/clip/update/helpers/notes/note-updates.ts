@@ -6,7 +6,10 @@
 import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation, resolveNotation } from "#src/notation/notation.ts";
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import {
+  countSlotCollisions,
+  dedupeAndSortNotes,
+} from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
@@ -28,6 +31,7 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
   hasNoteEdits,
+  noteDroppedDuplicates,
 } from "./note-transforms.ts";
 import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
 
@@ -126,13 +130,16 @@ export function handleNoteUpdates(
       clipContext,
     );
 
-  const notes = mergeNewNotes(
+  const { notes, inputDuplicates, pileUps } = mergeNewNotes(
     notation,
     notationString,
     existingNotes,
     timeSigNumerator,
     timeSigDenominator,
   );
+
+  // Every collision before transforms, restated notes included.
+  const collidingBefore = countSlotCollisions(notes);
 
   // Apply transforms to notes if provided
   const postOutcome = applyTransforms(
@@ -148,13 +155,27 @@ export function handleNoteUpdates(
   // earlier write. See note-sort.ts.
   removeAllClipNotes(clip);
 
-  const mergedNotes = sortNotes(
-    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...notes]),
+  const { notes: mergedNotes, collisions } = dedupeAndSortNotes(
+    notes,
+    rawNotesToCopiedNotes(muted),
   );
 
   if (mergedNotes.length > 0) {
     clip.call("add_new_notes", { notes: mergedNotes });
   }
+
+  // Restating an existing note is a deliberate overwrite, so it isn't reported.
+  // Reported: input duplicates, preTransform pile-ups, and what a transform
+  // collapsed, capped at what was dropped just now (a transform can pull
+  // colliding notes apart). Can undercount when a transform both clears a
+  // collision and makes one.
+  const transformCollapsed = Math.max(0, collisions - collidingBefore);
+
+  noteDroppedDuplicates(
+    reasons,
+    clip.id,
+    Math.min(collisions, inputDuplicates + pileUps + transformCollapsed),
+  );
 
   // Both stages count: a note either one touched counts once, and a notes +
   // preTransforms update still reports a count (not undefined).
@@ -184,7 +205,10 @@ export function handleNoteUpdates(
  * @param existingNotes - Existing notes (preTransforms already applied)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Combined note array (unsorted, not yet deduped)
+ * @returns Combined note array (unsorted, not yet deduped), how many
+ *   duplicates the new notes held among themselves, and how many the surviving
+ *   existing notes did (Live holds none, so a preTransform piled them up).
+ *   Restating an existing note counts as neither.
  */
 function mergeNewNotes(
   notation: Notation | undefined,
@@ -192,7 +216,9 @@ function mergeNewNotes(
   existingNotes: NoteEvent[],
   timeSigNumerator: number,
   timeSigDenominator: number,
-): NoteEvent[] {
+): { notes: NoteEvent[]; inputDuplicates: number; pileUps: number } {
+  let notes: NoteEvent[];
+
   if (resolveNotation(notation) !== "barbeat") {
     const newNotes = interpretNotation(notationString, {
       notation,
@@ -201,14 +227,26 @@ function mergeNewNotes(
       keepV0Deletes: true,
     });
 
-    return applyV0Deletions([...existingNotes, ...newNotes]);
+    notes = applyV0Deletions([...existingNotes, ...newNotes]);
+  } else {
+    notes = interpretNotation(notationString, {
+      timeSigNumerator,
+      timeSigDenominator,
+      existingNotes,
+    });
   }
 
-  return interpretNotation(notationString, {
-    timeSigNumerator,
-    timeSigDenominator,
-    existingNotes,
-  });
+  // Surviving existing notes come back as the same objects, so what isn't one
+  // of them was written by the new notation (bar copies included).
+  const existing = new Set(existingNotes);
+
+  return {
+    notes,
+    inputDuplicates: countSlotCollisions(
+      notes.filter((note) => !existing.has(note)),
+    ),
+    pileUps: countSlotCollisions(notes.filter((note) => existing.has(note))),
+  };
 }
 
 /**

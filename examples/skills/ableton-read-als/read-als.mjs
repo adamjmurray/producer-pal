@@ -534,10 +534,10 @@ function readMacros(rack) {
   const count = value(rack, "NumVisibleMacroControls") ?? 0;
   const macros = {};
   for (let i = 0; i < count; i++) {
-    macros[text(rack, `MacroDisplayNames.${i}`)] = value(
-      rack,
-      `MacroControls.${i}`,
-      "Manual",
+    setUnique(
+      macros,
+      text(rack, `MacroDisplayNames.${i}`),
+      value(rack, `MacroControls.${i}`, "Manual"),
     );
   }
   return macros;
@@ -569,10 +569,20 @@ function readPluginParameters(device) {
   for (const p of children(device, "ParameterList")) {
     const name = text(p, "ParameterName");
     if (name) {
-      params[name] = value(p, "ParameterValue", "Manual");
+      setUnique(params, name, value(p, "ParameterValue", "Manual"));
     }
   }
   return params;
+}
+
+// Names can repeat (two macros both called "Filter"), so a repeat gets a
+// numbered key instead of overwriting the first: "Filter (2)".
+function setUnique(obj, name, val) {
+  let key = name;
+  for (let n = 2; Object.hasOwn(obj, key); n++) {
+    key = `${name} (${n})`;
+  }
+  obj[key] = val;
 }
 
 // A parameter is any element with a Manual value. Containers (an EQ band, a

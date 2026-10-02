@@ -175,6 +175,8 @@ Local models (Ollama, LM Studio, etc.) need special handling:
 1. **Always specify the model explicitly** with the `local/` prefix
 2. **Enable small-model mode** (`--small-model`) for the basic skills tier and
    simplified tool descriptions
+3. **Load the model with a 64K+ context window.** Tools plus Skills take ~12–14K
+   tokens per request, so a 32K context overflows mid-scenario.
 
 ```bash
 # Test a local model

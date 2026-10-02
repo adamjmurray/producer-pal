@@ -6,7 +6,6 @@
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
-import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import {
   CREATE_TRACK_ADVICE,
   formatObjectPath,
@@ -76,40 +75,6 @@ export function validateCreateClipParams(
       "cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
     );
   }
-}
-
-/**
- * Warn about MIDI-only parameters supplied alongside a sampleFile. An audio
- * clip's region comes from the sample, so these are ignored rather than
- * applied — say so instead of silently dropping them.
- * @param sampleFile - Audio file path, or null for a MIDI clip
- * @param params - Candidate parameters, keyed by their tool argument name
- */
-export function warnMidiOnlyAudioParams(
-  sampleFile: string | null,
-  params: Record<string, unknown>,
-): void {
-  if (sampleFile == null) {
-    return;
-  }
-
-  warnIgnoredParams(params, "audio clips - the sample defines the clip region");
-}
-
-/**
- * Warn about audio-only parameters supplied without a sampleFile.
- * @param sampleFile - Audio file path, or null for a MIDI clip
- * @param params - Candidate parameters, keyed by their tool argument name
- */
-export function warnAudioOnlyMidiParams(
-  sampleFile: string | null,
-  params: Record<string, unknown>,
-): void {
-  if (sampleFile != null) {
-    return;
-  }
-
-  warnIgnoredParams(params, "MIDI clips");
 }
 
 /**

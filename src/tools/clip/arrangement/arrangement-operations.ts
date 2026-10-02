@@ -9,6 +9,7 @@ import {
   snapshotLane,
 } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import {
+  markClipLanded,
   noteClipReason,
   refuseClipWork,
   type ClipReasons,
@@ -123,6 +124,8 @@ export function handleArrangementLengthOperation({
       currentEndTime,
       context,
     });
+    // The clip was cut in place, so it is updated, not a clip left as it was.
+    markClipLanded(reasons, clip.id);
   }
 
   return updatedClips;

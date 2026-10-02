@@ -162,6 +162,51 @@ describe("readAls", () => {
     ]);
   });
 
+  it("keeps every macro and plug-in parameter when names repeat", () => {
+    const file = path.join(dir, "rack.als");
+    const devices = `<Devices>
+      <InstrumentGroupDevice Id="0">
+        <NumVisibleMacroControls Value="3" />
+        <MacroDisplayNames.0 Value="Filter" />
+        <MacroDisplayNames.1 Value="Filter" />
+        <MacroDisplayNames.2 Value="Filter" />
+        <MacroControls.0><Manual Value="10" /></MacroControls.0>
+        <MacroControls.1><Manual Value="20" /></MacroControls.1>
+        <MacroControls.2><Manual Value="30" /></MacroControls.2>
+        <Branches />
+      </InstrumentGroupDevice>
+      <PluginDevice Id="1">
+        <PluginDesc><Vst3PluginInfo><Name Value="Synth" /></Vst3PluginInfo></PluginDesc>
+        <ParameterList>
+          <PluginFloatParameter><ParameterName Value="Cutoff" /><ParameterValue><Manual Value="0.25" /></ParameterValue></PluginFloatParameter>
+          <PluginFloatParameter><ParameterName Value="Cutoff" /><ParameterValue><Manual Value="0.75" /></ParameterValue></PluginFloatParameter>
+        </ParameterList>
+      </PluginDevice>
+    </Devices>`;
+
+    writeFileSync(file, gzipSync(setXml(12).replace("<Devices />", devices)));
+
+    const set = readAls(file, { include: ["devices", "parameters"] }) as {
+      mainTrack: {
+        devices: [
+          { macros: Record<string, number> },
+          { parameters: Record<string, number> },
+        ];
+      };
+    };
+    const [rack, plugin] = set.mainTrack.devices;
+
+    expect(rack.macros).toStrictEqual({
+      Filter: 10,
+      "Filter (2)": 20,
+      "Filter (3)": 30,
+    });
+    expect(plugin.parameters).toStrictEqual({
+      Cutoff: 0.25,
+      "Cutoff (2)": 0.75,
+    });
+  });
+
   it.each([
     ["an empty scale name", '<RootNote Value="0"/><Name Value=""/>'],
     ["no scale", null],

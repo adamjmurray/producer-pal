@@ -57,28 +57,60 @@ describe("prepareClipData", () => {
     expect(result.clipLength).toBe(4); // 1 bar in 4/4
   });
 
-  it("does not warn when interpreted notes have no same-pitch collisions", () => {
-    prepareClipData(null, "C3 1|1 D3 1|1", null, 4, 4, undefined, null);
+  it("reports no dropped duplicates when there are no same-pitch collisions", () => {
+    const result = prepareClipData(
+      null,
+      "C3 1|1 D3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      null,
+    );
 
+    expect(result.droppedDuplicates).toBe(0);
+  });
+
+  it("counts dropped duplicates without warning", () => {
+    const one = prepareClipData(
+      null,
+      "C3 1|1 C3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      null,
+    );
+    const two = prepareClipData(
+      null,
+      "C3 1|1 C3 1|1 C3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      null,
+    );
+
+    expect(one.droppedDuplicates).toBe(1);
+    expect(two.droppedDuplicates).toBe(2);
     expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("Dropped"),
+      expect.stringContaining("uplicate"),
     );
   });
 
-  it("warns with singular wording for exactly one dropped duplicate", () => {
-    prepareClipData(null, "C3 1|1 C3 1|1", null, 4, 4, undefined, null);
-
-    expect(capturedWarnings()).toContain(
-      "Dropped 1 duplicate note at the same pitch and start",
+  it("keeps duplicates for the transform to settle when one will run", () => {
+    const result = prepareClipData(
+      null,
+      "C3 1|1 C3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      "velocity = 100",
     );
-  });
 
-  it("warns with plural wording for multiple dropped duplicates", () => {
-    prepareClipData(null, "C3 1|1 C3 1|1 C3 1|1", null, 4, 4, undefined, null);
-
-    expect(capturedWarnings()).toContain(
-      "Dropped 2 duplicate notes at the same pitch and start",
-    );
+    expect(result.notes).toHaveLength(2);
+    expect(result.droppedDuplicates).toBe(0);
   });
 });
 

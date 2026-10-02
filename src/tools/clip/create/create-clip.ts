@@ -38,8 +38,6 @@ import {
   validateCreateClipParams,
   validateDestinationTracks,
   validatePositions,
-  warnAudioOnlyMidiParams,
-  warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
@@ -195,8 +193,6 @@ export async function createClip(
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
-  warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
-  warnAudioOnlyMidiParams(sampleFile, audio);
   const tracks = validateDestinationTracks(destinations);
 
   const song = readSongMeter(liveSet);
@@ -257,6 +253,7 @@ export async function createClip(
     // Set once per request by the V8 adapter (see buildRequestContext).
     deadline: _context.deadline,
     code,
+    regionParams: { start, length, looping, firstStart },
     ...audio,
   });
 
@@ -342,6 +339,13 @@ function positionsTracksTake(
     }
 
     const position = arrangementPositions[ref.index] as ArrangementPosition;
+
+    // A clip whose transform can't be read in its meter is never made, so it
+    // gets no take lane either: Live can't delete one.
+    if (plans[index]?.transformFailure != null) {
+      return [];
+    }
+
     // Truthiness, like the create loop: an empty sampleFile makes a MIDI clip.
     const blocker = createClipBlocker(
       !plans[index]?.sampleFile,
@@ -374,10 +378,10 @@ function resolveArrangementLocators(
 
 /**
  * Normalize a blank/whitespace-only transforms string to null so both the
- * dedupe-warning path (prepareClipData) and per-clip resolveClipTransform treat
- * it as "no transform". An LLM-supplied `transforms: ""` otherwise skips the
- * "Dropped N duplicate note(s)" warning while applyTransforms no-ops on "", and
- * a whitespace-only string would reach applyTransforms and throw a parse error.
+ * duplicate-dropping path (prepareClipData) and per-clip resolveClipTransform
+ * treat it as "no transform". An LLM-supplied `transforms: ""` otherwise skips
+ * the dropped-duplicates note while applyTransforms no-ops on "", and a
+ * whitespace-only string would reach applyTransforms and throw a parse error.
  * @param transformString - Raw transforms param, or null
  * @returns The original string when it has non-whitespace content, else null
  */

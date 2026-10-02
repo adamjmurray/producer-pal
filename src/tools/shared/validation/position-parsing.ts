@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
 export interface ClipSlotPosition {
@@ -43,15 +42,10 @@ export function parseSlotList(
   return entries.map((entry) => {
     const parts = entry.split("/");
 
-    if (parts.length < 2) {
+    // A third part has no reading: dropping it would guess which two were meant.
+    if (parts.length !== 2) {
       throw new Error(
         `invalid ${label} "${entry}" - expected trackIndex/sceneIndex format (e.g., "0/1")`,
-      );
-    }
-
-    if (parts.length > 2) {
-      console.warn(
-        `${label} "${entry}" has extra parts, using first two (trackIndex/sceneIndex)`,
       );
     }
 

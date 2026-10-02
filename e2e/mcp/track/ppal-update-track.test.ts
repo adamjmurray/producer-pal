@@ -93,6 +93,22 @@ describe("ppal-update-track", () => {
     expect(gainTrack.gainDb).toBeCloseTo(-6, 1);
   });
 
+  it('reads a null name as left out, not as the name "null"', async () => {
+    const readName = async (): Promise<string> =>
+      parseToolResult<ReadTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: "t0" },
+        }),
+      ).name;
+    const before = await readName();
+
+    parseToolResult(await updateTrack({ path: "t0", name: null }));
+    await sleep(100);
+
+    expect(await readName()).toBe(before);
+  });
+
   it("updates track mute, solo, and arm states", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
@@ -535,7 +551,7 @@ describe("ppal-update-track", () => {
     });
   });
 
-  it("lets a sends entry override the scalar pair naming the same return", async () => {
+  it("says on the pair's entry that a sends entry replaced it", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![2]!.id;
     const returnTrack = liveSet.returnTracks![0]!;
@@ -549,14 +565,48 @@ describe("ppal-update-track", () => {
       sends: [{ return: returnTrack.name, gainDb: -15 }],
     });
 
-    expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("sends overrides sendGainDb/sendReturn"),
+    expect(getToolWarnings(result)).toStrictEqual([]);
+    expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual(
+      {
+        return: expect.any(String),
+        returnId: returnTrack.id,
+        ok: false,
+        detail: "named again later in this call",
+      },
     );
 
     const track = await readTrackMixer(trackId);
 
     // The list is the later word, so the pair's -30 must not be what stuck.
     expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);
+  });
+
+  it("says on the earlier entry that a later sends entry replaced it", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![2]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    const result = await updateTrack({
+      id: trackId,
+      sends: [
+        { return: returnTrack.id, gainDb: -30 },
+        { return: returnTrack.name, gainDb: -12 },
+      ],
+    });
+
+    expect(getToolWarnings(result)).toStrictEqual([]);
+    expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual(
+      {
+        return: expect.any(String),
+        returnId: returnTrack.id,
+        ok: false,
+        detail: "named again later in this call",
+      },
+    );
+
+    const track = await readTrackMixer(trackId);
+
+    expect(track.sends![0]!.gainDb).toBeCloseTo(-12, 1);
   });
 
   it("can never give a return track an all-digit name", async () => {

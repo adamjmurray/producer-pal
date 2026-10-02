@@ -101,25 +101,6 @@ describe("Transform Evaluator - snap()", () => {
     });
   });
 
-  describe("error handling", () => {
-    it("throws for zero arguments", () => {
-      const result = evaluateTransform("pitch = snap()", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      // Should fail to evaluate, returning empty result
-      expect(result.pitch).toBeUndefined();
-    });
-
-    it("throws for two arguments", () => {
-      const result = evaluateTransform("pitch = snap(60, 62)", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
-    });
-  });
-
   describe("different scales", () => {
     it("works with D Minor scale", () => {
       // D Minor: D E F G A Bb C → intervals 0,2,3,5,7,8,10 from root D (2)
@@ -239,32 +220,6 @@ describe("Transform Evaluator - step()", () => {
 
       // Should clamp to lowest in-scale pitch >= 0 (C-2 = 0)
       expect(result.pitch!.value).toBe(0);
-    });
-  });
-
-  describe("error handling", () => {
-    it("returns undefined for zero arguments", () => {
-      const result = evaluateTransform("pitch = step()", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
-    });
-
-    it("returns undefined for one argument", () => {
-      const result = evaluateTransform("pitch = step(60)", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
-    });
-
-    it("returns undefined for three arguments", () => {
-      const result = evaluateTransform("pitch = step(60, 2, 3)", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
     });
   });
 

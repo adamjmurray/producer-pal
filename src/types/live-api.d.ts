@@ -34,7 +34,7 @@ declare global {
      * Declared readonly for the same reason as `path`: Max allows assigning a
      * bare id string to retarget the instance, and the resolved path comes back
      * with it. The sanctioned writes are the pool in live-api-extensions.ts and
-     * the ppal-live-api set_id operation.
+     * the ppal-live-api set-id operation.
      */
     readonly id: string;
 
@@ -44,7 +44,7 @@ declare global {
      *
      * Declared readonly on purpose: Max allows assigning it, but retargeting a
      * live instance is a footgun outside the release in live-api-release.ts and
-     * the ppal-live-api set_path operation, both of which cast it away
+     * the ppal-live-api set-path operation, both of which cast it away
      * deliberately.
      */
     readonly path: string;

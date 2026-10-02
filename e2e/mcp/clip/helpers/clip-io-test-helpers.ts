@@ -188,3 +188,32 @@ export async function moveOffTakeLane(
 
   return readClipFully(client, { id: moved.id });
 }
+
+/**
+ * A clip's notes as Live reports them, minus the note_id it assigns itself.
+ * @param client - The connected MCP client
+ * @param clipId - The clip's Live API id
+ * @returns One dictionary per note, in Live's own shape
+ */
+export async function readNoteDicts(
+  client: Client,
+  clipId: string,
+): Promise<Array<Record<string, number>>> {
+  const result = await client.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
+      ],
+    },
+  });
+  const [raw] = parseToolResult<{
+    results: Array<{ result: string }>;
+  }>(result).results;
+  const { notes } = JSON.parse(raw!.result) as {
+    notes: Array<Record<string, number>>;
+  };
+
+  return notes.map(({ note_id: _noteId, ...note }) => note);
+}

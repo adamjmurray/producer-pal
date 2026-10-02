@@ -16,7 +16,10 @@ import {
   type NoteOpResult,
   skippedNoteOp,
 } from "./helpers/note-ops/note-op-result.ts";
-import { numericOpArg } from "./helpers/note-ops/numeric-op-arg.ts";
+import {
+  isDurationNode,
+  numericOpArg,
+} from "./helpers/note-ops/numeric-op-arg.ts";
 import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
 import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
 import {
@@ -121,9 +124,10 @@ function noteMatchesSelector(
  *   - note value (`ratchet(n/16)`) → cut on the ABSOLUTE 16th-note grid, so the
  *     pieces line up with bar positions. The first/last piece can be a partial
  *     sliver when the note doesn't start/end on a grid line; a note that spans no
- *     grid line is left unchanged (with a warning).
- * Invalid args warn-and-skip (notes pass through unchanged), consistent with
- * update-tool error handling.
+ *     grid line is left unchanged (with a detail).
+ * checkTransformArgs has already refused a bad argument it can judge up front;
+ * one it couldn't (it uses a variable or a random function) that turns out
+ * unusable warns and the notes pass through unchanged.
  * @param matched - Notes selected by the op
  * @param op - The ratchet operation
  * @param numerator - Time signature numerator
@@ -138,21 +142,7 @@ function ratchetNotes(
   denominator: number,
 ): NoteOpResult {
   // ratchet args are always expressions (bar|beat points only reach `split`).
-  const arg = op.args[0] as ExpressionNode | undefined;
-
-  if (op.args.length === 0 || arg == null) {
-    console.warn(
-      "ratchet() needs a count or note value, e.g. ratchet(2) or ratchet(n/16); skipping",
-    );
-
-    return skippedNoteOp(matched);
-  }
-
-  if (op.args.length > 1) {
-    console.warn(
-      "ratchet() takes a single count or note value; using the first argument",
-    );
-  }
+  const arg = op.args[0] as ExpressionNode;
 
   const plan = resolveRatchetPlan(arg, numerator, denominator);
 
@@ -203,13 +193,13 @@ function ratchetNotes(
   }
 
   if (shortNotes > 0) {
-    console.warn(
-      `ratchet: ${shortNotes} note(s) spanned no grid line and were left unchanged`,
+    console.clipDetail(
+      `ratchet: ${shortNotes} note(s) spanned no grid line, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.warn(
+    console.clipDetail(
       `ratchet: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }
@@ -226,7 +216,7 @@ interface RatchetPlan {
 /**
  * Resolve the ratchet argument to a plan. A note-value/bar-duration arg becomes
  * a per-note grid; any other expression becomes a fixed count. Returns null and
- * warns when the arg is unusable.
+ * warns when a count the up-front checks couldn't judge is unusable.
  * @param arg - The (already-parsed) ratchet argument node
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
@@ -237,32 +227,17 @@ function resolveRatchetPlan(
   numerator: number,
   denominator: number,
 ): RatchetPlan | null {
-  const isGrid =
-    typeof arg === "object" &&
-    (arg.type === "nDuration" || arg.type === "barDuration");
+  const isGrid = isDurationNode(arg);
 
-  const value = numericOpArg(arg, numerator, denominator, {
-    pitchLiteral: (name) =>
-      `pitch name "${name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${name}).`,
-    unevaluable: (reason) =>
-      `ratchet() argument could not be evaluated (${reason}); skipping`,
-    notFinite: "ratchet() argument is not a number; skipping",
-  });
+  const value = numericOpArg(arg, numerator, denominator, "ratchet() argument");
 
   if (value == null) {
     return null;
   }
 
   if (isGrid) {
-    const gridAbletonBeats = value * (4 / denominator); // musical -> Ableton
-
-    if (gridAbletonBeats <= 0) {
-      console.warn("ratchet() grid must be greater than 0; skipping");
-
-      return null;
-    }
-
-    return { count: 0, grid: gridAbletonBeats };
+    // A note value / bar duration is always a constant, already checked above 0.
+    return { count: 0, grid: value * (4 / denominator) }; // musical -> Ableton
   }
 
   const count = Math.round(value);
@@ -321,11 +296,6 @@ function gridCutsWithin(start: number, end: number, grid: number): number[] {
   return cuts;
 }
 
-// Message for an unusable merge() gap-tolerance argument (anything other than a
-// note value or literal 0). Shown once, then the merge is skipped.
-const MERGE_TOLERANCE_SKIP_MESSAGE =
-  "merge() gap tolerance must be a note value like n/16, or 0 for touching notes (<count>bar and other numbers are not accepted); skipping";
-
 /**
  * Merge matched notes: collapse same-pitch notes into sustained notes. The
  * optional gap tolerance sets how far apart (edge to edge) two same-pitch notes
@@ -336,8 +306,7 @@ const MERGE_TOLERANCE_SKIP_MESSAGE =
  *     a new run
  * Within each merged run, dynamics (velocity/probability/deviation) come from
  * its earliest note. Different pitches stay independent (scope by selector to
- * narrow). An unusable tolerance argument warns and the notes pass through
- * unchanged.
+ * narrow).
  * @param matched - Notes selected by the op
  * @param op - The merge operation (may carry a gap-tolerance argument)
  * @param numerator - Time signature numerator
@@ -352,10 +321,6 @@ function mergeNotes(
   denominator: number,
 ): NoteOpResult {
   const tolerance = resolveMergeTolerance(op, numerator, denominator);
-
-  if (tolerance == null) {
-    return skippedNoteOp(matched); // unusable tolerance — warn already emitted, pass through
-  }
 
   const byPitch = new Map<number, NoteEvent[]>();
 
@@ -380,56 +345,37 @@ function mergeNotes(
 
 /**
  * Resolve the optional merge gap-tolerance argument to an edge-to-edge gap in
- * Ableton beats: no arg spans all (Infinity), literal `0` merges only touching/
- * overlapping notes, and a note value becomes that many Ableton beats. Any other
- * argument (a non-zero bare number, `<count>bar`, a pitch literal, an expression)
- * warns and returns null so the caller skips the merge.
+ * Ableton beats: no arg spans all (Infinity), a note value becomes that many
+ * Ableton beats, and the only other argument checkTransformArgs lets through,
+ * literal `0`, merges only touching/overlapping notes.
  * @param op - The merge operation
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The gap tolerance in Ableton beats, or null to skip
+ * @returns The gap tolerance in Ableton beats
  */
 function resolveMergeTolerance(
   op: NoteOp,
   numerator: number,
   denominator: number,
-): number | null {
+): number {
   if (op.args.length === 0) {
     return Infinity; // no argument — span all (the default)
-  }
-
-  if (op.args.length > 1) {
-    console.warn(
-      "merge() takes a single gap tolerance; using the first argument",
-    );
   }
 
   // merge args are always expressions (bar|beat points only reach `split`).
   const arg = op.args[0] as ExpressionNode;
 
   if (typeof arg === "number") {
-    if (arg === 0) {
-      return 0; // touching/overlapping notes only
-    }
-
-    console.warn(MERGE_TOLERANCE_SKIP_MESSAGE);
-
-    return null;
+    return 0; // touching/overlapping notes only
   }
 
-  if (typeof arg === "object" && arg.type === "nDuration") {
-    // A note value is a pure constant — evaluates to musical beats, total.
-    const musicalBeats = evaluateExpression(
-      arg,
-      constantEvalContext(numerator, denominator),
-    );
+  // A note value is a pure constant — evaluates to musical beats, total.
+  const musicalBeats = evaluateExpression(
+    arg,
+    constantEvalContext(numerator, denominator),
+  );
 
-    return musicalBeats * (4 / denominator); // musical -> Ableton beats
-  }
-
-  console.warn(MERGE_TOLERANCE_SKIP_MESSAGE);
-
-  return null;
+  return musicalBeats * (4 / denominator); // musical -> Ableton beats
 }
 
 /**

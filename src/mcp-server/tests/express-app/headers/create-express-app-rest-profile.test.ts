@@ -246,6 +246,28 @@ describe("REST API per-request small-model-mode header", () => {
   });
 
   describe("Direct Live API header", () => {
+    it("drops ppal-live-api in small-model mode, as MCP does", async () => {
+      const headers = {
+        [LIVE_API_HEADER]: "true",
+        [SMALL_MODEL_MODE_HEADER]: "true",
+      };
+
+      const tools = await catalog(headers);
+
+      expect(tools.has(LIVE_API_TOOL_ID)).toBe(false);
+
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/${LIVE_API_TOOL_ID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ path: "live_set", operations: [] }),
+        },
+      );
+
+      expect(response.status).toBe(404);
+    });
+
     it("serves ppal-live-api to the request that asks, and only that one", async () => {
       const asked = await catalog({ [LIVE_API_HEADER]: "true" });
       const other = await catalog({});

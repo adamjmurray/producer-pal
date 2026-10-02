@@ -146,31 +146,31 @@ export function registerCompressor(
 }
 
 /**
- * Register the live_set with two tracks: Drift (t1) and AudioFX (t2).
+ * Register the live_set with two tracks: Drift (101) and AudioFX (102).
  */
 export function registerLiveSetTracks(): void {
   registerMockObject("live_set", {
     path: "live_set",
     type: "Device",
     properties: {
-      tracks: ["id", "t1", "id", "t2"],
+      tracks: ["id", "101", "id", "102"],
     },
   });
 
-  registerMockObject("t1", {
+  registerMockObject("101", {
     type: "Device",
     properties: { name: "Drift" },
   });
 
-  registerMockObject("t2", {
+  registerMockObject("102", {
     type: "Device",
     properties: { name: "AudioFX" },
   });
 }
 
 /**
- * Register a live_set that also exposes a return track ("A-Reverb", id "r1") and
- * the master track ("Main", id "master-1"), so sidechain reads can resolve
+ * Register a live_set that also exposes a return track ("A-Reverb", id "201") and
+ * the master track ("Main", id "301"), so sidechain reads can resolve
  * return/master sources to track ids.
  */
 export function registerLiveSetWithReturnsAndMaster(): void {
@@ -178,18 +178,21 @@ export function registerLiveSetWithReturnsAndMaster(): void {
     path: "live_set",
     type: "Device",
     properties: {
-      tracks: ["id", "t1", "id", "t2"],
-      return_tracks: ["id", "r1"],
+      tracks: ["id", "101", "id", "102"],
+      return_tracks: ["id", "201"],
     },
   });
 
-  registerMockObject("t1", { type: "Device", properties: { name: "Drift" } });
-  registerMockObject("t2", { type: "Device", properties: { name: "AudioFX" } });
-  registerMockObject("r1", {
+  registerMockObject("101", { type: "Device", properties: { name: "Drift" } });
+  registerMockObject("102", {
+    type: "Device",
+    properties: { name: "AudioFX" },
+  });
+  registerMockObject("201", {
     type: "Device",
     properties: { name: "A-Reverb" },
   });
-  registerMockObject("master-1", {
+  registerMockObject("301", {
     path: "live_set master_track",
     type: "Device",
     properties: { name: "Main" },
@@ -197,24 +200,24 @@ export function registerLiveSetWithReturnsAndMaster(): void {
 }
 
 /**
- * Register the live_set with two tracks: Drift (t1) and an all-digit-named
- * track (t3, name `5678` — a number, the way Live reports it).
+ * Register the live_set with two tracks: Drift (101) and an all-digit-named
+ * track (103, name `5678` — a number, the way Live reports it).
  */
 export function registerLiveSetWithNumericTrackName(): void {
   registerMockObject("live_set", {
     path: "live_set",
     type: "Device",
     properties: {
-      tracks: ["id", "t1", "id", "t3"],
+      tracks: ["id", "101", "id", "103"],
     },
   });
 
-  registerMockObject("t1", {
+  registerMockObject("101", {
     type: "Device",
     properties: { name: "Drift" },
   });
 
-  registerMockObject("t3", {
+  registerMockObject("103", {
     type: "Device",
     properties: { name: 5678 },
   });

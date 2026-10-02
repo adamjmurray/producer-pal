@@ -34,7 +34,7 @@ function mockPluginsRoute(plugins: unknown[] = []): void {
   });
 }
 
-describe("library tool — listPlugins action", () => {
+describe("library tool — list-plugins action", () => {
   let warnSpy: MockInstance<(...args: unknown[]) => void>;
 
   beforeEach(async () => {
@@ -53,7 +53,7 @@ describe("library tool — listPlugins action", () => {
     mockPluginsRoute();
 
     await library({
-      action: "listPlugins",
+      action: "list-plugins",
       query: "serum",
       vendor: "xfer",
       format: "VST",
@@ -77,7 +77,7 @@ describe("library tool — listPlugins action", () => {
   it("maps deviceKind=instrument to the category filter", async () => {
     mockPluginsRoute();
 
-    await library({ action: "listPlugins", deviceKind: "instrument" });
+    await library({ action: "list-plugins", deviceKind: "instrument" });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listPlugins",
@@ -88,7 +88,7 @@ describe("library tool — listPlugins action", () => {
   it("drops deviceKind=midifx and warns instead of silently dropping it", async () => {
     mockPluginsRoute();
 
-    await library({ action: "listPlugins", deviceKind: "midifx" });
+    await library({ action: "list-plugins", deviceKind: "midifx" });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listPlugins",
@@ -104,7 +104,7 @@ describe("library tool — listPlugins action", () => {
     // category, so it passes through as category and must not warn.
     mockPluginsRoute();
 
-    await library({ action: "listPlugins", deviceKind: "audiofx" });
+    await library({ action: "list-plugins", deviceKind: "audiofx" });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listPlugins",
@@ -118,8 +118,8 @@ describe("library tool — listPlugins action", () => {
     // (e.g. midifx) should warn — a valid one and an absent one must stay silent.
     mockPluginsRoute();
 
-    await library({ action: "listPlugins", deviceKind: "instrument" });
-    await library({ action: "listPlugins" });
+    await library({ action: "list-plugins", deviceKind: "instrument" });
+    await library({ action: "list-plugins" });
 
     expect(warnSpy).not.toHaveBeenCalled();
   });
@@ -135,7 +135,7 @@ describe("library tool — listPlugins action", () => {
       },
     ]);
 
-    const result = await library({ action: "listPlugins" });
+    const result = await library({ action: "list-plugins" });
 
     if (!("plugins" in result)) {
       throw new Error("expected plugins");

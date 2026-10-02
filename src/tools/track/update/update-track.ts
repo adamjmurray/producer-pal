@@ -39,17 +39,13 @@ import {
   updateTakeLane,
   type UpdateTakeLaneResult,
 } from "./helpers/track-take-lanes.ts";
-import {
-  type TrackSends,
-  applyTrackSends,
-  trackSendsAt,
-} from "./helpers/track-send-updates.ts";
+import { applyTrackSends, trackSendsAt } from "./helpers/track-send-updates.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import {
   SEND_PARAMS,
   type SendResult,
-  warnSendCollisions,
+  withSupersededSends,
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
@@ -258,10 +254,6 @@ export function updateTrack(
   // was given decides what its sends resolve to.
   const sendsAt = trackSendsAt(sendGainDb, sendReturn, sends, targets.length);
 
-  // Collisions belong to a resolution, not to a track, so each is announced
-  // once — off the first track a collision actually landed on.
-  const announced = new Set<TrackSends>();
-
   return writeFanOut(targets, (target, i) => {
     const trackName = getNameForIndex(name, i, parsedNames);
     const lane = laneTargets.get(i);
@@ -298,12 +290,7 @@ export function updateTrack(
     const resolvedSends = sendsAt(i);
     const landed = applyTrackSends(track, resolvedSends.winners);
 
-    if (
-      !announced.has(resolvedSends) &&
-      warnSendCollisions(resolvedSends.collisions, landed)
-    ) {
-      announced.add(resolvedSends);
-    }
+    const sendEntries = withSupersededSends(landed, resolvedSends.collisions);
 
     refuseIfNoneLanded(
       notes,
@@ -317,7 +304,7 @@ export function updateTrack(
     // named the return and knows the level — so only the rest report. The ones
     // that named no return track follow, in the order the call named them.
     const changedSends = [
-      ...[...landed.values()].filter((send) => send.detail != null),
+      ...sendEntries.filter((send) => send.detail != null),
       ...resolvedSends.unresolved,
     ];
 

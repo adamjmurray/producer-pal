@@ -17,14 +17,22 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-repeat
  */
 import { describe, expect, it } from "vitest";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
+  isToolError,
+  parseBatchResult,
   parseToolResult,
+  setupMcpTestContext,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
-import { setupClipTransformTest } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import {
+  createClipInSlot,
+  createClipTransformHelpers,
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
-const { createMidiClip, readClipNotes, applyTransform } =
-  setupClipTransformTest();
+const ctx = setupMcpTestContext();
+const { createMidiClip, readClipNotes, applyTransform, applyTransformToClips } =
+  createClipTransformHelpers(ctx);
 
 describe("ppal-clip-transforms (repeat round-trip)", () => {
   it("echoes every note one bar later with repeat(1bar)", async () => {
@@ -91,5 +99,48 @@ describe("ppal-clip-transforms (repeat round-trip)", () => {
     expect(notes).toContain("C3");
     expect(notes).toContain("1.5"); // 1st echo
     expect(notes).toContain("2.5"); // 3rd echo
+  });
+
+  // 1bar is 4 beats in 4/4 and 6 in 6/4, so "1bar - 4" is 0 copies in the 4/4
+  // clip (bad) and 2 in the 6/4 clip. Only the 4/4 clip fails; it keeps its notes.
+  it("fails only the clip whose meter makes a constant argument bad", async () => {
+    const path = (scene: number): string => `t${EMPTY_MIDI_TRACK}/s${scene}`;
+    const ids = [
+      await createClipInSlot(ctx, path(63), {
+        notes: "v100 C3 1|1",
+        length: "2bar",
+        timeSignature: "4/4",
+      }),
+      await createClipInSlot(ctx, path(64), {
+        notes: "v100 C3 1|1",
+        length: "2bar",
+        timeSignature: "6/4",
+      }),
+    ];
+
+    const results = parseBatchResult<UpdateClipResult & { ok?: boolean }>(
+      await applyTransformToClips(ids, "repeat(n/8, 1bar - 4)"),
+      2,
+    );
+
+    expect(results[0]).toStrictEqual({
+      id: ids[0],
+      ok: false,
+      detail: expect.stringContaining("repeat() needs a copy count of 1"),
+    });
+    expect(results[1]?.noteCount).toBe(3);
+    expect(await readClipNotes(ids[0] as string)).not.toContain("1.5");
+    expect(await readClipNotes(ids[1] as string)).toContain("1.5");
+  });
+
+  it("refuses a bad constant argument that holds in every meter before touching a clip", async () => {
+    const id = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s65`, {
+      notes: "v100 C3 1|1",
+      length: "2bar",
+    });
+    const result = await applyTransform(id, "repeat(n/8, 0)");
+
+    expect(isToolError(result)).toBe(true);
+    expect(await readClipNotes(id)).not.toContain("1.5");
   });
 });

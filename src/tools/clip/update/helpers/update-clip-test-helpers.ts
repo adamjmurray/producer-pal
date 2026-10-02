@@ -569,3 +569,19 @@ export function stubSplitRescan(freshClipId: string): void {
 export function joinedClipReason(reasons: ClipReasons, clipId: string): string {
   return (reasons.said.get(clipId) ?? []).join("; ");
 }
+
+/**
+ * Assert a clip got no writes.
+ * @param clip - The clip mock to check
+ */
+export function expectClipUntouched(
+  clip: UpdateClipMocks[keyof UpdateClipMocks],
+): void {
+  expect(clip.set).not.toHaveBeenCalled();
+
+  const calls = clip.call.mock.calls.map(([method]) => method);
+
+  expect(
+    calls.filter((method) => method !== "get_notes_extended"),
+  ).toStrictEqual([]);
+}

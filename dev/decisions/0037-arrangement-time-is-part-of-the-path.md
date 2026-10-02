@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date logged:** 2026-09-02
+- **Amended:** 2026-09-30 (`t0[5|1]` covers, not starts at; see Consequences)
 
 ## Context
 
@@ -100,12 +101,12 @@ is not.
 
 ## Consequences
 
-- **`t0[5|1]` means _starts at_, not _covers_.** A clip running from 3|1 through
-  bar 6 is not at `[5|1]`; that path resolves to nothing and the call warns and
-  skips per [ADR-0035](0035-malformed-calls-are-refused-up-front.md). This is
-  the decision most likely to need adjusting: watch whether models recover in
-  one turn from the warning (fine, teach it in the Skills) or retry the same
-  path (the address needs rethinking).
+- **`t0[5|1]` means _covers_, not _starts at_.** _Amended 2026-09-30._ A clip
+  running from 3|1 through bar 6 is at `[5|1]`. A path with no clip covering its
+  position resolves to nothing and the call warns and skips per
+  [ADR-0035](0035-malformed-calls-are-refused-up-front.md). The original rule
+  was _starts at_; the code moved to _covers_ and the descriptions, Skills and
+  docs now say so.
 - **`arrangementStart` leaves the responses**, by the existing rule that no
   result spells its address a second time. Breaking, and the release notes have
   to say so.

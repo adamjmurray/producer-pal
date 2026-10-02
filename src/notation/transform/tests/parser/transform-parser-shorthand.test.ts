@@ -308,7 +308,7 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("rejects a pitch range as body (C4-C5)", () => {
-      expect(() => parseAssignments("C4-C5")).toThrow('but "-" found');
+      expect(() => parseAssignments("C4-C5")).toThrow("but end of input found");
     });
   });
 
@@ -374,7 +374,7 @@ describe("Transform Parser - shorthand", () => {
 
   describe("disambiguation errors", () => {
     it("rejects selector without colon (C1 C4)", () => {
-      expect(() => parseAssignments("C1 C4")).toThrow('but "C" found');
+      expect(() => parseAssignments("C1 C4")).toThrow("but end of input found");
     });
 
     it("rejects stacking two changes on one line (C1: C4 v100)", () => {

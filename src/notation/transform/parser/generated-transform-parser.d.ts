@@ -133,10 +133,9 @@ export interface TransformAssignment {
    * when the line has no where() clause. */
   predicate?: PredicateNode | null;
   /** Set when the selector prefix had a duplicate segment kind (two pitch/time
-   * selectors, or two where() clauses). The evaluator relays this as a WARNING
-   * and skips the line so the remaining lines still apply. Absent on well-formed
-   * lines. */
-  selectorWarning?: string | null;
+   * selectors, or two where() clauses). The transform is refused with this
+   * message. Absent on well-formed lines. */
+  selectorError?: string | null;
 }
 
 /**
@@ -156,9 +155,9 @@ export interface NoteOp {
   sync?: boolean;
   pitchRange?: PitchRange | null;
   timeRange?: TimeRange | null;
-  /** Set when the selector prefix had a duplicate segment kind. The evaluator
-   * relays it as a WARNING and skips the line. Absent on well-formed lines. */
-  selectorWarning?: string | null;
+  /** Set when the selector prefix had a duplicate segment kind. The transform is
+   * refused with this message. Absent on well-formed lines. */
+  selectorError?: string | null;
 }
 
 /** A single transform line: either a parameter assignment or a note-count op. */

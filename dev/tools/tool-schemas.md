@@ -144,6 +144,12 @@ said nothing. See ADR-0035 rule 5.
 Both halves are held for the whole tool surface by
 `src/test/meta/tool-schemas/empty-params.test.ts`.
 
+Over MCP the SDK parses and coerces the args before our handler runs, so
+`defineTool` hands it the params wrapped in `optionalParams()`, which applies
+the same rule and publishes the same JSON Schema.
+`src/mcp-server/tests/server/mcp-sdk-empty-params.test.ts` holds that path
+through a real client.
+
 A param nested below the args isn't reached — wrap that shape in
 `optionalParams()`, as `library-query-schema.ts` does.
 
@@ -191,6 +197,24 @@ bar|beat in every notation.
 `createMcpServer` runs fresh for each `POST /mcp`. Because overrides are
 co-located, there are no dangling refs to guard — just keep each param's modes
 correct.
+
+## Enum values
+
+Every enum value we define is kebab-case (`list-tags`, `use-count`). Strings
+Live owns keep Live's spelling: scale and view names, quantize grids like
+`1/8T`, device labels like `M/S`, routing names like `No Input`, Simpler's
+`one-shot`.
+
+Renaming a value leaves the old spelling as a hidden alias: `aliasedEnum()`
+publishes only the new values, and a call using an old one validates and reaches
+the handler as the new one. No refusal, no warning. Don't rename a value without
+one. See ADR-0053.
+
+```typescript
+source: aliasedEnum(["sample-folder", "user"], {
+  sampleFolder: "sample-folder",
+});
+```
 
 ## Retiring a param
 

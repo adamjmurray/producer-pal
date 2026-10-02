@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { parseNotation } from "#src/notation/notation.ts";
+import { type TimeSignature } from "../clip-beat-positions.ts";
+import { hasNoteEdits } from "./note-transforms.ts";
 import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
+import { failuresByMeter } from "#src/tools/clip/helpers/transform-meter-failures.ts";
 
 /** The note edits one update-clip call sends a MIDI clip. */
 export interface NoteEdits {
@@ -43,6 +46,72 @@ export function parseNoteEdits(
   for (const transforms of [preTransformString, transformString]) {
     if (transforms) {
       tryParseTransform(transforms, timeSigDenominator, timeSigNumerator);
+    }
+  }
+}
+
+/**
+ * Refuse note edits that can't be read, before any clip is cut, moved or
+ * written. Each distinct meter the MIDI clips will have is parsed once, because
+ * a transform's time range depends on the meter. Audio clips ignore notes and
+ * read transforms the way their own evaluator does (no meter), so only their
+ * transforms are parsed.
+ *
+ * A syntax error, or an argument mistake that holds in every meter, always
+ * refuses the call. An error in only some meters (a bar|beat range, a constant
+ * that mixes note values or bar lengths with other terms) is that clip's own
+ * problem and is left to its own parse, unless one of the clips that fails is
+ * `strict`: a cut can't be undone. See {@link failuresByMeter}.
+ * @param clips - The clips the call will update
+ * @param edits - The call's note edits
+ * @param meterOf - A clip's meter once this call has updated it
+ * @param strictFor - Whether a failure must refuse the call for this clip
+ */
+export function refuseNoteEditsByMeter(
+  clips: LiveAPI[],
+  edits: NoteEdits,
+  meterOf: (clip: LiveAPI) => TimeSignature,
+  strictFor: (clip: LiveAPI) => boolean,
+): void {
+  const { notationString, transformString, preTransformString } = edits;
+
+  if (!hasNoteEdits(notationString, transformString, preTransformString)) {
+    return;
+  }
+
+  // Keyed by meter, or "audio" for clips that read no meter.
+  const groups = new Map<string, { meter?: TimeSignature; strict: boolean }>();
+
+  for (const clip of clips) {
+    const isAudio = (clip.getProperty("is_audio_clip") as number) > 0;
+    const meter = isAudio ? undefined : meterOf(clip);
+    const key =
+      meter == null
+        ? "audio"
+        : `${meter.timeSigNumerator}/${meter.timeSigDenominator}`;
+    const group = groups.get(key) ?? { meter, strict: false };
+
+    group.strict ||= strictFor(clip);
+    groups.set(key, group);
+  }
+
+  failuresByMeter(groups, ({ meter }) => {
+    if (meter == null) {
+      parseAudioTransforms(edits);
+    } else {
+      parseNoteEdits(edits, meter.timeSigNumerator, meter.timeSigDenominator);
+    }
+  });
+}
+
+/**
+ * Parse the transforms an audio clip would read, as its own evaluator does.
+ * @param edits - The call's note edits
+ */
+function parseAudioTransforms(edits: NoteEdits): void {
+  for (const transforms of [edits.preTransformString, edits.transformString]) {
+    if (transforms) {
+      tryParseTransform(transforms, 4, undefined, "audio");
     }
   }
 }

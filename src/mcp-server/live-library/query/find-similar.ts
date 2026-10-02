@@ -115,10 +115,10 @@ function runFindSimilar(
   // sampleFolder files aren't in Live's fe_values index, so the candidate query
   // can only ever match nothing (buildCandidateWhere emits an impossible
   // predicate). Explain it rather than returning a silent empty set.
-  if (args.source === "sampleFolder") {
+  if (args.source === "sample-folder") {
     return miss(
       false,
-      "audio similarity uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
+      "audio similarity uses Live's analyzed library; sample-folder samples aren't indexed there — remove source:sample-folder",
     );
   }
 

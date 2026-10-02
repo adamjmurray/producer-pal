@@ -150,11 +150,13 @@ describe("Transform Parser - nDuration", () => {
   // Malformed denominators must error, never silently produce garbage. The
   // grammar requires a denominator starting [1-9]; numerator is [0-9]*.
   it("throws on zero denominator (n/0)", () => {
-    expect(() => parseAssignments("duration = n/0")).toThrow('but "d" found');
+    expect(() => parseAssignments("duration = n/0")).toThrow(
+      "denominator can't be 0 (got n/0)",
+    );
   });
 
   it("throws on double slash (n//4)", () => {
-    expect(() => parseAssignments("duration = n//4")).toThrow('but "d" found');
+    expect(() => parseAssignments("duration = n//4")).toThrow('but "n" found');
   });
 
   it("throws on a numerator with zero denominator (n3/0)", () => {

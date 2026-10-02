@@ -7,10 +7,15 @@ import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.ts";
+import {
+  isDeviceTreeType,
+  wrongTargetTypeMessage,
+} from "#src/tools/shared/device/device-target-types.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   namedIdParam,
   namedParam,
@@ -101,10 +106,15 @@ export function readOneDevice(
   const includeAll = include.includes("*");
   const includeChains = includeAll || include.includes("chains");
   const includeReturnChains = includeAll || include.includes("return-chains");
-  const includeDrumPads = includeAll || include.includes("drum-pads");
+  // A Drum Rack's chains live under its pads, so asking for chains means the
+  // pads with their layers. Small-model mode has no `drum-pads` to ask for.
+  const includeDrumPads =
+    includeAll || include.includes("drum-pads") || include.includes("chains");
   const includeDrumMap = includeAll || include.includes("drum-map");
   const includeParamValues = includeAll || include.includes("param-values");
-  const includeParams = includeParamValues || include.includes("params");
+  // A search names the params to show, so it needs them on.
+  const includeParams =
+    includeParamValues || include.includes("params") || paramSearch != null;
   const includeSample = includeAll || include.includes("sample");
   const includeOptions = includeAll || include.includes("options");
   const includeActions = includeAll || include.includes("actions");
@@ -197,8 +207,8 @@ function readDeviceTarget(
 }
 
 /**
- * Read a device, or a drum pad, by ID
- * @param deviceId - Device or DrumPad ID to read
+ * Read a device, chain, or drum pad by ID
+ * @param deviceId - Device, chain or DrumPad ID to read
  * @param options - Read options
  * @returns Device or drum pad information
  */
@@ -217,6 +227,15 @@ function readDeviceById(
   // shared reader wants, and comes back describing nothing.
   if (device.type === "DrumPad") {
     return buildDrumPadInfo(device, drumPadPath(device), options);
+  }
+
+  // Chain ids come out of `chains` reads, so they read back like a chain path.
+  if (device.type === "Chain" || device.type === "DrumChain") {
+    return readChainObject(device, objectPathForApi(device) ?? null, options);
+  }
+
+  if (!isDeviceTreeType(device.type)) {
+    throw new Error(wrongTargetTypeMessage("read", device));
   }
 
   return readDeviceShared(device, options);
@@ -261,6 +280,21 @@ function readChain(
     throw new Error(`Chain not found at path: ${path}`);
   }
 
+  return readChainObject(chain, path, options);
+}
+
+/**
+ * Read a chain that is already in hand
+ * @param chain - The chain
+ * @param path - Simplified path for response, or null when it has none
+ * @param options - Read options
+ * @returns Chain information
+ */
+function readChainObject(
+  chain: LiveAPI,
+  path: string | null,
+  options: ReadOptions,
+): Record<string, unknown> {
   const devices = chain
     .getChildren("devices")
     .map((device) => readDeviceShared(device, options));

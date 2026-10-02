@@ -22,7 +22,7 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "../read-device.ts";
+import { readDevice } from "../../read-device.ts";
 
 /** Pads the fixture kit fills, each holding one chain with one instrument. */
 const PADS = 16;

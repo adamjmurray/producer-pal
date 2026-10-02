@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readOneDevice } from "../read-device.ts";
+import { readOneDevice } from "../../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
 /** Simpler device props reused across tests */

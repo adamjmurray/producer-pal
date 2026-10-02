@@ -215,24 +215,19 @@ describe("createDevice insertion order", () => {
     ]);
   });
 
-  // The track holds two devices, so d99 is past the end and the insert appends
-  // instead. An appended audio effect goes last and moves nothing, so the
-  // position named after it is still the position it named.
-  it("allows a position after an entry past the end of the chain", async () => {
+  // The track holds two devices, so d99 is refused and inserts nothing: the
+  // position named after it still names what it did.
+  it("allows a position after a past-the-end entry", async () => {
     expect(
-      await createDevice({ path: "t0/d99,t0/d0", device: "Utility" }),
+      await createDevice({ path: "t0/d99,t0/d0", device: "Operator" }),
     ).toStrictEqual([
-      { id: "created-0", path: "t0/d1" },
+      {
+        path: "t0/d99",
+        ok: false,
+        detail: '"t0/d99" is past the end of a container holding 2 devices',
+      },
       { id: "created-0", path: "t0/d1" },
     ]);
-  });
-
-  // Same shape, but Live sorts an instrument ahead of the audio effects, so
-  // the append the past-the-end entry falls back to still shifts the chain.
-  it("refuses a position after a past-the-end entry Live re-sorts", async () => {
-    await expect(
-      createDevice({ path: "t0/d99,t0/d0", device: "Operator" }),
-    ).rejects.toThrow('path entry "t0/d0" is spelled through "t0"');
   });
 });
 

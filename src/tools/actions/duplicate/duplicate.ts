@@ -44,7 +44,10 @@ import {
   namesLaneSource,
 } from "./helpers/sources/lane-sources.ts";
 import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
+import {
+  applyTransformsToDuplicatedClips,
+  refuseUnreadableCopyTransforms,
+} from "./helpers/clip/apply-clip-transforms.ts";
 import {
   hasArrangementPosition,
   resolveDestinationAndWarn,
@@ -182,7 +185,7 @@ export async function duplicate(
     idPerPath: laneCopy ? laneSourceIds : undefined,
   });
 
-  validateSourceIds(type, sources, laneCopy);
+  validateSourceIds(type, sources, laneCopy, transforms);
 
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
@@ -343,12 +346,16 @@ function callClipDestinations(
  * @param type - What is being duplicated
  * @param sources - The sources, in call order
  * @param laneCopy - Whether the call copies clips lane to lane
+ * @param transforms - Transforms the copies will get, if sent
  */
 function validateSourceIds(
   type: string,
   sources: SourceShare[],
   laneCopy: boolean,
+  transforms: string | undefined,
 ): void {
+  refuseUnreadableCopyTransforms(type, sources, transforms);
+
   if (sources.length < 2 || laneCopy) {
     return;
   }

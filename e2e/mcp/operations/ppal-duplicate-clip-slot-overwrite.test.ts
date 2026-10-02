@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E test for ppal-duplicate copying a clip into a slot that already holds one.
+ * E2E tests for ppal-duplicate copying a clip over one that is already there:
+ * into an occupied slot, and onto an arrangement clip.
  * Uses: e2e-test-set (t8 and t7 have no clips)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -12,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -19,6 +21,7 @@ import {
   sleep,
 } from "../mcp-test-helpers.ts";
 import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
+import { readClipsOnTrack } from "../clip/helpers/arrangement-lengthening-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -87,5 +90,48 @@ describe("ppal-duplicate into an occupied clip slot", () => {
 
     expect(inSlot.id).toBe(copy.id);
     expect(inSlot.notes).toContain("C3");
+  });
+});
+
+describe("ppal-duplicate onto an arrangement clip", () => {
+  // A copy onto an arrangement clip replaces it, so transforms that can't be
+  // read must refuse the call before any copy is made.
+  it("refuses unreadable transforms before copying over a clip", async () => {
+    const create = async (bar: number): Promise<string> => {
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}[${bar}|1]`,
+          notes: "C3 1|1",
+          length: "1bar",
+        },
+      });
+
+      return parseToolResult<{ id: string }>(result).id;
+    };
+
+    const sourceId = await create(71);
+
+    await create(75);
+    await sleep(200);
+
+    const before = await readClipsOnTrack(ctx.client!, EMPTY_MIDI_TRACK);
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: sourceId,
+        toPath: `t${EMPTY_MIDI_TRACK}[75|1]`,
+        transforms: "velocity = = 1",
+      },
+    });
+
+    expect(getToolErrorMessage(result)).toContain("transform syntax error");
+
+    await sleep(200);
+
+    const after = await readClipsOnTrack(ctx.client!, EMPTY_MIDI_TRACK);
+
+    expect(after.clips).toStrictEqual(before.clips);
   });
 });

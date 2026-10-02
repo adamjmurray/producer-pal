@@ -36,8 +36,11 @@ clearing a name or a clip's notes is a real request.
 standard tool: `null` has to read exactly as omitting it.
 
 `optionalParams()` in the same file does the equivalent by wrapping a schema's
-shape, for the one place the args scrub can't reach — the per-query fields
-nested inside `ppal-library`'s `searches`.
+shape, for the two places the args scrub can't reach first: the per-query fields
+nested inside `ppal-library`'s `searches`, and the schema the MCP SDK parses
+(and coerces) before our handler runs. Only that SDK-facing copy is wrapped; its
+JSON Schema is byte-identical, and everything else still reads the schema as
+authored.
 
 ## Alternatives rejected
 
