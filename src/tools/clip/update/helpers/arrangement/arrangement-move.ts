@@ -16,11 +16,8 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
-import {
-  arrangementLaneOf,
-  arrangementWriteEffects,
-  snapshotLane,
-} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   type ArrangementTrack,
@@ -141,9 +138,15 @@ export function handleArrangementStartOperation({
   }
 
   // The landing overwrites whatever is in its way — including a clip an
-  // earlier target of this same call put there — so photograph the destination
-  // lane and let this clip's entry say what it displaced.
-  const laneBefore = snapshotLane(arrangementLaneOf(landing));
+  // earlier target of this same call put there — so read the destination lane
+  // and let this clip's entry say what it displaced. The ledger is scanned right
+  // here, not kept from an earlier target: shortening, splitting and resizing
+  // change clips without telling it.
+  const lane = arrangementLaneOf(landing);
+  const ledger = new LaneLedger();
+
+  ledger.scan(lane);
+
   const newClip = placeMovedClip({
     clip,
     destination,
@@ -155,8 +158,8 @@ export function handleArrangementStartOperation({
   });
   // The source describes itself: it is about to be cleared, and a move onto
   // its own lane trims it on the way.
-  const displaced = arrangementWriteEffects(
-    laneBefore,
+  const displaced = ledger.afterWrite(
+    lane,
     newClip == null ? [clip.id] : [clip.id, newClip.id],
   );
 

@@ -492,9 +492,10 @@ interface Span {
  * props object, because the create moves the clips already there rather than
  * leaving them where the registry first put them.
  * @param before - The clips on the lane before the create
- * @param after - The clips on it once the create has run, new clip included
+ * @param afters - The clips on it once each create has run, new clip included.
+ *   The first create makes "made", the next "made2", and so on.
  */
-function setupDisplacingTrack(before: Span[], after: Span[]): void {
+function setupDisplacingTrack(before: Span[], ...afters: Span[][]): void {
   registerMockObject("live-set", {
     path: livePath.liveSet,
     properties: { signature_numerator: 4, signature_denominator: 4 },
@@ -512,7 +513,7 @@ function setupDisplacingTrack(before: Span[], after: Span[]): void {
     }
   };
 
-  for (const [index, { id }] of [...before, ...after].entries()) {
+  for (const [index, { id }] of [...before, ...afters.flat()].entries()) {
     const props = propsById.get(id) ?? {};
 
     propsById.set(id, props);
@@ -525,6 +526,7 @@ function setupDisplacingTrack(before: Span[], after: Span[]): void {
 
   place(before);
 
+  let created = 0;
   const trackProps: Record<string, unknown> = {
     arrangement_clips: children(...before.map((span) => span.id)),
   };
@@ -534,12 +536,15 @@ function setupDisplacingTrack(before: Span[], after: Span[]): void {
     properties: trackProps,
     methods: {
       create_midi_clip: () => {
+        const step = created++;
+        const after = afters[step] as Span[];
+
         place(after);
         trackProps.arrangement_clips = children(
           ...after.map((span) => span.id),
         );
 
-        return ["id", "made"];
+        return ["id", step === 0 ? "made" : `made${step + 1}`];
       },
     },
   });
@@ -597,6 +602,32 @@ describe("createClip - what an arrangement create displaced", () => {
     expect(result.detail).toBe(
       "split the clip at t0[1|1] into t0[1|1] and t0[5|1]",
     );
+  });
+
+  // One call shares what it learned about the lane: a later position sees the
+  // clips an earlier one made.
+  it("reports each position's own effect, including on a clip the call made", async () => {
+    setupDisplacingTrack(
+      [{ id: "old", start: 0, end: 20 }],
+      [
+        { id: "old", start: 0, end: 12 },
+        { id: "made", start: 12, end: 16 },
+      ],
+      [
+        { id: "old", start: 0, end: 12 },
+        { id: "made2", start: 12, end: 16 },
+      ],
+    );
+
+    const result = (await createClip({
+      path: "t0[4|1],t0[4|1]",
+      length: "1bar",
+    })) as Array<{ detail?: string }>;
+
+    expect(result.map((entry) => entry.detail)).toStrictEqual([
+      "shortened the clip at t0[1|1]",
+      "overwrote the clip at t0[4|1]",
+    ]);
   });
 
   it("says nothing when the range was empty", async () => {

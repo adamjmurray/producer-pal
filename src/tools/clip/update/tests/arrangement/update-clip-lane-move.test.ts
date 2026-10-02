@@ -404,6 +404,7 @@ describe("moving an arrangement clip to another lane", () => {
   it("does not report success when the re-created clip doesn't exist", () => {
     vi.mocked(recreateClip).mockReturnValueOnce({
       exists: () => false,
+      id: "0",
     } as unknown as LiveAPI);
 
     const result = runMove({

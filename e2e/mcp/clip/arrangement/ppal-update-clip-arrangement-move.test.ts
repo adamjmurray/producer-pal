@@ -273,6 +273,34 @@ describe("arrangement clip moved to another lane", () => {
     expect(warnings).toStrictEqual([]);
   });
 
+  // Each move reads only the lane it lands on, so each entry has to say what
+  // its own landing did.
+  it("says what each clip of one move displaced", async () => {
+    const first = await createClip("721|1", "Mover One");
+    const second = await createClip("725|1", "Mover Two");
+
+    await createClip("729|1", "Under One");
+    await createArrangementClip(ctx.client!, EMPTY_MIDI_TRACK, "733|1", {
+      name: "Under Two",
+      length: "4bar",
+    });
+
+    const { data } = await updateClip(ctx.client!, `${first.id},${second.id}`, {
+      arrangementStart: "729|1,734|1",
+    });
+    const entries = data as unknown as ReadClipResult[];
+    const track = `t${EMPTY_MIDI_TRACK}`;
+
+    expect(entries.map((entry) => entry.path)).toStrictEqual([
+      `${track}[729|1]`,
+      `${track}[734|1]`,
+    ]);
+    expect(entries.map((entry) => entry.detail)).toStrictEqual([
+      `overwrote the clip at ${track}[729|1]`,
+      `split the clip at ${track}[733|1] into ${track}[733|1] and ${track}[735|1]`,
+    ]);
+  });
+
   // The planner runs the clip being landed on first, trusting its declared move
   // to clear the span. Live turns that move down on arrival, so the span never
   // comes free — and the move waiting on it has to be called off, or it runs

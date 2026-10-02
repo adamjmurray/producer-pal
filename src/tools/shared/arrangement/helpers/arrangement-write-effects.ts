@@ -3,27 +3,18 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// What a write to the arrangement did to the clips that were already there.
-// Live overwrites, trims and splits them to make room and reports none of it,
-// so the lane is photographed before the write and compared after.
+// What a write to the arrangement did to the clips that were already there, in
+// words. Live overwrites, trims and splits them to make room and reports none
+// of it; arrangement-lane-ledger.ts works out what changed, this says it.
 
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { clipsOnLane, laneObject } from "./arrangement-clip-at-position.ts";
 import { EPSILON } from "./arrangement-tiling-clips.ts";
 import { type ArrangementTrack } from "./take-lanes.ts";
 
-/** The clips on one lane, as they were before a write. */
-export interface LaneSnapshot {
-  lane: ArrangementLane;
-  /** The lane object, kept so the read-back doesn't resolve it again. */
-  api: LiveAPI;
-  clips: ClipSpan[];
-}
-
 /** Where one clip began and ended. */
-interface ClipSpan {
+export interface ClipSpan {
   id: string;
   start: number;
   end: number;
@@ -43,89 +34,49 @@ export function arrangementLaneOf(target: ArrangementTrack): ArrangementLane {
 }
 
 /**
- * Photograph a lane before a write, so what the write did to it can be read
- * back afterwards. Costs a scan of the lane plus two reads per clip on it.
- * @param lane - The lane about to be written to
- * @param api - The lane object, when the caller already has it
- * @returns The clips and their spans
- */
-export function snapshotLane(
-  lane: ArrangementLane,
-  api: LiveAPI = laneObject(lane),
-): LaneSnapshot {
-  return { lane, api, clips: scanLane(lane, api) };
-}
-
-/**
- * What the write did to the clips that were already on the lane, in prose for
- * the written clip's own entry.
- * @param before - The lane as {@link snapshotLane} found it
- * @param written - Ids this write created or moved, which describe themselves
+ * What a write did to the clips that were already on a lane.
+ * @param lane - The lane that was written to
+ * @param before - The clips as they were, which the write didn't make
+ * @param after - Those clips' spans now, by id; a clip that is gone has none
+ * @param tails - New clips Live made that the write didn't (a split's tail)
  * @returns The effects, joined with "; ", or undefined when there were none
  */
-export function arrangementWriteEffects(
-  before: LaneSnapshot,
-  written: readonly string[],
+export function describeWriteEffects(
+  lane: ArrangementLane,
+  before: readonly ClipSpan[],
+  after: ReadonlyMap<string, ClipSpan>,
+  tails: readonly ClipSpan[],
 ): string | undefined {
-  const ours = new Set(written);
-  const wasThere = new Set(before.clips.map((clip) => clip.id));
-  const after = scanLane(before.lane, before.api);
-  const nowById = new Map(after.map((clip) => [clip.id, clip]));
-  // A new id inside an old span is what Live kept of that clip: the tail of a
-  // split, or the rest of a front trim.
-  const strangers = after.filter(
-    (clip) => !ours.has(clip.id) && !wasThere.has(clip.id),
-  );
-
   return joinDetails(
-    before.clips
-      .filter((was) => !ours.has(was.id))
-      .map((was) =>
-        effectOnClip(before.lane, was, nowById.get(was.id), strangers),
-      ),
+    before.map((was) => effectOnClip(lane, was, after.get(was.id), tails)),
   );
 }
 
 // --- Helpers below main exports ---
 
 /**
- * The clips on a lane with their spans.
- * @param lane - The lane to scan
- * @param laneApi - The lane object
- * @returns Each clip, in Live's order
- */
-function scanLane(lane: ArrangementLane, laneApi: LiveAPI): ClipSpan[] {
-  return clipsOnLane(lane, laneApi).map((api) => ({
-    id: api.id,
-    start: api.getProperty("start_time") as number,
-    end: api.getProperty("end_time") as number,
-  }));
-}
-
-/**
  * What the write did to one clip that was already there.
  * @param lane - The lane it sat on
  * @param was - Its span before the write
  * @param now - Its span after, or undefined when it is gone
- * @param strangers - Clips on the lane that neither the write nor the snapshot
- *   accounts for
+ * @param tails - New clips the write didn't make
  * @returns The effect, or undefined when the write left it alone
  */
 function effectOnClip(
   lane: ArrangementLane,
   was: ClipSpan,
   now: ClipSpan | undefined,
-  strangers: readonly ClipSpan[],
+  tails: readonly ClipSpan[],
 ): string | undefined {
   const wasAt = arrangementPositionPath(lane, was.start);
-  const inside = strangers.filter(
+  const inside = tails.filter(
     (clip) =>
       clip.start > was.start + EPSILON && clip.start < was.end - EPSILON,
   );
 
   if (now == null) {
-    // Live re-creates what a front trim leaves under a new id, ending where
-    // the old clip did.
+    // A write starting exactly where a clip starts re-creates what is left of
+    // it under a new id, ending where the old clip did.
     const rest = inside.find((clip) => Math.abs(clip.end - was.end) <= EPSILON);
 
     return rest == null
@@ -133,6 +84,7 @@ function effectOnClip(
       : `shortened the clip at ${arrangementPositionPath(lane, rest.start)}`;
   }
 
+  // Live keeps the head of a split clip on its id and gives the tail a new one.
   const tail = inside[0];
 
   if (tail != null) {

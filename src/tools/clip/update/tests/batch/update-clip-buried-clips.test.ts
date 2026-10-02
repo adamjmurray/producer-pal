@@ -67,6 +67,8 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
     properties: { arrangement_clips: children(...clipIds) },
     methods: {
       duplicate_clip_to_arrangement: (_id, start) => {
+        const left: string[] = [];
+
         for (const id of clipIds) {
           const props = lookupMockObject(id)?.properties;
 
@@ -76,6 +78,8 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
             props.start_time < (start as number) + length
           ) {
             deleteMockObject(id);
+          } else {
+            left.push(id);
           }
         }
 
@@ -85,6 +89,10 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
           start as number,
           (start as number) + length,
         );
+        // The lane's own list shows the clip cleared gone and the copy there.
+        registerMockObject("main-lane-track", {
+          properties: { arrangement_clips: children(...left, LANDED) },
+        });
 
         return ["id", LANDED];
       },

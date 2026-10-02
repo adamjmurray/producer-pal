@@ -3,11 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import {
-  arrangementWriteEffects,
-  snapshotLane,
-} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import {
   markClipLanded,
   noteClipReason,
@@ -81,12 +79,17 @@ export function handleArrangementLengthOperation({
 
   // Check if shortening, lengthening, or same
   if (arrangementLengthBeats > currentArrangementLength) {
-    // Growing into the lane overwrites whatever sits after the clip, so
-    // photograph the lane first and say what the growth cost.
-    const laneBefore = snapshotLane({
+    // Growing into the lane overwrites whatever sits after the clip, so read
+    // the lane first and say what the growth cost. The ledger is scanned right
+    // here: shortening and splitting change clips without telling it.
+    const lane: ArrangementLane = {
       kind: "track",
       trackIndex: clip.trackIndex as number,
-    });
+    };
+    const ledger = new LaneLedger();
+
+    ledger.scan(lane);
+
     const result = handleArrangementLengthening({
       clip,
       isAudioClip,
@@ -97,11 +100,17 @@ export function handleArrangementLengthOperation({
       context,
       reasons,
     });
-    // The clip itself and every tile it laid describe themselves.
-    const displaced = arrangementWriteEffects(laneBefore, [
-      clip.id,
-      ...result.map(({ id }) => id),
-    ]);
+    // The clip itself and every tile it laid describe themselves. Tiling clears
+    // ahead of what lands, so everything up to the target counts as written.
+    const displaced = ledger.afterWrite(
+      lane,
+      [clip.id, ...result.map(({ id }) => id)],
+      undefined,
+      {
+        start: currentStartTime,
+        end: currentStartTime + arrangementLengthBeats,
+      },
+    );
 
     if (displaced != null) {
       noteClipReason(reasons, clip.id, displaced);

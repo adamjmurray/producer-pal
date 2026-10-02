@@ -32,10 +32,11 @@ each clip by the arrangement path it had or has:
 - `split the clip at t0[1|1] into t0[1|1] and t0[4|1]` — the write landed inside
   it.
 
-Several are joined with `; `. The lane is photographed before the write and
-compared after
-([arrangement-write-effects.ts](../../src/tools/shared/arrangement/helpers/arrangement-write-effects.ts)),
-so what is reported is what Live really did, not what the call predicted.
+Several are joined with `; `. A per-call lane ledger
+([arrangement-lane-ledger.ts](../../src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts))
+scans a lane once, then after each write re-reads only the clips the write could
+have changed, so what is reported is what Live really did, not what the call
+predicted.
 
 **`force` stays reserved for a destruction that is the only way to do what was
 asked, and that the caller would not expect** — replacing a drum pad's sample,

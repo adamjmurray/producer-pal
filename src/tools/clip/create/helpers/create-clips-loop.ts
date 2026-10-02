@@ -12,6 +12,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { ignoredParamsNote } from "#src/tools/clip/helpers/ignored-params-note.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
@@ -104,6 +105,9 @@ export async function createClips(
   const scaleMask =
     params.transformString != null ? readLiveSetScaleMask() : undefined;
   const lastNaming = lastNamingBySlot(params);
+  // One ledger for the call: each position reads only what it could have
+  // changed, and sees the clips earlier positions made.
+  const ledger = new LaneLedger();
 
   for (const [index, ref] of order.entries()) {
     if (isDeadlineExceeded(deadline ?? null)) {
@@ -113,7 +117,7 @@ export async function createClips(
 
     entries.push(
       repeatedSlotSkip(params, ref, index, lastNaming) ??
-        (await createClipAtIndex(params, scaleMask, ref, index)),
+        (await createClipAtIndex(params, scaleMask, ledger, ref, index)),
     );
   }
 
@@ -292,6 +296,7 @@ interface IterationPosition {
  * destination's own entry to report so the loop carries on.
  * @param params - All parameters for clip creation
  * @param scaleMask - Live Set scale mask, or undefined when nothing transforms
+ * @param ledger - The arrangement lanes the whole call writes to
  * @param ref - Which destination this is
  * @param index - The destination's place in the call
  * @returns The clip, or the skip entry standing in for it
@@ -299,6 +304,7 @@ interface IterationPosition {
 async function createClipAtIndex(
   params: CreateClipsParams,
   scaleMask: number | undefined,
+  ledger: LaneLedger,
   ref: DestinationRef,
   index: number,
 ): Promise<CreatedClipEntry> {
@@ -360,46 +366,49 @@ async function createClipAtIndex(
     // the refusal as this position's failure.
     // Truthiness, not a null check: it is what picks the audio create below,
     // and an empty sampleFile makes a MIDI clip.
-    const blocker = createClipBlocker(
-      !plan.sampleFile,
-      pos,
-      params.tracks.get(pos.trackIndex),
-    );
+    const track = params.tracks.get(pos.trackIndex);
+    const blocker = createClipBlocker(!plan.sampleFile, pos, track);
 
     if (blocker != null) {
       throw new Error(blocker);
     }
 
-    const clipResult = processClipIteration(
-      view,
-      pos.trackIndex,
-      pos.sceneIndex,
-      pos.arrangementStartBeats,
-      clipLength,
-      params.liveSet,
-      plan.timing.startBeats,
-      plan.timing.endBeats,
-      plan.timing.firstStartBeats,
-      params.looping,
-      clipName,
-      clipColor ?? null,
-      plan.timing.timeSigNumerator,
-      plan.timing.timeSigDenominator,
-      params.notationString,
-      clipNotes,
-      plan.length,
-      plan.sampleFile,
-      transformedCount,
-      // Take lanes apply only to arrangement clips (ignored for session view)
-      takeLaneFor(params, pos),
-      {
-        warping: params.warping,
-        gainDb: params.gainDb,
-        pitchShift: params.pitchShift,
-        warpMode: params.warpMode,
-      },
-      plan.timeSignature,
-      params.tracks.get(pos.trackIndex) ?? null,
+    // Take lanes apply only to arrangement clips (ignored for session view)
+    const takeLane = takeLaneFor(params, pos);
+    const clipResult = ledger.writeClip(
+      view === "session" ? null : pos,
+      takeLane ?? track,
+      () =>
+        processClipIteration(
+          view,
+          pos.trackIndex,
+          pos.sceneIndex,
+          pos.arrangementStartBeats,
+          clipLength,
+          params.liveSet,
+          plan.timing.startBeats,
+          plan.timing.endBeats,
+          plan.timing.firstStartBeats,
+          params.looping,
+          clipName,
+          clipColor ?? null,
+          plan.timing.timeSigNumerator,
+          plan.timing.timeSigDenominator,
+          params.notationString,
+          clipNotes,
+          plan.length,
+          plan.sampleFile,
+          transformedCount,
+          takeLane,
+          {
+            warping: params.warping,
+            gainDb: params.gainDb,
+            pitchShift: params.pitchShift,
+            warpMode: params.warpMode,
+          },
+          plan.timeSignature,
+          track ?? null,
+        ),
     );
 
     // Live hides take lanes until the track's arrow is expanded, so a clip on

@@ -197,6 +197,41 @@ describe("ppal-create-clip result entries", () => {
     );
   });
 
+  // One call keeps what it learned about the lane: each position reports its
+  // own effect, and a later one reports a clip an earlier one made.
+  it("says what each position of one call displaced", async () => {
+    await makeClipAt("801|1", "2bar");
+    await makeClipAt("809|1", "1bar");
+    await makeClipAt("813|1", "4bar");
+    await makeClipAt("821|1", "2bar");
+
+    const track = `t${EMPTY_MIDI_TRACK}`;
+    const entries = parseBatchResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}[809|1],${track}[802|1],${track}[814|1],${track}[809|1],${track}[821|1]`,
+          notes: "C3 1|1",
+          length: "1bar",
+        },
+      }),
+      5,
+    );
+
+    expect(entries.map((entry) => entry.detail)).toStrictEqual([
+      // Whole
+      `overwrote the clip at ${track}[809|1]`,
+      // End: the new clip stops where the 2-bar clip does
+      `shortened the clip at ${track}[801|1]`,
+      // Middle
+      `split the clip at ${track}[813|1] into ${track}[813|1] and ${track}[815|1]`,
+      // The first position's own clip, covered by the last
+      `overwrote the clip at ${track}[809|1]`,
+      // Front, from the clip's own start: Live re-creates the rest under a new id
+      `shortened the clip at ${track}[822|1]`,
+    ]);
+  });
+
   // Writing into a slot replaces what is there, the way duplicating into one
   // does, and the new clip's entry is where that is reported.
   it("replaces the clip in the one slot it names", async () => {
