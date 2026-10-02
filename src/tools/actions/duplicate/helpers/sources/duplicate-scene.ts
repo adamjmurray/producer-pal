@@ -5,12 +5,23 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   createClipsForLength,
   parseArrangementLength,
 } from "../clip/arrangement-length.ts";
+import {
+  copiedIds,
+  copyClearingAsync,
+  copyLedger,
+  copyReach,
+  mainLaneOf,
+  noteCleared,
+} from "../clip/overwrites/copy-overwrites.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
@@ -134,7 +145,9 @@ export function calculateSceneLength(sceneIndex: number): number {
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
  * @param context - Context object with silenceWavPath
- * @returns The clips the copy landed, each with its own path
+ * @param ledger - The call's arrangement lanes, shared by every copy
+ * @returns The clips the copy landed, each with its own path, and what it did
+ *   on a track where it landed none
  */
 export async function duplicateSceneToArrangement(
   sceneId: string,
@@ -146,7 +159,8 @@ export async function duplicateSceneToArrangement(
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
-): Promise<{ clips: MinimalClipInfo[] }> {
+  ledger: LaneLedger = copyLedger(),
+): Promise<{ clips: MinimalClipInfo[]; detail?: string }> {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
@@ -163,6 +177,8 @@ export async function duplicateSceneToArrangement(
   const trackIds = liveSet.getChildIds("tracks");
 
   const duplicatedClips: MinimalClipInfo[] = [];
+  // Tracks whose clip Live silently declined after clearing its range.
+  const declined: string[] = [];
 
   if (withoutClips !== true) {
     // Determine the length to use for all clips
@@ -193,21 +209,49 @@ export async function duplicateSceneToArrangement(
 
       // The result reports id and path only: a clip takes the name verbatim,
       // so reading it back could only repeat the arg.
-      const clipsForTrack = await createClipsForLength(
-        clip,
-        track,
-        arrangementStartBeats,
-        arrangementLengthBeats,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-        name,
-        context,
-        color,
+      const { made: clipsForTrack, cleared } = await copyClearingAsync(
+        ledger,
+        mainLaneOf(trackIndex, track),
+        copyReach(
+          arrangementStartBeats,
+          clipLengthBeats(clip),
+          arrangementLengthBeats,
+        ),
+        () =>
+          createClipsForLength(
+            clip,
+            track,
+            arrangementStartBeats,
+            arrangementLengthBeats,
+            songTimeSigNumerator,
+            songTimeSigDenominator,
+            name,
+            context,
+            color,
+          ),
+        (clips) => clips.flatMap(copiedIds),
+        // A longer copy is grown by update-clip, which waits.
+        arrangementLengthBeats > clipLengthBeats(clip),
       );
 
       duplicatedClips.push(...clipsForTrack);
+
+      if (cleared == null) {
+        continue;
+      }
+
+      // A track with no copy has no entry to carry it, so the scene's does.
+      if (clipsForTrack[0] == null) {
+        declined.push(
+          `Live made no copy on ${arrangementPath(trackIndex)}, but ${cleared}`,
+        );
+      } else {
+        noteCleared(clipsForTrack[0], cleared);
+      }
     }
   }
 
-  return { clips: duplicatedClips };
+  const detail = joinDetails(declined);
+
+  return { clips: duplicatedClips, ...(detail != null && { detail }) };
 }

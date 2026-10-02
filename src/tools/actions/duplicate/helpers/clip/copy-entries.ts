@@ -12,7 +12,11 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { skippedCopy } from "../minimal-clip-info.ts";
+import {
+  type ClearedCopy,
+  clearedCopy,
+  skippedCopy,
+} from "../minimal-clip-info.ts";
 import { type DuplicateArrangementTarget } from "./clip-destinations.ts";
 import { type UnreachedDestination } from "../sources/scene-arrangement-positions.ts";
 
@@ -124,21 +128,50 @@ function destinationLabel(
  * landed there would have been.
  * @param destination - Where the copy was headed: the lane, and the position
  * @param meter - The song time signature, for spelling the position
- * @param meter.songTimeSigNumerator - Numerator
- * @param meter.songTimeSigDenominator - Denominator
  * @param reason - Why no copy landed there
  * @returns The skip entry
  */
 export function refusedCopy(
   destination: UnreachedDestination,
-  { songTimeSigNumerator, songTimeSigDenominator }: CopyMeter,
+  meter: CopyMeter,
   reason: string,
 ): TargetSkip {
+  return skippedCopy(destinationPath(destination, meter), reason);
+}
+
+/**
+ * The entry for a destination Live made no copy at after the landing had
+ * already cleared clips there. The Set changed, so it counts as landed: a
+ * normal entry with a detail, and no `ok: false`.
+ * @param destination - Where the copy was headed: the lane, and the position
+ * @param meter - The song time signature, for spelling the position
+ * @param detail - Why no copy landed, and what was cleared
+ * @returns The entry
+ */
+export function clearedWithoutCopy(
+  destination: UnreachedDestination,
+  meter: CopyMeter,
+  detail: string,
+): ClearedCopy {
+  return clearedCopy(destinationPath(destination, meter), detail);
+}
+
+/**
+ * @param destination - Where a copy was headed
+ * @param meter - The song time signature, for spelling the position
+ * @param meter.songTimeSigNumerator - Numerator
+ * @param meter.songTimeSigDenominator - Denominator
+ * @returns The path a copy there would have reported
+ */
+function destinationPath(
+  destination: UnreachedDestination,
+  { songTimeSigNumerator, songTimeSigDenominator }: CopyMeter,
+): string {
   const position = abletonBeatsToBarBeat(
     destination.beats,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
 
-  return skippedCopy(`${destination.label ?? ""}[${position}]`, reason);
+  return `${destination.label ?? ""}[${position}]`;
 }

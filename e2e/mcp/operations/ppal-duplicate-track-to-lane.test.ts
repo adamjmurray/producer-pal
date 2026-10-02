@@ -210,6 +210,27 @@ describe("ppal-duplicate track to a take lane", () => {
     expect(after.tracks.length).toBe(before.tracks.length);
   });
 
+  // The second copy lands exactly on the first, so each clip it makes says it
+  // overwrote the one before it, and the lane's entry says nothing of it.
+  it("says on each clip what it overwrote when copied onto a lane again", async () => {
+    await createSourceClips();
+    await copyToLanes<LaneCopyResult>({ path: SOURCE }, `${DESTINATION}/l0`);
+    await sleep(100);
+
+    const again = await copyToLanes<LaneCopyResult>(
+      { path: SOURCE },
+      `${DESTINATION}/l0`,
+    );
+
+    expect(again.clips[0]!.detail).toContain(
+      `overwrote the clip at ${DESTINATION}/l0[1|1]`,
+    );
+    expect(again.clips[1]!.detail).toContain(
+      `overwrote the clip at ${DESTINATION}/l0[5|1]`,
+    );
+    expect(again.detail).not.toContain("overwrote");
+  });
+
   it("appends a lane with l+, and refuses a group track beside it", async () => {
     await createSourceClips();
 

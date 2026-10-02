@@ -9,6 +9,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -23,6 +24,7 @@ import {
   calculateSceneLength,
   duplicateSceneToArrangement,
 } from "./duplicate-scene.ts";
+import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
 import { resolveArrangementPositions } from "../duplicate-destinations.ts";
 import { parseArrangementLength } from "../clip/arrangement-length.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -43,6 +45,7 @@ interface SceneArrangementParams {
  * @param labels - The call's names and colors
  * @param params - Arrangement parameters (arrangementStart, arrangementLength, etc.)
  * @param context - Context object
+ * @param ledger - The call's arrangement lanes, shared by every copy
  * @returns Array of result objects
  */
 export async function duplicateSceneToArrangementAtPositions(
@@ -52,6 +55,7 @@ export async function duplicateSceneToArrangementAtPositions(
   labels: CopyLabels,
   params: SceneArrangementParams,
   context: Partial<ToolContext>,
+  ledger: LaneLedger = copyLedger(),
 ): Promise<object[]> {
   const { arrangementStart } = params;
   const withoutClips = params.withoutClips;
@@ -130,6 +134,7 @@ export async function duplicateSceneToArrangementAtPositions(
       songTimeSigNumerator,
       songTimeSigDenominator,
       context,
+      ledger,
     );
 
     createdObjects.push(result);

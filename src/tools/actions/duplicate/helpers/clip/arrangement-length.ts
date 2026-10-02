@@ -17,6 +17,7 @@ import {
   holdingAreaStartOnTrack,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
@@ -209,8 +210,12 @@ async function lengthenClipAndCollectInfo(
 
     if (clipLiveAPI) {
       // The copy's entry keeps update-clip's detail but never its `ok: false`:
-      // the copy was made.
-      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI, clipObj.detail));
+      // the copy was made. What the lengthening cleared is left out: the call's
+      // ledger reports what the whole copy did, and the clips update-clip names
+      // can be fragments the copy itself just made.
+      duplicatedClips.push(
+        getMinimalClipInfo(clipLiveAPI, withoutWriteEffects(clipObj.detail)),
+      );
     }
   }
 }

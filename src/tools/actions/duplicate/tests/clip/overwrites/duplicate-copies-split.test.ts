@@ -112,6 +112,7 @@ describe("a copy another copy split", () => {
 
     // The 16 lands, the 4 takes its front, the 12 buries the rest, and the 2
     // splits the 12: the tail at 3|3 is the 12's, and the 16 has nothing left.
+    // The 12 keeps its head, so its entry says it was trimmed.
     const result = await duplicate({
       type: "clip",
       id: "s16,s4,s12,s2",
@@ -125,7 +126,11 @@ describe("a copy another copy split", () => {
         detail: "a later copy in this call landed on it",
       },
       { id: "copy-1", path: "t1[1|1]" },
-      { id: "copy-2", path: "t1[2|1]" },
+      {
+        id: "copy-2",
+        path: "t1[2|1]",
+        detail: "trimmed: a later copy in this call landed on part of it",
+      },
       { id: "copy-3", path: "t1[3|1]" },
     ]);
   });

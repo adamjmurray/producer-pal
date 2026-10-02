@@ -8,6 +8,7 @@ import {
   arrangementLaneOf,
   type ClipSpan,
   describeWriteEffects,
+  withoutWriteEffects,
 } from "../arrangement-write-effects.ts";
 
 const LANE = { kind: "track", trackIndex: 0 } as const;
@@ -107,5 +108,35 @@ describe("describeWriteEffects", () => {
         [],
       ),
     ).toBe("shortened the clip at t0[1|1]; overwrote the clip at t0[5|1]");
+  });
+});
+
+describe("withoutWriteEffects", () => {
+  it("drops every sentence describeWriteEffects words", () => {
+    const effects = describeWriteEffects(
+      LANE,
+      [span("a", 0, 16), span("b", 16, 24), span("c", 40, 56)],
+      new Map([
+        ["a", span("a", 0, 8)],
+        ["c", span("c", 40, 44)],
+      ]),
+      [span("tail", 48, 56)],
+    ) as string;
+
+    expect(effects.split("; ")).toHaveLength(3);
+    expect(withoutWriteEffects(`first; ${effects}; last`)).toBe("first; last");
+  });
+
+  it("leaves a detail with none of them as it was", () => {
+    expect(withoutWriteEffects("arrangementLength ignored")).toBe(
+      "arrangementLength ignored",
+    );
+  });
+
+  it("answers undefined when nothing is left", () => {
+    expect(
+      withoutWriteEffects("overwrote the clip at t0[1|1]"),
+    ).toBeUndefined();
+    expect(withoutWriteEffects(undefined)).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@
 // tracks and scenes take. Which destinations the source gets is settled before
 // it starts — see source-plan.ts.
 
+import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -15,6 +16,7 @@ import {
   type TargetSkip,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
 import { duplicateChainWithPaths } from "../device/duplicate-chain.ts";
@@ -69,12 +71,14 @@ export interface OneSourceArgs {
   takeLane: number | string | undefined;
   takeLaneName: string | undefined;
   context: Partial<ToolContext>;
+  /** The call's arrangement lanes, shared by every copy it makes */
+  ledger: LaneLedger;
 }
 
 /** Every source's turn, and what they share. */
 export interface EverySourceArgs extends Omit<
   OneSourceArgs,
-  "source" | "clipDestinations"
+  "source" | "clipDestinations" | "ledger"
 > {
   sources: SourceShare[];
   /** One destination set per source, or null for a type with no clip path. */
@@ -93,6 +97,8 @@ export async function duplicateEverySource(
   args: EverySourceArgs,
 ): Promise<object[]> {
   const created: object[] = [];
+  // Reads each arrangement lane once, so every copy can say what it overwrote.
+  const ledger = copyLedger();
 
   if (args.clipDestinations != null) {
     refuseClipOverwrites(args.sources, args.clipDestinations, {
@@ -106,6 +112,7 @@ export async function duplicateEverySource(
       ...(await duplicateOneSource({
         ...args,
         source,
+        ledger,
         clipDestinations: args.clipDestinations?.[index] ?? null,
         params: { ...args.params, arrangementStart: source.arrangementStart },
       })),
@@ -132,7 +139,7 @@ export async function duplicateEverySource(
 export async function duplicateOneSource(
   args: OneSourceArgs,
 ): Promise<object[]> {
-  const { type, source, clipDestinations, labels, context } = args;
+  const { type, source, clipDestinations, labels, context, ledger } = args;
   const object = sourceObject(source, type);
   const id = source.id;
 
@@ -146,6 +153,7 @@ export async function duplicateOneSource(
       args.takeLane,
       args.takeLaneName,
       context,
+      ledger,
     );
   }
 
@@ -158,6 +166,7 @@ export async function duplicateOneSource(
     labels,
     args.params,
     context,
+    ledger,
   );
 }
 
@@ -313,6 +322,7 @@ function duplicateDrumPadSource(
  * @param labels - The call's names and colors
  * @param params - Additional parameters
  * @param context - Per-request context
+ * @param ledger - The call's arrangement lanes, shared by every copy
  * @returns Array of result objects
  */
 async function duplicateTrackOrSceneWithCount(
@@ -324,6 +334,7 @@ async function duplicateTrackOrSceneWithCount(
   labels: CopyLabels,
   params: DuplicateParams,
   context: Partial<ToolContext>,
+  ledger: LaneLedger,
 ): Promise<object[]> {
   // Scene to arrangement: use position-based iteration (supports a position list)
   if (type === "scene" && destination === "arrangement") {
@@ -334,6 +345,7 @@ async function duplicateTrackOrSceneWithCount(
       labels,
       params,
       context,
+      ledger,
     );
   }
 

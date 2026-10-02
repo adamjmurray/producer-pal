@@ -9,7 +9,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
-import { collectClipResults } from "./overwritten-copies.ts";
+import { collectClipResults } from "./overwrites/overwritten-copies.ts";
 
 /**
  * Refuse transforms the copies can't read, before any copy is made: one onto an

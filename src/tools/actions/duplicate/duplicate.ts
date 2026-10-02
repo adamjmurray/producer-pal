@@ -43,7 +43,7 @@ import {
   laneSourceIds,
   namesLaneSource,
 } from "./helpers/sources/lane-sources.ts";
-import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
+import { markOverwrittenCopies } from "./helpers/clip/overwrites/overwritten-copies.ts";
 import {
   applyTransformsToDuplicatedClips,
   refuseUnreadableCopyTransforms,

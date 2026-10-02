@@ -15,7 +15,7 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { markOverwrittenCopies } from "#src/tools/actions/duplicate/helpers/clip/overwritten-copies.ts";
+import { markOverwrittenCopies } from "#src/tools/actions/duplicate/helpers/clip/overwrites/overwritten-copies.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,

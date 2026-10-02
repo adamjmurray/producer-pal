@@ -546,3 +546,116 @@ describe("LaneLedger", () => {
     expect(wasRead("a")).toBe(true);
   });
 });
+
+describe("LaneLedger that skips the call's own clips", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+    mockNonExistentObjects();
+    clipMocks.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * A ledger that has scanned an empty lane and seen `first` written.
+   * @param first - The clip the call wrote first
+   * @returns The ledger
+   */
+  function ledgerAfterFirstWrite(first: Span): LaneLedger {
+    setMainLane([]);
+
+    const ledger = new LaneLedger({ skipOwn: true });
+
+    ledger.scan(MAIN);
+    setMainLane([first]);
+    ledger.afterWrite(MAIN, [first.id]);
+
+    return ledger;
+  }
+
+  it("says nothing of a clip an earlier write made that a later one covers", () => {
+    const ledger = ledgerAfterFirstWrite({ id: "first", start: 16, end: 24 });
+
+    setMainLane([{ id: "second", start: 16, end: 32 }]);
+
+    expect(ledger.afterWrite(MAIN, ["second"])).toBeUndefined();
+  });
+
+  it("still reports a clip that was on the lane before the call", () => {
+    setMainLane([{ id: "a", start: 0, end: 8 }]);
+
+    const ledger = new LaneLedger({ skipOwn: true });
+
+    ledger.scan(MAIN);
+    setMainLane([{ id: "new", start: 0, end: 8 }]);
+
+    expect(ledger.afterWrite(MAIN, ["new"])).toBe(
+      "overwrote the clip at t0[1|1]",
+    );
+  });
+
+  // Live gives the tail of a split clip a new id. It is still the call's own.
+  it("treats what Live cut off a clip of the call as the call's own", () => {
+    const ledger = ledgerAfterFirstWrite({ id: "first", start: 0, end: 32 });
+
+    setMainLane([
+      { id: "first", start: 0, end: 8 },
+      { id: "second", start: 8, end: 16 },
+      { id: "tail", start: 16, end: 32 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["second"])).toBeUndefined();
+    expect([...ledger.ours]).toStrictEqual(["first", "second", "tail"]);
+
+    setMainLane([
+      { id: "first", start: 0, end: 8 },
+      { id: "second", start: 8, end: 16 },
+      { id: "third", start: 16, end: 32 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["third"])).toBeUndefined();
+  });
+
+  // A write starting where a clip starts re-creates its rest under a new id.
+  it("treats the rest Live re-created of a clip of the call as its own", () => {
+    const ledger = ledgerAfterFirstWrite({ id: "first", start: 16, end: 24 });
+
+    setMainLane([
+      { id: "second", start: 16, end: 20 },
+      { id: "rest", start: 20, end: 24 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["second"])).toBeUndefined();
+    expect(ledger.ours.has("rest")).toBe(true);
+  });
+
+  it("does not take what Live cut off a clip that was already there", () => {
+    setMainLane([{ id: "a", start: 0, end: 32 }]);
+
+    const ledger = new LaneLedger({ skipOwn: true });
+
+    ledger.scan(MAIN);
+    setMainLane([
+      { id: "a", start: 0, end: 8 },
+      { id: "first", start: 8, end: 16 },
+      { id: "tail", start: 16, end: 32 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["first"])).toBe(
+      "split the clip at t0[1|1] into t0[1|1] and t0[5|1]",
+    );
+    expect(ledger.ours.has("tail")).toBe(false);
+
+    setMainLane([
+      { id: "a", start: 0, end: 8 },
+      { id: "first", start: 8, end: 16 },
+      { id: "second", start: 16, end: 32 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["second"])).toBe(
+      "overwrote the clip at t0[5|1]",
+    );
+  });
+});

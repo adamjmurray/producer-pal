@@ -58,6 +58,11 @@ entry tells them about it afterwards.
 
 ## Consequences
 
+- `ppal-duplicate` says it too, on each written copy's entry. A copy a later
+  copy of the same call buries or cuts says so itself (`deleted`, or a trimmed
+  `detail`), so the later copy doesn't name it, and the buried copy keeps what
+  it overwrote. A copy Live declined after clearing clips still counts as
+  landed: its entry has a `detail` and no `ok: false`.
 - `ppal-update-clip` no longer warns
   `N clips on <lane> moved to the same position`. The later clip's entry says
   `overwrote the clip at ...`, and a clip the call buried without ever moving it

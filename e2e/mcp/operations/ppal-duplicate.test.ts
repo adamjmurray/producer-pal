@@ -298,6 +298,29 @@ describe("ppal-duplicate", () => {
     expect(parseToolResult<ReadClipResult>(readCopy).color).toBeDefined();
   });
 
+  // s6 starts empty, so the clip created here is the whole scene. Copying it
+  // twice to one position lands the second copy exactly on the first.
+  it("says what a scene's arrangement copy overwrote, on the clip that did", async () => {
+    await createSceneClip(6);
+
+    const sceneId = (await readScenes()).scenes![6]!.id;
+    const first = parseToolResult<{ clips: Array<{ detail?: string }> }>(
+      await duplicateScene(sceneId, { toPath: "[57|1]" }),
+    );
+
+    expect(first.clips[0]!.detail).toBeUndefined();
+
+    await sleep(100);
+
+    const second = parseToolResult<{ clips: Array<{ detail?: string }> }>(
+      await duplicateScene(sceneId, { toPath: "[57|1]" }),
+    );
+
+    expect(second.clips[0]!.detail).toBe(
+      `overwrote the clip at t${EMPTY_MIDI_TRACK}[57|1]`,
+    );
+  });
+
   it("refuses a scene duplicate whose toPath names no arrangement position", async () => {
     const scenes = await readScenes();
     const initialSceneCount = scenes.scenes!.length;

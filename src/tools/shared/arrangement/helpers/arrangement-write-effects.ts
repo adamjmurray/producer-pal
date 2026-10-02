@@ -13,6 +13,11 @@ import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/ob
 import { EPSILON } from "./arrangement-tiling-clips.ts";
 import { type ArrangementTrack } from "./take-lanes.ts";
 
+const OVERWROTE = "overwrote the clip at ";
+const SHORTENED = "shortened the clip at ";
+const SPLIT = "split the clip at ";
+const EFFECT_START = [OVERWROTE, SHORTENED, SPLIT];
+
 /** Where one clip began and ended. */
 export interface ClipSpan {
   id: string;
@@ -52,6 +57,22 @@ export function describeWriteEffects(
   );
 }
 
+/**
+ * A detail without the sentences {@link describeWriteEffects} wrote, for a
+ * caller that reports those itself.
+ * @param detail - An entry's detail, or undefined
+ * @returns What is left, or undefined when nothing is
+ */
+export function withoutWriteEffects(
+  detail: string | undefined,
+): string | undefined {
+  return joinDetails(
+    (detail?.split("; ") ?? []).filter(
+      (part) => !EFFECT_START.some((start) => part.startsWith(start)),
+    ),
+  );
+}
+
 // --- Helpers below main exports ---
 
 /**
@@ -80,22 +101,22 @@ function effectOnClip(
     const rest = inside.find((clip) => Math.abs(clip.end - was.end) <= EPSILON);
 
     return rest == null
-      ? `overwrote the clip at ${wasAt}`
-      : `shortened the clip at ${arrangementPositionPath(lane, rest.start)}`;
+      ? `${OVERWROTE}${wasAt}`
+      : `${SHORTENED}${arrangementPositionPath(lane, rest.start)}`;
   }
 
   // Live keeps the head of a split clip on its id and gives the tail a new one.
   const tail = inside[0];
 
   if (tail != null) {
-    return `split the clip at ${wasAt} into ${arrangementPositionPath(lane, now.start)} and ${arrangementPositionPath(lane, tail.start)}`;
+    return `${SPLIT}${wasAt} into ${arrangementPositionPath(lane, now.start)} and ${arrangementPositionPath(lane, tail.start)}`;
   }
 
   if (
     Math.abs(now.start - was.start) > EPSILON ||
     Math.abs(now.end - was.end) > EPSILON
   ) {
-    return `shortened the clip at ${arrangementPositionPath(lane, now.start)}`;
+    return `${SHORTENED}${arrangementPositionPath(lane, now.start)}`;
   }
 
   return undefined;

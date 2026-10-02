@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   aliasTakeLane,
@@ -19,12 +20,17 @@ import {
   type CopyLabels,
 } from "../sources/copy-labels.ts";
 import { type ClipDestinations } from "./clip-destinations.ts";
+import { copyLedger } from "./overwrites/copy-overwrites.ts";
 import { destinationTracks, duplicateOneCopy } from "./duplicate-one-copy.ts";
 import { copySpanBeats, planCopies, sourceLastOrder } from "./copy-plan.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot.ts";
 import { type UnreachedDestination } from "../sources/scene-arrangement-positions.ts";
 import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
-import { entriesPerDestination, refusedCopy } from "./copy-entries.ts";
+import {
+  clearedWithoutCopy,
+  entriesPerDestination,
+  refusedCopy,
+} from "./copy-entries.ts";
 import {
   labelDuplicateDestinations,
   noBudgetForCopies,
@@ -50,6 +56,7 @@ import {
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param context - Per-request context
+ * @param ledger - The call's arrangement lanes, shared by every copy
  * @returns Array of result objects
  */
 export async function duplicateClipWithPositions(
@@ -61,6 +68,7 @@ export async function duplicateClipWithPositions(
   takeLane: number | string | undefined,
   takeLaneName: string | undefined,
   context: Partial<ToolContext>,
+  ledger: LaneLedger = copyLedger(),
 ): Promise<object[]> {
   if (destinations.destination === "session") {
     // A clip slot can't name a lane, so nothing here has one to honor.
@@ -76,6 +84,7 @@ export async function duplicateClipWithPositions(
     takeLane,
     takeLaneName,
     context,
+    ledger,
   );
 }
 
@@ -94,6 +103,7 @@ export async function duplicateClipWithPositions(
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param context - Per-request context
+ * @param ledger - The call's arrangement lanes, shared by every copy
  * @returns Array of result objects
  */
 async function duplicateClipToArrangementPositions(
@@ -105,6 +115,7 @@ async function duplicateClipToArrangementPositions(
   takeLane: number | string | undefined,
   takeLaneName: string | undefined,
   context: Partial<ToolContext>,
+  ledger: LaneLedger,
 ): Promise<object[]> {
   // The alias folds on after resolution, because an omitted toPath means the
   // source clip's own track — which only exists as a destination once resolved.
@@ -190,6 +201,7 @@ async function duplicateClipToArrangementPositions(
       songTimeSigNumerator,
       songTimeSigDenominator,
       context,
+      ledger,
     },
     targetTracks,
     targetPositions,
@@ -213,6 +225,7 @@ interface SharedCopyOptions {
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   context: Partial<ToolContext>;
+  ledger: LaneLedger;
 }
 
 interface MakeCopiesArgs {
@@ -299,6 +312,18 @@ async function makeCopies({
 
     if (attempt.copy != null) {
       results[i] = attempt.copy;
+
+      continue;
+    }
+
+    // Live declined the copy after its landing cleared clips: the Set changed,
+    // so the entry says so without `ok: false`, and it counts as landed.
+    if (attempt.cleared != null) {
+      results[i] = clearedWithoutCopy(
+        labelled[i] as UnreachedDestination,
+        { songTimeSigNumerator, songTimeSigDenominator },
+        `${attempt.refused}; ${attempt.cleared}`,
+      );
 
       continue;
     }

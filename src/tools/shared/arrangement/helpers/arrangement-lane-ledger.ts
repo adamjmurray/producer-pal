@@ -19,6 +19,13 @@
 //
 // Holds ids and spans only, never a LiveAPI: objects are released when a
 // request ends, and a ledger belongs to one call.
+//
+// A call whose own clips report their own fate (duplicate: a copy a later copy
+// buries says so on its own entry) can ask the ledger to leave those clips out
+// of what a later write reports. A clip counts as the call's own only if it was
+// written by the call, or is what Live left of one: a copy's split-off tail, or
+// the rest of a copy re-created under a new id. A new clip anywhere else is
+// never assumed to be ours.
 
 import {
   fromLiveApiId,
@@ -43,7 +50,7 @@ interface LaneState {
 }
 
 /** A stretch of the timeline. */
-interface Reach {
+export interface Reach {
   start: number;
   end: number;
 }
@@ -56,9 +63,22 @@ interface AfterWriteOptions {
 
 /** The arrangement lanes one call has written to, and what was on them. */
 export class LaneLedger {
-  /** Every clip this call created or wrote, on any lane. */
+  /**
+   * Every clip this call created or wrote, on any lane. With `skipOwn`, also
+   * what Live left of one of them when a later write cut it.
+   */
   readonly ours = new Set<string>();
   private readonly lanes = new Map<string, LaneState>();
+  private readonly skipOwn: boolean;
+
+  /**
+   * @param options - How to report
+   * @param options.skipOwn - Leave the call's own clips out of what a write
+   *   reports, because their own entries say what became of them
+   */
+  constructor(options: { skipOwn?: boolean } = {}) {
+    this.skipOwn = options.skipOwn === true;
+  }
 
   /**
    * Read a lane's clips, the first time it is touched. Call before the write.
@@ -152,6 +172,9 @@ export class LaneLedger {
     const before = [...state.clips.values()]
       .filter((clip) => !wrote.has(clip.id))
       .toSorted((a, b) => a.start - b.start);
+    const reported = this.skipOwn
+      ? before.filter((clip) => !this.ours.has(clip.id))
+      : before;
     // Spans read this time, and the new clips the write didn't make.
     const read = new Map<string, ClipSpan>();
     const tails: ClipSpan[] = [];
@@ -171,6 +194,10 @@ export class LaneLedger {
           tails.push(span);
         }
       }
+    }
+
+    if (this.skipOwn) {
+      this.claimTailsOfOwn(before, tails);
     }
 
     const touched = mergeReach(reach, [...read.values()]);
@@ -196,7 +223,31 @@ export class LaneLedger {
       state.clips.set(id, span);
     }
 
-    return describeWriteEffects(lane, before, state.clips, tails);
+    return describeWriteEffects(lane, reported, state.clips, tails);
+  }
+
+  /**
+   * Live gives the cut-off part of a clip a new id. When the clip was ours, so
+   * is the part.
+   * @param before - The clips the write didn't make, as they were
+   * @param tails - New clips the write didn't make
+   */
+  private claimTailsOfOwn(
+    before: readonly ClipSpan[],
+    tails: readonly ClipSpan[],
+  ): void {
+    for (const tail of tails) {
+      const cutFromOwn = before.some(
+        (clip) =>
+          this.ours.has(clip.id) &&
+          tail.start > clip.start + EPSILON &&
+          tail.start < clip.end - EPSILON,
+      );
+
+      if (cutFromOwn) {
+        this.ours.add(tail.id);
+      }
+    }
   }
 
   private stateOf(lane: ArrangementLane, api: LiveAPI): LaneState {

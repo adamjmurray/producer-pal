@@ -18,6 +18,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import {
   assertTrackTakesLanes,
   resolveTakeLane,
@@ -25,37 +26,31 @@ import {
   takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
-import {
-  canRecreateClip,
-  PartialRecreateError,
-  recreateClip,
-  recreatedClipLosses,
-} from "#src/tools/shared/clip/recreate-clip.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   pathEntries,
   takeLanePathEntry,
   type TakeLanePath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   formatObjectPath,
   parseObjectPath,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { skippedCopy } from "../minimal-clip-info.ts";
+import { type CopyMeter } from "../clip/copy-entries.ts";
 import {
-  getMinimalClipInfo,
-  skippedCopy,
-  type MinimalClipInfo,
-} from "../minimal-clip-info.ts";
-import { type CopyMeter, refusedCopy } from "../clip/copy-entries.ts";
+  copyLedger,
+  mainLaneOf,
+  takeLaneOf,
+} from "../clip/overwrites/copy-overwrites.ts";
 import {
   claimLabels,
   labelColor,
   labelName,
   type CopyLabels,
 } from "./copy-labels.ts";
+import { copyClipToLane } from "./copy-clip-to-lane.ts";
 import { laneSource, type LaneSource } from "./lane-sources.ts";
 import {
   refuseLaneOverwrites,
@@ -91,9 +86,11 @@ export function duplicateTracksToLanes(args: TracksToLanesArgs): object[] {
   warnUnusedTrackParams(args.count, args.params);
 
   const meter = songMeter();
+  // Reads each lane once, so a copy can say what it overwrote.
+  const ledger = copyLedger();
 
   return planLaneCopies(args.sources, args.labels).map((copy) =>
-    runLaneCopy(copy, args.takeLaneName, meter),
+    runLaneCopy(copy, args.takeLaneName, meter, ledger),
   );
 }
 
@@ -151,19 +148,6 @@ interface LaneTarget extends LanePlace {
 type LaneCopy =
   | { entry: string; target: LaneTarget; refusal?: undefined }
   | { entry: string; target?: undefined; refusal: string };
-
-/** Where one clip lands, and how the copy is labeled. */
-interface LaneDestination {
-  lane: LiveAPI;
-  /** The destination's path, so an entry can name where the copy would have
-   * gone. */
-  label: string;
-  /** What to call this copy in a reason. */
-  kind: "take-lane" | "promoted";
-  meter: CopyMeter;
-  name: string | undefined;
-  color: string | undefined;
-}
 
 /**
  * Refuses a destination that carries a position. A track copy keeps every clip
@@ -477,18 +461,21 @@ function refuseLanesPastCap(copies: LaneCopy[]): LaneCopy[] {
  * @param copy - The plan for this destination
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param meter - The song meter every position is spelled in
+ * @param ledger - The call's arrangement lanes
  * @returns The destination's entry in the result
  */
 function runLaneCopy(
   copy: LaneCopy,
   takeLaneName: string | undefined,
   meter: CopyMeter,
+  ledger: LaneLedger,
 ): object {
   if (copy.target == null) {
     return skippedCopy(copy.entry, copy.refusal);
   }
 
-  const { laneIndex, label, sourceClips, name, color } = copy.target;
+  const { trackIndex, laneIndex, label, sourceClips, name, color } =
+    copy.target;
   const { lane, created } = resolveCopyDestination(copy.target, takeLaneName);
   const onLane = laneIndex != null;
   const losses = new Set<string>();
@@ -499,6 +486,10 @@ function runLaneCopy(
       clip,
       {
         lane,
+        where: onLane
+          ? takeLaneOf(trackIndex, laneIndex, lane)
+          : mainLaneOf(trackIndex, lane),
+        ledger,
         label,
         kind: onLane ? "take-lane" : "promoted",
         meter,
@@ -547,56 +538,6 @@ function resolveCopyDestination(
   const { lane } = resolveTakeLane(track, laneIndex, takeLaneName);
 
   return { lane, created: laneIndex >= before };
-}
-
-/**
- * Re-creates one clip on the lane, at the position it already had.
- * @param clip - The source clip
- * @param destination - The lane, its path, the song meter, and the copy's labels
- * @param losses - What re-creating cost, collected for the lane's own entry
- * @returns The copy, or why this clip got none
- */
-function copyClipToLane(
-  clip: LiveAPI,
-  destination: LaneDestination,
-  losses: Set<string>,
-): MinimalClipInfo | TargetSkip {
-  const { lane, label, kind, meter, name, color } = destination;
-  const startBeats = clip.getProperty("start_time") as number;
-  // Addressed where the copy was headed, so an entry pastes back as a path.
-  const missed = (reason: string): TargetSkip =>
-    refusedCopy({ beats: startBeats, label }, meter, reason);
-
-  if (!canRecreateClip(clip)) {
-    return missed(
-      "a lane copy is re-created from the sample, and this audio clip has none",
-    );
-  }
-
-  const clipLosses = recreatedClipLosses(clip);
-
-  try {
-    const copy = recreateClip(clip, lane, startBeats, name, color, clipLosses);
-    // A changed length is this clip's own to report, not the lane's.
-    const lengthChange = clipLosses.filter(isSpanLoss);
-
-    for (const loss of clipLosses) {
-      if (!isSpanLoss(loss)) {
-        losses.add(loss);
-      }
-    }
-
-    return getMinimalClipInfo(copy, lengthChange.join("; ") || undefined);
-  } catch (error) {
-    if (error instanceof PartialRecreateError) {
-      return getMinimalClipInfo(
-        error.partialClip,
-        `the ${kind} copy is incomplete (${errorMessage(error)})`,
-      );
-    }
-
-    return missed(`the ${kind} copy failed: ${errorMessage(error)}`);
-  }
 }
 
 /**

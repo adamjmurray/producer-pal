@@ -10,9 +10,21 @@ import {
   takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
 import { getMinimalClipInfo } from "../minimal-clip-info.ts";
+import {
+  copiedIds,
+  copyClearingAsync,
+  copyReach,
+  mainLaneOf,
+  noteCleared,
+  takeLaneOf,
+  type CopyLane,
+} from "./overwrites/copy-overwrites.ts";
+import { copySpanBeats } from "./copy-plan.ts";
 import {
   PartialRecreateError,
   recreateClip,
@@ -28,8 +40,8 @@ import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 /** What one copy attempt produced: the clip (with a detail when it isn't quite
  * what was asked for), or why there is none. */
 export type CopyAttempt =
-  | { copy: object; refused?: undefined }
-  | { copy?: undefined; refused: string };
+  | { copy: object; refused?: undefined; cleared?: undefined }
+  | { copy?: undefined; refused: string; cleared?: string };
 
 /**
  * One object per destination track, shared by every copy in the call. Copying
@@ -71,6 +83,8 @@ export interface CopyOptions {
   context: Partial<ToolContext>;
   /** The destination tracks, keyed by index */
   tracks: Map<number, LiveAPI>;
+  /** The call's arrangement lanes, shared by every copy */
+  ledger: LaneLedger;
 }
 
 /**
@@ -96,8 +110,17 @@ export async function duplicateOneCopy(
       };
     }
 
-    return recreateCopy(options, resolved.lane, "take-lane");
+    return await clearingCopy(
+      options,
+      takeLaneOf(target.trackIndex, resolved.laneIndex, resolved.lane),
+      () => recreateCopy(options, resolved.lane, "take-lane"),
+    );
   }
+
+  const track =
+    tracks.get(target.trackIndex) ??
+    LiveAPI.from(livePath.track(target.trackIndex));
+  const mainLane = mainLaneOf(target.trackIndex, track);
 
   // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
   // silently no-ops on a take-lane source id (see take-lanes.ts header),
@@ -111,27 +134,75 @@ export async function duplicateOneCopy(
       };
     }
 
-    return recreateCopy(
-      options,
-      tracks.get(target.trackIndex) ??
-        LiveAPI.from(livePath.track(target.trackIndex)),
-      "promoted",
+    return await clearingCopy(options, mainLane, () =>
+      recreateCopy(options, track, "promoted"),
     );
   }
 
-  return await duplicateClipToArrangement(
-    id,
-    startBeats,
-    target.trackIndex,
-    options.name,
-    options.color,
+  return await clearingCopy(options, mainLane, () =>
+    duplicateClipToArrangement(
+      id,
+      startBeats,
+      target.trackIndex,
+      options.name,
+      options.color,
+      options.arrangementLength,
+      options.songTimeSigNumerator,
+      options.songTimeSigDenominator,
+      options.context,
+      object,
+      tracks,
+    ),
+  );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Runs one copy and says on its entry what it did to the clips already on its
+ * lane. A copy that made nothing may still have cleared its range first, so the
+ * refusal says so too.
+ * @param options - Everything the copy needs
+ * @param where - The lane the copy writes to
+ * @param write - Makes the copy
+ * @returns The copy attempt, with what it cleared added
+ */
+async function clearingCopy(
+  options: CopyOptions,
+  where: CopyLane,
+  write: () => CopyAttempt | Promise<CopyAttempt>,
+): Promise<CopyAttempt> {
+  const { object, startBeats } = options;
+  // Re-created copies ignore the length, so it is only ever a wider net here.
+  const spanBeats = copySpanBeats(
+    object,
     options.arrangementLength,
     options.songTimeSigNumerator,
     options.songTimeSigDenominator,
-    options.context,
-    object,
-    tracks,
   );
+  const sourceBeats = clipLengthBeats(object);
+  const { made, cleared } = await copyClearingAsync(
+    options.ledger,
+    where,
+    copyReach(startBeats, sourceBeats, spanBeats),
+    write,
+    ({ copy }) => (copy == null ? [] : copiedIds(copy)),
+    // A longer copy is grown by update-clip, which waits.
+    spanBeats > sourceBeats,
+  );
+
+  if (cleared == null) {
+    return made;
+  }
+
+  // Nothing landed, but the range was cleared: the entry still reports it.
+  if (made.copy == null) {
+    return { refused: made.refused, cleared };
+  }
+
+  noteCleared(made.copy, cleared);
+
+  return made;
 }
 
 /**

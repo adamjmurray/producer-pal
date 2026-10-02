@@ -10,6 +10,10 @@ import {
   nextLandingOrder,
   wholeLaneWrite,
 } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import {
+  appendDetail,
+  type EntryWithDetail,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -25,6 +29,9 @@ import {
 const copySpans = new WeakMap<object, LandedSpan>();
 // A copy whose span couldn't be read still cleared something on its lane.
 const unknownWrites = new WeakMap<object, LandedSpan>();
+// What each copy did to the clips already on its lane. It stays true when a
+// later copy buries the copy itself, so the entry that replaces it keeps it.
+const copyEffects = new WeakMap<object, string>();
 
 export interface MinimalClipInfo {
   id: string;
@@ -105,6 +112,25 @@ export function copyWrite(entry: object): LandedSpan | undefined {
 }
 
 /**
+ * Say on a copy's entry what it did to the clips already on its lane.
+ * @param entry - The copy's result entry
+ * @param effects - What it overwrote, shortened or split
+ */
+export function noteCopyEffects(entry: EntryWithDetail, effects: string): void {
+  appendDetail(entry, effects);
+  copyEffects.set(entry, effects);
+}
+
+/**
+ * What a copy did to the clips already on its lane, as it said so.
+ * @param entry - The copy's result entry
+ * @returns The effects, or undefined when it had none
+ */
+export function copyEffectsOf(entry: object): string | undefined {
+  return copyEffects.get(entry);
+}
+
+/**
  * The entry a destination no copy landed at keeps in the result, so a call
  * naming N destinations still answers with N entries (ADR-0042).
  * @param path - The destination, as the path a copy there would report
@@ -113,6 +139,27 @@ export function copyWrite(entry: object): LandedSpan | undefined {
  */
 export function skippedCopy(path: string, detail: string): TargetSkip {
   return { path, ok: false, detail };
+}
+
+/** A destination Live made no copy at, after its landing cleared clips. */
+export interface ClearedCopy {
+  path?: string;
+  detail: string;
+}
+
+/**
+ * The entry a destination keeps when Live made no copy but its landing had
+ * already cleared clips: the Set changed, so it is not a skip (no `ok: false`),
+ * and the detail says what was cleared.
+ * @param path - The destination, as the path a copy there would report
+ * @param detail - Why no copy landed, and what the landing cleared
+ * @returns The entry
+ */
+export function clearedCopy(
+  path: string | undefined,
+  detail: string,
+): ClearedCopy {
+  return { path, detail };
 }
 
 /**

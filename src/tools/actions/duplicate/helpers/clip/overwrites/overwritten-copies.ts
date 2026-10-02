@@ -6,14 +6,16 @@
 // What a duplicate result says about a copy another copy in the same call
 // landed on top of.
 
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { claimRemainders } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { stillAtPath } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  copyEffectsOf,
   copySpan,
   copyWrite,
   type MinimalClipInfo,
-} from "../minimal-clip-info.ts";
+} from "../../minimal-clip-info.ts";
 
 /** What became of a copy a later copy covered whole. */
 const DELETED = "a later copy in this call landed on it";
@@ -67,6 +69,14 @@ export function markOverwrittenCopies(createdObjects: object[]): void {
     taken: slots.filter((slot) => !gone.has(slot)).map(({ entry }) => entry.id),
   });
 
+  // A later copy can also cut the back off a copy, or split it: the id and the
+  // path survive, so only the end gives it away.
+  for (const slot of slots) {
+    if (!gone.has(slot) && endCutShort(slot.entry)) {
+      appendDetail(slot.entry, TRIMMED);
+    }
+  }
+
   for (const [slot, path] of gone) {
     const rest = rests.get(slot);
 
@@ -116,18 +126,36 @@ function goneCopies(slots: ClipSlot[]): Map<ClipSlot, string> {
 }
 
 /**
- * The entry a deleted copy keeps. Any earlier detail described the clip that
- * is gone, so only this one stays.
+ * Whether a copy that is still where its entry put it now ends before it did.
+ * @param entry - The copy's entry
+ * @returns True when it was cut short at the back
+ */
+function endCutShort(entry: MinimalClipInfo): boolean {
+  const landed = copySpan(entry);
+  const end = LiveAPI.from(entry.id).getProperty("end_time");
+
+  return (
+    landed != null &&
+    typeof end === "number" &&
+    end < landed.end - SAME_TIME_EPSILON
+  );
+}
+
+/**
+ * The entry a deleted copy keeps. Its other details described the clip that is
+ * gone, but what it did to clips already on the lane still happened.
  * @param path - Where the copy was
  * @param entry - The copy's entry
  * @returns The entry, with no id
  */
 function deletedCopy(path: string, entry: MinimalClipInfo): DeletedCopyInfo {
+  const effects = copyEffectsOf(entry);
+
   return {
     path,
     ...(entry.created != null && { created: entry.created }),
     deleted: true,
-    detail: DELETED,
+    detail: effects == null ? DELETED : `${DELETED}; ${effects}`,
   };
 }
 
