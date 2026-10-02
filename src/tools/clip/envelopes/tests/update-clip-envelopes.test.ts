@@ -49,6 +49,18 @@ const OTHER_TRACK_ID = "474";
 /** A parameter the remote script's device walk has no spelling for. */
 const DRUM_PAD_ID = "475";
 
+/** The clip's track volume, which `volume` also names. */
+const VOLUME_ID = "476";
+
+/** The same parameter as VOLUME_ID, spelled with a leading zero. */
+const VOLUME_ID_PADDED = "0476";
+
+/** A chain's own mixer parameter, inside a rack on the clip's track. */
+const CHAIN_MIXER_ID = "477";
+
+/** The track's Activator, a mixer parameter that isn't volume, pan or a send. */
+const ACTIVATOR_ID = "478";
+
 describe("updateClip - envelopes", () => {
   let mocks: UpdateClipMocks;
 
@@ -72,6 +84,22 @@ describe("updateClip - envelopes", () => {
     registerMockObject(DRUM_PAD_ID, {
       type: "DeviceParameter",
       path: `${livePath.track(0).device(0).drumPad(3)} chains 0 devices 0 parameters 1`,
+    });
+    registerMockObject(VOLUME_ID, {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).mixerDevice()} volume`,
+    });
+    registerMockObject(VOLUME_ID_PADDED, {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).mixerDevice()} volume`,
+    });
+    registerMockObject(CHAIN_MIXER_ID, {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).device(0).chain(1)} mixer_device volume`,
+    });
+    registerMockObject(ACTIVATOR_ID, {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).mixerDevice()} track_activator`,
     });
     mockNonExistentObjects();
     answerRoutes();
@@ -379,7 +407,104 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 0,
-        detail: expect.stringContaining("drum pad") as string,
+        detail: `envelope "${DRUM_PAD_ID}": id ${DRUM_PAD_ID} is inside a drum pad, which clip automation can't reach`,
+      }),
+    );
+  });
+
+  it("names a chain's own mixer parameter, not a drum pad or return chain", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: `${CHAIN_MIXER_ID}: ${NOTATION}`,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: `envelope "${CHAIN_MIXER_ID}": id ${CHAIN_MIXER_ID} is a rack chain's own mixer parameter, which clip automation can't reach`,
+      }),
+    );
+  });
+
+  it("names a track mixer parameter that has no mixer name", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: `${ACTIVATOR_ID}: ${NOTATION}`,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: `envelope "${ACTIVATOR_ID}": id ${ACTIVATOR_ID} is a mixer parameter clip automation can't reach: only the track's volume, pan and sends`,
+      }),
+    );
+  });
+
+  it("names a rack return chain's parameter as one", async () => {
+    registerMockObject("479", {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).device(0).returnChain(0)} devices 0 parameters 1`,
+    });
+    mockNonExistentObjects();
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: `479: ${NOTATION}`,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: expect.stringContaining("rack return chain") as string,
+      }),
+    );
+  });
+
+  it("refuses two lines that reach one parameter by different names", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: `volume: ${NOTATION}\n${VOLUME_ID}: ${NOTATION}`,
+    });
+
+    expect(requestNode).not.toHaveBeenCalled();
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "123",
+        envelopes: `not written: "volume" and "${VOLUME_ID}" are the same parameter; give one line per parameter, since each replaces that parameter's whole envelope`,
+      }),
+    );
+  });
+
+  it("refuses two spellings of one id", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: `${VOLUME_ID}: ${NOTATION}\n${VOLUME_ID_PADDED}:`,
+    });
+
+    expect(requestNode).not.toHaveBeenCalled();
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: expect.stringContaining("are the same parameter") as string,
+      }),
+    );
+  });
+
+  it("still writes the other lines when a line has no parameter to compare", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: `98765: ${NOTATION}\nvolume: ${NOTATION}\npan: ${NOTATION}`,
+    });
+
+    expect(requestNode).toHaveBeenCalledTimes(2);
+    expect(result).toStrictEqual(expect.objectContaining({ envelopes: 2 }));
+  });
+
+  it("says when a clear found no envelope, and still counts the line", async () => {
+    answerRoutes({ available: true, result: { cleared: false } });
+
+    const result = await updateClip({ id: "123", envelopes: "volume:" });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 1,
+        detail: 'envelope "volume": there was no envelope to clear',
       }),
     );
   });

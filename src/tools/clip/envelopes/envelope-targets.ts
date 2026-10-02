@@ -6,7 +6,9 @@
 // Turning an `envelopes` target — a Live parameter id, or a mixer name — into
 // the address the remote script takes.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
+import { type EnvelopeLine } from "./envelope-lines.ts";
 
 /** A device parameter reachable by the remote script's d0/c1/d0 walk. */
 const DEVICE_PARAMETER =
@@ -24,6 +26,61 @@ export interface EnvelopeTarget {
   parameter: string | number;
 }
 
+/** A line, with the parameter it reaches or why it reaches none. */
+export type ResolvedEnvelopeLine =
+  | { line: EnvelopeLine; target: EnvelopeTarget }
+  | { line: EnvelopeLine; error: string };
+
+/**
+ * Resolve every line's target against the clip's own track.
+ * @param lines - The `envelopes` param, already read into lines
+ * @param trackIndex - The track the clip sits on
+ * @returns Each line with its parameter, or why it has none
+ */
+export function resolveEnvelopeLines(
+  lines: readonly EnvelopeLine[],
+  trackIndex: number,
+): ResolvedEnvelopeLine[] {
+  return lines.map((line) => {
+    try {
+      return { line, target: envelopeTarget(line.target, trackIndex) };
+    } catch (error) {
+      return { line, error: errorMessage(error) };
+    }
+  });
+}
+
+/**
+ * Find two lines that reach one parameter by different spellings, like `volume`
+ * and the track volume's id. Lines that name the same text are refused earlier.
+ * @param resolved - The lines, resolved against the clip's track
+ * @returns The first two lines that share a parameter, if any
+ */
+export function findSameParameter(
+  resolved: readonly ResolvedEnvelopeLine[],
+): [EnvelopeLine, EnvelopeLine] | undefined {
+  const seen = new Map<string, EnvelopeLine>();
+
+  for (const entry of resolved) {
+    if ("error" in entry) {
+      continue;
+    }
+
+    const key = `${entry.target.device ?? ""}|${String(entry.target.parameter)}`;
+    const first = seen.get(key);
+
+    if (first != null) {
+      return [first, entry.line];
+    }
+
+    seen.set(key, entry.line);
+  }
+
+  return undefined;
+}
+
+// --- Helpers below main exports ---
+
 /**
  * Resolve one `envelopes` target against the clip's own track.
  * @param target - The target as the call wrote it: an id, or volume/pan/send0..
@@ -32,10 +89,7 @@ export interface EnvelopeTarget {
  * @throws Error when the id names nothing, isn't a parameter, or sits
  *   somewhere clip automation can't reach
  */
-export function envelopeTarget(
-  target: string,
-  trackIndex: number,
-): EnvelopeTarget {
+function envelopeTarget(target: string, trackIndex: number): EnvelopeTarget {
   if (!/^\d+$/.test(target)) {
     // A mixer name is already the remote script's own spelling.
     return { parameter: target };
@@ -60,8 +114,6 @@ export function envelopeTarget(
   return trackParameter(target, parameter.path);
 }
 
-// --- Helpers below main exports ---
-
 /**
  * Address a parameter already known to sit on the clip's track.
  * @param target - The target as the call wrote it, for the error
@@ -79,11 +131,7 @@ function trackParameter(target: string, path: string): EnvelopeTarget {
   const device = DEVICE_PARAMETER.exec(path);
 
   if (device == null) {
-    // Drum pads and a rack's return chains take path segments the remote
-    // script's device walk has no spelling for.
-    throw new Error(
-      `id ${target} is inside a drum pad or a rack return chain, which clip automation can't reach`,
-    );
+    throw new Error(`id ${target} ${unreachableReason(path)}`);
   }
 
   // The path matched, so its track prefix did too and it always spells.
@@ -94,6 +142,31 @@ function trackParameter(target: string, path: string): EnvelopeTarget {
     device: devicePath.split("/").slice(1).join("/"),
     parameter: Number(device[1]),
   };
+}
+
+/**
+ * Say why a parameter on the clip's track can't be addressed. The remote
+ * script's device walk only spells devices and chains, and the track's volume,
+ * pan and sends.
+ * @param path - The parameter's Live path
+ * @returns What's wrong with where it sits, to follow "id N"
+ */
+function unreachableReason(path: string): string {
+  if (path.includes(" drum_pads ")) {
+    return "is inside a drum pad, which clip automation can't reach";
+  }
+
+  if (path.includes(" return_chains ")) {
+    return "is inside a rack return chain, which clip automation can't reach";
+  }
+
+  if (path.includes(" mixer_device ")) {
+    return path.includes(" chains ")
+      ? "is a rack chain's own mixer parameter, which clip automation can't reach"
+      : "is a mixer parameter clip automation can't reach: only the track's volume, pan and sends";
+  }
+
+  return "is a parameter clip automation can't reach";
 }
 
 /**

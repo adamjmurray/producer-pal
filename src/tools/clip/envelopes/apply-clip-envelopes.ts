@@ -20,7 +20,11 @@ import {
   REMOTE_SCRIPT_MISSING,
   type RouteOutcome,
 } from "./envelope-route.ts";
-import { envelopeTarget } from "./envelope-targets.ts";
+import {
+  findSameParameter,
+  resolveEnvelopeLines,
+  type ResolvedEnvelopeLine,
+} from "./envelope-targets.ts";
 import {
   ENVELOPE_ROUTES,
   type EnvelopeClearResult,
@@ -106,10 +110,25 @@ async function writeEachLine(
   address: ClipAddress,
   deadline: number | null | undefined,
 ): Promise<void> {
+  const resolved = resolveEnvelopeLines(lines, address.trackIndex);
+  const clash = findSameParameter(resolved);
+
+  // Each line replaces its parameter's whole envelope, so two on one parameter
+  // can't both stand. Refused, as two lines naming the same text are.
+  if (clash != null) {
+    entry.envelopes = `not written: "${clash[0].target}" and "${clash[1].target}" are the same parameter; give one line per parameter, since each replaces that parameter's whole envelope`;
+
+    return;
+  }
+
   let written = 0;
 
   for (const [index, line] of lines.entries()) {
-    const outcome = await writeOneLine(line, address, deadline);
+    const outcome = await writeOneLine(
+      resolved[index] as ResolvedEnvelopeLine,
+      address,
+      deadline,
+    );
 
     if (outcome.ok) {
       written += 1;
@@ -184,39 +203,46 @@ function named(lines: readonly EnvelopeLine[]): string {
 
 /**
  * Write or clear one parameter's envelope.
- * @param line - The line to apply
+ * @param resolved - The line to apply, with the parameter it reaches
  * @param address - The clip it writes to, and its meter
  * @param deadline - The request deadline, if any
  * @returns Whether it landed, and why it didn't when it didn't
  */
 async function writeOneLine(
-  line: EnvelopeLine,
+  resolved: ResolvedEnvelopeLine,
   address: ClipAddress,
   deadline: number | null | undefined,
 ): Promise<RouteOutcome<unknown> & { note?: string }> {
-  const { trackIndex, slot } = address;
-  let request;
-  let points;
-
-  try {
-    request = {
-      track: `t${String(trackIndex)}`,
-      slot,
-      ...envelopeTarget(line.target, trackIndex),
-    };
-    // The up-front check parsed in 4/4; this clip's meter can still refuse it.
-    points =
-      line.notation === "" ? [] : parseEnvelopeNotation(line.notation, address);
-  } catch (error) {
-    return { ok: false, reason: errorMessage(error), available: true };
+  if ("error" in resolved) {
+    return { ok: false, reason: resolved.error, available: true };
   }
 
+  const { line, target } = resolved;
+  const request = {
+    track: `t${String(address.trackIndex)}`,
+    slot: address.slot,
+    ...target,
+  };
+
   if (line.notation === "") {
-    return await envelopeRoute<EnvelopeClearResult>(
+    const cleared = await envelopeRoute<EnvelopeClearResult>(
       ENVELOPE_ROUTES.clear,
       request,
       deadline,
     );
+
+    return cleared.ok && !cleared.result.cleared
+      ? { ...cleared, note: "there was no envelope to clear" }
+      : cleared;
+  }
+
+  let points;
+
+  try {
+    // The up-front check parsed in 4/4; this clip's meter can still refuse it.
+    points = parseEnvelopeNotation(line.notation, address);
+  } catch (error) {
+    return { ok: false, reason: errorMessage(error), available: true };
   }
 
   const outcome = await envelopeRoute<EnvelopeWriteResult>(
