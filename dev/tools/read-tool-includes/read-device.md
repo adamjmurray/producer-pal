@@ -26,6 +26,9 @@ Adds chain list for rack devices. Depth-controlled by `maxDepth` arg.
 At `maxDepth: 0` (default), each chain shows `deviceCount` instead of expanded
 devices. At `maxDepth: 1+`, devices are expanded recursively.
 
+On a Drum Rack a chain belongs to a pad, so `chains` also returns the pads with
+their layers, as `drum-pads` does.
+
 | Field    | Type      | Description                               |
 | -------- | --------- | ----------------------------------------- |
 | `chains` | `Chain[]` | Chain objects with devices or deviceCount |
@@ -63,7 +66,8 @@ in the track's device list.
 
 ## Include: `"params"`
 
-Adds parameter names, macro variation info, and A/B Compare state.
+Adds parameter names, macro variation info, and A/B Compare state. A
+`paramSearch` turns this on by itself, so it needs no `params` include.
 
 | Field        | Type       | Description                                |
 | ------------ | ---------- | ------------------------------------------ |
@@ -86,7 +90,9 @@ the range and reported as `alsoAccepts`, which update-device takes as a value.
 
 A focused discovery view: adds just the Simpler sample file path as a flat
 top-level field, optimized for scanning many devices at once (e.g. every pad in
-a drum rack). No effect on non-Simpler devices. `gainDb`, multi-sample state
+a drum rack). It reaches samples in nested devices too: per drum pad, use
+`include: ["chains", "sample"]` with `maxDepth: 1+` so the pads' devices are
+expanded. No effect on non-Simpler devices. `gainDb`, multi-sample state
 (`multiSampleMode`), and the other Simpler sample params are not in this view —
 use `include: ["params"]` for the full set.
 
@@ -118,6 +124,12 @@ field. See `dev/live-api/specialized-devices/` for per-device contents.
 | ------------- | ---------- | -------------------------------------------- |
 | `options`     | `object`   | Per-device catalogs (omitted when none)      |
 | `modulations` | `object[]` | Wavetable only: `{ target, source, amount }` |
+
+## Targets
+
+`id` and `path` can name a device, a drum pad, or a chain. A chain id (Chain or
+DrumChain, as a `chains` read returns) reads like the chain's path. An id of
+anything else that isn't a device (a track, a mixer, etc.) is refused.
 
 ## `maxDepth` arg
 

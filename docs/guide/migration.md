@@ -136,7 +136,8 @@ it first.
   deprecated `toSlot` sent together are refused too, as are `arrangementSplit`
   and the deprecated `split` together and a `toPath` it can't read; 2.3 warned.
   A `slot` or `toSlot` with more than two parts (`"1/2/3"`) is refused instead
-  of using the first two.
+  of using the first two. A malformed `arrangementSplit` (bad format, too many
+  points, no valid points) is refused before anything is cut; 2.3 warned.
 
 **More params split on commas.** With more than one target, these take one
 comma-separated value per target: `sampleFile`, `timeSignature`, `start`,

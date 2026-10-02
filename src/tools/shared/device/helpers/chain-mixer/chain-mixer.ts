@@ -240,6 +240,7 @@ function applyChainSend(
 ): WrittenChainSend | null {
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
+  // A rack's return chains have no `rt<n>` path, so no path index is passed.
   const { index, clash } = findReturnIndex(
     names,
     send.return,

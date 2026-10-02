@@ -187,6 +187,9 @@ function deleteZeroedNotes(
   notes: NoteEvent[],
   touched: Set<NoteEvent>,
 ): NoteEvent[] {
+  // A velocity at or below 0 deletes with no warning, on purpose: `delete`, `v0`
+  // and `velocity = 0` are the documented way to clear notes, so a warning
+  // would fire on every intended delete.
   const surviving = notes.filter(
     (note) => note.velocity > 0 && note.duration > 0,
   );

@@ -198,6 +198,15 @@ bar|beat in every notation.
 co-located, there are no dangling refs to guard — just keep each param's modes
 correct.
 
+## Remote-script-only features
+
+Tool descriptions don't teach anything that needs the Producer Pal remote
+script. Loading plug-ins, Max for Live devices and presets by `path` is taught
+only in the `plugins-and-max-devices` Skill, which ships only when the remote
+script answers and never in small-model mode. The exception is a param that only
+works with the remote script (`preset` on create-device and update-device): it
+says so in its own description and is hidden in small-model mode.
+
 ## Enum values
 
 Every enum value we define is kebab-case (`list-tags`, `use-count`). Strings

@@ -205,7 +205,9 @@ Functions can be combined using standard arithmetic operators:
 - Addition: `+`
 - Subtraction: `-`
 - Multiplication: `*`
-- Division: `/` (division by zero yields 0, not an error)
+- Division: `/` (division by zero yields 0, not an error). Because a velocity of
+  0 deletes the note, `velocity = 100 / clip.index` silently deletes every note
+  on clip 0.
 - Modulo: `%` (uses wraparound behavior for negative numbers, modulo by zero
   yields 0)
 
