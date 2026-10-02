@@ -57,6 +57,27 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     });
   });
 
+  it("turns reasoning off for OpenAI and sends nothing for Google when Off", () => {
+    expect(
+      buildProviderOptions("vercel", "Off", "openai/gpt-6-luna"),
+    ).toStrictEqual({ ...caching, openai: { reasoningEffort: "none" } });
+    expect(
+      buildProviderOptions("vercel", "Off", "google/gemini-3.8-flash"),
+    ).toStrictEqual(caching);
+  });
+
+  it("sends only caching for a legacy non-thinking Anthropic model", () => {
+    expect(
+      buildProviderOptions("vercel", "Off", "anthropic/claude-3-haiku"),
+    ).toStrictEqual(caching);
+  });
+
+  it("sends only caching for a model id with no upstream prefix", () => {
+    expect(
+      buildProviderOptions("vercel", "Max", "claude-sonnet-5.5"),
+    ).toStrictEqual(caching);
+  });
+
   it("sends only caching for other upstreams", () => {
     expect(buildProviderOptions("vercel", "Max", "zai/glm-5.3")).toStrictEqual(
       caching,

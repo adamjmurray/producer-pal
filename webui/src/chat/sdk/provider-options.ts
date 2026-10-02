@@ -185,6 +185,12 @@ function buildGeminiOptions(thinking: string): ProviderOptions | undefined {
  */
 function buildGatewayOptions(thinking: string, model: string): ProviderOptions {
   const slash = model.indexOf("/");
+
+  // A custom id with no `provider/` prefix has no upstream to pick options for.
+  if (slash < 0) {
+    return { gateway: { caching: "auto" } };
+  }
+
   const upstream = model.slice(0, slash);
   const upstreamModel = model.slice(slash + 1);
 
