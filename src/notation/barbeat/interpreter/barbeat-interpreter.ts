@@ -11,13 +11,13 @@ import {
   defaultDurationMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import { formatBarbeatSyntaxError } from "#src/notation/barbeat/parser/barbeat-syntax-error.ts";
 import {
   type ASTElement,
   type PatternStream,
   type StreamPitch,
 } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
@@ -411,12 +411,10 @@ export function parseNotation(
     });
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
-      const formatted = formatParserError(
-        error as PeggySyntaxError,
-        "bar|beat",
+      throw new Error(
+        formatBarbeatSyntaxError(error as PeggySyntaxError, barBeatExpression),
+        { cause: error },
       );
-
-      throw new Error(formatted, { cause: error });
     }
 
     throw error;

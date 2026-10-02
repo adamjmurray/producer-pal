@@ -28,7 +28,7 @@ const SEARCH_TEMPO_TURN = 1;
 /** Read the metronome back the only way there is to read it. */
 const READ_METRONOME = {
   path: "live_set",
-  operations: [{ type: "getProperty", property: "metronome" }],
+  operations: [{ type: "get-property", property: "metronome" }],
 };
 
 /** One entry of a ppal-live-api result. */

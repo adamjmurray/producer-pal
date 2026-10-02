@@ -9,6 +9,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
+import { droppedDuplicatesNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
@@ -25,6 +26,8 @@ import {
 import {
   type ClipReasons,
   clipIgnoredParams,
+  ignoreClipParams,
+  noteClipReason,
 } from "../entries/clip-reasons.ts";
 import { type ClipTargets, refuseTarget } from "../entries/clip-targets.ts";
 import { type ClipUpdatePlan } from "../plan-clip-update.ts";
@@ -386,6 +389,8 @@ async function processClipUpdateStep(
     processSingleClipUpdate({ ...processParams, clipIndex, clipCount });
     await applyCodeExecToNewClips(
       params.updatedClips,
+      params.reasons,
+      params.clip.id,
       prevLen,
       clipIndex,
       clipCount,
@@ -401,6 +406,9 @@ async function processClipUpdateStep(
 /**
  * Apply code exec to newly added clip results
  * @param updatedClips - Array of clip results
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param sourceId - The clip the call named: a failure is filed under it, since
+ *   a re-created clip has a new id and the entry is settled by the original
  * @param prevLen - Length before new clips were added
  * @param clipIndex - 0-based position in the user's id batch (for clip.index in user code)
  * @param clipCount - Total ids in the user's batch (for clip.count in user code)
@@ -408,6 +416,8 @@ async function processClipUpdateStep(
  */
 async function applyCodeExecToNewClips(
   updatedClips: ClipResult[],
+  reasons: ClipReasons,
+  sourceId: string,
   prevLen: number,
   clipIndex: number,
   clipCount: number,
@@ -419,15 +429,29 @@ async function applyCodeExecToNewClips(
 
   for (let j = prevLen; j < updatedClips.length; j++) {
     const clipResult = updatedClips[j] as ClipResult;
-    const noteCount = await applyCodeToSingleClip(
+    const applied = await applyCodeToSingleClip(
       clipResult.id,
       code,
       clipIndex,
       clipCount,
     );
 
-    if (noteCount != null) {
-      clipResult.noteCount = noteCount;
+    if (applied != null && "error" in applied) {
+      const reason = `code failed: ${applied.error}`;
+
+      // Tiled copies run the same code and fail the same way: say it once.
+      if (!reasons.said.get(sourceId)?.includes(reason)) {
+        ignoreClipParams(reasons, sourceId, ["code"], reason);
+      }
+    } else if (applied != null) {
+      clipResult.noteCount = applied.noteCount;
+
+      const dropped = droppedDuplicatesNote(applied.droppedDuplicates);
+
+      // Tiled copies run the same code: say it once, like a failure
+      if (dropped != null && !reasons.said.get(sourceId)?.includes(dropped)) {
+        noteClipReason(reasons, sourceId, dropped);
+      }
     }
   }
 }

@@ -5,6 +5,7 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { appendRenumbers } from "#src/tools/device/create/helpers/device-creation.ts";
+import { pastTheEndReason } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolveDevicePath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolveDeviceTypeSegments } from "#src/tools/shared/device/helpers/path/device-type-segments.ts";
@@ -31,9 +32,12 @@ interface InsertionTarget {
   /** Live's own path, when the container exists: two input spellings of one
    * chain differ as text and match here. */
   liveKey: string | null;
-  /** Names a slot an insert pushes the rest of the chain past. A position Live
-   * can't take is an append, which pushes nothing. */
+  /** Names a slot an insert pushes the rest of the chain past. Position 0 of an
+   * empty chain is an append, which pushes nothing. */
   positioned: boolean;
+  /** Names a slot past the end of the chain, so the insert is refused and
+   * adds nothing. */
+  pastTheEnd: boolean;
   /** Inserts into a chain it appends (`c+`), which nothing else in the call
    * can name — so it renumbers nothing. */
   appendsChain: boolean;
@@ -78,6 +82,11 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
       continue;
     }
 
+    // Refused, so it fills nothing and moves nothing.
+    if (target.pastTheEnd) {
+      continue;
+    }
+
     const stale = renumbered.find((earlier) => isStale(target, earlier));
 
     if (stale != null) {
@@ -101,6 +110,69 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
     if (target.positioned || appendRenumbers(device)) {
       renumbered.push(target);
     }
+  }
+}
+
+/**
+ * Refuse an index past the end of a chain the path would have to make first. A
+ * chain that doesn't exist holds no devices, so only index 0 (or `d+`) is in
+ * range there. Checked before any chain is made: resolving the path creates
+ * them, and a refusal after that would leave chains behind.
+ * @param path - One path entry
+ * @throws Error when the path names a slot past the end of a chain it creates
+ */
+export function refuseIndexInNewChain(path: string): void {
+  let parsed: DeviceContainerPath;
+
+  try {
+    parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
+  } catch {
+    return;
+  }
+
+  const { segments, namesNothing } = resolveDeviceTypeSegments(
+    parsed.root,
+    parsed.segments,
+  );
+  const last = segments.at(-1);
+
+  if (
+    namesNothing != null ||
+    parsed.appendsChain ||
+    parsed.appendsDevice ||
+    last?.kind !== "device" ||
+    last.index === 0
+  ) {
+    return;
+  }
+
+  const container = segments.slice(0, -1);
+  const newest = container.at(-1);
+  const memo = new Map<string, LiveAPI[]>();
+
+  if (
+    newest == null ||
+    newest.kind === "device" ||
+    newest.kind === "return-chain" ||
+    peekContainer(parsed.root, container, memo) != null
+  ) {
+    return;
+  }
+
+  // The container is missing: it is only made when what holds it is there and
+  // takes chains. Anything else fails its own way while resolving.
+  const parent = peekContainer(parsed.root, container.slice(0, -1), memo);
+  const isDrumRack = (parent?.getProperty("can_have_drum_pads") as number) > 0;
+  const makesIt =
+    parent != null &&
+    (newest.kind === "drum-pad"
+      ? isDrumRack
+      : // A layer of a pad, or a chain of a plain rack
+        container.at(-2)?.kind === "drum-pad" ||
+        ((parent.getProperty("can_have_chains") as number) > 0 && !isDrumRack));
+
+  if (makesIt) {
+    throw new Error(pastTheEndReason(last.index, 0, path) as string);
   }
 }
 
@@ -167,11 +239,15 @@ function insertionTarget(
   const container = { kind: "device", root: parsed.root, segments } as const;
   const live = peekContainer(parsed.root, segments, chainsMemo);
 
+  const count = chainSize(live, pending);
+
   return {
     display: formatObjectPath(container),
     key: formatObjectPath({ ...container, segments: segments.map(padByNote) }),
     liveKey: live?.path ?? null,
-    positioned: position != null && !landsAtEnd(position, live, pending),
+    positioned:
+      position != null && !(count != null && position === 0 && count === 0),
+    pastTheEnd: position != null && count != null && position > count,
     appendsChain: parsed.appendsChain ?? false,
   };
 }
@@ -297,27 +373,22 @@ function existing(object: LiveAPI | null): LiveAPI | null {
 }
 
 /**
- * Whether a named position is really an append. Live refuses a position past
- * the end of a chain, including 0 on an empty one, so the insert drops it and
- * appends, moving nothing. An unknown container keeps its position.
- * @param position - The position the path named
+ * How many devices a container will hold when an entry runs.
  * @param container - The container, when it already exists
  * @param pending - Devices earlier entries add, keyed by container
- * @returns True when the insert lands on the end rather than in the chain
+ * @returns The count, or null for a container that doesn't exist yet
  */
-function landsAtEnd(
-  position: number,
+function chainSize(
   container: LiveAPI | null,
   pending: Map<string, number>,
-): boolean {
+): number | null {
   if (container == null) {
-    return false;
+    return null;
   }
 
-  const deviceCount =
-    container.getChildCount("devices") + (pending.get(container.path) ?? 0);
-
-  return position > deviceCount || (position === 0 && deviceCount === 0);
+  return (
+    container.getChildCount("devices") + (pending.get(container.path) ?? 0)
+  );
 }
 
 /**

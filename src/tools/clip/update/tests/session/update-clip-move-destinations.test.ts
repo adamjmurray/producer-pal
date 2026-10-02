@@ -133,12 +133,19 @@ describe("resolveMoveDestinations", () => {
     expect(moves.refusals[2]).toBeNull();
   });
 
-  it("moves no clip when toPath names nothing at all", () => {
-    // Not the same as one bad entry: "," says a destination was meant and
-    // failed to arrive, and moving a clip anywhere else is the wrong guess.
-    expect(moveLanes(",", undefined, 2)).toStrictEqual([null, null]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("it names nothing"),
+  // Not the same as one bad entry: "," says a destination was meant and failed
+  // to arrive, so the call is refused rather than succeeding without the move.
+  it("refuses a toPath that names nothing at all", () => {
+    expect(() => moveLanes(",", undefined, 2)).toThrow(
+      'invalid toPath "," - it names nothing',
     );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses a toSlot with extra parts", () => {
+    expect(() => moveLanes(undefined, "1/2/3", 1)).toThrow(
+      'invalid toSlot "1/2/3" - expected trackIndex/sceneIndex format (e.g., "0/1")',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

@@ -39,7 +39,7 @@ async function usingPresetB(): Promise<number> {
       arguments: {
         path: DRIFT_PATH,
         operations: [
-          { type: "getProperty", property: "is_using_compare_preset_b" },
+          { type: "get-property", property: "is_using_compare_preset_b" },
         ],
       },
     }),

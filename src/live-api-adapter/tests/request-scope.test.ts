@@ -97,7 +97,7 @@ describe("request scope", () => {
   });
 
   it("clears them even when the tool call fails", async () => {
-    // A failed call armed the listeners just the same. `get_property` with no
+    // A failed call armed the listeners just the same. `get-field` with no
     // `property` fails validation — assert the response really is the error,
     // or a change that stops it throwing turns this into the test above.
     const created = await objectsBuiltBy(() =>
@@ -106,7 +106,7 @@ describe("request scope", () => {
         "ppal-live-api",
         JSON.stringify({
           path: String(livePath.track(0)),
-          operations: [{ type: "get_property" }],
+          operations: [{ type: "get-field" }],
         }),
       ),
     );

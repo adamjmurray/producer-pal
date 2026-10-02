@@ -56,6 +56,18 @@ export function dedupeNotesKeepingLast<
 }
 
 /**
+ * How many notes {@link dedupeNotesKeepingLast} would drop: the ones that share
+ * a slot with a later note.
+ * @param notes - Notes in insertion order
+ * @returns The number of same-pitch+start duplicates among them
+ */
+export function countSlotCollisions(
+  notes: { start_time: number; pitch: number }[],
+): number {
+  return notes.length - dedupeNotesKeepingLast(notes).length;
+}
+
+/**
  * Prepare notes for an `add_new_notes` write: collapse same-pitch+start
  * collisions (keep-last) then sort ascending by start_time — the two steps every
  * write path must do so Live doesn't silently drop notes. Returns the collision
@@ -63,15 +75,19 @@ export function dedupeNotesKeepingLast<
  * relayed to the LLM). Combines {@link dedupeNotesKeepingLast} and
  * {@link sortNotes} in the required order (dedupe first, then sort).
  * @param notes - Notes in insertion order (e.g. interpreted, or existing→new)
+ * @param kept - Notes written under `notes` (muted ones): any of them at the
+ * same slot is replaced, and that doesn't count as a collision
  * @returns The write-ready notes and how many collisions were collapsed
  */
 export function dedupeAndSortNotes<
   T extends { start_time: number; pitch: number },
->(notes: T[]): { notes: T[]; collisions: number } {
+>(notes: T[], kept: T[] = []): { notes: T[]; collisions: number } {
   const deduped = dedupeNotesKeepingLast(notes);
 
   return {
-    notes: sortNotes(deduped),
+    notes: sortNotes(
+      kept.length > 0 ? dedupeNotesKeepingLast([...kept, ...deduped]) : deduped,
+    ),
     collisions: notes.length - deduped.length,
   };
 }
@@ -81,10 +97,10 @@ export function dedupeAndSortNotes<
  * SAME_TIME_EPSILON (round-tripped notes drift, so onsets get a tolerance
  * instead of an equality check).
  *
- * One definition on purpose. A `v0` delete marker, the keep-last dedupe above,
- * and the repeat-collision warning must agree on what "the same note" means — if
- * they drift, a `v0` can fail to delete a note that a restated note would still
- * overwrite. Generic so it takes any note-like type.
+ * One definition on purpose. A `v0` delete marker and the keep-last dedupe above
+ * must agree on what "the same note" means — if they drift, a `v0` can fail to
+ * delete a note that a restated note would still overwrite. Generic so it takes
+ * any note-like type.
  * @param a - A note-like object with start_time and pitch
  * @param b - The note-like object to compare it against
  * @returns True when both land on the same pitch and onset

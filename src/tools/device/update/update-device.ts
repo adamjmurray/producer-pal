@@ -112,7 +112,7 @@ export function updateDevice(
  * @param args.path - Device/chain/drum-pad path
  * @param args.paths - Hidden alias for path
  * @param args.toPath - Where to move, one destination per target (devices only)
- * @param args.name - Display name (not drum pads)
+ * @param args.name - Display name (not a multi-layer pad)
  * @param args.params - {name, value} entries to set (devices, plus `sample` on
  *   a drum pad or one of its layers)
  * @param args.actions - Device-specific action strings (devices only)

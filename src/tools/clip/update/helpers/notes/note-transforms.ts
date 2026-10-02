@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
@@ -12,7 +12,15 @@ import {
 } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import {
+  droppedDuplicatesNote,
+  transformsIgnoredNoNotesNote,
+} from "#src/tools/clip/helpers/clip-entry-notes.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
+import {
+  buildTransformClipContext,
+  type TransformClipContextInput,
+} from "#src/tools/clip/helpers/transform-clip-context.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,
@@ -64,7 +72,7 @@ export function applyTransformsToExistingNotes(
     noteClipReason(
       reasons,
       clip.id,
-      `${sent.join("/")} ignored: the clip has ${muted.length > 0 ? "only muted notes, which edits leave alone" : "no notes"}`,
+      transformsIgnoredNoNotesNote(sent, muted.length > 0),
     );
 
     return { noteCount: 0 };
@@ -96,13 +104,16 @@ export function applyTransformsToExistingNotes(
   // transform can collapse two notes onto the same pitch+exact-onset (dedupe
   // keep-last resolves that deterministically instead of letting Live drop
   // one), and any remaining tail overlap is made safe by ascending order.
-  const written = sortNotes(
-    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...notes]),
+  const { notes: written, collisions } = dedupeAndSortNotes(
+    notes,
+    rawNotesToCopiedNotes(muted),
   );
 
   if (written.length > 0) {
     clip.call("add_new_notes", { notes: written });
   }
+
+  noteDroppedDuplicates(reasons, clip.id, collisions);
 
   return {
     noteCount: getClipNoteCount(clip),
@@ -111,6 +122,24 @@ export function applyTransformsToExistingNotes(
       written,
     ),
   };
+}
+
+/**
+ * Say on the clip's entry that a transform collapsed notes onto one another.
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param clipId - The clip
+ * @param count - How many notes were dropped
+ */
+export function noteDroppedDuplicates(
+  reasons: ClipReasons,
+  clipId: string,
+  count: number,
+): void {
+  const note = droppedDuplicatesNote(count);
+
+  if (note != null && !reasons.said.get(clipId)?.includes(note)) {
+    noteClipReason(reasons, clipId, note);
+  }
 }
 
 /**
@@ -131,25 +160,20 @@ export function buildClipContext(
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
-  const beatScale = timeSigDenominator / 4;
+  const startTime = clip.getProperty("start_time") as number;
 
-  const durationBeats = isArrangementClip
-    ? (clip.getProperty("end_time") as number) -
-      (clip.getProperty("start_time") as number)
-    : clipLengthBeats(clip);
-
-  return {
-    clipDuration: durationBeats * beatScale,
+  return buildTransformClipContext({
+    regionLengthBeats: isArrangementClip
+      ? (clip.getProperty("end_time") as number) - startTime
+      : clipLengthBeats(clip),
     clipIndex,
     clipCount,
-    arrangementStart: isArrangementClip
-      ? (clip.getProperty("start_time") as number) * beatScale
-      : undefined,
-    ...noteTimeRegion(clip, beatScale),
-    barDuration: timeSigNumerator,
+    arrangementStartBeats: isArrangementClip ? startTime : undefined,
+    ...noteTimeRegion(clip),
+    timeSigNumerator,
     timeSigDenominator,
     scalePitchClassMask: readLiveSetScaleMask(),
-  };
+  });
 }
 
 /**
@@ -157,23 +181,22 @@ export function buildClipContext(
  * have no notes, and an unwarped one's markers are in seconds, so they get
  * neither.
  * @param clip - The clip LiveAPI object
- * @param beatScale - Musical beats per Ableton beat
- * @returns startMarker and clipEnd in musical beats, or {} for audio
+ * @returns startMarkerBeats and clipEndBeats in Ableton beats, or {} for audio
  */
 function noteTimeRegion(
   clip: LiveAPI,
-  beatScale: number,
-): Pick<ClipContext, "startMarker" | "clipEnd"> {
+): Pick<TransformClipContextInput, "startMarkerBeats" | "clipEndBeats"> {
   if ((clip.getProperty("is_midi_clip") as number) === 0) {
-    return {};
+    return { startMarkerBeats: undefined, clipEndBeats: undefined };
   }
 
   const looping = (clip.getProperty("looping") as number) > 0;
-  const end = clip.getProperty(looping ? "loop_end" : "end_marker") as number;
 
   return {
-    startMarker: (clip.getProperty("start_marker") as number) * beatScale,
-    clipEnd: end * beatScale,
+    startMarkerBeats: clip.getProperty("start_marker") as number,
+    clipEndBeats: clip.getProperty(
+      looping ? "loop_end" : "end_marker",
+    ) as number,
   };
 }
 

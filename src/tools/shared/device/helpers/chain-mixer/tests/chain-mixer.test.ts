@@ -302,6 +302,83 @@ describe("applyChainMixer", () => {
       expect(first?.set).not.toHaveBeenCalled();
     });
 
+    it("says on the entry when an id is also another return's name", () => {
+      // "rc-1" is the second return's id and the first one's name.
+      const [first, second] = registerChainWithSends(["rc-1", "b Reverb"]);
+
+      const applied = applyMixer({ sendGainDb: -12, sendReturn: "rc-1" });
+
+      expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      expect(first?.set).not.toHaveBeenCalled();
+      expect(applied.sends).toStrictEqual([
+        {
+          return: "b Reverb",
+          returnId: "rc-1",
+          gainDb: expect.any(Number),
+          detail: 'matched by id; "rc-1" is also the name of "rc-1"',
+        },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("keeps the clash on a send a later one replaced", () => {
+      registerChainWithSends(["rc-1", "b Reverb"]);
+
+      const applied = applyMixer({
+        sends: [
+          { return: "rc-1", gainDb: -6 },
+          { return: "b Reverb", gainDb: -9 },
+        ],
+      });
+
+      expect(applied.sends?.[0]).toStrictEqual({
+        return: "b Reverb",
+        returnId: "rc-1",
+        ok: false,
+        detail: expect.stringMatching(
+          /; matched by id; "rc-1" is also the name of "rc-1"$/,
+        ),
+      });
+    });
+
+    it("keeps the clash on a send refused for want of a send", () => {
+      // The first return's name is the third return's id.
+      registerChainWithSends(["rc-2", "b Reverb", "c Chorus"]);
+
+      expect(
+        applyMixer({ sendGainDb: -6, sendReturn: "rc-2" }).sends,
+      ).toStrictEqual([
+        {
+          return: "rc-2",
+          returnId: "rc-2",
+          ok: false,
+          detail:
+            'the chain has no send for this return; matched by id; "rc-2" is also the name of "rc-2"',
+        },
+      ]);
+    });
+
+    it("keeps the clash on a macro-mapped send's refusal", () => {
+      registerChainWithSends(["rc-1", "b Reverb"]);
+      registerMockObject("send-1", {
+        type: "DeviceParameter",
+        properties: { is_enabled: 0 },
+      });
+
+      expect(
+        applyMixer({ sendGainDb: -6, sendReturn: "rc-1" }).sends,
+      ).toStrictEqual([
+        {
+          return: "b Reverb",
+          returnId: "rc-1",
+          ok: false,
+          detail: expect.stringMatching(
+            /^gainDb is disabled.*; matched by id; "rc-1" is also the name of "rc-1"$/,
+          ),
+        },
+      ]);
+    });
+
     // The tools refuse a half pair before they reach a chain, so by here it is
     // "neither was sent": write nothing, and say nothing either.
     it("ignores only one of sendGainDb and sendReturn", () => {
@@ -479,6 +556,13 @@ describe("applyChainMixer", () => {
         expect(second?.set).toHaveBeenCalledWith("display_value", -12);
       });
 
+      const REPLACED = {
+        return: "a Delay",
+        returnId: "rc-0",
+        ok: false,
+        detail: "named again later in this call",
+      };
+
       it("lets the list win when it names the same return as the pair", () => {
         const first = sendKeeping(-11.98);
 
@@ -489,14 +573,9 @@ describe("applyChainMixer", () => {
         });
 
         expect(first.set).toHaveBeenLastCalledWith("display_value", -12);
-        // Both writes succeeded, so both used to be reported — naming a level
-        // the send does not have, to a model that reads this back.
-        expect(applied.sends).toStrictEqual([snappedSend(-11.98)]);
-        // "ended up at" is a claim about the final state, so it names the
-        // level read back — not the one that won the argument list.
-        expect(capturedWarnings().join()).toContain(
-          'sends overrides sendGainDb/sendReturn: "a Delay" ended up at -11.98 dB',
-        );
+        // The pair is the one replaced, and says so on its own entry.
+        expect(applied.sends).toStrictEqual([REPLACED, snappedSend(-11.98)]);
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
       // A send holds one value, so the second write overwrites the first — and
@@ -504,7 +583,7 @@ describe("applyChainMixer", () => {
       it.each([
         ["the list names one twice", "a Delay"],
         ["two spellings name the same one", "a"],
-      ])("reports one entry per return when %s", (_case, secondReturn) => {
+      ])("reports the replaced entry when %s", (_case, secondReturn) => {
         const first = sendKeeping(-11.98);
 
         const applied = applyMixer({
@@ -515,22 +594,15 @@ describe("applyChainMixer", () => {
         });
 
         expect(first.set).toHaveBeenLastCalledWith("display_value", -12);
-        // Reported by the return that resolved, not by either spelling.
-        expect(applied.sends).toStrictEqual([snappedSend(-11.98)]);
-        // And the warning names it the same way. Naming the winner's own
-        // spelling ("a") would point at a return the result never mentions.
-        expect(capturedWarnings().join()).toContain(
-          'sends names one return more than once: "a Delay" ended up at -11.98 dB',
-        );
+        // Named by the return that resolved, not by either spelling.
+        expect(applied.sends).toStrictEqual([REPLACED, snappedSend(-11.98)]);
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
-      // Warning once per write would name the level each one lost to the next,
-      // and quoting any of them would contradict the result beside it: Live
-      // clamped every one of these to -70.
-      it("names the level the send ended up at, not any that were asked for", () => {
+      it("reports each entry a later one replaced", () => {
         sendKeeping(-70);
 
-        applyMixer({
+        const applied = applyMixer({
           sends: [
             { return: "a Delay", gainDb: -6 },
             { return: "a Delay", gainDb: -9 },
@@ -538,14 +610,12 @@ describe("applyChainMixer", () => {
           ],
         });
 
-        const warnings = capturedWarnings().join();
-
-        expect(warnings).toContain(
-          'sends names one return more than once: "a Delay" ended up at -70 dB',
-        );
-        expect(warnings).not.toContain("-6 dB");
-        expect(warnings).not.toContain("-9 dB");
-        expect(warnings).not.toContain("-12 dB");
+        expect(applied.sends).toStrictEqual([
+          REPLACED,
+          REPLACED,
+          snappedSend(-70),
+        ]);
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
       // Live clamps a send to -70..0 and hands the level back as a 32-bit

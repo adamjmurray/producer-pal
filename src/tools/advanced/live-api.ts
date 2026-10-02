@@ -53,35 +53,35 @@ interface LiveApiResult {
 }
 
 const OPERATION_REQUIREMENTS: Record<OperationType, OperationRequirements> = {
-  get_property: { property: true },
-  set_property: { property: true, valueDefined: true },
-  call_method: { method: true },
+  "get-field": { property: true },
+  "set-property": { property: true, valueDefined: true },
+  "call-method": { method: true },
   get: { property: true },
   set: { property: true, valueDefined: true },
   call: { method: true },
   goto: { valueTruthy: true },
   info: {},
-  getProperty: { property: true },
-  getChildIds: { property: true },
+  "get-property": { property: true },
+  "get-child-ids": { property: true },
   exists: {},
-  getColor: {},
-  setColor: { valueTruthy: true },
+  "get-color": {},
+  "set-color": { valueTruthy: true },
   // valueDefined, not valueTruthy: "" and 0 are the meaningful values here.
-  set_path: { valueDefined: true },
-  set_mode: { valueDefined: true },
-  set_id: { valueDefined: true },
+  "set-path": { valueDefined: true },
+  "set-mode": { valueDefined: true },
+  "set-id": { valueDefined: true },
   getcount: { property: true },
   getstring: { property: true },
 };
 
 const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
   {
-    get_property: { property: "get_property operation requires property" },
-    set_property: {
-      property: "set_property operation requires property",
-      value: "set_property operation requires value",
+    "get-field": { property: "get-field operation requires property" },
+    "set-property": {
+      property: "set-property operation requires property",
+      value: "set-property operation requires value",
     },
-    call_method: { method: "call_method operation requires method" },
+    "call-method": { method: "call-method operation requires method" },
     get: { property: "get operation requires property" },
     set: {
       property: "set operation requires property",
@@ -90,16 +90,16 @@ const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
     call: { method: "call operation requires method" },
     goto: { value: "goto operation requires value (path)" },
     info: {},
-    getProperty: { property: "getProperty operation requires property" },
-    getChildIds: {
-      property: "getChildIds operation requires property (child type)",
+    "get-property": { property: "get-property operation requires property" },
+    "get-child-ids": {
+      property: "get-child-ids operation requires property (child type)",
     },
     exists: {},
-    getColor: {},
-    setColor: { value: "setColor operation requires value (color)" },
-    set_path: { value: "set_path operation requires value (path)" },
-    set_mode: { value: "set_mode operation requires value (mode)" },
-    set_id: { value: "set_id operation requires value (id)" },
+    "get-color": {},
+    "set-color": { value: "set-color operation requires value (color)" },
+    "set-path": { value: "set-path operation requires value (path)" },
+    "set-mode": { value: "set-mode operation requires value (mode)" },
+    "set-id": { value: "set-id operation requires value (id)" },
     getcount: { property: "getcount operation requires property (child type)" },
     getstring: { property: "getstring operation requires property" },
   };
@@ -158,7 +158,7 @@ function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
     case "set":
       return api.set(property, operation.value);
 
-    case "set_property":
+    case "set-property":
       api.set(property, operation.value);
 
       // api.set() returns 1 whether or not the write lands, so echo the input.
@@ -176,19 +176,19 @@ function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
     case "info":
       return api.info;
 
-    case "getProperty":
+    case "get-property":
       return api.getProperty(property);
 
-    case "getChildIds":
+    case "get-child-ids":
       return api.getChildIds(property);
 
     case "exists":
       return api.exists();
 
-    case "getColor":
+    case "get-color":
       return api.getColor();
 
-    case "setColor":
+    case "set-color":
       return api.setColor(operation.value as string);
 
     default:
@@ -214,10 +214,10 @@ function executeObjectOperation(
   const method = operation.method as string;
 
   switch (type) {
-    case "get_property":
+    case "get-field":
       return (api as unknown as Record<string, unknown>)[property];
 
-    case "set_path":
+    case "set-path":
       // `path` is readonly in the type declarations so ordinary code can't
       // retarget an object. This debug tool is a deliberate exception; the
       // other write is the automatic release in live-api-release.ts.
@@ -226,13 +226,13 @@ function executeObjectOperation(
       // Read back — Max may normalize or reject the value.
       return api.path;
 
-    case "set_mode":
+    case "set-mode":
       api.mode = operation.value as number;
 
       return api.mode;
 
-    case "set_id":
-      // Retargets by id, the way set_path does by path. Wants the bare number:
+    case "set-id":
+      // Retargets by id, the way set-path does by path. Wants the bare number:
       // the "id N" form points the object at nothing instead.
       (api as unknown as { id: string | number }).id = operation.value as
         | string
@@ -241,7 +241,7 @@ function executeObjectOperation(
       // Read back — a bad id is ignored silently, leaving the previous target.
       return api.id;
 
-    case "call_method": {
+    case "call-method": {
       const args = operation.args ?? [];
       const methodFn = (api as unknown as Record<string, unknown>)[method];
 
@@ -328,7 +328,7 @@ export function liveApi(
 
   const defaultPath = "live_set";
 
-  // This tool retargets its object in place — goto, set_path, set_id, set_mode
+  // This tool retargets its object in place — goto, set-path, set-id, set-mode
   // — and can freepeer it outright, none of which any other caller does.
   // Emptying the memo first means the object it gets is its own rather than one
   // some other part of the request is still holding, and emptying it after

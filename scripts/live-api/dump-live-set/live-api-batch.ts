@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Packs many objects into one ppal-live-api call. `set_path` is an operation
+// Packs many objects into one ppal-live-api call. `set-path` is an operation
 // like any other, so a single request can retarget the tool's LiveAPI object
 // over and over and read each target in turn — one HTTP round trip per fifty
 // operations instead of one per object.
@@ -26,7 +26,7 @@ export interface LiveApiOp {
   args?: unknown[];
 }
 
-/** One object's reads. The `set_path` that targets them is added here. */
+/** One object's reads. The `set-path` that targets them is added here. */
 export interface Job {
   path: string;
   ops: LiveApiOp[];
@@ -43,7 +43,7 @@ export interface BatchContext {
   stats: BatchStats;
 }
 
-/** Reads left in a request once `set_path` has taken its slot. */
+/** Reads left in a request once `set-path` has taken its slot. */
 const MAX_READS_PER_CHUNK = MAX_OPERATIONS - 1;
 
 interface Chunk {
@@ -256,7 +256,7 @@ async function tryPack(
   // The generic is load-bearing: without it the literal widens `type` to
   // string, and the lint autofixer strips an inline assertion as redundant.
   const ops = pack.flatMap<LiveApiOp>((chunk) => [
-    { type: "set_path", value: chunk.path },
+    { type: "set-path", value: chunk.path },
     ...chunk.ops,
   ]);
 

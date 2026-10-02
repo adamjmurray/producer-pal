@@ -251,6 +251,6 @@ pitchShift = audio.pitchShift + 7;
 ```
 
 Audio transforms apply to the whole clip, so any note-level scoping is dropped
-with a relayed warning rather than silently: a pitch selector, a time selector,
-a `where()` predicate, MIDI parameters, and note-count operations all warn and
-are ignored on audio clips.
+with a note on the clip's entry rather than silently: a pitch selector, a time
+selector, a `where()` predicate, MIDI parameters, and note-count operations are
+all ignored on audio clips and say so on the entry.

@@ -3,14 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
-import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
-import { parseAssignments } from "./parse-test-helpers.ts";
-
-const GRAMMAR_PATH = "src/notation/transform/parser/transform-grammar.peggy";
+import {
+  parseAssignments,
+  readTransformGrammar,
+  ruleAlternatives,
+} from "./parse-test-helpers.ts";
 
 /** The grammar rules that enumerate expression-function names. */
 const NAME_RULES = ["cyclicalFunctionName", "otherFunctionName"];
@@ -18,23 +17,6 @@ const NAME_RULES = ["cyclicalFunctionName", "otherFunctionName"];
 // Aliases the grammar accepts but the unknown-function error must not
 // advertise, so it keeps teaching one canonical name per function.
 const ALIASES = new Set(["random"]);
-
-/**
- * Read the quoted alternatives out of one grammar rule.
- *
- * @param grammar - The grammar source
- * @param rule - Rule name to read
- * @returns The names that rule accepts
- */
-function ruleAlternatives(grammar: string, rule: string): string[] {
-  const body = new RegExp(`^${rule}\\n((?:\\s+[=/].*\\n)+)`, "m").exec(
-    grammar,
-  )?.[1];
-
-  return [...(body ?? "").matchAll(/"(\w+)"/g)].map(
-    (match) => match[1] as string,
-  );
-}
 
 describe("Transform Parser - Function Keywords", () => {
   // The unknown-function error names every function the grammar accepts, from a
@@ -73,7 +55,7 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("advertises every function the grammar accepts", () => {
-      const grammar = readFileSync(join(projectRoot, GRAMMAR_PATH), "utf8");
+      const grammar = readTransformGrammar();
       const declared = new Set(
         NAME_RULES.flatMap((rule) => ruleAlternatives(grammar, rule)),
       );
@@ -171,31 +153,31 @@ describe("Transform Parser - Function Keywords", () => {
 
     it("rejects sync on swing", () => {
       expect(() => parseAssignments("timing = swing(0.05, sync)")).toThrow(
-        'but "t" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on rand", () => {
       expect(() => parseAssignments("velocity += rand(sync)")).toThrow(
-        'but "v" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on ramp", () => {
       expect(() => parseAssignments("velocity += ramp(0, 1, sync)")).toThrow(
-        'but "v" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on round", () => {
       expect(() => parseAssignments("velocity += round(sync)")).toThrow(
-        'but "v" found',
+        'but "s" found',
       );
     });
 
     it("rejects sync on choose", () => {
       expect(() => parseAssignments("velocity += choose(1, 2, sync)")).toThrow(
-        'but "v" found',
+        'but "s" found',
       );
     });
   });
@@ -243,10 +225,10 @@ describe("Transform Parser - Function Keywords", () => {
 
     it("rejects raw on non-swing functions", () => {
       expect(() => parseAssignments("velocity += rand(raw)")).toThrow(
-        'but "v" found',
+        'but "r" found',
       );
       expect(() => parseAssignments("velocity += cos(n/4, raw)")).toThrow(
-        'but "v" found',
+        'but "r" found',
       );
     });
   });

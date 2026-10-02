@@ -39,6 +39,7 @@ import {
   deleteConfigMarkdown,
   listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
+  skipIfUnreadable,
   writeConfigMarkdown,
 } from "./config-store/config-markdown-store.ts";
 import {
@@ -139,10 +140,13 @@ export interface SkillSlotWrite {
  * the curated slots: a fork may override a driver, a notation head, or include a
  * fragment of the user's own. `resolveIncludes` only pulls the names its graph
  * references, and the readdir scope here plus the resolver's ref validation keep
- * resolution inside the dir. Empty or whitespace-only bodies are dropped so that
- * name falls back to the built-in — a file that carries only `enabled: false`
- * therefore contributes a switch-off and no body, which is the whole point of
- * storing the flag separately.
+ * resolution inside the dir. Empty or whitespace-only bodies are dropped so
+ * that name falls back to the built-in — a file that carries only
+ * `enabled: false` therefore contributes a switch-off and no body, which is the
+ * whole point of storing the flag separately.
+ *
+ * An unreadable file is skipped with a warning and fails open: the built-in
+ * applies, even if the file held `enabled: false`.
  *
  * @returns The override bodies and the disabled fragment names
  */
@@ -157,7 +161,15 @@ export function readSkillOverrides(): SkillOverrides {
   // and its ref validation + this readdir scope keep resolution inside the dir.
   for (const file of listConfigMarkdownFilesRecursive("skills")) {
     const name = file.slice(0, -".md".length);
-    const { data, body } = readSlotFile(`skills/${file}`);
+    const parsed = skipIfUnreadable(`skills/${file}`, () =>
+      readSlotFile(`skills/${file}`),
+    );
+
+    if (parsed == null) {
+      continue;
+    }
+
+    const { data, body } = parsed;
     const override = body.trim();
 
     if (override) {

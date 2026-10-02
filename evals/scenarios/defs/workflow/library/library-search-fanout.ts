@@ -9,7 +9,7 @@
  *
  * The fan-out works when called — unit tests and e2e cover that. What nothing
  * measured was whether the schema reads well enough to get PICKED, which was
- * the premise of folding `searchBatch` into `search`. A schema a model never
+ * the premise of folding `search-batch` into `search`. A schema a model never
  * chooses is indistinguishable from one that reads badly.
  */
 

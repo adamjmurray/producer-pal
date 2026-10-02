@@ -29,8 +29,10 @@ const EXISTING = [noteAt(60, 0), noteAt(60, 1), noteAt(62, 2)];
 // there when the write path dedupes, leaving three C3s written.
 const REPEAT_COLLIDES = "C3: velocity += 0\nC3: repeat(n/4)";
 
-// ratchet(1) is skipped with a warning; it must not reset the earlier tally.
-const SKIPPED_RATCHET = "C3: velocity += 0\nD3: velocity += 0\nC3: ratchet(1)";
+// A note-dependent bad count is skipped with a warning at run time (a constant
+// one is refused up front); it must not reset the earlier tally.
+const SKIPPED_RATCHET =
+  "C3: velocity += 0\nD3: velocity += 0\nC3: ratchet(rand(0, 0))";
 
 // A successful op on other notes must not reset it either: 2 C3s + 2 D3 pieces.
 const OP_ELSEWHERE = "C3: velocity += 0\nD3: ratchet(2)";

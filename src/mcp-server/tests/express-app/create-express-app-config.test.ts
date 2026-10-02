@@ -46,7 +46,7 @@ describe("MCP Express App - Config", () => {
       });
     });
 
-    it("should update notation on POST /config and ignore invalid values", async () => {
+    it("should update notation on POST /config and refuse invalid values", async () => {
       const initialResponse = await fetch(configUrl);
       const initialConfig = await initialResponse.json();
 
@@ -57,13 +57,16 @@ describe("MCP Express App - Config", () => {
 
       expect(updatedConfig.notation).toBe("midi-json");
 
-      // Invalid values are ignored, leaving the current setting intact
+      // Invalid values are refused, leaving the current setting intact
       const invalidResponse = await appState.postConfig({
         notation: "not-a-notation",
       });
-      const invalidConfig = await invalidResponse.json();
 
-      expect(invalidConfig.notation).toBe("midi-json");
+      expect(invalidResponse.status).toBe(400);
+      const currentResponse = await fetch(configUrl);
+      const current = await currentResponse.json();
+
+      expect(current.notation).toBe("midi-json");
 
       // Restore
       await appState.postConfig({ notation: initialConfig.notation });

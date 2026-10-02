@@ -140,7 +140,7 @@ async function checkConnection(baseUrl: string): Promise<void> {
 
   try {
     await runOperations(ctx, [
-      { type: "set_path", value: "live_set" },
+      { type: "set-path", value: "live_set" },
       { type: "exists" },
     ]);
   } catch (error) {
@@ -162,7 +162,7 @@ async function checkConnection(baseUrl: string): Promise<void> {
 async function readLiveVersion(baseUrl: string): Promise<string | null> {
   try {
     const results = await runOperations(createBatchContext(baseUrl), [
-      { type: "set_path", value: "live_app" },
+      { type: "set-path", value: "live_app" },
       { type: "call", method: "get_version_string" },
     ]);
 

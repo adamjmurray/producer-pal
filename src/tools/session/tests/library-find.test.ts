@@ -30,7 +30,7 @@ describe("library tool — findSimilar / findDuplicates dispatch", () => {
     });
 
     const result = await library({
-      action: "findSimilar",
+      action: "find-similar",
       similarTo: "/x/kick.wav",
       tags: "Kick",
       limit: 5,
@@ -54,7 +54,7 @@ describe("library tool — findSimilar / findDuplicates dispatch", () => {
     });
 
     const result = await library({
-      action: "findDuplicates",
+      action: "find-duplicates",
       inFolder: "/Drums",
       source: "user",
     });

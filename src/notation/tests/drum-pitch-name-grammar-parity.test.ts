@@ -36,7 +36,7 @@ function resolveHeader(header: string): number[] | null {
   } catch (error) {
     const message = errorMessage(error);
 
-    if (message.startsWith("Stark notation parse error:")) {
+    if (message.startsWith("Stark notation parse error")) {
       return null;
     }
 

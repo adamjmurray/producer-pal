@@ -40,7 +40,8 @@ describe("createClip - transformed count", () => {
     const result = await createClip({
       slot: "0/0",
       notes: "v100 C3 1|1 D3 1|2 E3 1|3",
-      transforms: "C3: velocity += 0\nD3: velocity += 0\nC3: ratchet(1)",
+      transforms:
+        "C3: velocity += 0\nD3: velocity += 0\nC3: ratchet(rand(0, 0))",
     });
 
     expect(result).toStrictEqual(expect.objectContaining({ transformed: 2 }));
@@ -68,23 +69,26 @@ describe("createClip - transformed count", () => {
       },
     );
 
-    it("counts the deduped set in the duration warning", async () => {
+    it("counts the deduped set on the clip's entry", async () => {
       setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
-      await createClip({
+      const result = await createClip({
         slot: "0/0",
         length: "8bar",
         notes: NOTES,
         transforms: "Gb1: duration = 0",
       });
 
-      expect(capturedWarnings()).toStrictEqual([
-        expect.stringContaining(
-          "64 note(s) deleted: transform drove duration to 0 or below",
-        ),
-      ]);
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          detail: expect.stringContaining(
+            "64 note(s) deleted: duration went to 0 or below",
+          ),
+        }),
+      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 });

@@ -244,7 +244,13 @@ describe("updateClip - Advanced note operations", () => {
 
     // noteCount mirrors read-clip's window [-8, 16): beats 0, 4, and the overhang
     // at 8 are counted; F3 at beat 20 (> one clip-length past the end) is not.
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
+    // The notes at beats 8 and 20 are past the region, so they won't play.
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 3,
+      detail: "2 notes are outside the region and won't play",
+    });
 
     // Window: the region [0, 8) plus a clip-length each side, i.e. [-8, 16).
     expect(mocks.clip123.call).toHaveBeenCalledWith(

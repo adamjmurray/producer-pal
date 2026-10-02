@@ -18,16 +18,17 @@ import {
   dedupeSendsByReturn,
   readSendBack,
   refusedSend,
+  withClash,
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import {
+  findReturnIndex,
+  returnTrackPathIndex,
+} from "#src/tools/shared/helpers/send-validation.ts";
 import { pairParams } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
-export interface ResolvedSend extends IndexedSend {
-  /** The return track's id, for the result entry */
-  returnId: string;
-}
+export type ResolvedSend = IndexedSend;
 
 /** What a call's sends resolved to, for every track it names to report. */
 export interface TrackSends extends DedupedSends<ResolvedSend> {
@@ -89,7 +90,7 @@ export function trackSendsAt(
  * only collide when they name the same return, and then the list is the later
  * word.
  * @param sendGainDb - Send level in dB, if given
- * @param sendReturn - Return track id, name, or letter prefix, if given
+ * @param sendReturn - Return track id, name, path (rt0), or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
  * @returns The sends to write, one per return, in the order they were named,
  *   the returns more than one of them named, and the ones that matched nothing
@@ -162,6 +163,16 @@ export function applyTrackSends(
  * @returns What the send now reads, or why nothing was written
  */
 function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
+  return withClash(writeTrackSend(track, send), send.clash);
+}
+
+/**
+ * Write one resolved send on one track, without its clash.
+ * @param track - Track object
+ * @param send - One send from {@link resolveTrackSends}
+ * @returns What the send now reads, or why nothing was written
+ */
+function writeTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
@@ -210,10 +221,11 @@ function matchReturn(
   unresolved: SendResult[],
 ): ResolvedSend | null {
   const names = returns.map((rt) => rt.name);
-  const index = findReturnIndex(
+  const { index, clash } = findReturnIndex(
     names,
     send.return,
     returns.map((rt) => rt.id),
+    returnTrackPathIndex(send.return),
   );
   const match = returns[index];
 
@@ -241,5 +253,6 @@ function matchReturn(
     index,
     name: match.name,
     returnId: match.id,
+    ...(clash == null ? {} : { clash }),
   };
 }

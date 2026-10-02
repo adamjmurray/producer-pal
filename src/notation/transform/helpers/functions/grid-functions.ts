@@ -14,10 +14,6 @@ import { type EvalContext } from "../transform-context.ts";
  * @returns Quantized pitch value, or input unchanged if no scale
  */
 export function evaluateSnap(args: ExpressionNode[], ctx: EvalContext): number {
-  if (args.length !== 1) {
-    throw new Error(`Function snap() requires exactly 1 argument: snap(pitch)`);
-  }
-
   const pitch = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
   const scaleMask = ctx.noteProperties["scale:mask"];
 
@@ -35,12 +31,6 @@ export function evaluateSnap(args: ExpressionNode[], ctx: EvalContext): number {
  * @returns Pitch moved by offset scale steps, or basePitch + offset if no scale
  */
 export function evaluateStep(args: ExpressionNode[], ctx: EvalContext): number {
-  if (args.length !== 2) {
-    throw new Error(
-      `Function step() requires exactly 2 arguments: step(basePitch, offset)`,
-    );
-  }
-
   const basePitch = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
   const offset = ctx.evaluateExpression(args[1] as ExpressionNode, ctx);
   const scaleMask = ctx.noteProperties["scale:mask"];

@@ -99,7 +99,7 @@ describe("liveApiBatch", () => {
     expect(results).toStrictEqual(
       Array.from({ length: WIDE_PROPERTY_COUNT }, (_unused, at) => [at]),
     );
-    // 49 reads plus a set_path fills a request; the rest follow in a second.
+    // 49 reads plus a set-path fills a request; the rest follow in a second.
     expect(calls.requests).toStrictEqual([50, 12]);
   });
 

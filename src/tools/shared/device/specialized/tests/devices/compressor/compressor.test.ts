@@ -16,7 +16,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedOptions,
   readSpecializedParams,
-} from "../../specialized-device-registry.ts";
+} from "../../../specialized-device-registry.ts";
 import {
   AUDIO_FX_ENTRY,
   type CompressorOverrides,
@@ -37,7 +37,7 @@ import {
   routingProp,
 } from "./compressor-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-import { expectWriteRefused } from "../refused-write-assertions.ts";
+import { expectWriteRefused } from "../../refused-write-assertions.ts";
 
 // ---------------------------------------------------------------------------
 // sidechainSourceTrackId — read
@@ -72,7 +72,7 @@ describe("Compressor sidechainSourceTrackId read", () => {
 
     expect(readSpecializedParams(device)).toContainEqual({
       name: "sidechainSourceTrackId",
-      value: "t1",
+      value: "101",
     });
   });
 
@@ -88,7 +88,7 @@ describe("Compressor sidechainSourceTrackId read", () => {
 
     expect(readSpecializedParams(device)).toContainEqual({
       name: "sidechainSourceTrackId",
-      value: "t3",
+      value: "103",
     });
   });
 
@@ -111,7 +111,7 @@ describe("Compressor sidechainSourceTrackId read", () => {
 
     expect(readSpecializedParams(device)).toContainEqual({
       name: "sidechainSourceTrackId",
-      value: "r1",
+      value: "201",
     });
   });
 
@@ -124,7 +124,7 @@ describe("Compressor sidechainSourceTrackId read", () => {
 
     expect(readSpecializedParams(device)).toContainEqual({
       name: "sidechainSourceTrackId",
-      value: "master-1",
+      value: "301",
     });
   });
 
@@ -151,7 +151,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     const outcome = applySpecializedParamWrite(
       device,
       "sidechainSourceTrackId",
-      "t1",
+      "101",
     );
 
     expect(device.set).toHaveBeenCalledWith(
@@ -169,7 +169,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(device, "sidechainSourceTrackId", "t2");
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "102");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_type",
@@ -189,7 +189,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     const outcome = applySpecializedParamWrite(
       device,
       "sidechainSourceTrackId",
-      "t3",
+      "103",
     );
 
     expect(device.set).toHaveBeenCalledWith(
@@ -206,7 +206,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
 
     // Register a track not included in available types
-    registerMockObject("t3", {
+    registerMockObject("103", {
       type: "Device",
       properties: { name: "MIDIOnly" },
     });
@@ -214,7 +214,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     const device = registerCompressor();
 
     expectWriteRefused(
-      applySpecializedParamWrite(device, "sidechainSourceTrackId", "t3"),
+      applySpecializedParamWrite(device, "sidechainSourceTrackId", "103"),
       "sidechainSourceTrackId",
       "cannot be a sidechain source",
     );
@@ -445,7 +445,7 @@ describe("Compressor readOptions", () => {
 
     const options = readSpecializedOptions(device);
 
-    expect(options.sidechainSourceTrackIds).toStrictEqual(["t1", "t2"]);
+    expect(options.sidechainSourceTrackIds).toStrictEqual(["101", "102"]);
   });
 
   it("returns sidechainChannels (display_names for the current source)", () => {
@@ -467,7 +467,7 @@ describe("Compressor readOptions", () => {
 
     const options = readSpecializedOptions(device);
 
-    // Should only have t1 (Drift) and t2 (AudioFX), not No Input or Ext. In
+    // Should only have 101 (Drift) and 102 (AudioFX), not No Input or Ext. In
     expect(options.sidechainSourceTrackIds as string[]).toHaveLength(2);
   });
 
@@ -491,10 +491,10 @@ describe("Compressor readOptions", () => {
     const options = readSpecializedOptions(device);
 
     expect(options.sidechainSourceTrackIds).toStrictEqual([
-      "t1",
-      "t2",
-      "r1",
-      "master-1",
+      "101",
+      "102",
+      "201",
+      "301",
     ]);
   });
 
@@ -506,24 +506,24 @@ describe("Compressor readOptions", () => {
 
     const options = readSpecializedOptions(device);
 
-    expect(options.sidechainSourceTrackIds).toStrictEqual(["t1"]);
+    expect(options.sidechainSourceTrackIds).toStrictEqual(["101"]);
   });
 
   it("resolves a name shared by a regular track and a return to the regular track (first-wins, matching read)", () => {
     registerMockObject("live_set", {
       path: "live_set",
       type: "Device",
-      properties: { tracks: ["id", "t1"], return_tracks: ["id", "r1"] },
+      properties: { tracks: ["id", "101"], return_tracks: ["id", "201"] },
     });
-    registerMockObject("t1", {
+    registerMockObject("101", {
       type: "Device",
       properties: { name: "Shared" },
     });
-    registerMockObject("r1", {
+    registerMockObject("201", {
       type: "Device",
       properties: { name: "Shared" },
     });
-    registerMockObject("master-1", {
+    registerMockObject("301", {
       path: "live_set master_track",
       type: "Device",
       properties: { name: "Main" },
@@ -535,12 +535,12 @@ describe("Compressor readOptions", () => {
       ],
     });
 
-    // The catalog must advertise the regular track (t1), not the return (r1) —
+    // The catalog must advertise the regular track (101), not the return (201) —
     // otherwise it disagrees with readSidechainSourceTrackId, which .find()s the
     // regular track first. A plain new Map(...) would keep the last (return) id.
     expect(
       readSpecializedOptions(device).sidechainSourceTrackIds,
-    ).toStrictEqual(["t1"]);
+    ).toStrictEqual(["101"]);
   });
 
   it("returns empty array (no throw) when routing types are unavailable", () => {
@@ -619,7 +619,7 @@ describe("Compressor via read-device", () => {
 
     expect(result.parameters).toContainEqual({
       name: "sidechainSourceTrackId",
-      value: "t1",
+      value: "101",
     });
 
     expect(result.parameters).toContainEqual({
@@ -640,7 +640,7 @@ describe("Compressor via read-device", () => {
     expect(result.options).toBeDefined();
     expect(
       (result.options as Record<string, unknown>).sidechainSourceTrackIds,
-    ).toStrictEqual(["t1", "t2"]);
+    ).toStrictEqual(["101", "102"]);
   });
 
   it("omits options when include does not contain 'options'", () => {

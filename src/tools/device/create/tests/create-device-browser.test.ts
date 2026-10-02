@@ -185,13 +185,18 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     );
   });
 
-  it("appends past the end of the chain, warning like a native insert", async () => {
-    expect(
-      await createDevice({ device: "Pro-Q 4", path: "t0/d5" }),
-    ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
-    expect(capturedWarnings()).toStrictEqual([
-      'path "t0/d5" is past the end of the device chain (1 device), appending "Pro-Q 4" instead',
-    ]);
+  it("refuses past the end of the chain before loading anything", async () => {
+    await expect(
+      createDevice({ device: "Pro-Q 4", path: "t0/d5" }),
+    ).rejects.toThrow(
+      '"t0/d5" is past the end of a container holding 1 device',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(requestNode).not.toHaveBeenCalledWith(
+      REMOTE_SCRIPT_ROUTES.load,
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("finds the loaded device among ones a default track preset put there", async () => {

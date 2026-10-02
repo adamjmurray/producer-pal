@@ -121,12 +121,12 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     sendReturn: param(z.coerce.string().optional(), {
       default:
-        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A"), or comma-separated one per target',
+        'return track: id, exact name (e.g., "A-Reverb"), path (e.g., "rt0"), or letter (e.g., "A"); or comma-separated one per target',
       smallModel: null,
     }),
     sends: param(sendsInputSchema, {
       default:
-        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, or letter — the `return`/`returnId` read-track reports. Use instead of sendGainDb + sendReturn, which set one",
+        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, path (rt0), or letter — the `return`/`returnId` read-track reports. Use instead of sendGainDb + sendReturn, which set one",
       smallModel: null,
     }),
   },

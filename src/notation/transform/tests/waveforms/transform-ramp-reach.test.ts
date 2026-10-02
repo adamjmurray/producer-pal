@@ -42,7 +42,7 @@ function reachWarnings(
     return {
       warnings: warn.mock.calls
         .map((call) => String(call[0]))
-        .filter((message) => message.includes("of the way to its end value")),
+        .filter((message) => message.includes("of its end value")),
       notes,
     };
   } finally {
@@ -61,7 +61,7 @@ describe("ramp reach detection", () => {
     // The whole point: every note matched, and the ramp still fell short.
     expect(notes.at(-1)?.velocity).toBeLessThan(127);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("ramp() only got 75%");
+    expect(warnings[0]).toContain("ramp() only reached 75%");
     expect(warnings[0]).toContain("(2|4.5)");
   });
 
@@ -183,7 +183,7 @@ describe("ramp reach detection", () => {
     // transformedIndices is cumulative: the first line filling it must not make
     // the failed second line look like it applied something.
     const { warnings } = reachWarnings(
-      "velocity = 100\n2|3-3|1: velocity = ramp(1)",
+      "velocity = 100\n2|3-3|1: velocity = ramp(1, audio.gain)",
     );
 
     expect(warnings).toStrictEqual([]);

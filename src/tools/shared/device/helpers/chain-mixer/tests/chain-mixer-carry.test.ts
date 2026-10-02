@@ -252,4 +252,25 @@ describe("carryChainMixer", () => {
       expect.stringContaining("carried onto the destination chain, which was"),
     );
   });
+
+  it("notes a send whose return name is also another return's id", () => {
+    registerChainWithMixer({ sends: [silent, silent] });
+    registerReturnChains("rc-1", "b Reverb");
+    registerMockObject("send-0", { type: "DeviceParameter" });
+    registerMockObject("send-1", { type: "DeviceParameter" });
+
+    carryChainMixer(
+      {
+        from: 'chain "Snare"',
+        mixer: { sends: [{ return: "rc-1", gainDb: -6 }] },
+      },
+      chainApi(),
+    );
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        'send "b Reverb" matched by id; "rc-1" is also the name of "rc-1"',
+      ),
+    );
+  });
 });

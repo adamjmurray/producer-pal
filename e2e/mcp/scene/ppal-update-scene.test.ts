@@ -125,6 +125,22 @@ describe("ppal-update-scene", () => {
     ).toBeUndefined();
   });
 
+  it("refuses a blank tempo and leaves the override alone", async () => {
+    const [sceneId] = await createScenes();
+
+    expect((await updateAndRead(sceneId!, { tempo: 140 })).tempo).toBe(140);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-scene",
+      arguments: { id: sceneId, tempo: "" },
+    });
+
+    expect(getToolErrorMessage(result)).toContain(
+      "tempo: a blank string is not a value for this param. Leave it out instead.",
+    );
+    expect((await updateAndRead(sceneId!, {})).tempo).toBe(140);
+  });
+
   it("sets and disables the time signature override", async () => {
     const [sceneId] = await createScenes();
 

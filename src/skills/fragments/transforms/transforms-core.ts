@@ -47,7 +47,7 @@
 // test holds it.
 export const transformsCore = `## Transforms
 
-Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
+Add \`transforms\` parameter to ppal-create-clip, ppal-update-clip, or ppal-duplicate.
 
 **Shape:** a single string, broadcast across every clip/copy. Multiple expressions: newline-separated. Per-clip variation: \`clip.index\` arithmetic or \`clipseq()\` inside the string (below). Structurally-distinct edits per clip → separate tool calls.
 
@@ -59,7 +59,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
   - **Whole bars:** \`3|*\` = all of bar 3, \`1|*-3|*\` = bars 1-3 — half-open, so exactly those bars with no spill onto the next downbeat. Prefer this for "measure N"; \`3|1-4|1\` would also match a note on 4|1
   - **Exclusive end:** append \`-<\` to make only the end bound exclusive — \`3|1-<4|1\` = up to but not including 4|1 (for sub-bar half-open spans)
 - **Value filter** \`where(...)\`: keep only notes whose properties satisfy a boolean test — \`where(note.velocity < 40): delete\` deletes quiet notes, \`where(note.velocity > 100): velocity += 20\` accents loud ones, \`where(note.probability < .5): delete\` thins. Build it from comparisons (\`> >= < <= == !=\`), booleans (\`&& || !\`), parens, arithmetic, and functions over note.velocity/deviation/duration/probability/pitch/start (\`note.duration\`/\`note.start\` in musical beats; RHS may be a number, note name, or \`n/8\`). Math functions work inside the test too. AND-combines with a pitch/time selector: \`C3-C5 where(note.velocity > 80): velocity += 20\`. Comparisons tolerate sub-beat float drift, so \`==\`/\`!=\` are safe even on float props (\`note.start == n/8\` matches a note that names that beat); still prefer \`<\`/\`>\` for ranges. Note properties only (no note.index/count/next); all functions except legato/seq (they need the selection); not on note-count ops
-- **MIDI parameters:** velocity (<=0 deletes note, else capped at 127), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
+- **MIDI parameters:** velocity (<=0 deletes note, else held to 1-127: Live drops a note under 1), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Shorthand** (clears/simple sets): a single bar|beat-style token instead of \`param = value\` — \`delete\` (or \`v0\`) delete a note · \`vN\`/\`v±N\`/\`vA-B\` velocity · \`pN\`/\`p±N\` probability · \`n/4\`/\`<count>bar\`/\`1bar+n/4\` duration · \`C4\` remap pitch (one per line; a selector still applies, e.g. \`C1: delete\`). \`delete\` is a transforms alias, not a \`notes\` token. Preferred for clearing/deleting; use the full \`param op expr\` form for computed changes (\`+=\`, \`*=\`, waveforms, ramps). Note \`vA-B\` is the one shorthand with no \`param = ...\` longhand — it sets velocity AND velocity_deviation together, so write it as the shorthand (\`velocity = vA-B\` errors). A range is Live's per-note random velocity: it re-rolls on every playback. To bake one random value into each note instead, so playback repeats it, use \`rand()\`
@@ -78,10 +78,10 @@ duration += n/16                 // lengthen every note by a sixteenth
 timing += n/8                    // nudge every note an eighth note later (relative)
 \`\`\`
 
-\`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
+\`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use ppal-update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones. Muted notes are hidden from reads and left untouched by edits.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (update-clip \`id\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
+Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
 
 /**
  * Everything about changing a clip that already has notes in it. A SIBLING of
@@ -100,7 +100,7 @@ Across a batch (update-clip \`id\` / duplicate copies / create-clip multiple slo
  * This is `transforms-basic` at standard depth — same gate, same subject — which
  * is the other reason that fragment has no `-standard` twin to be.
  */
-export const transformsEditing = `### Editing Notes Already in a Clip (update-clip only)
+export const transformsEditing = `### Editing Notes Already in a Clip (ppal-update-clip only)
 
 \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a span (\`1|1-2|1: delete\`), one pitch (\`C1: delete\`), a pitch range (\`C1-C5: delete\`), everything (\`delete\`), or remap a drum lane (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Prefer it over deleting inline in \`notes\`. Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s. When the note COUNT changes in a regular way — rolling one note into several, echoing notes later, cutting a held note, gluing repeated hits — \`transforms\` has a note-count operation for it (ratchet, repeat, split, merge). Reach for those before clearing the clip and rewriting the notes by hand.`;
 
@@ -120,7 +120,7 @@ export const transformsEditing = `### Editing Notes Already in a Clip (update-cl
  * never use — precisely backwards for the narrow-toolset workers gating exists
  * to serve.
  */
-export const transformsBasic = `## Editing a clip that already has notes (update-clip)
+export const transformsBasic = `## Editing a clip that already has notes (ppal-update-clip)
 
 \`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add or change notes, pass just those — don't resend the whole clip.
 

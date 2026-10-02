@@ -258,6 +258,20 @@ describe("ppal-duplicate", () => {
     },
   );
 
+  it("reads a null count as left out, and makes one copy", async () => {
+    const before = await readScenes();
+    const dup = parseToolResult<DuplicateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "scene", path: "s0", count: null },
+      }),
+    );
+
+    expect(dup.path).toBe("s1");
+    await sleep(100);
+    expect((await readScenes()).scenes).toHaveLength(before.scenes!.length + 1);
+  });
+
   // Color, like name, lands on every clip the copy lands — s7 starts empty,
   // so the clip created here is the whole scene.
   it("puts color on a scene's arrangement copies", async () => {

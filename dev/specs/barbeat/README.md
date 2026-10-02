@@ -31,7 +31,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     positions take one of two forms:
     - a **decimal** (`2|3.5`) — a fraction of a _musical beat_, so the decimal
       itself is **meter-relative** (`2|3.5` is "half a beat past beat 3", and a
-      beat is whatever the meter says);
+      beat is whatever the meter says). A trailing dot is a valid number, as in
+      most programming languages: `2|3.` == `2|3`, and likewise in a note
+      value's numerator (`n3./4` == `n3/4`);
     - a grid beat plus a `±n` **note-value offset** — `1|1+n/12` = beat 1 + an
       eighth triplet, `1|2-n/24` nudges just behind beat 2. The offset is a
       whole-note fraction (same `n` grammar as Duration), so — like any note

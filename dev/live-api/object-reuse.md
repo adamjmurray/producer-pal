@@ -178,7 +178,7 @@ ENABLE_OBJECT_PROBE=true npm run build:debug
       "args": [4],
     }, // mutate elsewhere
     { "type": "exists" }, // read it again
-    { "type": "get_property", "property": "id" },
+    { "type": "get-field", "property": "id" },
   ],
 }
 ```

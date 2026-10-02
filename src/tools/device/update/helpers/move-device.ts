@@ -16,11 +16,12 @@ import {
   ONE_INSTRUMENT_PER_CHAIN,
   deviceHasInstrument,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
-import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
+  pastTheEndReason,
   type InsertionPathResolution,
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /** What a device move did. The caller words "no-destination" and "refused":
@@ -111,7 +112,11 @@ export function moveDeviceIntoContainer(
     return { outcome: "no-destination" };
   }
 
-  const pastTheEnd = pastTheEndReason(position, container, reportPath);
+  const pastTheEnd = pastTheEndReason(
+    position,
+    container.getChildIds("devices").length,
+    reportPath,
+  );
 
   if (pastTheEnd != null) {
     return { outcome: "refused", reason: pastTheEnd };
@@ -155,40 +160,6 @@ export function moveDeviceIntoContainer(
   }
 
   return { outcome: "moved" };
-}
-
-/**
- * Why a destination index is past where a device can go, when it is.
- *
- * Live takes 0 through the container's device count — count itself appends —
- * and ignores anything higher without a word, for a device arriving from
- * elsewhere and one moving within its own container alike.
- *
- * Nothing after the call can tell: `move_device` returns the position on
- * success and 1 on refusal, which a real move to index 1 matches, and the
- * arrival check reads the destination's device list, which already holds a
- * device that never left it.
- * @param position - Index the move is aimed at, or null to insert at the top
- * @param container - Where the device is headed
- * @param reportPath - How to spell the destination back to the caller
- * @returns The reason, or null when the move can happen
- */
-function pastTheEndReason(
-  position: number | null,
-  container: LiveAPI,
-  reportPath: string,
-): string | null {
-  if (position == null) {
-    return null;
-  }
-
-  const count = container.getChildIds("devices").length;
-
-  if (position <= count) {
-    return null;
-  }
-
-  return `"${reportPath}" is past the end of a container holding ${count} device${count === 1 ? "" : "s"}`;
 }
 
 /**

@@ -164,10 +164,10 @@ export function deviceTypeForKind(deviceKind: LibraryDeviceKind): number {
 
 /**
  * places.folder_kind values that map to each DB-side source enum.
- * "sampleFolder" is not here — it's a V8-only synthetic source for the
+ * "sample-folder" is not here — it's a V8-only synthetic source for the
  * user-configured custom sample folder, with no DB encoding.
  */
-type DbLibrarySource = Exclude<LibrarySource, "sampleFolder">;
+type DbLibrarySource = Exclude<LibrarySource, "sample-folder">;
 
 const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
   user: [1, 2],
@@ -189,13 +189,13 @@ for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
 
 /**
  * Map a public source enum to the folder_kind integers it covers.
- * Returns [] for "sampleFolder" (no DB encoding); callers should guard.
+ * Returns [] for "sample-folder" (no DB encoding); callers should guard.
  *
  * @param source - Public source enum
  * @returns Array of folder_kind integers to IN-match
  */
 export function folderKindsForSource(source: LibrarySource): number[] {
-  return source === "sampleFolder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
+  return source === "sample-folder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
 }
 
 /**

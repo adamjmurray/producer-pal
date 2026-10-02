@@ -6,7 +6,6 @@
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ClipPath,
   pathEntries,
@@ -121,10 +120,6 @@ export function resolveMoveDestinations(
   }
 
   const entries = destinationEntries(toPath, toSlot);
-
-  if (entries == null) {
-    return none;
-  }
 
   const labels = {
     param: toSlot == null ? "toPath" : "toSlot",
@@ -415,7 +410,7 @@ function dropDestinationsHoldingBatchClips(
 
 /**
  * Splits whichever param named the destinations into one entry each. A param
- * whose own syntax is broken names no clip in particular, so it warns; every
+ * whose own syntax is broken names no clip in particular, so it throws; every
  * failure past the split belongs to its entry.
  * @param toPath - Destination path(s), or undefined
  * @param toSlot - Deprecated destination slot(s), or undefined
@@ -424,19 +419,15 @@ function dropDestinationsHoldingBatchClips(
 function destinationEntries(
   toPath: string | undefined,
   toSlot: string | undefined,
-): Array<DestinationEntry | null> | null {
-  try {
-    return toSlot != null
-      ? parseSlotList(toSlot, "toSlot").map((slot) => ({
-          lane: { kind: "slot" as const, ...slot },
-          position: null,
-        }))
-      : pathDestinations(toPath as string);
-  } catch (error) {
-    console.warn(`clip not moved: ${errorMessage(error)}`);
-
-    return null;
-  }
+): Array<DestinationEntry | null> {
+  // A param whose own syntax is broken is refused: nothing has run yet, and a
+  // warning would let the rest of the update succeed as though the move landed.
+  return toSlot != null
+    ? parseSlotList(toSlot, "toSlot").map((slot) => ({
+        lane: { kind: "slot" as const, ...slot },
+        position: null,
+      }))
+    : pathDestinations(toPath as string);
 }
 
 /**

@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
   getToolErrorMessage,
+  getToolWarnings,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -153,5 +154,97 @@ describe("ppal-update-clip ignored params", () => {
     }
 
     expect(warnings.join(" ")).not.toContain("quantize");
+  });
+
+  // A transform for the other kind of clip does nothing there. It answers the
+  // way the matching param does: on the entry, never as a warning.
+  it("refuses a lone MIDI clip sent only a gain transform", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s7`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "gain = -3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "gain ignored: the clip is MIDI",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  it("puts a wrong-type transform on each clip's own entry in a batch", async () => {
+    const midiId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s8`, {
+      notes: "C3 1|1",
+    });
+    const trackResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "audio", name: "Wrong Type Transform Track" },
+    });
+    const track = parseToolResult<CreateTrackResult>(trackResult);
+
+    await sleep(100);
+
+    const audioId = await createClipInSlot(ctx, `${track.path}/s0`, {
+      sampleFile: SAMPLE_FILE,
+    });
+
+    // gain applies to the audio clip and is refused on the MIDI one
+    const gain = parseToolResultWithWarnings<ReadClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: `${midiId},${audioId}`, transforms: "gain = -3" },
+      }),
+    );
+
+    expect(gain.data[0]).toStrictEqual(
+      expect.objectContaining({
+        ok: false,
+        detail: "gain ignored: the clip is MIDI",
+      }),
+    );
+    expect(gain.data[1]).not.toHaveProperty("ok");
+    expect(gain.warnings).toStrictEqual([]);
+
+    // velocity applies to the MIDI clip and is refused on the audio one
+    const velocity = parseToolResultWithWarnings<ReadClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: `${midiId},${audioId}`, transforms: "velocity = 50" },
+      }),
+    );
+
+    expect(velocity.data[0]).not.toHaveProperty("ok");
+    expect(velocity.data[1]).toStrictEqual(
+      expect.objectContaining({
+        ok: false,
+        detail: "velocity ignored: the clip is audio",
+      }),
+    );
+    expect(velocity.warnings).toStrictEqual([]);
+  });
+
+  it("refuses an audio clip's unparseable transform like a MIDI clip's", async () => {
+    const trackResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "audio", name: "Audio Parse Track" },
+    });
+    const track = parseToolResult<CreateTrackResult>(trackResult);
+
+    await sleep(100);
+
+    const clipId = await createClipInSlot(ctx, `${track.path}/s0`, {
+      sampleFile: SAMPLE_FILE,
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "gain = =" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolWarnings(result)).toStrictEqual([]);
   });
 });

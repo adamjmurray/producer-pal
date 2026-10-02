@@ -34,7 +34,7 @@ interface CalculateBeatPositionsArgs {
   reasons: ClipReasons;
 }
 
-interface TimeSignature {
+export interface TimeSignature {
   timeSigNumerator: number;
   timeSigDenominator: number;
 }

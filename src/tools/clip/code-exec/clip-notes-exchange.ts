@@ -9,8 +9,7 @@ import {
   codeNoteToNoteEvent,
   noteEventToCodeNote,
 } from "#src/notation/midi-json/midi-json-note.ts";
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import {
   rawNotesToCopiedNotes,
   rawNotesToNoteEvents,
@@ -43,8 +42,9 @@ export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
  *
  * @param clip - LiveAPI clip object
  * @param notes - Array of notes in code-facing format
+ * @returns How many same-pitch+start duplicates were dropped
  */
-export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
+export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): number {
   const { muted } = readClipNotes(clip);
 
   // Remove all existing notes (same window readClipNotes/read-clip use, so a
@@ -52,7 +52,7 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
   removeAllClipNotes(clip);
 
   if (notes.length === 0 && muted.length === 0) {
-    return;
+    return 0;
   }
 
   // Convert musical beats back to Ableton beats, then dedupe same-pitch+start
@@ -64,23 +64,15 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const userNotes = dedupeNotesKeepingLast(
+  // Muted notes go under, so a user note at the same pitch+start replaces one.
+  const { notes: noteEvents, collisions } = dedupeAndSortNotes(
     notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
-  );
-  const collisions = notes.length - userNotes.length;
-
-  if (collisions > 0) {
-    console.warn(
-      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
-    );
-  }
-
-  // Muted notes go first, so a user note at the same pitch+start replaces one.
-  const noteEvents = sortNotes(
-    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...userNotes]),
+    rawNotesToCopiedNotes(muted),
   );
 
   clip.call("add_new_notes", { notes: noteEvents });
+
+  return collisions;
 }
 
 /** @see getClipNoteCount - re-exported for code-exec API compatibility */
