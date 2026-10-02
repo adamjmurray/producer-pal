@@ -22,7 +22,7 @@ them.
 - `~/.producer-pal` holds only non-secret config; keys are never written there.
 - **Voice mode is the one exception.** The key goes to the local MCP server,
   which trades it for a short-lived token
-  (`src/mcp-server/routes/voice-token-route.ts`). Gemini's route currently
+  (`src/mcp-server/routes/voice/voice-token-route.ts`). Gemini's route currently
   returns the key as-is, since the browser opens its WebSocket to Google
   directly and the key would reach Google anyway — the route exists for
   local-origin gating and to leave room for ephemeral tokens later. The key is

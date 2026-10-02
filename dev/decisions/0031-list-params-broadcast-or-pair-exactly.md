@@ -1,6 +1,9 @@
 # ADR-0031: A comma-separated param broadcasts one value or pairs exactly
 
-- **Status:** Accepted
+- **Status:** Superseded in part by
+  [ADR-0035](0035-malformed-calls-are-refused-up-front.md) — a length mismatch
+  is refused before any work runs, not warned and applied positionally. One
+  value covers every item and N values pair 1:1, as here.
 - **Date logged:** 2026-08-30
 
 ## Context
@@ -23,12 +26,12 @@ disagree exactly where a wrong guess costs something.
 
 ## Decision
 
-One rule, in `src/tools/shared/validation/list-pairing.ts`:
+One rule, in `src/tools/shared/validation/lists/list-pairing.ts`:
 
 - **1 value** → covers every item, no warning.
 - **N values** → pair 1:1 in order.
 - **anything else** → warn with both counts, apply positionally, leave the tail
-  unset.
+  unset. _(Reversed by ADR-0035: it is refused.)_
 
 Nothing cycles. Cycling and broadcasting only disagree when both lists are
 longer than 1 and unequal — two destinations against three positions — which is

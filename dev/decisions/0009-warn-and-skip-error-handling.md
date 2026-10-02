@@ -1,6 +1,11 @@
 # ADR-0009: Update tools warn-and-skip instead of throwing
 
-- **Status:** Accepted
+- **Status:** Superseded in part by
+  [ADR-0035](0035-malformed-calls-are-refused-up-front.md) — a call that can be
+  judged before any work runs is refused, not warned — and by
+  [ADR-0042](0042-a-skipped-target-keeps-its-slot.md) — a skipped target is
+  reported on its own result entry, never also as a warning. Skipping what
+  doesn't apply and continuing still stands.
 - **Date logged:** 2026-06-28
 
 ## Context
@@ -15,6 +20,11 @@ the first one would abort the whole batch.
 Update tools don't throw for an invalid param combination. They
 `console.warn()`, skip that operation, and continue, so a mostly-valid batch
 mostly succeeds.
+
+> Amended: the skip and continue stand, but a skipped target is now reported on
+> its own result entry (`ok: false`, `detail`), not as a warning (ADR-0042), and
+> a call that can be judged up front is refused before any work runs (ADR-0035).
+> Warnings remain only for what no result entry can carry.
 
 ## Alternatives rejected
 
@@ -33,7 +43,8 @@ mostly succeeds.
   and goes to the Max console instead.
 - This is a load-bearing contract for the whole update-tool family; new update
   tools follow it too.
-- **A warning names the item it skipped by both its path and its id** —
+- **A warning names the item it skipped by both its path and its id** _(for the
+  warnings that remain; a skipped target is an entry now, ADR-0042)_ —
   `t1/d0 (id 7)`. One call touches many items, so a warning raised while working
   on item N carries N's identity. Both spellings, not one: the model addressed
   the item by whichever it had, and can't map the other back, so a warning

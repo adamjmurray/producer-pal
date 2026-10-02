@@ -62,11 +62,11 @@ either way.
   is, and the call is refused atomically like a structural error.
 
   `duplicate` is the case. Its sources are ids and paths, both checkable without
-  changing anything, so
-  [duplicate.ts:147](../../src/tools/actions/duplicate/duplicate.ts#L147)
-  validates every source before the first copy is made. The second bullet's
-  reasoning — continue, because earlier items can't be rolled back — inverts
-  here: not being able to roll back is exactly why nothing should start.
+  changing anything, so `validateSourceIds` in
+  [duplicate.ts](../../src/tools/actions/duplicate/duplicate.ts) validates every
+  source before the first copy is made. The second bullet's reasoning —
+  continue, because earlier items can't be rolled back — inverts here: not being
+  able to roll back is exactly why nothing should start.
 
   This does not reopen the second bullet. It applies only where both halves
   hold: the failure is knowable up front, and the work leaves objects behind. An
@@ -151,23 +151,16 @@ survives on a text param, where clearing a name is a real request.
 
 ## Consequences
 
-- **ADR-0009 narrows** to what it was written for. New wording for AGENTS.md:
-  update tools don't throw for an operation that doesn't apply — but a call they
-  can't read at all is still refused before it starts.
+- **ADR-0009 narrows** to what it was written for: update tools don't throw for
+  an operation that doesn't apply, but a call they can't read at all is still
+  refused before it starts.
 - **The test is whether the Live Set is unchanged**, not when we found out.
   Timing is the usual proxy: an up-front check knows nothing has run. But a
   problem found late and before the first write can still throw, which keeps a
   tool's choice of when to look a performance decision rather than a
   user-visible one.
-- **Rule 1's fourth bullet is where warn-and-skip had spread furthest.** Six
-  conditions moved: the send pair in `updateTrack`/`updateDevice`, the tempo
-  range in `updateScene`/`createScene`/`updateLiveSet`, `quantizePitch` in
-  `updateClip`, `mappedPitch` in `updateDevice`, and the three malformed
-  `params` entries in `updateDevice`/`createDevice`.
-- **`updateTrack`, `updateScene` and `updateClip` refuse a call naming no
-  target.** They warned and returned `[]`, which reads as "there was nothing to
-  do" — every other tool already threw. They had applied their own warn-and-skip
-  rule to a call with no items rather than to an item.
+- **Which tools moved, and which can't check their raw args,** is in
+  [up-front refusals, tool by tool](../tools/up-front-refusals-by-tool.md).
 - **ADR-0031's create-tool carve-out is reversed.** It said refusing a
   `path`/`arrangementStart` mismatch lost because "a create tool building the
   wrong NUMBER of things is worse than building none" and "it would be a third
@@ -192,16 +185,6 @@ survives on a text param, where clearing a name is a real request.
   one entry, but it is still a list: an arg counts as one when it has a comma in
   it, not when it survives with two entries. Otherwise the short list would read
   as a single value covering both items.
-- **Three tools can't check their raw args.** update-clip's `id` and `path` name
-  different clips and add up, so its target count is their sum and the two are
-  never compared to each other. duplicate shares its destinations out across the
-  sources before pairing, so the counts that have to agree are the per-source
-  ones — its check runs where the copies are planned, still before any is made.
-  create-clip's `arrangementStart` pairs with the path's tracks, not its clip
-  slots, and one track takes every position — so its per-clip lists are checked
-  against the clips its destinations make, once those are resolved — still
-  before any clip is made. A call making one clip still compares the raw args,
-  since a count of 1 is never a list and a trailing comma must still count.
 - **Rule 1's third bullet is one tool wide today.** Only `duplicate` has both
   halves — checkable targets and unrepeatable work. `create-*` tools have no
   target list to pre-check, and `delete` fails safe in the other direction, so
@@ -211,8 +194,6 @@ survives on a text param, where clearing a name is a real request.
 - **duplicate's guard runs only for `sources.length > 1`.** A single bad id
   still throws further in, via the per-source path. Same answer, different
   place; pre-existing and not worth a special case.
-- **AGENTS.md's wording still holds.** It scopes the no-throw rule to update
-  tools, and duplicate isn't one. Nothing to change there.
 - **Rule 5 must throw actively, not just stop dropping.** `z.coerce.number()`
   turns `""` into `0`, so removing the drop alone would silently give bpm 0 —
   worse than today.
