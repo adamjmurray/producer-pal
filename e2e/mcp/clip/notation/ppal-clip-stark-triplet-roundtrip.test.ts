@@ -24,14 +24,14 @@
  */
 import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
-import { setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
 import {
   createAndReadback,
   expectEvenlySpaced,
   restoreNotationAfterAll,
   THIRD,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 

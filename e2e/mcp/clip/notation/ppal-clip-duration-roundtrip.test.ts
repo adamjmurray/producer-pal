@@ -24,9 +24,9 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
-import { createClipInSlot } from "./helpers/ppal-clip-transforms-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+} from "../../mcp-test-helpers.ts";
+import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 

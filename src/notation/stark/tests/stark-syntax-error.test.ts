@@ -73,10 +73,6 @@ describe("Stark syntax errors", () => {
     ["kick /3: X", 'Got "/3".'],
     ["melody: C/4..", "a duration takes one modifier at most"],
     ["melody: C*0", "a repeat is *N with N of 1 or more"],
-    [
-      "melody: C♯3 D",
-      "write sharps and flats as # and b (C#, Eb), not ♯ and ♭.",
-    ],
     ["melody: [C E G", 'unclosed "[" — add the missing "]".'],
     ["snare randomization", 'expected ":" after the line header.'],
     ["melod: Q", 'unknown line header "melod" — start each line with'],

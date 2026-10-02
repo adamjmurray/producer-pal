@@ -50,7 +50,6 @@ interface FailedLine {
 // Runs only after a parse has already failed, so a hint can never change what
 // parses. Each check returns a short fix, or null when it isn't sure.
 const CHECKS: Array<(failed: FailedLine) => string | null> = [
-  unicodeAccidental,
   unclosedChord,
   badDuration,
   badRepeat,
@@ -121,18 +120,6 @@ function literalsOf(expected: ExpectedItem[]): Set<string> {
   }
 
   return literals;
-}
-
-/**
- * @param failed - The failing line
- * @returns Hint for a Unicode sharp or flat
- */
-function unicodeAccidental(failed: FailedLine): string | null {
-  const { rest } = failed;
-
-  return /^[♯♭]/.test(rest)
-    ? "write sharps and flats as # and b (C#, Eb), not ♯ and ♭."
-    : null;
 }
 
 /**
