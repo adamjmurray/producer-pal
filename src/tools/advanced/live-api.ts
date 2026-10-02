@@ -8,33 +8,8 @@ import {
   untrackLiveApiObject,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import {
-  MAX_OPERATIONS,
-  type OperationType,
-} from "#src/tools/advanced/live-api-operations.ts";
-
-interface OperationRequirements {
-  property?: boolean;
-  method?: boolean;
-  valueDefined?: boolean;
-  valueTruthy?: boolean;
-}
-
-interface OperationErrorMessages {
-  property?: string;
-  method?: string;
-  value?: string;
-}
-
-export interface LiveApiOperation {
-  type: OperationType;
-  property?: string;
-  method?: string;
-  value?: unknown;
-  args?: unknown[];
-  /** Probe builds only: run this one operation against its own object. */
-  path?: string;
-}
+import { type LiveApiOperation } from "#src/tools/advanced/live-api-operations.ts";
+import { validateOperations } from "#src/tools/advanced/live-api-operation-validation.ts";
 
 interface LiveApiArgs {
   path?: string;
@@ -52,92 +27,6 @@ interface LiveApiResult {
   results: OperationResult[];
 }
 
-const OPERATION_REQUIREMENTS: Record<OperationType, OperationRequirements> = {
-  "get-field": { property: true },
-  "set-property": { property: true, valueDefined: true },
-  "call-method": { method: true },
-  get: { property: true },
-  set: { property: true, valueDefined: true },
-  call: { method: true },
-  goto: { valueTruthy: true },
-  info: {},
-  "get-property": { property: true },
-  "get-child-ids": { property: true },
-  exists: {},
-  "get-color": {},
-  "set-color": { valueTruthy: true },
-  // valueDefined, not valueTruthy: "" and 0 are the meaningful values here.
-  "set-path": { valueDefined: true },
-  "set-mode": { valueDefined: true },
-  "set-id": { valueDefined: true },
-  getcount: { property: true },
-  getstring: { property: true },
-};
-
-const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
-  {
-    "get-field": { property: "get-field operation requires property" },
-    "set-property": {
-      property: "set-property operation requires property",
-      value: "set-property operation requires value",
-    },
-    "call-method": { method: "call-method operation requires method" },
-    get: { property: "get operation requires property" },
-    set: {
-      property: "set operation requires property",
-      value: "set operation requires value",
-    },
-    call: { method: "call operation requires method" },
-    goto: { value: "goto operation requires value (path)" },
-    info: {},
-    "get-property": { property: "get-property operation requires property" },
-    "get-child-ids": {
-      property: "get-child-ids operation requires property (child type)",
-    },
-    exists: {},
-    "get-color": {},
-    "set-color": { value: "set-color operation requires value (color)" },
-    "set-path": { value: "set-path operation requires value (path)" },
-    "set-mode": { value: "set-mode operation requires value (mode)" },
-    "set-id": { value: "set-id operation requires value (id)" },
-    getcount: { property: "getcount operation requires property (child type)" },
-    getstring: { property: "getstring operation requires property" },
-  };
-
-/**
- * Validates operation parameters based on operation type
- * @param operation - The operation object
- * @throws If required parameters are missing
- */
-function validateOperationParameters(operation: LiveApiOperation): void {
-  const { type, property, method, value } = operation;
-
-  if (!(type in OPERATION_REQUIREMENTS)) {
-    throw new Error(
-      `Unknown operation type: ${type}. Valid types: ${Object.keys(OPERATION_REQUIREMENTS).join(", ")}`,
-    );
-  }
-
-  const requirements = OPERATION_REQUIREMENTS[type];
-  const messages = OPERATION_ERROR_MESSAGES[type];
-
-  if (requirements.property && !property) {
-    throw new Error(messages.property);
-  }
-
-  if (requirements.method && !method) {
-    throw new Error(messages.method);
-  }
-
-  if (requirements.valueDefined && value === undefined) {
-    throw new Error(messages.value);
-  }
-
-  if (requirements.valueTruthy && !value) {
-    throw new Error(messages.value);
-  }
-}
-
 /**
  * Executes a single operation on the LiveAPI instance
  * @param api - The LiveAPI instance
@@ -147,7 +36,7 @@ function validateOperationParameters(operation: LiveApiOperation): void {
 function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
   const { type } = operation;
 
-  // Property and method are validated by validateOperationParameters
+  // Property and method are checked up front by validateOperations
   const property = operation.property as string;
   const method = operation.method as string;
 
@@ -209,7 +98,7 @@ function executeObjectOperation(
 ): unknown {
   const { type } = operation;
 
-  // Property and method are validated by validateOperationParameters
+  // Property and method are checked up front by validateOperations
   const property = operation.property as string;
   const method = operation.method as string;
 
@@ -316,15 +205,9 @@ export function liveApi(
   { path, operations }: LiveApiArgs,
   _context: Partial<ToolContext> = {},
 ): LiveApiResult {
-  if (!Array.isArray(operations)) {
-    throw new Error("operations must be an array");
-  }
-
-  if (operations.length > MAX_OPERATIONS) {
-    throw new Error(
-      `operations array cannot exceed ${MAX_OPERATIONS} operations`,
-    );
-  }
+  // Every operation is checked before any runs, so a malformed one refuses the
+  // call with nothing done (ADR-0035).
+  validateOperations(operations);
 
   const defaultPath = "live_set";
 
@@ -343,7 +226,6 @@ export function liveApi(
       let result: unknown;
 
       try {
-        validateOperationParameters(operation);
         result = executeOperation(
           objectForOperation(api, operation),
           operation,

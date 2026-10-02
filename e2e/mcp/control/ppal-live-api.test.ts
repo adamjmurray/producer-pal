@@ -387,6 +387,53 @@ describe("ppal-live-api", () => {
     expect(getToolErrorMessage(result)).toContain("requires property");
   });
 
+  it("runs nothing when a later operation is malformed", async () => {
+    const readTempo = async (): Promise<number> =>
+      parseToolResult<LiveApiResult>(
+        await ctx.client!.callTool({
+          name: "ppal-live-api",
+          arguments: {
+            path: "live_set",
+            operations: [{ type: "get-property", property: "tempo" }],
+          },
+        }),
+      ).results[0]!.result as number;
+
+    const original = await readTempo();
+    const other = original === 120 ? 121 : 120;
+
+    try {
+      const result = await ctx.client!.callTool({
+        name: "ppal-live-api",
+        arguments: {
+          path: "live_set",
+          operations: [
+            { type: "set-property", property: "tempo", value: other },
+            { type: "set-property", property: "tempo" },
+          ],
+        },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        "set-property operation requires value",
+      );
+      // The first operation never ran
+      expect(await readTempo()).toBe(original);
+    } finally {
+      // Restore tempo in case the first operation ran anyway.
+      await ctx.client!.callTool({
+        name: "ppal-live-api",
+        arguments: {
+          path: "live_set",
+          operations: [
+            { type: "set-property", property: "tempo", value: original },
+          ],
+        },
+      });
+    }
+  });
+
   it("is gated by config.liveApiEnabled at the MCP layer", async () => {
     await setConfig({ liveApiEnabled: false });
 

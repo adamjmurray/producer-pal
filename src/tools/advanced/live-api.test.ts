@@ -19,10 +19,8 @@ import {
   LiveAPI,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-import {
-  liveApi,
-  type LiveApiOperation,
-} from "#src/tools/advanced/live-api.ts";
+import { liveApi } from "#src/tools/advanced/live-api.ts";
+import { type LiveApiOperation } from "#src/tools/advanced/live-api-operations.ts";
 
 describe("liveApi", () => {
   let defaultMock: RegisteredMockObject;
@@ -694,14 +692,29 @@ describe("liveApi", () => {
     });
 
     it("should reject an inherited Object.prototype key as an operation type", () => {
-      // `type in OPERATION_REQUIREMENTS` walks the prototype chain, so
-      // "toString" clears the validator. The switch's default is what actually
-      // stops it.
+      // A prototype-chain lookup would clear "toString" through the validator,
+      // and the operations before it would already have run.
       expect(() =>
         liveApi({
-          operations: [{ type: "toString" }],
+          operations: [
+            { type: "set", property: "tempo", value: 130 },
+            { type: "toString" },
+          ],
         } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: toString");
+      expect(defaultMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should run nothing when a later operation is malformed", () => {
+      expect(() =>
+        liveApi({
+          operations: [
+            { type: "set", property: "tempo", value: 130 },
+            { type: "set", property: "tempo" },
+          ],
+        }),
+      ).toThrow("Operation failed: set operation requires value");
+      expect(defaultMock.set).not.toHaveBeenCalled();
     });
 
     it("should wrap operation errors and preserve the original as cause", () => {

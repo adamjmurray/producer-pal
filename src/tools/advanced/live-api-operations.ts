@@ -58,3 +58,13 @@ export type OperationType = (typeof LIVE_API_OPERATION_TYPES)[number];
 
 /** Cap on operations per call, so one request can't tie up Live indefinitely. */
 export const MAX_OPERATIONS = 50;
+
+export interface LiveApiOperation {
+  type: OperationType;
+  property?: string;
+  method?: string;
+  value?: unknown;
+  args?: unknown[];
+  /** Probe builds only: run this one operation against its own object. */
+  path?: string;
+}
