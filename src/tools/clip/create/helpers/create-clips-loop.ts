@@ -8,7 +8,6 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
@@ -31,6 +30,7 @@ import {
   destinationNamedLaterReason,
   skipEntry,
   type TargetSkip,
+  unreachedDetail,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
@@ -173,8 +173,7 @@ function transformInputsFor(
 }
 
 /**
- * The destinations the deadline never reached, each refused in its own entry so
- * the warning only has to say how far the call got.
+ * The destinations the deadline never reached, each refused in its own entry.
  * @param params - All parameters for clip creation
  * @param entries - The entries so far, appended to
  * @param step - How many destinations the loop reached
@@ -186,18 +185,9 @@ function refuseUnreached(
 ): void {
   for (const ref of params.order.slice(step)) {
     entries.push(
-      destinationSkip(
-        params,
-        ref,
-        "not created: the request ran out of time; re-run for this clip",
-      ),
+      destinationSkip(params, ref, unreachedDetail("clip", "not created")),
     );
   }
-
-  console.warn(
-    `Ran out of time after creating ${step} of ${params.order.length} clips. ` +
-      `Re-run for the clips whose entries say so.`,
-  );
 }
 
 /**

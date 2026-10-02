@@ -5,10 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  isDeadlineExceeded,
-  stopForDeadline,
-} from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   warnNothingSplit,
   warnUnusedSplitPoints,
@@ -469,17 +466,10 @@ export function performSplitting(
 
   for (let i = 0; i < arrangementClips.length; i++) {
     // Between clips, so no clip is left half-cut. One clip's own splitting is
-    // bounded by MAX_SPLIT_POINTS, and it checks the deadline itself.
-    if (
-      stopForDeadline(_context.deadline, () => {
-        const skipped = arrangementClips.slice(i).map((c) => c.id);
-
-        return (
-          `Ran out of time after splitting ${i} of ${arrangementClips.length} clips. ` +
-          `Not split: ${skipped.join(", ")}. Re-run for those ids.`
-        );
-      })
-    ) {
+    // bounded by MAX_SPLIT_POINTS, and it checks the deadline itself. The clips
+    // left stay unsplit, and update-clip's own deadline check gives each its
+    // entry.
+    if (isDeadlineExceeded(_context.deadline ?? null)) {
       break;
     }
 

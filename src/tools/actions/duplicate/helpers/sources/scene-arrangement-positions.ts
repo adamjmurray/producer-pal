@@ -3,17 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Position-based duplication: the scene loop, plus the warning both position
-// loops (scenes here, clips in duplicate-clip-with-positions) share when the
-// request's deadline cuts them short.
+// Position-based duplication: the scene loop, and the count rule for scenes.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   claimLabels,
   labelColor,
@@ -109,20 +107,19 @@ export async function duplicateSceneToArrangementAtPositions(
     : positions;
 
   const createdObjects: object[] = [];
+  const meter = { songTimeSigNumerator, songTimeSigDenominator };
 
   for (let i = 0; i < allPositions.length; i++) {
     // A scene copy places a clip per track, so a few can eat the whole budget.
-    if (
-      stopForDeadline(context.deadline, () =>
-        unreachedPositionsWarning(
-          allPositions.slice(i).map((beats) => ({ beats })),
-          i,
-          allPositions.length,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-        ),
-      )
-    ) {
+    // Every position left keeps its slot, so the caller sees what to re-run.
+    if (isDeadlineExceeded(context.deadline ?? null)) {
+      createdObjects.push(
+        ...allPositions
+          .slice(i)
+          .map((beats) =>
+            refusedCopy({ beats }, meter, unreachedDetail("destination")),
+          ),
+      );
       break;
     }
 
@@ -145,13 +142,7 @@ export async function duplicateSceneToArrangementAtPositions(
         ),
       );
     } catch (error) {
-      createdObjects.push(
-        refusedCopy(
-          { beats },
-          { songTimeSigNumerator, songTimeSigDenominator },
-          errorMessage(error),
-        ),
-      );
+      createdObjects.push(refusedCopy({ beats }, meter, errorMessage(error)));
     }
   }
 
@@ -211,48 +202,10 @@ export function sceneCopyCount(
   return 1;
 }
 
-/** One copy a deadline stop never reached. */
+/** Where one copy is headed, for the entry that reports it. */
 export interface UnreachedDestination {
   /** Where it was going, in Ableton beats */
   beats: number;
   /** Which destination, e.g. "t0" or "t0/l3". Omitted when there is only one. */
   label?: string;
-}
-
-/**
- * Warning text for a duplicate the deadline cut short, naming what it never
- * reached so the caller can re-run just that. A clip fan-out repeats the same
- * position across destinations, so those carry a label to tell them apart —
- * without it a caller re-runs destinations that already finished.
- *
- * @param remaining - The copies still to make
- * @param done - Copies placed before time ran out
- * @param total - Copies the run set out to place
- * @param timeSigNumerator - Song time signature numerator
- * @param timeSigDenominator - Song time signature denominator
- * @returns The warning message
- */
-export function unreachedPositionsWarning(
-  remaining: UnreachedDestination[],
-  done: number,
-  total: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): string {
-  const positions = remaining
-    .map(({ beats, label }) => {
-      const barBeat = abletonBeatsToBarBeat(
-        beats,
-        timeSigNumerator,
-        timeSigDenominator,
-      );
-
-      return label == null ? barBeat : `${label} ${barBeat}`;
-    })
-    .join(", ");
-
-  return (
-    `Ran out of time after duplicating ${done} of ${total}. ` +
-    `Not duplicated: ${positions}. Re-run for those positions.`
-  );
 }

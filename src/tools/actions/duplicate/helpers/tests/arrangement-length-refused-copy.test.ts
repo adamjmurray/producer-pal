@@ -106,18 +106,25 @@ describe("duplicate - a copy that can't be lengthened", () => {
     });
   });
 
-  it("keeps the copies it read when a later one can't be read back", async () => {
+  it("reports every tile, giving the one that can't be read back its own entry", async () => {
+    const tile = (n: number): string => livePath.track(0).arrangementClip(n);
+
     registerClipSource();
     registerTrackWithArrangementDup(0, {
-      arrangement_clips: children(COPY.id, "odd"),
+      arrangement_clips: children(tile(0), "odd", tile(2)),
     });
     registerArrangementClip(0, 0, 16);
-    // An arrangement clip that names no track can't be reported.
+    registerArrangementClip(0, 2, 24);
+    // An arrangement clip that names no track can't be read back.
     registerMockObject("odd", {
       path: livePath.liveSet,
       properties: { is_arrangement_clip: 1 },
     });
-    updateClipMock.mockResolvedValueOnce([{ id: COPY.id }, { id: "odd" }]);
+    updateClipMock.mockResolvedValueOnce([
+      { id: tile(0) },
+      { id: "odd" },
+      { id: tile(2) },
+    ]);
 
     expect(
       await duplicate({
@@ -127,9 +134,15 @@ describe("duplicate - a copy that can't be lengthened", () => {
         arrangementLength: "4bar",
       }),
     ).toStrictEqual({
-      id: COPY.id,
-      path: "t0[5|1]",
-      detail: expect.stringContaining("couldn't finish reading the copy: "),
+      path: "t0",
+      clips: [
+        { id: tile(0), path: "t0[5|1]" },
+        {
+          id: "odd",
+          detail: expect.stringContaining("couldn't read the copy back: "),
+        },
+        { id: tile(2), path: "t0[7|1]" },
+      ],
     });
   });
 

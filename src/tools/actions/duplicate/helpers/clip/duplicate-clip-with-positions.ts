@@ -29,13 +29,10 @@ import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 import {
   clearedWithoutCopy,
   entriesPerDestination,
+  labelDuplicateDestinations,
   refusedCopy,
 } from "./copy-entries.ts";
-import {
-  labelDuplicateDestinations,
-  noBudgetForCopies,
-  stopMidFanOut,
-} from "./copy-deadline.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   resolveDuplicateTakeLanes,
   type ResolvedDuplicateLane,
@@ -156,15 +153,7 @@ async function duplicateClipToArrangementPositions(
   // Nothing below can undo a lane, so check the budget before making any: out
   // of time here means permanent empty lanes and not one clip on them. Every
   // destination still answers, so a lone one comes back as the error.
-  if (
-    noBudgetForCopies(
-      targetTracks,
-      targetPositions,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      context.deadline,
-    )
-  ) {
+  if (isDeadlineExceeded(context.deadline ?? null)) {
     return entriesPerDestination({ ...perDestination, results: [] });
   }
 
@@ -234,7 +223,7 @@ interface MakeCopiesArgs {
   targetPositions: number[];
   /** The requested destination each copy belongs to */
   requestIndices: number[];
-  /** Each copy's destination, labelled for a deadline warning */
+  /** Each copy's destination, labelled for its skip entry */
   labelled: UnreachedDestination[];
 }
 
@@ -246,7 +235,7 @@ interface MakeCopiesArgs {
  * @param args.targetTracks - Destination per copy
  * @param args.targetPositions - Start position per copy, in Ableton beats
  * @param args.requestIndices - The requested destination each copy belongs to
- * @param args.labelled - Each copy's destination, labelled for a warning
+ * @param args.labelled - Each copy's destination, labelled for its skip entry
  * @returns One entry per copy attempted, null where the deadline stopped it
  */
 async function makeCopies({
@@ -276,28 +265,14 @@ async function makeCopies({
     ),
   );
   const results: (object | null)[] = targetTracks.map(() => null);
-  // A destination that was attempted and skipped is in neither the slice ahead
-  // nor the landed tally, so without this it drops out of the report entirely.
-  const skipped: UnreachedDestination[] = [];
 
   for (let done = 0; done < order.length; done++) {
     const i = order[done] as number; // bounded by the loop
     const requestIndex = requestIndices[i] as number; // one per copy
 
-    // Each copy can tile a long span, so the budget can run out mid-list.
-    if (
-      stopMidFanOut({
-        skipped,
-        unreached: order
-          .slice(done)
-          .map((index) => labelled[index] as UnreachedDestination),
-        results,
-        total: targetTracks.length,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-        deadline: context.deadline,
-      })
-    ) {
+    // Each copy can tile a long span, so the budget can run out mid-list. The
+    // copies left stay null, and each gets its own entry.
+    if (isDeadlineExceeded(context.deadline ?? null)) {
       break;
     }
 
@@ -329,13 +304,12 @@ async function makeCopies({
     }
 
     // The destination keeps its place in the result, saying no copy landed on
-    // it — and the deadline warning still counts it as one the call gave up on.
+    // it.
     results[i] = refusedCopy(
       labelled[i] as UnreachedDestination,
       { songTimeSigNumerator, songTimeSigDenominator },
       attempt.refused,
     );
-    skipped.push(labelled[i] as UnreachedDestination);
   }
 
   return results;

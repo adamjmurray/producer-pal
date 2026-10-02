@@ -114,8 +114,8 @@ describe("updateClip - deadline exceeded", () => {
 
     // No clips were updated, and each one says so in its own entry.
     expect(result).toStrictEqual([outOfTime("123"), outOfTime("456")]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 
@@ -138,8 +138,8 @@ describe("updateClip - deadline exceeded", () => {
       { id: "123", path: "t0/s0" },
       outOfTime("456"),
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 });

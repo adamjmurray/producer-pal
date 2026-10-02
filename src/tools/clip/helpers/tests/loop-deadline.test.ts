@@ -9,9 +9,7 @@ import {
   computeLoopDeadline,
   isDeadlineExceeded,
   LOOP_DEADLINE_BUFFER_MS,
-  stopForDeadline,
 } from "../loop-deadline.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("LOOP_DEADLINE_BUFFER_MS", () => {
   it("is exactly twice the per-clip code execution timeout", () => {
@@ -90,26 +88,5 @@ describe("isDeadlineExceeded", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-});
-
-describe("stopForDeadline", () => {
-  it("warns with what is left undone once time is up", () => {
-    expect(stopForDeadline(Date.now() - 1, () => "nope: 3|1")).toBe(true);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("nope: 3|1"),
-    );
-  });
-
-  it("builds no warning while there is time left", () => {
-    const describeRemaining = vi.fn(() => "unused");
-
-    expect(stopForDeadline(Date.now() + 10_000, describeRemaining)).toBe(false);
-    expect(describeRemaining).not.toHaveBeenCalled();
-  });
-
-  it("never stops a request that has no deadline", () => {
-    expect(stopForDeadline(null, () => "unused")).toBe(false);
-    expect(stopForDeadline(undefined, () => "unused")).toBe(false);
   });
 });

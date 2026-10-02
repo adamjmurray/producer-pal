@@ -8,12 +8,13 @@
 // it starts — see source-plan.ts.
 
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
-import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   skipEntry,
   type TargetSkip,
+  unreachedDetail,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
@@ -362,14 +363,21 @@ async function duplicateTrackOrSceneWithCount(
       count,
       (i) => ({ name: labelName(labels, i), color: labelColor(labels, i) }),
       { withoutClips, withoutDevices, routeToSource },
-      (made) => outOfTime(context, made, count, type),
+      () => isDeadlineExceeded(context.deadline ?? null),
     );
   }
 
   let landed = 0;
 
   for (let i = 0; i < count; i++) {
-    if (outOfTime(context, landed, count, type)) {
+    if (isDeadlineExceeded(context.deadline ?? null)) {
+      // Each copy it never made keeps its slot.
+      createdObjects.push(
+        ...Array.from({ length: count - i }, () =>
+          skipEntry(source.named, unreachedDetail("copy")),
+        ),
+      );
+
       break;
     }
 
@@ -392,28 +400,6 @@ async function duplicateTrackOrSceneWithCount(
   }
 
   return createdObjects;
-}
-
-/**
- * Stop a count loop once the request runs out of time, saying how far it got.
- * @param context - Per-request context
- * @param made - Copies made so far
- * @param count - Copies asked for
- * @param type - What is being copied
- * @returns True when the loop should stop
- */
-function outOfTime(
-  context: Partial<ToolContext>,
-  made: number,
-  count: number,
-  type: string,
-): boolean {
-  return stopForDeadline(
-    context.deadline,
-    () =>
-      `Ran out of time after duplicating ${made} of ${count} ${type}s. ` +
-      `Re-run for the rest.`,
-  );
 }
 
 /**

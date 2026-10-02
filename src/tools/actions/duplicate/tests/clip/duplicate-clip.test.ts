@@ -681,9 +681,8 @@ describe("duplicate - clip duplication", () => {
         })),
       );
       expect(track0.call).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContain(
-        "Ran out of time after duplicating 0 of 3. " +
-          "Not duplicated: t0 3|1, t0 4|1, t0 5|1. Re-run for those positions.",
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("Ran out of time"),
       );
     });
 
@@ -706,9 +705,8 @@ describe("duplicate - clip duplication", () => {
         { deadline: Date.now() - 1 },
       );
 
-      expect(capturedWarnings()).toContain(
-        "Ran out of time after duplicating 0 of 3. " +
-          "Not duplicated: t1 3|1, t2 3|1, t3 3|1. Re-run for those positions.",
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("Ran out of time"),
       );
     });
   });

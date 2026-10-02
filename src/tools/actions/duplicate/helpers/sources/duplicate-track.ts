@@ -20,6 +20,7 @@ import {
   skipEntry,
   type NamedTarget,
   type TargetSkip,
+  unreachedDetail,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
@@ -225,8 +226,9 @@ interface MadeTrackCopy {
  * @param count - How many copies to make
  * @param labelFor - Name and color for the nth copy, in Set order
  * @param options - What every copy leaves out, and whether it feeds the source
- * @param shouldStop - Asked before each copy with how many exist; true stops
+ * @param shouldStop - Asked before each copy; true stops
  * @returns One entry per copy made, in Set order, then one per copy that failed
+ *   or that a stop never reached
  */
 export function duplicateTrackCopies(
   trackIndex: number,
@@ -234,13 +236,20 @@ export function duplicateTrackCopies(
   count: number,
   labelFor: (index: number) => TrackCopyLabel,
   options: TrackCopyOptions,
-  shouldStop: (made: number) => boolean = () => false,
+  shouldStop: () => boolean = () => false,
 ): Array<TrackCopyEntry | TargetSkip> {
   const made: MadeTrackCopy[] = [];
   const failed: TargetSkip[] = [];
 
   for (let i = 0; i < count; i++) {
-    if (shouldStop(made.length)) {
+    if (shouldStop()) {
+      // Each copy it never made keeps its slot.
+      failed.push(
+        ...Array.from({ length: count - i }, () =>
+          skipEntry(named, unreachedDetail("copy")),
+        ),
+      );
+
       break;
     }
 

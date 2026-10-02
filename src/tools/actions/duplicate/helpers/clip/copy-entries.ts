@@ -11,7 +11,10 @@ import {
   takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type TargetSkip,
+  unreachedDetail,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   type ClearedCopy,
   clearedCopy,
@@ -98,7 +101,7 @@ export function entriesPerDestination(args: DestinationEntriesArgs): object[] {
  */
 function missedCopyReason(reached: boolean): string {
   return reached
-    ? "the request ran out of time; re-run for this destination"
+    ? unreachedDetail("destination")
     : "no position was paired with this destination";
 }
 
@@ -174,4 +177,20 @@ function destinationPath(
   );
 
   return `${destination.label ?? ""}[${position}]`;
+}
+
+/**
+ * Each copy's destination, labelled so a skip entry can name it.
+ * @param targets - Destination per copy
+ * @param positions - Start position per copy, in Ableton beats
+ * @returns One labelled destination per copy
+ */
+export function labelDuplicateDestinations(
+  targets: ArrangementTrack[],
+  positions: number[],
+): UnreachedDestination[] {
+  return targets.map((target, i) => ({
+    beats: positions[i] as number, // one position per destination
+    label: takeLaneLabel(target),
+  }));
 }

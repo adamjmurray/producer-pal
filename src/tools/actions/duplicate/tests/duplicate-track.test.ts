@@ -25,6 +25,13 @@ import {
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+/** What a track copy the deadline never reached answers with. */
+const OUT_OF_TIME_SKIP = {
+  id: "track1",
+  ok: false,
+  detail: "the request ran out of time; re-run for this copy",
+};
+
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", async () => {
     const { liveSet } = registerBareTrackDuplication();
@@ -471,10 +478,13 @@ describe("duplicate - track duplication", () => {
       { deadline: Date.now() - 1 },
     );
 
-    expect(result).toStrictEqual([]);
+    // Every copy it never made keeps its slot.
+    expect(result).toStrictEqual(
+      Array.from({ length: 3 }, () => ({ ...OUT_OF_TIME_SKIP })),
+    );
     expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after duplicating 0 of 3 tracks. Re-run for the rest.",
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 });
@@ -682,10 +692,13 @@ describe("duplicate - several copies of one track", () => {
       context,
     );
 
-    expect(result).toStrictEqual({ id: "copy-1", path: "t1", clips: [] });
+    expect(result).toStrictEqual([
+      { id: "copy-1", path: "t1", clips: [] },
+      OUT_OF_TIME_SKIP,
+    ]);
     expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "A");
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after duplicating 1 of 2 tracks. Re-run for the rest.",
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 

@@ -20,6 +20,10 @@ import {
   remoteScriptExpiry,
   remoteScriptWait,
 } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import {
+  REQUEST_OUT_OF_TIME,
+  unreachedDetail,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { REMOTE_SCRIPT_SETUP } from "./browser-devices.ts";
 
 /** Why nothing loads when the remote script isn't answering. */
@@ -64,7 +68,7 @@ export async function resolveBrowserPreset(
 
   // Every lookup runs before anything is loaded, so nothing changed yet.
   if (waitMs == null) {
-    throw lookUpFailed("the request ran out of time; nothing changed");
+    throw lookUpFailed(`${REQUEST_OUT_OF_TIME}; nothing changed`);
   }
 
   const response = await requestNode<BrowserItemResolution>(
@@ -146,7 +150,7 @@ export async function hotswapPreset(
   const waitMs = remoteScriptWait(deadline);
 
   if (waitMs == null) {
-    return { error: "the request ran out of time; re-run for this target" };
+    return { error: unreachedDetail("target") };
   }
 
   const devicePath = device.path;

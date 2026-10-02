@@ -21,7 +21,7 @@ import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arran
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   finishCopy,
-  getMinimalClipInfo,
+  readCopyBack,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
 
@@ -225,8 +225,10 @@ async function lengthenClipAndCollectInfo(
       // the copy was made. What the lengthening cleared is left out: the call's
       // ledger reports what the whole copy did, and the clips update-clip names
       // can be fragments the copy itself just made.
+      // Read each tile on its own: one that can't be read back still exists,
+      // so it keeps an entry of its own and the tiles after it are reported.
       duplicatedClips.push(
-        getMinimalClipInfo(clipLiveAPI, withoutWriteEffects(clipObj.detail)),
+        readCopyBack(clipLiveAPI, () => withoutWriteEffects(clipObj.detail)),
       );
     }
   }

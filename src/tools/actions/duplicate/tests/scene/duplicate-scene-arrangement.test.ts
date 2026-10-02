@@ -32,6 +32,8 @@ interface DuplicateSceneResult {
   clips: DuplicateClipResult[];
 }
 
+const OUT_OF_TIME = "the request ran out of time; re-run for this destination";
+
 const SCENE_CLIP_ID = "id live_set/tracks/0/clip_slots/0/clip";
 
 /**
@@ -460,7 +462,7 @@ describe("duplicate - scene to the arrangement", () => {
     expect(result).toStrictEqual({ clips: [] });
   });
 
-  it("names the positions a cut-short arrangement duplicate did not reach", async () => {
+  it("gives every position a cut-short arrangement duplicate did not reach its own entry", async () => {
     // A scene copy places a clip per track, so a few can eat the whole budget.
     setupArrangementSceneMocks(1);
 
@@ -471,12 +473,47 @@ describe("duplicate - scene to the arrangement", () => {
       { deadline: Date.now() - 1 },
     );
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { path: "[5|1]", ok: false, detail: OUT_OF_TIME },
+      { path: "[9|1]", ok: false, detail: OUT_OF_TIME },
+    ]);
     expect(track0.call).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after duplicating 0 of 2. " +
-        "Not duplicated: 5|1, 9|1. Re-run for those positions.",
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
+  });
+
+  it("keeps the positions it copied and skips the ones after, in order", async () => {
+    const context = { deadline: Date.now() + 60_000 };
+
+    setupArrangementSceneMocks(1);
+    registerClipSlot(0, 0, true, createStandardMidiClipMock({ length: 4 }));
+
+    const track0 = registerTrackWithArrangementDup(0);
+    const makeCopy = track0.methods
+      .duplicate_clip_to_arrangement as () => unknown;
+
+    // The first copy spends the budget.
+    track0.methods.duplicate_clip_to_arrangement = () => {
+      context.deadline = Date.now() - 1;
+
+      return makeCopy();
+    };
+
+    registerArrangementClip(0, 0, 16);
+
+    const result = await duplicate(
+      { type: "scene", id: "scene1", arrangementStart: "5|1,9|1,13|1" },
+      context,
+    );
+
+    expect(result).toStrictEqual([
+      {
+        clips: [{ id: livePath.track(0).arrangementClip(0), path: "t0[5|1]" }],
+      },
+      { path: "[9|1]", ok: false, detail: OUT_OF_TIME },
+      { path: "[13|1]", ok: false, detail: OUT_OF_TIME },
+    ]);
   });
 });
 

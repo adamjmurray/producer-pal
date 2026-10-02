@@ -24,6 +24,10 @@ import {
 } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
+  REQUEST_OUT_OF_TIME,
+  unreachedDetail,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
   type CreateDeviceResult,
   type CreationTarget,
   createdDeviceEntry,
@@ -98,7 +102,7 @@ export async function resolveBrowserDevice(
 
   // Every lookup runs before any device is made, so nothing was created yet.
   if (waitMs == null) {
-    throw lookUpFailed("the request ran out of time; nothing was created");
+    throw lookUpFailed(`${REQUEST_OUT_OF_TIME}; nothing was created`);
   }
 
   const response = await requestNode<BrowserItemResolution>(
@@ -135,7 +139,7 @@ export async function resolveBrowserDevice(
 function outOfTime(timeoutMs: number | undefined): string {
   return timeoutMs != null && loopBudgetMs(timeoutMs) <= ARRIVAL_WAIT_MS
     ? `the Timeout setting (${timeoutMs / 1000}s) is too short to load it; ask the user to raise it`
-    : "the request ran out of time; re-run for this path";
+    : unreachedDetail("path");
 }
 
 /**

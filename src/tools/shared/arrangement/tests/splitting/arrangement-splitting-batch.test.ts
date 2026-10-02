@@ -111,13 +111,13 @@ function splitOnDeadline(
 }
 
 /**
- * The loop stopped after clip_1, and clip_2 was never staged.
+ * The loop stopped after clip_1, and clip_2 was never staged. It warns of
+ * nothing: update-clip gives each clip left its own entry.
  * @param callState - The call-tracking state
  */
 function expectStoppedAfterFirstClip(callState: SplittingCallState): void {
-  expect(capturedWarnings()).toContain(
-    "Ran out of time after splitting 1 of 2 clips. " +
-      "Not split: clip_2. Re-run for those ids.",
+  expect(capturedWarnings()).not.toContainEqual(
+    expect.stringContaining("Ran out of time"),
   );
   expect(holdingStartFor(callState, "clip_2")).toBeUndefined();
 }
@@ -144,7 +144,7 @@ describe("performSplitting across a batch of clips", () => {
     );
   });
 
-  it("names the clips left uncut when time runs out between them", () => {
+  it("leaves the clips after the stop uncut when time runs out between them", () => {
     const { callState, arrangementClips, clips } = setupBatchSplitTest();
 
     // The budget is gone by the time the first clip is done, so the loop stops
@@ -156,8 +156,7 @@ describe("performSplitting across a batch of clips", () => {
     expectStoppedAfterFirstClip(callState);
 
     // Beat 40 is inside clip_2, which the stop never reached. Calling it a
-    // position that cut nothing would contradict the warning above it, and
-    // send the caller to re-run without it.
+    // position that cut nothing would send the caller to re-run without it.
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("cut nothing at"),
     );

@@ -12,6 +12,7 @@ import {
   type EnvelopeReply,
   REMOTE_SCRIPT_UNANSWERED,
 } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
+import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { remoteScriptWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 
 /** Only the remote script can reach clip automation at all. */
@@ -21,9 +22,6 @@ export const REMOTE_SCRIPT_MISSING =
 /** An arrangement clip's automation isn't the clip's — it's the track's. */
 export const ARRANGEMENT_CLIP_NOTE =
   "Live doesn't give an arrangement clip envelopes of its own: its automation lives in the track's automation lane. Automate a session clip and duplicate that to the arrangement.";
-
-/** Why a route was never called: there was no time left to wait for it. */
-export const REQUEST_OUT_OF_TIME = "the request ran out of time";
 
 /**
  * What one route answered: its result, or why there isn't one. `stalled` marks

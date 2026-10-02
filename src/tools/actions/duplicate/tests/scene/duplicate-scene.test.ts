@@ -30,6 +30,13 @@ interface DuplicateSceneResult {
   clips: DuplicateClipResult[];
 }
 
+/** What a scene copy the deadline never reached answers with. */
+const OUT_OF_TIME_SKIP = {
+  id: "scene1",
+  ok: false,
+  detail: "the request ran out of time; re-run for this copy",
+};
+
 describe("duplicate - scene duplication", () => {
   // has_clip can still be set on a slot Live hands back nothing for, so the
   // scan checks the clip itself before reporting it.
@@ -203,11 +210,34 @@ describe("duplicate - scene duplication", () => {
       { deadline: Date.now() - 1 },
     );
 
-    expect(result).toStrictEqual([]);
-    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_scene", 0);
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after duplicating 0 of 2 scenes. Re-run for the rest.",
+    // Every copy it never made keeps its slot.
+    expect(result).toStrictEqual(
+      Array.from({ length: 2 }, () => ({ ...OUT_OF_TIME_SKIP })),
     );
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_scene", 0);
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
+    );
+  });
+
+  it("keeps each session scene copy it never reached, after the ones it made", async () => {
+    const context = { deadline: Date.now() + 60_000 };
+    const liveSet = setupSessionSceneMocks();
+
+    liveSet.methods.duplicate_scene = () => {
+      context.deadline = Date.now() - 1;
+    };
+
+    const result = (await duplicate(
+      { type: "scene", id: "scene1", count: 3 },
+      context,
+    )) as object[];
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ id: "live_set/scenes/1", path: "s1" }),
+      OUT_OF_TIME_SKIP,
+      OUT_OF_TIME_SKIP,
+    ]);
   });
 });
 

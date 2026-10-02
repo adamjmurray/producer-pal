@@ -6,6 +6,7 @@
 // The targets a call names, and the entries they leave in place of work not
 // done — a skip, or an object a later target names again. Each is addressed by
 // the param and spelling the caller wrote, which is all they have to match on.
+// Holds the one wording a target the request's deadline never reached gets.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
@@ -95,6 +96,23 @@ export function namedLaterReason(later: NamedTarget): string {
  */
 export function destinationNamedLaterReason(destination: string): string {
   return `${destination} is ${namedAgain()}`;
+}
+
+/** Why a target got nothing: there was no time left to reach it. */
+export const REQUEST_OUT_OF_TIME = "the request ran out of time";
+
+/**
+ * The detail on the skip entry of a target the deadline never reached, in one
+ * wording for every tool (ADR-0042).
+ * @param rerunFor - What to re-run for, e.g. "clip" or "destination"
+ * @param notDone - What wasn't done to it, when the entry should say, e.g.
+ *   "not created"
+ * @returns The detail
+ */
+export function unreachedDetail(rerunFor: string, notDone?: string): string {
+  const reason = `${REQUEST_OUT_OF_TIME}; re-run for this ${rerunFor}`;
+
+  return notDone == null ? reason : `${notDone}: ${reason}`;
 }
 
 /**

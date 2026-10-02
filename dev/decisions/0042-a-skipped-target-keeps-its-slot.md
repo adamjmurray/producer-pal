@@ -62,6 +62,17 @@ nothing the call asked of that target landed.
 absent object: there is nothing to report about it, where a delete's goal is
 exactly that absence.
 
+**A deadline is no exception, in any tool.** When a call stops early because the
+request ran out of time, every target it never reached keeps its slot as a skip:
+`ok: false`, the target's address, and a `detail` saying the request ran out of
+time and what to re-run. That covers count copies, position lists, clip batches
+and every other loop that checks the deadline, and none of them also warns: the
+entries already say what was not reached. A target whose work had already begun
+did land, so it keeps its normal entry with a `detail` saying what did not run:
+a lengthen that tiled only part of its span, or a clip already cut by a split
+whose update stopped there. A lookup or preparation step that runs out of time
+before anything is written refuses the whole call.
+
 Malformed calls are still refused up front (ADR-0035) — a hole in a list, a
 single-target location param beside a list. Those are about the call, not a
 target, so no entry exists yet to carry them.
@@ -115,24 +126,25 @@ target, so no entry exists yet to carry them.
   order. The `name` and `color` lists pair by that target's place too, so a skip
   doesn't slide the names after it onto the wrong clips and every piece of a
   split takes the name its own target asked for. A target whose path or id found
-  no clip, or that the deadline never reached, holds its slot as a skip; so does
-  one whose only requested work — a move, a position, a split — was refused
-  outright, since where the clip still sits is nothing the caller asked about. A
-  clip named twice is updated as its last mention asks; the earlier mention
-  holds its slot as a normal entry pointing at the later one, and a clip that
-  was written but not as asked keeps its entry with a `detail`: a throw partway,
-  a move refused beside a name or a length that landed, a re-create and what it
-  cost, a take-lane leftover, a move that replaced the clip already in the
-  destination slot. A param the clip can't take — notes, preTransforms,
-  duplicateLoop or quantize on an audio clip, warp markers or the audio params
-  (gainDb, pitchShift, warpMode, warping) on a MIDI clip, firstStart on a clip
-  that isn't looping or past its content end, warping off while looping — is a
-  detail on its entry too, and a skip when it was all the call asked of the
-  clip. The move and arrangement helpers report all of it on the clip's entry
-  instead of warning, through a per-call collector keyed by the clip id the call
-  found; a step that writes under a new id — a move re-creates the clip — hands
-  what it reports back to the id the caller named. One target never answers with
-  no entries: a split whose pieces the rescan can't find says so too. A clip
+  no clip, or that the deadline never reached (unless a split already cut it:
+  its pieces keep their entries), holds its slot as a skip; so does one whose
+  only requested work — a move, a position, a split — was refused outright,
+  since where the clip still sits is nothing the caller asked about. A clip
+  named twice is updated as its last mention asks; the earlier mention holds its
+  slot as a normal entry pointing at the later one, and a clip that was written
+  but not as asked keeps its entry with a `detail`: a throw partway, a move
+  refused beside a name or a length that landed, a re-create and what it cost, a
+  take-lane leftover, a move that replaced the clip already in the destination
+  slot. A param the clip can't take — notes, preTransforms, duplicateLoop or
+  quantize on an audio clip, warp markers or the audio params (gainDb,
+  pitchShift, warpMode, warping) on a MIDI clip, firstStart on a clip that isn't
+  looping or past its content end, warping off while looping — is a detail on
+  its entry too, and a skip when it was all the call asked of the clip. The move
+  and arrangement helpers report all of it on the clip's entry instead of
+  warning, through a per-call collector keyed by the clip id the call found; a
+  step that writes under a new id — a move re-creates the clip — hands what it
+  reports back to the id the caller named. One target never answers with no
+  entries: a split whose pieces the rescan can't find says so too. A clip
   another clip in the same call was moved onto keeps a normal entry rather than
   a skip — `deleted: true` and the address it had: nothing the call asked of it
   landed, but that it is gone is news no skip can carry. When several clips name
@@ -144,10 +156,9 @@ target, so no entry exists yet to carry them.
   every clip slot first and the arrangement after. A destination that got no
   clip holds its slot as a skip: a clip slot a later destination names again
   (the last one wins), a track that won't take the clip, a create Live declined,
-  a take lane past the cap, one the deadline never reached. The deadline warning
-  only says how far the call got. A `firstStart` the call can't use — it only
-  lands alongside `looping: true` — is a `detail` on that clip's entry rather
-  than a warning, and no `ok`: the clip exists.
+  a take lane past the cap, one the deadline never reached. A `firstStart` the
+  call can't use — it only lands alongside `looping: true` — is a `detail` on
+  that clip's entry rather than a warning, and no `ok`: the clip exists.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry
@@ -169,8 +180,7 @@ target, so no entry exists yet to carry them.
   slot can't take an arrangement copy. A copy that landed incomplete is a clip
   entry with a `detail`, not a skip: it exists, so losing it from the result
   would cost the caller a clip. The path is spelled the way a copy that landed
-  there would report it, so it pastes back into `toPath`. The deadline warning
-  still names what it never reached, and counts only copies that exist.
+  there would report it, so it pastes back into `toPath`.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
   hands back why rather than warning it, so the destination's `detail` says what

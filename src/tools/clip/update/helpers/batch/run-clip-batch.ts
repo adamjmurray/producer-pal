@@ -7,11 +7,9 @@
 // target's results back under the place the caller named it at.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { droppedDuplicatesNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { type PairedLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
@@ -29,13 +27,14 @@ import {
   ignoreClipParams,
   noteClipReason,
 } from "../entries/clip-reasons.ts";
-import { type ClipTargets, refuseTarget } from "../entries/clip-targets.ts";
+import { type ClipTargets } from "../entries/clip-targets.ts";
 import { type ClipUpdatePlan } from "../plan-clip-update.ts";
 import {
   buriedClipEntry,
   clipAddresses,
   markBuriedClips,
 } from "./buried-clips.ts";
+import { stopBatch } from "./batch-deadline.ts";
 import { clipBatchIndexes } from "./clip-batch-indexes.ts";
 import { clipValuesAt } from "./clip-value-lists.ts";
 import {
@@ -150,11 +149,13 @@ export async function runClipBatch({
   const askedAnythingElse = (clip: LiveAPI): boolean =>
     askedBeyondPosition(args, clipIgnoredParams(reasons, clip.id));
 
+  const deadlineStop = { deadline, plan, targets, resultsPerClip, reasons };
+
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
     const slot = plan.slots[i] as number;
 
-    if (stopBatch({ deadline, plan, targets, clips, order: moveOrder, step })) {
+    if (stopBatch(deadlineStop, step)) {
       break;
     }
 
@@ -329,58 +330,6 @@ function groupResultsBySlot(
   }
 
   return perSlot;
-}
-
-interface StopBatchArgs {
-  deadline: number | null;
-  plan: ClipUpdatePlan;
-  targets: ClipTargets;
-  clips: LiveAPI[];
-  /** Positions in `clips`, in processing order. */
-  order: number[];
-  /** How far the loop got. */
-  step: number;
-}
-
-/**
- * Whether the batch should stop here, refusing the clips it didn't reach. Each
- * one says so in its own entry, so the warning only reports how far the call got.
- * @param batch - The deadline, the plan, and how far the loop got
- * @param batch.deadline - The request deadline
- * @param batch.plan - What the call does to which clips
- * @param batch.targets - The targets the call named
- * @param batch.clips - Every clip in the batch
- * @param batch.order - Positions in `clips`, in processing order
- * @param batch.step - How far the loop got
- * @returns true when time is up
- */
-function stopBatch({
-  deadline,
-  plan,
-  targets,
-  clips,
-  order,
-  step,
-}: StopBatchArgs): boolean {
-  if (!isDeadlineExceeded(deadline)) {
-    return false;
-  }
-
-  for (const index of order.slice(step)) {
-    refuseTarget(
-      targets.unused,
-      targets.named,
-      plan.slots[index] as number,
-      "not updated: the request ran out of time; re-run for this clip",
-    );
-  }
-
-  console.warn(
-    `Ran out of time after updating ${step} of ${clips.length} clips. ` +
-      `Re-run for the clips whose entries say so.`,
-  );
-
-  return true;
 }
 
 /**
