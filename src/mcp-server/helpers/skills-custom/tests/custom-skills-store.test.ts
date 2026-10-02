@@ -5,8 +5,12 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { useTempConfigDir } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
+import { describe, expect, it, vi } from "vitest";
+import { warn } from "#src/mcp-server/node-for-max-logger.ts";
+import {
+  unreadableWays,
+  useTempConfigDir,
+} from "#src/mcp-server/tests/config-dir-test-helpers.ts";
 import {
   customSkillExists,
   forgetCustomSkill,
@@ -17,6 +21,20 @@ import {
   renderEnabledSkillsIndex,
   slugifyCustomSkillName,
 } from "../custom-skills-store.ts";
+
+vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock(import("node:fs"), async (importOriginal) => {
+  const { withFsFaults } =
+    await import("#src/mcp-server/tests/config-dir-test-helpers.ts");
+
+  return withFsFaults(await importOriginal());
+});
 
 const getDir = useTempConfigDir();
 
@@ -272,6 +290,24 @@ describe("listCustomSkills", () => {
     expect(listCustomSkills().map((e) => e.name)).toStrictEqual(["real"]);
   });
 });
+
+describe.each(unreadableWays)(
+  "listCustomSkills with an unreadable file ($way)",
+  (blocker) => {
+    it.skipIf(!blocker.supported)(
+      "skips it with a warning, keeping the rest listed and indexed",
+      () => {
+        writeRaw("good.md", "---\ndescription: ok\n---\nbody");
+        writeRaw("locked.md", "---\ndescription: no\n---\nbody");
+        blocker.block(skillPath("locked.md"));
+
+        expect(listCustomSkills().map((e) => e.name)).toStrictEqual(["good"]);
+        expect(regenerateSkillsIndex()).toContain("`good`");
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("locked.md"));
+      },
+    );
+  },
+);
 
 describe("forgetCustomSkill", () => {
   it("removes an existing skill and reports it existed", () => {

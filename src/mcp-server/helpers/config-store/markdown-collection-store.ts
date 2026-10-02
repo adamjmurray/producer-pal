@@ -19,6 +19,7 @@ import {
   deleteConfigMarkdown,
   listConfigMarkdownFiles,
   readConfigMarkdown,
+  skipIfUnreadable,
   writeConfigMarkdown,
 } from "./config-markdown-store.ts";
 import { serializeFrontmatter } from "./frontmatter.ts";
@@ -267,7 +268,13 @@ export function makeMarkdownCollectionStore<
 
       seen.add(slug);
 
-      entries.push(config.toEntry(slug, readConfigMarkdown(resolveFile(slug))));
+      const raw = skipIfUnreadable(`${config.subdir}/${file}`, () =>
+        readConfigMarkdown(resolveFile(slug)),
+      );
+
+      if (raw != null) {
+        entries.push(config.toEntry(slug, raw));
+      }
     }
 
     return config.sortEntries(entries);
