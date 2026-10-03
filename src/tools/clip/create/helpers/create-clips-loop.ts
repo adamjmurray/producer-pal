@@ -331,7 +331,7 @@ async function createClipAtIndex(
   const {
     notes: clipNotes,
     clipLength,
-    transformedCount,
+    transformCounts,
     details: transformDetails,
   } = withClipWarningLabel(
     `clip ${position}${ordinalSuffix(index, totalCount)}`,
@@ -388,7 +388,7 @@ async function createClipAtIndex(
           clipNotes,
           plan.length,
           plan.sampleFile,
-          transformedCount,
+          transformCounts,
           takeLane,
           {
             warping: params.warping,

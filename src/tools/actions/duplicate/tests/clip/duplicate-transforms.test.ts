@@ -82,6 +82,30 @@ describe("duplicate - transforms/code", () => {
       });
     });
 
+    it("carries the count of notes the transform deleted onto the copy", async () => {
+      registerSessionClipDuplication({ destClipProperties: {} });
+      const destId = "live_set/tracks/0/clip_slots/1/clip";
+
+      updateClipMock.mockReturnValueOnce([
+        { id: destId, noteCount: 2, transformed: 1, deletedNotes: 2 },
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1",
+        transforms: "C3: velocity = 0",
+      });
+
+      expect(result).toStrictEqual({
+        id: destId,
+        path: "t0/s1",
+        noteCount: 2,
+        transformed: 1,
+        deletedNotes: 2,
+      });
+    });
+
     it("broadcasts one transform string across multiple duplicated clips", async () => {
       setupTwoSlotDuplication();
 

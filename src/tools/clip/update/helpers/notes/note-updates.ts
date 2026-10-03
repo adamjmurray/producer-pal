@@ -13,8 +13,10 @@ import {
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
+  addCounts,
   combineOutcomes,
-  countTransformed,
+  countTransforms,
+  type TransformCounts,
   type TransformOutcome,
 } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -22,6 +24,7 @@ import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
+  clipNoteScanWindow,
   getClipNoteCount,
   rawNotesToCopiedNotes,
   readClipNotes,
@@ -34,6 +37,12 @@ import {
   noteDroppedDuplicates,
 } from "./note-transforms.ts";
 import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
+import {
+  mutedNotesHit,
+  reportMutedCopies,
+  reportMutedNoteEffects,
+  reportMutedQuantize,
+} from "./muted-note-effects.ts";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
@@ -141,6 +150,15 @@ export function handleNoteUpdates(
   // Every collision before transforms, restated notes included.
   const collidingBefore = countSlotCollisions(notes);
 
+  // Muted notes the new notes already sit on, by what the call wrote: that is
+  // an asked-for overwrite. Only a replacement a transform adds is reported.
+  const mutedNotes = rawNotesToCopiedNotes(muted);
+  const existingSet = new Set(existingNotes);
+  const mutedHitBefore = mutedNotesHit(
+    notes.filter((note) => !existingSet.has(note)),
+    mutedNotes,
+  );
+
   // Apply transforms to notes if provided
   const postOutcome = applyTransforms(
     notes,
@@ -157,7 +175,7 @@ export function handleNoteUpdates(
 
   const { notes: mergedNotes, collisions } = dedupeAndSortNotes(
     notes,
-    rawNotesToCopiedNotes(muted),
+    mutedNotes,
   );
 
   if (mergedNotes.length > 0) {
@@ -167,8 +185,13 @@ export function handleNoteUpdates(
   // Restating an existing note is a deliberate overwrite, so it isn't reported.
   // Reported: input duplicates, preTransform pile-ups, and what a transform
   // collapsed, capped at what was dropped just now (a transform can pull
-  // colliding notes apart). Can undercount when a transform both clears a
-  // collision and makes one.
+  // colliding notes apart).
+  //
+  // Known limits, accepted: this can undercount when a transform both clears a
+  // collision and makes one, and overcount when a transform separates only part
+  // of a pile-up that includes a restated existing note (existing E plus new N1
+  // and N2 at one pitch and start, a transform moves N2 away: it reports one
+  // dropped duplicate, though only the restated E was dropped).
   const transformCollapsed = Math.max(0, collisions - collidingBefore);
 
   noteDroppedDuplicates(
@@ -177,14 +200,20 @@ export function handleNoteUpdates(
     Math.min(collisions, inputDuplicates + pileUps + transformCollapsed),
   );
 
-  // Both stages count: a note either one touched counts once, and a notes +
-  // preTransforms update still reports a count (not undefined).
+  const mutedReplaced = [...mutedNotesHit(notes, mutedNotes)].filter(
+    (note) => !mutedHitBefore.has(note),
+  ).length;
+
+  reportMutedNoteEffects(clip, reasons, {
+    written: mergedNotes,
+    muted: mutedNotes,
+    replaced: mutedReplaced,
+  });
+
+  // Both stages count: a note either one changed counts once.
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: countTransformed(
-      combineOutcomes(preOutcome, postOutcome),
-      mergedNotes,
-    ),
+    ...countTransforms(combineOutcomes(preOutcome, postOutcome), mergedNotes),
   };
 }
 
@@ -280,14 +309,23 @@ export function handleDuplicateLoop(
     return null;
   }
 
+  // Live copies muted notes too; the model can't see them, so say how many.
+  // Counted over the window read before, which the doubled clip's wider one
+  // contains.
+  const window = clipNoteScanWindow(clip);
+  const mutedBefore = readClipNotes(clip).muted.length;
+
   clip.call("duplicate_loop");
 
   // duplicate_loop mutates the clip in place (same id). Recreate from id to dodge
   // LiveAPI staleness - matters for arrangement clips - before reading the count.
   const freshClip = LiveAPI.from(clip.id);
+  const { visible, muted } = readClipNotes(freshClip);
+
+  reportMutedCopies(clip, reasons, mutedBefore, window, muted);
 
   return {
-    noteCount: getClipNoteCount(freshClip),
+    noteCount: visible.length,
     length: abletonBeatsToDuration(
       freshClip.getProperty("length") as number,
       freshClip.getProperty("signature_numerator") as number,
@@ -340,7 +378,7 @@ export function handleDuplicateLoopWithEdits({
   notation: Notation | undefined;
 }): NoteUpdateResult | null {
   // Stage 1: flush preTransforms onto the existing notes before doubling.
-  let preTransformed: number | undefined;
+  let preCounts: TransformCounts = {};
 
   if (preTransformString != null) {
     const preContext = buildClipContext(
@@ -350,8 +388,7 @@ export function handleDuplicateLoopWithEdits({
       timeSigNumerator,
       timeSigDenominator,
     );
-
-    preTransformed = applyTransformsToExistingNotes(
+    const preResult = applyTransformsToExistingNotes(
       clip,
       reasons,
       preTransformString,
@@ -359,7 +396,12 @@ export function handleDuplicateLoopWithEdits({
       timeSigNumerator,
       timeSigDenominator,
       preContext,
-    ).transformed;
+    );
+
+    preCounts = {
+      transformed: preResult.transformed,
+      deletedNotes: preResult.deletedNotes,
+    };
   }
 
   // Stage 2: native double (MIDI guaranteed by the caller).
@@ -368,7 +410,7 @@ export function handleDuplicateLoopWithEdits({
   // Stage 3: merge notes + transforms across the doubled clip. Re-read from id
   // (duplicate_loop mutates in place) and rebuild context for the doubled length.
   if (notationString == null && transformString == null) {
-    return withPreTransformed(dupResult, preTransformed);
+    return withPreCounts(dupResult, preCounts);
   }
 
   const freshClip = LiveAPI.from(clip.id);
@@ -397,27 +439,29 @@ export function handleDuplicateLoopWithEdits({
     mergeResult.length = dupResult.length;
   }
 
-  return withPreTransformed(mergeResult ?? dupResult, preTransformed);
+  return withPreCounts(mergeResult ?? dupResult, preCounts);
 }
 
 /**
- * Fall back to the preTransform match count when the later stages produced none.
- * Stage 3 is handed no preTransform string of its own, so without this a
- * duplicateLoop + preTransforms call would be the one path where preTransforms
- * ran and matched notes yet reported no count.
+ * Add stage 1's counts to the later stages'. Stage 3 is handed no preTransform
+ * string of its own and re-reads the doubled clip, so each stage compares its
+ * own before and after and the report is their sum (a note changed in both
+ * counts twice).
  * @param result - The result the later stages produced, or null if there is none
- * @param preTransformed - Stage 1's match count, or undefined if it did not run
- * @returns The result, with the preTransform count filled in when it had none
+ * @param preCounts - Stage 1's counts, empty if it did not run
+ * @returns The result with the preTransform counts added
  */
-function withPreTransformed(
+function withPreCounts(
   result: NoteUpdateResult | null,
-  preTransformed: number | undefined,
+  preCounts: TransformCounts,
 ): NoteUpdateResult | null {
-  if (result == null || result.transformed != null || preTransformed == null) {
+  if (result == null) {
     return result;
   }
 
-  return { ...result, transformed: preTransformed };
+  const { transformed: _t, deletedNotes: _d, ...rest } = result;
+
+  return { ...rest, ...addCounts(preCounts, result) };
 }
 
 /**
@@ -501,6 +545,10 @@ export function handleQuantization(
   const grid = QUANTIZE_GRID_ALIASES[requestedGrid] ?? requestedGrid;
   const gridValue = QUANTIZE_GRID[grid];
 
+  // Live quantizes muted notes too; the model can't see them, so say how many
+  // moved. The read before is the only one a clip with no muted notes costs.
+  const before = readClipNotes(clip);
+
   if (quantizePitch != null) {
     // Refused up front by updateClip, so this reads back a known-good name.
     const midiPitch = noteNameToMidi(quantizePitch) as number;
@@ -509,4 +557,6 @@ export function handleQuantization(
   } else {
     clip.call("quantize", gridValue, strength);
   }
+
+  reportMutedQuantize(clip, reasons, before);
 }

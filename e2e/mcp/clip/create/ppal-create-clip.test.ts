@@ -329,7 +329,7 @@ describe("ppal-create-clip", () => {
 
   it("counts a deleted note once when a bar copy duplicates it", async () => {
     // The same bar copy as above makes 88 hats, of which 64 are distinct. A
-    // transform that zeroes them deletes 64 notes, so the count must say 64
+    // transform that zeroes them deletes 64 notes, so `deletedNotes` must say 64
     // (and the duration warning too), not 88.
     const notes =
       "v45 n/16 Gb1 1|1x8@n/8 v60 B1 1|2.5 @2-8=1 v95 C1 5|1,2,3,4 @6-8=5 v60 D1 8|3.5x6@n/16";
@@ -344,7 +344,10 @@ describe("ppal-create-clip", () => {
       },
     });
 
-    expect(parseToolResult<CreateClipResult>(byVelocity).transformed).toBe(64);
+    expect(
+      parseToolResult<CreateClipResult & { deletedNotes?: number }>(byVelocity)
+        .deletedNotes,
+    ).toBe(64);
 
     const byDuration = await ctx.client!.callTool({
       name: "ppal-create-clip",
@@ -355,10 +358,12 @@ describe("ppal-create-clip", () => {
         transforms: "Gb1: duration = 0",
       },
     });
-    const { data, warnings } =
-      parseToolResultWithWarnings<CreateClipResult>(byDuration);
+    const { data, warnings } = parseToolResultWithWarnings<
+      CreateClipResult & { deletedNotes?: number }
+    >(byDuration);
 
-    expect(data.transformed).toBe(64);
+    expect(data.deletedNotes).toBe(64);
+    expect(data.transformed).toBe(0);
     expect(data.detail).toContain(
       "64 note(s) deleted: duration went to 0 or below",
     );

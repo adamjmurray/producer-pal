@@ -90,20 +90,28 @@ describe("applyTransforms", () => {
 
     // Live drops a note under velocity 1, so only <= 0 may delete.
     it.each([
-      ["velocity = 0.7", 100, 1],
-      ["velocity *= 0.004", 100, 1],
-      ["velocity = 0.5\nvelocity += 10", 100, 10.5], // floored after all lines
-      ["velocity *= 0.5", 101, 50.5], // not rounded
-      ["duration = 1", 64, 64], // untouched
-    ])("%j on velocity %d leaves %d", (transform, velocity, expected) => {
-      const notes = createTestNotes([
-        { start_time: 0, velocity },
-        { start_time: 1, velocity },
-      ]);
+      ["velocity = 0.7", 100, 1, 2],
+      ["velocity *= 0.004", 100, 1, 2],
+      ["velocity = 0.5\nvelocity += 10", 100, 10.5, 2], // floored after all lines
+      ["velocity *= 0.5", 101, 50.5, 2], // not rounded
+      ["duration = 1", 64, 64, 0], // untouched, and the duration already was 1
+    ])(
+      "%j on velocity %d leaves %d",
+      (transform, velocity, expected, changed) => {
+        const notes = createTestNotes([
+          { start_time: 0, velocity },
+          { start_time: 1, velocity },
+        ]);
 
-      expect(applyTransforms(notes, transform, 4, 4)?.touched.size).toBe(2);
-      expect(notes.map((n) => n.velocity)).toStrictEqual([expected, expected]);
-    });
+        expect(applyTransforms(notes, transform, 4, 4)?.changed.size).toBe(
+          changed,
+        );
+        expect(notes.map((n) => n.velocity)).toStrictEqual([
+          expected,
+          expected,
+        ]);
+      },
+    );
 
     it("deletes notes when a division by zero evaluates to 0", () => {
       const notes = createTestNotes([{ start_time: 0 }, { start_time: 1 }]);

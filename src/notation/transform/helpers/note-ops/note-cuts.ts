@@ -9,7 +9,11 @@ import {
   type BarBeatPointNode,
   type NoteOp,
 } from "../../parser/transform-parser.ts";
-import { type NoteOpResult } from "./note-op-result.ts";
+import {
+  madeFrom,
+  type NoteOpResult,
+  type NoteParents,
+} from "./note-op-result.ts";
 
 // Per-note ceiling on pieces a note-count op may produce — bounds note
 // explosion. Shared by ratchet (a roll) and split (explicit cuts). A note cut
@@ -95,6 +99,7 @@ export function splitNotes(
   const points = resolveSplitPoints(op.args, originMusicalBeats, abletonScale);
 
   const out: NoteEvent[] = [];
+  const parents: NoteParents = new Map();
   let uncut = 0;
   let clamped = 0;
 
@@ -120,7 +125,7 @@ export function splitNotes(
       clamped++;
     }
 
-    out.push(...splitNoteAtCuts(note, cuts));
+    out.push(...madeFrom(parents, note, splitNoteAtCuts(note, cuts)));
   }
 
   if (uncut > 0) {
@@ -135,7 +140,7 @@ export function splitNotes(
     );
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /**

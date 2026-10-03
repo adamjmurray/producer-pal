@@ -37,3 +37,66 @@ export function transformsIgnoredNoNotesNote(
 export function transformsIgnoredAudioNote(): string {
   return "transforms ignored: the clip is audio";
 }
+
+/**
+ * @param count - How many muted notes
+ * @returns "1 muted note" or "3 muted notes"
+ */
+function mutedNotes(count: number): string {
+  return `${count} muted note${count === 1 ? "" : "s"}`;
+}
+
+/**
+ * What to say when a transform moved notes onto muted notes' pitch and start,
+ * which replaces them.
+ * @param count - How many muted notes were replaced
+ * @returns The note for the clip's entry, or null when none were
+ */
+export function mutedReplacedNote(count: number): string | null {
+  return count > 0
+    ? `replaced ${mutedNotes(count)} at the same pitch and start`
+    : null;
+}
+
+/**
+ * What to say when overlapping muted notes changed a note's length: Live cuts
+ * whichever same-pitch note starts earlier at the next one's start.
+ * @param count - How many notes were shortened
+ * @param mutedWasShortened - True when the shortened notes are the muted ones
+ * @returns The note for the clip's entry, or null when none were shortened
+ */
+export function mutedOverlapNote(
+  count: number,
+  mutedWasShortened: boolean,
+): string | null {
+  if (count <= 0) {
+    return null;
+  }
+
+  return mutedWasShortened
+    ? `${mutedNotes(count)} shortened by an overlapping note`
+    : `${count} note${count === 1 ? "" : "s"} shortened by an overlapping muted note`;
+}
+
+/**
+ * What to say when a native Live op acted on muted notes, which edits
+ * otherwise leave alone.
+ * @param op - What Live did to them
+ * @param count - How many muted notes it acted on
+ * @returns The note for the clip's entry, or null when there were none
+ */
+export function mutedNativeOpNote(
+  op: "quantized" | "copied",
+  count: number,
+): string | null {
+  return count > 0 ? `${op} ${mutedNotes(count)}` : null;
+}
+
+/**
+ * What to say when a quantize on a clip with no visible notes moved nothing:
+ * the muted notes were all it had to act on.
+ * @returns The note for the clip's entry
+ */
+export function mutedOnlyQuantizeNote(): string {
+  return "quantize moved nothing: the clip has only muted notes, and none moved";
+}

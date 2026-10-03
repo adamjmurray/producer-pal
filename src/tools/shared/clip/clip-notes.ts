@@ -172,7 +172,7 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
  * @param clip - LiveAPI clip object
  * @returns [fromTime, timeSpan] for get_notes_extended / remove_notes_extended
  */
-function clipNoteScanWindow(clip: LiveAPI): [number, number] {
+export function clipNoteScanWindow(clip: LiveAPI): [number, number] {
   const lengthBeats = clip.getProperty("length") as number;
   const regionStart = Math.min(
     clip.getProperty("start_marker") as number,

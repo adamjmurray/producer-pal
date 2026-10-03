@@ -612,7 +612,7 @@ describe("buildClipResult (unit)", () => {
       4,
       4,
       null,
-      undefined,
+      {},
       null,
     );
 

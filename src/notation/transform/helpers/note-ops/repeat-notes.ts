@@ -14,7 +14,12 @@ import {
   evaluateExpression,
 } from "../transform-evaluation.ts";
 import { MAX_NOTE_PIECES } from "./note-cuts.ts";
-import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
+import {
+  madeFrom,
+  type NoteOpResult,
+  type NoteParents,
+  skippedNoteOp,
+} from "./note-op-result.ts";
 import { numericOpArg } from "./numeric-op-arg.ts";
 
 /**
@@ -56,6 +61,7 @@ export function repeatNotes(
   }
 
   const out: NoteEvent[] = [...matched];
+  const parents: NoteParents = new Map();
 
   for (const note of matched) {
     for (let k = 1; k <= copies; k++) {
@@ -63,11 +69,11 @@ export function repeatNotes(
 
       // A copy landing on an existing note's exact onset+pitch is collapsed
       // keep-last by the write path's dedupe, which says so on the clip's entry.
-      out.push(copy);
+      out.push(...madeFrom(parents, note, [copy]));
     }
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /**

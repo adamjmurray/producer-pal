@@ -20,7 +20,8 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal()),
     applyTransforms: vi.fn(() => ({
-      touched: new Set<NoteEvent>(),
+      changed: new Set<NoteEvent>(),
+      original: new Map<NoteEvent, NoteEvent>(),
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,
@@ -74,7 +75,8 @@ describe("resolveClipTransform", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(applyTransforms).mockReturnValue({
-      touched: new Set<NoteEvent>(),
+      changed: new Set<NoteEvent>(),
+      original: new Map<NoteEvent, NoteEvent>(),
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,
@@ -96,7 +98,7 @@ describe("resolveClipTransform", () => {
 
       const result = resolveClipTransform(inputs, 0, 1, null);
 
-      expect(result.transformedCount).toBeUndefined();
+      expect(result.transformCounts).toStrictEqual({});
       // The early return hands back the exact shared array, not a sorted clone.
       expect(result.notes).toBe(inputs.notes);
       expect(applyTransforms).not.toHaveBeenCalled();
@@ -124,7 +126,10 @@ describe("resolveClipTransform", () => {
       const result = resolveClipTransform(inputs, 0, 1, null);
 
       expect(applyTransforms).toHaveBeenCalledOnce();
-      expect(result.transformedCount).toBe(3);
+      expect(result.transformCounts).toStrictEqual({
+        transformed: 0,
+        deletedNotes: 3,
+      });
       // A fresh sorted clone is returned, not the shared input array.
       expect(result.notes).not.toBe(inputs.notes);
     });

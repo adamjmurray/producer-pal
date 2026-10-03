@@ -46,6 +46,7 @@ import {
 import { checkTransformArgs } from "./transform-arg-checks.ts";
 import { applyNoteOp } from "./transform-note-ops.ts";
 import { type TransformOutcome } from "./transformed-count.ts";
+import { buildOutcome } from "./helpers/note-ops/transform-outcome.ts";
 
 /**
  * Apply transforms to a list of notes in-place
@@ -54,8 +55,8 @@ import { type TransformOutcome } from "./transformed-count.ts";
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context for clip/bar variables
- * @returns The notes at least one non-audio transform touched (see
- *   countTransformed), or undefined if no transforms applied
+ * @returns The notes the transforms changed or deleted (see
+ *   countTransforms), or undefined if no transforms applied
  */
 export function applyTransforms(
   notes: NoteEvent[],
@@ -90,9 +91,12 @@ export function applyTransforms(
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
   const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
 
-  // Track which notes had at least one MIDI transform applied, by object: note
-  // ops rebuild the array, so indices don't survive them.
+  // Track which notes a MIDI transform selected, by object: note ops rebuild
+  // the array, so indices don't survive them. What counts as changed or
+  // deleted is settled at the end, against how each note started.
   const touched = new Set<NoteEvent>();
+  const original = new Map(notes.map((note) => [note, { ...note }]));
+  const roots = new Map<NoteEvent, ReadonlySet<NoteEvent>>();
 
   // Process statements sequentially (statement-major order).
   // Each statement is fully applied before the next one runs.
@@ -110,6 +114,7 @@ export function applyTransforms(
         timeSigDenominator,
         arrangementOrigin(clipContext),
         touched,
+        roots,
       );
 
       continue;
@@ -137,9 +142,9 @@ export function applyTransforms(
     );
   }
 
-  const deleted = deleteZeroedNotes(notes, touched);
+  deleteZeroedNotes(notes);
 
-  return { touched, deleted };
+  return buildOutcome(original, roots, touched, notes);
 }
 
 /**
@@ -152,6 +157,7 @@ export function applyTransforms(
  * @param timeSigDenominator - Time signature denominator
  * @param originBeats - Arrangement position of note time 0, or undefined
  * @param touched - Set to track which notes were transformed
+ * @param roots - Records, for each note an op made, the starting notes it came from
  */
 function applyTrackedNoteOp(
   op: NoteOp,
@@ -160,8 +166,9 @@ function applyTrackedNoteOp(
   timeSigDenominator: number,
   originBeats: number | undefined,
   touched: Set<NoteEvent>,
+  roots: Map<NoteEvent, ReadonlySet<NoteEvent>>,
 ): void {
-  const produced = applyNoteOp(
+  const { notes: produced, parents } = applyNoteOp(
     op,
     notes,
     timeSigNumerator,
@@ -171,22 +178,27 @@ function applyTrackedNoteOp(
 
   for (const note of produced) {
     touched.add(note);
+
+    // A note an op made came from the notes it replaced, which may themselves
+    // have been made by an earlier op.
+    const from = parents.get(note);
+
+    if (from != null) {
+      roots.set(
+        note,
+        new Set(from.flatMap((parent) => [...(roots.get(parent) ?? [parent])])),
+      );
+    }
   }
 }
 
 /**
  * Delete notes where transforms reduced velocity to 0 or below, or duration to
  * 0 or below (consistent with v0 deletion in bar|beat notation), and raise a
- * surviving velocity below 1 to 1. Touched notes that go are dropped from
- * `touched` and returned.
+ * surviving velocity below 1 to 1.
  * @param notes - Notes to filter in place
- * @param touched - Set of notes the transforms touched
- * @returns The touched notes that were deleted
  */
-function deleteZeroedNotes(
-  notes: NoteEvent[],
-  touched: Set<NoteEvent>,
-): NoteEvent[] {
+function deleteZeroedNotes(notes: NoteEvent[]): void {
   // A velocity at or below 0 deletes with no warning, on purpose: `delete`, `v0`
   // and `velocity = 0` are the documented way to clear notes, so a warning
   // would fire on every intended delete.
@@ -200,7 +212,7 @@ function deleteZeroedNotes(
   }
 
   if (surviving.length === notes.length) {
-    return [];
+    return;
   }
 
   // Warn when a duration transform drove a note to zero/negative length: the
@@ -216,19 +228,8 @@ function deleteZeroedNotes(
     );
   }
 
-  const survivors = new Set(surviving);
-  const deleted: NoteEvent[] = [];
-
-  for (const note of notes) {
-    if (!survivors.has(note) && touched.delete(note)) {
-      deleted.push(note);
-    }
-  }
-
   notes.length = 0;
   notes.push(...surviving);
-
-  return deleted;
 }
 
 /**

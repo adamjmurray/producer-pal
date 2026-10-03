@@ -13,7 +13,9 @@ import {
   splitNotes,
 } from "./helpers/note-ops/note-cuts.ts";
 import {
+  madeFrom,
   type NoteOpResult,
+  type NoteParents,
   skippedNoteOp,
 } from "./helpers/note-ops/note-op-result.ts";
 import {
@@ -43,8 +45,8 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param timeSigDenominator - Time signature denominator
  * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
- * @returns The op's output for the matched notes (kept originals included), or
- *   an empty list when the op was skipped
+ * @returns The op's output for the matched notes (kept originals included) and
+ *   where the notes it made came from; both empty when the op was skipped
  */
 export function applyNoteOp(
   op: NoteOp,
@@ -52,7 +54,7 @@ export function applyNoteOp(
   timeSigNumerator: number,
   timeSigDenominator: number,
   arrangementOrigin?: number,
-): NoteEvent[] {
+): Pick<NoteOpResult, "notes" | "parents"> {
   const beatScale = timeSigDenominator / 4; // Ableton beats -> musical beats
 
   // Partition by the op's selector (pitch range + time range).
@@ -83,7 +85,9 @@ export function applyNoteOp(
   notes.length = 0;
   notes.push(...rebuilt);
 
-  return result.skipped ? [] : result.notes;
+  return result.skipped
+    ? { notes: [], parents: new Map() }
+    : { notes: result.notes, parents: result.parents };
 }
 
 /**
@@ -151,6 +155,7 @@ function ratchetNotes(
   }
 
   const out: NoteEvent[] = [];
+  const parents: NoteParents = new Map();
   let shortNotes = 0;
   let clamped = 0;
 
@@ -178,7 +183,7 @@ function ratchetNotes(
         clamped++;
       }
 
-      out.push(...splitNoteAtCuts(note, cuts));
+      out.push(...madeFrom(parents, note, splitNoteAtCuts(note, cuts)));
       continue;
     }
 
@@ -189,7 +194,7 @@ function ratchetNotes(
       clamped++;
     }
 
-    out.push(...splitNoteEqually(note, count));
+    out.push(...madeFrom(parents, note, splitNoteEqually(note, count)));
   }
 
   if (shortNotes > 0) {
@@ -204,7 +209,7 @@ function ratchetNotes(
     );
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /** Resolved ratchet plan: a fixed `count`, or a `grid` size in Ableton beats. */
@@ -335,12 +340,13 @@ function mergeNotes(
   }
 
   const out: NoteEvent[] = [];
+  const parents: NoteParents = new Map();
 
   for (const group of byPitch.values()) {
-    out.push(...mergeRuns(group, tolerance));
+    out.push(...mergeRuns(group, tolerance, parents));
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /**
@@ -386,34 +392,63 @@ function resolveMergeTolerance(
  * @param group - Same-pitch notes (one merged group, non-empty)
  * @param tolerance - Max edge-to-edge gap (Ableton beats) that still merges;
  *   Infinity spans the whole group, 0 merges only touching/overlapping notes
+ * @param parents - Records which notes each merged note came from
  * @returns One sustained note per run
  */
-function mergeRuns(group: NoteEvent[], tolerance: number): NoteEvent[] {
+function mergeRuns(
+  group: NoteEvent[],
+  tolerance: number,
+  parents: NoteParents,
+): NoteEvent[] {
   const sorted = group.toSorted((a, b) => a.start_time - b.start_time);
   const out: NoteEvent[] = [];
 
   // group is non-empty by construction, so index 0 is always present.
-  let runStart = sorted[0] as NoteEvent;
-  let runEnd = runStart.start_time + runStart.duration;
+  const first = sorted[0] as NoteEvent;
+  let run = [first];
+  let runEnd = first.start_time + first.duration;
 
   for (let i = 1; i < sorted.length; i++) {
     const note = sorted[i] as NoteEvent; // i < length, always present
     const gap = note.start_time - runEnd;
 
     if (gap <= tolerance) {
-      const end = note.start_time + note.duration;
-
-      if (end > runEnd) {
-        runEnd = end; // extend the run to the later offset
-      }
+      runEnd = Math.max(runEnd, note.start_time + note.duration); // extend the run
+      run.push(note);
     } else {
-      out.push({ ...runStart, duration: runEnd - runStart.start_time });
-      runStart = note;
+      out.push(finishRun(run, runEnd, parents));
+      run = [note];
       runEnd = note.start_time + note.duration;
     }
   }
 
-  out.push({ ...runStart, duration: runEnd - runStart.start_time });
+  out.push(finishRun(run, runEnd, parents));
 
   return out;
+}
+
+/**
+ * The note a merge run becomes. A run of one is the note itself, so a lone
+ * note a merge leaves alone isn't counted as changed.
+ * @param run - The run's notes, earliest first
+ * @param runEnd - Where the run ends
+ * @param parents - Records which notes the merged note came from
+ * @returns The merged note
+ */
+function finishRun(
+  run: NoteEvent[],
+  runEnd: number,
+  parents: NoteParents,
+): NoteEvent {
+  const first = run[0] as NoteEvent;
+
+  if (run.length === 1) {
+    return first;
+  }
+
+  const [merged] = madeFrom(parents, run, [
+    { ...first, duration: runEnd - first.start_time },
+  ]);
+
+  return merged as NoteEvent;
 }

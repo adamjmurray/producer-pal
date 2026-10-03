@@ -47,6 +47,37 @@ reads the first one as the instruction, so the common case (double the whole
 clip, on its own) goes first. Leading with "send two calls, length first" sent a
 trial to the wrong region and took six calls to recover.
 
+## Transform counts
+
+`ppal-create-clip` and `ppal-update-clip` (transforms alone, or with `notes`)
+report what the transforms did to the notes, by comparing each note before and
+after:
+
+- `transformed`: notes the transforms changed or made that are still in the
+  clip.
+- `deletedNotes`: notes the transforms removed (driven to 0, or merged into
+  another). It pairs with `mutedNotes`; `deleted: true` on an entry means
+  something else (another clip in the call moved onto it). Only notes the clip
+  held count: pieces a `ratchet` made and then deleted don't, but the note they
+  replaced does. A `merge()` keeps one note of each group it joins and deletes
+  the rest; a short note swallowed by a longer one is deleted and the longer one
+  counts as unchanged.
+- A note a transform selected but left exactly as it was counts as neither
+  (`velocity += 0`, a ratchet with no grid line to cut at, a split with no cut,
+  `merge()` on a lone note). A `repeat` counts its copies, not the originals.
+  Values are compared at 32-bit float resolution, the way Live stores them, so
+  writing back the value a note already holds changes nothing.
+- `transformed: 0` is reported when transforms ran and changed nothing: it is
+  the caller's only sign that its selector matched nothing or its edit was a
+  no-op. Only `deletedNotes` is left out at 0, and `transformed` is absent when
+  no transform ran.
+- `preTransforms` and `transforms` in one call count against how each note
+  started: a note both changed counts once, and one that `transforms` puts back
+  as it was counts as neither. With `duplicateLoop` the two passes re-read the
+  clip around Live's double, so they can't share a starting point: each compares
+  its own before and after, the report is their sum, and a note changed in both
+  counts twice.
+
 ## Muted notes
 
 No note notation can spell a muted note, so a muted note read back as an
@@ -64,13 +95,23 @@ ordinary one and the model took it for a note that plays. Muted notes (Live's
   only muted notes is ignored, and says so.
 - **A note written at a muted note's pitch and start replaces it**: the model
   asked for a note there. A delete marker aimed at one is a no-op, since the
-  note doesn't exist to it.
+  note doesn't exist to it. A transform that moves a note there replaces it too,
+  and the clip's entry says so in `detail` (with a count when several), since
+  the model never asked for that note's slot.
+- **Overlaps follow Live**: Live cuts whichever same-pitch note starts earlier
+  at the next one's start, muted or not. After a note write the clip is read
+  back (only when it has muted notes), and `detail` says when a muted note
+  shortened a note, or a note shortened a muted one.
 - **Bar copy skips them**: they aren't in the source bar the model sees.
 - **Copying a whole clip keeps them** (duplicate to a new place, take lanes);
   that isn't an edit of notes the model sees. Replacing, emptying or moving a
   clip carries or drops them with it.
 - **Native Live operations act on them**, because Live does: `quantize` moves
-  them and `duplicateLoop` copies them.
+  them and `duplicateLoop` copies them. The entry's `detail` says how many
+  (`quantized 2 muted notes`, `duplicateLoop copied 1 muted note`). Quantize
+  counts only the muted notes that moved, and on a clip of only muted notes that
+  moved none it says so, so it never looks like nothing happened. A clip with no
+  muted notes costs one note read for a quantize and one for a `duplicateLoop`.
 - Clearing a clip (`preTransforms: "delete"`) leaves muted notes behind, so the
   read then shows an empty clip with `mutedNotes`.
 

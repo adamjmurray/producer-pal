@@ -54,7 +54,7 @@ function callArrangementIteration(opts: {
     [], // notes
     null, // length
     opts.sampleFile ?? null, // sampleFile
-    undefined, // transformedCount
+    {}, // transformCounts
     null, // takeLane
   );
 }

@@ -48,7 +48,7 @@ export function refuseUnreadableCopyTransforms(
  * broadcast across every duplicated clip — per-copy variation is expressed with
  * clip.index arithmetic and clipseq() inside the string. The
  * single updateClip call also keeps clip.index/clip.count spanning the whole
- * batch. Resulting noteCount and transformed counts are merged back into the
+ * batch. Resulting noteCount, transformed and deletedNotes counts are merged back into the
  * duplicate result objects.
  *
  * @param createdObjects - Result objects from clip duplication (mutated in place)
@@ -98,6 +98,10 @@ export async function applyTransformsToDuplicatedClips(
 
     if (stats?.transformed != null) {
       clip.transformed = stats.transformed;
+    }
+
+    if (stats?.deletedNotes != null) {
+      clip.deletedNotes = stats.deletedNotes;
     }
 
     // A copy the update couldn't edit has a detail of its own to carry.

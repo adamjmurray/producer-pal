@@ -6,7 +6,10 @@
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import { countTransformed } from "#src/notation/transform/transformed-count.ts";
+import {
+  countTransforms,
+  type TransformCounts,
+} from "#src/notation/transform/transformed-count.ts";
 import {
   droppedDuplicatesNote,
   transformsIgnoredAudioNote,
@@ -40,7 +43,8 @@ export interface ClipTransformInputs {
 export interface ClipTransformResult {
   notes: MidiNote[];
   clipLength: number;
-  transformedCount: number | undefined;
+  /** What the transform changed and deleted; empty when none ran */
+  transformCounts: TransformCounts;
   /** Facts about this clip for its entry: transform skipped, duplicates dropped */
   details: string[];
 }
@@ -55,8 +59,8 @@ export interface ClipTransformResult {
  * @param clipIndex - 0-based index of this clip within the view
  * @param clipCount - Total clips created in this view
  * @param arrangementStartBeats - Arrangement start in Ableton beats, or null for session
- * @returns Notes, clip length, transformed-note count, and what to say on the
- *   clip's entry
+ * @returns Notes, clip length, transform counts, and what to say on the clip's
+ *   entry
  */
 export function resolveClipTransform(
   inputs: ClipTransformInputs,
@@ -70,7 +74,7 @@ export function resolveClipTransform(
     return {
       notes,
       clipLength,
-      transformedCount: undefined,
+      transformCounts: {},
       details: factsFor(droppedDuplicatesNote(inputs.droppedDuplicates)),
     };
   }
@@ -80,7 +84,7 @@ export function resolveClipTransform(
     return {
       notes,
       clipLength,
-      transformedCount: undefined,
+      transformCounts: {},
       details: [
         isAudio
           ? transformsIgnoredAudioNote()
@@ -122,7 +126,7 @@ export function resolveClipTransform(
       inputs.timeSigDenominator,
     ),
     // Counted on the deduped notes, so collapsed duplicates don't inflate it.
-    transformedCount: countTransformed(outcome, sorted),
+    transformCounts: countTransforms(outcome, sorted),
     details: factsFor(droppedDuplicatesNote(collisions)),
   };
 }

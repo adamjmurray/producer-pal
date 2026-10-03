@@ -8,7 +8,7 @@ import { type ClipContext } from "#src/notation/transform/helpers/transform-cont
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
   combineOutcomes,
-  countTransformed,
+  countTransforms,
 } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
@@ -29,6 +29,7 @@ import {
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
+import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
 
 /**
  * Apply transforms to existing notes without merging new notes.
@@ -45,7 +46,7 @@ import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
- * @returns Note update result with count and transformed
+ * @returns Note update result with count, transformed and deletedNotes
  */
 export function applyTransformsToExistingNotes(
   clip: LiveAPI,
@@ -104,10 +105,8 @@ export function applyTransformsToExistingNotes(
   // transform can collapse two notes onto the same pitch+exact-onset (dedupe
   // keep-last resolves that deterministically instead of letting Live drop
   // one), and any remaining tail overlap is made safe by ascending order.
-  const { notes: written, collisions } = dedupeAndSortNotes(
-    notes,
-    rawNotesToCopiedNotes(muted),
-  );
+  const mutedNotes = rawNotesToCopiedNotes(muted);
+  const { notes: written, collisions } = dedupeAndSortNotes(notes, mutedNotes);
 
   if (written.length > 0) {
     clip.call("add_new_notes", { notes: written });
@@ -115,12 +114,17 @@ export function applyTransformsToExistingNotes(
 
   noteDroppedDuplicates(reasons, clip.id, collisions);
 
+  // No visible note shared a slot with a muted one before, so every muted note
+  // a transform landed on was replaced by it.
+  reportMutedNoteEffects(clip, reasons, {
+    written,
+    muted: mutedNotes,
+    replaced: mutedNotesHit(notes, mutedNotes).size,
+  });
+
   return {
     noteCount: getClipNoteCount(clip),
-    transformed: countTransformed(
-      combineOutcomes(preOutcome, postOutcome),
-      written,
-    ),
+    ...countTransforms(combineOutcomes(preOutcome, postOutcome), written),
   };
 }
 

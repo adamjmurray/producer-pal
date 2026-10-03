@@ -90,7 +90,7 @@ describe("ppal-clip-transforms (ratchet round-trip)", () => {
     const skipped = parseToolResultWithWarnings<UpdateClipResult>(
       await applyTransform(
         clipId,
-        "Gb1: velocity += 0\nD1: velocity += 0\nGb1: ratchet(rand(0, 0))",
+        "Gb1: velocity += 10\nD1: velocity += 10\nGb1: ratchet(rand(0, 0))",
       ),
     );
 
@@ -101,7 +101,7 @@ describe("ppal-clip-transforms (ratchet round-trip)", () => {
 
     // A working op on other notes keeps them too: 2 Gb1 + 2 D1 pieces.
     const worked = parseToolResult<UpdateClipResult>(
-      await applyTransform(clipId, "Gb1: velocity += 0\nD1: ratchet(2)"),
+      await applyTransform(clipId, "Gb1: velocity += 10\nD1: ratchet(2)"),
     );
 
     expect(worked.transformed).toBe(4);

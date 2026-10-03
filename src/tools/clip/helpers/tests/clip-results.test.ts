@@ -58,6 +58,21 @@ describe("clip-results", () => {
       });
     });
 
+    it("includes deleted beside transformed", () => {
+      const result = buildClipResultObject("clip100", {
+        noteCount: 10,
+        transformed: 5,
+        deletedNotes: 2,
+      });
+
+      expect(result).toStrictEqual({
+        id: "clip100",
+        noteCount: 10,
+        transformed: 5,
+        deletedNotes: 2,
+      });
+    });
+
     it("omits transformed when undefined in noteResult", () => {
       const result = buildClipResultObject("clip200", { noteCount: 8 });
 

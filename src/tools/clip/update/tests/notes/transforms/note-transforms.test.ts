@@ -477,7 +477,8 @@ describe("note-transforms", () => {
       );
 
       // The pickup was found and deleted, not skipped as an empty clip.
-      expect(result.transformed).toBe(1);
+      expect(result.deletedNotes).toBe(1);
+      expect(result.transformed).toBe(0);
       expect(result.noteCount).toBe(0);
       // Remove used the pickup-inclusive window (length 4 → [-4, 8)).
       expect(removeCalls).toContainEqual([0, 128, -4, 12]);

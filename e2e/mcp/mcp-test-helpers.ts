@@ -607,6 +607,7 @@ export interface SkippedTargetResult {
 export interface CreateClipResult {
   id: string;
   noteCount?: number;
+  /** Notes the transform changed; 0 when it changed none */
   transformed?: number;
   length?: string;
   /** Where the clip landed: "t0/s3", "t0", or "t0/l1" */
@@ -623,6 +624,7 @@ export interface CreateClipResult {
 export interface UpdateClipResult {
   id: string;
   noteCount?: number;
+  /** Notes the transform changed; 0 when it changed none */
   transformed?: number;
   length?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any */

@@ -31,7 +31,10 @@ export interface MidiNote {
 
 export interface NoteUpdateResult {
   noteCount: number;
+  /** Notes the transforms changed; 0 when they changed none */
   transformed?: number;
+  /** Notes the transforms removed (left out when 0) */
+  deletedNotes?: number;
   /** Set only when the call changed the length itself (see duplicateLoop). */
   length?: string;
 }
@@ -39,7 +42,10 @@ export interface NoteUpdateResult {
 export interface ClipResult {
   id: string;
   noteCount?: number;
+  /** Notes the transforms changed and left in the clip; 0 when none changed. */
   transformed?: number;
+  /** Notes the transforms removed; not sent when 0. */
+  deletedNotes?: number;
   /** Where the clip is, as a path. Pastes back into any path/toPath param. */
   path?: string;
   /** The length the clip ended up at, when the call moved it off the arg. */
@@ -76,9 +82,9 @@ export interface ClipResult {
  * path, read off a clip it already holds — resolving the id here would cost a
  * LiveAPI build per clip returned.
  * @param clipId - The clip ID
- * @param noteResult - Optional note update result with count and transformed
+ * @param noteResult - Optional note update result with count and transformed/deletedNotes
  * @param path - Where the clip is, from objectPathForApi
- * @returns Result object with id, path, and optionally noteCount/transformed/length
+ * @returns Result object with id, path, and optionally noteCount/transformed/deletedNotes/length
  */
 export function buildClipResultObject(
   clipId: string,
@@ -92,6 +98,10 @@ export function buildClipResultObject(
 
     if (noteResult.transformed != null) {
       result.transformed = noteResult.transformed;
+    }
+
+    if (noteResult.deletedNotes != null) {
+      result.deletedNotes = noteResult.deletedNotes;
     }
 
     if (noteResult.length != null) {

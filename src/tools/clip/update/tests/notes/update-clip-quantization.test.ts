@@ -83,7 +83,7 @@ describe("handleQuantization", () => {
       call: vi.fn(),
       getProperty: vi.fn(),
     };
-    mockClip.call.mockReturnValue(["id", 0]);
+    mockClip.call.mockReturnValue(JSON.stringify({ notes: [] }));
   });
 
   it("should do nothing when no quantize param is provided", () => {
@@ -221,4 +221,111 @@ describe("handleQuantization", () => {
     ["n/24", 6],
     ["n/32", 8],
   ])("should bridge n/N alias %s to grid value %i", expectGridValue);
+
+  describe("muted notes", () => {
+    const note = (pitch: number, start: number, mute: number) => ({
+      pitch,
+      start_time: start,
+      duration: 1,
+      velocity: 100,
+      mute,
+    });
+
+    /**
+     * Hold notes on the mock clip: `before` until quantize runs, `after` once
+     * it has.
+     * @param before - Notes get_notes_extended reports before quantizing
+     * @param after - Notes it reports afterwards
+     */
+    function quantizeFrom(before: object[], after: object[]): void {
+      let quantized = false;
+
+      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+      mockClip.call.mockImplementation((method: string) => {
+        if (method.startsWith("quantize")) {
+          quantized = true;
+        }
+
+        return JSON.stringify({ notes: quantized ? after : before });
+      });
+    }
+
+    it("says how many muted notes quantize moved", () => {
+      quantizeFrom(
+        [note(60, 0.1, 0), note(62, 0.1, 1), note(64, 0.1, 1)],
+        [note(60, 0, 0), note(62, 0, 1), note(64, 0, 1)],
+      );
+
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      expect(reasons.said.get("321")).toStrictEqual([
+        "quantized 2 muted notes",
+      ]);
+    });
+
+    it("counts only the muted notes that moved", () => {
+      quantizeFrom(
+        [note(60, 0.1, 1), note(62, 0.1, 1)],
+        [note(60, 0, 1), note(62, 0.1, 1)],
+      );
+
+      handleQuantization(mockClip, reasons, { quantizePitch: "C3" });
+
+      expect(reasons.said.get("321")).toStrictEqual(["quantized 1 muted note"]);
+    });
+
+    it("says nothing when the muted notes were already on the grid", () => {
+      const notes = [note(60, 0, 0), note(62, 0, 1)];
+
+      quantizeFrom(notes, notes);
+
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      expect(reasons.said.get("321")).toBeUndefined();
+    });
+
+    it("says what happened on a clip of only muted notes that moved", () => {
+      quantizeFrom([note(62, 0.1, 1)], [note(62, 0, 1)]);
+
+      handleQuantization(mockClip, reasons, { quantize: 1 });
+
+      expect(reasons.said.get("321")).toStrictEqual(["quantized 1 muted note"]);
+    });
+
+    it("says nothing moved on a clip of only muted notes that didn't", () => {
+      const notes = [note(62, 0, 1)];
+
+      quantizeFrom(notes, notes);
+
+      handleQuantization(mockClip, reasons, { quantize: 1 });
+
+      expect(reasons.said.get("321")).toStrictEqual([
+        "quantize moved nothing: the clip has only muted notes, and none moved",
+      ]);
+    });
+
+    it("reads the notes once for a clip with no muted notes", () => {
+      quantizeFrom([note(60, 0.1, 0)], [note(60, 0, 0)]);
+
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      const reads = mockClip.call.mock.calls.filter(
+        ([method]: [string]) => method === "get_notes_extended",
+      );
+
+      expect(reads).toHaveLength(1);
+      expect(reasons.said.get("321")).toBeUndefined();
+    });
+
+    it("adds up what two quantizes of one clip moved", () => {
+      quantizeFrom([note(62, 0.1, 1)], [note(62, 0, 1)]);
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+      quantizeFrom([note(62, 0.1, 1)], [note(62, 0, 1)]);
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      expect(reasons.said.get("321")).toStrictEqual([
+        "quantized 2 muted notes",
+      ]);
+    });
+  });
 });

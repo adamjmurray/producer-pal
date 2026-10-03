@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TransformCounts } from "#src/notation/transform/transformed-count.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
@@ -55,7 +56,7 @@ export interface CreateClipAudioParams {
  * @param notes - Array of MIDI notes
  * @param length - Original length parameter
  * @param sampleFile - Audio file path (for audio clips)
- * @param transformedCount - Number of notes matched by transform selectors
+ * @param transformCounts - What the transform changed and deleted
  * @param takeLane - Take lane to create arrangement clips on, or null for main lane
  * @param audio - Audio clip properties; a null entry leaves that property alone
  * @param timeSignature - The raw timeSignature argument, or null for the song's
@@ -81,7 +82,7 @@ export function processClipIteration(
   notes: MidiNote[],
   length: string | null,
   sampleFile: string | null,
-  transformedCount: number | undefined,
+  transformCounts: TransformCounts,
   takeLane: LiveAPI | null = null,
   audio: CreateClipAudioParams = {},
   timeSignature: string | null = null,
@@ -184,7 +185,7 @@ export function processClipIteration(
     timeSigNumerator,
     timeSigDenominator,
     sampleFile,
-    transformedCount,
+    transformCounts,
     color,
     audio.warping ?? null,
   );
