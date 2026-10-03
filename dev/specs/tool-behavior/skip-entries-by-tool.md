@@ -9,12 +9,14 @@ with a tool, the tool wins.
 - **update-clip answers per target named, not per clip reached.** Its targets
   resolve up front, and the entries come back in call order: a split target's
   pieces and a lengthened clip's tiles come right after its own. A path that
-  can't be parsed refuses the call. A path or id that finds no clip, a target
-  whose only requested work (a move, a position, a split) was refused, and a
-  clip an earlier write of the call already cleared hold their slot as a skip.
-  The `name` and `color` lists pair by the target's place, so a skip doesn't
-  slide them. The deadline skips every target it never reached; a split that
-  already cut keeps its pieces, each saying what did not run.
+  can't be parsed refuses the call, and so does a `toPath` entry that can't be
+  (`tX`). A path or id that finds no clip, a `toPath` entry that parses but
+  names no place a clip can go (a scene), a target whose only requested work (a
+  move, a position, a split) was refused, and a clip an earlier write of the
+  call already cleared hold their slot as a skip. The `name` and `color` lists
+  pair by the target's place, so a skip doesn't slide them. The deadline skips
+  every target it never reached; a split that already cut keeps its pieces, each
+  saying what did not run.
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with
@@ -176,7 +178,8 @@ with a tool, the tool wins.
   regular, or one of the wrong type keeps the place of every copy it was to make
   as `{id | path, ok: false, detail}` (a clip's or device's copies are addressed
   by their destination), and the other sources still copy. A path that can't be
-  parsed refuses the call.
+  parsed refuses the call, and so does a `toPath` entry that can't be, for every
+  kind of copy: a destination written wrong is never a per-copy skip.
 - **duplicate: a copy a later copy replaces is left unwritten.** Two copies to
   one clip slot, or one a later copy covers whole on an arrangement lane (a lane
   copy's clips each need covering, a scene copy's clips each on their track),

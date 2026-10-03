@@ -28,6 +28,7 @@ export const writeConformanceCases: Record<
   newTwice: expectNewTwiceIsTwoTargets,
   replacedLater: expectReplacedLater,
   unparsable: expectUnparsableRefused,
+  unparsableDestination: expectUnparsableDestinationRefused,
   unappliable: expectUnappliableSkipped,
   midway: expectMidwayFailure,
   afterChange: expectFailureAfterChange,
@@ -73,12 +74,14 @@ function needs<K extends keyof WriteToolAdapter>(
  * Check a call is refused whole, before anything is written.
  * @param adapter - The tool
  * @param args - The call
+ * @param message - Part of the message it is refused with, when it matters
  */
 async function expectRefusal(
   adapter: WriteToolAdapter,
   args: ToolArgs,
+  message?: string,
 ): Promise<void> {
-  await expect(runTool(adapter, args)).rejects.toThrow();
+  await expect(runTool(adapter, args)).rejects.toThrow(message);
   expect(writesMade()).toStrictEqual([]);
 }
 
@@ -190,6 +193,17 @@ async function expectUnparsableRefused(
   await expectRefusal(adapter, needs(adapter, "unparsable")());
 }
 
+async function expectUnparsableDestinationRefused(
+  adapter: WriteToolAdapter,
+): Promise<void> {
+  // The parse error itself, so a call refused for some other reason can't pass.
+  await expectEachRefused(
+    adapter,
+    needs(adapter, "unparsableDestinations"),
+    'invalid toPath "not-a-path"',
+  );
+}
+
 async function expectUnappliableSkipped(
   adapter: WriteToolAdapter,
 ): Promise<void> {
@@ -256,14 +270,26 @@ async function expectWrongLengthRefused(
 async function expectRefusalsWriteNothing(
   adapter: WriteToolAdapter,
 ): Promise<void> {
-  const refusals = needs(adapter, "refusals");
+  await expectEachRefused(adapter, needs(adapter, "refusals"));
+}
 
-  for (const [index, setUp] of refusals.entries()) {
+/**
+ * Check each call is refused whole, on a fresh Live of its own.
+ * @param adapter - The tool
+ * @param setUps - Each sets up its mocks and returns the call
+ * @param message - Part of the message each is refused with, when it matters
+ */
+async function expectEachRefused(
+  adapter: WriteToolAdapter,
+  setUps: Array<() => ToolArgs>,
+  message?: string,
+): Promise<void> {
+  for (const [index, setUp] of setUps.entries()) {
     if (index > 0) {
       freshLive();
     }
 
-    await expectRefusal(adapter, setUp());
+    await expectRefusal(adapter, setUp(), message);
   }
 }
 

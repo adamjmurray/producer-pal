@@ -360,21 +360,15 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
-  it("keeps a malformed destination's slot rather than throwing", async () => {
-    // One bad destination in a list must not take the others down with it.
+  it("refuses the whole call for a destination that doesn't parse", async () => {
+    // A destination written wrong refuses the call before any pad is copied,
+    // the ones that would have worked included.
     const rack = registerCopyReadyRack();
-    const result = await copyC1ToD1({ toPath: "nonsense,t0/d0/pD1" });
 
-    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
-    expect(result).toStrictEqual([
-      {
-        path: "nonsense",
-        ok: false,
-        detail: expect.stringContaining("nonsense"),
-      },
-      { id: "pad38", path: "t0/d0/pD1" },
-    ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    await expect(copyC1ToD1({ toPath: "nonsense,t0/d0/pD1" })).rejects.toThrow(
+      'invalid toPath "nonsense"',
+    );
+    expectNoCopy(rack);
   });
 
   it("refuses a path that names something inside the pad", async () => {

@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for a toPath ppal-update-clip can make nothing of. Each one is a
- * reason on the clip's own entry, never a warning, and a lone clip throws it
- * instead — there is no list for an entry to hold a place in.
+ * E2E tests for a toPath ppal-update-clip can make nothing of. One that parses
+ * but names nowhere a clip can go (a missing locator) is a reason on the clip's
+ * own entry, never a warning, and a lone clip throws it instead — there is no
+ * list for an entry to hold a place in. One that doesn't parse refuses the
+ * whole call.
  *
  * Only real Live has the locators, so only here does a name that is missing
  * differ from a name that is there.
@@ -208,6 +210,33 @@ describe("ppal-update-clip destinations it can make nothing of", () => {
     const clip = await readClipFully(ctx.client!, { id: clipId });
 
     expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}[700|1]`);
+    expect(clip.name).not.toBe("Not Renamed");
+  });
+
+  it("refuses a toPath entry that doesn't parse, leaving both clips and the rename alone", async () => {
+    const first = await createArrangementClip(ctx, "710|1", "C3 1|1", "1bar");
+    const second = await createArrangementClip(ctx, "715|1", "C3 1|1", "1bar");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: `${first},${second}`,
+        toPath: `t${EMPTY_MIDI_TRACK}[730|1],not-a-real-path`,
+        name: "Not Renamed,Not Renamed",
+      },
+    });
+
+    await sleep(200);
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'invalid toPath "not-a-real-path"',
+    );
+
+    // The valid first entry didn't move its clip either.
+    const clip = await readClipFully(ctx.client!, { id: first });
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}[710|1]`);
     expect(clip.name).not.toBe("Not Renamed");
   });
 });

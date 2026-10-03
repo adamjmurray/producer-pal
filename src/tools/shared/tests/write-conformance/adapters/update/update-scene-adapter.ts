@@ -27,6 +27,8 @@ export const updateSceneAdapter: WriteToolAdapter = {
   tool: "ppal-update-scene",
   run: (args) => updateScene(args),
   na: {
+    unparsableDestination:
+      "no destination list: path names what is updated, which the unparsable case covers",
     newTwice: "updates existing scenes only",
     replacedLater: "no destination: nothing is created or moved",
     countWithDestinations: "takes no count",

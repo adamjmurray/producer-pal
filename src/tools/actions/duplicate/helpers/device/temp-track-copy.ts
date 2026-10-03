@@ -124,17 +124,13 @@ export function extractPathWithinTrack(path: string, what: string): string {
 }
 
 /**
- * The canonical spelling of a path, or the path unchanged when it doesn't
- * parse — the mover names the bad one in the reason it hands back.
+ * The canonical spelling of a path. A destination the caller wrote was already
+ * refused if it doesn't parse, and the default one is built from a real device.
  * @param path - The destination path as the caller wrote it
  * @returns The canonical spelling
  */
 export function canonicalPath(path: string): string {
-  try {
-    return formatObjectPath(parseObjectPath(path, "toPath"));
-  } catch {
-    return path;
-  }
+  return formatObjectPath(parseObjectPath(path, "toPath"));
 }
 
 /**

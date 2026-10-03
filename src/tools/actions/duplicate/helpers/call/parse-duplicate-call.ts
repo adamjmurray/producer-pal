@@ -8,7 +8,10 @@ import {
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  pathEntries,
+  refuseUnparsableEntries,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseCountWithPathList } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import {
   refuseDuplicateParamsOutsideType,
@@ -41,6 +44,9 @@ export function parseDuplicateCall(args: DuplicateArgs): DuplicateCall {
   const path = namedPathParam(args.path, args.paths);
 
   validateBasicInputs(type, id, count, path);
+  // Every kind of copy reads toPath its own way, so the entries that can't be
+  // parsed at all are refused here, once, before any of them is read.
+  refuseUnparsableEntries(args.toPath, "toPath");
 
   // A track copied onto a take lane — or off one, onto a track's main lane —
   // lands its clips there instead of making a new track, so the params that

@@ -12,6 +12,10 @@
  * returned the id of a copy still sitting on its temp track, which the cleanup
  * then deleted. Both now refuse the lone destination they were given.
  *
+ * The `toPath` suite after them checks the other kind of refusal: an entry that
+ * can't be read at all refuses the whole call, in both tools, before anything
+ * moves, copies or is renamed.
+ *
  * The `d+` suite below is the other half: only real Live says where an append
  * lands, since a default track preset may already have put devices there. The
  * last suite pairs a batch's destinations with its devices, which needs the
@@ -418,6 +422,34 @@ describe("a rack chain a call asks to move", () => {
     );
 
     expect(rack.chains![0]!.name).toBe("Renamed");
+  });
+});
+
+describe("a toPath entry that doesn't parse", () => {
+  // Written wrong, so the whole call is refused: the good entry beside it
+  // doesn't move or copy its device, and a rename doesn't land.
+  it.each([
+    ["ppal-update-device", { name: "Not Renamed,Not Renamed" }],
+    ["ppal-duplicate", { type: "device" }],
+  ])("refuses a %s call, changing nothing", async (name, extra) => {
+    const { from, to, deviceId, before } = await twoInstrumentTracks();
+
+    const result = await ctx.client!.callTool({
+      name,
+      arguments: {
+        id: `${deviceId},${deviceId}`,
+        toPath: `t${to}/d+,not-a-real-path`,
+        ...extra,
+      },
+    });
+
+    await sleep(200);
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'invalid toPath "not-a-real-path"',
+    );
+    expect(await deviceCounts(from, to)).toStrictEqual(before);
   });
 });
 

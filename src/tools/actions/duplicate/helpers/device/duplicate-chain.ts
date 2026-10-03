@@ -253,15 +253,12 @@ function rackAtPath(toPath: string): LiveAPI | null {
  * @returns The path with a trailing `c+` taken off
  */
 function rackDestination(toPath: string): string {
-  try {
-    const parsed = parseObjectPath(toPath, "toPath");
+  // The call already refused any entry that doesn't parse.
+  const parsed = parseObjectPath(toPath, "toPath");
 
-    return formatObjectPath(
-      parsed.kind === "new-chain" ? { ...parsed, kind: "device" } : parsed,
-    );
-  } catch {
-    return toPath;
-  }
+  return formatObjectPath(
+    parsed.kind === "new-chain" ? { ...parsed, kind: "device" } : parsed,
+  );
 }
 
 /**

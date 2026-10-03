@@ -84,6 +84,8 @@ export const createClipAdapter: WriteToolAdapter = {
   tool: "ppal-create-clip",
   run: (args) => createClip({ length: "1bar", ...args }),
   na: {
+    unparsableDestination:
+      "path is the destination, which the unparsable case covers",
     newTwice:
       "a clip goes in a named slot or position; there is no spelling for a new one",
     countWithDestinations: "takes no count",

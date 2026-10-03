@@ -511,6 +511,37 @@ describe("updateClip - Basic operations", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("should refuse a toPath that doesn't parse, touching nothing", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    await expect(
+      updateClip({ id: "123", toPath: "tX", name: "Renamed" }),
+    ).rejects.toThrow('invalid toPath "tX"');
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("should still skip only the move for a toPath that parses but holds no clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({
+      id: "123",
+      toPath: "s3",
+      name: "Renamed",
+    });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail:
+        'not moved: invalid toPath "s3" - a scene alone names no track; clips ' +
+        'go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
+    });
+  });
+
   it("should refuse a toSlot with extra parts, touching nothing", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();

@@ -113,8 +113,8 @@ export function resolveMoveDestinations(
     param: toSlot == null ? "toPath" : "toSlot",
     noun: "destination",
     item: "clip",
-    // Pairing alone doesn't mean a clip moved: a paired entry can still fail
-    // to parse.
+    // Pairing alone doesn't mean a clip moved: a paired entry can still name
+    // nowhere to go.
     shortfall: "have nowhere to go",
   };
   // A bare "[5|1]" keeps each clip's lane, so one covers every clip. A lane or
@@ -174,15 +174,14 @@ function pathDestinations(toPath: string): Array<DestinationEntry | null> {
   // pathEntries refuses a toPath that names nothing, so every entry here is real.
   const entries = pathEntries(toPath, "toPath");
 
-  // Per entry, so a typo costs its own move and not the whole batch. An entry
-  // that names the wrong kind of place already worked this way; one that
-  // doesn't parse at all used to discard every destination beside it.
+  // An entry that won't parse was written wrong, so it refuses the call here,
+  // before anything runs. One that parses but names no place a clip can occupy
+  // (a scene, a device) skips only its own move.
   const parsed = entries.map((entry): DestinationEntry => {
+    const path = parseObjectPath(entry, "toPath");
+
     try {
-      return requireClipDestinationPath(
-        parseObjectPath(entry, "toPath"),
-        "toPath",
-      );
+      return requireClipDestinationPath(path, "toPath");
     } catch (error) {
       return refusedDestination(error);
     }

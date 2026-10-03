@@ -51,6 +51,7 @@ export const updateLiveSetAdapter: WriteToolAdapter = {
     return result.locator;
   },
   na: {
+    unparsableDestination: "no destination list",
     replacedLater:
       "a locator at one time is one locator: naming the time twice is a repeat",
     countWithDestinations: "takes no count",

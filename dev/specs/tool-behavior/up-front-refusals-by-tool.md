@@ -38,10 +38,16 @@ follows the code; when it disagrees with a tool, the tool wins.
   skips only its own target. `rt0/l0` is such an entry: only regular tracks have
   take lanes.
 - **`updateClip` refuses a `path` entry it can't parse** before anything is
-  written; an entry that parses but names no clip skips only its own target. One
-  slot, or one track with a single position, can't cover several clips and is
-  refused. One track or take lane takes several when `arrangementStart` names a
-  position per clip.
+  written, and a `toPath` entry the same (`tX`); an entry that parses but names
+  no clip skips only its own target, and a `toPath` entry that parses but names
+  no place a clip can go (a scene) skips only its own move. One slot, or one
+  track with a single position, can't cover several clips and is refused. One
+  track or take lane takes several when `arrangementStart` names a position per
+  clip.
+- **`duplicate` and `updateDevice` refuse a `toPath` entry they can't parse**
+  before anything is copied or moved, for every kind of copy (clip, track onto a
+  lane, scene, device, chain, drum pad). One that parses but can't be applied
+  (no rack there, a move Live turned down) skips only its own destination.
 - **`delete` refuses a `path` entry it can't parse** before anything is deleted,
   as well as a missing or unknown `type`, a call naming no target and a list
   with a hole. A path that parses but names the wrong kind of thing skips only

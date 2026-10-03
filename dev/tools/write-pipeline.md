@@ -134,10 +134,10 @@ A hook that adds an await without these breaks warnings silently.
 3. Add an adapter to
    [`write-conformance-adapters.ts`](../../src/tools/shared/tests/write-conformance/write-conformance-adapters.ts)
    (see `adapters/`). The conformance suite runs every write tool through the
-   same cases: order, lone entry, named twice, replaced later, unparsable,
-   unappliable, failure midway and after a change, wrong list length, refusals
-   write nothing, count with destinations, lone skip. A case that can't apply is
-   listed under `na` with why.
+   same cases: order, lone entry, named twice, replaced later, unparsable
+   (targets and destinations), unappliable, failure midway and after a change,
+   wrong list length, refusals write nothing, count with destinations, lone
+   skip. A case that can't apply is listed under `na` with why.
 4. Add per-tool tests for what the hooks do. Cover the pipeline's rules through
    the conformance suite, not by re-testing them per tool.
 5. Add a behavior case to `e2e/mcp/` for any change to what the tool does in

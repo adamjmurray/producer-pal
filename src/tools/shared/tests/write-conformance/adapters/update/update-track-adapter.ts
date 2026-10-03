@@ -27,6 +27,8 @@ export const updateTrackAdapter: WriteToolAdapter = {
   tool: "ppal-update-track",
   run: (args) => updateTrack(args),
   na: {
+    unparsableDestination:
+      "no destination list: path names what is updated, which the unparsable case covers",
     newTwice: "updates existing tracks only",
     replacedLater: "no destination: nothing is created or moved",
     countWithDestinations: "takes no count",

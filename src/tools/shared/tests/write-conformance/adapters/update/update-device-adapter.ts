@@ -116,6 +116,17 @@ export const updateDeviceAdapter: WriteToolAdapter = {
     return { path: "t0/d0,not-a-path", name: "A,B" };
   },
 
+  unparsableDestinations: [
+    () => {
+      setUpDevices(2);
+      registerMockObject("track1", { path: livePath.track(1) });
+      mockWorkingDeviceMoves();
+
+      // The first move is fine; the bad entry refuses the whole call.
+      return { path: "t0/d0,t0/d1", toPath: "t1/d+,not-a-path" };
+    },
+  ],
+
   unappliable: () => {
     setUpDevices(2);
     mockNonExistentObjects();

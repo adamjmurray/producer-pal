@@ -546,6 +546,12 @@ refused instead of using the first two. A malformed `arrangementSplit` (bad
 format, too many points, no valid points) is refused before anything is cut; 2.4
 warned.
 
+**`ppal-duplicate` and `ppal-update-device` refuse a `toPath` entry they can't
+read.** 2.4 skipped just that destination and copied or moved the rest, with a
+`detail` such as `not moved: invalid toPath`. The whole call is now refused
+before anything changes. An entry that reads but can't be applied (no rack
+there, a move Live turned down) still skips only its own destination.
+
 **`ppal-create-clip` writes a slot or arrangement spot named twice once, at the
 last mention.** 2.4 gave the earlier mention `{path, ok: false, detail}`. It is
 now `{path, detail: 'named again as "t8/s0" later in this call'}` with no `ok`,

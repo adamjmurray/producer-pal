@@ -63,6 +63,20 @@ export const duplicateAdapter: WriteToolAdapter = {
     return { path: "t0,not-a-path" };
   },
 
+  // One call per kind of destination: each reads toPath its own way.
+  unparsableDestinations: [
+    "clip",
+    "track",
+    "scene",
+    "device",
+    "chain",
+    "drum-pad",
+  ].map((type) => () => {
+    setUpTracks();
+
+    return { type, id: "t0", toPath: "t1,not-a-path" };
+  }),
+
   unappliable: () => {
     setUpTracks();
     mockNonExistentObjects();

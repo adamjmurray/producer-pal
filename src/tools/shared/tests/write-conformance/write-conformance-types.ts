@@ -19,6 +19,7 @@ export const CASE_IDS = [
   "newTwice",
   "replacedLater",
   "unparsable",
+  "unparsableDestination",
   "unappliable",
   "midway",
   "afterChange",
@@ -108,6 +109,8 @@ export interface WriteToolAdapter {
   replacedLater?: () => ReplacedScenario;
   /** A call with an entry that can't be parsed */
   unparsable?: () => ToolArgs;
+  /** Calls whose destination list holds an entry that can't be parsed, one per kind of destination */
+  unparsableDestinations?: Array<() => ToolArgs>;
   unappliable?: () => UnappliableScenario;
   midway?: () => FailureScenario;
   afterChange?: () => AfterChangeScenario;

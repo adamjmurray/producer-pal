@@ -34,7 +34,6 @@ import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targe
 import {
   formatObjectPath,
   parseObjectPath,
-  type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { type Cover } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type CopyDraft } from "../call/duplicate-call-types.ts";
@@ -124,9 +123,10 @@ type LaneCopy =
  * @throws Error when the entry names a position on a place this copier uses
  */
 function refuseDestinationPosition(entry: string, fromLane: boolean): void {
-  const path = parsedPath(entry);
+  // The call already refused any entry that doesn't parse.
+  const path = parseObjectPath(entry, "toPath");
 
-  if (path?.kind !== "arrangement-position" || path.lane == null) {
+  if (path.kind !== "arrangement-position" || path.lane == null) {
     return;
   }
 
@@ -143,20 +143,6 @@ function refuseDestinationPosition(entry: string, fromLane: boolean): void {
       `own; name the ${onLane ? "lane" : "track"} alone, as ` +
       `"${formatObjectPath(path.lane)}"`,
   );
-}
-
-/**
- * One destination parsed, or null when it doesn't parse. A toPath that names
- * no lane is ignored by this copier, so it isn't complained about here either.
- * @param entry - One destination, as the caller wrote it
- * @returns What it names, or null
- */
-function parsedPath(entry: string): ObjectPath | null {
-  try {
-    return parseObjectPath(entry, "toPath");
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -279,9 +265,9 @@ function lanePlace(
  * @returns Where the clips go, or why they can't
  */
 function mainLanePlace(entry: string, source: LaneSource): LanePlace | string {
-  const path = parsedPath(entry);
+  const path = parseObjectPath(entry, "toPath");
 
-  if (source.lanePath == null || path?.kind !== "track") {
+  if (source.lanePath == null || path.kind !== "track") {
     return noDestinationReason(entry, source);
   }
 

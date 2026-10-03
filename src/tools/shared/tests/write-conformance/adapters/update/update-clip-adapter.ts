@@ -83,6 +83,15 @@ export const updateClipAdapter: WriteToolAdapter = {
     return { path: "t0/s0,not-a-path", name: "A,B" };
   },
 
+  unparsableDestinations: [
+    () => {
+      setUpClips(2);
+
+      // The rename lands on nothing: the bad entry refuses the whole call.
+      return { id: "c0,c1", toPath: "t2/s0,not-a-path", name: "A,B" };
+    },
+  ],
+
   unappliable: () => {
     setUpClips(2);
     mockNonExistentObjects();

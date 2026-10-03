@@ -29,6 +29,8 @@ export const createSceneAdapter: WriteToolAdapter = {
   tool: "ppal-create-scene",
   run: (args) => createScene(args),
   na: {
+    unparsableDestination:
+      "path is the destination, which the unparsable case covers",
     unappliable:
       "every entry that parses is a place for a new scene; a bad one fails the whole-call checks instead",
     namedTwice: "every entry is a new scene, so none can repeat another",

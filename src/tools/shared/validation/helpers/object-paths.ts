@@ -89,6 +89,28 @@ export function parseObjectPathList(
 }
 
 /**
+ * Refuses a destination list holding an entry that can't be parsed. The call
+ * was written wrong, so it is refused before anything is written; an entry that
+ * parses but can't be applied is a skip, decided later against Live. Quiet:
+ * the tool parses each entry again when it uses it, and warns there.
+ * @param input - Comma-separated destinations, if sent
+ * @param label - Param name for error messages
+ * @throws Error naming the first entry that doesn't parse
+ */
+export function refuseUnparsableEntries(
+  input: string | null | undefined,
+  label: string,
+): void {
+  if (!pathNamesSomething(input)) {
+    return;
+  }
+
+  for (const entry of pathEntries(input, label)) {
+    parseObjectPath(entry, label, true);
+  }
+}
+
+/**
  * Splits a path param into its entries without parsing them. A blank value
  * reads as omitted; everything else follows the target-list rule.
  * @param input - Comma-separated paths (e.g., "t1/d0" or "t1/d0,t2/d0")

@@ -15,6 +15,7 @@
 //  4. One bad entry among good ones: one that can't be parsed refuses the whole
 //     call before any write; one that parses but can't be applied is skipped
 //     (`ok: false` and a `detail`) while the rest write.
+//     This holds for the destination list too (`toPath`), not only the targets.
 //  5. Live throws partway: that target gets an `ok: false` entry, earlier ones
 //     keep theirs, later ones still run. A throw after the target already
 //     changed Live keeps the target's normal entry, plus a `detail` saying what
@@ -88,6 +89,7 @@ function hasOwnHook(adapter: WriteToolAdapter, id: CaseId): boolean {
     newTwice: adapter.newTwice,
     replacedLater: adapter.replacedLater,
     unparsable: adapter.unparsable,
+    unparsableDestination: adapter.unparsableDestinations,
     unappliable: adapter.unappliable,
     midway: adapter.midway,
     afterChange: adapter.afterChange,

@@ -28,6 +28,8 @@ export const createTrackAdapter: WriteToolAdapter = {
   tool: "ppal-create-track",
   run: (args) => createTrack(args),
   na: {
+    unparsableDestination:
+      "path is the destination, which the unparsable case covers",
     unappliable:
       "every entry that parses is a place for a new track; a bad one fails the whole-call checks instead",
     namedTwice: "every entry is a new track, so none can repeat another",

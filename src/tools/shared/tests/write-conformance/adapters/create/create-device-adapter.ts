@@ -44,6 +44,8 @@ export const createDeviceAdapter: WriteToolAdapter = {
   tool: "ppal-create-device",
   run: (args) => createDevice({ device: "Reverb", ...args }),
   na: {
+    unparsableDestination:
+      "path is the destination, which the unparsable case covers",
     namedTwice: "every entry inserts a new device, so none can repeat another",
     replacedLater: "a new device is inserted, so it never overwrites one",
     countWithDestinations: "takes no count",

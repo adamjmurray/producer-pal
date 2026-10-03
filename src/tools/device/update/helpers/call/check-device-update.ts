@@ -26,6 +26,7 @@ import {
   type MaybePromise,
   type Target,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { lookUpPresets, presetDevice } from "./device-presets.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
@@ -226,6 +227,7 @@ function moveDestinations(
 
   const entries = targetEntries(named, "toPath");
 
+  refuseUnparsableEntries(named, "toPath");
   requireDestinationPerSource(
     { param: "toPath", count: entries.length },
     { param: "the call", count, noun: "target" },

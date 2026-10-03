@@ -40,6 +40,8 @@ export const playbackAdapter: WriteToolAdapter = {
   // The session-clip actions are the ones with a list of targets.
   run: (args) => playback({ action: "play-session-clips", ...args }).clip,
   na: {
+    unparsableDestination:
+      "no destination list: path names what plays, which the unparsable case covers",
     newTwice: "plays existing clips; nothing is created",
     replacedLater: "plays existing clips; nothing is created or moved",
     afterChange:

@@ -468,12 +468,12 @@ describe("duplicate - device duplication", () => {
     setupDeviceDuplicationMocks();
 
     // Using a path that doesn't start with "t" should not be adjusted
-    await duplicate({ type: "device", id: "device1", toPath: "r0/d0" });
+    await duplicate({ type: "device", id: "device1", toPath: "rt0/d0" });
 
     // Should pass the path through unchanged (return track)
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
-      "r0/d0",
+      "rt0/d0",
       expect.anything(),
       expect.any(String),
     );

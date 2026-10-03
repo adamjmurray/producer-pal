@@ -107,27 +107,25 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
-  it("skips only the entries no clip can occupy", () => {
-    expect(moveLanes("t2/s3,s4,t6/s7", undefined, 3)).toStrictEqual([
-      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
-      null,
-      { kind: "slot", trackIndex: 6, sceneIndex: 7 },
-    ]);
+  it("refuses the call for an entry that won't parse, whatever its place in the list", () => {
+    // A destination written wrong means the call is wrong. Moving the rest
+    // would let the update look done when part of it never was.
+    expect(() =>
+      resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3),
+    ).toThrow('invalid toPath "tX"');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("skips only the entry that won't parse", () => {
-    // Regression: the whole list was parsed at once and one throw discarded all
-    // of it, so a typo cost every move — while an entry that parsed but named
-    // the wrong kind of place cost only its own. Which one you got depended on
-    // nothing but which side of the grammar the typo fell on.
-    const moves = resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3);
+  it("skips only the entry that parses but names no place a clip can go", () => {
+    // "s4" is a valid path, to a scene: nothing to apply, so just its own move.
+    const moves = resolveMoveDestinations("t2/s3,s4,t6/s7", undefined, 3);
 
     expect(moves.destinations).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       { kind: "slot", trackIndex: 6, sceneIndex: 7 },
     ]);
-    // Only the bad entry's own clip hears about it.
+    // Only the skipped entry's own clip hears about it.
     expect(moves.refusals[0]).toBeNull();
     expect(moves.refusals[1]).toContain("not moved:");
     expect(moves.refusals[2]).toBeNull();
