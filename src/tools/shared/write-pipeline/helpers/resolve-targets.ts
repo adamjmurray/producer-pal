@@ -26,8 +26,15 @@ export interface Resolved<P, Checked> {
  * @param call - The call's shared state
  * @returns The targets and what the check found
  */
-export function resolveTargets<Args, Parsed, P, Checked, E extends object>(
-  spec: WriteSpec<Args, Parsed, P, Checked, E>,
+export function resolveTargets<
+  Args,
+  Parsed,
+  P,
+  Checked,
+  E extends object,
+  Each,
+>(
+  spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
   args: Args,
   call: Call,
 ): MaybePromise<Resolved<P, Checked>> {

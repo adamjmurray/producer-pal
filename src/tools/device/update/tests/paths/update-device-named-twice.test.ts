@@ -64,6 +64,30 @@ describe("updateDevice - a device named twice", () => {
     ]);
   });
 
+  // The earlier mention was left unwritten for the later one, which then wrote
+  // nothing: nothing was done for the device, and the earlier entry says so.
+  it("fails the earlier mention when the last one lands nothing", () => {
+    registerMockObject("123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+
+    const result = updateDevice({
+      id: "123",
+      path: "t0/d0",
+      params: [{ name: "Nope", value: "1" }],
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "123",
+        ok: false,
+        detail: 'not written: "t0/d0" was meant to replace it, but failed',
+      },
+      expect.objectContaining({ path: "t0/d0", ok: false }),
+    ]);
+  });
+
   it("matches a device named by its type and by its position", () => {
     const { effect, instrument } = registerEffectAndInstrument();
 

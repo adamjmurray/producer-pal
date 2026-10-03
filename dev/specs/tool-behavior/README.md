@@ -216,6 +216,14 @@ entry. Creating twice (`l+,l+`, `d+,d+`) is two targets. Device actions and
 nested list items (sends, `params`) follow the same rule. A caller correcting
 itself writes the fix last, so first-wins would lose it.
 
+That holds only while the later mention does its work. If it lands nothing of
+the replacement (it failed, or the deadline never reached it), the earlier
+mention was not done through it after all: its entry becomes `ok: false` with
+`detail: "not written: <later> was meant to replace it, but failed"`, or the
+deadline's own detail when the later one was never reached. This follows a
+chain: with three mentions of one object, a failed last one fails the two before
+it.
+
 ### A later target replaces an earlier one
 
 When a later target takes the same slot, the same arrangement spot, or fully
@@ -224,6 +232,16 @@ covers an earlier one, the earlier one is skipped unwritten:
 reads `shortened by <later> later in this call`. If the clash only shows while
 writing, the entry gets the same `detail`. The later entry reports only what it
 really overwrote, so an unwritten target isn't named there.
+
+Replacing or cutting short is only said once the later write really covered the
+ground. A later target whose move was declined, blocked or stopped by a throw
+before the copy landed replaced nothing: the earlier one becomes `ok: false`
+with `not written: <later> was meant to replace it, but failed` (it was left
+unwritten, so nothing of it landed), and a partial cover adds no `shortened by`
+to a clip that wasn't shortened. When two later targets cover an earlier one
+between them, all of them have to have landed. A target a later one only covers
+part of is written before that one, or its write would land on top of it; a move
+that can't be ordered that way is refused like one in a cycle.
 
 `deleted: true` is only for objects the caller asked to delete. Writing the
 earlier target and then marking it deleted wastes the write and reports a delete

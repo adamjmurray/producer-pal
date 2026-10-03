@@ -100,10 +100,16 @@ export function noteEntry(target: NamedTarget, detail: string): NoteEntry {
  * @returns The reason, pointing at the entry that did the work
  */
 export function namedLaterReason(later: NamedTarget): string {
-  const address =
-    later.param === "id" ? `id ${later.value}` : `"${later.value}"`;
+  return namedAgain(spelledAs(later));
+}
 
-  return namedAgain(address);
+/**
+ * A target in the caller's own words: `id 12` or `"t0/s1"`.
+ * @param target - The target, as the caller named it
+ * @returns How an entry says which target it means
+ */
+export function spelledAs(target: NamedTarget): string {
+  return target.param === "id" ? `id ${target.value}` : `"${target.value}"`;
 }
 
 /**

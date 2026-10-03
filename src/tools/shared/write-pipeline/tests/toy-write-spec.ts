@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type WriteSpec } from "../write-pipeline-types.ts";
+import { type WithPieces, withPieces } from "../entry-pieces.ts";
+import { type Cover, type WriteSpec } from "../write-pipeline-types.ts";
 
 /** What a toy call does to each of its targets, by id. */
 export interface ToyArgs {
@@ -16,6 +17,8 @@ export interface ToyArgs {
   failBefore?: string[];
   /** Ids whose write lands something, then throws */
   failAfter?: string[];
+  /** Ids whose write says its cover landed and nothing else, then throws */
+  failAfterCoverOnly?: string[];
   /** Ids whose write lands something with a partial entry, then throws */
   failAfterWithEntry?: string[];
   /** Ids whose write is async */
@@ -26,19 +29,40 @@ export interface ToyArgs {
   refuse?: boolean;
   /** Ids that name the same object as another (id to key) */
   keys?: Record<string, string>;
+  /** What each id's write goes over */
+  covers?: Record<string, Cover[]>;
+  /** The order to write the targets in, by position in the call */
+  order?: number[];
+  /** Extra entries an id's write makes, by their ids */
+  pieces?: Record<string, string[]>;
+  /** Hand each target's write a label from the plan */
+  label?: boolean;
+  /** Ids whose write lands without writing the ground they declared */
+  coverMisses?: string[];
 }
 
 export interface ToyEntry {
   id: string;
   wrote: true;
+  /** What the plan said about this target, when it said anything */
+  planned?: string;
 }
 
 /** What the toy tool saw, in order. */
 export interface ToyLog {
   writes: string[];
-  settled: Array<{ outcomes: string[]; entries: unknown[] }>;
+  settled: Array<{
+    outcomes: string[];
+    entries: unknown[];
+    pieces: unknown[];
+    shortened: number[];
+  }>;
   /** The most writes that were running at once */
   overlap: number;
+  /** What the plan was told nothing would write, once per call */
+  unwritten: number[][];
+  /** What the plan was told a later target cuts short, once per call */
+  shortenedBy: Array<Array<[number, number[]]>>;
 }
 
 /**
@@ -46,7 +70,13 @@ export interface ToyLog {
  * @returns The log
  */
 export function newToyLog(): ToyLog {
-  return { writes: [], settled: [], overlap: 0 };
+  return {
+    writes: [],
+    settled: [],
+    overlap: 0,
+    unwritten: [],
+    shortenedBy: [],
+  };
 }
 
 /**
@@ -57,7 +87,14 @@ export function newToyLog(): ToyLog {
  */
 export function toySpec(
   log: ToyLog,
-): WriteSpec<ToyArgs, ToyArgs, undefined, ToyArgs, ToyEntry> {
+): WriteSpec<
+  ToyArgs,
+  ToyArgs,
+  undefined,
+  ToyArgs,
+  ToyEntry,
+  string | undefined
+> {
   let running = 0;
 
   return {
@@ -76,6 +113,7 @@ export function toySpec(
           ? {
               named,
               key: args.keys?.[named.value] ?? named.value,
+              covers: args.covers?.[named.value],
               data: undefined,
             }
           : { named, skip: reason };
@@ -87,10 +125,22 @@ export function toySpec(
 
       return args;
     },
-    write: ({ named }, { checked, landed }) => {
+    plan: (targets, args, _call, superseded) => {
+      log.unwritten.push([...superseded.unwritten]);
+      log.shortenedBy.push([...superseded.shortenedBy]);
+
+      return {
+        order: args.order,
+        each:
+          args.label === true
+            ? targets.map(({ named }) => `plan:${named.value}`)
+            : undefined,
+      };
+    },
+    write: ({ named }, { checked, landed, coverLanded, planned }) => {
       const id = named.value;
 
-      const work = (): ToyEntry => {
+      const work = (): ToyEntry | WithPieces<ToyEntry> => {
         log.writes.push(id);
 
         if (checked.failBefore?.includes(id) === true) {
@@ -99,6 +149,12 @@ export function toySpec(
 
         if (checked.failAfter?.includes(id) === true) {
           landed("name");
+          coverLanded();
+          throw new Error(`${id} then failed`);
+        }
+
+        if (checked.failAfterCoverOnly?.includes(id) === true) {
+          coverLanded();
           throw new Error(`${id} then failed`);
         }
 
@@ -109,7 +165,23 @@ export function toySpec(
           throw new Error(`${id} then failed`);
         }
 
-        return { id, wrote: true };
+        if (checked.coverMisses?.includes(id) !== true) {
+          coverLanded();
+        }
+
+        const entry: ToyEntry = {
+          id,
+          wrote: true,
+          ...(planned == null ? {} : { planned }),
+        };
+        const extra = checked.pieces?.[id];
+
+        return extra == null
+          ? entry
+          : withPieces(
+              entry,
+              extra.map((piece) => ({ id: piece, wrote: true as const })),
+            );
       };
 
       if (checked.slow?.includes(id) !== true) {
@@ -125,8 +197,13 @@ export function toySpec(
         return work();
       });
     },
-    settle: ({ outcomes, entries }) => {
-      log.settled.push({ outcomes, entries });
+    settle: ({ outcomes, entries, pieces, shortened }) => {
+      log.settled.push({
+        outcomes,
+        entries,
+        pieces,
+        shortened: [...shortened],
+      });
     },
   };
 }

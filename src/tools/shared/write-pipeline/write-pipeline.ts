@@ -17,12 +17,15 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { assembleEntries } from "./helpers/assemble-entries.ts";
 import { afterMaybe } from "./helpers/maybe-async.ts";
 import { resolveTargets } from "./helpers/resolve-targets.ts";
-import { writeLoop } from "./helpers/write-loop.ts";
+import { settleSupersession } from "./helpers/settle-supersession.ts";
+import { type Planned, writeLoop } from "./helpers/write-loop.ts";
+import { supersession } from "./plans/supersession.ts";
 import { recordPipelineRun } from "./pipeline-probe.ts";
 import {
   type Call,
   type MaybePromise,
   type PipelineResult,
+  type Target,
   type WriteSpec,
 } from "./write-pipeline-types.ts";
 
@@ -35,8 +38,15 @@ import {
  *   returned one
  * @throws Error when the call is refused up front, or its lone target is skipped
  */
-export function runWrite<Args, Parsed, P, Checked, E extends object>(
-  spec: WriteSpec<Args, Parsed, P, Checked, E>,
+export function runWrite<
+  Args,
+  Parsed,
+  P,
+  Checked,
+  E extends object,
+  Each = undefined,
+>(
+  spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
   args: Args,
   ctx: Partial<ToolContext> = {},
 ): MaybePromise<PipelineResult<E>> {
@@ -44,20 +54,97 @@ export function runWrite<Args, Parsed, P, Checked, E extends object>(
 
   const call: Call = { ctx, ignored: warnIgnored };
 
-  return afterMaybe(resolveTargets(spec, args, call), ({ targets, checked }) =>
-    afterMaybe(
-      writeLoop(spec, targets, checked, call),
-      ({ entries, outcomes }) => {
-        // Before settle: a lone skip throws, and a call that did nothing has no
-        // paths to fix up or claims to make.
-        const result = assembleEntries(entries, outcomes);
+  return afterMaybe(
+    resolveTargets(spec, args, call),
+    ({ targets, checked }) => {
+      const planned = planWrites(spec, targets, checked, call);
 
-        spec.settle?.({ targets, checked, entries, outcomes }, call);
+      return afterMaybe(
+        writeLoop(spec, targets, checked, call, planned),
+        (runs) => {
+          const shortened = settleSupersession(
+            runs,
+            targets,
+            planned.supersession,
+            spec.words.rerun,
+          );
 
-        return result;
-      },
-    ),
+          const entries = runs.map(({ entry }) => entry);
+          const pieces = runs.map((run) => run.pieces);
+          const outcomes = runs.map(({ outcome }) => outcome);
+          // Before settle: a lone skip throws, and a call that did nothing has no
+          // paths to fix up or claims to make.
+          const result = assembleEntries(entries, pieces, outcomes);
+
+          spec.settle?.(
+            {
+              targets,
+              checked,
+              entries,
+              pieces,
+              outcomes,
+              shortened,
+            },
+            call,
+          );
+
+          return result;
+        },
+      );
+    },
   );
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Decide what the loop writes and in what order: which targets a later one
+ * makes pointless, then the tool's own plan for the rest.
+ * @param spec - The tool's hooks
+ * @param targets - The call's targets, in the order named
+ * @param checked - What the tool's check found
+ * @param call - The call's shared state
+ * @returns The order to write in, and what each write is to know
+ */
+function planWrites<Args, Parsed, P, Checked, E extends object, Each>(
+  spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
+  targets: Array<Target<P>>,
+  checked: Checked,
+  call: Call,
+): Planned<Each> {
+  const superseded = supersession(targets);
+  const plan = spec.plan?.(targets, checked, call, {
+    unwritten: superseded.unwritten,
+    shortenedBy: new Map(
+      [...superseded.shortened].map(([index, touchers]) => [
+        index,
+        touchers.map(({ index: later }) => later),
+      ]),
+    ),
+  });
+
+  return {
+    order: completeOrder(plan?.order, targets.length),
+    each: plan?.each,
+    supersession: superseded,
+  };
+}
+
+/**
+ * The order to write in, made to name every target once: a plan that leaves one
+ * out still gets it written, last.
+ * @param order - The order the plan asked for, if it asked for one
+ * @param count - How many targets the call has
+ * @returns Every target's index, the plan's choices first
+ */
+function completeOrder(order: number[] | undefined, count: number): number[] {
+  const everyone = Array.from({ length: count }, (_, index) => index);
+  const asked = [...new Set(order ?? [])].filter(
+    (index) => everyone[index] != null,
+  );
+  const left = everyone.filter((index) => !asked.includes(index));
+
+  return [...asked, ...left];
 }
 
 /**
