@@ -27,6 +27,12 @@ follows the code; when it disagrees with a tool, the tool wins.
   for nothing. `refuseNoWrite` builds the message, so every update tool can
   share it:
   `nothing to update: id and path only name the scenes; also send a param to change`.
+- **A param and the deprecated spelling it replaced, both sent, is refused**
+  (`refuseDoubledSpelling`): `path`/`slot` in `readClip` and `createClip`,
+  `toPath`/`toSlot` in `updateClip` and `duplicate`, and
+  `arrangementSplit`/`split` in `updateClip`. Neither is honored, so a warning
+  would return a success-shaped result for a call that moved or split nothing. A
+  spelling that names nothing (blank, or a coerced null) isn't sent.
 - **`updateTrack` and `updateScene` refuse a `path` entry they can't parse**
   before anything is written; an entry that parses but names no track or scene
   skips only its own target. `rt0/l0` is such an entry: only regular tracks have

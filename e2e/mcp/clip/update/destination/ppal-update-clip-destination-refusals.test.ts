@@ -184,4 +184,30 @@ describe("ppal-update-clip destinations it can make nothing of", () => {
     expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}[690|1]`);
     expect(clip.name).not.toBe("Not Renamed");
   });
+
+  it("refuses toPath and toSlot both sent, leaving the clip and its rename alone", async () => {
+    const clipId = await createArrangementClip(ctx, "700|1", "C3 1|1", "1bar");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: clipId,
+        toPath: "t0/s0",
+        toSlot: "0/1",
+        name: "Not Renamed",
+      },
+    });
+
+    await sleep(200);
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "toPath and toSlot both name a destination",
+    );
+
+    const clip = await readClipFully(ctx.client!, { id: clipId });
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}[700|1]`);
+    expect(clip.name).not.toBe("Not Renamed");
+  });
 });
