@@ -423,4 +423,53 @@ describe("mock staleness", () => {
       expect(LiveAPI.from(right).exists()).toBe(false);
     });
   });
+
+  describe("canonical_parent of a chain", () => {
+    const rack = livePath.track(0).device(0);
+
+    /**
+     * @param chainPath - A chain registered under the rack
+     * @returns The ids its canonical_parent names
+     */
+    function parentOf(chainPath: string): string[] {
+      registerMockObject("rack", { path: rack });
+      registerMockObject("chain", { path: chainPath });
+
+      return LiveAPI.from(chainPath).getChildIds("canonical_parent");
+    }
+
+    it("is the rack for an instrument or effect chain", () => {
+      expect(parentOf(`${rack} chains 2`)).toStrictEqual(["id rack"]);
+    });
+
+    it("is the rack for a return chain", () => {
+      expect(parentOf(`${rack} return_chains 1`)).toStrictEqual(["id rack"]);
+    });
+
+    it("is the Drum Rack for a chain reached through its pad", () => {
+      expect(parentOf(`${rack} drum_pads 36 chains 0`)).toStrictEqual([
+        "id rack",
+      ]);
+    });
+
+    it("is empty when no rack is registered at the chain's path", () => {
+      registerMockObject("chain", { path: `${rack} chains 0` });
+
+      expect(
+        LiveAPI.from(`${rack} chains 0`).getChildIds("canonical_parent"),
+      ).toStrictEqual([]);
+    });
+
+    it("is whatever a test sets, over the path's rack", () => {
+      registerMockObject("rack", { path: rack });
+      registerMockObject("chain", {
+        path: `${rack} chains 0`,
+        properties: { canonical_parent: ["id", "other"] },
+      });
+
+      expect(
+        LiveAPI.from(`${rack} chains 0`).getChildIds("canonical_parent"),
+      ).toStrictEqual(["id other"]);
+    });
+  });
 });

@@ -460,14 +460,22 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
  * path: a device moved or deleted mid-request can put a different rack at the
  * old path. Names are read fresh, since one call can rename a return chain and
  * then send to it.
+ *
+ * The rack's id comes from the chain's `canonical_parent`, which is the rack
+ * for an instrument, effect, drum and return chain alike. That costs no object;
+ * building the rack from the chain's path to read its id cost one per chain.
  * @param chain - Chain or DrumChain LiveAPI object
  * @returns Return chain names and ids, index-aligned with the chain's sends
  */
 function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
-  const rack = LiveAPI.from(rackPath(chain));
+  const rackId = chain.getChildIds("canonical_parent")[0];
 
-  const chains = requestMemo(`return-chain-info ${rack.id}`, () =>
-    rack.getChildren("return_chains"),
+  if (rackId == null) {
+    return [];
+  }
+
+  const chains = requestMemo(`return-chain-info ${rackId}`, () =>
+    LiveAPI.from(rackId).getChildren("return_chains"),
   );
 
   return chains.map((rc) => ({

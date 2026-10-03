@@ -137,6 +137,15 @@ describe("readChainMixer", () => {
     });
   });
 
+  it("falls back to a numbered return name when Live names no owner for the chain", () => {
+    // No rack is registered at the chain's path, so it has no canonical_parent.
+    registerChainWithMixer({ sends: [{ value: 0.5, display_value: -14 }] });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "Return 1", gainDb: -14 }],
+    });
+  });
+
   it("falls back to a numbered return name when the return chain has no name", () => {
     // getName() reports "" for a nameless return chain — `??` would keep that
     // "" instead of falling back, so this must use `||`.

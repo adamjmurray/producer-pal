@@ -12,6 +12,7 @@ import {
   createRegistration,
   refreshHolders,
   setKeepAllMockWrites,
+  setMockIdAtPath,
 } from "./registry/mock-registry-helpers.ts";
 import {
   type MockRegistryAccess,
@@ -28,6 +29,8 @@ export type { RegisteredMockObject, RegisteredMockObjectOptions };
 const registryById = new Map<string, RegisteredMockObject>();
 const registryByPath = new Map<string, RegisteredMockObject>();
 const pendingByPath = new Map<string, RegisteredMockObject>();
+
+setMockIdAtPath((path) => registryByPath.get(path)?.id);
 
 /**
  * Normalize "id X" format to bare numeric ID.

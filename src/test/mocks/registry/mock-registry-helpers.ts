@@ -150,6 +150,35 @@ export function refreshHolders(mock: RegisteredMockObject): void {
   }
 }
 
+// How a registration finds the id of the object registered at a path; set by
+// mock-registry.ts, which owns the path index.
+let idAtPath: (path: string) => string | undefined = () => undefined;
+
+/**
+ * Tell registrations how to find the object registered at a path.
+ * @param lookup - Returns the bare id registered at the path, if any
+ */
+export function setMockIdAtPath(
+  lookup: (path: string) => string | undefined,
+): void {
+  idAtPath = lookup;
+}
+
+/**
+ * The path of the device that owns a chain, as Live's `canonical_parent` names
+ * it: the rack, for an instrument or effect chain, a drum chain (reached by
+ * `chains N` or through its pad), and a return chain alike.
+ * @param chainPath - A chain's path
+ * @returns The rack's path, or null when the path isn't a chain's
+ */
+export function chainRackPath(chainPath: string): string | null {
+  const match =
+    / drum_pads \d+ chains \d+$/.exec(chainPath) ??
+    / (?:return_)?chains \d+$/.exec(chainPath);
+
+  return match == null ? null : chainPath.slice(0, match.index);
+}
+
 /**
  * Create a get() mock with property-based dispatch
  * @param mock - The registration to read through
@@ -174,6 +203,16 @@ function createGetMock(mock: RegisteredMockObject): Mock {
       }
 
       return Array.isArray(override) ? override : [override];
+    }
+
+    // A chain's canonical_parent is its rack, which the path already names.
+    if (prop === "canonical_parent") {
+      const rackPath = chainRackPath(mock.path);
+      const rackId = rackPath == null ? undefined : idAtPath(rackPath);
+
+      if (rackId != null) {
+        return ["id", rackId];
+      }
     }
 
     // Unknown props (not overridden, no type default) return [] so
