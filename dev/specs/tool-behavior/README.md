@@ -294,7 +294,9 @@ entry so the error doesn't hide what landed.
 - **A write that shifts other objects' paths** gets no per-call warning. The
   tool description says once that inserting, deleting or duplicating shifts
   later siblings. A deleted object's result path is its address from before the
-  call; every other entry names its object where it is after the call.
+  call; every other entry names its object where it is after the call. That
+  includes a device a later target deletes (a forced pad sample swap): its entry
+  keeps the pre-call path, with a `detail` saying it no longer exists.
 - **Paths in results and errors** follow
   [object-paths/results-and-errors.md](object-paths/results-and-errors.md).
 

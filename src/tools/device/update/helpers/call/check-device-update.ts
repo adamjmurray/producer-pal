@@ -34,7 +34,12 @@ import { type wrapDevicesInRack } from "../wrap/wrap-devices-in-rack.ts";
 
 /** What one target of an update-device call carries into its write. */
 export type DevicePayload =
-  | { resolved: ResolvedTarget }
+  | {
+      resolved: ResolvedTarget;
+      /** Where the object was before the first write, for the entry of one a
+       * later target deletes */
+      before?: string;
+    }
   | { wrap: Parameters<typeof wrapDevicesInRack>[0] };
 
 /** One entry per target, except where null means one value covers them all. */

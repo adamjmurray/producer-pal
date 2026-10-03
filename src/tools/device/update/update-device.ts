@@ -7,7 +7,11 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  type NamedTarget,
+  namedTargets,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
@@ -42,6 +46,7 @@ import {
   type ResolvedTarget,
   resolveNamedTarget,
   resolvedTargetKey,
+  writtenContainer,
 } from "./helpers/call/resolve-device-target.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateDeviceTarget } from "./helpers/update-device-target.ts";
@@ -159,12 +164,34 @@ function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
       return {
         named: target,
         key: resolvedTargetKey(resolved),
-        data: { resolved },
+        data: { resolved, before: pathBefore(call, resolved, target) },
       };
     } catch (error) {
       return { named: target, skip: errorMessage(error) };
     }
   });
+}
+
+/**
+ * Where a target is before the first write, for the entry of one that a later
+ * target deletes. Only a forced pad sample swap deletes a named target, and
+ * naming a drum chain costs a rack scan, so other calls skip the read.
+ * @param call - The update-device call
+ * @param resolved - The resolved target
+ * @param named - The target as the call named it, for the spelling to keep
+ * @returns Its path now, in the call's spelling, when the call can delete it
+ */
+function pathBefore(
+  call: DeviceCall,
+  resolved: ResolvedTarget,
+  named: NamedTarget,
+): string | undefined {
+  return call.options.force === true && resolved.kind === "object"
+    ? pathField(
+        resolved.target,
+        writtenContainer(named.param === "path" ? named.value : undefined),
+      ).path
+    : undefined;
 }
 
 /**
@@ -316,12 +343,21 @@ function settleDeviceUpdate(
   // A later move can push an earlier target along, so name each one once every
   // target has had its turn. A wrap names its own rack.
   for (const [index, entry] of entries.entries()) {
-    const wrapped =
-      targets[index]?.data != null && "wrap" in targets[index].data;
+    const data = targets[index]?.data;
     const id = (entry as DeviceEntry).id;
 
-    if (outcomes[index] === "written" && !wrapped && typeof id === "string") {
-      renamePath(entry as DeviceEntry, id, checked.written.get(entry));
+    if (
+      outcomes[index] === "written" &&
+      data != null &&
+      "resolved" in data &&
+      typeof id === "string"
+    ) {
+      renamePath(
+        entry as DeviceEntry,
+        id,
+        checked.written.get(entry),
+        data.before,
+      );
     }
 
     if (outcomes[index] === "written" && typeof id === "string") {
@@ -346,21 +382,30 @@ function settleDeviceUpdate(
 }
 
 /**
- * Name a target by where it sits now, keeping its entry's key order.
+ * Name a target by where it sits now, keeping its entry's key order. One a
+ * later target deleted has no address now, so it keeps the one it had.
  * @param entry - The target's entry, updated in place
  * @param id - Its id
  * @param container - The container spelling it was named by, if any
+ * @param before - Where it was before the call, if it had a path
  */
 function renamePath(
   entry: DeviceEntry,
   id: string,
   container: Parameters<typeof pathField>[1],
+  before: string | undefined,
 ): void {
   const { path } = pathField(LiveAPI.from(id), container);
 
-  if (path == null) {
-    delete entry.path;
-  } else {
+  if (path != null) {
     entry.path = path;
+  } else if (before != null) {
+    entry.path = before;
+    appendDetail(
+      entry,
+      "no longer exists: a later target in this call replaced it",
+    );
+  } else {
+    delete entry.path;
   }
 }
