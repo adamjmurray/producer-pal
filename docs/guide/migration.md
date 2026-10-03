@@ -576,6 +576,13 @@ says which: `created: "c2-c3"` for rack chains on `ppal-create-device` and
 (it used to be `created: true`, naming only the lane you asked for), and
 `created: "s5-s7"` for the scenes a `ppal-create-scene` padded a gap with.
 
+Take lanes are named the same way by every tool that writes to one:
+`ppal-create-clip`, `ppal-update-clip` (a move) and `ppal-duplicate` (a clip, or
+a track copied onto a lane) put `created: "l0-l2"` on the entry when they filled
+in lanes below the one you named. `ppal-duplicate` of a track onto a lane used
+to say `created: true`; it now names the lanes like the rest. A lane can't be
+removed, so the entry keeps `created` when a later step fails.
+
 `ppal-update-device` also reads `macroCount` back off the rack instead of
 assuming the write took: a count that didn't land reads
 `detail: "macroCount landed at 8, not 4: Live keeps a mapped macro visible"`,
