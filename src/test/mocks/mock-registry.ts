@@ -16,6 +16,7 @@ import {
 import {
   type MockRegistryAccess,
   applyMockInsert,
+  applyMockMove,
   applyMockRemoval,
   newMockId,
   resetMockCreatedIds,
@@ -187,6 +188,7 @@ export function lookupMockObject(
 }
 
 let _simulateDeletes = false;
+let _simulateMoves = false;
 const deletedIds = new Set<string>();
 
 /**
@@ -200,6 +202,17 @@ const deletedIds = new Set<string>();
  */
 export function simulateMockDeletes(): void {
   _simulateDeletes = true;
+}
+
+/**
+ * Make `move_device` calls move their device, so what is moved reads from its
+ * new place and the devices around both places shift the way they do in Live.
+ *
+ * Off by default: most tests that move a device register where it lands by
+ * hand, and a mock that moved it as well would shift what they placed.
+ */
+export function simulateMockMoves(): void {
+  _simulateMoves = true;
 }
 
 /**
@@ -276,12 +289,7 @@ function structuralCall(
 ): unknown {
   // Live returns ["id", N] from the creating calls on success. A blanket null
   // would put every uncovered test on the failure branch by accident.
-  const inserted = applyMockInsert(
-    _handPlaced ? handPlacedAccess : registryAccess,
-    method,
-    args,
-    path,
-  );
+  const inserted = applyMockInsert(registryAccess, method, args, path);
 
   if (inserted) {
     return inserted.value;
@@ -291,23 +299,11 @@ function structuralCall(
     applyMockDelete(method, args, path);
   }
 
+  if (_simulateMoves && method === "move_device") {
+    applyMockMove(registryAccess, args);
+  }
+
   return null;
-}
-
-let _handPlaced = false;
-
-/**
- * Stop inserts from moving or creating anything: they hand out ids and add to
- * child lists, and that's all.
- *
- * For a test that places what a creating call makes by hand, at a path that
- * several calls in a row reuse because Live deletes the temp track between
- * them. The model can't know the objects it didn't make are meant to stay put,
- * so it would shift the first copy when the second lands. Everything else
- * should leave this off: it is what lets a test catch an index-shift bug.
- */
-export function handPlaceMockInserts(): void {
-  _handPlaced = true;
 }
 
 /** The registry as the structural edits see it. */
@@ -333,13 +329,6 @@ const registryAccess: MockRegistryAccess = {
   markGone: (path) => {
     deletedIds.add(path.replaceAll(/\s+/g, "/"));
   },
-};
-
-/** What a hand-placed test sees: nothing moves and nothing is registered. */
-const handPlacedAccess: MockRegistryAccess = {
-  ...registryAccess,
-  create: () => ({ id: newMockId() }),
-  relocate() {},
 };
 
 /** Collection each `delete_*` method removes from, relative to the caller. */
@@ -507,9 +496,9 @@ export function clearMockRegistry(): void {
   pendingByPath.clear();
   deletedIds.clear();
   _simulateDeletes = false;
+  _simulateMoves = false;
   setKeepAllMockWrites(false);
   _nonExistentByDefault = false;
-  _handPlaced = false;
   resetMockCreatedIds();
   clearMockWrites();
 }

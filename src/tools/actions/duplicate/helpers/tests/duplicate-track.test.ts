@@ -15,7 +15,8 @@ import {
   registerPendingMockObject,
 } from "../duplicate-test-helpers.ts";
 import {
-  duplicateTrackCopies,
+  duplicateTrackCopy,
+  routeTrackCopy,
   type TrackCopyEntry,
 } from "../sources/duplicate-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -46,15 +47,19 @@ function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
 ): TrackCopyEntry {
-  const [entry] = duplicateTrackCopies(
+  const entry = duplicateTrackCopy(
     trackIndex,
-    { param: "id", value: "track" },
-    1,
-    () => ({ name, color }),
-    { withoutClips, withoutDevices, routeToSource },
+    { name, color },
+    { withoutClips, withoutDevices },
+    () => {},
   );
 
-  return entry as TrackCopyEntry;
+  // Routing waits until every copy exists, which is the call's last step.
+  if (routeToSource) {
+    routeTrackCopy(entry, LiveAPI.from(entry.id), trackIndex);
+  }
+
+  return entry;
 }
 
 /**
@@ -161,7 +166,7 @@ describe("duplicate-track", () => {
         id: "live_set/tracks/1",
         clips: [],
         detail:
-          "the track was made, but naming, coloring or routing didn't finish: name refused",
+          "the track was made, but naming or coloring it didn't finish: name refused",
       });
     });
 

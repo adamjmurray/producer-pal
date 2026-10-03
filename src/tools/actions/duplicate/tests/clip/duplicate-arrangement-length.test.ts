@@ -189,6 +189,60 @@ describe("duplicate - arrangementLength functionality", () => {
     });
   });
 
+  it("takes the palette color updateClip landed a lengthened copy on", async () => {
+    setupLoopingLengthening();
+
+    // Entries from update-clip can come back as one object, not a list.
+    updateClipMock.mockReturnValueOnce({
+      id: livePath.track(0).arrangementClip(0),
+      color: "#FF3636",
+    });
+
+    const result = await duplicateToLengthen();
+
+    expect(result).toStrictEqual({
+      id: livePath.track(0).arrangementClip(0),
+      path: "t0[5|1]",
+      color: "#FF3636",
+    });
+  });
+
+  // update-clip names a snapped color on its first entry only; a tile after it
+  // is a copy of that clip and sits on the same swatch.
+  it("says a snapped color on every tile of a lengthened copy", async () => {
+    const first = livePath.track(0).arrangementClip(0);
+    const tile = livePath.track(0).arrangementClip(1);
+    const snap = "color #FF0000 is not in Live's palette; landed as #FF3636";
+
+    setupLoopingLengthening().properties.arrangement_clips = children(
+      first,
+      tile,
+    );
+    registerArrangementClip(0, 1, 20).get.mockImplementation((prop: string) => [
+      prop === "color" ? 16725558 : prop === "is_arrangement_clip" ? 1 : 20,
+    ]);
+    updateClipMock.mockReturnValueOnce([
+      { id: first, color: "#FF3636", detail: snap },
+      { id: tile },
+    ]);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar+n/2",
+      color: "#FF0000",
+    });
+
+    expect(result).toStrictEqual({
+      path: "t0",
+      clips: [
+        { id: first, path: "t0[5|1]", color: "#FF3636", detail: snap },
+        { id: tile, path: "t0[6|1]", color: "#FF3636", detail: snap },
+      ],
+    });
+  });
+
   it("should duplicate a non-looping clip at original length when requested length is longer", async () => {
     registerSourceClip({
       length: 4,

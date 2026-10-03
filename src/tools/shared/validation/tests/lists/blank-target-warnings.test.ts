@@ -110,6 +110,7 @@ const TOOLS: Array<{
     },
     call: (targets) => duplicate({ ...targets, type: "track" }),
     refused: (targets) => duplicate({ ...targets, type: "nope" }),
+    pipeline: true,
   },
   {
     tool: "playback",

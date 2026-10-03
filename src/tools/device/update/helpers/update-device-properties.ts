@@ -33,8 +33,13 @@ import {
   type TargetNotes,
   newTargetNotes,
   noteLanded,
+  noteTarget,
   refuseIfNoneLanded,
 } from "#src/tools/shared/helpers/target-notes.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import {
   isChainType,
   isRackDevice,
@@ -202,6 +207,8 @@ export function refuseIfNoParamLanded(
 /** What a chain or pad update wrote: its mixer, plus any params it took. */
 export interface NonDeviceWrites extends ChainMixerReport {
   params?: ParamResult[];
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
 }
 
 /**
@@ -251,12 +258,10 @@ export function updateNonDeviceProperties(
   }
 
   let mixer: ChainMixerReport = {};
+  let landedAs: LandedColor = {};
 
   if (isChainType(type)) {
-    if (options.color != null) {
-      target.setColor(options.color);
-      noteLanded(notes, "color");
-    }
+    landedAs = applyChainColor(target, options.color, notes);
 
     if (hasChainMixerParams(options)) {
       mixer = chainMixerReport(
@@ -282,7 +287,40 @@ export function updateNonDeviceProperties(
 
   refuseIgnoredParams(notes, ignored, type);
 
-  return params.length > 0 ? { ...mixer, params } : mixer;
+  return {
+    ...mixer,
+    ...(landedAs.color == null ? {} : { color: landedAs.color }),
+    ...(params.length > 0 ? { params } : {}),
+  };
+}
+
+/**
+ * Color a chain. Live keeps a fixed palette, so the entry says which swatch the
+ * color landed on when it isn't the one asked for.
+ * @param target - The chain
+ * @param color - The color asked for, if any
+ * @param notes - What the chain's entry has to say, told what lands
+ * @returns The swatch Live chose, when it differs
+ */
+function applyChainColor(
+  target: LiveAPI,
+  color: string | undefined,
+  notes: TargetNotes,
+): LandedColor {
+  if (color == null) {
+    return {};
+  }
+
+  target.setColor(color);
+  noteLanded(notes, "color");
+
+  const landed = landedColor(target, color);
+
+  if (landed.detail != null) {
+    noteTarget(notes, landed.detail);
+  }
+
+  return landed;
 }
 
 /**

@@ -16,6 +16,7 @@ interface MockClipResult {
   noteCount?: number;
   transformed?: number;
   deletedNotes?: number;
+  color?: string;
   /** Set only on a clip the update couldn't carry out */
   ok?: false;
   /** Why the update didn't go as asked */

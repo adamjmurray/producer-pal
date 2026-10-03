@@ -15,20 +15,14 @@ import {
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
-  canRecreateClip,
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { recreateIntoSlot } from "#src/tools/shared/clip/recreate-into-slot.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import {
-  claimLabels,
-  labelColor,
-  labelName,
-  type CopyLabels,
-} from "../sources/copy-labels.ts";
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
@@ -52,13 +46,11 @@ export interface SlotCopySource {
  * resolution of each serves the whole call.
  * @param sourceTrackIndex - Source track index
  * @param sourceSceneIndex - Source scene index
- * @param destinationTrackIndices - Track index of each destination slot
- * @returns The source slot, its clip, and the destination tracks
+ * @returns The source slot, its clip, and no destination tracks yet
  */
 export function resolveSlotCopySource(
   sourceTrackIndex: number,
   sourceSceneIndex: number,
-  destinationTrackIndices: number[] = [],
 ): SlotCopySource {
   const sourceClipSlot = LiveAPI.from(
     livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
@@ -79,12 +71,7 @@ export function resolveSlotCopySource(
   return {
     sourceClipSlot,
     sourceClip: sourceClipSlot.child("clip"),
-    tracks: new Map(
-      [...new Set(destinationTrackIndices)].map((trackIndex) => [
-        trackIndex,
-        LiveAPI.from(livePath.track(trackIndex)),
-      ]),
-    ),
+    tracks: new Map(),
   };
 }
 
@@ -169,14 +156,21 @@ export function duplicateClipSlot(
 
     newClip.setAll({ name, color });
 
+    const landedAs = color == null ? {} : landedColor(newClip, color);
     const copy = getMinimalClipInfo(newClip);
 
     if (created != null) {
       copy.created = created;
     }
 
-    if (progress.note != null) {
-      copy.detail = progress.note;
+    if (landedAs.color != null) {
+      copy.color = landedAs.color;
+    }
+
+    const detail = joinDetails([progress.note, landedAs.detail]);
+
+    if (detail != null) {
+      copy.detail = detail;
     }
 
     return copy;
@@ -184,116 +178,73 @@ export function duplicateClipSlot(
 }
 
 /**
- * Copies a session clip into clip slots.
- * @param slots - Destination slots, in order
- * @param object - Live API object to duplicate
- * @param labels - The call's names and colors
- * @returns Array of result objects
- */
-export function duplicateClipToSlots(
-  slots: ClipSlotPosition[],
-  object: LiveAPI,
-  labels: CopyLabels,
-): object[] {
-  const trackIndex = object.trackIndex;
-  const sourceSceneIndex = object.sceneIndex;
-
-  if (trackIndex == null || sourceSceneIndex == null) {
-    return duplicateArrangementClipToSlots(slots, object, labels);
-  }
-
-  claimLabels(labels, slots.length);
-
-  const shared = resolveSlotCopySource(
-    trackIndex,
-    sourceSceneIndex,
-    slots.map((slot) => slot.trackIndex),
-  );
-
-  // One entry per slot named, whether or not a copy landed in it.
-  return slots.map((slot, i) =>
-    duplicateClipSlot(
-      trackIndex,
-      sourceSceneIndex,
-      slot.trackIndex,
-      slot.sceneIndex,
-      labelName(labels, i),
-      labelColor(labels, i),
-      shared,
-    ),
-  );
-}
-
-/**
- * Copies an arrangement clip into clip slots. Live has no API for that, so
- * each copy is re-created from the clip's notes or sample, and its entry says
+ * Copies an arrangement clip into a clip slot. Live has no API for that, so
+ * the copy is re-created from the clip's notes or sample, and its entry says
  * what the re-create lost.
- * @param slots - Destination slots, in order
  * @param clip - The arrangement clip to copy
- * @param labels - The call's names and colors
- * @returns One entry per slot named, whether or not a copy landed in it
+ * @param slot - The destination slot
+ * @param name - Name for the copy, if any
+ * @param color - Color for the copy, if any
+ * @returns The new clip, or the entry saying no copy landed there
  */
-export function duplicateArrangementClipToSlots(
-  slots: ClipSlotPosition[],
+export function duplicateArrangementClipToSlot(
   clip: LiveAPI,
-  labels: CopyLabels,
-): (MinimalClipInfo | TargetSkip)[] {
-  claimLabels(labels, slots.length);
+  slot: ClipSlotPosition,
+  name: string | undefined,
+  color: string | undefined,
+): MinimalClipInfo | TargetSkip {
+  const destination = slotPath(slot.trackIndex, slot.sceneIndex);
 
-  const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
+  // The call has already refused what this clip can't be re-created from, and
+  // the tracks it can't land on.
+  return guardSlot(destination, (progress) => {
+    const prepared = prepareDestinationSlot(slot.trackIndex, slot.sceneIndex);
 
-  return slots.map((slot, i) => {
-    const destination = slotPath(slot.trackIndex, slot.sceneIndex);
+    if (typeof prepared === "string") {
+      return skippedCopy(destination, prepared);
+    }
 
-    return guardSlot(destination, (progress) => {
-      const blocker = canRecreateClip(clip)
-        ? clipCopyBlocker(clipIsMidi, slot.trackIndex)
-        : "it's an audio clip with no sample file; drag it in Live's UI";
+    progress.created = prepared.created;
 
-      if (blocker != null) {
-        return skippedCopy(destination, blocker);
-      }
+    const losses = recreatedClipLosses(clip);
+    const recreated = recreateIntoSlot(
+      clip,
+      slot,
+      prepared.clipSlot,
+      { name, color },
+      losses,
+    );
 
-      const prepared = prepareDestinationSlot(slot.trackIndex, slot.sceneIndex);
-
-      if (typeof prepared === "string") {
-        return skippedCopy(destination, prepared);
-      }
-
-      progress.created = prepared.created;
-
-      const losses = recreatedClipLosses(clip);
-      const recreated = recreateIntoSlot(
-        clip,
-        slot,
-        prepared.clipSlot,
-        { name: labelName(labels, i), color: labelColor(labels, i) },
-        losses,
+    if (!recreated.ok) {
+      return skippedCopy(
+        destination,
+        withCreatedScenes(recreated.reason, prepared.created),
       );
+    }
 
-      if (!recreated.ok) {
-        return skippedCopy(
-          destination,
-          withCreatedScenes(recreated.reason, prepared.created),
-        );
-      }
+    progress.landed = recreated.clip;
 
-      progress.landed = recreated.clip;
-      progress.note = [
-        ...(recreated.overwrote ? [clipOverwriteNote(destination)] : []),
-        `re-created from the arrangement clip${recreateLossesNote(losses)}`,
-      ].join("; ");
+    const landedAs = color == null ? {} : landedColor(recreated.clip, color);
 
-      const copy = getMinimalClipInfo(recreated.clip);
+    progress.note = joinDetails([
+      ...(recreated.overwrote ? [clipOverwriteNote(destination)] : []),
+      `re-created from the arrangement clip${recreateLossesNote(losses)}`,
+      landedAs.detail,
+    ]);
 
-      if (prepared.created != null) {
-        copy.created = prepared.created;
-      }
+    const copy = getMinimalClipInfo(recreated.clip);
 
-      copy.detail = progress.note;
+    if (prepared.created != null) {
+      copy.created = prepared.created;
+    }
 
-      return copy;
-    });
+    if (landedAs.color != null) {
+      copy.color = landedAs.color;
+    }
+
+    copy.detail = progress.note;
+
+    return copy;
   });
 }
 

@@ -445,7 +445,7 @@ describe("ppal-duplicate take lane to a main lane", () => {
     ]);
   });
 
-  it("marks the copy a second destination in the same call landed on", async () => {
+  it("leaves the copy a second destination in the same call covers unwritten", async () => {
     await stackOnSourceLane();
 
     const result = await copyToLanes<LaneCopyResult[]>(
@@ -453,20 +453,12 @@ describe("ppal-duplicate take lane to a main lane", () => {
       `${DESTINATION},${DESTINATION}`,
     );
 
-    // Both entries name the same main lane, so the second create cleared what
-    // the first put there — and the first entry says so, id gone.
-    expect(result[0]!.clips).toStrictEqual([
-      {
-        path: `${DESTINATION}[1|1]`,
-        deleted: true,
-        detail: "a later copy in this call landed on it",
-      },
-      {
-        path: `${DESTINATION}[5|1]`,
-        deleted: true,
-        detail: "a later copy in this call landed on it",
-      },
-    ]);
+    // Both entries name the same main lane, and the second covers every clip
+    // of the first — which is therefore never written.
+    expect(result[0]).toStrictEqual({
+      path: DESTINATION,
+      detail: `overwritten later in this call by ${DESTINATION}[1|1]`,
+    });
     expect(result[1]!.clips.map((clip) => clip.path)).toStrictEqual([
       `${DESTINATION}[1|1]`,
       `${DESTINATION}[5|1]`,

@@ -383,6 +383,30 @@ describe("runWrite", () => {
     });
   });
 
+  it("waits for a settle that awaits, and answers once it is done", async () => {
+    const log = newToyLog();
+    const spec = toySpec(log);
+    const done: string[] = [];
+
+    const result = runWrite(
+      {
+        ...spec,
+        settle: async () => {
+          await Promise.resolve();
+          done.push("settled");
+        },
+      },
+      { ids: "a,b" },
+    );
+
+    expect(result).toBeInstanceOf(Promise);
+    expect(await result).toStrictEqual([
+      { id: "a", wrote: true },
+      { id: "b", wrote: true },
+    ]);
+    expect(done).toStrictEqual(["settled"]);
+  });
+
   it("warns that a param was ignored in the one wording", () => {
     const log = newToyLog();
     const spec = toySpec(log);

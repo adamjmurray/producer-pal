@@ -75,8 +75,8 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
   created object gets its own id. To make a created object _be_ a particular
   mock, register it with `registerPendingMockObject()` instead of
   `registerMockObject()`: a registered object is already there, so the insert
-  moves it. `handPlaceMockInserts()` turns the shifting off for a test that
-  places every copy itself. See `dev/live-api/object-reuse.md`.
+  moves it. `simulateMockMoves()` makes `move_device` move its device, as
+  `simulateMockDeletes()` does for deletes. See `dev/live-api/object-reuse.md`.
 - `getMockWrites()` / `clearMockWrites()` (`mocks/registry/mock-write-log.ts`)
   read the ordered log of every `set` and `call` on any LiveAPI object,
   registered or not, with its id, path, name and args. Use it for "this wrote

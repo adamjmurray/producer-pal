@@ -22,13 +22,13 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import {
   createUnwarpedDrumLoop,
   halveDrumLoopRegion,
-} from "../clip/helpers/audio-warp-test-helpers.ts";
-import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
-import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
+} from "../../clip/helpers/audio-warp-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 

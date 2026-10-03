@@ -9,7 +9,7 @@
  * Uses: e2e-test-set (t8 and t7 have no clips)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- e2e/mcp/operations/ppal-duplicate-clip-slot-overwrite.test.ts
+ * Run with: npm run e2e:mcp -- e2e/mcp/operations/duplicate/ppal-duplicate-clip-slot-overwrite.test.ts
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -19,9 +19,9 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
-import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
-import { readClipsOnTrack } from "../clip/helpers/arrangement-lengthening-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../../e2e-test-set.ts";
+import { readClipsOnTrack } from "../../clip/helpers/arrangement-lengthening-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -90,6 +90,56 @@ describe("ppal-duplicate into an occupied clip slot", () => {
 
     expect(inSlot.id).toBe(copy.id);
     expect(inSlot.notes).toContain("C3");
+  });
+});
+
+describe("ppal-duplicate to one clip slot twice", () => {
+  // A slot holds one clip, so the later copy replaces the earlier one. The
+  // earlier is never written, and its entry says what covered it.
+  it("leaves the earlier copy unwritten and says what covered it", async () => {
+    const created = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}/s7`,
+          notes: "C3 D3 1|1",
+          length: "1bar",
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    const copies = parseToolResult<
+      [{ path: string; detail: string }, DuplicateClipResult]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: created.id,
+          toPath: `t${RACKS_TRACK}/s7,t${RACKS_TRACK}/s7`,
+        },
+      }),
+    );
+
+    expect(copies[0]).toStrictEqual({
+      path: `t${RACKS_TRACK}/s7`,
+      detail: `overwritten later in this call by t${RACKS_TRACK}/s7`,
+    });
+    expect(copies[1].path).toBe(`t${RACKS_TRACK}/s7`);
+
+    await sleep(100);
+
+    // Only the second copy was ever made, and it is what the slot holds.
+    const inSlot = parseToolResult<ReadClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { path: `t${RACKS_TRACK}/s7` },
+      }),
+    );
+
+    expect(inSlot.id).toBe(copies[1].id);
   });
 });
 

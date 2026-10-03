@@ -226,6 +226,7 @@ function arrangementClipProperties(
     is_arrangement_clip: 1,
     length: 4,
     start_time: startBeats,
+    end_time: startBeats + Number(extraProps.length ?? 4),
     loop_start: 0,
     loop_end: 4,
     start_marker: 0,

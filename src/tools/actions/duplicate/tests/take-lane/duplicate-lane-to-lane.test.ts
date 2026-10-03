@@ -119,17 +119,15 @@ describe("duplicate take lane to take lane", () => {
     expect(destination.call).not.toHaveBeenCalled();
   });
 
-  it("refuses a lane path with nothing at it", async () => {
+  it("throws why a lane path with nothing at it names no source", async () => {
     mockNonExistentObjects();
     registerLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
     await expect(
       duplicateToLanes({ path: "t0/l3", toPath: "t1/l0" }),
-    ).rejects.toThrow('nothing to duplicate at path "t0/l3"');
-    expect(capturedWarnings().join("\n")).toContain(
-      'no take lane at path "t0/l3"',
-    );
+    ).rejects.toThrow('no take lane at path "t0/l3"');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("refuses a lane source with nothing on it", async () => {
@@ -141,17 +139,23 @@ describe("duplicate take lane to take lane", () => {
     ).rejects.toThrow("t0/l0 has no arrangement clips to copy");
   });
 
-  it("makes nothing when a later source's id is bad", async () => {
+  it("skips a later source whose id is bad, and copies the first", async () => {
     mockNonExistentObjects();
     registerMainLaneSource([0]);
 
     const destination = registerTakeLaneTrack({ trackIndex: 1 });
 
-    await expect(
-      duplicateToLanes({ id: "src_track,999", toPath: "t1/l0,t1/l1" }),
-    ).rejects.toThrow('id "999" does not exist');
-    // Every source is read before the first lane is made.
-    expect(destination.call).not.toHaveBeenCalled();
+    const result = await duplicateToLanes({
+      id: "src_track,999",
+      toPath: "t1/l0,t1/l1",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t1/l0" }),
+      { path: "t1/l1", ok: false, detail: 'id "999" does not exist' },
+    ]);
+    // Only the lane the first source's clips went to was made.
+    expect(destination.call).toHaveBeenCalledTimes(1);
   });
 });
 

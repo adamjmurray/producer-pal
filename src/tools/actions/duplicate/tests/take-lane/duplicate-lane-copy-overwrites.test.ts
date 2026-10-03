@@ -36,7 +36,6 @@ interface Entry {
   detail?: string;
 }
 
-const DELETED = "a later copy in this call landed on it";
 const OLD = { id: "old", start: 0, end: 4 };
 
 describe("a track copied onto a take lane", () => {
@@ -73,9 +72,9 @@ describe("a track copied onto a take lane", () => {
     ]);
   });
 
-  // The second destination is the same lane. It buries the first copy, which
-  // says so itself and keeps what it did to the clip that was there.
-  it("marks a copy a later copy of the call buried", async () => {
+  // The second destination is the same lane. It covers the first copy whole,
+  // so that one is never written and the second overwrote the clip that was there.
+  it("leaves a copy a later copy of the call buries unwritten", async () => {
     registerMainLaneSource([0]);
     registerLiveLane({ trackIndex: 1, laneIndex: 0, clips: [OLD] });
 
@@ -84,15 +83,16 @@ describe("a track copied onto a take lane", () => {
       toPath: "t1/l0,t1/l0",
     });
 
-    expect(result.map(({ clips }) => clips)).toStrictEqual([
-      [
-        {
-          path: "t1/l0[1|1]",
-          deleted: true,
-          detail: `${DELETED}; overwrote the clip at t1/l0[1|1]`,
-        },
-      ],
-      [{ id: "copy-1-1", path: "t1/l0[1|1]" }],
+    expect(result[0]).toStrictEqual({
+      path: "t1/l0",
+      detail: "overwritten later in this call by t1/l0[1|1]",
+    });
+    expect(result[1]?.clips).toStrictEqual([
+      {
+        id: "copy-1-0",
+        path: "t1/l0[1|1]",
+        detail: "overwrote the clip at t1/l0[1|1]",
+      },
     ]);
   });
 

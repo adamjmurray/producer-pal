@@ -79,8 +79,12 @@ tables sit next to each tool's code and feed one helper,
   `routeToSource` for `track`, `transforms`, `code`, `toSlot` and `takeLane` for
   `clip`, `takeLaneName` for `clip` and `track`, `arrangementStart` and
   `locator` for `track`, `scene` and `clip`, `arrangementLength` for `clip` and
-  `scene`. The destination decides the rest (a session clip copy has no length,
-  a scene with several positions takes no count), so those stay warnings.
+  `scene`. A track copied onto a take lane makes no track, so `count`,
+  `withoutClips`, `withoutDevices` and `routeToSource` are refused for it as
+  well (`destination "lane"`). `count` beside a list of scene positions or of
+  take lanes is refused as create-track and create-scene refuse it, since the
+  list already says how many. The destination decides the rest (a session clip
+  copy has no length), so that stays a warning.
 - **`ppal-update-live-set`** (`locator-updates.ts`): `locatorId` is for `delete`
   and `rename`; all three locator params need a `locatorOperation`.
 - **`ppal-update-device`** (`rack-macro-updates.ts`): `macroVariationIndex` is

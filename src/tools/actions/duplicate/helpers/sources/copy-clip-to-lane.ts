@@ -9,6 +9,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { resolveTakeLane } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
 import {
@@ -36,8 +37,8 @@ import {
 import {
   type ClearedCopy,
   clearedCopy,
-  readCopyBack,
   skippedCopy,
+  withLandedColor,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
 
@@ -260,9 +261,11 @@ function recreate(
     copy = recreateClip(clip, lane, startBeats, name, color, clipLosses);
   } catch (error) {
     if (error instanceof PartialRecreateError) {
-      return readCopyBack(
-        error.partialClip,
-        () => `the ${kind} copy is incomplete (${errorMessage(error)})`,
+      return withLandedColor(error.partialClip, color, (said) =>
+        joinDetails([
+          `the ${kind} copy is incomplete (${errorMessage(error)})`,
+          said,
+        ]),
       );
     }
 
@@ -283,7 +286,9 @@ function recreate(
   }
 
   // The clip exists, so a failure describing it is on its entry, not a refusal.
-  return readCopyBack(copy, () => lengthChange.join("; ") || undefined);
+  return withLandedColor(copy, color, (said) =>
+    joinDetails([lengthChange.join("; ") || undefined, said]),
+  );
 }
 
 /**

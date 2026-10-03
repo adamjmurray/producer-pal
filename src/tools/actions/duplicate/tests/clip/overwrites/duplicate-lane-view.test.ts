@@ -134,7 +134,7 @@ describe("duplicate over a long lane", () => {
   });
 
   describe("a copy after another in the same call", () => {
-    it("sees what the earlier copies left, including a longer one that buries a shorter one", async () => {
+    it("leaves a shorter copy a longer one buries unwritten, and the longer one overwrote what was there", async () => {
       makeLooping(ids[0] as string);
 
       // A one-bar copy at bar 21, then a four-bar copy at bar 19 whose tiles
@@ -149,9 +149,7 @@ describe("duplicate over a long lane", () => {
       expect(result).toStrictEqual([
         {
           path: "t0[21|1]",
-          deleted: true,
-          detail:
-            "a later copy in this call landed on it; overwrote the clip at t0[21|1]",
+          detail: "overwritten later in this call by t0[19|1]",
         },
         {
           path: "t0",
@@ -159,8 +157,8 @@ describe("duplicate over a long lane", () => {
             {
               id: expect.any(String),
               path: "t0[19|1]",
-              // The one-bar copy is the call's own, so it isn't named again.
-              detail: "overwrote the clip at t0[19|1]",
+              detail:
+                "overwrote the clip at t0[19|1]; overwrote the clip at t0[21|1]",
             },
             { id: expect.any(String), path: "t0[20|1]" },
             { id: expect.any(String), path: "t0[21|1]" },

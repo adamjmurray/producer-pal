@@ -138,4 +138,18 @@ describe("a scene copied to the arrangement", () => {
       detail: "Live made no copy on t0",
     });
   });
+
+  it("lets two copies without clips share a position", async () => {
+    registerScene();
+
+    // Neither writes anything, so neither can be written over.
+    expect(
+      await duplicate({
+        type: "scene",
+        id: "scene1",
+        toPath: "[5|1],[5|1]",
+        withoutClips: true,
+      }),
+    ).toStrictEqual([{ clips: [] }, { clips: [] }]);
+  });
 });

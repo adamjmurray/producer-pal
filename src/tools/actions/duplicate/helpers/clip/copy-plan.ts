@@ -12,38 +12,33 @@ import { requireSameLength } from "#src/tools/shared/validation/lists/list-lengt
 import { parseArrangementLength } from "./arrangement-length.ts";
 
 /**
- * Copy order that keeps the source clip whole for as long as possible.
+ * The copies that land on the source clip's own span.
  *
- * A copy landing on the source's own span overwrites it — Live's replace
- * behavior — so the source is shorter afterwards and every copy made after it
- * would be a copy of the leftover. Making those last means the rest of the
- * fan-out gets the whole clip, and the result no longer depends on the order
- * the destinations happened to be listed in.
+ * A copy landing there overwrites the source — Live's replace behavior — so
+ * the source is shorter afterwards and every copy made after it would be a copy
+ * of the leftover. Those copies have to be made last, which keeps the rest of
+ * the fan-out copying the whole clip, and makes the result independent of the
+ * order the destinations happened to be listed in.
  *
  * A copy is in the way only when it lands on the source's own lane and the span
  * it clears — `spanBeats` forward from its start — reaches the source, the same
- * overlap test `clearClipAtDuplicateTarget` uses. Two copies that miss each
- * other either way round must keep the order they were asked for: deferring one
- * behind the copy that truncates the source is how it ends up made from the
- * leftover.
+ * overlap test `clearClipAtDuplicateTarget` uses.
  * @param source - The clip being copied
  * @param targets - Destination per copy
  * @param positions - Start position per copy, in Ableton beats
  * @param spanBeats - How far each copy clears forward from its start, per copy
- * @returns Copy indexes, in the order to make them
+ * @returns The indexes of the copies that go over the source
  */
-export function sourceLastOrder(
+export function copiesOverSource(
   source: LiveAPI,
   targets: ArrangementTrack[],
   positions: number[],
   spanBeats: number[],
-): number[] {
-  const indexes = positions.map((_, i) => i);
-
+): Set<number> {
   // A session source is never in the way: nothing about it lives on the
   // arrangement timeline the copies are clearing.
   if (source.getProperty("is_arrangement_clip") !== 1) {
-    return indexes;
+    return new Set();
   }
 
   const sourceTrackIndex = source.trackIndex;
@@ -64,10 +59,7 @@ export function sourceLastOrder(
     (positions[i] as number) < sourceEnd &&
     (positions[i] as number) + (spanBeats[i] as number) > sourceStart;
 
-  return [
-    ...indexes.filter((i) => !overwritesSource(i)),
-    ...indexes.filter((i) => overwritesSource(i)),
-  ];
+  return new Set(positions.flatMap((_, i) => (overwritesSource(i) ? [i] : [])));
 }
 
 /**

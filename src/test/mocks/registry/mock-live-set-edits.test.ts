@@ -8,11 +8,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LiveAPI, children } from "../mock-live-api.ts";
 import {
   deleteMockObject,
-  handPlaceMockInserts,
   lookupMockObject,
   registerMockObject,
   registerPendingMockObject,
   simulateMockDeletes,
+  simulateMockMoves,
 } from "../mock-registry.ts";
 
 /**
@@ -396,19 +396,104 @@ describe("a pending object", () => {
   });
 });
 
-describe("handPlaceMockInserts", () => {
-  it("hands out ids and edits child lists, and moves nothing", () => {
-    handPlaceMockInserts();
-
-    const liveSet = setUpTracks(2);
-    const result = LiveAPI.from(livePath.liveSet).call("create_midi_track", 0);
-
-    expect(result).toStrictEqual(["id", "90001"]);
-    expect(lookupMockObject("t0")?.path).toBe("live_set tracks 0");
-    expect(lookupMockObject("90001")).toBeUndefined();
-    expect(liveSet.properties.tracks).toStrictEqual(
-      children("90001", "t0", "t1"),
+describe("moving a device", () => {
+  /**
+   * Two tracks, the first holding three devices and the second two.
+   * @param moves - Whether `move_device` moves what it names
+   * @returns The tracks' mocks
+   */
+  function setUpDevices(moves = true): ReturnType<typeof registerMockObject>[] {
+    const tracks = [0, 1].map((t) =>
+      registerMockObject(`t${t}`, {
+        path: livePath.track(t),
+        properties: {
+          devices: children(
+            ...Array.from({ length: t === 0 ? 3 : 2 }, (_, d) => `t${t}d${d}`),
+          ),
+        },
+      }),
     );
+
+    for (const [t, count] of [
+      [0, 3],
+      [1, 2],
+    ] as const) {
+      for (let d = 0; d < count; d++) {
+        registerMockObject(`t${t}d${d}`, {
+          path: livePath.track(t).device(d),
+        });
+      }
+    }
+
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    if (moves) {
+      simulateMockMoves();
+    }
+
+    return tracks;
+  }
+
+  it("closes up where it was and makes room where it lands", () => {
+    const [from, to] = setUpDevices();
+
+    LiveAPI.from(livePath.liveSet).call("move_device", "id t0d1", "id t1", 1);
+
+    expect(lookupMockObject("t0d1")?.path).toBe("live_set tracks 1 devices 1");
+    expect(lookupMockObject("t0d2")?.path).toBe("live_set tracks 0 devices 1");
+    expect(lookupMockObject("t1d1")?.path).toBe("live_set tracks 1 devices 2");
+    expect(lookupMockObject("t1d0")?.path).toBe("live_set tracks 1 devices 0");
+    expect(from?.properties.devices).toStrictEqual(children("t0d0", "t0d2"));
+    expect(to?.properties.devices).toStrictEqual(
+      children("t1d0", "t0d1", "t1d1"),
+    );
+  });
+
+  it("appends when it is given no index, and carries what is under it", () => {
+    setUpDevices();
+    registerMockObject("t0d0-chain", {
+      path: `${String(livePath.track(0).device(0))} chains 0`,
+    });
+
+    LiveAPI.from(livePath.liveSet).call("move_device", "id t0d0", "id t1");
+
+    expect(lookupMockObject("t0d0")?.path).toBe("live_set tracks 1 devices 2");
+    expect(lookupMockObject("t0d0-chain")?.path).toBe(
+      "live_set tracks 1 devices 2 chains 0",
+    );
+  });
+
+  it("gives a container that listed no devices a list", () => {
+    setUpDevices();
+    registerMockObject("t2", { path: livePath.track(2) });
+
+    LiveAPI.from(livePath.liveSet).call("move_device", "id t0d0", "id t2", 0);
+
+    expect(lookupMockObject("t2")?.properties.devices).toStrictEqual(
+      children("t0d0"),
+    );
+  });
+
+  it("leaves the device where it is unless moves are simulated", () => {
+    setUpDevices(false);
+
+    LiveAPI.from(livePath.liveSet).call("move_device", "id t0d1", "id t1", 1);
+
+    expect(lookupMockObject("t0d1")?.path).toBe("live_set tracks 0 devices 1");
+  });
+
+  it("does nothing for a device or a container it doesn't know", () => {
+    setUpDevices();
+
+    LiveAPI.from(livePath.liveSet).call("move_device", "id nobody", "id t1", 0);
+    LiveAPI.from(livePath.liveSet).call(
+      "move_device",
+      "id t0d0",
+      "id nobody",
+      0,
+    );
+
+    expect(lookupMockObject("t0d0")?.path).toBe("live_set tracks 0 devices 0");
   });
 });
 

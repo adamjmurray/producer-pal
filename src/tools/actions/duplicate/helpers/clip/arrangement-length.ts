@@ -23,11 +23,15 @@ import {
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import {
   finishCopy,
   readCopyBack,
   type MinimalClipInfo,
+  withLandedColor,
 } from "../minimal-clip-info.ts";
 
 /**
@@ -227,7 +231,7 @@ async function lengthenClipAndCollectInfo(
       .map(({ id }) => id),
   );
 
-  for (const clipObj of clipResults) {
+  for (const [position, clipObj] of clipResults.entries()) {
     if (onTrack.has(clipObj.id)) {
       const clipLiveAPI = LiveAPI.from(toLiveApiId(clipObj.id));
 
@@ -237,9 +241,24 @@ async function lengthenClipAndCollectInfo(
       // can be fragments the copy itself just made.
       // Read each tile on its own: one that can't be read back still exists,
       // so it keeps an entry of its own and the tiles after it are reported.
-      duplicatedClips.push(
-        readCopyBack(clipLiveAPI, () => withoutWriteEffects(clipObj.detail)),
-      );
+      const said = (): string | undefined =>
+        withoutWriteEffects(clipObj.detail);
+      // update-clip says a snapped color on the first entry only. A tile after
+      // it is a copy of that clip, so it sits on the same swatch and says so.
+      const copy =
+        position > 0 && color != null
+          ? withLandedColor(clipLiveAPI, color, (snapped) =>
+              joinDetails([said(), snapped]),
+            )
+          : readCopyBack(clipLiveAPI, said);
+
+      // update-clip read the color back, so the palette color it landed on is
+      // already known.
+      if (clipObj.color != null) {
+        copy.color = clipObj.color;
+      }
+
+      duplicatedClips.push(copy);
     }
   }
 }
@@ -261,7 +280,7 @@ async function lengthenCopy(
   name: string | undefined,
   color: string | undefined,
   context: Partial<ToolContext & TilingContext>,
-): Promise<{ id: string; detail?: string }[]> {
+): Promise<{ id: string; color?: string; detail?: string }[]> {
   try {
     const result = await updateClip(
       { ids: clipId, arrangementLength, name, color },
@@ -270,6 +289,7 @@ async function lengthenCopy(
 
     return (Array.isArray(result) ? result : [result]) as {
       id: string;
+      color?: string;
       detail?: string;
     }[];
   } catch (error) {

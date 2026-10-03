@@ -12,12 +12,13 @@ import {
   registerClipSlot,
   registerLiveSetWithThreeTracks,
   registerMockObject,
+  registerPendingMockObject,
 } from "../duplicate-test-helpers.ts";
 import {
-  calculateSceneLength,
   duplicateScene,
   duplicateSceneToArrangement,
 } from "../sources/duplicate-scene.ts";
+import { calculateSceneLength } from "../sources/scene-clips.ts";
 
 // Mock updateClip to avoid complex internal logic
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -109,7 +110,7 @@ describe("duplicate-scene", () => {
   } {
     const liveSet = registerMockObject("live_set", {
       path: livePath.liveSet,
-      properties: { tracks: children("track0") },
+      properties: { tracks: children("track0"), scenes: children("scene0") },
     });
 
     registerClipSlot(0, 1, false);
@@ -173,7 +174,10 @@ describe("duplicate-scene", () => {
     it("should delete clips when withoutClips is true", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
-        properties: { tracks: children("track0", "track1") },
+        properties: {
+          tracks: children("track0", "track1"),
+          scenes: children("scene0"),
+        },
       });
       const slot0 = registerClipSlot(0, 1, true);
 
@@ -185,7 +189,9 @@ describe("duplicate-scene", () => {
       registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
         path: livePath.track(1).clipSlot(1).clip(),
       });
-      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+      registerPendingMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
+      });
 
       const result = duplicateScene(0, undefined, undefined, true);
 
@@ -198,14 +204,16 @@ describe("duplicate-scene", () => {
     it("should collect clips when withoutClips is not true", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
-        properties: { tracks: children("track0") },
+        properties: { tracks: children("track0"), scenes: children("scene0") },
       });
       registerClipSlot(0, 1, true);
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
         path: livePath.track(0).clipSlot(1).clip(),
         properties: { is_arrangement_clip: 0 },
       });
-      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+      registerPendingMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
+      });
 
       const result = duplicateScene(0);
 

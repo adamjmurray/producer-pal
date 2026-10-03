@@ -88,18 +88,20 @@ describe("duplicate - the ids alias", () => {
     ]);
   });
 
-  // A source that doesn't exist is caught before the first copy is made, so a
-  // list can't leave half its copies behind.
-  it("refuses the whole list when one source is missing", async () => {
+  // A source that doesn't exist keeps its slot as a skip; the others still copy.
+  it("skips a missing source and copies the others", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
     mockNonExistentObjects();
 
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-    await expect(
-      duplicate({ type: "track", id: "track1,nope" }),
-    ).rejects.toThrow('id "nope" does not exist');
-    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
+    const result = await duplicate({ type: "track", id: "track1,nope" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t1" }),
+      { id: "nope", ok: false, detail: 'id "nope" does not exist' },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 });
 
@@ -262,16 +264,23 @@ describe("duplicate - track/scene index validation", () => {
     );
   });
 
-  it("refuses a return track in a source list before copying anything", async () => {
+  it("skips a return track in a source list and copies the others", async () => {
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("return1", { path: livePath.returnTrack(0) });
 
-    await expect(
-      duplicate({ type: "track", id: "track1,return1" }),
-    ).rejects.toThrow("is not a regular track");
-    expect(liveSet.call).not.toHaveBeenCalled();
+    const result = await duplicate({ type: "track", id: "track1,return1" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t1" }),
+      {
+        id: "return1",
+        ok: false,
+        detail: expect.stringContaining("is not a regular track"),
+      },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 
   describe("scene index validation", () => {

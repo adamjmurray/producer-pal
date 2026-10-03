@@ -8,6 +8,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  LIVE_FAILURE,
+  failOnSet,
+  hookCalls,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
+import {
   lookupMockObject,
   mockNonExistentObjects,
   registerMockObject,
@@ -144,6 +149,25 @@ function registerCopyReadyRack(
 }
 
 /**
+ * A kick on C1 and two empty pads, D1 and E1, that a copy fills.
+ * @param chainsByNote - Chain ids each destination pad ends up with, by note
+ * @returns The rack mock
+ */
+function registerKickWithTwoEmptyPads(
+  chainsByNote: Record<number, string[]>,
+): RegisteredMockObject {
+  const rack = registerDrumRack([
+    { note: 36, chainIds: ["kick"] },
+    { note: 38, chainIds: [] },
+    { note: 40, chainIds: [] },
+  ]);
+
+  whenCopied(rack, chainsByNote);
+
+  return rack;
+}
+
+/**
  * Copy C1 onto D1, the case most of these tests exercise.
  * @param args - Extra duplicate args merged over the defaults
  * @returns The duplicate result
@@ -257,6 +281,39 @@ describe("duplicate - drum pad", () => {
       "name",
       expect.anything(),
     );
+  });
+
+  // The pad is copied by then, so a name that won't take is on its entry, and
+  // the pad after it still copies.
+  it("keeps a pad copy whose chains won't take their name", async () => {
+    const rack = registerKickWithTwoEmptyPads({
+      38: ["copyD1"],
+      40: ["copyE1"],
+    });
+
+    hookCalls(rack, /^copy_pad$/, {
+      after: () => {
+        for (const id of ["copyD1", "copyE1"]) {
+          const chain = lookupMockObject(id);
+
+          if (chain != null) {
+            failOnSet(chain, "name");
+          }
+        }
+      },
+    });
+
+    const result = await copyC1ToD1({
+      toPath: "t0/d0/pD1,t0/d0/pE1",
+      name: "A,B",
+    });
+
+    const detail = `the pad was copied, but naming its chains failed: ${LIVE_FAILURE}`;
+
+    expect(result).toStrictEqual([
+      { id: "pad38", path: "t0/d0/pD1", detail },
+      { id: "pad40", path: "t0/d0/pE1", detail },
+    ]);
   });
 
   it("refuses a destination in a different rack", async () => {
@@ -389,13 +446,10 @@ describe("duplicate - drum pad", () => {
   });
 
   it("copies to several pads from one call", async () => {
-    const rack = registerDrumRack([
-      { note: 36, chainIds: ["kick"] },
-      { note: 38, chainIds: [] },
-      { note: 40, chainIds: [] },
-    ]);
-
-    whenCopied(rack, { 38: ["copy38"], 40: ["copy40"] });
+    const rack = registerKickWithTwoEmptyPads({
+      38: ["copy38"],
+      40: ["copy40"],
+    });
 
     const result = await copyC1ToD1({ toPath: "t0/d0/pD1,t0/d0/pE1" });
 
@@ -484,7 +538,7 @@ describe("duplicate - drum pad", () => {
     expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
   });
 
-  // The warning says what the path named; the refusal says the call is off.
+  // The skip says what the path named, in the words a lone source throws.
   it("blames the source path, not toPath, when the source is the bad one", async () => {
     const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 
@@ -494,12 +548,9 @@ describe("duplicate - drum pad", () => {
         path: "t0/d0/pC1/d0",
         toPath: "t0/d0/pD1",
       }),
-    ).rejects.toThrow('nothing to duplicate at path "t0/d0/pC1/d0"');
+    ).rejects.toThrow('path "t0/d0/pC1/d0" names something inside');
 
     expectNoCopy(rack);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('path "t0/d0/pC1/d0" names something inside'),
-    );
   });
 
   it("copies from an id and a path together, which name different pads", async () => {

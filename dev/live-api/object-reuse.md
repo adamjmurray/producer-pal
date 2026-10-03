@@ -113,14 +113,15 @@ stale index, the mock answers anyway, and the suite is green. The edits live in
 - **A delete leaves the last place empty**, and a session clip made in a slot
   sets its `has_clip` (deleting it clears it). A new track gets a clip slot for
   every scene, as a new scene gets one per track.
-- **`handPlaceMockInserts()`** switches the shifting off for a test that makes
-  several copies and has its mocked move leave each on the temp track. Live
-  deletes the temp track between copies and the mock doesn't model that or
-  `move_device`. Three duplicate-device tests still use it; leave it off
-  anywhere else.
+- **`simulateMockMoves()`** makes `move_device` move the device, and what is
+  under it, to its container: the devices after it close up, and the ones at its
+  new place shift down one. A test that copies a device through the temp track
+  also calls `simulateMockDeletes()`, so deleting the temp track closes the
+  tracks up again and the next copy lands where the last one did.
 
 Not modeled: what a duplicate copies along (a copied track's devices and clips),
-`move_device`, and an arrangement clip overwriting what it lands on.
+`move_device` unless a test asks, and an arrangement clip overwriting what it
+lands on.
 
 Three more gaps, so a green suite is still not proof:
 

@@ -27,46 +27,25 @@ import {
   formatObjectPath,
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
-import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   newTargetNotes,
   noteTarget,
   type TargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
-import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
   withTempTrackCopy,
 } from "./temp-track-copy.ts";
 import { copyChainMixerTo } from "./copy-chain-mixer.ts";
-import { copyToDestinations } from "./copy-per-destination.ts";
 
 /** A chain copy: the new chain, and what didn't finish when something didn't. */
-interface ChainCopy {
+export interface ChainCopy {
   id: string;
   path?: string;
   /** What the copy is missing, when the chain exists but isn't a full copy. */
   detail?: string;
-}
-
-/**
- * Copy one chain to each destination rack a comma-separated toPath names, one
- * entry per destination.
- * @param chain - LiveAPI chain object to copy
- * @param toPath - Destination rack path(s), or omitted to append to its own rack
- * @param source - The source chain, as the caller named it
- * @param labels - The call's names and colors
- * @returns One entry per destination, in the order toPath named them
- */
-export function duplicateChainWithPaths(
-  chain: LiveAPI,
-  toPath: string | undefined,
-  source: NamedTarget,
-  labels: CopyLabels,
-): object[] {
-  return copyToDestinations(chain, toPath, source, labels, duplicateChain);
 }
 
 /**
@@ -77,7 +56,7 @@ export function duplicateChainWithPaths(
  * @returns The new chain's id and path
  * @throws Error when no chain was created
  */
-function duplicateChain(
+export function duplicateChain(
   chain: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,

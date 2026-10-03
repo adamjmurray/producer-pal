@@ -104,10 +104,6 @@ export function refuseDuplicatePositionsPastCap(
     ),
   ];
 
-  if (named.length === 0) {
-    return;
-  }
-
   const liveSet = LiveAPI.from(livePath.liveSet);
   const numerator = liveSet.getProperty("signature_numerator") as number;
   const denominator = liveSet.getProperty("signature_denominator") as number;

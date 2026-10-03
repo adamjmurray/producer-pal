@@ -3,12 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-message.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { withChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
-import { type CopyLabels } from "../sources/copy-labels.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  newTargetNotes,
+  noteTarget,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
@@ -18,11 +22,6 @@ import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import {
-  type NamedTarget,
-  type TargetSkip,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
-import { copyToDestinations } from "./copy-per-destination.ts";
 
 /** A device copy's entry. Its path is added by settleDevicePaths. */
 export interface DeviceCopy {
@@ -30,25 +29,8 @@ export interface DeviceCopy {
   path?: string;
   /** The rack chains the destination had to make first ("c2-c3") */
   created?: string;
-}
-
-/**
- * Duplicates a device to one or more destination paths, one entry per
- * destination. Supports comma-separated toPath for multiple destinations.
- * @param object - LiveAPI device object
- * @param toPath - Destination path(s), comma-separated for multiple
- * @param source - The source device, as the caller named it
- * @param labels - The call's names and colors
- * @returns One entry per destination, in the order toPath named them, with no
- * paths yet
- */
-export function duplicateDeviceWithPaths(
-  object: LiveAPI,
-  toPath: string | undefined,
-  source: NamedTarget,
-  labels: CopyLabels,
-): Array<DeviceCopy | TargetSkip> {
-  return copyToDestinations(object, toPath, source, labels, duplicateDevice);
+  /** What didn't finish after the device was copied, when something didn't */
+  detail?: string;
 }
 
 /**
@@ -57,13 +39,9 @@ export function duplicateDeviceWithPaths(
  * works through shifts every later track index until it is deleted.
  * @param entries - The call's device entries, copies updated in place
  */
-export function settleDevicePaths(
-  entries: Array<DeviceCopy | TargetSkip>,
-): void {
+export function settleDevicePaths(entries: DeviceCopy[]): void {
   for (const entry of entries) {
-    if (!("ok" in entry)) {
-      Object.assign(entry, pathField(LiveAPI.from(entry.id)));
-    }
+    Object.assign(entry, pathField(LiveAPI.from(entry.id)));
   }
 }
 
@@ -74,13 +52,15 @@ export function settleDevicePaths(
  * 2. Move the duplicated device to the destination
  * 3. Delete the temporary track
  *
+ * Once the move has landed, the device exists: a name that won't take, or a
+ * temp track that won't go, is on its entry rather than a throw.
  * @param device - LiveAPI device object to duplicate
  * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param name - Optional name for the duplicated device
  * @returns The new device's id
  * @throws Error when no copy was made
  */
-function duplicateDevice(
+export function duplicateDevice(
   device: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
@@ -97,8 +77,8 @@ function duplicateDevice(
   // Read before the temp track exists: it shifts every later track index, so a
   // path read inside the copy would name the wrong track.
   const sourceLabel = targetLabel(device);
-
-  return withTempTrackCopy(
+  const notes = newTargetNotes();
+  const copy = withTempTrackCopy(
     device.path,
     "device",
     ({ tempPath, ...landing }) => {
@@ -155,14 +135,30 @@ function duplicateDevice(
         throw new Error(`${sourceLabel} not copied — ${reason}`);
       }
 
+      // Read the device's id before the temp track goes away.
+      const copied: DeviceCopy = {
+        id: tempDevice.id,
+        ...(created == null ? {} : { created }),
+      };
+
       if (name) {
-        tempDevice.set("name", name);
+        try {
+          tempDevice.set("name", name);
+        } catch (error) {
+          noteTarget(
+            notes,
+            `the device was copied, but naming it failed: ${errorMessage(error)}`,
+          );
+        }
       }
 
-      // Read the device's id before the temp track goes away.
-      return { id: tempDevice.id, ...(created == null ? {} : { created }) };
+      return copied;
     },
+    (note) => noteTarget(notes, `the device was copied, but ${note}`),
   );
+  const detail = joinDetails(notes.said);
+
+  return detail == null ? copy : { ...copy, detail };
 }
 
 /**

@@ -9,6 +9,10 @@ import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -30,41 +34,61 @@ import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  forEachClipInScene,
+  readSceneClips,
+  type ScenePass,
+  sceneIndexOf,
+} from "./scene-clips.ts";
+
+/** What a scene copy reports. */
+export interface SceneCopyEntry {
+  id: string;
+  path: string;
+  /** The color Live settled on, when it isn't the one asked for */
+  color?: string;
+  clips: MinimalClipInfo[];
+  detail?: string;
+}
+
+/** Where Live put a scene copy. */
+interface LandedSceneCopy {
+  /** The copy's index */
+  index: number;
+  /** What Live threw after the copy was made, if it did */
+  threw?: string;
+}
 
 /**
- * Callback type for forEachClipInScene
+ * Duplicate a scene and find where the copy landed, rather than assuming it is
+ * right after its source.
+ * @param sceneIndex - The scene to duplicate
+ * @returns Where the copy is
+ * @throws Error when Live made no new scene
  */
-type ClipInSceneCallback = (
-  clip: LiveAPI,
-  clipSlot: LiveAPI,
-  trackIndex: number,
-) => void;
+function landSceneCopy(sceneIndex: number): LandedSceneCopy {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const before = new Set(liveSet.getChildIds("scenes"));
+  let threw: string | undefined;
 
-/**
- * Iterate over all clips in a scene and call a callback for each
- * @param sceneIndex - Scene index
- * @param trackIds - Array of track IDs
- * @param callback - Callback to call for each clip
- */
-function forEachClipInScene(
-  sceneIndex: number,
-  trackIds: string[],
-  callback: ClipInSceneCallback,
-): void {
-  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clipSlot = LiveAPI.from(
-      livePath.track(trackIndex).clipSlot(sceneIndex),
-    );
-
-    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = clipSlot.child("clip");
-
-      if (clip.exists()) {
-        callback(clip, clipSlot, trackIndex);
-      }
-    }
+  try {
+    liveSet.call("duplicate_scene", sceneIndex);
+  } catch (error) {
+    threw = errorMessage(error);
   }
+
+  // Nothing before the source moves, so only look after it.
+  const made = liveSet
+    .getChildIds("scenes")
+    .findIndex((id, index) => index > sceneIndex && !before.has(id));
+
+  if (made === -1) {
+    const source = formatObjectPath({ kind: "scene", sceneIndex });
+
+    throw new Error(threw ?? `Live made no copy of ${source}`);
+  }
+
+  return { index: made, ...(threw != null && { threw }) };
 }
 
 /**
@@ -81,15 +105,14 @@ export function duplicateScene(
   name?: string,
   color?: string,
   withoutClips?: boolean,
-): { id: string; path: string; clips: MinimalClipInfo[]; detail?: string } {
+): SceneCopyEntry {
   const liveSet = LiveAPI.from(livePath.liveSet);
-
-  liveSet.call("duplicate_scene", sceneIndex);
-
-  const newSceneIndex = sceneIndex + 1;
+  const { index: newSceneIndex, threw } = landSceneCopy(sceneIndex);
   const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
-  let detail: string | undefined;
+  let detail: string | undefined =
+    threw == null ? undefined : `the scene was made, but Live said: ${threw}`;
+  let landed: LandedColor = {};
 
   // The scene exists from here on, so a failure is on its entry: a throw would
   // report a skip for a scene that is there.
@@ -100,6 +123,7 @@ export function duplicateScene(
 
     if (color != null) {
       newScene.setColor(color);
+      landed = landedColor(newScene, color);
     }
 
     // Get all duplicated clips in this scene
@@ -117,34 +141,33 @@ export function duplicateScene(
       });
     }
   } catch (error) {
-    detail = `the scene was made, but ${errorMessage(error)}`;
+    detail = joinDetails([
+      detail,
+      `the scene was made, but ${errorMessage(error)}`,
+    ]);
   }
 
   // Return optimistic metadata
   return {
     id: newScene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
+    ...(landed.color != null && { color: landed.color }),
     clips: duplicatedClips,
-    ...(detail != null && { detail }),
+    ...joinedDetail(detail, landed.detail),
   };
 }
 
 /**
- * Calculate the length of a scene (longest clip in the scene)
- * @param sceneIndex - Scene index
- * @returns Length in Ableton beats
+ * The detail field of an entry, or nothing when there is none to say.
+ * @param details - What the entry has to say
+ * @returns A spread-ready object
  */
-export function calculateSceneLength(sceneIndex: number): number {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const trackIds = liveSet.getChildIds("tracks");
+function joinedDetail(...details: Array<string | undefined>): {
+  detail?: string;
+} {
+  const detail = joinDetails(details);
 
-  let maxLength = 4; // Default minimum scene length
-
-  forEachClipInScene(sceneIndex, trackIds, (clip) => {
-    maxLength = Math.max(maxLength, clipLengthBeats(clip));
-  });
-
-  return maxLength;
+  return detail == null ? {} : { detail };
 }
 
 /**
@@ -159,6 +182,7 @@ export function calculateSceneLength(sceneIndex: number): number {
  * @param songTimeSigDenominator - Song time signature denominator
  * @param context - Context object with silenceWavPath
  * @param ledger - The call's arrangement lanes, shared by every copy
+ * @param read - The scene as the call already read it, to share the pass
  * @returns The clips the copy landed, each with its own path, and what it did
  *   on a track where it landed none or failed. A position where no clip landed
  *   and nothing was cleared is a skip.
@@ -174,44 +198,26 @@ export async function duplicateSceneToArrangement(
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
   ledger: LaneLedger = copyLedger(),
+  read?: ScenePass,
 ): Promise<{ clips: MinimalClipInfo[]; detail?: string } | TargetSkip> {
-  const scene = LiveAPI.from(sceneId);
-
-  if (!scene.exists()) {
-    throw new Error(`scene with id "${sceneId}" does not exist`);
-  }
-
-  const sceneIndex = scene.sceneIndex;
-
-  if (sceneIndex == null) {
-    throw new Error(`no scene index for ${targetLabel(scene)}`);
-  }
+  // A pass the caller holds already shows the scene is there.
+  const sceneIndex = read?.sceneIndex ?? sceneIndexOf(sceneId);
 
   if (withoutClips === true) {
     return { clips: [] };
   }
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const trackIds = liveSet.getChildIds("tracks");
-
-  // Determine the length to use for all clips: the one asked for, or the
-  // longest clip in the scene.
+  const { clips: sceneClips, length: ownLength } =
+    read ?? readSceneClips(sceneIndex);
+  // The length asked for, or the longest clip in the scene.
   const arrangementLengthBeats =
     arrangementLength == null
-      ? calculateSceneLength(sceneIndex)
+      ? ownLength
       : parseArrangementLength(
           arrangementLength,
           songTimeSigNumerator,
           songTimeSigDenominator,
         );
-
-  // Gather the scene's clips first (forEachClipInScene is synchronous), then
-  // process them sequentially so each createClipsForLength call can be awaited.
-  const sceneClips: { clip: LiveAPI; trackIndex: number }[] = [];
-
-  forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
-    sceneClips.push({ clip, trackIndex });
-  });
 
   // Nothing to copy is not a failure: the position is done.
   if (sceneClips.length === 0) {

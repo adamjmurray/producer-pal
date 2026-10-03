@@ -290,6 +290,43 @@ describe("duplicate take lane", () => {
     );
   });
 
+  it("names the lane takeLaneName asks for, without warning", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l0[1|1]",
+      takeLaneName: "Verse take",
+    });
+
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("takeLaneName ignored"),
+    );
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.set,
+    ).toHaveBeenCalledWith("name", "Verse take");
+  });
+
+  it("does not call takeLaneName ignored when every lane it names was refused", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: `t0/l${MAX_TAKE_LANES}[1|1],t0/l${MAX_TAKE_LANES + 1}[1|1]`,
+      takeLaneName: "Verse take",
+    });
+
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("takeLaneName ignored"),
+    );
+  });
+
   it("warns and ignores takeLane for a session destination", async () => {
     registerSessionClipDuplication({ destClipProperties: {} });
 
@@ -341,23 +378,28 @@ describe("duplicate take lane", () => {
     ).rejects.toThrow('takeLane is only for type "clip"');
   });
 
-  it("warns and skips when Live fails to create a take-lane clip (single position)", async () => {
+  it("keeps the lane it made when Live fails to create a take-lane clip (single position)", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 0, clipCreationFails: true });
 
     // The reason carries the inner "created no clip" throw (from the
-    // not-a-clip guard), not some other downstream error.
-    await expect(
-      duplicate({
-        type: "clip",
-        id: "src_clip",
-        toPath: "t0/l0",
-        arrangementStart: "1|1",
-      }),
-    ).rejects.toThrow(
-      "the take-lane copy failed: Live created no clip at t0/l0[1|1]",
-    );
+    // not-a-clip guard), not some other downstream error. A lane can't be
+    // deleted, so the lane the call made is said to have landed: this is no
+    // skip.
+    const result = await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l0",
+      arrangementStart: "1|1",
+    });
+
+    expect(result).toStrictEqual({
+      path: "t0/l0[1|1]",
+      detail:
+        "the take-lane copy failed: Live created no clip at t0/l0[1|1]; " +
+        "already changed: take lane t0/l0 made",
+    });
   });
 
   it("warns and continues when only some positions fail (partial success)", async () => {
@@ -478,7 +520,7 @@ describe("duplicate take lane", () => {
 
     expectTakeLaneMidiClip(2, 16);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('takeLane ignored — "toPath" already names'),
+      'takeLane ignored: "toPath" already names the take lane',
     );
   });
 
@@ -510,7 +552,7 @@ describe("duplicate take lane", () => {
       32,
     );
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('takeLane ignored — "toPath" already names'),
+      'takeLane ignored: "toPath" already names the take lane',
     );
   });
 

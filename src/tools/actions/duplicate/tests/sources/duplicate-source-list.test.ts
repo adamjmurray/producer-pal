@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   mockNonExistentObjects,
@@ -19,7 +19,7 @@ import {
   registerTrackThatClearsOnDup,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
-import { updateClipMock } from "./setup.ts";
+import { updateClipMock } from "../setup.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { registerTrackCopySet } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
@@ -363,14 +363,13 @@ describe("duplicate - a list of sources", () => {
       ]);
     });
 
-    // Every copy already made is one the caller has to clean up by hand, so a
-    // source that can't be found stops the call instead of shrinking it.
-    it("refuses a path that names no source", async () => {
+    // A lone copy that can't be made has no list to sit in, so it throws why.
+    it("throws why a lone path names no source", async () => {
       registerTwoSlotSources([[2, 0]]);
 
       await expect(
         duplicate({ type: "clip", path: "t9/s0", toPath: "t2/s0" }),
-      ).rejects.toThrow('nothing to duplicate at path "t9/s0"');
+      ).rejects.toThrow('no clip at path "t9/s0"');
     });
   });
 
@@ -686,9 +685,8 @@ describe("duplicate - a list of sources", () => {
       expect(track2.call).not.toHaveBeenCalled();
     });
 
-    // Each source is placed on its own, with no view of the others, so only the
-    // finished results can say which copies survived.
-    it("keeps an id only for the copy still there", async () => {
+    // The copy a later one goes over whole is never written, so it has no id.
+    it("leaves a copy a later source's copy covers unwritten", async () => {
       registerArrangementSources("clipA", "clipB");
       registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
 
@@ -702,19 +700,18 @@ describe("duplicate - a list of sources", () => {
       expect(result).toStrictEqual([
         {
           path: "t2[5|1]",
-          deleted: true,
-          detail: "a later copy in this call landed on it",
+          detail: "overwritten later in this call by t2[5|1]",
         },
         {
-          id: "live_set tracks 2 arrangement_clips 1",
+          id: "live_set tracks 2 arrangement_clips 0",
           path: "t2[5|1]",
         },
       ]);
-      // The buried copy is out of the transform too: there is no clip left to
-      // transform, and its id would go into the list as `undefined`.
+      // The buried copy is out of the transform too: it was never written, so
+      // there is no clip to transform.
       expect(updateClipMock).toHaveBeenCalledWith(
         {
-          ids: "live_set tracks 2 arrangement_clips 1",
+          ids: "live_set tracks 2 arrangement_clips 0",
           transforms: "velocity *= 0.5",
           code: undefined,
         },
@@ -723,10 +720,8 @@ describe("duplicate - a list of sources", () => {
     });
 
     // The case a named toPath never covers: two sources on one track default to
-    // that track, so one position piles them just the same. The retired warning
-    // skipped a call with no toPath, so this was already silent — what is new
-    // is the entry naming the copy that is gone.
-    it("marks the buried copy when no toPath was named", async () => {
+    // that track, so one position piles them just the same.
+    it("leaves the buried copy unwritten when no toPath was named", async () => {
       registerMockObject("clipA", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
@@ -746,11 +741,10 @@ describe("duplicate - a list of sources", () => {
       expect(result).toStrictEqual([
         {
           path: "t0[5|1]",
-          deleted: true,
-          detail: "a later copy in this call landed on it",
+          detail: "overwritten later in this call by t0[5|1]",
         },
         {
-          id: "live_set tracks 0 arrangement_clips 1",
+          id: "live_set tracks 0 arrangement_clips 0",
           path: "t0[5|1]",
         },
       ]);

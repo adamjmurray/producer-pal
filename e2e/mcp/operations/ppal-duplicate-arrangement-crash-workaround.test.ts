@@ -566,7 +566,7 @@ describe("arrangement clip duplication crash workaround", () => {
 
     // Two 2-bar copies of one call, the second starting a bar into the first.
     // The first is cut short at the back and keeps its id, so its entry says it
-    // was trimmed; the second only overwrote its own earlier copy, which is the
+    // was shortened; the second only overwrote its own earlier copy, which is the
     // first one's to report.
     it("says an earlier copy of the call was trimmed by a later one", async () => {
       const twoBar = parseToolResult<{ id: string }>(
@@ -585,7 +585,7 @@ describe("arrangement clip duplication crash workaround", () => {
       const copies = await dupToArrMany(twoBar, ["441|1", "442|1"]);
 
       expect(copies.map((copy) => copy.detail)).toStrictEqual([
-        "trimmed: a later copy in this call landed on part of it",
+        `shortened by ${track}[442|1] later in this call`,
         undefined,
       ]);
     });
@@ -616,10 +616,10 @@ describe("arrangement clip duplication crash workaround", () => {
 });
 
 describe("a lengthened copy over an earlier copy in the same call", () => {
-  // The call keeps one view of the lane, so the lengthened copy must see the
-  // earlier copy: that copy says it was buried, and the lengthened one doesn't
-  // claim to have overwritten a clip its own call made.
-  it("buries the earlier copy and reports only what was already there", async () => {
+  // The lengthened copy covers the earlier one whole, so that one is never
+  // written; the lengthened one reports what was already on the lane, which
+  // includes the clip the earlier copy would have landed on.
+  it("leaves the earlier copy unwritten and reports what was already there", async () => {
     const track = `t${EMPTY_MIDI_TRACK}`;
 
     // One bar each at bars 931, 933 and 935, and a one-bar looping source.
@@ -646,10 +646,11 @@ describe("a lengthened copy over an earlier copy in the same call", () => {
 
     await sleep(200);
 
-    // The first copy replaces the clip at 933. The second is three bars, so it
-    // covers 931-933: the clip at 931, and the first copy.
+    // The second copy is three bars, so it covers 931-933 and the first copy
+    // with them: the first is never written, and the second overwrites the
+    // clips at 931 and 933.
     const [first, second] = parseToolResult<
-      [DuplicateClipResult & { deleted?: boolean }, DuplicateClipResult]
+      [{ path: string; detail: string }, DuplicateClipResult]
     >(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
@@ -664,11 +665,16 @@ describe("a lengthened copy over an earlier copy in the same call", () => {
 
     await sleep(200);
 
-    expect(first.deleted).toBe(true);
-    expect(first.detail).toBe(
-      `a later copy in this call landed on it; overwrote the clip at ${track}[933|1]`,
+    expect(first).toStrictEqual({
+      path: `${track}[933|1]`,
+      detail: `overwritten later in this call by ${track}[931|1]`,
+    });
+    expect(firstDetail(second)).toContain(
+      `overwrote the clip at ${track}[931|1]`,
     );
-    expect(firstDetail(second)).toBe(`overwrote the clip at ${track}[931|1]`);
+    expect(firstDetail(second)).toContain(
+      `overwrote the clip at ${track}[933|1]`,
+    );
 
     const filled = clipsInBarRange(
       await readArrClips(EMPTY_MIDI_TRACK),

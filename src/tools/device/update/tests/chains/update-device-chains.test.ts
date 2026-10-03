@@ -129,6 +129,18 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
+    it("reports the palette color Live snapped a chain's color to", () => {
+      chain.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(updateDevice({ id: "456", color: "#FF0000" })).toStrictEqual({
+        id: "456",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
     it("should refuse color on a Device", () => {
       expect(() => updateDevice({ id: "123", color: "#FF0000" })).toThrow(
         "color not applicable to a device",

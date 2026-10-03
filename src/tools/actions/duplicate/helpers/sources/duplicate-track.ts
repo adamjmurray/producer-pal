@@ -3,12 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   appendDetail,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   newTargetNotes,
@@ -16,25 +21,20 @@ import {
   type TargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import {
-  skipEntry,
-  type NamedTarget,
-  type TargetSkip,
-  unreachedDetail,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
-import { configureRouting } from "../duplicate-routing.ts";
-import { settleCopyPaths } from "./copy-path-settling.ts";
-import { type LandedTrackCopy, landTrackCopy } from "./landed-track-copy.ts";
+import { configureRouting } from "./duplicate-routing.ts";
+import { landTrackCopy, type LandedTrackCopy } from "./landed-track-copy.ts";
 
 /** One track copy's entry in the result. */
 export interface TrackCopyEntry {
   id: string;
   path: string;
+  /** The color Live settled on, when it isn't the one asked for */
+  color?: string;
   clips: MinimalClipInfo[];
   detail?: string;
 }
@@ -208,70 +208,100 @@ export interface TrackCopyLabel {
   color?: string;
 }
 
-/** A copy that exists but isn't labeled or routed yet. */
+/**
+ * The source's regular track index.
+ * @param object - The source track
+ * @returns Its index
+ * @throws Error for a return or main track, which Live can't duplicate
+ */
+export function regularTrackIndex(object: LiveAPI): number {
+  const trackIndex = object.trackIndex;
+
+  if (trackIndex == null) {
+    throw new Error(
+      `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
+    );
+  }
+
+  return trackIndex;
+}
+
+/**
+ * Make one copy of a track, from the source itself, and name and color it. The
+ * copy is told to `landed` the moment it exists, so a throw after that keeps it
+ * on its entry. Routing waits until every copy exists: it changes the source's
+ * input, and a copy made after that would inherit it.
+ * @param trackIndex - The source track
+ * @param label - The copy's name and color
+ * @param options - What the copy leaves out
+ * @param landed - Told what has changed Live, as it does
+ * @returns The copy's entry
+ * @throws Error when Live made no copy
+ */
+export function duplicateTrackCopy(
+  trackIndex: number,
+  label: TrackCopyLabel,
+  options: TrackCopyOptions,
+  landed: (phrase: string, partial: Record<string, unknown>) => void,
+): TrackCopyEntry {
+  const notes = newTargetNotes();
+  const copy = makeTrackCopy(trackIndex, options, notes);
+  const path = formatObjectPath({ kind: "track", trackIndex: copy.index });
+
+  landed("copy made", { id: copy.track.id, path, clips: copy.clips });
+
+  const color = nameAndColor(copy.track, label, notes);
+  const detail = joinDetails(notes.said);
+
+  return {
+    id: copy.track.id,
+    // Where its clips were read; settleCopyPaths moves both along.
+    path,
+    ...(color.color == null ? {} : { color: color.color }),
+    clips: copy.clips,
+    ...(detail == null ? {} : { detail }),
+  };
+}
+
+/**
+ * Feed a track copy into its source: the source takes no input of its own and
+ * the copy's output goes to it. A failure is on the copy's entry, since the
+ * copy exists.
+ * @param entry - The copy's entry, added to
+ * @param copy - The copy
+ * @param sourceTrackIndex - The source track
+ */
+export function routeTrackCopy(
+  entry: { detail?: string },
+  copy: LiveAPI,
+  sourceTrackIndex: number,
+): void {
+  const notes = newTargetNotes();
+
+  try {
+    configureRouting(copy, sourceTrackIndex, notes);
+  } catch (error) {
+    noteTarget(
+      notes,
+      `the track was made, but routing didn't finish: ${errorMessage(error)}`,
+    );
+  }
+
+  const detail = joinDetails(notes.said);
+
+  if (detail != null) {
+    appendDetail(entry, detail);
+  }
+}
+
+// --- Helpers below main exports ---
+
+/** A copy that exists but isn't labeled yet. */
 interface MadeTrackCopy {
   track: LiveAPI;
   /** Where the copy was when its clips were read */
   index: number;
   clips: MinimalClipInfo[];
-  notes: TargetNotes;
-}
-
-/**
- * Make up to `count` copies of a track, every one from the source itself.
- * Labels and routing go on only once all copies exist: routing changes the
- * source's input, and a copy made after that would inherit it.
- * @param trackIndex - The source track
- * @param named - The source as the caller named it, for a failed copy's entry
- * @param count - How many copies to make
- * @param labelFor - Name and color for the nth copy, in Set order
- * @param options - What every copy leaves out, and whether it feeds the source
- * @param shouldStop - Asked before each copy; true stops
- * @returns One entry per copy made, in Set order, then one per copy that failed
- *   or that a stop never reached
- */
-export function duplicateTrackCopies(
-  trackIndex: number,
-  named: NamedTarget,
-  count: number,
-  labelFor: (index: number) => TrackCopyLabel,
-  options: TrackCopyOptions,
-  shouldStop: () => boolean = () => false,
-): Array<TrackCopyEntry | TargetSkip> {
-  const made: MadeTrackCopy[] = [];
-  const failed: TargetSkip[] = [];
-
-  for (let i = 0; i < count; i++) {
-    if (shouldStop()) {
-      // Each copy it never made keeps its slot.
-      failed.push(
-        ...Array.from({ length: count - i }, () =>
-          skipEntry(named, unreachedDetail("copy")),
-        ),
-      );
-
-      break;
-    }
-
-    // Every copy is made from the source, so one failing doesn't stop the rest.
-    try {
-      made.push(makeTrackCopy(trackIndex, options));
-    } catch (error) {
-      failed.push(skipEntry(named, errorMessage(error)));
-    }
-  }
-
-  // Each copy lands ahead of the ones made before it, so the last one made
-  // comes first in the Set, and gets the first label.
-  const entries = made
-    .toReversed()
-    .map((copy, index) =>
-      finishTrackCopy(copy, trackIndex, labelFor(index), options.routeToSource),
-    );
-
-  settleCopyPaths(entries, "track");
-
-  return [...entries, ...failed];
 }
 
 /**
@@ -279,15 +309,20 @@ export function duplicateTrackCopies(
  * here touches the source, so the next copy starts from the same track.
  * @param trackIndex - The source track
  * @param options - What the copy leaves out
- * @returns The copy, not yet labeled or routed
+ * @param notes - What the copy's entry should say
+ * @returns The copy, not yet labeled
  */
 function makeTrackCopy(
   trackIndex: number,
   options: TrackCopyOptions,
+  notes: TargetNotes,
 ): MadeTrackCopy {
-  const notes = newTargetNotes();
   const landing = landTrackCopy(trackIndex);
   const clips: MinimalClipInfo[] = [];
+
+  if (landing.threw != null) {
+    noteTarget(notes, `the track was made, but Live said: ${landing.threw}`);
+  }
 
   // The copy exists from here on, so a failure is on its entry: a throw would
   // report a skip for a track that is there.
@@ -313,24 +348,22 @@ function makeTrackCopy(
 
   const track = LiveAPI.from(livePath.track(landing.index));
 
-  return { track, index: landing.index, clips, notes };
+  return { track, index: landing.index, clips };
 }
 
 /**
- * Name, color and route one copy, and build its entry.
- * @param copy - The copy, made along with all the others
- * @param sourceTrackIndex - The source track, for routing
- * @param label - The copy's name and color
- * @param routeToSource - Whether the copy feeds the source
- * @returns The copy's entry
+ * Name and color a copy that exists.
+ * @param track - The copy
+ * @param label - Its name and color
+ * @param notes - What the copy's entry should say
+ * @returns The color Live settled on, when it isn't the one asked for
  */
-function finishTrackCopy(
-  copy: MadeTrackCopy,
-  sourceTrackIndex: number,
+function nameAndColor(
+  track: LiveAPI,
   label: TrackCopyLabel,
-  routeToSource: boolean | undefined,
-): TrackCopyEntry {
-  const { track, notes } = copy;
+  notes: TargetNotes,
+): LandedColor {
+  let landed: LandedColor = {};
 
   // The copy exists, so a failure here is on its entry rather than a throw that
   // would drop every copy the call made.
@@ -341,27 +374,20 @@ function finishTrackCopy(
 
     if (label.color != null) {
       track.setColor(label.color);
-    }
-
-    if (routeToSource) {
-      configureRouting(track, sourceTrackIndex, notes);
+      landed = landedColor(track, label.color);
     }
   } catch (error) {
     noteTarget(
       notes,
-      `the track was made, but naming, coloring or routing didn't finish: ${errorMessage(error)}`,
+      `the track was made, but naming or coloring it didn't finish: ${errorMessage(error)}`,
     );
   }
 
-  const detail = joinDetails(notes.said);
+  if (landed.detail != null) {
+    noteTarget(notes, landed.detail);
+  }
 
-  return {
-    id: track.id,
-    // Where its clips were read; settleCopyPaths moves both along.
-    path: formatObjectPath({ kind: "track", trackIndex: copy.index }),
-    clips: copy.clips,
-    ...(detail == null ? {} : { detail }),
-  };
+  return landed;
 }
 
 /**

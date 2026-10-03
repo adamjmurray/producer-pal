@@ -105,20 +105,22 @@ export function planInsertions<S extends InsertionSpot>(
  * @param pathCount - How many entries the path param names
  * @param noun - What the tool creates, singular ("track", "scene")
  * @param example - A path list for this tool, shown in the error
+ * @param param - The param that holds the paths
  */
 export function refuseCountWithPathList(
   count: number | undefined,
   pathCount: number,
   noun: string,
   example: string,
+  param = "path",
 ): void {
   if (count == null || pathCount < 2) {
     return;
   }
 
   throw new Error(
-    `count repeats one path, but path names ${pathCount}. Drop count and let ` +
-      `path name each ${noun} (e.g. path: "${example}").`,
+    `count repeats one path, but ${param} names ${pathCount}. Drop count and let ` +
+      `${param} name each ${noun} (e.g. ${param}: "${example}").`,
   );
 }
 

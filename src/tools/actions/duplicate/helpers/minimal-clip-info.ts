@@ -16,6 +16,7 @@ import {
   type EntryWithDetail,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
+import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -46,6 +47,8 @@ export interface MinimalClipInfo {
   deletedNotes?: number;
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
+  /** The palette color Live snapped the color to, when it isn't the one asked */
+  color?: string;
   /** Why the copy isn't quite what was asked for, when it isn't. */
   detail?: string;
 }
@@ -102,7 +105,8 @@ export function getMinimalClipInfo(
  * @param copy - The copy Live made
  * @param name - Name for it, if any
  * @param color - Color for it, if any
- * @returns The copy's entry, with what failed in its detail
+ * @returns The copy's entry, with what failed in its detail, and the palette
+ *   color Live snapped a color to
  */
 export function finishCopy(
   copy: LiveAPI,
@@ -117,7 +121,35 @@ export function finishCopy(
     failures.push(`name and color not applied: ${errorMessage(error)}`);
   }
 
-  return readCopyBack(copy, () => joinDetails(failures));
+  return withLandedColor(
+    copy,
+    failures.length > 0 ? undefined : color,
+    (said) => joinDetails([...failures, said]),
+  );
+}
+
+/**
+ * The entry for a copy whose color was asked for, saying which palette color
+ * Live snapped it to when that isn't the one asked for.
+ * @param copy - The copy Live made
+ * @param color - The color asked for, if any
+ * @param detail - What to say about the copy, given what the color said
+ * @returns The copy's entry
+ */
+export function withLandedColor(
+  copy: LiveAPI,
+  color: string | undefined,
+  detail: (colorDetail: string | undefined) => string | undefined,
+): MinimalClipInfo {
+  const landed = color == null ? {} : landedColor(copy, color);
+  const entry = readCopyBack(copy, () => detail(landed.detail));
+
+  // Set on the entry itself: a copy would lose the span recorded for it.
+  if (landed.color != null) {
+    entry.color = landed.color;
+  }
+
+  return entry;
 }
 
 /**

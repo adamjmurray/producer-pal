@@ -376,23 +376,21 @@ describe("duplicate - scene to the arrangement", () => {
     ]);
   });
 
-  it("warns and ignores count when several arrangementStart positions are named", async () => {
+  // Two positions already say two copies, so count says it twice over.
+  it("refuses count beside several arrangementStart positions", async () => {
     const track0 = setupSceneCopiedToBeats16And32();
 
-    // Two positions named, count says 2 as well — one copy per position.
-    const result = (await duplicate({
-      type: "scene",
-      id: "scene1",
-      arrangementStart: "5|1, 9|1",
-      count: 2,
-    })) as DuplicateSceneResult[];
-
-    expect(result).toHaveLength(2);
-    expectSceneDupAtBeat(track0, 16);
-    expectSceneDupAtBeat(track0, 32);
-    expect(capturedWarnings()).toContain(
-      "count ignored for scenes: one copy per position — list more in toPath",
+    await expect(
+      duplicate({
+        type: "scene",
+        id: "scene1",
+        arrangementStart: "5|1, 9|1",
+        count: 2,
+      }),
+    ).rejects.toThrow(
+      'count repeats one path, but arrangementStart names 2. Drop count and let arrangementStart name each scene (e.g. arrangementStart: "5|1,9|1").',
     );
+    expect(track0.call).not.toHaveBeenCalled();
   });
 
   it("answers a scene with no clips with a detail, not a skip", async () => {
@@ -580,8 +578,8 @@ describe("duplicate - several scenes to the arrangement", () => {
   });
 
   // Scenes sharing a track can still land on each other when the caller names
-  // one spot twice. The buried copy says so instead of reporting a dead id.
-  it("marks a scene copy a later one in the call landed on", async () => {
+  // one spot twice. The copy a later one covers whole is never written.
+  it("leaves a scene copy a later one in the call covers unwritten", async () => {
     setupTwoScenesOnOneTrack();
 
     const result = await duplicate({
@@ -592,16 +590,11 @@ describe("duplicate - several scenes to the arrangement", () => {
 
     expect(result).toStrictEqual([
       {
-        clips: [
-          {
-            path: "t0[5|1]",
-            deleted: true,
-            detail: "a later copy in this call landed on it",
-          },
-        ],
+        path: "[5|1]",
+        detail: "overwritten later in this call by t0[5|1]",
       },
       {
-        clips: [{ id: livePath.track(0).arrangementClip(1), path: "t0[5|1]" }],
+        clips: [{ id: livePath.track(0).arrangementClip(0), path: "t0[5|1]" }],
       },
     ]);
   });
@@ -641,22 +634,21 @@ describe("duplicate - several scenes to the arrangement", () => {
   });
 
   // A position list names one copy per position, however it pairs out, so
-  // count is ignored as it is for one scene — each scene laying count copies
-  // from its own position would bury the next scene's.
-  it("ignores count when the call names a position list", async () => {
+  // count is refused: each scene laying count copies from its own position
+  // would bury the next scene's.
+  it("refuses count beside a position list", async () => {
     const track0 = setupTwoScenesOnOneTrack();
 
-    const result = await duplicate({
-      type: "scene",
-      id: "scene1,scene2",
-      toPath: "[1|1],[9|1]",
-      count: 2,
-    });
-
-    expect(result).toHaveLength(2);
-    expect(track0.call).toHaveBeenCalledTimes(2);
-    expect(capturedWarnings()).toContain(
-      "count ignored for scenes: one copy per position — list more in toPath",
+    await expect(
+      duplicate({
+        type: "scene",
+        id: "scene1,scene2",
+        toPath: "[1|1],[9|1]",
+        count: 2,
+      }),
+    ).rejects.toThrow(
+      'count repeats one path, but toPath names 2. Drop count and let toPath name each scene (e.g. toPath: "[5|1],[9|1]").',
     );
+    expect(track0.call).not.toHaveBeenCalled();
   });
 });

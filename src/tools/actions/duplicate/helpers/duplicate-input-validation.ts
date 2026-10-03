@@ -123,13 +123,16 @@ const DUPLICATE_PARAM_HOMES: Record<string, ParamHome> = {
 };
 
 /**
- * Refuses a duplicate call that sends a param its type doesn't read.
+ * Refuses a duplicate call that sends a param its type doesn't read, or that a
+ * lane copy has no use for: it copies clips onto a lane and makes no track.
  * @param type - The type being duplicated
  * @param args - The args as sent
+ * @param laneCopy - Whether the call copies clips onto a take lane
  */
 export function refuseDuplicateParamsOutsideType(
   type: string,
   args: object,
+  laneCopy = false,
 ): void {
   const sent: Record<string, unknown> = { ...args };
 
@@ -147,4 +150,20 @@ export function refuseDuplicateParamsOutsideType(
   }
 
   refuseParamsOutsideAction({ type }, sent, DUPLICATE_PARAM_HOMES);
+
+  // A lane holds clips and nothing else, so the params that shape a new track
+  // have nothing to act on.
+  if (laneCopy) {
+    refuseParamsOutsideAction({ destination: "lane" }, sent, NEW_TRACK_PARAMS);
+  }
 }
+
+const NEW_TRACK: ParamHome = { destination: ["new track"] };
+
+// What only a copy that makes a new track reads.
+const NEW_TRACK_PARAMS: Record<string, ParamHome> = {
+  count: NEW_TRACK,
+  withoutClips: NEW_TRACK,
+  withoutDevices: NEW_TRACK,
+  routeToSource: NEW_TRACK,
+};

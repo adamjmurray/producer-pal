@@ -92,7 +92,7 @@ interface Finished<P, Checked, E, Each> {
 function finish<Args, Parsed, P, Checked, E extends object, Each>(
   spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
   done: Finished<P, Checked, E, Each>,
-): PipelineResult<E> {
+): MaybePromise<PipelineResult<E>> {
   const { targets, checked, call, planned, runs } = done;
   const shortened = settleSupersession(
     runs,
@@ -113,12 +113,13 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
     spec.loneSkipThrows?.(checked) ?? true,
   );
 
-  spec.settle?.(
-    { targets, checked, entries, pieces, outcomes, shortened },
-    call,
+  return afterMaybe(
+    spec.settle?.(
+      { targets, checked, entries, pieces, outcomes, shortened },
+      call,
+    ),
+    () => result,
   );
-
-  return result;
 }
 
 /**

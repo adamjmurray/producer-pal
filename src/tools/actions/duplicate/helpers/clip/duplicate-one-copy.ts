@@ -4,17 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   isTakeLaneClip,
-  takeLaneLabel,
   type ArrangementTrack,
+  type ResolvedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
-import { readCopyBack } from "../minimal-clip-info.ts";
+import { withLandedColor } from "../minimal-clip-info.ts";
 import {
   clearedBefore,
   copiedIds,
@@ -36,7 +35,6 @@ import {
   arrangementSpan,
   keptSpan,
 } from "#src/tools/shared/clip/arrangement-span.ts";
-import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 
 /** What one copy attempt produced: the clip (with a detail when it isn't quite
  * what was asked for), or why there is none. */
@@ -44,45 +42,20 @@ export type CopyAttempt =
   | { copy: object; refused?: undefined; cleared?: undefined }
   | { copy?: undefined; refused: string; cleared?: string };
 
-/**
- * One object per destination track, shared by every copy in the call. Copying
- * a clip onto a track never moves the track, so one serves the whole batch.
- * @param targets - Every destination, in copy order
- * @returns The destination tracks, keyed by index
- */
-export function destinationTracks(
-  targets: ArrangementTrack[],
-): Map<number, LiveAPI> {
-  return new Map(
-    [...new Set(targets.map((target) => target.trackIndex))].map((index) => [
-      index,
-      LiveAPI.from(livePath.track(index)),
-    ]),
-  );
-}
-
 export interface CopyOptions {
   target: ArrangementTrack;
   startBeats: number;
-  lanes: Map<string, ResolvedDuplicateLane>;
-  /** Why a lane destination got no lane, by {@link takeLaneLabel}. */
-  laneRefusals: Map<string, string>;
-  /** Whether a take-lane source may be re-created on the main lane. */
-  canPromote: boolean;
+  /** The take lane the copy lands on, made when it isn't there yet */
+  laneFor: () => ResolvedTakeLane;
   object: LiveAPI;
   id: string;
   name: string | undefined;
   color: string | undefined;
   arrangementLength: string | undefined;
-  /**
-   * Why a copy this call has to re-create can't be made at all — an audio
-   * source with no sample file — or null when it can.
-   */
-  noSample: string | null;
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   context: Partial<ToolContext>;
-  /** The destination tracks, keyed by index */
+  /** The destination tracks, keyed by index; holds the copy's own */
   tracks: Map<number, LiveAPI>;
   /** The call's arrangement lanes, shared by every copy */
   ledger: LaneLedger;
@@ -120,20 +93,10 @@ export async function duplicateOneCopy(
  * @returns The created clip, or why this destination got none
  */
 async function copyAtDestination(options: CopyOptions): Promise<CopyAttempt> {
-  const { target, startBeats, lanes, object, id, tracks } = options;
+  const { target, startBeats, object, id, tracks } = options;
 
   if (target.takeLane != null) {
-    const label = takeLaneLabel(target);
-    const resolved = lanes.get(label);
-
-    if (resolved == null) {
-      return {
-        refused:
-          options.noSample ??
-          options.laneRefusals.get(label) ??
-          "no take lane was resolved for this destination",
-      };
-    }
+    const resolved = options.laneFor();
 
     return await clearingCopy(
       options,
@@ -142,23 +105,13 @@ async function copyAtDestination(options: CopyOptions): Promise<CopyAttempt> {
     );
   }
 
-  const track =
-    tracks.get(target.trackIndex) ??
-    LiveAPI.from(livePath.track(target.trackIndex));
+  const track = tracks.get(target.trackIndex) as LiveAPI;
   const mainLane = mainLaneOf(target.trackIndex, track);
 
   // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
   // silently no-ops on a take-lane source id (see take-lanes.ts header),
   // so re-create it here instead.
   if (isTakeLaneClip(object)) {
-    if (!options.canPromote) {
-      return {
-        refused:
-          options.noSample ??
-          "promoting off a take lane re-creates the clip, which this source can't be",
-      };
-    }
-
     return await clearingCopy(options, mainLane, () =>
       recreateCopy(options, track, "promoted"),
     );
@@ -267,10 +220,11 @@ function recreateCopy(
     // refusal would lose a clip the caller has to know about.
     if (error instanceof PartialRecreateError) {
       return {
-        copy: readCopyBack(error.partialClip, () =>
+        copy: withLandedColor(error.partialClip, options.color, (landed) =>
           joinDetails([
             `the ${kind} copy is incomplete (${error.message})`,
             ignoredLength(options, keptSpan(error.partialClip, sourceSpan)),
+            landed,
           ]),
         ),
       };
@@ -283,10 +237,11 @@ function recreateCopy(
 
   // The clip exists, so a failure describing it is on its entry, not a refusal.
   return {
-    copy: readCopyBack(clip, () =>
+    copy: withLandedColor(clip, options.color, (landed) =>
       joinDetails([
         landedNote(kind, losses),
         ignoredLength(options, keptSpan(clip, sourceSpan)),
+        landed,
       ]),
     ),
   };

@@ -104,6 +104,30 @@ describe("finishCopy", () => {
     expect(clip.set).toHaveBeenCalledWith("name", "Verse");
   });
 
+  it.each([
+    [
+      "says which palette color Live snapped the copy's color to",
+      16725558,
+      {
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      },
+    ],
+    ["says nothing when the color lands as asked", 16711680, {}],
+  ])("%s", (_name, landedAs, said) => {
+    const clip = registerMockObject("copy", {
+      path: livePath.track(1).clipSlot(2).clip(),
+    });
+
+    clip.get.mockImplementation((prop: string) =>
+      prop === "color" ? [landedAs] : [0],
+    );
+
+    expect(
+      finishCopy(LiveAPI.from("copy"), undefined, "#FF0000"),
+    ).toStrictEqual({ id: "copy", path: "t1/s2", ...said });
+  });
+
   it("says what failed on the copy's entry instead of throwing", () => {
     registerMockObject("copy", {
       path: livePath.track(1).clipSlot(2).clip(),

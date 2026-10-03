@@ -23,9 +23,6 @@ interface Entry {
   detail?: string;
 }
 
-const DELETED = "a later copy in this call landed on it";
-const TRIMMED = "trimmed: a later copy in this call landed on part of it";
-
 /** A session clip as long as every copy Live makes on the simulated lanes. */
 function registerSource(): void {
   setupArrangementSceneMocks(2);
@@ -157,8 +154,9 @@ describe("what a copy did to the clips already on its lane", () => {
     ]);
   });
 
-  // What the buried copy did to a clip that was there is still true.
-  it("keeps what a copy overwrote when a later copy buries the copy", async () => {
+  // A copy the later one covers whole is never written, so the later copy is
+  // the one that overwrote the clip that was there.
+  it("leaves a copy a later copy covers whole unwritten", async () => {
     registerSource();
     registerLiveLane({
       trackIndex: 1,
@@ -168,10 +166,13 @@ describe("what a copy did to the clips already on its lane", () => {
     expect(await copyTo("t1[5|1],t1[5|1]")).toStrictEqual([
       {
         path: "t1[5|1]",
-        deleted: true,
-        detail: `${DELETED}; overwrote the clip at t1[5|1]`,
+        detail: "overwritten later in this call by t1[5|1]",
       },
-      { id: "copy-1-1", path: "t1[5|1]" },
+      {
+        id: "copy-1-0",
+        path: "t1[5|1]",
+        detail: "overwrote the clip at t1[5|1]",
+      },
     ]);
   });
 
@@ -224,15 +225,19 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   // Each of these copies reaches into the one before it, cutting its back off.
-  // The earlier copy is still there, so its entry says it was trimmed.
-  it("says a copy of the same call cut short at the back was trimmed", async () => {
+  // The earlier copy is still there, so its entry says it was shortened.
+  it("says a copy of the same call cut short at the back was shortened", async () => {
     registerSource();
     registerLiveLane({ trackIndex: 1 });
 
     const result = (await copyTo("t1[5|1],t1[6|1]")) as Entry[];
 
     expect(result).toStrictEqual([
-      { id: "copy-1-0", path: "t1[5|1]", detail: TRIMMED },
+      {
+        id: "copy-1-0",
+        path: "t1[5|1]",
+        detail: "shortened by t1[6|1] later in this call",
+      },
       { id: "copy-1-1", path: "t1[6|1]" },
     ]);
   });
@@ -249,7 +254,8 @@ describe("what a copy did to the clips already on its lane", () => {
     expect(result[0]).toStrictEqual({
       id: "copy-1-0",
       path: "t1[5|1]",
-      detail: `overwrote the clip at t1[5|1]; ${TRIMMED}`,
+      detail:
+        "overwrote the clip at t1[5|1]; shortened by t1[6|1] later in this call",
     });
   });
 });

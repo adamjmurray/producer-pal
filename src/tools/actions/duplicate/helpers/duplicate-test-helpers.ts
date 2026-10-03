@@ -282,7 +282,7 @@ export function setupSessionSceneMocks(
   const trackIds = Array.from({ length: trackCount }, (_, i) => `track${i}`);
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children(...trackIds) },
+    properties: { tracks: children(...trackIds), scenes: children("scene1") },
   });
 
   for (let i = 0; i < trackCount; i++) {
@@ -321,7 +321,7 @@ export function setupArrangementSceneMocks(
 
   return registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children(...trackIds) },
+    properties: { tracks: children(...trackIds), scenes: children("scene1") },
   });
 }
 
@@ -382,6 +382,7 @@ export function registerSessionClipDuplication(
  */
 export function setupDeviceDuplicationMocks(deviceIndex = 0): {
   liveSet: RegisteredMockObject;
+  tempDevice: RegisteredMockObject;
 } {
   registerMockObject("device1", {
     path: livePath.track(0).device(deviceIndex),
@@ -389,11 +390,12 @@ export function setupDeviceDuplicationMocks(deviceIndex = 0): {
   });
   const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-  registerPendingMockObject(`live_set/tracks/1/devices/${deviceIndex}`, {
-    path: livePath.track(1).device(deviceIndex),
-  });
+  const tempDevice = registerPendingMockObject(
+    `live_set/tracks/1/devices/${deviceIndex}`,
+    { path: livePath.track(1).device(deviceIndex) },
+  );
 
-  return { liveSet };
+  return { liveSet, tempDevice };
 }
 
 /**

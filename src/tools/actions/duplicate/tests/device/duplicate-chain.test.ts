@@ -584,6 +584,29 @@ describe("duplicate - chain", () => {
     });
   });
 
+  it("reports a chain whose temp track could not be deleted", async () => {
+    setupRack({ deviceIds: ["d-0"] });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      methods: {
+        delete_track: () => {
+          throw new Error("Live is busy");
+        },
+      },
+    });
+    registerCarriedDevice();
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({ outcome: "moved" });
+
+    const result = await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(result).toStrictEqual({
+      id: "chain-new",
+      path: "t0/d0/c1",
+      detail:
+        "the temporary track copy at t1 couldn't be deleted: Live is busy",
+    });
+  });
+
   it("says so when the temp track runs out of devices", async () => {
     setupRack({ deviceIds: ["d-0", "d-1"] });
     registerMockObject("live_set", { path: livePath.liveSet });

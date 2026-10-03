@@ -14,7 +14,10 @@ import {
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
+import {
+  type SongMeter,
+  songMeter,
+} from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   namedParam,
   paramNamesSomething,
@@ -176,13 +179,16 @@ export function arrangementPath(
  * The path a spot on the arrangement spells: its lane, plus where it is.
  * @param lane - The lane the spot sits on
  * @param startBeats - The position in Ableton beats
+ * @param meter - The song's time signature, for a caller naming many spots
+ *   that has read it already
  * @returns The path (e.g. "t0[5|1]" or "t0/l1[5|1]")
  */
 export function arrangementPositionPath(
   lane: ArrangementLane,
   startBeats: number,
+  meter?: SongMeter,
 ): string {
-  const { numerator, denominator } = songMeter();
+  const { numerator, denominator } = meter ?? songMeter();
 
   return formatObjectPath({
     kind: ARRANGEMENT_POSITION,

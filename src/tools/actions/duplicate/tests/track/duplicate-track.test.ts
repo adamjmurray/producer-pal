@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   children,
@@ -455,6 +455,22 @@ describe("duplicate - track duplication", () => {
     });
   });
 
+  it("reports the palette color Live snapped a track copy's color to", async () => {
+    const { newTrack } = registerBareTrackDuplication();
+
+    newTrack.get.mockImplementation((prop: string) =>
+      prop === "color" ? [16725558] : [0],
+    );
+
+    expect(
+      await duplicate({ type: "track", id: "track1", color: "#FF0000" }),
+    ).toStrictEqual({
+      ...createTrackResult(1),
+      color: "#FF3636",
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+  });
+
   it("should apply color when duplicating a track", async () => {
     const { newTrack } = registerBareTrackDuplication();
 
@@ -679,7 +695,9 @@ describe("duplicate - several copies of one track", () => {
     expect(firstSourceWrite).toBeGreaterThan(lastCopy);
   });
 
-  it("gives the first labels to the copies made before the deadline", async () => {
+  // Copies are made last to first, so the one the deadline spared is the last
+  // named, and it takes the last name.
+  it("keeps each name with the copy it was meant for when the deadline stops some", async () => {
     const context = { deadline: Date.now() + 60_000 };
     const { liveSet, tracks } = registerTrackCopySet(["track1"]);
     const copyTrack = liveSet.methods.duplicate_track!;
@@ -696,10 +714,10 @@ describe("duplicate - several copies of one track", () => {
     );
 
     expect(result).toStrictEqual([
-      { id: "copy-1", path: "t1", clips: [] },
       OUT_OF_TIME_SKIP,
+      { id: "copy-1", path: "t1", clips: [] },
     ]);
-    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "A");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "B");
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Ran out of time"),
     );
@@ -747,7 +765,7 @@ describe("duplicate - several copies of one track", () => {
 });
 
 describe("duplicate - a track copy that fails", () => {
-  it("keeps the copies made before it", async () => {
+  it("keeps the copies around it, and the failed one's place", async () => {
     const { tracks } = registerTrackCopySet(["track1"], undefined, [3]);
 
     const result = await duplicate({
@@ -757,13 +775,15 @@ describe("duplicate - a track copy that fails", () => {
       name: "A,B,C",
     });
 
+    // The copies are made last to first, so the third attempt is the first
+    // named, which gets "A".
     expect(result).toStrictEqual([
+      { id: "track1", ok: false, detail: "Live made no copy of t0" },
       { id: "copy-2", path: "t1", clips: [] },
       { id: "copy-1", path: "t2", clips: [] },
-      { id: "track1", ok: false, detail: "Live made no copy of t0" },
     ]);
-    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "A");
-    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "B");
+    expect(tracks.get("copy-2")?.set).toHaveBeenCalledWith("name", "B");
+    expect(tracks.get("copy-1")?.set).toHaveBeenCalledWith("name", "C");
   });
 
   it("still tries the copies after it", async () => {
@@ -788,8 +808,8 @@ describe("duplicate - a track copy that fails", () => {
     });
 
     expect(result).toStrictEqual([
-      expect.objectContaining({ id: "copy-1", path: "t1" }),
       { id: "track1", ok: false, detail: "Live made no copy of t0" },
+      expect.objectContaining({ id: "copy-1", path: "t1" }),
     ]);
   });
 

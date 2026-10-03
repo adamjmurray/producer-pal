@@ -38,10 +38,6 @@ const SCRATCH = `t${EMPTY_MIDI_TRACK}`;
 /** A colour Live's palette does not hold, so every write of it snaps. */
 const OFF_PALETTE = "#123456";
 
-/** What a track's take-lane copy says it left behind. */
-const CLIPS_ONLY =
-  "clips only: a take lane takes no devices, routing, mixer settings or session clips";
-
 /** One send of a write result: only what these probes read off it. */
 interface SendEntry {
   return?: string;
@@ -81,7 +77,7 @@ describe("warnings the tools still raise", () => {
     }
   });
 
-  it("says what a track's take-lane copy has no use for", async () => {
+  it("refuses what a track's take-lane copy has no use for, copying nothing", async () => {
     parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
@@ -96,30 +92,40 @@ describe("warnings the tools still raise", () => {
       toPath: "t10/l0",
     };
 
-    expect(
-      await warningsFrom("ppal-duplicate", { ...laneCopy, count: 2 }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: a track's clips go once to each lane toPath names",
-    ]);
+    expect(await errorFrom("ppal-duplicate", { ...laneCopy, count: 2 })).toBe(
+      'Error: count is only for destination "new track"; this call has destination "lane". Change the destination or drop count.',
+    );
 
     expect(
-      await warningsFrom("ppal-duplicate", {
+      await errorFrom("ppal-duplicate", {
         ...laneCopy,
         toPath: "t10/l1",
         withoutClips: true,
         withoutDevices: true,
       }),
-    ).toStrictEqual([
-      `WARNING: withoutClips/withoutDevices ignored: ${CLIPS_ONLY}`,
-    ]);
+    ).toBe(
+      'Error: withoutClips, withoutDevices are only for destination "new track"; this call has destination "lane". Change the destination or drop withoutClips, withoutDevices.',
+    );
 
     expect(
-      await warningsFrom("ppal-duplicate", {
+      await errorFrom("ppal-duplicate", {
         ...laneCopy,
         toPath: "t10/l2",
         routeToSource: true,
       }),
-    ).toStrictEqual([`WARNING: routeToSource ignored: ${CLIPS_ONLY}`]);
+    ).toBe(
+      'Error: routeToSource is only for destination "new track"; this call has destination "lane". Change the destination or drop routeToSource.',
+    );
+
+    expect(
+      await errorFrom("ppal-duplicate", {
+        ...laneCopy,
+        toPath: "t10/l0,t10/l1",
+        count: 2,
+      }),
+    ).toBe(
+      'Error: count repeats one path, but toPath names 2. Drop count and let toPath name each take lane (e.g. toPath: "t2/l0,t2/l1").',
+    );
   });
 
   // A retired index says nothing about how to spell the path that replaces it,

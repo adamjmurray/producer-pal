@@ -24,6 +24,7 @@ import {
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   deleteMockObject,
+  lookupMockObject,
   mockNonExistentObjects,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -123,6 +124,31 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
+    it("says which palette color Live snapped a slot copy's color to", async () => {
+      registerSessionClipDuplication({ destClipProperties: {} });
+
+      // Reads that ignore what was written, as Live's palette snap does.
+      lookupMockObject(
+        "live_set/tracks/0/clip_slots/1/clip",
+      )?.get.mockImplementation((prop: string) => [
+        prop === "color" ? 16725558 : 0,
+      ]);
+
+      expect(
+        await duplicate({
+          type: "clip",
+          id: "clip1",
+          toPath: "t0/s1",
+          color: "#FF0000",
+        }),
+      ).toStrictEqual({
+        id: "live_set/tracks/0/clip_slots/1/clip",
+        path: "t0/s1",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
     it("should duplicate multiple clips to session view with comma-separated toSceneIndex", async () => {
       const { sourceClipSlot } = registerSessionClipDuplication();
 
@@ -211,9 +237,9 @@ describe("duplicate - clip duplication", () => {
       ).rejects.toThrow(/toPath and toSlot both name a destination/);
     });
 
-    // The first copy made the scenes and the second found them there, so the
-    // replaced copy's entry is the only one left to say they were made.
-    it("keeps the scenes a replaced copy created", async () => {
+    // The first copy is never written, so the second is the one that makes the
+    // scenes, and says so.
+    it("says the surviving copy created the scenes", async () => {
       registerCopiesIntoOneNewSlot();
 
       const result = await duplicate({
@@ -225,14 +251,12 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           path: "t1/s3",
-          created: "s2-s3",
-          deleted: true,
-          detail: "a later copy in this call landed on it",
+          detail: "overwritten later in this call by t1/s3",
         },
         {
-          id: "copy_2",
+          id: "copy_1",
           path: "t1/s3",
-          detail: "overwrote the existing clip at t1/s3",
+          created: "s2-s3",
         },
       ]);
     });

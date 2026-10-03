@@ -196,6 +196,10 @@ export interface WriteSpec<
     target: AppliedTarget<P>,
     step: Step<Checked, Planned>,
   ) => MaybePromise<E | WithPieces<E>>;
-  /** Stage 5: once every target has had its turn: paths, focus, warnings */
-  settle?: (done: Done<P, Checked, E>, call: Call) => void;
+  /**
+   * Stage 5: once every target has had its turn: paths, focus, warnings. It may
+   * await a write that needs every entry first (a transform over all the
+   * copies).
+   */
+  settle?: (done: Done<P, Checked, E>, call: Call) => MaybePromise<void>;
 }

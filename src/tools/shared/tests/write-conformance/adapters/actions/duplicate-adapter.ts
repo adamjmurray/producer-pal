@@ -38,14 +38,6 @@ function setUpTracks(): RegisteredMockObject {
 export const duplicateAdapter: WriteToolAdapter = {
   tool: "ppal-duplicate",
   run: (args) => duplicate({ type: "track", ...args }),
-  skip: {
-    replacedLater:
-      'writes the earlier copy, then marks it deleted: true with "a later copy in this call landed on it"',
-    unappliable:
-      "a source id that doesn't exist refuses the whole call before any copy is made, instead of skipping its entry",
-    countWithDestinations:
-      "isn't refused: it makes count copies of each source, and takes the toPath list as where they go",
-  },
   na: {
     namedTwice:
       "a source named twice is two copies, one per destination; copies never write the same place",

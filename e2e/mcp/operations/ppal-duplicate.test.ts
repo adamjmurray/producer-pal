@@ -338,18 +338,18 @@ describe("ppal-duplicate", () => {
     expect((await readScenes()).scenes!.length).toBe(initialSceneCount);
   });
 
-  it("warns and ignores count when a scene duplicate names several arrangement positions", async () => {
+  it("refuses count when a scene duplicate names several arrangement positions", async () => {
     const scenes = await readScenes();
     const dupResult = await duplicateScene(scenes.scenes![7]!.id, {
       toPath: "[49|1],[53|1]",
       count: 2,
     });
-    const { data: dup, warnings } =
-      parseToolResultWithWarnings<Array<{ clips: unknown[] }>>(dupResult);
 
-    // Two positions named, one copy each — count added nothing.
-    expect(dup).toHaveLength(2);
-    expect(warnings.join(" ")).toContain("count ignored");
+    // Two positions already say two copies, so count says it twice.
+    expect(isToolError(dupResult)).toBe(true);
+    expect(getToolErrorMessage(dupResult)).toBe(
+      'Error: count repeats one path, but toPath names 2. Drop count and let toPath name each scene (e.g. toPath: "[5|1],[9|1]").',
+    );
   });
 
   it("duplicates clips", async () => {

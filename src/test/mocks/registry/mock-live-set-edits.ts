@@ -25,6 +25,7 @@ export interface EditResult {
 }
 
 const SLOT_PATH = /^(live_set tracks \d+ clip_slots )(\d+)(.*)$/;
+const DEVICE_PATH = /^(.+) devices (\d+)$/;
 const INDEXED_PATH =
   /^(.+) (tracks|return_tracks|scenes|devices|chains|arrangement_clips) (\d+)$/;
 
@@ -51,8 +52,8 @@ export function newMockId(): string {
  *
  * Models creating and duplicating tracks and scenes, inserting devices and
  * chains, and creating clips. Not modeled: what a duplicate copies along (its
- * devices and clips), `move_device`, and an arrangement clip overwriting what
- * it lands on.
+ * devices and clips), `move_device` unless asked ({@link applyMockMove}), and an
+ * arrangement clip overwriting what it lands on.
  * @param reg - The registry
  * @param method - Live API method name
  * @param args - Call arguments
@@ -258,6 +259,71 @@ function insertAt(
   }
 
   return id;
+}
+
+/**
+ * Make a `move_device` call move the device the way Live does.
+ * @param reg - The registry
+ * @param args - Call arguments: the device, the container, and where in it
+ */
+export function applyMockMove(reg: MockRegistryAccess, args: unknown[]): void {
+  moveDevice(reg, args[0], args[1], asIndex(args[2]));
+}
+
+/**
+ * Move a device, and everything under it, into another container. The devices
+ * after it close up where it was and the ones at its new place move down one.
+ * @param reg - The registry
+ * @param deviceArg - "id N" or the bare id of the device
+ * @param containerArg - "id N" or the bare id of the track or chain it goes to
+ * @param index - Where in the container; undefined for the end
+ */
+function moveDevice(
+  reg: MockRegistryAccess,
+  deviceArg: unknown,
+  containerArg: unknown,
+  index: number | undefined,
+): void {
+  const device = reg.lookup(pathOfId(reg, deviceArg));
+  const from = DEVICE_PATH.exec(device?.path ?? "");
+  const container = pathOfId(reg, containerArg);
+  const owner = reg.lookup(container);
+
+  if (device == null || from == null || owner == null) {
+    return;
+  }
+
+  const [, fromParent = "", fromDigits = ""] = from;
+  const fromPath = device.path;
+  const moving = reg
+    .all()
+    .filter(
+      (mock) => mock.path === fromPath || mock.path.startsWith(`${fromPath} `),
+    );
+  // Held apart while the places it leaves and takes are made to fit.
+  const held = (mock: RegisteredMockObject): string => `moving ${mock.path}`;
+
+  reg.relocate(moving.map((mock) => [mock, held(mock)]));
+  shiftSiblings(reg, fromParent, "devices", Number(fromDigits) + 1, -1);
+  editChildList(reg, fromParent, "devices", Number(fromDigits), "remove");
+
+  const at = Math.min(
+    index ?? Infinity,
+    collectionSize(reg, container, "devices"),
+  );
+
+  shiftSiblings(reg, container, "devices", at, 1);
+  owner.properties.devices ??= [];
+  editChildList(reg, container, "devices", at, "insert", device.id);
+  const heldPrefix = `moving ${fromPath}`.length;
+
+  reg.relocate(
+    moving.map((mock) => {
+      const inside = mock.path.slice(heldPrefix);
+
+      return [mock, `${container} devices ${at}${inside}`];
+    }),
+  );
 }
 
 /**

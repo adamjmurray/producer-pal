@@ -139,36 +139,32 @@ describe("duplicate track to take lane", () => {
     expect(again).not.toHaveProperty("created");
   });
 
-  it("warns for the params a lane copy can't use", async () => {
+  // A lane takes clips and nothing else, so the params that shape a new track
+  // have nothing to act on.
+  it.each([
+    [{ withoutClips: true }, "withoutClips"],
+    [{ withoutDevices: true }, "withoutDevices"],
+    [{ routeToSource: true }, "routeToSource"],
+    [{ count: 2 }, "count"],
+  ])("refuses %j, which a lane copy can't use", async (extra, param) => {
     registerMainLaneSource([0]);
-    registerTakeLaneTrack({ trackIndex: 1 });
 
-    await copyToLanes({
-      toPath: "t1/l0",
-      count: 2,
-      withoutClips: true,
-      withoutDevices: true,
-    });
+    const destination = registerTakeLaneTrack({ trackIndex: 1 });
 
-    expect(capturedWarnings().join("\n")).toContain(
-      "count 2 ignored: a track's clips go once to each lane toPath names",
+    await expect(copyToLanes({ toPath: "t1/l0", ...extra })).rejects.toThrow(
+      `${param} is only for destination "new track"; this call has destination "lane"`,
     );
-    expect(capturedWarnings().join("\n")).toContain(
-      `withoutClips/withoutDevices ignored: ${CLIPS_ONLY}`,
-    );
+    expect(destination.call).not.toHaveBeenCalled();
   });
 
-  it("warns that routeToSource has nothing to route", async () => {
+  it("refuses count beside a list of lanes with the one wording the create tools use", async () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    await copyToLanes({
-      toPath: "t1/l0",
-      routeToSource: true,
-    });
-
-    expect(capturedWarnings().join("\n")).toContain(
-      `routeToSource ignored: ${CLIPS_ONLY}`,
+    await expect(
+      copyToLanes({ toPath: "t1/l0,t1/l1", count: 2 }),
+    ).rejects.toThrow(
+      'count repeats one path, but toPath names 2. Drop count and let toPath name each take lane (e.g. toPath: "t2/l0,t2/l1").',
     );
   });
 

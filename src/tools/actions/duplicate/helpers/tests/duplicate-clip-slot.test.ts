@@ -10,8 +10,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
-import { copyLabels } from "../sources/copy-labels.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { duplicateClipSlot } from "../clip/duplicate-clip-slot.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
@@ -299,7 +298,7 @@ describe("duplicateClipSlot", () => {
   });
 });
 
-describe("duplicateClipWithPositions to clip slots", () => {
+describe("duplicate to clip slots", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -317,25 +316,11 @@ describe("duplicateClipWithPositions to clip slots", () => {
       properties: { has_clip: 0 },
     });
 
-    const result = await duplicateClipWithPositions(
-      {
-        destination: "session",
-        slots: [
-          { trackIndex: 1, sceneIndex: 0 },
-          { trackIndex: 2, sceneIndex: 0 },
-        ],
-        arrangementTargets: [],
-        arrangementPositions: [],
-        arrangementRefusals: [],
-      },
-      LiveAPI.from(SOURCE_CLIP_ID),
-      SOURCE_CLIP_ID,
-      copyLabels({}, 1),
-      undefined,
-      undefined,
-      undefined,
-      {},
-    );
+    const result = await duplicate({
+      type: "clip",
+      id: SOURCE_CLIP_ID,
+      toPath: "t1/s0,t2/s0",
+    });
 
     expect(result).toStrictEqual([
       { id: COPY_ID, path: "t1/s0" },

@@ -15,7 +15,6 @@ import {
   namedPathParam,
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   countListEntries,
   countPathEntries,
@@ -84,29 +83,6 @@ export function targetParamLabel(args: TargetParams): string {
   }
 
   return "id and path";
-}
-
-/**
- * The ids a call names, ids first, keeping one slot per entry so a caller
- * pairing them against another list keeps its positions.
- * @param args - The call's id/ids and path/paths params
- * @param idPerPath - Resolves the path list for this kind of object
- * @returns One id per target, null where a path named nothing
- */
-export function targetIds(
-  args: TargetParams,
-  idPerPath: IdPerPath,
-): Array<string | null> {
-  const named = namedIdParam(args.id, args.ids, "ids");
-  const paths = namedPathParam(args.path, args.paths);
-
-  // An id that parses to nothing gets its own word even when path carries the
-  // call: the combined list is still non-empty, so nothing else would notice
-  // that the ids the caller asked for dropped out.
-  return [
-    ...targetEntries(named, "id"),
-    ...(paths == null ? [] : idPerPath(paths)),
-  ];
 }
 
 /** One param naming a target, by the name the caller would have written. */

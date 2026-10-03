@@ -6,16 +6,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { copyLabels } from "../sources/copy-labels.ts";
-import {
-  calculateSceneLength,
-  duplicateSceneToArrangement,
-} from "../sources/duplicate-scene.ts";
-import { duplicateSceneToArrangementAtPositions } from "../sources/scene-arrangement-positions.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import { duplicateSceneToArrangement } from "../sources/duplicate-scene.ts";
+import { readScene } from "../sources/scene-clips.ts";
 
 vi.mock(import("../sources/duplicate-scene.ts"), () => ({
-  calculateSceneLength: vi.fn(() => 16),
+  duplicateScene: vi.fn(),
   duplicateSceneToArrangement: vi.fn(async () => ({ clips: [] })),
+}));
+
+vi.mock(import("../sources/scene-clips.ts"), () => ({
+  calculateSceneLength: vi.fn(),
+  forEachClipInScene: vi.fn(),
+  readScene: vi.fn(() => ({ sceneIndex: 0, clips: [], length: 16 })),
+  readSceneClips: vi.fn(),
+  sceneIndexOf: vi.fn(),
 }));
 
 /**
@@ -28,26 +33,20 @@ async function copyStarts(
   count: number,
   arrangementLength?: string,
 ): Promise<number[]> {
-  const labels = copyLabels({ arrangementLength }, 1, {
-    numerator: 4,
-    denominator: 4,
-  });
-
-  await duplicateSceneToArrangementAtPositions(
-    LiveAPI.from("scene1"),
-    "scene1",
+  await duplicate({
+    type: "scene",
+    id: "scene1",
+    toPath: "[1|1]",
     count,
-    labels,
-    { arrangementStart: "1|1" },
-    {},
-  );
+    arrangementLength,
+  });
 
   return vi
     .mocked(duplicateSceneToArrangement)
     .mock.calls.map((call) => call[1]);
 }
 
-describe("duplicateSceneToArrangementAtPositions - end to end", () => {
+describe("a scene copied to the arrangement - end to end", () => {
   beforeEach(() => {
     registerMockObject("live_set", {
       path: livePath.liveSet,
@@ -58,12 +57,13 @@ describe("duplicateSceneToArrangementAtPositions - end to end", () => {
 
   it("steps by the scene's length when no arrangementLength is given", async () => {
     expect(await copyStarts(3)).toStrictEqual([0, 16, 32]);
-    expect(calculateSceneLength).toHaveBeenCalledOnce();
+    expect(readScene).toHaveBeenCalledOnce();
   });
 
   it("steps by one arrangementLength that covers every copy", async () => {
     expect(await copyStarts(2, "8bar")).toStrictEqual([0, 32]);
-    expect(calculateSceneLength).not.toHaveBeenCalled();
+    // What the copies cover is read from the same pass.
+    expect(readScene).toHaveBeenCalledOnce();
   });
 
   it("steps by each copy's own length from a list", async () => {
@@ -76,14 +76,11 @@ describe("duplicateSceneToArrangementAtPositions - end to end", () => {
       .mockRejectedValueOnce(new Error("no room"))
       .mockResolvedValueOnce({ clips: [] });
 
-    const result = await duplicateSceneToArrangementAtPositions(
-      LiveAPI.from("scene1"),
-      "scene1",
-      1,
-      copyLabels({}, 1),
-      { arrangementStart: "1|1,5|1,9|1" },
-      {},
-    );
+    const result = await duplicate({
+      type: "scene",
+      id: "scene1",
+      toPath: "[1|1],[5|1],[9|1]",
+    });
 
     expect(result).toStrictEqual([
       { clips: [] },

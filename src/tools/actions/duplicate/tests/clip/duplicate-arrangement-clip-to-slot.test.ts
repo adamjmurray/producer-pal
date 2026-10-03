@@ -32,6 +32,10 @@ interface SlotOptions {
   /** Live's create call lands no clip. */
   createFails?: boolean;
   newClipId?: string;
+  /** What the new clip reads back for its color. */
+  newClipColor?: number;
+  /** The new clip can't be read once it exists. */
+  newClipUnreadable?: boolean;
 }
 
 /**
@@ -82,12 +86,28 @@ function registerSlot(
     isMidiTrack = 1,
     createFails = false,
     newClipId = NEW_ID,
+    newClipColor,
+    newClipUnreadable = false,
   } = opts;
   const slotPath = livePath.track(trackIndex).clipSlot(sceneIndex);
 
   const create = (): null => {
     if (!createFails) {
-      registerMockObject(newClipId, { path: slotPath.clip(), type: "Clip" });
+      const clip = registerMockObject(newClipId, {
+        path: slotPath.clip(),
+        type: "Clip",
+      });
+
+      // Reads that ignore what was written, as Live's palette snap does.
+      if (newClipColor != null || newClipUnreadable) {
+        clip.get.mockImplementation((prop: string) => {
+          if (newClipUnreadable && prop === "is_arrangement_clip") {
+            throw new Error("Live lost the clip");
+          }
+
+          return [prop === "color" && newClipColor != null ? newClipColor : 0];
+        });
+      }
     }
 
     return null;
@@ -112,10 +132,11 @@ function registerSlot(
 
 /**
  * A source and a one-scene Set whose create_scene brings the t1/s1 slot.
- * @param opts - Test options
- * @param opts.createFails - Whether the new slot refuses the copy
+ * @param opts - What the new slot does with the copy
  */
-function registerSceneCreatingSlot(opts: { createFails?: boolean } = {}): void {
+function registerSceneCreatingSlot(
+  opts: Pick<SlotOptions, "createFails" | "newClipUnreadable"> = {},
+): void {
   registerSource();
   registerSlot({ trackIndex: 1, sceneIndex: 0 });
   registerMockObject("live_set", {
@@ -314,5 +335,40 @@ describe("duplicate - arrangement clip to a clip slot", () => {
         detail: "re-created from the arrangement clip",
       },
     ]);
+  });
+
+  it("says which palette color Live snapped the copy's color to", async () => {
+    registerSource();
+    registerSlot({ newClipColor: 16725558 });
+
+    expect(
+      await duplicate({
+        type: "clip",
+        id: SOURCE_ID,
+        toPath: "t1/s0",
+        color: "#FF0000",
+      }),
+    ).toStrictEqual({
+      id: NEW_ID,
+      path: "t1/s0",
+      color: "#FF3636",
+      detail:
+        "re-created from the arrangement clip; color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+  });
+
+  it("names the scenes it made when the copy lands but can't be read", async () => {
+    registerSceneCreatingSlot({ newClipUnreadable: true });
+
+    expect(
+      await duplicate({ type: "clip", id: SOURCE_ID, toPath: "t1/s1" }),
+    ).toStrictEqual({
+      id: NEW_ID,
+      path: "t1/s1",
+      created: "s1",
+      detail: expect.stringMatching(
+        /the copy landed, but .*Live lost the clip/,
+      ),
+    });
   });
 });

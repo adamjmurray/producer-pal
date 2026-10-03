@@ -11,14 +11,16 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../../duplicate-mocks-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  lookupMockObject,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { markOverwrittenCopies } from "#src/tools/actions/duplicate/helpers/clip/overwrites/overwritten-copies.ts";
+import { reportOverwrittenCopies } from "#src/tools/actions/duplicate/helpers/clip/overwrites/overwritten-copies.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
+  noteCopyEffects,
 } from "#src/tools/actions/duplicate/helpers/minimal-clip-info.ts";
 import {
   registerLiveSet,
@@ -28,12 +30,11 @@ import {
 /** Every copy's length, in beats. */
 const COPY_BEATS = 16;
 
-const DELETED = "a later copy in this call landed on it";
-const TRIMMED = "trimmed: a later copy in this call landed on part of it";
+const OVERWRITTEN = "overwritten later in this call";
 const PROMOTED = "promoted to the main lane by re-creating it";
 
 describe("a copy a later copy in the call landed on", () => {
-  it("is deleted when the later copy covers all of it", async () => {
+  it("is left unwritten when the later copy covers all of it", async () => {
     registerSource();
     registerTrimmingTrack();
 
@@ -45,8 +46,8 @@ describe("a copy a later copy in the call landed on", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t1[5|1]", deleted: true, detail: DELETED },
-      { id: "copy-1", path: "t1[5|1]" },
+      { path: "t1[5|1]", detail: `${OVERWRITTEN} by t1[5|1]` },
+      { id: "copy-0", path: "t1[5|1]" },
     ]);
   });
 
@@ -62,7 +63,11 @@ describe("a copy a later copy in the call landed on", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: "rest-of-copy-0", path: "t1[7|1]", detail: TRIMMED },
+      {
+        id: "rest-of-copy-0",
+        path: "t1[7|1]",
+        detail: "shortened by t1[3|1] later in this call",
+      },
       { id: "copy-1", path: "t1[3|1]" },
     ]);
   });
@@ -81,9 +86,13 @@ describe("a copy a later copy in the call landed on", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t1[5|1]", deleted: true, detail: DELETED },
-      { id: "rest-of-copy-1", path: "t1[8|1]", detail: TRIMMED },
-      { id: "copy-2", path: "t1[4|1]" },
+      { path: "t1[5|1]", detail: `${OVERWRITTEN} by t1[5|1]` },
+      {
+        id: "rest-of-copy-0",
+        path: "t1[8|1]",
+        detail: "shortened by t1[4|1] later in this call",
+      },
+      { id: "copy-1", path: "t1[4|1]" },
     ]);
   });
 
@@ -103,15 +112,14 @@ describe("a copy a later copy in the call landed on", () => {
       {
         id: "rest-of-copy-0",
         path: "t1[7|1]",
-        detail: `${PROMOTED}; ${TRIMMED}`,
+        detail: `${PROMOTED}; shortened by t1[3|1] later in this call`,
       },
       { id: "copy-1", path: "t1[3|1]" },
     ]);
   });
 
-  // Its promote detail described a clip that is gone, so only the deletion
-  // is said.
-  it("drops a deleted copy's earlier detail", async () => {
+  // It is never written, so its promote detail is never said.
+  it("leaves an unwritten promoted copy with only why", async () => {
     registerPromoteSources();
     registerTrimmingTrack();
 
@@ -122,7 +130,7 @@ describe("a copy a later copy in the call landed on", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t1[5|1]", deleted: true, detail: DELETED },
+      { path: "t1[5|1]", detail: `${OVERWRITTEN} by t1[5|1]` },
       { id: "copy-1", path: "t1[5|1]" },
     ]);
   });
@@ -141,13 +149,13 @@ describe("a copy a later copy in the call landed on", () => {
     });
 
     expect(result).toStrictEqual([
-      { path: "t1[5|1]", deleted: true, detail: DELETED },
+      { path: "t1[5|1]", detail: `${OVERWRITTEN} by t1[5|1]` },
       {
-        id: "rest-of-copy-1",
+        id: "rest-of-copy-0",
         path: "t1[8|1]",
-        detail: `${PROMOTED}; ${TRIMMED}`,
+        detail: `${PROMOTED}; shortened by t1[4|1] later in this call`,
       },
-      { id: "copy-2", path: "t1[4|1]" },
+      { id: "copy-1", path: "t1[4|1]" },
     ]);
   });
 });
@@ -178,11 +186,15 @@ describe("copies that landed in a different order than the result lists", () => 
     // X was named first, Y second: the result lists them in that order.
     const result = [x, y, z];
 
-    markOverwrittenCopies(result);
+    reportOverwrittenCopies(result, new Set());
 
     expect(result).toStrictEqual([
-      { id: "x-rest", path: "t1[3|1]", detail: TRIMMED },
-      { path: "t1[3|1]", deleted: true, detail: DELETED },
+      {
+        id: "x-rest",
+        path: "t1[3|1]",
+        detail: "shortened by t1[2|1] later in this call",
+      },
+      { path: "t1[3|1]", detail: `${OVERWRITTEN} by t1[2|3]` },
       { id: "z", path: "t1[2|1]" },
     ]);
   });
@@ -239,7 +251,7 @@ describe("a copy whose rest a later copy cut again", () => {
 
     const result = [x, y, z];
 
-    markOverwrittenCopies(result);
+    reportOverwrittenCopies(result, new Set());
 
     return result[0];
   }
@@ -254,8 +266,21 @@ describe("a copy whose rest a later copy cut again", () => {
     expect(first).toStrictEqual({
       id: "x-rest",
       path: "t1[3|1]",
-      detail: TRIMMED,
+      detail: "shortened by t1[1|1] later in this call",
     });
+  });
+
+  it("leaves a rest alone when its entry already says it was cut", () => {
+    const { x, y, track } = landFrontTrimmedCopy();
+
+    landedCopy("x-rest", 2, 8, 32);
+    track.properties.arrangement_clips = children("y", "x-rest");
+
+    const result = [x, y];
+
+    reportOverwrittenCopies(result, new Set([0]));
+
+    expect(result[0]).toStrictEqual({ id: "x-rest", path: "t1[3|1]" });
   });
 
   // A later copy whose span couldn't be read may have cut the rest, so what
@@ -269,8 +294,7 @@ describe("a copy whose rest a later copy cut again", () => {
 
     expect(first).toStrictEqual({
       path: "t1[1|1]",
-      deleted: true,
-      detail: DELETED,
+      detail: `${OVERWRITTEN} by t1[1|1]`,
     });
   });
 
@@ -287,7 +311,74 @@ describe("a copy whose rest a later copy cut again", () => {
     expect(first).toStrictEqual({
       id: "x-back",
       path: "t1[6|1]",
-      detail: TRIMMED,
+      detail: "shortened by t1[1|1] later in this call",
+    });
+  });
+});
+
+// What Live clears that the call didn't predict is reported after the fact.
+describe("a copy cleared or cut short without the call predicting it", () => {
+  /**
+   * Land X over 0-32 and Y over yStart-yStart+8, then cut X back to end at 16,
+   * as Live does.
+   * @param yStart - Where Y starts, in beats
+   * @returns The call's entries
+   */
+  function landCutBackCopy(yStart: number): MinimalClipInfo[] {
+    registerLiveSet();
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { arrangement_clips: children("x", "y") },
+    });
+
+    const x = landedCopy("x", 0, 0, 32);
+    const y = landedCopy("y", 1, yStart, yStart + 8);
+
+    (lookupMockObject("x") as RegisteredMockObject).properties.end_time = 16;
+
+    const result = [x, y];
+
+    reportOverwrittenCopies(result, new Set());
+
+    return result;
+  }
+
+  it("says which copy cut the back off one that is still there", () => {
+    expect(landCutBackCopy(16)[0]).toStrictEqual({
+      id: "x",
+      path: "t1[1|1]",
+      detail: "shortened by t1[5|1] later in this call",
+    });
+  });
+
+  it("says so without a culprit when no copy of the call did it", () => {
+    expect(landCutBackCopy(40)[0]).toStrictEqual({
+      id: "x",
+      path: "t1[1|1]",
+      detail: "shortened later in this call",
+    });
+  });
+
+  it("keeps what a cleared copy did to the clips it landed on", () => {
+    registerLiveSet();
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { arrangement_clips: children("y") },
+    });
+
+    const x = landedCopy("x", 0, 0, 32);
+    const y = landedCopy("y", 1, 0, 32);
+
+    registerMockObject("x", { path: "" });
+    noteCopyEffects(x, "overwrote 1 clip");
+
+    const result = [x, y];
+
+    reportOverwrittenCopies(result, new Set());
+
+    expect(result[0]).toStrictEqual({
+      path: "t1[1|1]",
+      detail: `${OVERWRITTEN} by t1[1|1]; overwrote 1 clip`,
     });
   });
 });

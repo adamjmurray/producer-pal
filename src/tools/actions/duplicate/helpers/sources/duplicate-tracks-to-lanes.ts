@@ -17,7 +17,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import {
   assertTrackTakesLanes,
   takeLaneLabel,
@@ -25,68 +25,55 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
+  arrangementPositionPath,
   pathEntries,
   takeLanePathEntry,
   type TakeLanePath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   formatObjectPath,
   parseObjectPath,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
-import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
-import { skippedCopy } from "../minimal-clip-info.ts";
-import { type CopyMeter } from "../clip/copy-entries.ts";
-import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
-import {
-  claimLabels,
-  labelColor,
-  labelName,
-  type CopyLabels,
-} from "./copy-labels.ts";
-import {
-  LANE_COPY_NOTE,
-  runLaneCopy,
-  type LanePlace,
-  type LaneTarget,
-} from "./copy-clip-to-lane.ts";
+import { type Cover } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { type CopyDraft } from "../call/duplicate-call-types.ts";
+import { type LanePlace, type LaneTarget } from "./copy-clip-to-lane.ts";
 import { laneSource, type LaneSource } from "./lane-sources.ts";
 import {
   refuseLaneOverwrites,
   type LaneCopySource,
 } from "./source-overwrites.ts";
 import { type SourceShare } from "./source-plan.ts";
-import { type DuplicateParams } from "./duplicate-one-source.ts";
-
-/** Everything a take-lane copy of a track reads off the call. */
-export interface TracksToLanesArgs {
-  sources: SourceShare[];
-  labels: CopyLabels;
-  count: number;
-  params: DuplicateParams;
-  takeLaneName: string | undefined;
-  /** The call's lanes, shared with everything else that writes to them. */
-  lanes?: LaneView;
-}
 
 /**
- * Copies each source's arrangement clips onto the take lanes its toPath names,
- * one entry per destination.
- * @param args - The sources, their destinations, and the call's labels
- * @returns One entry per destination, in the order toPath named them
+ * One draft per destination of each lane-copy source: the clips of its main
+ * lane or take lane, re-created on each lane toPath names.
+ * @param sources - The sources, in call order
+ * @returns The drafts, a source's destinations together
  */
-export function duplicateTracksToLanes(args: TracksToLanesArgs): object[] {
-  warnUnusedTrackParams(args.count, args.params);
+export function laneCopyDrafts(sources: SourceShare[]): CopyDraft[] {
+  const copies = planLaneCopies(sources);
 
-  const meter = songMeter();
-  // Reads each lane once, so a copy can say what it overwrote.
-  const ledger = copyLedger(args.lanes);
+  return copies.map(({ entry, target, refusal }): CopyDraft => {
+    const named: NamedTarget = { param: "path", value: entry };
 
-  return planLaneCopies(args.sources, args.labels).map((copy) =>
-    copy.target == null
-      ? skippedCopy(copy.entry, copy.refusal)
-      : runLaneCopy(copy.entry, copy.target, args.takeLaneName, meter, ledger),
-  );
+    if (target == null) {
+      return { named, skip: refusal };
+    }
+
+    return {
+      named,
+      make: (label) => ({
+        body: {
+          kind: "lane",
+          entry,
+          target: { ...target, name: label.name, color: label.color },
+        },
+        covers: () => laneCovers(target),
+      }),
+    };
+  });
 }
 
 /**
@@ -119,9 +106,12 @@ export function namesTakeLaneDestination(
 
 // --- Helpers below main exports ---
 
+/** Where one destination's clips go, before the call's labels are paired. */
+type PlannedLane = Omit<LaneTarget, "name" | "color">;
+
 /** One destination of one source: where its clips go, or why they can't. */
 type LaneCopy =
-  | { entry: string; target: LaneTarget; refusal?: undefined }
+  | { entry: string; target: PlannedLane; refusal?: undefined }
   | { entry: string; target?: undefined; refusal: string };
 
 /**
@@ -170,64 +160,35 @@ function parsedPath(entry: string): ObjectPath | null {
 }
 
 /**
- * Warns for the params a lane copy can't use. A lane takes clips at the
- * positions they already have, so the count and the new-track params say
- * nothing about it.
- * @param count - Requested number of copies
- * @param params - The track params the call sent
- */
-function warnUnusedTrackParams(count: number, params: DuplicateParams): void {
-  if (count > 1) {
-    console.warn(
-      `count ${count} ignored: a track's clips go once to each lane toPath names`,
-    );
-  }
-
-  // routeToSource turns the other two on itself, so it speaks for all three.
-  const unusable = params.routeToSource
-    ? ["routeToSource"]
-    : [
-        ...(params.withoutClips === true ? ["withoutClips"] : []),
-        ...(params.withoutDevices === true ? ["withoutDevices"] : []),
-      ];
-
-  if (unusable.length > 0) {
-    console.warn(`${unusable.join("/")} ignored: ${LANE_COPY_NOTE}`);
-  }
-}
-
-/**
  * Plans every destination in the call before any lane exists, so a refusal
- * costs nothing: the labels are claimed, the tracks are checked, a copy over
- * a later source is refused, and each `l+` lands after the lanes the entries
- * before it named.
+ * costs nothing: the tracks are checked, a copy over a later source is refused,
+ * and each `l+` lands after the lanes the entries before it named.
  * @param sources - The sources, in call order
- * @param labels - The call's names and colors
  * @returns One plan per destination, in the order the call named them
  */
-function planLaneCopies(
-  sources: SourceShare[],
-  labels: CopyLabels,
-): LaneCopy[] {
+function planLaneCopies(sources: SourceShare[]): LaneCopy[] {
   const copies: LaneCopy[] = [];
   /** Lanes each destination track will have, as the plan grows. */
   const laneCounts = new Map<number, number>();
   const planned: LaneCopySource[] = [];
 
   for (const share of sources) {
-    const source = laneSource(share.id);
     const entries = pathEntries(share.toPath, "toPath");
+
+    // Nothing can be copied from it: each destination keeps its slot.
+    if (share.skip != null) {
+      copies.push(
+        ...entries.map((entry) => refused(entry, share.skip as string)),
+      );
+
+      continue;
+    }
+
+    const source = laneSource(share.id);
     const first = copies.length;
 
-    claimLabels(labels, entries.length);
-
-    for (const [index, entry] of entries.entries()) {
-      copies.push(
-        planOneCopy(entry, source, laneCounts, {
-          name: labelName(labels, index),
-          color: labelColor(labels, index),
-        }),
-      );
+    for (const entry of entries) {
+      copies.push(planOneCopy(entry, source, laneCounts));
     }
 
     planned.push({ ...share, ...source, copies: copies.slice(first) });
@@ -244,16 +205,12 @@ function planLaneCopies(
  * @param entry - The destination as the caller wrote it
  * @param source - The source's clips and type
  * @param laneCounts - Lanes each track will have, updated as the plan grows
- * @param label - The name and color for this destination's clips
- * @param label.name - Name for them, or undefined to keep the source's
- * @param label.color - Color for them, or undefined to keep the source's
  * @returns The plan for this destination
  */
 function planOneCopy(
   entry: string,
   source: LaneSource,
   laneCounts: Map<number, number>,
-  label: { name: string | undefined; color: string | undefined },
 ): LaneCopy {
   const path = takeLanePathEntry(entry);
   const place =
@@ -263,7 +220,7 @@ function planOneCopy(
 
   return typeof place === "string"
     ? refused(entry, place)
-    : { entry, target: { ...place, sourceClips: source.clips, ...label } };
+    : { entry, target: { ...place, sourceClips: source.clips } };
 }
 
 /**
@@ -431,21 +388,6 @@ function refuseLanesPastCap(copies: LaneCopy[]): LaneCopy[] {
 }
 
 /**
- * The song meter the result spells positions in.
- * @returns The Live Set's time signature
- */
-function songMeter(): CopyMeter {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  return {
-    songTimeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    songTimeSigDenominator: liveSet.getProperty(
-      "signature_denominator",
-    ) as number,
-  };
-}
-
-/**
  * A destination that gets no copy, with the reason for its entry.
  * @param entry - The destination as the caller wrote it
  * @param refusal - Why its clips can't land there
@@ -453,4 +395,33 @@ function songMeter(): CopyMeter {
  */
 function refused(entry: string, refusal: string): LaneCopy {
   return { entry, refusal };
+}
+
+/**
+ * What a lane copy writes over: each source clip's own stretch of the lane it
+ * lands on, since every clip keeps its position.
+ * @param target - Where the clips go
+ * @returns One stretch per source clip
+ */
+function laneCovers(target: PlannedLane): Cover[] {
+  const lane = arrangementLaneOf({
+    trackIndex: target.trackIndex,
+    takeLane: target.laneIndex,
+  });
+
+  return target.sourceClips.flatMap((clip): Cover[] => {
+    const from = clip.getProperty("start_time") as number;
+    const to = clip.getProperty("end_time") as number;
+
+    return Number.isFinite(from) && Number.isFinite(to) && to > from
+      ? [
+          {
+            lane: target.label,
+            from,
+            to,
+            as: arrangementPositionPath(lane, from),
+          },
+        ]
+      : [];
+  });
 }
