@@ -7,11 +7,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type ActiveRefs,
   buildConversationSaveRecord,
+  buildLockedSettings,
   buildSaveRecord,
   deriveTitle,
   sumMessageUsage,
 } from "#webui/hooks/chat/helpers/conversations/conversation-save-record";
-import { loadConversation } from "#webui/lib/conversation-db";
+import {
+  type ConversationRecord,
+  loadConversation,
+} from "#webui/lib/conversation-db";
 
 vi.mock(import("#webui/lib/conversation-db"), () => ({
   loadConversation: vi.fn(),
@@ -191,6 +195,34 @@ describe("buildSaveRecord toolset snapshot", () => {
   });
 });
 
+describe("imported flag", () => {
+  it("keeps an imported record imported across saves", () => {
+    const existing = { id: "conv-1", imported: true } as ConversationRecord;
+
+    expect(buildSaveRecord(refs(), existing, HISTORY).imported).toBe(true);
+  });
+
+  it("keeps the flag from the active chat when no stored row exists", () => {
+    const rec = buildSaveRecord(refs({ imported: true }), undefined, HISTORY);
+
+    expect(rec.imported).toBe(true);
+  });
+
+  it("leaves local records unflagged", () => {
+    expect("imported" in buildSaveRecord(refs(), undefined, HISTORY)).toBe(
+      false,
+    );
+  });
+
+  it("reports the flag when restoring a record", () => {
+    const record = (imported?: boolean) =>
+      ({ id: "x", ...(imported && { imported }) }) as ConversationRecord;
+
+    expect(buildLockedSettings(record(true)).imported).toBe(true);
+    expect(buildLockedSettings(record()).imported).toBeUndefined();
+  });
+});
+
 /**
  * Save a fork of the "trunk" conversation.
  * @param anchorIndex - Where the fork branches from the trunk
@@ -242,6 +274,25 @@ describe("buildConversationSaveRecord fork inheritance", () => {
     const rec = await buildForkRecord(1, refs({ notation: "barbeat" }));
 
     expect(rec.notation).toBe("stark");
+  });
+
+  it("keeps a fork of an imported trunk imported", async () => {
+    vi.mocked(loadConversation).mockResolvedValue({
+      id: "trunk",
+      imported: true,
+    } as never);
+
+    const rec = await buildForkRecord(1);
+
+    expect(rec.imported).toBe(true);
+  });
+
+  it("keeps the flag from the active chat when the trunk row is gone", async () => {
+    vi.mocked(loadConversation).mockResolvedValue(null as never);
+
+    const rec = await buildForkRecord(1, refs({ imported: true }));
+
+    expect(rec.imported).toBe(true);
   });
 
   it("uses the current instruction when the trunk has no snapshot", async () => {

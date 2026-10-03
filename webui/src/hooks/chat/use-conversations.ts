@@ -37,7 +37,7 @@ import {
   type ConversationStore,
   DEFAULT_META,
   createConversationStore,
-  type ConversationLockedSettings,
+  type RestoredSettings,
 } from "#webui/lib/conversations/conversation-store";
 import { type PendingForkRef } from "#webui/hooks/chat/use-chat-types";
 import {
@@ -51,7 +51,7 @@ interface UseConversationsProps {
   getChatHistory: () => unknown[];
   restoreChatHistory: (
     chatHistory: unknown[],
-    lockedSettings?: ConversationLockedSettings,
+    lockedSettings?: RestoredSettings,
   ) => void;
   clearConversation: () => void;
   /**

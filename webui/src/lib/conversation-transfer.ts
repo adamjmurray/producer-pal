@@ -299,6 +299,9 @@ function normalizeRecord(
     ...(isEnabledToolsMap(record.enabledTools) && {
       enabledTools: record.enabledTools,
     }),
+    // Always set here, whatever the file says: the imported system prompt is
+    // untrusted, so the chat warns when it differs from the user's own.
+    imported: true,
     // Round-trip the branching pointers so exported fork families re-import as a
     // linked set. Both are optional; only carry them when present and well-typed
     // so a plain (non-forked) record keeps its shape. Dropped entirely when the

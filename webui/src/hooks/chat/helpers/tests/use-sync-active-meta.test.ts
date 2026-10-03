@@ -62,4 +62,14 @@ describe("useSyncActiveMeta", () => {
       enabledTools: { "ppal-read-clip": false },
     });
   });
+
+  it("mirrors the imported flag into the ref", () => {
+    const ref: { current: ActiveMeta | null } = { current: null };
+
+    renderHook(() =>
+      useSyncActiveMeta(ref, { ...ALL_NULL, activeImported: true }),
+    );
+
+    expect(ref.current?.imported).toBe(true);
+  });
 });

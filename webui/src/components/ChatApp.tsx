@@ -41,6 +41,7 @@ export function ChatApp(props: ChatAppProps) {
     headerInfo,
     branchNav,
     systemInstruction,
+    importedPromptDiffers,
   } = useChatModeState(props);
 
   return (
@@ -76,6 +77,7 @@ export function ChatApp(props: ChatAppProps) {
       conversationPanel={conversationPanelState}
       branchNav={branchNav}
       systemInstruction={systemInstruction}
+      importedPromptDiffers={importedPromptDiffers}
     />
   );
 }

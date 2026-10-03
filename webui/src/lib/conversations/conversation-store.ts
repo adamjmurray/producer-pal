@@ -32,8 +32,14 @@ export interface ConversationLockedSettings {
   enabledTools: Record<string, boolean> | null;
 }
 
+/** What a restored conversation hands back: its locked settings plus where it came from. */
+export interface RestoredSettings extends ConversationLockedSettings {
+  /** The record came from a file import, so its system prompt is untrusted. */
+  imported?: boolean;
+}
+
 /** Mutable metadata for the live conversation. Its id is tracked separately. */
-export interface ActiveMeta extends ConversationLockedSettings {
+export interface ActiveMeta extends RestoredSettings {
   title: string | null;
   createdAt: number | null;
   bookmarked: boolean;
@@ -351,6 +357,7 @@ export function metaFromRecord(record: ConversationRecord): ActiveMeta {
     systemInstruction: record.systemInstruction ?? null,
     notation: record.notation ?? null,
     enabledTools: record.enabledTools ?? null,
+    ...(record.imported === true && { imported: true }),
   };
 }
 

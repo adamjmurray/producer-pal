@@ -99,6 +99,10 @@ The toolbar at the top of the history panel has buttons to:
 
 A notification banner confirms the result of each operation.
 
+An imported conversation keeps the system prompt it was exported with. If that
+prompt differs from yours, the conversation shows a warning with the full
+prompt, since the model will follow it. Only import files you trust.
+
 ## Conversations
 
 ![Conversation](/img/producer-pal-chat-conversation.png)

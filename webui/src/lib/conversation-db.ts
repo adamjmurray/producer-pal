@@ -55,6 +55,10 @@ export interface ConversationRecord {
   // (no DB_VERSION bump) and reconnect on the current selection, and it rides the
   // conversation export/import.
   enabledTools?: Record<string, boolean>;
+  // Set by the importer, never trusted from the file. The imported
+  // systemInstruction is untrusted, so the UI warns when it differs from the
+  // user's own prompt. Carried through later saves and forks of the record.
+  imported?: boolean;
   // --- Conversation branching (edit/retry forks) ---
   // Set on records created by forking an earlier turn. The fork stores a pointer
   // back to the record it diverged from (its "trunk") plus the UI message index

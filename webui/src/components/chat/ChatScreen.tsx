@@ -66,6 +66,8 @@ interface ChatScreenProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  /** The conversation was imported with a system prompt unlike the user's own. */
+  importedPromptDiffers?: boolean;
 }
 
 /**
@@ -131,6 +133,7 @@ export function ChatScreen(props: ChatScreenProps) {
     conversationPanel,
     branchNav,
     systemInstruction,
+    importedPromptDiffers,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
@@ -212,6 +215,7 @@ export function ChatScreen(props: ChatScreenProps) {
             requestedModel={headerInfo.activeModel}
             branchNav={branchNav}
             systemInstruction={systemInstruction}
+            importedPromptDiffers={importedPromptDiffers}
             onOpenInstructions={onOpenInstructions}
           />
         )}
