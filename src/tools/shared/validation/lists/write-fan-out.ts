@@ -7,11 +7,6 @@
 // did, throw included — a call that can do nothing has nothing to report.
 
 import {
-  foundId,
-  type IdLookup,
-} from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import {
   attemptTarget,
   type NamedTarget,
   type TargetSkip,
@@ -61,26 +56,6 @@ export function writeFanOut<T>(
   warnBlank(blank, entries.length);
 
   return entries;
-}
-
-/**
- * The object one target names, by whichever param named it. A path resolves the
- * same way a list read does, so a miss reads the same in either tool.
- * @param target - The target, as the caller named it
- * @param noun - What the tool acts on, singular ("track")
- * @param idAtPath - Resolves one path of this kind of object
- * @returns The object
- * @throws Error when the target names none
- */
-export function targetObject(
-  target: NamedTarget,
-  noun: string,
-  idAtPath: (entry: string) => IdLookup,
-): LiveAPI {
-  const id =
-    target.param === "id" ? target.value : foundId(idAtPath(target.value));
-
-  return validateIdType(id, noun);
 }
 
 // --- Helpers below main exports ---

@@ -67,6 +67,7 @@ const TOOLS: Array<{
     },
     call: (targets) => updateScene({ ...targets, name: "A" }),
     refused: (targets) => updateScene({ ...targets, tempo: 5 }),
+    pipeline: true,
   },
   {
     tool: "update-device",

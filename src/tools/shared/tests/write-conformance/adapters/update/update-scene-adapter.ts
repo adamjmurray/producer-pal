@@ -26,14 +26,6 @@ function named(count: number): { ids: string; expected: object[] } {
 export const updateSceneAdapter: WriteToolAdapter = {
   tool: "ppal-update-scene",
   run: (args) => updateScene(args),
-  skip: {
-    unparsable:
-      "a path it can't parse becomes an ok:false entry, and the other targets are still written",
-    namedTwice:
-      "writes the scene at every mention; the earlier entry is a plain id and path, with no detail",
-    afterChange:
-      "the entry is the skip for the throw alone; it doesn't say the name had already been set",
-  },
   na: {
     newTwice: "updates existing scenes only",
     replacedLater: "no destination: nothing is created or moved",

@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { updateScene } from "../update-scene.ts";
+import { updateScene } from "../../update-scene.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 // An id whose entries all trim away was still sent, and reads exactly like an

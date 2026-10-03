@@ -14,7 +14,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { updateScene } from "../update-scene.ts";
+import { updateScene } from "../../update-scene.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateScene by path", () => {

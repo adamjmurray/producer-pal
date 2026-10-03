@@ -54,11 +54,13 @@ import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
-  targetObject,
   writeFanOut,
   type WriteResult,
 } from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type NamedTarget,
+  targetObject,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 /** Params that name a track rather than asking anything of it, plus the

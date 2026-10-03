@@ -57,11 +57,14 @@ describe("ppal-update-scene", () => {
     args: Record<string, unknown>,
     include?: string[],
   ): Promise<ReadSceneResult> {
-    await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id, ...args },
-    });
-    await sleep(100);
+    // A call that asks nothing is refused, so an empty update is only a read.
+    if (Object.keys(args).length > 0) {
+      await ctx.client!.callTool({
+        name: "ppal-update-scene",
+        arguments: { id, ...args },
+      });
+      await sleep(100);
+    }
 
     return parseToolResult<ReadSceneResult>(
       await ctx.client!.callTool({
@@ -250,6 +253,89 @@ describe("ppal-update-scene over a list with a target it can't reach", () => {
     expect(getToolErrorMessage(result)).toContain(
       'no scene at path "s999"; ppal-create-scene makes one',
     );
+  });
+});
+
+describe("ppal-update-scene over scenes named twice and calls it refuses", () => {
+  /**
+   * Call ppal-update-scene.
+   * @param args - The tool's arguments
+   * @returns The raw tool result
+   */
+  function updateScene(args: Record<string, unknown>): Promise<unknown> {
+    return ctx.client!.callTool({ name: "ppal-update-scene", arguments: args });
+  }
+
+  /**
+   * A fresh scene, so the Set's own scenes stay intact.
+   * @returns The new scene's id and path
+   */
+  async function createScene(): Promise<CreateSceneResult> {
+    const created = parseToolResult<CreateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { path: "s0", name: "NamedTwice" },
+      }),
+    );
+
+    await sleep(100);
+
+    return created;
+  }
+
+  /**
+   * Read a scene's name.
+   * @param id - The scene
+   * @returns Its name
+   */
+  async function readName(id: string): Promise<string | null> {
+    return parseToolResult<ReadSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { id },
+      }),
+    ).name;
+  }
+
+  it("writes a scene named by id and by path once, as the last mention asks", async () => {
+    const scene = await createScene();
+    const entries = parseBatchResult<UpdateSceneResult>(
+      await updateScene({
+        id: scene.id,
+        path: scene.path,
+        name: "First,Second",
+      }),
+      2,
+    );
+
+    // No `ok`: the earlier mention's work happened through the later one.
+    expect(entries).toStrictEqual([
+      {
+        id: scene.id,
+        detail: `named again as "${scene.path}" later in this call`,
+      },
+      { id: scene.id, path: scene.path },
+    ]);
+    await sleep(100);
+    expect(await readName(scene.id)).toBe("Second");
+  });
+
+  it("refuses a path it can't parse, writing nothing", async () => {
+    const scene = await createScene();
+    const result = await updateScene({
+      path: `${scene.path},not-a-path`,
+      name: "Refused,Refused",
+    });
+
+    expect(getToolErrorMessage(result)).toContain('invalid path "not-a-path"');
+    expect(await readName(scene.id)).toBe("NamedTwice");
+  });
+
+  it("refuses a call that names scenes and asks nothing of them", async () => {
+    const scene = await createScene();
+    const result = await updateScene({ id: scene.id });
+
+    expect(getToolErrorMessage(result)).toContain("nothing to update");
   });
 });
 

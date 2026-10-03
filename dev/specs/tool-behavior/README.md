@@ -96,7 +96,8 @@ How the tool answers depends on what is wrong:
 
 - **Structure, before any work runs → throw.** A hole in a list, an arg that
   names nothing, lists that can't be paired, a call naming no target, an entry
-  that can't be parsed.
+  that can't be parsed, an update call that names targets and sends no param to
+  write (every update tool uses `refuseNoWrite`, so they all word it the same).
 - **A whole-call param the tool can't read → throw**, in update tools too: a
   half `sendGainDb`/`sendReturn` pair, a tempo outside Live's range, a note name
   that parses as nothing, a `params` entry with no name or value. Warning per

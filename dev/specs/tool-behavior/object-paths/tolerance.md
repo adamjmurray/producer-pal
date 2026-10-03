@@ -50,7 +50,8 @@ Four tiers, in order of preference.
      `path` both name members of it, so the targets combine. `delete` and
      `playback` also collapse duplicates, keeping the last, because firing or
      deleting an object twice is a different Live call than doing it once. The
-     update tools don't: writing the same value twice lands the same way, and a
-     slot per entry is what keeps a paired `name` or `color` list aligned.
-     Neither does `duplicate` — a source named twice is two copies — nor the
-     reads, whose entry per target is what lines the results up with the call.
+     update tools write only the last mention of an object, and the earlier one
+     keeps its slot (`named again later in this call`), which keeps a paired
+     `name` or `color` list aligned. `duplicate` doesn't collapse — a source
+     named twice is two copies — nor the reads, whose entry per target is what
+     lines the results up with the call.

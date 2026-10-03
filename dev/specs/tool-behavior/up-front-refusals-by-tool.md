@@ -12,6 +12,13 @@ follows the code; when it disagrees with a tool, the tool wins.
   target.** They warned and returned `[]`, which reads as "there was nothing to
   do" — every other tool already threw. They had applied their own warn-and-skip
   rule to a call with no items rather than to an item.
+- **`updateScene` refuses a call that asks nothing of its targets** (an `id` or
+  `path` and no other param). Answering with the targets read as if something
+  had been written. Any other param counts, `focus` included. `refuseNoWrite`
+  builds the message, so every update tool can share it:
+  `nothing to update: id and path only name the scenes; also send a param to change`.
+- **`updateScene` refuses a `path` entry it can't parse** before anything is
+  written; an entry that parses but names no scene skips only its own target.
 - **`updateClip` refuses a `path` entry it can't parse** before anything is
   written; an entry that parses but names no clip skips only its own target. One
   slot, or one track with a single position, can't cover several clips and is

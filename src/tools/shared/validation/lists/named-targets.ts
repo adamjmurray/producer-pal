@@ -10,7 +10,12 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import {
+  foundId,
+  type IdLookup,
+} from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { type TargetParams } from "#src/tools/shared/validation/lists/target-lists.ts";
 
 /** One object a call names, and which param named it. */
@@ -70,6 +75,26 @@ export function attemptTarget<T>(
   } catch (error) {
     return skipEntry(target, errorMessage(error));
   }
+}
+
+/**
+ * The object one target names, by whichever param named it. A path resolves the
+ * same way a list read does, so a miss reads the same in either tool.
+ * @param target - The target, as the caller named it
+ * @param noun - What the tool acts on, singular ("track")
+ * @param idAtPath - Resolves one path of this kind of object
+ * @returns The object
+ * @throws Error when the target names none
+ */
+export function targetObject(
+  target: NamedTarget,
+  noun: string,
+  idAtPath: (entry: string) => IdLookup,
+): LiveAPI {
+  const id =
+    target.param === "id" ? target.value : foundId(idAtPath(target.value));
+
+  return validateIdType(id, noun);
 }
 
 /**

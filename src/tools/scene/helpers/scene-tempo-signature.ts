@@ -10,16 +10,20 @@ import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairin
  * Applies tempo property to a scene
  * @param scene - The LiveAPI scene object
  * @param tempo - Tempo in BPM (20.0-999.0). -1 disables; other valid values enable
+ * @param landed - Told "tempo" once a write of it has changed the scene
  */
 export function applyTempoProperty(
   scene: LiveAPI,
   tempo?: number | null,
+  landed?: (phrase: string) => void,
 ): void {
   if (tempo === -1) {
     scene.set("tempo_enabled", false);
+    landed?.("tempo");
   } else if (tempo != null) {
     // Range already refused by validateTempo, before any scene was touched.
     scene.set("tempo", tempo);
+    landed?.("tempo");
     scene.set("tempo_enabled", true);
   }
 }
@@ -28,17 +32,21 @@ export function applyTempoProperty(
  * Applies time signature property to a scene
  * @param scene - The LiveAPI scene object
  * @param timeSignature - Time signature. "disabled" disables, other values enable
+ * @param landed - Told "time signature" once a write of it has changed the scene
  */
 export function applyTimeSignatureProperty(
   scene: LiveAPI,
   timeSignature?: string | null,
+  landed?: (phrase: string) => void,
 ): void {
   if (timeSignature === "disabled") {
     scene.set("time_signature_enabled", false);
+    landed?.("time signature");
   } else if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
 
     scene.set("time_signature_numerator", parsed.numerator);
+    landed?.("time signature");
     scene.set("time_signature_denominator", parsed.denominator);
     scene.set("time_signature_enabled", true);
   }

@@ -10,9 +10,9 @@ import {
   type RegisteredMockObject,
   mockNonExistentObjects,
 } from "#src/test/mocks/mock-registry.ts";
-import { updateScene } from "../update-scene.ts";
-import { registerThreeScenes } from "./scene-fixtures.ts";
-import { expectSceneSetToRed34 } from "./scene-assertions.ts";
+import { updateScene } from "../../update-scene.ts";
+import { registerThreeScenes } from "../scene-fixtures.ts";
+import { expectSceneSetToRed34 } from "../scene-assertions.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -159,7 +159,7 @@ describe("updateScene", () => {
   it("throws when the one scene ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    expect(() => updateScene({ id: "nonexistent" })).toThrow(
+    expect(() => updateScene({ id: "nonexistent", name: "Test" })).toThrow(
       'id "nonexistent" does not exist',
     );
   });

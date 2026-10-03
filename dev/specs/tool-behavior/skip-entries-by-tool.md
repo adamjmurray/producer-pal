@@ -56,6 +56,17 @@ with a tool, the tool wins.
   and on a track that isn't there, the destination is still refused.
   update-scene's `path` names a target rather than a destination, so it stays a
   refusal, with create-scene named in its `detail`.
+- **update-scene answers per target named.** Its targets resolve up front. A
+  path that can't be parsed refuses the call; one that parses but names no scene
+  holds its slot as a skip (`ppal-create-scene` named in the detail for a path
+  past the last scene). The `name`, `color` and `timeSignature` lists pair by
+  the target's place, so a skip doesn't slide them. A scene named twice (id and
+  path, or an id repeated) is written as its last mention asks: the earlier
+  keeps `{ id | path, detail }` with no `ok`, and becomes `ok: false` when the
+  last one lands nothing. A throw after part of a scene landed keeps its normal
+  entry plus `<error>; already changed: name, color, tempo, time signature`;
+  later scenes still run, and the deadline skips the ones it never reached.
+  `focus` selects the last scene written.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.
