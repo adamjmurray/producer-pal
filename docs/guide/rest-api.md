@@ -500,6 +500,5 @@ When the **Direct Live API** toggle is off on the device Setup tab, requests to
   disabled on the device apply to both interfaces.
 - The REST API has no authentication (same as the MCP endpoint). It is designed
   for use on localhost or trusted networks only.
-- Browser pages can only call the REST API from localhost origins by default
-  (`ENABLE_REMOTE_CORS` widens this to any origin). curl and other non-browser
-  clients ignore CORS entirely and are unaffected either way.
+- Browser pages can only call the REST API from localhost origins. curl and
+  other non-browser clients ignore CORS entirely and are unaffected.
