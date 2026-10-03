@@ -101,7 +101,7 @@ length. To create an audio clip with a specific arrangement length:
 2. Set content markers
 3. `duplicate_clip_to_arrangement` at the target position (inherits session
    length)
-4. Clean up the session clip
+4. Clean up with `removeSessionClip` (the clip, and any scene made for it)
 
 MIDI clips don't have this problem — `create_midi_clip` accepts position and
 length.
@@ -213,7 +213,10 @@ When you need an arrangement audio clip with a specific length:
 2. Set content markers (`loop_start`, `loop_end`, `start_marker`, `end_marker`)
 3. `duplicate_clip_to_arrangement` at target position — inherits session clip's
    arrangement length
-4. Clean up session clip via `slot.call("delete_clip")`
+4. Clean up with `removeSessionClip`, in a `finally`: it removes the session
+   clip and the scene `createAudioClipInSession` made when the last one held
+   clips. It never throws; what it couldn't remove goes on the clip's entry
+   (`reportScratch`), or is a warning for the song extension, which has none.
 
 Files: `arrangement-tiling-clips.ts` (`createAudioClipInSession`),
 `unlooped-lengthening.ts` (`lengthenWarpedUnloopedAudio`)

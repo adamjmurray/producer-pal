@@ -29,7 +29,7 @@ import {
   NO_MORE_CONTENT,
   testLengthenClipTo4Bars,
 } from "../helpers/arrangement-lengthening-test-helpers.ts";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import { readSceneCount, setupMcpTestContext } from "../../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,
@@ -51,10 +51,14 @@ async function expectLengthenedTo4Bars(
   assert: (result: LengthenResult, expected: ExpectedClip[]) => void,
   sleepMs?: number,
 ): Promise<void> {
+  const scenesBefore = await readSceneCount(ctx.client!);
   const result = await testLengthenClipTo4Bars(ctx.client!, track, { sleepMs });
 
   expect(result.trackType).toBe(trackType);
   assert(result, expectedLengtheningClips[track]!);
+  // Audio work builds a scratch clip in a session slot, which may need a scene
+  // of its own; none may be left behind.
+  expect(await readSceneCount(ctx.client!)).toBe(scenesBefore);
 }
 
 /** A clip that couldn't grow at all fails the call, and says why. */
