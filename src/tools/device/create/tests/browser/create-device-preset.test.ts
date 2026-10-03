@@ -14,6 +14,8 @@ import { PRESET_NEEDS_REMOTE_SCRIPT } from "#src/tools/device/create/helpers/bro
 import {
   type BrowserItem,
   type BrowserItemResolution,
+  REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
+  REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { createBrowserDevice } from "../../helpers/browser-devices.ts";
@@ -60,7 +62,7 @@ function answerLookups(
 }
 
 /**
- * The resolvePreset calls the tool made, by their args.
+ * The resolvePreset calls the tool made, by their args, less the expiry.
  * @returns Each call's args
  */
 function presetLookups(): unknown[] {
@@ -69,7 +71,11 @@ function presetLookups(): unknown[] {
     .mock.calls.filter(
       ([route]) => route === REMOTE_SCRIPT_ROUTES.resolvePreset,
     )
-    .map(([, args]) => args);
+    .map(([, args]) =>
+      Object.fromEntries(
+        Object.entries(args ?? {}).filter(([key]) => key !== "expiresInMs"),
+      ),
+    );
 }
 
 describe("createDevice — from a preset", () => {
@@ -138,6 +144,19 @@ describe("createDevice — from a preset", () => {
         },
       },
     ]);
+  });
+
+  it("gives the lookup an expiry a bit under its wait", async () => {
+    await createDevice({ preset: "Abdominal Bass", path: "t0/d+" });
+
+    expect(requestNode).toHaveBeenCalledWith(
+      REMOTE_SCRIPT_ROUTES.resolvePreset,
+      expect.objectContaining({
+        expiresInMs:
+          REMOTE_SCRIPT_REQUEST_TIMEOUT_MS - REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
+      }),
+      REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
+    );
   });
 
   it("searches every preset with no device", async () => {

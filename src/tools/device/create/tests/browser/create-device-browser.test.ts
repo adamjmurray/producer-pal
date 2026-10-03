@@ -136,7 +136,11 @@ describe("createDevice — a plug-in or Max for Live device", () => {
 
     expect(requestNode).toHaveBeenCalledWith(
       REMOTE_SCRIPT_ROUTES.resolve,
-      { name: "Pro-Q 4" },
+      {
+        name: "Pro-Q 4",
+        expiresInMs:
+          REMOTE_SCRIPT_REQUEST_TIMEOUT_MS - REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
+      },
       REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
     );
     expect(requestNode).toHaveBeenCalledWith(
@@ -285,6 +289,25 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     expect(liveSet.call).not.toHaveBeenCalled();
   });
 
+  it("says the lookup ran out of time, and what to do", async () => {
+    answerRemoteScript({
+      resolution: {
+        available: true,
+        error: "Live's browser did not answer within 8.5s",
+        outOfTime: true,
+      },
+    });
+
+    await expect(
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
+    ).rejects.toThrow(
+      `could not look up "Pro-Q 4" in Live's browser: the request ran out of ` +
+        `time searching Live's browser; nothing was created, re-run it. If it ` +
+        `keeps happening, ask the user to raise the Timeout setting`,
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
   it("says when the lookup got no answer", async () => {
     vi.mocked(requestNode).mockResolvedValue({
       success: false,
@@ -411,6 +434,47 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       expectCleanedUp();
     });
 
+    it("saying Live may have loaded it when the load timed out mid-run", async () => {
+      answerRemoteScript({
+        load: {
+          success: true,
+          result: {
+            available: true,
+            error: "Live started the request but didn't finish it within 30.0s",
+            unfinished: true,
+          },
+        },
+        arrives: false,
+      });
+
+      await expect(
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
+      ).rejects.toThrow(
+        /^could not load "Pro-Q 4": Live started the request but didn't finish it within 30\.0s; Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it$/,
+      );
+      expectCleanedUp();
+    });
+
+    it("keeping a skipped load's own message, which says nothing changed", async () => {
+      answerRemoteScript({
+        load: {
+          success: true,
+          result: {
+            available: true,
+            error: "the request expired before Live ran it; nothing changed",
+          },
+        },
+        arrives: false,
+      });
+
+      await expect(
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
+      ).rejects.toThrow(
+        /^could not load "Pro-Q 4": the request expired before Live ran it; nothing changed$/,
+      );
+      expectCleanedUp();
+    });
+
     it("when the device never arrives", async () => {
       answerRemoteScript({ arrives: false });
 
@@ -490,7 +554,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
 
       expect(requestNode).toHaveBeenCalledWith(
         REMOTE_SCRIPT_ROUTES.resolve,
-        { name: "Pro-Q 4" },
+        { name: "Pro-Q 4", expiresInMs: 8000 },
         10_000,
       );
       // Less the time the arrival poll can take. The load expires sooner, so
@@ -513,6 +577,73 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         expect.anything(),
         REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
       );
+    });
+
+    it("says the lookup ran out of time when V8 stopped waiting for it", async () => {
+      vi.mocked(requestNode).mockImplementation(() => {
+        now = START + 10_000;
+
+        return Promise.resolve({ success: false, error: "timed out" });
+      });
+
+      await expect(
+        createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { deadline: START + 10_000 },
+        ),
+      ).rejects.toThrow(
+        `could not look up "Pro-Q 4" in Live's browser: the request ran out ` +
+          `of time searching Live's browser; nothing was created, re-run it`,
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("starts no load with less time than a load needs", async () => {
+      // 3999ms for the load after the arrival poll's 2s: under the 4s minimum.
+      await expect(
+        createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { deadline: START + 5999 },
+        ),
+      ).rejects.toThrow(
+        'could not load "Pro-Q 4": the request ran out of time',
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+      expect(requestNode).toHaveBeenCalledTimes(1);
+    });
+
+    it("starts no load when making the temp track used up the time", async () => {
+      // 10s left at the start, but the track takes 7s: 3s is under what a load
+      // needs once the arrival poll's 2s is kept back.
+      liveSet.methods.create_midi_track = () => {
+        now = START + 7000;
+
+        return ["id", "temp-track"];
+      };
+
+      await expect(
+        createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { deadline: START + 10_000 },
+        ),
+      ).rejects.toThrow(
+        'could not load "Pro-Q 4": the request ran out of time; re-run for this path',
+      );
+      expect(requestNode).not.toHaveBeenCalledWith(
+        REMOTE_SCRIPT_ROUTES.load,
+        expect.anything(),
+        expect.anything(),
+      );
+      expectCleanedUp();
+    });
+
+    it("starts a load with just the time a load needs", async () => {
+      expect(
+        await createDevice(
+          { device: "Pro-Q 4", path: "t0" },
+          { deadline: START + 6000 },
+        ),
+      ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
     });
 
     it("looks nothing up once time is up", async () => {
@@ -581,7 +712,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
           { deadline: START + 10_000 },
         ),
       ).rejects.toThrow(
-        /^could not load "Pro-Q 4": timed out after 8000ms; nothing was added at this path, re-run for it$/,
+        /^could not load "Pro-Q 4": timed out after 8000ms; Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it$/,
       );
       expectCleanedUp();
     });

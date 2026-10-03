@@ -7,7 +7,10 @@
 // Producer Pal remote script loads each one from Live's browser onto a temp
 // track, and it moves from there to the path the call named.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import {
+  type NodeResponse,
+  requestNode,
+} from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { loopBudgetMs } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -15,6 +18,7 @@ import {
   type BrowserItem,
   type BrowserItemLoad,
   type BrowserItemResolution,
+  REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
@@ -38,6 +42,17 @@ import {
   writtenContainer,
 } from "./device-creation.ts";
 
+/**
+ * Why a browser search stopped: it used up its share of the request's time. A
+ * re-run is quicker, since Live keeps what it scanned, so only a repeat points
+ * at the Timeout setting.
+ * @param nothingDone - What is still undone, e.g. "nothing was created"
+ * @returns The reason, worded for the model
+ */
+export function lookupOutOfTime(nothingDone: string): string {
+  return `${REQUEST_OUT_OF_TIME} searching Live's browser; ${nothingDone}, re-run it. If it keeps happening, ask the user to raise the Timeout setting`;
+}
+
 /** What to tell the user when a load needs the remote script. */
 export const REMOTE_SCRIPT_SETUP =
   "ask the user to set it up in the Producer Pal chat UI's Settings → Remote Script (guide: https://producer-pal.org/guide/remote-script)";
@@ -47,6 +62,16 @@ const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 
 /** The longest the arrival poll runs. */
 const ARRIVAL_WAIT_MS = ARRIVAL_POLL.pollingInterval * ARRIVAL_POLL.maxRetries;
+
+/**
+ * The least a load is worth starting with: the expiry margin, then a quick
+ * load. With less, Live can't start it in time and finish it.
+ */
+const MIN_LOAD_WAIT_MS = 2 * REMOTE_SCRIPT_EXPIRY_MARGIN_MS;
+
+/** Why a load that timed out leaves nothing at the path, though Live may have made it. */
+const LOAD_STRANDED =
+  "Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it";
 
 /** The request's time limits, from ToolContext. */
 export type RequestTiming = Pick<
@@ -118,11 +143,17 @@ export async function resolveBrowserDevice(
     throw lookUpFailed(`${REQUEST_OUT_OF_TIME}; nothing was created`);
   }
 
+  const started = Date.now();
   const response = await requestNode<BrowserItemResolution>(
     REMOTE_SCRIPT_ROUTES.resolve,
-    { name: deviceName },
+    { name: deviceName, expiresInMs: remoteScriptExpiry(waitMs) },
     waitMs,
   );
+
+  // Whoever ran out of time, nothing was created yet.
+  if (!response.success && Date.now() - started >= waitMs) {
+    throw lookUpFailed(lookupOutOfTime("nothing was created"));
+  }
 
   if (!response.success || response.result == null) {
     throw lookUpFailed(response.error ?? "no answer");
@@ -135,7 +166,9 @@ export async function resolveBrowserDevice(
   }
 
   if ("error" in resolution) {
-    throw new Error(resolution.error);
+    throw "outOfTime" in resolution
+      ? lookUpFailed(lookupOutOfTime("nothing was created"))
+      : new Error(resolution.error);
   }
 
   return resolution.item;
@@ -151,16 +184,11 @@ async function loadAndMove(
   path: string,
   options: BrowserLoadOptions,
 ): Promise<CreatedDevice> {
-  const waitMs = remoteScriptWait(options.deadline, ARRIVAL_WAIT_MS);
-
-  if (waitMs == null) {
-    throw new Error(
-      `could not load "${deviceName}": ${outOfTime(options.timeoutMs)}`,
-    );
-  }
+  // Checked before the track exists, so a doomed load makes nothing.
+  loadWait(deviceName, options);
 
   return await withTempTrack(deviceName, async (track) => {
-    const device = await loadOnto(track, item, deviceName, waitMs);
+    const device = await loadOnto(track, item, deviceName, options);
 
     moveIntoPlace(device, target, deviceName, path);
 
@@ -177,13 +205,35 @@ async function loadAndMove(
 }
 
 /**
+ * How long a load may wait for the remote script. A load that can't start and
+ * finish inside the deadline doesn't start: V8 would give up on it with Live
+ * still loading.
+ * @param deviceName - The device as the call named it
+ * @param timing - The request's time limits
+ * @returns The wait, in ms
+ * @throws Error when there isn't time to load; nothing was loaded
+ */
+function loadWait(deviceName: string, timing: RequestTiming): number {
+  const waitMs = remoteScriptWait(timing.deadline, ARRIVAL_WAIT_MS);
+
+  if (waitMs == null || waitMs < MIN_LOAD_WAIT_MS) {
+    throw new Error(
+      `could not load "${deviceName}": ${outOfTime(timing.timeoutMs)}`,
+    );
+  }
+
+  return waitMs;
+}
+
+/**
  * Why a load didn't start for lack of time. When the whole budget can't cover
  * the arrival poll, a re-run fails the same way, so the Timeout must go up.
  * @param timeoutMs - The request timeout, when known
  * @returns The reason, worded for the model
  */
 function outOfTime(timeoutMs: number | undefined): string {
-  return timeoutMs != null && loopBudgetMs(timeoutMs) <= ARRIVAL_WAIT_MS
+  return timeoutMs != null &&
+    loopBudgetMs(timeoutMs) < ARRIVAL_WAIT_MS + MIN_LOAD_WAIT_MS
     ? `the Timeout setting (${timeoutMs / 1000}s) is too short to load it; ask the user to raise it`
     : unreachedDetail("path");
 }
@@ -239,14 +289,15 @@ async function withTempTrack<T>(
  * @param track - The temp track
  * @param item - What to load
  * @param deviceName - The device as the call named it
- * @param waitMs - How long to wait for the remote script
+ * @param timing - The request's time limits
  * @returns The loaded device
+ * @throws Error when making the track used up the time; nothing was loaded
  */
 async function loadOnto(
   track: LiveAPI,
   item: BrowserItem,
   deviceName: string,
-  waitMs: number,
+  timing: RequestTiming,
 ): Promise<LiveAPI> {
   const before = new Set(track.getChildIds("devices"));
   // The remote script finds the track by this name, not the index: tracks can
@@ -255,6 +306,9 @@ async function loadOnto(
 
   track.set("name", trackName);
 
+  // Making the track took time too. Work out the wait now, so the arrival
+  // poll's reserve is still there.
+  const waitMs = loadWait(deviceName, timing);
   const started = Date.now();
   const response = await requestNode<BrowserItemLoad>(
     REMOTE_SCRIPT_ROUTES.load,
@@ -267,16 +321,7 @@ async function loadOnto(
     },
     waitMs,
   );
-  // When V8 stops waiting, the temp track is deleted, and a load that runs
-  // later can't find it by name, so nothing reaches the path.
-  const gaveUp = Date.now() - started >= waitMs;
-  const failure = !response.success
-    ? `${response.error ?? "no answer"}${gaveUp ? "; nothing was added at this path, re-run for it" : ""}`
-    : response.result == null
-      ? "the remote script returned nothing"
-      : !response.result.available
-        ? "Live's browser stopped answering"
-        : response.result.error;
+  const failure = loadFailure(response, Date.now() - started >= waitMs);
 
   if (failure != null) {
     throw new Error(`could not load "${deviceName}": ${failure}`);
@@ -290,6 +335,47 @@ async function loadOnto(
   }
 
   return LiveAPI.from(loadedId() as string);
+}
+
+/**
+ * A load failure's reason, with what it leaves behind when the load timed out.
+ * @param why - The reason
+ * @param timedOut - Whether the load timed out after it may have started
+ * @returns The reason
+ */
+function stranded(why: string, timedOut: boolean): string {
+  return timedOut ? `${why}; ${LOAD_STRANDED}` : why;
+}
+
+/**
+ * Why a load answer isn't a success. A load that timed out may still have run in
+ * Live, but the temp track is deleted, and a later load can't find it by name,
+ * so nothing reaches the path.
+ * @param response - The load route's response
+ * @param gaveUp - Whether V8 stopped waiting for it
+ * @returns The reason, or undefined when the load succeeded
+ */
+function loadFailure(
+  response: NodeResponse<BrowserItemLoad>,
+  gaveUp: boolean,
+): string | undefined {
+  if (!response.success) {
+    return stranded(response.error ?? "no answer", gaveUp);
+  }
+
+  const result = response.result;
+
+  if (result == null) {
+    return "the remote script returned nothing";
+  }
+
+  if (!result.available) {
+    return "Live's browser stopped answering";
+  }
+
+  return result.error == null
+    ? undefined
+    : stranded(result.error, result.unfinished === true);
 }
 
 /**

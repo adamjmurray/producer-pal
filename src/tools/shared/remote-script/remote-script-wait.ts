@@ -5,6 +5,7 @@
 
 import {
   REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
+  REMOTE_SCRIPT_REPLY_GRACE_MS,
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 
@@ -41,4 +42,15 @@ export function remoteScriptExpiry(waitMs: number): number {
   return (
     waitMs - Math.min(REMOTE_SCRIPT_EXPIRY_MARGIN_MS, Math.ceil(waitMs / 2))
   );
+}
+
+/**
+ * How long Node waits for the reply to a request that expires after
+ * `expiresInMs`: a moment longer, so a job Live started just in time can still
+ * answer. Always under V8's own wait, whose gap to the expiry is at least this.
+ * @param expiresInMs - How long Live may leave the job queued
+ * @returns The wait, in ms
+ */
+export function remoteScriptReplyWait(expiresInMs: number): number {
+  return expiresInMs + Math.min(REMOTE_SCRIPT_REPLY_GRACE_MS, expiresInMs / 2);
 }

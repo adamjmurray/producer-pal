@@ -111,9 +111,11 @@ Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
-skipped with a 504. Producer Pal sends one with every `/load` and `/hotswap`, a
-bit under how long it waits, so a change it stopped waiting for isn't made
-later.
+skipped with a 504 (a re-run is safe). Producer Pal sends one with every
+`/list`, `/load` and `/hotswap` of a device call, a bit under the time it has
+left, so one deadline covers the lookup and the load, and a change it stopped
+waiting for isn't made later. A job Live started but didn't finish in 30s is
+also a 504, with `started: true`: Live may have made the change.
 
 ### `GET /ping`
 
@@ -220,9 +222,11 @@ Indexes must be whole numbers >= 0.
 Live's Python is single-threaded and the Live API breaks if touched from any
 other thread. So the HTTP server runs on its own thread and only queues jobs;
 `update_display()`, which Live calls about 10x/sec on the main thread, drains
-the queue and runs them. The HTTP thread waits up to 30s for the reply, or until
-`expires_in_ms` if that's sooner. A job still queued by then is skipped; one
-already running is waited for.
+the queue and runs them. With `expires_in_ms`, the HTTP thread waits for Live to
+start the job until then (a job still queued is skipped), and a started job gets
+its own 30s to finish, so time queued behind other jobs doesn't count against
+it. Without it, the thread waits 30s for the reply, and 30s more if the job
+started in that time.
 
 - `http_server.py`: the HTTP server; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control
@@ -234,8 +238,8 @@ already running is waited for.
 
 ## Notes
 
-- **First plugin listing is slow**: Live scans the plugin folders. That's why
-  the timeout is 30s.
+- **First plugin listing is slow**: Live scans the plugin folders. That's why a
+  running job gets 30s.
 - **Async load**: plugins and Max devices finish loading after `load_item()`
   returns, so the `devices` list in the response can lag.
 - **Debugging**: `bridge.log()` writes to Live's `Log.txt`

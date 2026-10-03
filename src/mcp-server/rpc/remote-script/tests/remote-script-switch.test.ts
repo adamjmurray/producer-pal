@@ -23,8 +23,8 @@ const ENVELOPE_ARGS = { track: "t0", slot: 0 };
 
 /** Valid args for every route V8 can call, so none is left out of the sweep. */
 const ROUTE_ARGS: Record<string, unknown> = {
-  [REMOTE_SCRIPT_ROUTES.resolve]: { name: "Pro-Q 4" },
-  [REMOTE_SCRIPT_ROUTES.resolvePreset]: { name: "Warm Pad" },
+  [REMOTE_SCRIPT_ROUTES.resolve]: { name: "Pro-Q 4", expiresInMs: 1000 },
+  [REMOTE_SCRIPT_ROUTES.resolvePreset]: { name: "Warm Pad", expiresInMs: 1000 },
   [REMOTE_SCRIPT_ROUTES.load]: {
     type: "plugin",
     path: "VST3/Pro-Q 4",

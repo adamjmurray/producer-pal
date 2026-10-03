@@ -18,6 +18,7 @@
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
  */
 import { describe, expect, it } from "vitest";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
   getToolErrorMessage,
@@ -175,6 +176,55 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(getToolErrorMessage(result)).toContain(
         "cannot create the Producer Pal device",
       );
+      expect(await trackCount()).toBe(before);
+    });
+
+    // The lookup and the load share one deadline, and Live skips any job it
+    // hasn't started by it.
+    it("remote script skips a /list that expired before Live ran it", async () => {
+      const response = await fetch(
+        `http://127.0.0.1:${remoteScriptPort()}/list?type=plugin&expires_in_ms=0`,
+      );
+      const body = (await response.json()) as { error?: string };
+
+      expect(response.status).toBe(504);
+      expect(body.error).toContain("expired before Live ran it");
+    });
+
+    // Too short a Timeout can't finish a load: the call must say so, and leave
+    // no temp track or device behind.
+    it("under a short Timeout says it ran out of time, leaving nothing behind", async () => {
+      const trackIndex = await createTrack("audio");
+      const before = await trackCount();
+      const response = await fetch(
+        `${MCP_URL.replace("/mcp", "/api/tools/ppal-create-device")}?format=json&timeoutMs=1000`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device: "LFO", path: `t${trackIndex}/d+` }),
+        },
+      );
+
+      expect(response.status).toBe(200);
+
+      const body = (await response.json()) as {
+        isError?: boolean;
+        result: unknown;
+      };
+
+      expect(body.isError).toBe(true);
+      expect(String(body.result)).toMatch(/ran out of time|Timeout setting/);
+
+      await sleep(100);
+
+      const track = parseToolResult<{ devices?: unknown[] }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: `t${trackIndex}`, include: ["devices"] },
+        }),
+      );
+
+      expect(track.devices?.length ?? 0).toBe(0);
       expect(await trackCount()).toBe(before);
     });
 

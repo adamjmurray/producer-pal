@@ -5,6 +5,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  RemoteScriptTimeout,
   pingRemoteScript,
   remoteScriptRequest,
   replyError,
@@ -95,6 +96,70 @@ describe("remoteScriptRequest", () => {
     await expect(
       remoteScriptRequest({ route: "/list", timeoutMs: 50 }),
     ).rejects.toThrow("Live's browser did not answer within 0.05s");
+  });
+
+  it("marks a timeout as sent, since Live may have acted on it", async () => {
+    await answerWith(null);
+
+    const error = await remoteScriptRequest({
+      route: "/list",
+      timeoutMs: 50,
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(RemoteScriptTimeout);
+    expect(error).toHaveProperty("sent", true);
+  });
+
+  describe("with an expiry", () => {
+    it("sends it as expires_in_ms: in the query of a GET, in the body of a POST", async () => {
+      const remote = await answerWith({ body: { ok: true } });
+
+      await remoteScriptRequest({ route: "/list", expiresInMs: 8000.7 });
+      await remoteScriptRequest({
+        method: "POST",
+        route: "/load",
+        body: { type: "plugin" },
+        expiresInMs: 8000,
+      });
+
+      expect(remote.requests).toStrictEqual([
+        {
+          method: "GET",
+          route: "/list",
+          query: { expires_in_ms: "8000" },
+          body: undefined,
+        },
+        {
+          method: "POST",
+          route: "/load",
+          query: {},
+          body: { type: "plugin", expires_in_ms: 8000 },
+        },
+      ]);
+    });
+
+    it("waits a moment past the expiry for the reply, not the fixed 35s", async () => {
+      await answerWith(null);
+
+      const started = Date.now();
+
+      await expect(
+        remoteScriptRequest({ route: "/list", expiresInMs: 100 }),
+      ).rejects.toThrow("Live's browser did not answer within 0.15s");
+      expect(Date.now() - started).toBeLessThan(2000);
+    });
+
+    it.each([0, -5])("sends nothing at %s", async (expiresInMs) => {
+      const remote = await answerWith({ body: { ok: true } });
+      const error = await remoteScriptRequest({
+        route: "/list",
+        expiresInMs,
+      }).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(RemoteScriptTimeout);
+      expect(error).toHaveProperty("sent", false);
+      expect(remote.requests).toStrictEqual([]);
+    });
   });
 
   it("is unavailable when the connection isn't taken in time", async () => {

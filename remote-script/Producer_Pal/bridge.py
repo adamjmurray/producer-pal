@@ -18,10 +18,17 @@ from .routes import POST_ONLY, ROUTES, RouteError
 
 PORT = 3349
 
-# How long an HTTP request waits for Live's main thread to run it, unless the
-# request's `expires_in_ms` is sooner. Walking a big plugin folder for the first
-# time is the slow case.
+# How long a request waits for Live's main thread to run it, and then for it to
+# finish. A request that sends `expires_in_ms` waits to start until then, and
+# its run gets REQUEST_TIMEOUT from when it starts, so time queued behind other
+# jobs isn't charged to it. One without it waits REQUEST_TIMEOUT from queueing,
+# then REQUEST_TIMEOUT more if the job has started. Walking a big plugin folder
+# for the first time is the slow case.
 REQUEST_TIMEOUT = 30.0
+
+# The longest `expires_in_ms` taken. A larger one would only tie up a thread, and
+# a huge one overflows the wait.
+MAX_EXPIRES_IN_MS = 3_600_000
 
 # Ends the error for a job Live skipped: it changed nothing, so a re-run is safe.
 _RERUN = "; nothing changed, re-run it"
@@ -142,7 +149,7 @@ class _Job:
         self._reply = queue.Queue(1)
         # A job either starts or is given up on, never both.
         self._lock = threading.Lock()
-        self._started = False
+        self._started = threading.Event()
         self._abandoned = False
 
     def run(self):
@@ -153,7 +160,7 @@ class _Job:
             if self._abandoned or self._expired():
                 self._abandoned = True
                 return
-            self._started = True
+            self._started.set()
         try:
             self._reply.put((200, self._handler(self._bridge, self._params)))
         except RouteError as err:
@@ -171,37 +178,54 @@ class _Job:
             )
 
     def wait(self):
-        """The reply, or a 504 when Live didn't start the job in time."""
+        """The reply, or a 504 when Live didn't start the job or finish it in time."""
+        if self._expires_at is None:
+            return self._wait_from_queueing()
+        return self._wait_from_start()
+
+    def _wait_from_queueing(self):
+        # No expiry: REQUEST_TIMEOUT for the job to start, from when it queued.
         try:
-            return self._reply.get(timeout=self._wait_limit())
+            return self._reply.get(timeout=REQUEST_TIMEOUT)
         except queue.Empty:
             pass
         with self._lock:
-            if not self._started:
+            if not self._started.is_set():
                 self._abandoned = True
-                if self._expired():
-                    return 504, {
-                        "error": "the request expired before Live ran it" + _RERUN
-                    }
                 return 504, {
                     "error": "Live did not run the request within %ss%s"
                     % (REQUEST_TIMEOUT, _RERUN)
                 }
-        # It started in time, so wait for its reply. If it finishes after the
-        # client stopped waiting, the client reports a change that did happen.
+        return self._wait_for_reply()
+
+    def _wait_from_start(self):
+        # An expiry: wait for the job to start until then, then give it
+        # REQUEST_TIMEOUT of its own.
+        if not self._started.wait(self._queue_limit()):
+            with self._lock:
+                if not self._started.is_set():
+                    self._abandoned = True
+                    return 504, {
+                        "error": "the request expired before Live ran it" + _RERUN
+                    }
+        return self._wait_for_reply()
+
+    def _wait_for_reply(self):
+        # The job started. If it finishes after the client stopped waiting, the
+        # client reports a change that did happen.
         try:
             return self._reply.get(timeout=REQUEST_TIMEOUT)
         except queue.Empty:
+            # `started` tells the client Live may have made the change anyway.
             return 504, {
                 "error": "Live started the request but didn't finish it within %ss"
-                % REQUEST_TIMEOUT
+                % REQUEST_TIMEOUT,
+                "started": True,
             }
 
-    def _wait_limit(self):
-        if self._expires_at is None:
-            return REQUEST_TIMEOUT
-        remaining = self._expires_at - time.monotonic()
-        return max(0.0, min(REQUEST_TIMEOUT, remaining))
+    def _queue_limit(self):
+        """How long to wait for Live to start a job that has an expiry."""
+        return max(0.0, self._expires_at - time.monotonic())
 
     def _expired(self):
         return self._expires_at is not None and time.monotonic() >= self._expires_at
@@ -226,4 +250,8 @@ def _expires_at(expires_in_ms):
         raise error
     if not math.isfinite(ms) or ms < 0:
         raise error
+    if ms > MAX_EXPIRES_IN_MS:
+        raise ValueError(
+            "expires_in_ms must be at most %d, got %r" % (MAX_EXPIRES_IN_MS, expires_in_ms)
+        )
     return time.monotonic() + ms / 1000.0

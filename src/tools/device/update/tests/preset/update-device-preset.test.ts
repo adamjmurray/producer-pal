@@ -94,6 +94,10 @@ function targetScope(type: string, device: string): object {
   return { type, path: device, device, orAnywhere: true };
 }
 
+/** The expiry a lookup carries when the request has no deadline. */
+const LOOKUP_EXPIRY_MS =
+  REMOTE_SCRIPT_REQUEST_TIMEOUT_MS - REMOTE_SCRIPT_EXPIRY_MARGIN_MS;
+
 /**
  * Register a device.
  * @param id - Its id
@@ -140,6 +144,7 @@ describe("updateDevice with a preset", () => {
     expect(callsTo(REMOTE_SCRIPT_ROUTES.resolvePreset)).toStrictEqual([
       {
         name: "AG Bass",
+        expiresInMs: LOOKUP_EXPIRY_MS,
         scope: {
           type: "instrument",
           path: "Drift",
@@ -257,8 +262,16 @@ describe("updateDevice with a preset", () => {
     });
 
     expect(callsTo(REMOTE_SCRIPT_ROUTES.resolvePreset)).toStrictEqual([
-      { name: "AG Bass", scope: targetScope("instrument", "Drift") },
-      { name: "Concert Hall", scope: targetScope("audio-effect", "Reverb") },
+      {
+        name: "AG Bass",
+        expiresInMs: LOOKUP_EXPIRY_MS,
+        scope: targetScope("instrument", "Drift"),
+      },
+      {
+        name: "Concert Hall",
+        expiresInMs: LOOKUP_EXPIRY_MS,
+        scope: targetScope("audio-effect", "Reverb"),
+      },
     ]);
     expect(callsTo(REMOTE_SCRIPT_ROUTES.hotswap)).toHaveLength(3);
   });
@@ -322,6 +335,65 @@ describe("updateDevice with a preset", () => {
     await expect(
       updateDevice({ path: "t3/d0", preset: "AG Bass" }),
     ).rejects.toThrow("preset not loaded: timed out");
+  });
+
+  it("says Live may have loaded the preset when the hotswap timed out mid-run", async () => {
+    answerRemoteScript({
+      hotswaps: [
+        {
+          available: true,
+          error: "Live started the request but didn't finish it within 30.0s",
+          unfinished: true,
+        },
+      ],
+    });
+
+    await expect(
+      updateDevice({ path: "t3/d0", preset: "AG Bass" }),
+    ).rejects.toThrow(
+      "preset not loaded: Live started the request but didn't finish it " +
+        "within 30.0s; Live may have loaded it anyway, so check the device " +
+        "before re-running",
+    );
+  });
+
+  it("says Live may have loaded the preset when V8 stopped waiting", async () => {
+    let now = 1_000_000;
+
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.mocked(requestNode).mockImplementation(async (route) => {
+      if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
+        return { success: true, result: { available: true, item: PRESET } };
+      }
+
+      now += 10_000;
+
+      return { success: false, error: "timed out" };
+    });
+
+    await expect(
+      updateDevice(
+        { path: "t3/d0", preset: "AG Bass" },
+        { deadline: 1_000_000 + 10_000 },
+      ),
+    ).rejects.toThrow("timed out; Live may have loaded it anyway");
+  });
+
+  it("keeps a skipped hotswap's own message, which says nothing changed", async () => {
+    answerRemoteScript({
+      hotswaps: [
+        {
+          available: true,
+          error: "the request expired before Live ran it; nothing changed",
+        },
+      ],
+    });
+
+    await expect(
+      updateDevice({ path: "t3/d0", preset: "AG Bass" }),
+    ).rejects.toThrow(
+      /^preset not loaded: the request expired before Live ran it; nothing changed$/,
+    );
   });
 
   it("says the preset needs the remote script when it stopped answering", async () => {
