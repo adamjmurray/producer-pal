@@ -12,7 +12,7 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
   description:
-    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Params with no list form apply to every device.",
+    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Inserting shifts later devices in that chain down a slot, so a result path is where the device sits after the call. Params with no list form apply to every device.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

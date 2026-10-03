@@ -40,11 +40,13 @@ const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
  * that replaced it.
  * @param input - The trimmed path
  * @param label - Param name for error messages
+ * @param quiet - Don't warn
  * @returns What the legacy value names, or null when it isn't one
  */
 export function parseLegacyPath(
   input: string,
   label: string,
+  quiet = false,
 ): ObjectPath | null {
   const slot = LEGACY_SLOT.exec(input);
 
@@ -52,9 +54,11 @@ export function parseLegacyPath(
     const trackIndex = Number(slot[1]);
     const sceneIndex = Number(slot[2]);
 
-    console.warn(
-      `${label} "${input}" is the old slot spelling; use "t${trackIndex}/s${sceneIndex}"`,
-    );
+    if (!quiet) {
+      console.warn(
+        `${label} "${input}" is the old slot spelling; use "t${trackIndex}/s${sceneIndex}"`,
+      );
+    }
 
     return { kind: "slot", trackIndex, sceneIndex };
   }
@@ -64,9 +68,11 @@ export function parseLegacyPath(
   if (track) {
     const trackIndex = Number(track[1]);
 
-    console.warn(
-      `${label} "${input}" is a bare track index; use "t${trackIndex}"`,
-    );
+    if (!quiet) {
+      console.warn(
+        `${label} "${input}" is a bare track index; use "t${trackIndex}"`,
+      );
+    }
 
     return { kind: "track", trackIndex };
   }

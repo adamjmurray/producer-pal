@@ -16,15 +16,15 @@ import {
   type BrowserItemResolution,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { createBrowserDevice } from "../helpers/browser-devices.ts";
-import { createDevice } from "../create-device.ts";
+import { createBrowserDevice } from "../../helpers/browser-devices.ts";
+import { createDevice } from "../../create-device.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
 }));
 
-vi.mock(import("../helpers/browser-devices.ts"), async (importOriginal) => ({
+vi.mock(import("../../helpers/browser-devices.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
   createBrowserDevice: vi.fn(),
 }));
@@ -76,10 +76,19 @@ describe("createDevice — from a preset", () => {
   beforeEach(() => {
     answerLookups();
     registerMockObject("loaded", { path: livePath.track(0).device(0) });
-    vi.mocked(createBrowserDevice).mockImplementation(async () => ({
-      device: LiveAPI.from("loaded"),
-      entry: { id: "loaded", path: "t0/d0" },
-    }));
+    vi.mocked(createBrowserDevice).mockImplementation(
+      async (_item, _device, _path, options) => {
+        const created = {
+          device: LiveAPI.from("loaded"),
+          entry: { id: "loaded", path: "t0/d0" },
+          written: { container: () => null, path: "t0" },
+        };
+
+        options?.onPlaced?.(created);
+
+        return created;
+      },
+    );
   });
 
   it("looks a name up among a native device's presets and loads it", async () => {

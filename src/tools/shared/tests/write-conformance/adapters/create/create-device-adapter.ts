@@ -43,12 +43,6 @@ function appends(count: number): string {
 export const createDeviceAdapter: WriteToolAdapter = {
   tool: "ppal-create-device",
   run: (args) => createDevice({ device: "Reverb", ...args }),
-  skip: {
-    unparsable:
-      "a path it can't parse becomes an ok:false entry, and the other devices are still created",
-    afterChange:
-      "the entry is a plain skip with the throw's reason; it carries no id and doesn't say the device was created",
-  },
   na: {
     namedTwice: "every entry inserts a new device, so none can repeat another",
     replacedLater: "a new device is inserted, so it never overwrites one",

@@ -61,6 +61,16 @@ with a tool, the tool wins.
   `detail` on the lane's own entry, which otherwise reads like any other hit.
   `ok: false` only when the lane was neither created nor named, so nothing the
   call asked of it landed.
+- **create-device answers per path named.** A path that finds no place for a
+  device (no such track or rack, a scene, an index past the end, a device Live
+  turned down, one the deadline never reached) holds its slot as
+  `{path, ok: false, detail}`, and the other paths are still made. A device that
+  is in the Set keeps its normal entry (`id`, `path`) when a later step threw (a
+  name Live refused, a browser load's cleanup), plus a `detail` saying why and
+  what landed: `<error>; already changed: device created`. Entries name each
+  device where it sits after the call, since a later insert can push an earlier
+  one down a slot. The `name` list pairs by the path's place, so a skip doesn't
+  slide it.
 - **duplicate answers per destination named.** A destination no copy landed at
   keeps its slot as `{path, ok: false, detail}` — a track that won't take the
   clip, a copy Live declined, a take lane past the cap, a re-create that failed,

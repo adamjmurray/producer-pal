@@ -127,6 +127,8 @@ export function refuseIndexInNewChain(path: string): void {
   try {
     parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
   } catch {
+    // Unparsable paths were refused before this runs. This is a path that
+    // names something a device doesn't go in (a scene); its write skips it.
     return;
   }
 
@@ -200,8 +202,8 @@ function isStale(target: InsertionTarget, earlier: InsertionTarget): boolean {
 
 /**
  * The chain a path inserts into, and whether it names a position in it. A path
- * that doesn't parse has no target — the insert loop reports it, one entry at a
- * time, the way it always has.
+ * that names something a device doesn't go in (a scene) has no target: its
+ * write is skipped on its own. Unparsable paths were refused before this runs.
  * @param path - One path entry
  * @param pending - Devices earlier entries add, keyed by container
  * @param chainsMemo - A drum rack's chains, once read for this call

@@ -26,7 +26,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
 import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
-import { createDevice } from "../create-device.ts";
+import { createDevice } from "../../create-device.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),

@@ -27,7 +27,10 @@ import {
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  type WrittenContainer,
+  pathField,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface CreateDeviceResult {
   id: string;
@@ -35,6 +38,14 @@ export interface CreateDeviceResult {
   /** The rack chains the path had to make first ("c2-c3"), when it made any */
   created?: string;
   params?: ParamResult[];
+}
+
+/** A device a path put in place. */
+export interface CreatedDevice {
+  device: LiveAPI;
+  entry: CreateDeviceResult;
+  /** How the call spelled the container, to name the device again later */
+  written: WrittenContainer;
 }
 
 /** Where one path puts a device. */
@@ -54,13 +65,13 @@ export interface CreationTarget {
  * Insert a native device at a path (track or chain).
  * @param deviceName - The device, as the call named it
  * @param path - Device path
- * @returns The device and its result entry
+ * @returns The device, its result entry and how its container was spelled
  * @throws Error when Live turns the insert down
  */
 export function insertNativeDevice(
   deviceName: string,
   path: string,
-): { device: LiveAPI; entry: CreateDeviceResult } {
+): CreatedDevice {
   const target = resolveCreationTarget(path);
 
   try {
@@ -76,7 +87,7 @@ function insertInto(
   target: CreationTarget,
   deviceName: string,
   path: string,
-): { device: LiveAPI; entry: CreateDeviceResult } {
+): CreatedDevice {
   const { container } = target;
   const { position, deviceCount } = insertionPosition(target);
 
@@ -116,7 +127,11 @@ function insertInto(
     );
   }
 
-  return { device, entry: createdDeviceEntry(id, device, target) };
+  return {
+    device,
+    entry: createdDeviceEntry(id, device, target),
+    written: writtenContainer(target),
+  };
 }
 
 /**
@@ -237,23 +252,36 @@ export function insertRefusalCause(
 }
 
 /**
+ * How the call spelled the container a device went into.
+ * @param target - Where the device was created
+ * @param target.container - The container
+ * @param target.containerPath - How the call spelled the container
+ * @returns The container and its spelling
+ */
+export function writtenContainer({
+  container,
+  containerPath,
+}: CreationTarget): WrittenContainer {
+  return { container: () => container, path: containerPath };
+}
+
+/**
  * A created device's result entry, named in the call's own spelling.
  * @param id - The device's id
  * @param device - The device
  * @param target - Where it was created
- * @param target.container - The container
- * @param target.containerPath - How the call spelled the container
- * @param target.createdChains - The rack chains the path made first, if any
  * @returns The entry's id, path, and the chains it took to get there
  */
 export function createdDeviceEntry(
   id: string,
   device: LiveAPI,
-  { container, containerPath, createdChains }: CreationTarget,
+  target: CreationTarget,
 ): CreateDeviceResult {
+  const { createdChains } = target;
+
   return {
     id,
-    ...pathField(device, { container: () => container, path: containerPath }),
+    ...pathField(device, writtenContainer(target)),
     ...(createdChains == null ? {} : { created: createdChains }),
   };
 }
@@ -264,6 +292,7 @@ export function createdDeviceEntry(
  * @param entry - Its result entry, which gains any params outcome
  * @param displayName - The name for this device, if any
  * @param params - {name, value} entries applied to each created device
+ * @param landed - Told what has changed in Live, once it has
  * @returns The entry
  */
 export function labelCreatedDevice(
@@ -271,9 +300,11 @@ export function labelCreatedDevice(
   entry: CreateDeviceResult,
   displayName: string | undefined,
   params: ParamEntry[] | undefined,
+  landed: (phrase: string) => void,
 ): CreateDeviceResult {
   if (displayName != null) {
     device.set("name", displayName);
+    landed("name");
   }
 
   if (params != null) {

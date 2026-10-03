@@ -29,12 +29,13 @@ import {
   unreachedDetail,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
-  type CreateDeviceResult,
+  type CreatedDevice,
   type CreationTarget,
   createdDeviceEntry,
   insertionPosition,
   insertRefusal,
   resolveCreationTarget,
+  writtenContainer,
 } from "./device-creation.ts";
 
 /** What to tell the user when a load needs the remote script. */
@@ -53,28 +54,47 @@ export type RequestTiming = Pick<
   "deadline" | "timeoutMs"
 >;
 
+/** What a browser load needs besides the device. */
+export interface BrowserLoadOptions extends RequestTiming {
+  /**
+   * Called once the device is in place, before the temp track is cleaned up.
+   * A throw from it, or from the cleanup, leaves the device in the Set.
+   */
+  onPlaced?: (created: CreatedDevice) => void;
+}
+
 /**
  * Load one device and move it to a path. The path resolves first, so it fails
  * the way a native insert does, and a `c+` makes its chain once.
  * @param item - What to load
  * @param deviceName - The device as the call named it
  * @param path - Where it goes
- * @param timing - The request's time limits
- * @returns The device and its result entry
+ * @param options - The request's time limits, and what to tell on arrival
+ * @returns The device, its result entry and how its container was spelled
  */
 export async function createBrowserDevice(
   item: BrowserItem,
   deviceName: string,
   path: string,
-  timing: RequestTiming = {},
-): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
+  options: BrowserLoadOptions = {},
+): Promise<CreatedDevice> {
   const target = resolveCreationTarget(path);
+  const arrival = { placed: false };
 
   try {
-    return await loadAndMove(item, deviceName, target, path, timing);
+    return await loadAndMove(item, deviceName, target, path, {
+      ...options,
+      onPlaced: (created) => {
+        arrival.placed = true;
+        options.onPlaced?.(created);
+      },
+    });
   } catch (error) {
     // The chains the path made stay in the Set whether or not the load does.
-    throw errorWithChainsLeft(error, target.madeChains);
+    // Once the device sits in one, they aren't empty.
+    throw arrival.placed
+      ? error
+      : errorWithChainsLeft(error, target.madeChains);
   }
 }
 
@@ -129,13 +149,13 @@ async function loadAndMove(
   deviceName: string,
   target: CreationTarget,
   path: string,
-  timing: RequestTiming,
-): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
-  const waitMs = remoteScriptWait(timing.deadline, ARRIVAL_WAIT_MS);
+  options: BrowserLoadOptions,
+): Promise<CreatedDevice> {
+  const waitMs = remoteScriptWait(options.deadline, ARRIVAL_WAIT_MS);
 
   if (waitMs == null) {
     throw new Error(
-      `could not load "${deviceName}": ${outOfTime(timing.timeoutMs)}`,
+      `could not load "${deviceName}": ${outOfTime(options.timeoutMs)}`,
     );
   }
 
@@ -144,7 +164,15 @@ async function loadAndMove(
 
     moveIntoPlace(device, target, deviceName, path);
 
-    return { device, entry: createdDeviceEntry(device.id, device, target) };
+    const created: CreatedDevice = {
+      device,
+      entry: createdDeviceEntry(device.id, device, target),
+      written: writtenContainer(target),
+    };
+
+    options.onPlaced?.(created);
+
+    return created;
   });
 }
 

@@ -64,7 +64,6 @@ const ORIGINALLY_NOT_MIGRATED: ReadonlySet<string> = new Set([
  */
 const NOT_MIGRATED = [
   "ppal-duplicate",
-  "ppal-create-device",
   "ppal-create-clip",
   "ppal-delete",
   "ppal-create-track",
@@ -88,6 +87,12 @@ const READ_ONLY: Record<string, string | null> = {
   "ppal-context": "writes the project context, never the Live Set",
   "ppal-live-api":
     "a raw Live API escape hatch the model opts into; not a target-list write",
+};
+
+/** Tools whose empty call is not a write at all, so they need a call that is. */
+const CALL_THAT_WRITES: Record<string, object> = {
+  // With no device it lists the catalog.
+  "ppal-create-device": { device: "Reverb" },
 };
 
 const WRITE_PIPELINE = "src/tools/shared/write-pipeline";
@@ -160,13 +165,14 @@ describe("write pipeline migration", () => {
 });
 
 /**
- * Call a tool the way the dispatcher does, with no args. Most refuse; what the
- * probe cares about is whether the call reached the pipeline first.
+ * Call a tool the way the dispatcher does, with no args unless it needs some
+ * to write. Most refuse; what the probe cares about is whether the call reached
+ * the pipeline first.
  * @param tool - The tool's name
  */
 async function callWithNothing(tool: string): Promise<void> {
   const pending = Promise.resolve()
-    .then(() => callTool(tool, {}, {} as ToolContext))
+    .then(() => callTool(tool, CALL_THAT_WRITES[tool] ?? {}, {} as ToolContext))
     .catch(() => undefined);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
