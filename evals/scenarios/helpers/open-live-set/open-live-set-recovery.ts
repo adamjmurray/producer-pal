@@ -16,6 +16,7 @@
 import { execFile } from "node:child_process";
 import { styleText } from "node:util";
 import { openLiveSet } from "../../open-live-set.ts";
+import { LiveStuckError } from "./open-live-set-dialogs.ts";
 
 const ABLETON_PROCESS = "Live";
 
@@ -47,7 +48,8 @@ export async function openLiveSetWithRecovery(
 
       return;
     } catch (error) {
-      if (attempt === MAX_ATTEMPTS) {
+      // Killing Live would only bring the same unreachable dialog back.
+      if (error instanceof LiveStuckError || attempt === MAX_ATTEMPTS) {
         throw error;
       }
 
