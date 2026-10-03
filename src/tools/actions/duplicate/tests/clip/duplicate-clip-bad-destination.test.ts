@@ -47,8 +47,12 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
     registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
       path: livePath.track(0).clipSlot(1).clip(),
     });
+    // Scene 9 doesn't exist, and Live makes no scenes for it, so its slot never does.
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      methods: { create_scene: () => null },
+    });
 
-    // Scene 9 doesn't exist, so its slot doesn't either.
     const result = await duplicate({
       type: "clip",
       id: "clip1",

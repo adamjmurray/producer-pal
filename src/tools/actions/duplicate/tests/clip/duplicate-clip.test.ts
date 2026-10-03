@@ -410,9 +410,13 @@ describe("duplicate - clip duplication", () => {
       registerMockObject("clipslot-2-0", {
         path: livePath.track(2).clipSlot(0),
       });
+      // Live makes no copy, so the one copy it asked for couldn't be made — the
+      // warning about the dropped param still lands.
+      registerMockObject("clipslot-0-0", {
+        path: livePath.track(0).clipSlot(0),
+        methods: { duplicate_clip_to: () => null },
+      });
 
-      // The slot holds no clip in this mock, so the one copy it asked for
-      // couldn't be made — the warning about the dropped param still lands.
       await expect(
         duplicate({
           type: "clip",
@@ -502,6 +506,11 @@ describe("duplicate - clip duplication", () => {
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
       registerSourceClip();
+      // Live makes no copy, so the one copy it asked for couldn't be made.
+      registerMockObject("clipslot-0-0", {
+        path: livePath.track(0).clipSlot(0),
+        methods: { duplicate_clip_to: () => null },
+      });
 
       await expect(
         duplicate({

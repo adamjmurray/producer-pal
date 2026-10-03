@@ -174,6 +174,7 @@ describe("createClip - session view", () => {
     registerMockObject("clip-slot-0-0", {
       path: livePath.track(0).clipSlot(0),
       properties: { has_clip: 0 },
+      methods: { create_clip: () => null, create_audio_clip: () => null },
     });
 
     await expect(createClip({ path: "t0/s0", ...extra })).rejects.toThrow(
@@ -443,6 +444,7 @@ describe("createClip - session view", () => {
     registerMockObject("clip-slot-0-2", {
       path: livePath.track(0).clipSlot(2),
       properties: { has_clip: 0 },
+      methods: { create_clip: () => null },
     });
 
     await expect(createClip({ path: "t0/s2" })).rejects.toThrow(

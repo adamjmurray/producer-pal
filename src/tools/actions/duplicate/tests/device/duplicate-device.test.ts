@@ -8,9 +8,13 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerMockObject,
+  registerPendingMockObject,
   setupDeviceDuplicationMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import {
+  handPlaceMockInserts,
+  mockNonExistentObjects,
+} from "#src/test/mocks/mock-registry.ts";
 
 // Mock moveDeviceToPath to track calls
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
@@ -66,9 +70,12 @@ describe("duplicate - device duplication", () => {
       path: livePath.liveSet,
     });
 
-    const tempDevice = registerMockObject("live_set/tracks/1/devices/2", {
-      path: livePath.track(1).device(2),
-    });
+    const tempDevice = registerPendingMockObject(
+      "live_set/tracks/1/devices/2",
+      {
+        path: livePath.track(1).device(2),
+      },
+    );
 
     const result = await duplicate({ type: "device", id: "device1" });
 
@@ -135,9 +142,12 @@ describe("duplicate - device duplication", () => {
       path: livePath.liveSet,
     });
 
-    registerMockObject("live_set/tracks/2/devices/0/chains/0/devices/1", {
-      path: livePath.track(2).device(0).chain(0).device(1),
-    });
+    registerPendingMockObject(
+      "live_set/tracks/2/devices/0/chains/0/devices/1",
+      {
+        path: livePath.track(2).device(0).chain(0).device(1),
+      },
+    );
 
     const result = await duplicate({ type: "device", id: "rack_device1" });
 
@@ -202,9 +212,12 @@ describe("duplicate - device duplication", () => {
       type: "PluginDevice",
     });
     registerMockObject("live_set", { path: livePath.liveSet });
-    const tempDevice = registerMockObject("live_set/tracks/1/devices/0", {
-      path: livePath.track(1).device(0),
-    });
+    const tempDevice = registerPendingMockObject(
+      "live_set/tracks/1/devices/0",
+      {
+        path: livePath.track(1).device(0),
+      },
+    );
 
     await duplicate({ type: "device", id: "device1", name: "My Effect" });
 
@@ -218,7 +231,7 @@ describe("duplicate - device duplication", () => {
       type: "PluginDevice",
     });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/6/devices/0", {
+    registerPendingMockObject("live_set/tracks/6/devices/0", {
       path: livePath.track(6).device(0),
     });
 
@@ -350,7 +363,17 @@ describe("duplicate - device duplication", () => {
   });
 
   it("keeps the copies that worked when one destination fails", async () => {
-    setupDeviceDuplicationMocks(1);
+    // Several copies whose mocked moves leave each on the temp track, which
+    // Live deletes between copies; the mock doesn't, so nothing shifts.
+    handPlaceMockInserts();
+    registerMockObject("device1", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1/devices/1", {
+      path: livePath.track(1).device(1),
+    });
 
     vi.mocked(moveDeviceToPathMock)
       .mockReturnValueOnce({ outcome: "moved" })
@@ -477,7 +500,7 @@ describe("duplicate - device duplication", () => {
       type: "PluginDevice",
     });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/13/devices/0", {
+    registerPendingMockObject("live_set/tracks/13/devices/0", {
       path: livePath.track(13).device(0),
     });
 
@@ -504,7 +527,7 @@ describe("duplicate - device duplication", () => {
       type: "PluginDevice",
     });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/0", {
+    registerPendingMockObject("live_set/tracks/1/devices/0", {
       path: livePath.track(1).device(0),
     });
 
@@ -528,7 +551,7 @@ describe("duplicate - device duplication", () => {
       type: "PluginDevice",
     });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/0/chains/0", {
+    registerPendingMockObject("live_set/tracks/1/devices/0/chains/0", {
       path: livePath.track(1).device(0).chain(0),
     });
 
@@ -571,10 +594,10 @@ describe("duplicate - device duplication", () => {
       type: "PluginDevice",
     });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/1", {
+    registerPendingMockObject("live_set/tracks/1/devices/1", {
       path: livePath.track(1).device(1),
     });
-    registerMockObject("live_set/tracks/1/devices/2", {
+    registerPendingMockObject("live_set/tracks/1/devices/2", {
       path: livePath.track(1).device(2),
     });
 
@@ -624,6 +647,7 @@ describe("duplicate - device duplication", () => {
       path: livePath.track(2).device(0),
       type: "PluginDevice",
     });
+    handPlaceMockInserts();
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("live_set/tracks/1/devices/0", {
       path: livePath.track(1).device(0),
@@ -671,7 +695,7 @@ describe("duplicate - device copies pushed by later copies", () => {
     vi.mocked(moveDeviceToPathMock)
       .mockImplementationOnce(() => {
         registerMockObject("copyA", { path: landings[0] });
-        registerMockObject("copyB", { path: nextTemp });
+        registerPendingMockObject("copyB", { path: nextTemp });
 
         return { outcome: "moved" };
       })
@@ -688,7 +712,7 @@ describe("duplicate - device copies pushed by later copies", () => {
       path: livePath.track(0).device(3),
       type: "PluginDevice",
     });
-    registerMockObject("copyA", { path: livePath.track(1).device(3) });
+    registerPendingMockObject("copyA", { path: livePath.track(1).device(3) });
     mockTwoMoves(String(livePath.track(1).device(3)), [
       String(livePath.track(1).device(2)),
       String(livePath.track(1).device(0)),
@@ -712,7 +736,7 @@ describe("duplicate - device copies pushed by later copies", () => {
       path: livePath.track(0).device(1),
       type: "PluginDevice",
     });
-    registerMockObject("copyA", { path: livePath.track(1).device(0) });
+    registerPendingMockObject("copyA", { path: livePath.track(1).device(0) });
     mockTwoMoves(String(livePath.track(1).device(1)), [
       String(livePath.track(1).device(0)),
       String(livePath.track(1).device(0)),

@@ -12,6 +12,7 @@ import {
   children,
   registerClipSlot,
   registerMockObject,
+  registerPendingMockObject,
   setupArrangementSceneMocks,
   setupSessionSceneMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
@@ -84,14 +85,14 @@ describe("duplicate - scene duplication", () => {
     const liveSet = setupSessionSceneMocks({ registerNewScene: false });
 
     // Register additional clip slots and mocks for second duplicated scene
-    registerClipSlot(0, 2, true);
-    registerClipSlot(1, 2, true);
-    registerClipMocks(2, 2);
+    registerClipSlot(0, 2, true, undefined, registerPendingMockObject);
+    registerClipSlot(1, 2, true, undefined, registerPendingMockObject);
+    registerClipMocks(2, 2, registerPendingMockObject);
 
-    const scene1 = registerMockObject("live_set/scenes/1", {
+    const scene1 = registerPendingMockObject("live_set/scenes/1", {
       path: livePath.scene(1),
     });
-    const scene2 = registerMockObject("live_set/scenes/2", {
+    const scene2 = registerPendingMockObject("live_set/scenes/2", {
       path: livePath.scene(2),
     });
 
@@ -143,12 +144,24 @@ describe("duplicate - scene duplication", () => {
   it("should duplicate a scene without clips when withoutClips is true", async () => {
     const liveSet = setupArrangementSceneMocks();
 
-    const slot0 = registerClipSlot(0, 1, true);
-    const slot1 = registerClipSlot(1, 1, true);
+    const slot0 = registerClipSlot(
+      0,
+      1,
+      true,
+      undefined,
+      registerPendingMockObject,
+    );
+    const slot1 = registerClipSlot(
+      1,
+      1,
+      true,
+      undefined,
+      registerPendingMockObject,
+    );
 
-    registerClipSlot(2, 1, false);
-    registerClipMocks(2, 1);
-    registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+    registerClipSlot(2, 1, false, undefined, registerPendingMockObject);
+    registerClipMocks(2, 1, registerPendingMockObject);
+    registerPendingMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
     const result = (await duplicate({
       type: "scene",
@@ -186,7 +199,7 @@ describe("duplicate - scene duplication", () => {
       properties: { tracks: [] },
     });
 
-    const newScene = registerMockObject("live_set/scenes/1", {
+    const newScene = registerPendingMockObject("live_set/scenes/1", {
       path: livePath.scene(1),
     });
 

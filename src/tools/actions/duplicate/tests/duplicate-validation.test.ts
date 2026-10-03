@@ -9,6 +9,7 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   registerMockObject,
+  registerPendingMockObject,
   registerSessionClipDuplication,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
@@ -68,12 +69,14 @@ describe("duplicate - the ids alias", () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("track2", { path: livePath.track(3) });
-    registerMockObject("live_set/tracks/1", {
+    registerPendingMockObject("live_set/tracks/1", {
       path: livePath.track(1),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
-    registerMockObject("live_set/tracks/4", {
-      path: livePath.track(4),
+    // The first copy lands at t1, which pushes the second source to t4 and its
+    // copy to t5.
+    registerPendingMockObject("live_set/tracks/5", {
+      path: livePath.track(5),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
 
@@ -81,7 +84,7 @@ describe("duplicate - the ids alias", () => {
 
     expect(result).toStrictEqual([
       expect.objectContaining({ path: "t1" }),
-      expect.objectContaining({ path: "t4" }),
+      expect.objectContaining({ id: "live_set/tracks/5", path: "t5" }),
     ]);
   });
 

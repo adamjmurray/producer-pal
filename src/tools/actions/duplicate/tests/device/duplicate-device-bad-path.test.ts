@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { registerMockObject } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
+  handPlaceMockInserts,
   lookupMockObject,
   mockNonExistentObjects,
 } from "#src/test/mocks/mock-registry.ts";
@@ -18,6 +19,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 describe("duplicate device - a toPath entry that names nowhere", () => {
   it("keeps the copy that landed when a later destination doesn't resolve", async () => {
     mockNonExistentObjects();
+    handPlaceMockInserts();
 
     registerMockObject("device1", {
       path: livePath.track(0).device(0),

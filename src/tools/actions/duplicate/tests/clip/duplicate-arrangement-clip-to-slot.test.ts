@@ -11,6 +11,7 @@ import {
   lookupMockObject,
   mockNonExistentObjects,
   registerMockObject,
+  registerPendingMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 
@@ -164,7 +165,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
       properties: { scenes: children("s0") },
     });
 
-    registerMockObject("temp_slot", {
+    registerPendingMockObject("temp_slot", {
       path: tempSlotPath,
       type: "ClipSlot",
       properties: { has_clip: 0 },

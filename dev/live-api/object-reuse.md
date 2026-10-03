@@ -77,20 +77,49 @@ suggests it differs, but it is inference.
 
 ### What the mock models
 
-`src/test/mocks/mock-registry.ts` models two of the three rows. A held mock
-object binds to the registration rather than to a snapshot of it, so
-re-registering the same id changes what the holder reads; a deleted target
-clears its holders' paths while their ids go on lying; and an object built at an
-unregistered path never picks up a registration made later.
-`describe("mock staleness")` in `mock-registry.test.ts` pins them.
+`src/test/mocks/mock-registry.ts` models all three rows. A held mock object
+binds to the registration rather than to a snapshot of it, so re-registering the
+same id changes what the holder reads; a deleted target clears its holders'
+paths while their ids go on lying; and an object built at an unregistered path
+never picks up a registration made later. `describe("mock staleness")` in
+`mock-registry.test.ts` pins them.
 
-**Index shift is deliberately not modeled.** A `delete_*` removes its target and
-leaves every later sibling's path where it was. Modeling the renumbering was
-tried and taken back out: nothing in the suite needed it, and nothing plausibly
-would. Shifting can only reach a test that calls `simulateMockDeletes()`, which
-is ppal-delete's tests alone — and `delete` sorts highest-index-first precisely
-so it never holds an object across a shift. If a tool ever does hold one, model
-it then, with that tool's tests as the consumer.
+**Index shift is modeled, so tests can catch index-shift bugs.** A shift bug
+hides in a mock that leaves later siblings where they were: the tool reads a
+stale index, the mock answers anyway, and the suite is green. The edits live in
+`registry/mock-live-set-edits.ts`:
+
+- **Inserts** (`create_midi_track`, `create_audio_track`, `create_return_track`,
+  `create_scene`, `duplicate_track`, `duplicate_scene`, `insert_device`,
+  `insert_chain`, and an arrangement clip from `create_midi_clip`,
+  `create_audio_clip` or `duplicate_clip_to_arrangement`) put a new object at
+  its index. Every later registered sibling's path moves one along, with
+  everything under it. A held object follows its object, as in Live.
+- **Deletes** do the reverse: the target and everything under it die, and later
+  siblings move down. Only with `simulateMockDeletes()`, as before, and a clip
+  deleted with `deleteMockObject()` shifts its arrangement siblings too.
+- **A scene is also a clip slot on every track**, so scene inserts and deletes
+  shift `clip_slots` paths, and a scene insert makes a slot per track.
+- **Each created object gets its own id**, from 90001 up, and is registered at
+  its path. A registered child list (`tracks`, `scenes`, `devices`, `chains`,
+  `clip_slots`, `arrangement_clips`) gains or loses the id. Arrangement clips go
+  in start-time order when every sibling registers a `start_time`, else last.
+- **`registerPendingMockObject()`** is for an object the test wants to be what a
+  creating call makes. It isn't there until something is created at its path,
+  and then it is used instead of a fresh one. Registering it up front with
+  `registerMockObject()` would be the old object at that path, so the insert
+  moves it, which is correct.
+- **A delete leaves the last place empty**, and a session clip made in a slot
+  sets its `has_clip` (deleting it clears it). A new track gets a clip slot for
+  every scene, as a new scene gets one per track.
+- **`handPlaceMockInserts()`** switches the shifting off for a test that makes
+  several copies and has its mocked move leave each on the temp track. Live
+  deletes the temp track between copies and the mock doesn't model that or
+  `move_device`. Three duplicate-device tests still use it; leave it off
+  anywhere else.
+
+Not modeled: what a duplicate copies along (a copied track's devices and clips),
+`move_device`, and an arrangement clip overwriting what it lands on.
 
 Three more gaps, so a green suite is still not proof:
 

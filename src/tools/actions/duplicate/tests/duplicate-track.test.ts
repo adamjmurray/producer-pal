@@ -15,6 +15,7 @@ import {
   registerClipSlot,
   registerDuplicatedTrackSlots,
   registerMockObject,
+  registerPendingMockObject,
   type RegisteredMockObject,
   registerTrackCopySet,
   setupProducerPalDeviceMocks,
@@ -105,7 +106,7 @@ describe("duplicate - track duplication", () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerDuplicatedTrackSlots([true, false]);
     // The clip inside slot0, resolved via clipSlot.child("clip")
-    registerMockObject("live_set/tracks/1/clip_slots/0/clip", {
+    registerPendingMockObject("live_set/tracks/1/clip_slots/0/clip", {
       path: livePath.track(1).clipSlot(0).clip(),
       properties: { is_arrangement_clip: 0 },
     });
@@ -129,7 +130,7 @@ describe("duplicate - track duplication", () => {
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
     registerDuplicatedTrackSlots([], ["arrClip0", "ghostClip"]);
-    registerMockObject("arrClip0", {
+    registerPendingMockObject("arrClip0", {
       path: livePath.track(1).arrangementClip(0),
       properties: { is_arrangement_clip: 1, start_time: 0 },
     });
@@ -167,7 +168,7 @@ describe("duplicate - track duplication", () => {
       const liveSet = registerMockObject("live_set", {
         path: livePath.liveSet,
       });
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           devices: children("device0", "device1"),
@@ -316,7 +317,7 @@ describe("duplicate - track duplication", () => {
           arm: 1,
         },
       });
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           available_output_routing_types: JSON.stringify({
