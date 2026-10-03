@@ -75,6 +75,6 @@ part is a file beside it.
 
 - [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark,
   and how every tool answers a call (`specs/tool-behavior/`).
-- [decisions/](decisions/README.md) — ADRs: why settled choices went the way
-  they did.
+- [decisions/](decisions/README.md) — ADRs for rejected alternatives and choices
+  expensive to reconstruct. Current rules live in specs and docs.
 - [plans/](plans/README.md) — improvement plans not on the roadmap.

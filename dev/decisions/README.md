@@ -1,38 +1,26 @@
 # Decisions
 
-Architecture Decision Records: the **why** behind choices that aren't obvious
-from the code or git history — especially the things we deliberately chose not
-to do.
-
-The codebase already documents its rules (`AGENTS.md`,
-`dev/coding-standards/README.md`) and its intended work (`dev/plans/`, the
-[roadmap](https://producer-pal.org/roadmap)). What neither captures is the
-reasoning behind a settled decision, particularly a rejection. That's the most
-expensive knowledge to reconstruct and the easiest to lose. If a future
-contributor would otherwise re-litigate a question we've already answered, the
-answer belongs here.
+Architecture Decision Records: the **why** behind choices a future contributor
+would otherwise re-propose or re-investigate.
 
 ## What is and isn't an ADR
 
-- **ADR** — a decision already made, with lasting consequences, that isn't
-  self-evident from the code. Includes "won't fix" calls.
-- **Not an ADR** — proposals still being weighed (→ `dev/plans/`), coding rules
-  (→ `dev/coding-standards/README.md`), or anything the code and tests already
-  make obvious.
+An ADR records a **rejected alternative**, or a choice that is **expensive to
+reconstruct**. Keep it to about a page, plain and brief.
+
+Current rules do not go here. Say what is true now in the doc that owns it: tool
+behavior in `dev/specs/tool-behavior/`, grammars in `dev/specs/`, how a system
+works in `dev/architecture/` or the topic doc, code rules in `AGENTS.md` and
+`dev/coding-standards/`. A rule change updates that spec or doc, not a new ADR.
+Proposals still being weighed go in `dev/plans/`.
 
 ## Conventions
 
-- One decision per file, named `NNNN-kebab-title.md`, zero-padded and
-  sequential.
-- Keep them short and plainly written. Link out to the rule, doc, or plan that
-  implements the decision instead of restating it.
-- To reverse a decision, add a new ADR and mark the old one
-  `Superseded by ADR-XXXX`.
-- **Don't renumber or delete an ADR on your own.** Cleanup happens with the user
-  in the loop and only with their OK — usually because they asked for it. If you
-  notice real bloat, redundancy, or records that contradict each other, say so
-  and ask whether to clean up. (ADR-0001, ADR-0002 and ADR-0028 were removed
-  this way; their numbers stay retired.)
+- One decision per file, named `NNNN-kebab-title.md`. Numbers are never reused;
+  gaps are fine.
+- When a spec or doc absorbs an ADR, delete the ADR. Don't mark it superseded.
+- A code comment must still stand on its own. Don't rely on an ADR to explain
+  it.
 - Markdown docs are exempt from SPDX headers, same as the rest of `dev/`.
 
 ## Template
@@ -40,30 +28,21 @@ answer belongs here.
 ```markdown
 # ADR-NNNN: Short title
 
-- **Status:** Accepted | Superseded by ADR-XXXX | Superseded in part by ADR-XXXX
-  | Reversed
+- **Status:** Accepted
 - **Date logged:** YYYY-MM-DD
-
-## Context
-
-What problem or constraint prompted a decision?
 
 ## Decision
 
-What we chose, stated plainly.
+What we chose, in a sentence or two.
 
-## Alternatives rejected
+## Rejected
 
-What we didn't do, and why. The most valuable section — omit only when there
-genuinely were no alternatives.
+What we didn't do, and why. The most valuable part.
 
-## Consequences
+## Revisit if
 
-What this enables, costs, or commits us to. Note any revisit triggers.
+What would reopen it (optional).
 ```
-
-> Several of the earliest ADRs predate this log; their "Date logged" is when the
-> record was written, not when the decision was made.
 
 ## Index
 

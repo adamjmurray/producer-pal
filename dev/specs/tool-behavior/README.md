@@ -5,8 +5,8 @@ it reports, and what it overwrites. [dev/PRINCIPLES.md](../../PRINCIPLES.md) is
 the authority; this is the next level of detail, stated as the rule today. A
 tool that differs from a rule here is a bug in the tool.
 
-Changing one of these answers is a rule change: ask first, record it in an ADR,
-and apply it to every tool at once.
+Changing one of these answers is a rule change: ask first, update this spec, and
+apply it to every tool at once.
 
 | Part                                                         | What is in it                                                     |
 | ------------------------------------------------------------ | ----------------------------------------------------------------- |
