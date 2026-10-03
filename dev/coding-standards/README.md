@@ -115,8 +115,10 @@ for (let i = 0; i < tracks.length; i++) {
 
 - **Never use `!`** — the linter forbids the non-null assertion.
 - A commented `as` is for an index you can _prove_ is in range. Never delete a
-  runtime guard to buy coverage — warn-and-skip is a product requirement, not
-  coverage noise.
+  runtime guard to buy coverage. A target the call can't handle is skipped and
+  reported in its own result entry; a malformed call is refused up front. Both
+  are product behavior, not coverage noise (`dev/PRINCIPLES.md`, ADR-0035,
+  ADR-0042).
 
 ## Tools
 
