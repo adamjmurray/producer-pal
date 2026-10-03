@@ -194,7 +194,7 @@ describe("ppal-library searches", () => {
   it("refuses an empty searches", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-library",
-      arguments: { searches: [], query: "kick" },
+      arguments: { searches: [] },
     });
 
     expect(getToolErrorMessage(result)).toContain(

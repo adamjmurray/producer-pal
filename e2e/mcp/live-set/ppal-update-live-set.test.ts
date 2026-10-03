@@ -605,22 +605,34 @@ describe("ppal-update-live-set", () => {
     expect(await readLocatorList()).toStrictEqual(before);
   });
 
-  it('refuses a null locator name instead of naming a locator "null"', async () => {
-    // The MCP SDK validates before our handler runs, so only a real call
-    // proves the schema the server registered doesn't coerce it.
-    const before = await readLocatorList();
+  it('drops a null locator name instead of naming a locator "null"', async () => {
+    // The MCP SDK coerces args before our handler runs, so only a real call
+    // proves a null reaches it as unsent (ADR-0029).
+    const created = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "4|1",
+          locatorName: null,
+        },
+      }),
+    );
+    const id = created.locator?.id;
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-live-set",
-      arguments: {
-        locatorOperation: "create",
-        locatorTime: "4|1",
-        locatorName: null,
-      },
-    });
+    await sleep(100);
 
-    expect(isToolError(result)).toBe(true);
-    expect(await readLocatorList()).toStrictEqual(before);
+    try {
+      const locator = (await readLocatorList()).find((l) => l.id === id);
+
+      expect(locator).toBeDefined();
+      expect(locator?.name).not.toBe("null");
+    } finally {
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorId: id },
+      });
+    }
   });
 
   it("takes a locator name made of digits", async () => {
