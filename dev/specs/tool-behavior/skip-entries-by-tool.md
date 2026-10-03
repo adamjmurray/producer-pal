@@ -97,6 +97,16 @@ with a tool, the tool wins.
   device where it sits after the call, since a later insert can push an earlier
   one down a slot. The `name` list pairs by the path's place, so a skip doesn't
   slide it.
+- **create-track answers per path named.** A track Live didn't make (an insert
+  it refused, an answer with no track, one the deadline never reached) holds its
+  slot as `{path, ok: false, detail}` in the caller's spelling (`t+`, `t2`,
+  `rt+`), and the other tracks are still made. A track that exists keeps its
+  normal entry (`id`, `path`) when a later step threw, plus
+  `<error>; already changed: track created`. A failed insert moves the tracks
+  after it, so those are planned again from what the Set holds, and every entry
+  names its track where it sits after the call. `arm` on a return track is a
+  `detail` on its entry, in update-track's words, not a failure: the track was
+  made.
 - **delete answers per target named.** A path that can't be parsed refuses the
   call. A path that parses but names the wrong kind of thing, an object this
   call won't remove (the Producer Pal device or its track, a take lane, a chain

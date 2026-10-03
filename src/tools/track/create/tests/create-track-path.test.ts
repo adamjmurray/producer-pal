@@ -14,8 +14,8 @@ import {
   hiddenParamWarnings,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
-import { toolDefCreateTrack } from "./create-track.def.ts";
-import { createTrack } from "./create-track.ts";
+import { toolDefCreateTrack } from "../create-track.def.ts";
+import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   log: vi.fn(),

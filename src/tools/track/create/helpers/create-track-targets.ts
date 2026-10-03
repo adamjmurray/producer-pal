@@ -11,7 +11,10 @@ import {
   validateCount,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 export type CreateTrackType = "midi" | "audio" | "return";
@@ -21,6 +24,9 @@ export interface CreateTrackTarget {
   type: CreateTrackType;
   /** Where it goes; "end" appends */
   spot: InsertionSpot;
+  /** The place as a path, in the caller's spelling or the one the retired
+   * params stand for: what a skip entry is addressed by */
+  spelled: string;
 }
 
 interface CreateTrackTargetArgs {
@@ -87,12 +93,23 @@ function targetFromIndex(
       'type "return" is deprecated and will be removed; use path "rt+" instead',
     );
 
-    return { type: "return", spot: "end" };
+    return {
+      type: "return",
+      spot: "end",
+      spelled: formatObjectPath({ kind: "new-return-track" }),
+    };
   }
+
+  const spot = trackIndex == null || trackIndex === -1 ? "end" : trackIndex;
 
   return {
     type,
-    spot: trackIndex == null || trackIndex === -1 ? "end" : trackIndex,
+    spot,
+    spelled: formatObjectPath(
+      spot === "end"
+        ? { kind: "new-track" }
+        : { kind: "track", trackIndex: spot },
+    ),
   };
 }
 
@@ -112,11 +129,15 @@ function targetFromPath(
     // A return track is audio-only and Live appends it, so the path settles
     // both the type and the position on its own.
     case "new-return-track":
-      return { type: "return", spot: "end" };
+      return { type: "return", spot: "end", spelled: entry };
     case "new-track":
-      return { type: signalType(type, entry), spot: "end" };
+      return { type: signalType(type, entry), spot: "end", spelled: entry };
     case "track":
-      return { type: signalType(type, entry), spot: path.trackIndex };
+      return {
+        type: signalType(type, entry),
+        spot: path.trackIndex,
+        spelled: entry,
+      };
     case "return-track":
       throw pathError(
         "path",

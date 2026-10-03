@@ -13,7 +13,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
-import { createTrack } from "./create-track.ts";
+import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   log: vi.fn(),
@@ -133,7 +133,10 @@ describe("createTrack", () => {
   });
 
   it("should create tracks with mute, solo, and arm states", () => {
-    const track = registerMockObject("midi_track_0", {});
+    // A new regular track can be armed; the switches check before they write.
+    const track = registerMockObject("midi_track_0", {
+      properties: { can_be_armed: 1 },
+    });
 
     const result = createTrack({
       trackIndex: 0,
@@ -154,7 +157,9 @@ describe("createTrack", () => {
   });
 
   it("should handle boolean false values correctly", () => {
-    const track = registerMockObject("midi_track_0", {});
+    const track = registerMockObject("midi_track_0", {
+      properties: { can_be_armed: 1 },
+    });
 
     const result = createTrack({
       trackIndex: 0,

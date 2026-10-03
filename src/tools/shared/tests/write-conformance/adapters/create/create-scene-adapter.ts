@@ -12,8 +12,8 @@ import {
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import {
   LIVE_FAILURE,
-  failOnSet,
-  hookCalls,
+  failCall,
+  failOnCreated,
   registerScenes,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -71,13 +71,7 @@ export const createSceneAdapter: WriteToolAdapter = {
   midway: () => {
     const liveSet = setUpSet();
 
-    hookCalls(liveSet, /^create_scene$/, {
-      before: (nth) => {
-        if (nth === 2) {
-          throw new Error(LIVE_FAILURE);
-        }
-      },
-    });
+    failCall(liveSet, /^create_scene$/, 2);
 
     return {
       args: { path: "s+,s+,s+" },
@@ -91,17 +85,7 @@ export const createSceneAdapter: WriteToolAdapter = {
     const liveSet = setUpSet();
 
     // The second scene is made, then it won't take its name.
-    hookCalls(liveSet, /^create_scene$/, {
-      after: (nth, _args, result) => {
-        if (nth === 2) {
-          failOnSet(
-            lookupMockObject(
-              String((result as string[])[1]),
-            ) as RegisteredMockObject,
-          );
-        }
-      },
-    });
+    failOnCreated(liveSet, /^create_scene$/, 2);
 
     return {
       args: { path: "s+,s+,s+", name: "A,B,C" },

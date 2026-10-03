@@ -11,8 +11,8 @@ import {
 import { createTrack } from "#src/tools/track/create/create-track.ts";
 import {
   LIVE_FAILURE,
-  failOnSet,
-  hookCalls,
+  failCall,
+  failOnCreated,
   registerTracks,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -27,14 +27,6 @@ function setUpSet(): RegisteredMockObject {
 export const createTrackAdapter: WriteToolAdapter = {
   tool: "ppal-create-track",
   run: (args) => createTrack(args),
-  skip: {
-    midway:
-      "a throw from Live escapes the call: earlier tracks stay created, later ones are never made, and no entry says so",
-    afterChange:
-      "a throw while naming the new track escapes the call: the track exists, but no entry reports it",
-    loneSkipped:
-      "when Live makes no track the call throws a raw TypeError (reading null), not a reason in the tool's words",
-  },
   na: {
     unappliable:
       "every entry that parses is a place for a new track; a bad one fails the whole-call checks instead",
@@ -70,13 +62,7 @@ export const createTrackAdapter: WriteToolAdapter = {
   midway: () => {
     const liveSet = setUpSet();
 
-    hookCalls(liveSet, /^create_midi_track$/, {
-      before: (nth) => {
-        if (nth === 2) {
-          throw new Error(LIVE_FAILURE);
-        }
-      },
-    });
+    failCall(liveSet, /^create_midi_track$/, 2);
 
     return {
       args: { path: "t+,t+,t+" },
@@ -90,24 +76,14 @@ export const createTrackAdapter: WriteToolAdapter = {
     const liveSet = setUpSet();
 
     // The second track is made, then it won't take its name.
-    hookCalls(liveSet, /^create_midi_track$/, {
-      after: (nth, _args, result) => {
-        if (nth === 2) {
-          failOnSet(
-            lookupMockObject(
-              String((result as string[])[1]),
-            ) as RegisteredMockObject,
-          );
-        }
-      },
-    });
+    failOnCreated(liveSet, /^create_midi_track$/, 2);
 
     return {
       args: { path: "t+,t+,t+", name: "A,B,C" },
       failIndex: 1,
       message: LIVE_FAILURE,
       changed: { id: expect.any(String), path: "t3" },
-      landed: "made",
+      landed: "created",
       expected: [{ path: "t2" }, {}, { path: "t4" }],
     };
   },

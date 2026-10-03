@@ -200,6 +200,55 @@ describe("ppal-create-track", () => {
     expect(await nameAt(asAsked.path!)).toBe(`${ownLetter}-Tape`);
   });
 
+  // A return track can't be armed. The track is made, so its entry stays a
+  // normal one and the detail says what did nothing.
+  it("says an arm on a new return track had no effect", async () => {
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", arm: true },
+      }),
+    );
+
+    expect(created.path).toMatch(/^rt\d+$/);
+    expect(created).not.toHaveProperty("ok");
+    expect(created.detail).toBe(
+      "arm had no effect: return, main and group tracks can't be armed",
+    );
+
+    await sleep(100);
+    expect(await nameAt(created.path!)).toBeDefined();
+  });
+
+  // The switches check can_be_armed before writing, so a regular track has to
+  // still come back armed with nothing said.
+  it("arms a new MIDI track without a detail", async () => {
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { name: "Armed On Create", arm: true },
+      }),
+    );
+
+    expect(created.detail).toBeUndefined();
+
+    await sleep(100);
+    const read = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: created.id },
+      }),
+    );
+
+    expect(read.isArmed).toBe(true);
+
+    // Leave nothing armed for the tests after this one.
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: created.id, arm: false },
+    });
+  });
+
   it("creates tracks with custom properties", async () => {
     // Test 1: Create track with custom name
     const namedResult = await ctx.client!.callTool({
@@ -503,4 +552,5 @@ interface ReadTrackResult {
   name: string;
   color?: string;
   state?: string;
+  isArmed?: boolean;
 }

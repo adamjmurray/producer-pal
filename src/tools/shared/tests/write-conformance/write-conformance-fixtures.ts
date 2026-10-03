@@ -66,6 +66,52 @@ export function hookCalls(
 }
 
 /**
+ * Make the nth call to a matching method throw, the way Live does when it
+ * refuses.
+ * @param mock - The registered object the method is called on
+ * @param method - Which calls count
+ * @param nth - Which call throws, counting from 1
+ */
+export function failCall(
+  mock: RegisteredMockObject,
+  method: RegExp,
+  nth: number,
+): void {
+  hookCalls(mock, method, {
+    before: (count) => {
+      if (count === nth) {
+        throw new Error(LIVE_FAILURE);
+      }
+    },
+  });
+}
+
+/**
+ * Make the object the nth matching call creates refuse every write, so the
+ * target is made and then won't take its name.
+ * @param mock - The registered object the creating method is called on
+ * @param method - Which calls create objects
+ * @param nth - Which creating call's object refuses, counting from 1
+ */
+export function failOnCreated(
+  mock: RegisteredMockObject,
+  method: RegExp,
+  nth: number,
+): void {
+  hookCalls(mock, method, {
+    after: (count, _args, result) => {
+      if (count === nth) {
+        failOnSet(
+          lookupMockObject(
+            String((result as string[])[1]),
+          ) as RegisteredMockObject,
+        );
+      }
+    },
+  });
+}
+
+/**
  * Register a Live Set with `count` tracks, ids `t0`, `t1`, ...
  * @param count - How many tracks
  * @returns The tracks, in index order
