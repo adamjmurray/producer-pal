@@ -649,7 +649,6 @@ export interface ReadClipResult {
   id: string | null;
   type?: "midi" | "audio" | null;
   name?: string | null;
-  view?: "session" | "arrangement";
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;

@@ -321,7 +321,7 @@ describe("ppal-update-clip", () => {
     const movedClipResult = parseToolResult<ReadClipResult>(verifyMove);
 
     expect(arrangementStartOf(movedClipResult)).toBe("45|1");
-    expect(movedClipResult.view).toBe("arrangement");
+    expect(movedClipResult.path).toMatch(/^t\d+(\/l\d+)?\[/);
 
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({

@@ -239,12 +239,6 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
 
   if (scale != null) {
     applyScale(liveSet, parsedScale, scale, result);
-
-    result.$meta = [
-      parsedScale == null
-        ? "Scale disabled for selected clips and defaults for new clips."
-        : "Scale applied to selected clips and defaults for new clips.",
-    ];
   }
 
   if (parsedScale != null) {

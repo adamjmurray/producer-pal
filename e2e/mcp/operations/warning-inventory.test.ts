@@ -293,9 +293,8 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
   });
 
-  // Live hides a take lane until the track's arrow is expanded, so a clip on
-  // one looks missing. It's about that clip, so its own entry says it.
-  it("says on the clip's entry that it landed on a take lane", async () => {
+  // The take-lanes arrow is taught in the tool descriptions, not on each entry.
+  it("puts only the lane path on a take-lane clip's entry", async () => {
     const onLane = await entryFrom("ppal-create-clip", {
       path: `${SCRATCH}/l0[13|1]`,
       notes: "C3 1|1",
@@ -303,9 +302,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(onLane.path).toBe(`${SCRATCH}/l0[13|1]`);
-    expect(onLane.detail).toBe(
-      "expand the take-lanes arrow on the track header in Live to see it",
-    );
+    expect(onLane.detail).toBeUndefined();
 
     const copied = await entryFrom("ppal-duplicate", {
       type: "clip",
@@ -313,10 +310,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       toPath: `${SCRATCH}/l0[17|1]`,
     });
 
-    expect(copied.detail).toBe(
-      "re-created on the take lane; expand the take-lanes arrow on the track " +
-        "header in Live to see it",
-    );
+    expect(copied.detail).toBe("re-created on the take lane");
   });
 
   // openPluginWindow is about the one device the call selected, so its entry

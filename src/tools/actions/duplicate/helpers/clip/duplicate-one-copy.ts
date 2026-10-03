@@ -257,10 +257,8 @@ function recreateCopy(
 function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
   const cost = recreateLossesNote(losses);
 
-  // Live hides take lanes until the track's arrow is expanded, so a copy on one
-  // looks missing.
   return kind === "take-lane"
-    ? `re-created on the take lane${cost}; expand the take-lanes arrow on the track header in Live to see it`
+    ? `re-created on the take lane${cost}`
     : `promoted to the main lane by re-creating it${cost}`;
 }
 

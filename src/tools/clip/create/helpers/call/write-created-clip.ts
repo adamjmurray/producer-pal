@@ -69,15 +69,6 @@ export async function writeCreatedClip(
     appendDetail(entry, cost);
   }
 
-  if (payload.position.takeLane != null) {
-    // Live hides take lanes until the track's arrow is expanded, so a clip on
-    // one looks missing. The entry's path already names the lane.
-    appendDetail(
-      entry,
-      "expand the take-lanes arrow on the track header in Live to see it",
-    );
-  }
-
   const { args } = step.checked;
 
   // What the clip can't use of what was sent, said on its own entry

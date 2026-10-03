@@ -60,7 +60,6 @@ describe("ppal-create-clip", () => {
     const minimalClip = parseToolResult<ReadClipResult>(verifyMinimal);
 
     expect(minimalClip.type).toBe("midi");
-    expect(minimalClip.view).toBe("session");
     expect(minimalClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
 
     // Test 2: Create session clip with notes
@@ -222,7 +221,7 @@ describe("ppal-create-clip", () => {
     });
     const arrangementClip = parseToolResult<ReadClipResult>(verifyArrangement);
 
-    expect(arrangementClip.view).toBe("arrangement");
+    expect(arrangementClip.path).toMatch(/^t\d+(\/l\d+)?\[/);
     expect(arrangementStartOf(arrangementClip)).toBe("41|1");
   });
 
@@ -526,7 +525,7 @@ describe("ppal-create-clip", () => {
       parseToolResult<ReadClipResult>(verifyAudioSession);
 
     expect(audioSessionClip.type).toBe("audio");
-    expect(audioSessionClip.view).toBe("session");
+    expect(audioSessionClip.path).toMatch(/^t\d+\/s\d+$/);
 
     // Test 2: Create audio clip in arrangement view
     const audioArrangementResult = await ctx.client!.callTool({
@@ -552,7 +551,7 @@ describe("ppal-create-clip", () => {
     );
 
     expect(audioArrangementClip.type).toBe("audio");
-    expect(audioArrangementClip.view).toBe("arrangement");
+    expect(audioArrangementClip.path).toMatch(/^t\d+(\/l\d+)?\[/);
     expect(arrangementStartOf(audioArrangementClip)).toBe("17|1");
 
     // Test 3: Create audio clip with name and color

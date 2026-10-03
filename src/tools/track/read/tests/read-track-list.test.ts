@@ -123,8 +123,6 @@ describe("readTrack over a list of targets", () => {
       id: "main",
       path: "mt",
       name: "Main",
-      sessionClipCount: 0,
-      arrangementClipCount: 0,
       deviceCount: 0,
     });
   });

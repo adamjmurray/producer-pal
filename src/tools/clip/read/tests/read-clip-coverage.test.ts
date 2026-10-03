@@ -274,7 +274,6 @@ describe("readOneClip - include flag gating", () => {
 
     const result = readOneClip({ id: "id arr_clip", include: [] });
 
-    expect(result.view).toBe("arrangement");
     expect(result.path).toBe("t2[3|1]"); // start_time 8 in 4/4
     expect(result.arrangementLength).toBe("1bar");
     // The clip's own length still needs timing.
@@ -290,7 +289,6 @@ describe("readOneClip - include flag gating", () => {
 
     const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
-    expect(result.view).toBe("session");
     expect(result.arrangementLength).toBeUndefined();
   });
 });

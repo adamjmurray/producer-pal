@@ -94,14 +94,13 @@ published. `ppal-read-live-set` propagates only track-level includes
 
 Nested clip results have context-redundant fields removed to save tokens:
 
-- **In `ppal-read-track`**: `view` and `type` are stripped from clips in
+- **In `ppal-read-track`**: `type` is stripped from clips in
   `sessionClips`/`arrangementClips`/`takeLanes` (redundant with the parent
   track's properties and the array name). A take lane clip keeps its `path` — it
   says where on the lane the clip starts, which the lane's own path doesn't.
-- **In `ppal-read-scene`**: `view` is stripped from clips in the `clips` array
-  (scenes are always session view)
 
-When reading clips directly via `ppal-read-clip`, all fields are present.
+Every clip read leaves out `view`: the `path` already says it (`t0/s3` is a
+session slot, `t0[5|1]` an arrangement position).
 
 ### Implementation
 

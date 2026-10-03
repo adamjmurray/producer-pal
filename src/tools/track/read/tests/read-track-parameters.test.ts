@@ -112,8 +112,6 @@ describe("readOneTrack", () => {
         id: "456",
         path: "rt1",
         name: "Return by ID",
-        sessionClipCount: 0,
-        arrangementClipCount: 0,
         deviceCount: 0,
       });
     });
@@ -136,8 +134,6 @@ describe("readOneTrack", () => {
         id: "789",
         path: "mt",
         name: "Master by ID",
-        sessionClipCount: 0,
-        arrangementClipCount: 0,
         deviceCount: 0,
       });
     });
@@ -207,8 +203,6 @@ describe("readOneTrack", () => {
         id: "456",
         path: "rt1",
         name: "Return by Path",
-        sessionClipCount: 0,
-        arrangementClipCount: 0,
         deviceCount: 0,
       });
     });
@@ -228,8 +222,6 @@ describe("readOneTrack", () => {
         id: "789",
         path: "mt",
         name: "Main by Path",
-        sessionClipCount: 0,
-        arrangementClipCount: 0,
         deviceCount: 0,
       });
     });

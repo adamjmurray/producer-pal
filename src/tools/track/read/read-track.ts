@@ -144,6 +144,7 @@ export function readOneTrack(
 /**
  * Process session clips for a track
  * @param track - Track object
+ * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param trackIndex - Track index
  * @param includeSessionClips - Whether to include full session clip details
@@ -153,14 +154,16 @@ export function readOneTrack(
  */
 function processSessionClips(
   track: LiveAPI,
+  isGroup: boolean,
   category: string,
   trackIndex: number | null,
   includeSessionClips: boolean,
   nested: NestedClipReads,
   knownCount: number | undefined,
 ): SessionClipsResult {
-  if (category !== "regular") {
-    return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
+  if (isGroup || category !== "regular") {
+    // These tracks hold no session clips, so a count would always be 0.
+    return includeSessionClips ? { sessionClips: [] } : {};
   }
 
   return includeSessionClips
@@ -194,9 +197,8 @@ function processArrangementClips(
   nested: NestedClipReads,
 ): ArrangementClipsResult {
   if (isGroup || category === "return" || category === "master") {
-    return includeArrangementClips
-      ? { arrangementClips: [] }
-      : { arrangementClipCount: 0 };
+    // These tracks hold no arrangement clips, so a count would always be 0.
+    return includeArrangementClips ? { arrangementClips: [] } : {};
   }
 
   return includeArrangementClips
@@ -397,6 +399,7 @@ export function readTrackGeneric({
     result,
     processSessionClips(
       track,
+      isGroup,
       category,
       trackIndex,
       includeSessionClips,
@@ -469,8 +472,8 @@ export function readTrackGeneric({
   // Strip fields from nested clips that are redundant with parent track
   // context. Every clip keeps its path: "t0/s3" and "t0[5|1]" each address one
   // clip, which the track's own path doesn't.
-  stripFields(result.sessionClips as unknown[], "view", "type");
-  stripFields(result.arrangementClips as unknown[], "view", "type");
+  stripFields(result.sessionClips as unknown[], "type");
+  stripFields(result.arrangementClips as unknown[], "type");
 
   return result;
 }

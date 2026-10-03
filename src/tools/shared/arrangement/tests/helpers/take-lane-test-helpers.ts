@@ -156,7 +156,7 @@ export function registerTakeLaneTrack(
       lengthBeats?: unknown,
     ): unknown[] => createOwnedClip(owner, kind, startBeats, lengthBeats);
 
-    registerMockObject(laneId, {
+    const laneMock = registerMockObject(laneId, {
       path: String(livePath.track(trackIndex).takeLane(laneIndex)),
       type: "TakeLane",
       properties: laneProps,
@@ -166,6 +166,13 @@ export function registerTakeLaneTrack(
         create_audio_clip: (_file, _start) =>
           createClip("is_audio_clip", _start),
       },
+    });
+
+    // Live keeps a lane's name, so a read after a rename sees the new one.
+    laneMock.set.mockImplementation((property: string, value: unknown) => {
+      if (property === "name") {
+        laneProps.name = value;
+      }
     });
 
     return laneId;

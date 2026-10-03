@@ -78,10 +78,7 @@ describe("createClip take lanes", () => {
     expect(result.id).toMatch(/^tl_clip_/);
     // result surfaces the lane the clip landed on and where it starts
     expect(result.path).toBe("t0/l0[1|1]");
-    // Live hides take lanes behind an arrow, so the entry says where to look.
-    expect(result.detail).toBe(
-      "expand the take-lanes arrow on the track header in Live to see it",
-    );
+    expect(result.detail).toBeUndefined();
   });
 
   // A clip on the main lane is visible, so nothing is added to its entry.

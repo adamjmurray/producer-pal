@@ -22,8 +22,8 @@ Returns scene overview by default. Use `include` to add detail.
 ## Include: `"clips"`
 
 Replaces `clipCount` with full clip details for all non-empty clips in the
-scene. Each clip is read via `readClip()`. Nested clips have `view` stripped
-(see [Redundant field stripping](README.md#redundant-field-stripping)).
+scene. Each clip is read via `readClip()`. Clips carry no `view` (see
+[Redundant field stripping](README.md#redundant-field-stripping)).
 
 | Field   | Type     | Description                               |
 | ------- | -------- | ----------------------------------------- |

@@ -37,7 +37,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .string()
       .optional()
       .describe(
-        '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
+        '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Applies to selected clips and as the default for new clips. Empty string disables scale',
       ),
 
     locatorOperation: param(z.enum(["create", "delete", "rename"]).optional(), {

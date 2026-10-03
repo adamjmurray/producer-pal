@@ -39,14 +39,12 @@ const clip0 = {
   id: "clip0",
   type: "midi",
   name: "Clip 0",
-  view: "session",
   path: "t0/s0",
 };
 const clip1 = {
   id: "clip1",
   type: "midi",
   name: "Clip 1",
-  view: "session",
   path: "t1/s0",
 };
 

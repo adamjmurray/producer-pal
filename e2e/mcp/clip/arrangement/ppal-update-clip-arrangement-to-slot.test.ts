@@ -62,7 +62,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     expect(clip.id).toBe(moved.id);
-    expect(clip.view).toBe("session");
+    expect(clip.path).toMatch(/^t\d+\/s\d+$/);
     expect(clip.name).toBe("Move Home");
     expect(clip.color).toBe(before.color);
     expect(clip.length).toBe("2bar");
@@ -192,13 +192,13 @@ describe("arrangement clip moved into a session slot", () => {
       `t${EMPTY_MIDI_TRACK}/s5`,
     );
 
-    expect(placed.view).toBe("session");
+    expect(placed.path).toMatch(/^t\d+\/s\d+$/);
     expect(placed.name).toBe("On A Lane");
     expect(placed.notes).toContain("C3");
 
     const leftover = await readClipFully(ctx.client!, { id: source.id });
 
-    expect(leftover.view).toBe("arrangement");
+    expect(leftover.path).toMatch(/^t\d+(\/l\d+)?\[/);
     expect(leftover.name).toBe("(moved) On A Lane");
     expect(leftover.notes).toBeUndefined();
     expect(leftover.muted).toBe(true);
@@ -263,7 +263,7 @@ describe("arrangement clip duplicated into a session slot", () => {
     });
 
     expect(clip.id).toBe(copy.id);
-    expect(clip.view).toBe("session");
+    expect(clip.path).toMatch(/^t\d+\/s\d+$/);
     expect(clip.name).toBe("Copied");
     expect(clip.length).toBe("1bar");
     expect(clip.notes).toContain("E3");

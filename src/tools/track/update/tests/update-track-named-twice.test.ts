@@ -85,7 +85,7 @@ describe("updateTrack - a take lane named twice", () => {
       updateTrack({ id: laneId, path: "t0/l0", name: "First,Second" }),
     ).toStrictEqual([
       { id: laneId, detail: 'named again as "t0/l0" later in this call' },
-      { id: laneId, path: "t0/l0", name: "Second" },
+      { id: laneId, path: "t0/l0" },
     ]);
     expect(lane.set).toHaveBeenCalledExactlyOnceWith("name", "Second");
   });

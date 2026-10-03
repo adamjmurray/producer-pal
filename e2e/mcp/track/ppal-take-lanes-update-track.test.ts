@@ -55,7 +55,8 @@ async function createOnLane(
 interface UpdateTakeLaneResult {
   id: string;
   path: string;
-  name: string;
+  /** Not on a write that landed as sent; a read always has it */
+  name?: string;
   /** The lanes the call made ("l0", or "l0-l2" when it filled a gap) */
   created?: string;
   ok?: false;
@@ -83,7 +84,6 @@ describe("take lanes as track-tool targets", () => {
     expect(added).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "Take A",
       created: "l0",
     });
 
@@ -107,7 +107,6 @@ describe("take lanes as track-tool targets", () => {
     expect(renamed).toStrictEqual({
       id: added.id,
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "Renamed",
     });
 
     await sleep(100);
@@ -144,7 +143,7 @@ describe("take lanes as track-tool targets", () => {
         id: added.id,
         detail: `named again as "${lanePath}" later in this call`,
       },
-      { id: added.id, path: lanePath, name: "Second" },
+      { id: added.id, path: lanePath },
     ]);
   });
 
@@ -171,7 +170,6 @@ describe("take lanes as track-tool targets", () => {
     expect(renamed).toStrictEqual({
       id: read.id,
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "By id",
     });
 
     await sleep(100);
@@ -305,7 +303,6 @@ describe("take lanes as track-tool targets", () => {
     expect(result[1]).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "B",
       created: "l0",
     });
   });

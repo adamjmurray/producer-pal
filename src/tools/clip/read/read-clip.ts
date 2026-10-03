@@ -81,7 +81,6 @@ export interface ReadClipResult {
   id: string | null;
   type: "midi" | "audio" | null;
   name?: string | null;
-  view?: "arrangement" | "session";
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;
@@ -182,7 +181,7 @@ async function addClipEnvelopes(
   try {
     entry.envelopes = await clipEnvelopes(
       clip,
-      entry.view === "arrangement",
+      (clip.getProperty("is_arrangement_clip") as number) > 0,
       clipMeterReader(clip),
       deadline,
     );
@@ -261,7 +260,6 @@ export function readOneClip(
     id: clip.id,
     type: isMidiClip ? "midi" : "audio",
     ...(clipName && { name: clipName }),
-    view: isArrangementClip ? "arrangement" : "session",
     ...(includeColor && { color: clip.getColor() }),
   };
 

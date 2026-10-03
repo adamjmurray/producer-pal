@@ -189,8 +189,6 @@ describe("readLiveSet - basic reading", () => {
           isGroup: true,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          sessionClipCount: 2,
-          arrangementClipCount: 0,
           deviceCount: 0,
         },
         {

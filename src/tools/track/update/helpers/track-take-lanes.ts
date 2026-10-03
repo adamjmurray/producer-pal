@@ -40,7 +40,8 @@ export interface TakeLaneTargetSpec {
 export interface UpdateTakeLaneResult {
   id: string;
   path?: string;
-  name: string;
+  /** The name Live kept, when it isn't the one asked for */
+  name?: string;
   /** The lanes this call made ("l3", or "l1-l3" when it filled the gap below
    * the one named), when it made any */
   created?: string;
@@ -130,11 +131,13 @@ export function updateTakeLane(
 
   lane.setAll({ name }, () => landed("name", address));
 
+  // A name that landed as sent isn't repeated. One Live changed is read back,
+  // and so is the one Live gave a lane this call made, which nothing else shows.
+  const kept = created != null || name != null ? lane.getName() : undefined;
+
   return {
     ...address,
-    // A lane is only ever its name, so the entry says what it is now: the name
-    // just written, or the one it kept.
-    name: name ?? lane.getName(),
+    ...(kept == null || kept === name ? {} : { name: kept }),
     ...(created == null ? {} : { created }),
     ...(ignored.length === 0 ? {} : { detail: ignoredParamsDetail(ignored) }),
   };

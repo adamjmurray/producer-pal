@@ -15,9 +15,7 @@
  *
  * Take lanes are append-only — Live exposes no API to delete a lane or a
  * take-lane clip — so every test depends on setupMcpTestContext() reopening the
- * Live Set between tests to reset state (no `once`). Resolving a lane emits a
- * "expand the take-lanes arrow" hint warning even on success, so those calls are
- * parsed with parseToolResultWithWarnings().
+ * Live Set between tests to reset state (no `once`).
  *
  * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track; t1/t9/return/master
  * exercise the omission rules. See: e2e/live-sets/e2e-test-set-spec.md

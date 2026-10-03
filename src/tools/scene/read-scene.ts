@@ -15,7 +15,6 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedIdParam,
   namedParam,
@@ -189,9 +188,6 @@ export function readOneScene(
       expandWildcardIncludes(args.include, READ_SCENE_DEFAULTS),
       context.notation,
     );
-
-    // Strip fields redundant with parent scene context
-    stripFields(clips, "view");
 
     result.clips = clips;
   } else {

@@ -70,6 +70,8 @@ describe("ppal-read-track", () => {
 
     expect(returnTrack.id).toBeDefined();
     expect(returnTrack.path).toBe("rt0");
+    expect(returnTrack).not.toHaveProperty("sessionClipCount");
+    expect(returnTrack).not.toHaveProperty("arrangementClipCount");
 
     // Test 4: Read master track
     const masterResult = await ctx.client!.callTool({
@@ -79,7 +81,8 @@ describe("ppal-read-track", () => {
     const master = parseToolResult<ReadTrackResult>(masterResult);
 
     expect(master.id).toBeDefined();
-    expect(master.id).toBeDefined();
+    expect(master).not.toHaveProperty("sessionClipCount");
+    expect(master).not.toHaveProperty("arrangementClipCount");
 
     // Test 5: Default include - instruments, drum-map, all-clips
     expect(
@@ -173,6 +176,9 @@ describe("ppal-read-track", () => {
     const parentTrack = parseToolResult<ReadTrackResult>(parentResult);
 
     expect(parentTrack.isGroup).toBe(true);
+    // A group holds no clips, so it reports no counts
+    expect(parentTrack).not.toHaveProperty("sessionClipCount");
+    expect(parentTrack).not.toHaveProperty("arrangementClipCount");
 
     const childResult = await ctx.client!.callTool({
       name: "ppal-read-track",

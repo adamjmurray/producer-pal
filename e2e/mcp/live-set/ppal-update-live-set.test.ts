@@ -165,10 +165,7 @@ describe("ppal-update-live-set", () => {
     });
     const disableResult = parseToolResult<UpdateResult>(disableScale);
 
-    expect(disableResult.scale).toBeUndefined();
-    expect(disableResult.$meta).toContain(
-      "Scale disabled for selected clips and defaults for new clips.",
-    );
+    expect(disableResult).toStrictEqual({ id: expect.any(String) });
 
     // Test 3: Update multiple parameters at once
     const multiUpdate = await ctx.client!.callTool({
@@ -784,7 +781,6 @@ interface UpdateResult {
   scale?: string;
   scalePitches?: string;
   detail?: string;
-  $meta?: string[];
   locator?: {
     operation?: string;
     id?: string;

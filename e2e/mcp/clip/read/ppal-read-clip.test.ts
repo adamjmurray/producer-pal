@@ -41,7 +41,8 @@ describe("ppal-read-clip", () => {
     expect(midiClip.id).toBeDefined();
     expect(midiClip.type).toBe("midi");
     expect(midiClip.name).toBe("Beat");
-    expect(midiClip.view).toBe("session");
+    // The path says which view the clip is in
+    expect(midiClip).not.toHaveProperty("view");
     expect(midiClip.looping).toBe(true);
     expect(midiClip.length).toBe("1bar");
     expect(midiClip.path).toBe("t0/s0");
@@ -152,7 +153,7 @@ describe("ppal-read-clip", () => {
     });
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 
-    expect(arrClip.view).toBe("arrangement");
+    expect(arrClip.path).toMatch(/^t\d+(\/l\d+)?\[/);
     expect(arrangementStartOf(arrClip)).toBe("1|1");
     // The span comes without the timing include; the clip's own length needs it
     expect(arrClip.arrangementLength).toBeDefined();

@@ -622,6 +622,18 @@ asked of that target:
 An audio clip's unparseable `transforms` now refuses the clip, so no other param
 lands, like a MIDI clip's.
 
+**`ppal-update-track` take lane entries don't repeat `name`.** A lane named as
+asked gets `{id, path}`; `name` comes back only when Live kept a different one,
+or picked one for a lane you made without naming it.
+
+**A clip that lands on a take lane no longer says how to see it.** The
+`expand the take-lanes arrow on the track header in Live to see it` detail is
+gone from `ppal-create-clip` and `ppal-duplicate` entries; a copy
+`ppal-duplicate` had to re-create still says where it landed and what that cost.
+
+**`ppal-update-live-set` scale writes no longer return `$meta`.** The
+"applied"/"disabled" line said the same thing every time.
+
 ### Results name the take lanes they made
 
 Take lanes are named the same way by every tool that writes to one:
@@ -644,6 +656,14 @@ Params a take lane or a clip can't use read
 `a, b ignored: a take lane takes only name` and
 `a, b ignored: the clip is MIDI`. A script matching on the old text needs the
 new.
+
+## Reads changed in 2.5
+
+- **Return, main and group tracks carry no clip counts.** `ppal-read-track` and
+  `ppal-read-live-set` leave out `sessionClipCount` and `arrangementClipCount`
+  for them; both were always 0.
+- **`ppal-read-clip` has no `view`.** `path` says it: `t0/s3` is a session slot,
+  `t0[5|1]` an arrangement position.
 
 ## Enum values are kebab-case in 2.5
 
