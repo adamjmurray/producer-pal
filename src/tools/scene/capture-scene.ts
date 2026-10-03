@@ -55,7 +55,8 @@ export function captureScene({
     // capture_and_insert_scene inserts after the selection, so select the scene
     // before the target index. "s+" resolves to the scene count, whose
     // predecessor is the last scene. An index past the end has no predecessor
-    // to select, so pad with empty scenes first, same as create mode.
+    // to select, so pad with empty scenes first, same as create mode. The
+    // result leaves the selection change out on purpose, to stay short.
     validateSceneIndexCap([sceneIndex]);
     padded = ensureSceneCountForIndex(liveSet, sceneIndex);
 

@@ -207,15 +207,19 @@ Anything over 1568 px on its longest side is scaled down to that in the browser
 (canvas redraw, re-encoded as the same type) before it's read to base64. GIFs
 are left alone so animation survives, and the 5 MB cap applies to what scaling
 produced — a 12 MB screenshot attaches fine. Send is disabled while an image is
-still being read, so it can't miss the message it was meant for.
+still being read, so it can't miss the message it was meant for. The 5 MB cap is
+on the raw bytes, and that's safe: Anthropic's API accepted a 5.3 MB raw PNG (7
+MB as base64), so its limit isn't measured on the base64.
 
 Every turn re-sends the images in its history, so one request carries at most
 `MAX_REQUEST_IMAGE_BYTES` (15 MB of base64, under Gemini's 20 MB request cap)
-and `MAX_REQUEST_IMAGES` (20; 8 for Mistral, its API limit). The newest
-messages' images fill it; every image past whichever limit is hit first, even
-one in the newest message, goes out as a short text note instead, so a long chat
-with screenshots keeps working. The composer still allows 10 images per message,
-so on Mistral any past the eighth in one message go out as the note.
+and `MAX_REQUEST_IMAGES` (20; 8 for Mistral, its API limit, also on OpenRouter
+and Vercel AI Gateway). The newest messages' images fill it. An image too big
+for the bytes left is skipped and older, smaller ones can still fit; once the
+count is reached, every older image is skipped. A skipped image, even one in the
+newest message, goes out as a short text note instead, so a long chat with
+screenshots keeps working. The composer still allows 10 images per message, so
+on Mistral any past the eighth in one message go out as the note.
 
 ### Message Queue
 

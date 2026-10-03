@@ -220,6 +220,10 @@ tester already had took a second GitHub request to resolve the release's tag to
 a commit — twice the rate-limit cost, to answer something the version number now
 answers by itself.
 
+It's also why dismissing an update can be keyed on the version number alone
+(`dismissedUpdateVersion` in the global settings): a re-cut has a new version,
+so it shows up again even after the last one was dismissed.
+
 The commit SHA is still baked into the artifacts and shown next to the version
 in the device UI, but it's diagnostic only: it says which commit produced these
 bytes when a bug report and a version number disagree. Nothing branches on it.

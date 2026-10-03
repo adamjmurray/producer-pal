@@ -62,6 +62,12 @@ list-length check, which would otherwise call one destination two and refuse a
 call for a mismatch that isn't there. Peeling the coordinate off first leaves a
 body with no brackets, so splitting that on `/` needs no depth of its own.
 
+One known gap, left on purpose: depth drops back to 0 at the first `]`, so a
+locator name with `]` followed by `,` (`t0[loc:A], B]`) splits as a list.
+Closing only on a `]` that comes before `,` or the end would still guess wrong
+for a name like `A], B`, and every path tool shares this lexer. Revisit only if
+a model trips on it.
+
 A `+` names a place rather than a thing, so it is taken only by the tool that
 creates that kind of object, and a `+` root is a whole path — `t+/s0` names
 nothing yet. On create, `t2` inserts at 2 while `t+` appends. `rt<n>` is refused

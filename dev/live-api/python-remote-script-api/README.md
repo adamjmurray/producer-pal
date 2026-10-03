@@ -9,6 +9,16 @@ records where they may not, and how to probe the Python side.
 - [../rack-macro-mappings.md](../rack-macro-mappings.md) — what can be learned
   about rack macro mappings, from either API or the saved Set.
 
+Nothing is hidden below the Python API: Boost.Python exposes each native class
+whole, and its only private member is `LomObject._live_ptr`, a raw pointer.
+
+Prior art to check before writing new probes:
+[PhotonicVelocity LiveAPI](https://github.com/PhotonicVelocity/LiveAPI) (a
+Python API reference built from runtime introspection, decompiled Remote Scripts
+and probing) and
+[Structure Void's MIDI Remote Scripts docs](https://midiremotescripts.structure-void.com/)
+(the object model across Live versions).
+
 ## Probing
 
 The scripts are in `scripts/live-api/python-probe/`.

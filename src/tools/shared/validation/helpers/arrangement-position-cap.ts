@@ -10,6 +10,10 @@ import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
  * Refuses an arrangement position Live won't take, saying the last one it will
  * in bar|beat. Call it before anything is made: Live declines such a position
  * without saying why, after earlier work has landed.
+ *
+ * Not checked here: scene copies laid end to end (Live refuses each one), a
+ * clip end pushed past the cap by `arrangementLength`, and locator or loop
+ * positions, where Live's limit is unknown.
  * @param beats - The position, in Ableton beats
  * @param timeSigNumerator - Song time signature numerator
  * @param timeSigDenominator - Song time signature denominator
