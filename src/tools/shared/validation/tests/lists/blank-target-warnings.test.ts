@@ -43,6 +43,8 @@ const TOOLS: Array<{
   refusal: string;
   /** A call that is refused whatever its targets */
   refused: (targets: Targets) => unknown;
+  /** Says it in the write pipeline's wording, `X ignored: reason` */
+  pipeline?: true;
 }> = [
   {
     tool: "update-track",
@@ -80,6 +82,7 @@ const TOOLS: Array<{
     call: (targets) => updateDevice({ ...targets, name: "A" }),
     refused: (targets) =>
       updateDevice({ ...targets, name: "A", mappedPitch: "x" }),
+    pipeline: true,
   },
   {
     tool: "delete",
@@ -127,13 +130,13 @@ describe("blank id or path on every tool that takes both", () => {
 
   it.each(TOOLS)(
     "$tool warns once that a blank id was dropped",
-    async ({ objects, path, setup, call }) => {
+    async ({ objects, path, setup, call, pipeline }) => {
       setup();
 
       await call({ id: BLANK, path });
 
       expect(capturedWarnings()).toStrictEqual([
-        `blank id ignored — "path" names the ${objects}`,
+        `blank id ignored${pipeline ? ":" : " —"} "path" names the ${objects}`,
       ]);
     },
   );

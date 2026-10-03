@@ -65,14 +65,6 @@ function setUpChains(count: number): RegisteredMockObject[] {
 export const updateDeviceAdapter: WriteToolAdapter = {
   tool: "ppal-update-device",
   run: (args) => updateDevice(args),
-  skip: {
-    namedTwice:
-      "writes the device at every mention; the earlier entry is a plain id and path, with no detail",
-    unparsable:
-      "a path it can't parse becomes an ok:false entry, and the other targets are still written",
-    afterChange:
-      "the entry is a plain skip with the throw's reason; it doesn't say the name had already been set",
-  },
   na: {
     replacedLater:
       "a device moved to a position is inserted there, so nothing is overwritten",

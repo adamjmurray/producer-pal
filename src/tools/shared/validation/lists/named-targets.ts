@@ -28,6 +28,14 @@ export interface TargetSkip {
   detail: string;
 }
 
+/** An entry that says only why a target was left alone, with no `ok`: the
+ * work was not a failure (a later mention won). */
+export interface NoteEntry {
+  id?: string;
+  path?: string;
+  detail: string;
+}
+
 /**
  * The targets a call names, ids first, each as the caller wrote it. Splitting
  * refuses a list with a hole in it before anything runs.
@@ -75,6 +83,16 @@ export function skipEntry(target: NamedTarget, detail: string): TargetSkip {
 }
 
 /**
+ * The entry for a target left alone for a reason that isn't a failure.
+ * @param target - The target, as the caller named it
+ * @param detail - Why it was left alone
+ * @returns The entry, addressed as the caller spelled the target
+ */
+export function noteEntry(target: NamedTarget, detail: string): NoteEntry {
+  return { ...targetAddress(target), detail };
+}
+
+/**
  * How a target says a later one named the same object, in that target's own
  * spelling — what the caller matches the working entry on. One wording for
  * every tool: the last target to name an object is the one acted on.
@@ -97,6 +115,9 @@ export function namedLaterReason(later: NamedTarget): string {
 export function destinationNamedLaterReason(destination: string): string {
   return `${destination} is ${namedAgain()}`;
 }
+
+/** What every named-again detail looks like, whoever wrote it. */
+const NAMED_AGAIN = /^named again( as .+)? later in this call$/s;
 
 /** Why a target got nothing: there was no time left to reach it. */
 export const REQUEST_OUT_OF_TIME = "the request ran out of time";
@@ -124,6 +145,16 @@ export function namedAgain(address?: string): string {
   return address == null
     ? "named again later in this call"
     : `named again as ${address} later in this call`;
+}
+
+/**
+ * Whether a detail says its entry was named again later: a write left undone
+ * for the later mention, which an entry list counts as nothing landing.
+ * @param detail - An entry's detail, if it has one
+ * @returns True for the named-again wording
+ */
+export function isNamedAgain(detail: string | undefined): boolean {
+  return detail != null && NAMED_AGAIN.test(detail);
 }
 
 /**

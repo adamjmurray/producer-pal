@@ -88,8 +88,9 @@ export type ActionHandler = (
 
 /** One entry of the `actions` an update-device result reports, addressed by the
  * action string as written: the action alone when it ran, plus a `detail` when
- * it found nothing to change, and `ok: false` with one when nothing was done.
- * `ok` never appears without a detail. */
+ * it found nothing to change or a later mention of the same action runs
+ * instead, and `ok: false` with one when nothing was done. `ok` never appears
+ * without a detail. */
 export type ActionResult =
   | { action: string }
   | { action: string; detail: string }

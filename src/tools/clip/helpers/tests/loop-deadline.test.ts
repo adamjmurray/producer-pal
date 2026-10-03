@@ -4,10 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { CODE_EXEC_TIMEOUT_MS } from "#src/tools/clip/code-exec/code-exec-types.ts";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import {
   computeLoopDeadline,
-  isDeadlineExceeded,
   LOOP_DEADLINE_BUFFER_MS,
 } from "../loop-deadline.ts";
 
@@ -64,29 +64,5 @@ describe("computeLoopDeadline", () => {
 
     expect(deadline).toBeGreaterThanOrEqual(before + 500);
     expect(deadline).toBeLessThanOrEqual(after + 500);
-  });
-});
-
-describe("isDeadlineExceeded", () => {
-  it("should return false for null deadline", () => {
-    expect(isDeadlineExceeded(null)).toBe(false);
-  });
-
-  it("should return false when deadline is in the future", () => {
-    expect(isDeadlineExceeded(Date.now() + 10_000)).toBe(false);
-  });
-
-  it("should return true when deadline is in the past", () => {
-    expect(isDeadlineExceeded(Date.now() - 1)).toBe(true);
-  });
-
-  it("should return true when deadline equals current time", () => {
-    vi.useFakeTimers({ now: 1000 });
-
-    try {
-      expect(isDeadlineExceeded(1000)).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 });

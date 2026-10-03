@@ -10,7 +10,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   claimLabels,

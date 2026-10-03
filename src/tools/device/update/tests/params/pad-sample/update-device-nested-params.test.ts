@@ -370,8 +370,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     expect(paramsOf(result)).toStrictEqual([
       {
         name: "sample",
-        ok: false,
-        detail: 'set again by "Sample" later in the list',
+        detail: 'named again as "Sample" later in this call',
       },
       { name: "sample", value: KICK },
     ]);

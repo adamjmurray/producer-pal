@@ -42,17 +42,3 @@ export function computeLoopDeadline(timeoutMs?: number): number | null {
 export function loopBudgetMs(timeoutMs: number): number {
   return timeoutMs - Math.min(LOOP_DEADLINE_BUFFER_MS, timeoutMs / 2);
 }
-
-/**
- * Check if the loop deadline has been exceeded.
- *
- * @param deadline - Absolute deadline timestamp from computeLoopDeadline, or null
- * @returns true if deadline is exceeded, false if null or not yet exceeded
- */
-export function isDeadlineExceeded(deadline: number | null): boolean {
-  if (deadline == null) {
-    return false;
-  }
-
-  return Date.now() >= deadline;
-}

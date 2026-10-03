@@ -31,41 +31,13 @@
 // dropped.
 
 import { describe, expect, it } from "vitest";
-import { createClipAdapter } from "./adapters/create/create-clip-adapter.ts";
-import { createDeviceAdapter } from "./adapters/create/create-device-adapter.ts";
-import { createSceneAdapter } from "./adapters/create/create-scene-adapter.ts";
-import { createTrackAdapter } from "./adapters/create/create-track-adapter.ts";
-import { deleteAdapter } from "./adapters/actions/delete-adapter.ts";
-import { duplicateAdapter } from "./adapters/actions/duplicate-adapter.ts";
-import { playbackAdapter } from "./adapters/actions/playback-adapter.ts";
-import { selectAdapter } from "./adapters/actions/select-adapter.ts";
-import { updateClipAdapter } from "./adapters/update/update-clip-adapter.ts";
-import { updateDeviceAdapter } from "./adapters/update/update-device-adapter.ts";
-import { updateLiveSetAdapter } from "./adapters/update/update-live-set-adapter.ts";
-import { updateSceneAdapter } from "./adapters/update/update-scene-adapter.ts";
-import { updateTrackAdapter } from "./adapters/update/update-track-adapter.ts";
+import { ADAPTERS } from "./write-conformance-adapters.ts";
 import { expectCase } from "./write-conformance-cases.ts";
 import {
   CASE_IDS,
   type CaseId,
   type WriteToolAdapter,
 } from "./write-conformance-types.ts";
-
-const ADAPTERS: WriteToolAdapter[] = [
-  updateDeviceAdapter,
-  updateClipAdapter,
-  duplicateAdapter,
-  createDeviceAdapter,
-  createClipAdapter,
-  deleteAdapter,
-  createTrackAdapter,
-  createSceneAdapter,
-  updateTrackAdapter,
-  updateSceneAdapter,
-  updateLiveSetAdapter,
-  playbackAdapter,
-  selectAdapter,
-];
 
 describe.each(ADAPTERS)("write conformance: $tool", (adapter) => {
   it("accounts for every case exactly once", () => {

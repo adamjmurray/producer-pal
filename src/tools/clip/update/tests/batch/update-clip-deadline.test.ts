@@ -16,13 +16,17 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
   LOOP_DEADLINE_BUFFER_MS: 10000,
   computeLoopDeadline: vi.fn(() => 0),
+}));
+vi.mock(import("#src/shared/max/v8-request-deadline.ts"), () => ({
   isDeadlineExceeded: vi.fn(() => false),
 }));
 
 // Dynamic import after mock is set up
 const { updateClip } = await import("#src/tools/clip/update/update-clip.ts");
-const { computeLoopDeadline, isDeadlineExceeded } =
+const { computeLoopDeadline } =
   await import("#src/tools/clip/helpers/loop-deadline.ts");
+const { isDeadlineExceeded } =
+  await import("#src/shared/max/v8-request-deadline.ts");
 
 /**
  * Setup two MIDI clip mocks for deadline tests.

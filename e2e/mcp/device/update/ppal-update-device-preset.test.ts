@@ -96,6 +96,25 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
   });
 
+  it("loads a preset onto each of several devices", async () => {
+    const first = await createDrift();
+    const second = await createDrift();
+    const preset = presetName(adv.name);
+    const updated = parseToolResult<UpdateResult[]>(
+      await call("ppal-update-device", {
+        path: `${first.path},${second.path}`,
+        preset: `${preset},${preset}`,
+      }),
+    );
+
+    expect(updated).toStrictEqual([
+      { id: first.id, path: first.path },
+      { id: second.id, path: second.path },
+    ]);
+    expect((await readDevice(ctx.client!, first.path)).name).toBe(preset);
+    expect((await readDevice(ctx.client!, second.path)).name).toBe(preset);
+  });
+
   it("puts a new device in place for a rack preset, and says so", async () => {
     const drift = await createDrift();
     const updated = parseToolResult<UpdateResult>(

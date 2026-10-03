@@ -15,12 +15,14 @@ import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/hel
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
   LOOP_DEADLINE_BUFFER_MS: 10000,
   computeLoopDeadline: vi.fn(() => 0),
+}));
+vi.mock(import("#src/shared/max/v8-request-deadline.ts"), () => ({
   isDeadlineExceeded: vi.fn(() => false),
 }));
 
 const { updateClip } = await import("#src/tools/clip/update/update-clip.ts");
 const { isDeadlineExceeded } =
-  await import("#src/tools/clip/helpers/loop-deadline.ts");
+  await import("#src/shared/max/v8-request-deadline.ts");
 
 const NOT_RUN =
   "the request ran out of time; the rest of this update did not run";

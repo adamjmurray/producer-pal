@@ -32,7 +32,7 @@ import {
   labelDuplicateDestinations,
   refusedCopy,
 } from "./copy-entries.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import {
   resolveDuplicateTakeLanes,
   type ResolvedDuplicateLane,

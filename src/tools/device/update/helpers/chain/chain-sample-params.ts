@@ -17,17 +17,18 @@ import {
   refreshParamValues,
   skippedParam,
   skippedParamById,
+  supersededParam,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   resolveDrumChainSampleTarget,
   sayWhatWasLeft,
 } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
-import { setParamValues } from "../update-device-param-setters.ts";
-import { supersededParamReasons } from "./params/superseded-params.ts";
-import { type UpdatePropertyOptions } from "./update-device-properties.ts";
+import { setParamValues } from "../../update-device-param-setters.ts";
+import { supersededParamReasons } from "../params/superseded-params.ts";
+import { type UpdatePropertyOptions } from "../update-device-properties.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
-import { notApplicableReason } from "./update-target-types.ts";
+import { notApplicableReason } from "../update-target-types.ts";
 
 /**
  * Apply a `params` write aimed at a drum pad rather than at its rack.
@@ -66,16 +67,20 @@ export function applyChainSampleParams(
     params.flatMap((entry) => {
       const { key, byId } = paramEntryKey(entry);
       const writableIndex = writable.indexOf(entry);
-      const skip =
-        writableIndex === -1
-          ? notApplicableReason("params", type, target)
-          : superseded.get(writableIndex);
 
-      if (skip == null) {
-        return writeChainSample(target, entry, force, notes, chainsMade);
+      if (writableIndex === -1) {
+        const reason = notApplicableReason("params", type, target);
+
+        return [
+          byId ? skippedParamById(key, reason) : skippedParam(key, reason),
+        ];
       }
 
-      return [byId ? skippedParamById(key, skip) : skippedParam(key, skip)];
+      const overridden = superseded.get(writableIndex);
+
+      return overridden == null
+        ? writeChainSample(target, entry, force, notes, chainsMade)
+        : [supersededParam(key, byId, overridden)];
     }),
   );
 }

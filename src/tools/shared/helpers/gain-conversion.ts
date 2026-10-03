@@ -16,7 +16,7 @@
 import {
   LOOKUP_TABLE,
   type LookupEntry,
-} from "../clip-gain-lookup/lookup-table.ts";
+} from "../clip/clip-gain-lookup/lookup-table.ts";
 
 /**
  * Converts Ableton Live's normalized gain parameter (0-1) to decibels (dB).

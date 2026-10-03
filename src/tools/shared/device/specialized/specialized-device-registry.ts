@@ -23,6 +23,8 @@ import {
   type WrittenPseudoParam,
   skippedParam,
 } from "../helpers/param-reading.ts";
+import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
@@ -189,7 +191,7 @@ export function readSpecializedParams(
 /**
  * Parse and dispatch the `actions` arg for a specialized device. Every action
  * keeps its slot, and nothing warns: its entry is where the caller reads what
- * happened to it.
+ * happened to it. An action named again later runs only at its last mention.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
  * @returns One entry per action sent, in order
@@ -199,8 +201,15 @@ export function applySpecializedActions(
   actions: string[],
 ): ActionResult[] {
   const spec = getSpecForDevice(device);
+  // Running the same action twice does nothing the first run didn't: the last
+  // mention runs, like any other target named twice.
+  const overridden = lastWins(actions.map((raw) => [actionKey(raw)]));
 
-  return actions.map((raw): ActionResult => {
+  return actions.map((raw, index): ActionResult => {
+    if (overridden.has(index)) {
+      return { action: raw, detail: namedAgain() };
+    }
+
     const parsed = parseAction(raw);
 
     if (!parsed) {
@@ -228,6 +237,21 @@ export function applySpecializedActions(
       return refusedAction(raw, errorMessage(e));
     }
   });
+}
+
+/**
+ * What makes two action strings the same action: the same name (any case) with
+ * the same args, however they were spaced. A string that doesn't parse stands
+ * for itself.
+ * @param raw - The action as the caller wrote it
+ * @returns The key two spellings of one action share
+ */
+function actionKey(raw: string): string {
+  const parsed = parseAction(raw);
+
+  return parsed == null
+    ? `raw:${raw.trim()}`
+    : `${parsed.name.toLowerCase()}:${JSON.stringify(parsed.args)}`;
 }
 
 /**

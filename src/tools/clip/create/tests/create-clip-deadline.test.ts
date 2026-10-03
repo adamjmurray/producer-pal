@@ -11,12 +11,14 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
   LOOP_DEADLINE_BUFFER_MS: 10000,
   computeLoopDeadline: vi.fn(() => 0),
+}));
+vi.mock(import("#src/shared/max/v8-request-deadline.ts"), () => ({
   isDeadlineExceeded: vi.fn(() => false),
 }));
 
 const { createClip } = await import("../create-clip.ts");
 const { isDeadlineExceeded } =
-  await import("#src/tools/clip/helpers/loop-deadline.ts");
+  await import("#src/shared/max/v8-request-deadline.ts");
 
 describe("createClip - deadline exceeded", () => {
   beforeEach(() => {

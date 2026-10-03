@@ -8,11 +8,13 @@ import {
   paramEntryKey,
 } from "#src/tools/device/update/device-params-schema.ts";
 import { isSpecializedParamKey } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { matchParamsByName } from "./param-name-resolution.ts";
 
 /**
- * Skip reasons for entries a later entry overrides, keyed by position. When
- * entries reach one param, the last one wins.
+ * Detail for entries a later entry overrides, keyed by position. When entries
+ * reach one param, the last one wins.
  *
  * Entries match when their keys are the same text (any case), or when they
  * reach the same parameter on `device` (an id and a name, or a macro's two
@@ -21,44 +23,29 @@ import { matchParamsByName } from "./param-name-resolution.ts";
  * @param device - The device the entries are looked up on; null compares the
  *   keys alone
  * @param params - The params list as the caller sent it
- * @returns The skip reason for each overridden entry
+ * @returns The detail for each overridden entry
  */
 export function supersededParamReasons(
   device: LiveAPI | null,
   params: ParamEntry[],
 ): Map<number, string> {
-  const reasons = new Map<number, string>();
-
   if (params.length < 2) {
-    return reasons;
+    return new Map();
   }
 
   // Read once for the whole list: every entry matches against these.
   const parameters = device?.getChildren("parameters") ?? [];
-  // What each claimed key or param is set by, as the reason names it.
-  const setBy = new Map<string, string>();
+  const overriddenBy = lastWins(
+    params.map((entry) => entryClaims(parameters, device, entry)),
+  );
 
-  // Walk back from the end, so the entry that claims a param is the last one.
-  for (const [index, entry] of [...params.entries()].toReversed()) {
-    const claims = entryClaims(parameters, device, entry);
-    const winner = claims
-      .map((claim) => setBy.get(claim))
-      .find((label) => label != null);
+  return new Map(
+    [...overriddenBy].map(([index, winner]) => {
+      const { key, byId } = paramEntryKey(params[winner] as ParamEntry);
 
-    if (winner != null) {
-      reasons.set(index, `set again by ${winner} later in the list`);
-      continue;
-    }
-
-    const { key, byId } = paramEntryKey(entry);
-    const label = byId ? `id ${key}` : `"${key}"`;
-
-    for (const claim of claims) {
-      setBy.set(claim, label);
-    }
-  }
-
-  return reasons;
+      return [index, namedAgain(byId ? `id ${key}` : `"${key}"`)];
+    }),
+  );
 }
 
 /**

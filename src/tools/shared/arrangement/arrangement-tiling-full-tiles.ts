@@ -9,7 +9,7 @@
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {

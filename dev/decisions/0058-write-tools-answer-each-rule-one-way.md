@@ -58,28 +58,30 @@ can't use it extends the pipeline rather than writing its own copy.
   tool description says once that inserting, deleting or duplicating shifts
   later siblings. A deleted object's result path is its address from before the
   call; every other entry names the object where it is after the call.
-- **A list field inside a result** (playback `clips`, sends) stays an array for
-  one item. Unwrapping a single target applies to the tool's whole result, not
-  to a field in it.
+- **A list field inside a result mirrors the param it came from.** A singular
+  param that takes a comma list gives a singular field, unwrapped for one target
+  (`locator`; playback's `clips` becomes `clip`). A param that is itself a list
+  (`sends`, `params`) gives an array.
 
 ### Tools that don't match yet (as of 2026-10-02)
 
-- **Named twice:** update-track, update-scene, update-device (targets and
-  actions), take lanes on update-track. Nested sends and `params` give
-  `ok: false` and params use their own wording.
+- **Named twice:** update-track, update-scene, take lanes on update-track.
+  Nested `sends` (update-device's too, shared with update-track) give
+  `ok: false`. update-device's targets, actions and `params` match.
 - **Replaced earlier target:** update-clip's buried clips and duplicate's
   covered copies are written, then marked `deleted: true`; create-clip at the
   same arrangement spot twice reports an id that's gone; duplicate to the same
   session slot twice says nothing on the earlier entry; update-clip and
   create-clip mark a named-again entry `ok: false`.
 - **Missing source:** duplicate refuses the whole call.
-- **Unparseable entry:** update-clip and update-device skip only that target.
+- **Unparseable entry:** update-clip skips only that target.
 - **Partway failure:** create-track and create-scene throw and leave earlier
   work with no entries.
 - **`count`:** duplicate warns and ignores it for tracks to take lanes and
   scenes to several arrangement positions; create-scene ignores it with
   `capture`.
 - **Warning wording:** about 15 hand-written warnings use `—` or other forms.
+  Only update-device's blank-target warning reads `X ignored: reason`.
 - **Check before an irreversible step:** update-clip shortens before checking
   the move.
 - **Path shifts:** create-track and duplicate's descriptions don't say it.

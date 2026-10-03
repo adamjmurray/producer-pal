@@ -10,7 +10,7 @@ import {
   buildClipResultObject,
   type ClipResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   REQUEST_OUT_OF_TIME,

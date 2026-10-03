@@ -6,6 +6,7 @@
 import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -46,7 +47,7 @@ export function updateMacroVariation(
     return;
   }
 
-  executeMacroVariationAction(device, action);
+  executeMacroVariationAction(device, action, notes);
 }
 
 /**
@@ -104,6 +105,7 @@ function setVariationIndex(
   }
 
   device.set("selected_variation_index", index);
+  noteLanded(notes, "variation index");
 
   return true;
 }
@@ -112,10 +114,12 @@ function setVariationIndex(
  * Execute the macro variation action on device
  * @param device - Rack device
  * @param action - Action to execute
+ * @param notes - What this device's entry has to say, told what lands
  */
 function executeMacroVariationAction(
   device: LiveAPI,
   action: string | undefined,
+  notes: TargetNotes,
 ): void {
   switch (action) {
     case "create":
@@ -134,6 +138,8 @@ function executeMacroVariationAction(
       device.call("randomize_macros");
       break;
   }
+
+  noteLanded(notes, `macroVariation ${action}`);
 }
 
 // ============================================================================
@@ -176,6 +182,7 @@ export function updateMacroCount(
 
   for (let i = 0; i < Math.abs(target - before) / 2; i++) {
     device.call(method);
+    noteLanded(notes, "macroCount");
   }
 
   reportMacroCount(device, { before, target, hadMappings }, notes);
@@ -279,4 +286,6 @@ export function updateABCompare(
       device.call("save_preset_to_compare_ab_slot");
       break;
   }
+
+  noteLanded(notes, "abCompare");
 }

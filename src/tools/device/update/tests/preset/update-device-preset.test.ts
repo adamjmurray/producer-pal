@@ -22,7 +22,7 @@ import {
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { updateDeviceWithPreset } from "../update-device-with-preset.ts";
+import { updateDevice } from "../../update-device.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
@@ -109,7 +109,7 @@ function registerDevice(
   return registerMockObject(id, { path, type: "Device", properties });
 }
 
-describe("updateDeviceWithPreset", () => {
+describe("updateDevice with a preset", () => {
   beforeEach(() => {
     drift = registerDevice("drift", String(DRIFT_PATH), {
       class_display_name: "Drift",
@@ -125,7 +125,7 @@ describe("updateDeviceWithPreset", () => {
   });
 
   it("runs an update with no preset as it always has, with nothing to await", () => {
-    const result = updateDeviceWithPreset({ path: "t3/d0", name: "Lead" });
+    const result = updateDevice({ path: "t3/d0", name: "Lead" });
 
     expect(result).toStrictEqual({ id: "drift", path: "t3/d0" });
     expect(drift.set).toHaveBeenCalledWith("name", "Lead");
@@ -134,7 +134,7 @@ describe("updateDeviceWithPreset", () => {
 
   it("loads the preset onto the device, searching its own presets first", async () => {
     expect(
-      await updateDeviceWithPreset({ path: "t3/d0", preset: "AG Bass" }),
+      await updateDevice({ path: "t3/d0", preset: "AG Bass" }),
     ).toStrictEqual({ id: "drift", path: "t3/d0" });
 
     expect(callsTo(REMOTE_SCRIPT_ROUTES.resolvePreset)).toStrictEqual([
@@ -170,7 +170,7 @@ describe("updateDeviceWithPreset", () => {
     async ({ left, expiresInMs }) => {
       vi.spyOn(Date, "now").mockReturnValue(1_000_000);
 
-      await updateDeviceWithPreset(
+      await updateDevice(
         { path: "t3/d0", preset: "AG Bass" },
         { deadline: 1_000_000 + left },
       );
@@ -190,7 +190,7 @@ describe("updateDeviceWithPreset", () => {
     });
 
     expect(
-      await updateDeviceWithPreset({ id: "drift", preset: "808 Drifter" }),
+      await updateDevice({ id: "drift", preset: "808 Drifter" }),
     ).toStrictEqual({
       id: "rack",
       path: "t3/d0",
@@ -209,7 +209,7 @@ describe("updateDeviceWithPreset", () => {
       },
     });
 
-    await updateDeviceWithPreset({ id: "drift", preset: "X", name: "Keys" });
+    await updateDevice({ id: "drift", preset: "X", name: "Keys" });
 
     expect(rack?.set).toHaveBeenCalledWith("name", "Keys");
     expect(drift.set).not.toHaveBeenCalledWith("name", "Keys");
@@ -221,7 +221,7 @@ describe("updateDeviceWithPreset", () => {
     });
 
     await expect(
-      updateDeviceWithPreset({ path: "t3/d0", preset: "Concert Hall" }),
+      updateDevice({ path: "t3/d0", preset: "Concert Hall" }),
     ).rejects.toThrow("preset not loaded: kinds differ");
   });
 
@@ -231,7 +231,7 @@ describe("updateDeviceWithPreset", () => {
     });
 
     expect(
-      await updateDeviceWithPreset({
+      await updateDevice({
         path: "t3/d0",
         preset: "Concert Hall",
         name: "Lead",
@@ -251,7 +251,7 @@ describe("updateDeviceWithPreset", () => {
       name: "Drift",
     });
 
-    await updateDeviceWithPreset({
+    await updateDevice({
       path: "t3/d0,t4/d0,t3/d1",
       preset: "AG Bass,AG Bass,Concert Hall",
     });
@@ -268,27 +268,27 @@ describe("updateDeviceWithPreset", () => {
       resolution: { available: true, error: 'no preset "X"' },
     });
 
-    await expect(
-      updateDeviceWithPreset({ path: "t3/d0", preset: "X" }),
-    ).rejects.toThrow('no preset "X"');
+    await expect(updateDevice({ path: "t3/d0", preset: "X" })).rejects.toThrow(
+      'no preset "X"',
+    );
     expect(callsTo(REMOTE_SCRIPT_ROUTES.hotswap)).toHaveLength(0);
   });
 
-  it("refuses a bad call before loading anything", async () => {
-    await expect(
-      updateDeviceWithPreset({ path: "t3/d0,t3/d1", preset: "A,B,C" }),
-    ).rejects.toThrow("preset names 3 entries");
+  it("refuses a bad call before loading anything", () => {
+    expect(() =>
+      updateDevice({ path: "t3/d0,t3/d1", preset: "A,B,C" }),
+    ).toThrow("preset names 3 entries");
     expect(requestNode).not.toHaveBeenCalled();
   });
 
-  it("refuses a preset with wrapInRack", async () => {
-    await expect(
-      updateDeviceWithPreset({
+  it("refuses a preset with wrapInRack", () => {
+    expect(() =>
+      updateDevice({
         path: "t3/d0",
         preset: "AG Bass",
         wrapInRack: true,
       }),
-    ).rejects.toThrow("wrapInRack cannot be used with preset");
+    ).toThrow("wrapInRack cannot be used with preset");
   });
 
   it("loads nothing onto a chain", async () => {
@@ -298,7 +298,7 @@ describe("updateDeviceWithPreset", () => {
     });
 
     await expect(
-      updateDeviceWithPreset({ path: "t3/d0/c0", preset: "AG Bass" }),
+      updateDevice({ path: "t3/d0/c0", preset: "AG Bass" }),
     ).rejects.toThrow("preset not applicable to a chain");
     expect(requestNode).not.toHaveBeenCalled();
   });
@@ -307,7 +307,7 @@ describe("updateDeviceWithPreset", () => {
     registerMockObject("this_device", { path: String(DRIFT_PATH) });
 
     await expect(
-      updateDeviceWithPreset({ path: "t3/d0", preset: "AG Bass" }),
+      updateDevice({ path: "t3/d0", preset: "AG Bass" }),
     ).rejects.toThrow("the Producer Pal device can't load a preset");
     expect(callsTo(REMOTE_SCRIPT_ROUTES.hotswap)).toHaveLength(0);
   });
@@ -320,7 +320,7 @@ describe("updateDeviceWithPreset", () => {
     );
 
     await expect(
-      updateDeviceWithPreset({ path: "t3/d0", preset: "AG Bass" }),
+      updateDevice({ path: "t3/d0", preset: "AG Bass" }),
     ).rejects.toThrow("preset not loaded: timed out");
   });
 
@@ -328,13 +328,13 @@ describe("updateDeviceWithPreset", () => {
     answerRemoteScript({ hotswaps: [{ available: false }] });
 
     await expect(
-      updateDeviceWithPreset({ path: "t3/d0", preset: "AG Bass" }),
+      updateDevice({ path: "t3/d0", preset: "AG Bass" }),
     ).rejects.toThrow("needs the Producer Pal remote script");
   });
 
   it("loads nothing once the request is out of time", async () => {
     await expect(
-      updateDeviceWithPreset(
+      updateDevice(
         { path: "t3/d0", preset: "AG Bass" },
         { deadline: Date.now() - 1 },
       ),
@@ -346,10 +346,150 @@ describe("updateDeviceWithPreset", () => {
     mockNonExistentObjects();
 
     expect(
-      await updateDeviceWithPreset({ path: "t3/d0,t9/d0", preset: "AG Bass" }),
+      await updateDevice({ path: "t3/d0,t9/d0", preset: "AG Bass" }),
     ).toStrictEqual([
       { id: "drift", path: "t3/d0" },
       expect.objectContaining({ ok: false }),
+    ]);
+  });
+});
+
+describe("updateDevice - Live fails around a preset load", () => {
+  const REFUSED = "Live refused the write";
+
+  /**
+   * Make a device refuse to be written to, as Live does.
+   * @param mock - The device
+   */
+  function refuseWrites(mock: RegisteredMockObject): void {
+    mock.set.mockImplementation(() => {
+      throw new Error(REFUSED);
+    });
+  }
+
+  beforeEach(() => {
+    drift = registerDevice("drift", String(DRIFT_PATH), {
+      class_display_name: "Drift",
+      type: 1,
+      name: "Drift",
+    });
+    registerDevice("reverb", String(REVERB_PATH), {
+      class_display_name: "Reverb",
+      type: 2,
+      name: "Reverb",
+    });
+    answerRemoteScript();
+  });
+
+  it("keeps a lone target's entry once its preset landed, and names the preset", async () => {
+    refuseWrites(drift);
+
+    const result = await updateDevice({
+      path: "t3/d0",
+      preset: "AG Bass",
+      name: "Lead",
+    });
+
+    expect(result).toStrictEqual({
+      id: "drift",
+      path: "t3/d0",
+      detail: `${REFUSED}; already changed: preset`,
+    });
+  });
+
+  it("names the new device when the preset replaced it before the failure", async () => {
+    answerRemoteScript({
+      hotswaps: [{ available: true, replaced: true }],
+      onHotswap: (path) => {
+        refuseWrites(registerDevice("rack", path, { name: "Rack" }));
+      },
+    });
+
+    expect(
+      await updateDevice({ id: "drift", preset: "X", name: "Keys" }),
+    ).toStrictEqual({
+      id: "rack",
+      path: "t3/d0",
+      detail: `${REFUSED}; already changed: preset`,
+    });
+  });
+
+  it("writes the targets after one that failed, loading each preset", async () => {
+    refuseWrites(drift);
+
+    expect(
+      await updateDevice({
+        path: "t3/d0,t3/d1",
+        preset: "AG Bass,Concert Hall",
+        name: "A,B",
+      }),
+    ).toStrictEqual([
+      {
+        id: "drift",
+        path: "t3/d0",
+        detail: `${REFUSED}; already changed: preset`,
+      },
+      { id: "reverb", path: "t3/d1" },
+    ]);
+    expect(callsTo(REMOTE_SCRIPT_ROUTES.hotswap)).toHaveLength(2);
+  });
+
+  it("fails a lone target whose preset never loaded and whose write then threw", async () => {
+    answerRemoteScript({
+      hotswaps: [{ available: true, error: "kinds differ" }],
+    });
+    refuseWrites(drift);
+
+    await expect(
+      updateDevice({ path: "t3/d0", preset: "Concert Hall", name: "Lead" }),
+    ).rejects.toThrow(REFUSED);
+  });
+
+  it("gives a target whose preset never loaded and whose write then threw a skip", async () => {
+    answerRemoteScript({
+      hotswaps: [{ available: true, error: "kinds differ" }],
+    });
+    refuseWrites(drift);
+
+    expect(
+      await updateDevice({
+        path: "t3/d0,t3/d1",
+        preset: "Concert Hall,Concert Hall",
+        name: "A,B",
+      }),
+    ).toStrictEqual([
+      { path: "t3/d0", ok: false, detail: REFUSED },
+      {
+        id: "reverb",
+        path: "t3/d1",
+        detail: "preset not loaded: kinds differ",
+      },
+    ]);
+  });
+
+  it("gives a target whose load threw a skip, and loads the next", async () => {
+    let swaps = 0;
+
+    vi.mocked(requestNode).mockImplementation(async (route) => {
+      if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
+        return { success: true, result: { available: true, item: PRESET } };
+      }
+
+      if (swaps++ === 0) {
+        throw new Error("socket closed");
+      }
+
+      return { success: true, result: { available: true, replaced: false } };
+    });
+
+    expect(
+      await updateDevice({
+        path: "t3/d0,t3/d1",
+        preset: "AG Bass,Concert Hall",
+      }),
+    ).toStrictEqual([
+      { path: "t3/d0", ok: false, detail: "socket closed" },
+      { id: "reverb", path: "t3/d1" },
     ]);
   });
 });

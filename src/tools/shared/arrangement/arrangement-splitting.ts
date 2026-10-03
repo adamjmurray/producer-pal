@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import {
   warnNothingSplit,
   warnUnusedSplitPoints,

@@ -142,8 +142,41 @@ export function warnBlankTarget(
   resolved: number,
   idAlias?: ParamSpelling,
 ): void {
+  for (const { param, why } of blankTargetIgnores(
+    targets,
+    objects,
+    resolved,
+    idAlias,
+  )) {
+    console.warn(`${param} ignored — ${why}`);
+  }
+}
+
+/** A blank target param the call dropped, and why that was safe to do. */
+export interface BlankTargetIgnore {
+  /** What was ignored, e.g. "blank id" */
+  param: string;
+  /** What carried the call instead, e.g. `"path" names the clips` */
+  why: string;
+}
+
+/**
+ * The blank target params a call dropped. {@link warnBlankTarget} says them in
+ * its own wording; a tool on the write pipeline says them in the pipeline's.
+ * @param targets - The call's id/ids and path/paths params
+ * @param objects - What this tool's targets are, plural ("clips")
+ * @param resolved - How many targets the call ended up with
+ * @param idAlias - A tool's own spelling of `id` ("clipId"), where it has one
+ * @returns One per blank param the other side carried the call past
+ */
+export function blankTargetIgnores(
+  targets: TargetParams,
+  objects: string,
+  resolved: number,
+  idAlias?: ParamSpelling,
+): BlankTargetIgnore[] {
   if (resolved === 0) {
-    return;
+    return [];
   }
 
   const idSide: TargetSide = {
@@ -160,35 +193,41 @@ export function warnBlankTarget(
     ],
   };
 
-  warnBlankSide(idSide, pathSide, objects);
-  warnBlankSide(pathSide, idSide, objects);
+  return [
+    blankSideIgnore(idSide, pathSide, objects),
+    blankSideIgnore(pathSide, idSide, objects),
+  ].filter((ignore) => ignore != null);
 }
 
 /**
- * Warn when `blank` named nothing because it arrived blank, and `carrying`
- * named the targets in its place. Both are reported by the spelling the caller
+ * Whether `blank` named nothing because it arrived blank, and `carrying` named
+ * the targets in its place. Both are reported by the spelling the caller
  * actually wrote, which for either side may be an alias.
  * @param blank - The side that may have arrived blank
  * @param carrying - The side that may have named the targets
  * @param objects - What this tool's targets are, plural
+ * @returns What was ignored, or null when `blank` wasn't blank
  */
-function warnBlankSide(
+function blankSideIgnore(
   blank: TargetSide,
   carrying: TargetSide,
   objects: string,
-): void {
+): BlankTargetIgnore | null {
   if (spelling(blank, paramNamesSomething) != null) {
-    return;
+    return null;
   }
 
   const carried = spelling(carrying, paramNamesSomething);
   const dropped = spelling(blank, isBlank);
 
   if (carried == null || dropped == null) {
-    return;
+    return null;
   }
 
-  console.warn(`blank ${dropped} ignored — "${carried}" names the ${objects}`);
+  return {
+    param: `blank ${dropped}`,
+    why: `"${carried}" names the ${objects}`,
+  };
 }
 
 /**

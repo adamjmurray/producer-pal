@@ -100,10 +100,10 @@ describe("ppal-update-device with the same param named twice", () => {
 
     expect(params[0]).toStrictEqual(
       expect.objectContaining({
-        ok: false,
-        detail: 'set again by "Threshold" later in the list',
+        detail: 'named again as "Threshold" later in this call',
       }),
     );
+    expect(params[0]).not.toHaveProperty("ok");
     expect(params[1]).not.toHaveProperty("ok");
     expect((await readThreshold(deviceId)).value).toBeCloseTo(-12, 0);
   });

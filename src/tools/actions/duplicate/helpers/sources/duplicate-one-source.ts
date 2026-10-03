@@ -8,7 +8,7 @@
 // it starts — see source-plan.ts.
 
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
-import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {

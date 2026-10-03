@@ -6,6 +6,7 @@
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
 // Import from there directly instead of through this file
 
+import { isNamedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   looseLabelKey,
   parseLabel,
@@ -389,6 +390,16 @@ export interface UnresolvedParam {
 }
 
 /**
+ * A param a later entry of the same call overrides: nothing was written, and
+ * it isn't a failure, so it has a `detail` and no `ok`.
+ */
+export interface SupersededParam {
+  name?: string;
+  id?: string;
+  detail: string;
+}
+
+/**
  * A pseudo-param a write landed on (Simpler's `sample`, Roar's `routingMode`).
  * It is a device property, not a DeviceParameter, so it has no id to read
  * through and carries its own read instead. The read runs before the call
@@ -411,7 +422,11 @@ export interface WrittenPseudoParam {
 }
 
 /** One param the call named: what a write landed on, or why nothing did. */
-export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
+export type ParamOutcome =
+  | WrittenParam
+  | WrittenPseudoParam
+  | UnresolvedParam
+  | SupersededParam;
 
 /**
  * The entry for a param nothing was written to. Nothing warns as well: this is
@@ -425,6 +440,29 @@ export function skippedParam(name: string, detail: string): UnresolvedParam {
 }
 
 /**
+ * Whether an outcome is a write that landed on a DeviceParameter: the only one
+ * with both an id and a name, and no `ok`. A skip or an overridden entry can
+ * carry the id the caller sent.
+ * @param outcome - One param the call named
+ * @returns True for a written param
+ */
+export function paramWritten(outcome: ParamOutcome): outcome is WrittenParam {
+  return !("ok" in outcome) && "id" in outcome && "name" in outcome;
+}
+
+/**
+ * Whether a reported param landed: it isn't a skip, and a later entry didn't
+ * override it. A pseudo-param only finds out when its value is read back.
+ * @param result - One entry of the reported `params`
+ * @returns True when the write landed
+ */
+export function paramResultLanded(result: ParamResult): boolean {
+  return (
+    !("ok" in result) && !("detail" in result && isNamedAgain(result.detail))
+  );
+}
+
+/**
  * The entry for a param addressed by id that nothing was written to.
  * @param id - The param id as the call spelled it
  * @param detail - Why nothing was written
@@ -432,6 +470,21 @@ export function skippedParam(name: string, detail: string): UnresolvedParam {
  */
 export function skippedParamById(id: string, detail: string): UnresolvedParam {
   return { id, ok: false, detail };
+}
+
+/**
+ * The entry for a param a later entry overrides.
+ * @param key - The param name or id as the call spelled it
+ * @param byId - Whether the call addressed the param by id
+ * @param detail - Which later entry overrides it
+ * @returns The entry
+ */
+export function supersededParam(
+  key: string,
+  byId: boolean,
+  detail: string,
+): SupersededParam {
+  return byId ? { id: key, detail } : { name: key, detail };
 }
 
 /** What create-device and update-device report for a param whose value isn't
@@ -461,7 +514,8 @@ export type ParamResult =
   | ParamValueResult
   | LandedParam
   | PseudoParamValueResult
-  | UnresolvedParam;
+  | UnresolvedParam
+  | SupersededParam;
 
 /** Why a pseudo-param a write landed on still has nothing to report. */
 const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
@@ -485,8 +539,7 @@ const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
  */
 export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
   return outcomes.flatMap((entry): ParamResult[] => {
-    // A skip can carry the id the caller sent; only a landed write has no `ok`.
-    if (!("ok" in entry) && "id" in entry) {
+    if (paramWritten(entry)) {
       return [
         writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value),
       ];

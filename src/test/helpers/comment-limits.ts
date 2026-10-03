@@ -79,7 +79,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "src/tools/clip/create/helpers/clip-iteration.ts": 27,
   "src/tools/clip/update/update-clip.ts": 41,
   "src/tools/core/helpers/project-context-operations.ts": 68,
-  "src/tools/device/update/update-device.ts": 32,
   "src/tools/shared/arrangement/arrangement-tiling-workaround.ts": 29,
   "src/tools/shared/arrangement/helpers/take-lanes.ts": 26,
   "src/tools/shared/device/helpers/nested-param-target.ts": 29,

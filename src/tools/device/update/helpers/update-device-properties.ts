@@ -8,17 +8,20 @@ import { type ParamEntry } from "#src/tools/device/update/device-params-schema.t
 import {
   type ParamResult,
   type UnresolvedParam,
+  paramResultLanded,
+  paramWritten,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { applyChainSampleParams } from "./chain-sample-params.ts";
+import { applyChainSampleParams } from "./chain/chain-sample-params.ts";
 import {
   applyChainMixer,
+  type ChainMixerApplied,
   type ChainSend,
 } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
   chainMixerReport,
   type ChainMixerReport,
-} from "./chain-mixer-report.ts";
+} from "./chain/chain-mixer-report.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
@@ -30,6 +33,7 @@ import {
 import {
   type TargetNotes,
   newTargetNotes,
+  noteLanded,
   refuseIfNoneLanded,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
@@ -57,7 +61,7 @@ export interface UpdatePropertyOptions {
   chokeGroup?: number;
   mappedPitch?: string;
   force?: boolean;
-  /** Loaded before anything else; see updateDeviceWithPreset */
+  /** Loaded before anything else; see updateDevice */
   preset?: string;
 }
 
@@ -116,8 +120,17 @@ export function updateDeviceProperties(
   const paramResults =
     params != null ? setParamValues(target, params, force, notes) : [];
 
+  if (paramResults.some(paramWritten)) {
+    noteLanded(notes, "params");
+  }
+
   const actionResults =
     actions == null ? [] : applySpecializedActions(target, actions);
+
+  // An action that ran has no detail; one that found nothing to do has.
+  if (actionResults.some((result) => !("detail" in result))) {
+    noteLanded(notes, "actions");
+  }
 
   if (abCompare != null) {
     updateABCompare(target, abCompare, notes);
@@ -151,6 +164,11 @@ export function updateDeviceProperties(
   refuseIgnoredParams(notes, ignored, type);
 
   const paramsRead = refreshParamValues(paramResults);
+
+  // A pseudo-param only shows it landed once its value reads back.
+  if (paramsRead.some(paramResultLanded)) {
+    noteLanded(notes, "params");
+  }
 
   refuseIfNoParamLanded(notes, paramsRead);
   refuseIfNoneLanded(
@@ -225,10 +243,12 @@ export function updateNonDeviceProperties(
 
   if (options.mute != null) {
     target.set("mute", options.mute ? 1 : 0);
+    noteLanded(notes, "mute");
   }
 
   if (options.solo != null) {
     target.set("solo", options.solo ? 1 : 0);
+    noteLanded(notes, "solo");
   }
 
   let mixer: ChainMixerReport = {};
@@ -236,13 +256,17 @@ export function updateNonDeviceProperties(
   if (isChainType(type)) {
     if (options.color != null) {
       target.setColor(options.color);
+      noteLanded(notes, "color");
     }
 
     if (hasChainMixerParams(options)) {
-      mixer = chainMixerReport(
-        applyChainMixer(target, options, notes),
-        options,
-      );
+      const applied = applyChainMixer(target, options, notes);
+
+      if (mixerLanded(applied)) {
+        noteLanded(notes, "mixer");
+      }
+
+      mixer = chainMixerReport(applied, options);
     }
   } else {
     noteIfSet(ignored, "color", options.color);
@@ -254,7 +278,7 @@ export function updateNonDeviceProperties(
   }
 
   if (type === "DrumChain") {
-    updateDrumChainProperties(target, options);
+    updateDrumChainProperties(target, options, notes);
   } else {
     noteIfSet(ignored, "chokeGroup", options.chokeGroup);
     noteIfSet(ignored, "mappedPitch", options.mappedPitch);
@@ -269,19 +293,36 @@ export function updateNonDeviceProperties(
  * Apply DrumChain-only properties (chokeGroup, mappedPitch)
  * @param target - DrumChain LiveAPI object
  * @param options - Update options
+ * @param notes - What the target's entry has to say, told what lands
  */
 function updateDrumChainProperties(
   target: LiveAPI,
   options: UpdatePropertyOptions,
+  notes: TargetNotes,
 ): void {
   if (options.chokeGroup != null) {
     target.set("choke_group", options.chokeGroup);
+    noteLanded(notes, "chokeGroup");
   }
 
   if (options.mappedPitch != null) {
     // Refused up front by updateDevice, so this reads back a known-good name.
     target.set("out_note", noteNameToMidi(options.mappedPitch));
+    noteLanded(notes, "mappedPitch");
   }
+}
+
+/**
+ * Whether a mixer write changed anything.
+ * @param applied - What applyChainMixer reports
+ * @returns True when a gain, a pan or a send landed
+ */
+function mixerLanded(applied: ChainMixerApplied): boolean {
+  return (
+    applied.gainDb != null ||
+    applied.pan != null ||
+    (applied.sends ?? []).some((send) => send.ok !== false)
+  );
 }
 
 /**
