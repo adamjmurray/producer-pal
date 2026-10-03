@@ -85,18 +85,13 @@ describe("library tool — list-plugins action", () => {
     );
   });
 
-  it("drops deviceKind=midifx and warns instead of silently dropping it", async () => {
-    mockPluginsRoute();
-
-    await library({ action: "list-plugins", deviceKind: "midifx" });
-
-    expect(protocolMock.requestNode).toHaveBeenCalledWith(
-      "library.listPlugins",
-      expect.objectContaining({ category: undefined }),
+  it("refuses deviceKind=midifx, which no plugin is", async () => {
+    await expect(
+      library({ action: "list-plugins", deviceKind: "midifx" }),
+    ).rejects.toThrow(
+      'deviceKind "midifx" doesn\'t apply to action "list-plugins"',
     );
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('deviceKind "midifx"'),
-    );
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
   it("maps deviceKind=audiofx to the category filter without warning", async () => {
@@ -114,8 +109,6 @@ describe("library tool — list-plugins action", () => {
   });
 
   it("does not warn for a valid deviceKind or when deviceKind is absent", async () => {
-    // Negative control for the warn guard: only an invalid plugin category
-    // (e.g. midifx) should warn — a valid one and an absent one must stay silent.
     mockPluginsRoute();
 
     await library({ action: "list-plugins", deviceKind: "instrument" });

@@ -624,6 +624,29 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
+  it("refuses a start position on a session action and leaves the Set alone", async () => {
+    await playback({ action: "update-arrangement", startTime: "9|1" });
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", path: "s0", startTime: "5|1" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toBe(
+      'Error: startTime is only for action "play-arrangement", "update-arrangement" or "stop"; this call has action "play-scene". Change the action or drop startTime.',
+    );
+
+    // Neither the scene fired nor the start position moved; only a later
+    // call can show it.
+    const after = await playback({ action: "play-arrangement" });
+
+    expect(after.startTime).toBe("9|1");
+    expect(after.scene).toBeUndefined();
+
+    await playback({ action: "stop" });
+  });
+
   it("errors on a locator name nothing matches", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-playback",

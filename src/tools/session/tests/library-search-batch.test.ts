@@ -330,25 +330,13 @@ describe("library tool — searches fan-out", () => {
     ).toStrictEqual({ dbAvailable: true, items: [dbItem("kick.wav")] });
   });
 
-  it("warns and ignores searches on an action that has no use for it", async () => {
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
-    vi.mocked(protocolMock.requestNode).mockResolvedValue({
-      success: true,
-      result: { tags: [] },
-    });
-
-    await library({ action: "list-tags", searches: [{ tags: "Kick" }] });
-
-    expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('searches does not apply to action "list-tags"'),
+  it("refuses searches on an action that has no use for it", async () => {
+    await expect(
+      library({ action: "list-tags", searches: [{ tags: "Kick" }] }),
+    ).rejects.toThrow(
+      'searches is only for action "search"; this call has action "list-tags"',
     );
-
-    warnSpy.mockRestore();
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
   // The spellings the fan-out shipped under before it folded into search +

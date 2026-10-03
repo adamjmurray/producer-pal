@@ -92,21 +92,16 @@ See ADR-0035.
 ## Params that don't apply to every action
 
 A modal tool publishes one schema for every action, so a caller can always send
-a param the chosen action has no use for. **Warn and skip it — never apply it,
-never drop it quietly.** Applying it is the worse half: `ppal-playback` used to
-write the arrangement start position on `play-scene`, so "play scene 3 from bar
-5" changed the Live Set in a way nobody asked for.
+a param the chosen action has no use for. **Refuse it up front — never apply it,
+never drop it quietly.** The call is ambiguous (the action or the param is the
+mistake), and applying it is the worse guess: `ppal-playback` used to write the
+arrangement start position on `play-scene`, so "play scene 3 from bar 5" changed
+the Live Set in a way nobody asked for.
 
-Say which action ignored it, and point at every action that would have used it —
-naming only one steers a caller who meant the other:
-
-```
-startTime ignored: action "play-scene" doesn't take arrangement timeline
-params; use "play-arrangement" or "update-arrangement" for the start position and loop
-```
-
-Group the params that share a reason into one warning rather than repeating the
-sentence per param.
+Build the refusal with `refuseParamsOutsideAction` so every tool words it the
+same way: it names the params, the actions that read them, and what the call
+has. A defaulted action counts like an explicit one; a null or blank counts as
+not sent. See ADR-0057.
 
 ## Length caps
 

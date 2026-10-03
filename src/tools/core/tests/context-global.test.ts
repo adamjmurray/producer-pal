@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { context } from "../context.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -134,27 +133,21 @@ describe("context - global scope", () => {
       );
     }
 
-    it("skips the write and warns when the new content keeps none of the document", async () => {
-      const warnSpy = vi.spyOn(v8Console, "warn");
-
+    it("refuses the write when the new content keeps none of the document", async () => {
       mockGlobalStore();
 
-      const result = await context({
-        action: "write",
-        scope: "global",
-        content: "- Prefers 90 BPM.",
-      });
+      await expect(
+        context({
+          action: "write",
+          scope: "global",
+          content: "- Prefers 90 BPM.",
+        }),
+      ).rejects.toThrow(/write refused for scope "global".*force:true/);
 
-      expect(result).toStrictEqual({ content: EXISTING });
       expect(protocolMock.requestNode).not.toHaveBeenCalledWith(
         "globalContext.write",
         expect.anything(),
       );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("scope:global write SKIPPED"),
-      );
-
-      warnSpy.mockRestore();
     });
 
     it("writes when force is true, without reading first", async () => {
@@ -199,10 +192,10 @@ describe("context - global scope", () => {
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
-  it("rejects delete under the global scope (delete lives under scope:memory)", async () => {
+  it("refuses delete under the global scope, saying delete is memory-only", async () => {
     await expect(
-      context({ action: "delete", scope: "global", name: "x" }),
-    ).rejects.toThrow("Unknown action for scope:global: delete");
+      context({ action: "delete", scope: "global" }),
+    ).rejects.toThrow('action "delete" is only for scope "memory"');
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 });

@@ -23,41 +23,34 @@ describe("playback target params on actions that have no target", () => {
     liveSet = setupPlaybackLiveSet();
   });
 
-  // The transport command has to run. Parsing a leftover param the action never
-  // reads turned "stop" into a format error and left Live playing.
-  it("stops even when slots names nothing parseable", () => {
-    const warn = spyOnWarn();
-
-    const result = playback({ action: "stop", slots: "bogus" });
-
-    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
-    expect(result.playing).toBe(false);
-    expect(warn).toHaveBeenCalledWith(
-      'slots ignored: action "stop" takes no target',
+  // Parsing a leftover param the action never reads used to turn "stop" into a
+  // format error. Now the leftover param is the refusal, before anything runs.
+  it("refuses slots on stop without stopping", () => {
+    expect(() => playback({ action: "stop", slots: "bogus" })).toThrow(
+      'slots is only for action "play-scene", "play-session-clips" or ' +
+        '"stop-session-clips"; this call has action "stop". Change the ' +
+        "action or drop slots.",
     );
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
-  it("plays the arrangement even when path names nothing parseable", () => {
-    const result = playback({ action: "play-arrangement", path: "nonsense" });
-
-    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
-    expect(result.playing).toBe(true);
+  it("refuses path on play-arrangement without playing", () => {
+    expect(() =>
+      playback({ action: "play-arrangement", path: "nonsense" }),
+    ).toThrow(/^path is only for action/);
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
-  it("names every target param it ignored", () => {
-    const warn = spyOnWarn();
-
-    playback({
-      action: "stop-all-session-clips",
-      path: "t0/s0",
-      slots: "0/0",
-      id: "clip1",
-    });
-
-    expect(liveSet.call).toHaveBeenCalledWith("stop_all_clips");
-    expect(warn).toHaveBeenCalledWith(
-      'path/slots/id ignored: action "stop-all-session-clips" takes no target',
-    );
+  it("names every target param it refused", () => {
+    expect(() =>
+      playback({
+        action: "stop-all-session-clips",
+        path: "t0/s0",
+        slots: "0/0",
+        id: "clip1",
+      }),
+    ).toThrow(/^id, path, slots are only for action/);
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("says nothing when no target param was sent", () => {
@@ -96,13 +89,9 @@ describe("playback paths alias", () => {
     );
   });
 
-  it("names the ignored target as path on an action that takes none", () => {
-    const warn = spyOnWarn();
-
-    playback({ action: "stop", paths: "t0/s1" });
-
-    expect(warn).toHaveBeenCalledWith(
-      'path ignored: action "stop" takes no target',
+  it("names the alias as it was sent when the action takes no target", () => {
+    expect(() => playback({ action: "stop", paths: "t0/s1" })).toThrow(
+      /^paths is only for action/,
     );
   });
 });

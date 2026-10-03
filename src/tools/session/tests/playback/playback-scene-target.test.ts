@@ -421,44 +421,22 @@ describe("playback play-scene ids that name no scene", () => {
   });
 });
 
-// sceneIndex used to vanish without a word on the clip actions, the same
-// silent-drop the path params were fixed for.
+// sceneIndex names a whole scene, so only play-scene reads it. A clip action
+// given one is refused, not run with the scene dropped.
 describe("playback sceneIndex on an action that acts on clips", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();
     registerClipSlot(0, 1);
   });
 
-  it("warns that play-session-clips ignored it", () => {
-    const warn = vi.spyOn(console, "warn");
+  it.each(["play-session-clips", "stop-session-clips", "stop"])(
+    "refuses it on %s",
+    (action) => {
+      registerMockObject(livePath.track(0), { path: livePath.track(0) });
 
-    playback({ action: "play-session-clips", path: "t0/s1", sceneIndex: 3 });
-
-    expect(warn).toHaveBeenCalledWith(
-      'sceneIndex ignored: action "play-session-clips" acts on clip ' +
-        'slots; use action "play-scene" for the whole scene',
-    );
-  });
-
-  it("warns that stop-session-clips ignored it", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    registerMockObject(livePath.track(0), { path: livePath.track(0) });
-    playback({ action: "stop-session-clips", path: "t0/s1", sceneIndex: 3 });
-
-    expect(warn).toHaveBeenCalledWith(
-      'sceneIndex ignored: action "stop-session-clips" acts on clip ' +
-        'slots; use action "play-scene" for the whole scene',
-    );
-  });
-
-  it("warns that stop ignored it", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    playback({ action: "stop", sceneIndex: 3 });
-
-    expect(warn).toHaveBeenCalledWith(
-      'sceneIndex ignored: action "stop" takes no target',
-    );
-  });
+      expect(() => playback({ action, path: "t0/s1", sceneIndex: 3 })).toThrow(
+        `sceneIndex is only for action "play-scene"; this call has action "${action}"`,
+      );
+    },
+  );
 });

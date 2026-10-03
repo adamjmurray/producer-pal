@@ -25,6 +25,7 @@ import {
   IN_A_PLACE,
 } from "#src/mcp-server/live-library/query/candidate-query.ts";
 import {
+  getToolErrorMessage,
   isToolError,
   parseToolResult,
   setConfig,
@@ -451,6 +452,17 @@ describe("ppal-library", () => {
       const result = await callLibrary({ action: "bogus" });
 
       expect(isToolError(result)).toBe(true);
+    });
+
+    // With no action this used to run a plain search and return unrelated
+    // samples, with no distance and nothing said.
+    it("refuses similarTo without find-similar instead of searching", async () => {
+      const result = await callLibrary({ similarTo: "/no/such/seed/file.wav" });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toBe(
+        'Error: similarTo is only for action "find-similar"; this call has action "search". Change the action or drop similarTo.',
+      );
     });
   });
 

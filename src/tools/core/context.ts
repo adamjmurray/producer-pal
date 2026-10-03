@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { refuseContextParamsOutsideAction } from "./helpers/context-action-params.ts";
 import {
   handleDeleteMemoryEntry,
   handleReadMemoryEntry,
@@ -50,9 +51,13 @@ interface ContextArgs {
  * @returns Content result
  */
 export async function context(
-  { action, content, scope, name, description, force }: ContextArgs = {},
+  args: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
 ): Promise<ContentResult> {
+  const { action, content, scope, name, description, force } = args;
+
+  refuseContextParamsOutsideAction({ action, scope: scope ?? "project" }, args);
+
   if (scope === "memory") {
     switch (action) {
       case "read":

@@ -4,6 +4,9 @@
 - **Date logged:** 2026-08-31
 - **Amended:** 2026-09-02 (rule 1, third bullet: work that can't be repeated;
   fourth bullet: a whole-call param with no valid reading)
+- **Amended by:**
+  [ADR-0057](0057-a-param-only-another-action-reads-is-refused.md) (a param the
+  call's action doesn't read is refused)
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md),
   [ADR-0029](0029-an-empty-param-is-dropped-from-the-args.md),
   [ADR-0031](0031-list-params-broadcast-or-pair-exactly.md)

@@ -23,6 +23,7 @@ import {
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { refuseLibraryParamsOutsideAction } from "./helpers/library-action-params.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
 
@@ -31,8 +32,7 @@ const SAMPLE_FOLDER = "sample-folder";
 
 // deviceKind doubles as the plugin category filter for list-plugins. Only the
 // values plugins can actually be (instrument/audiofx) map through; midifx has
-// no plugin-category equivalent and is dropped (with a warning at the call
-// site so the caller sees why the result wasn't narrowed).
+// no plugin-category equivalent, so list-plugins refuses it.
 const PLUGIN_CATEGORIES = new Set<LibraryDeviceKind>(["instrument", "audiofx"]);
 
 // Shares the search-filter fields (query/tags/kind/…/verifyPaths) with
@@ -88,9 +88,9 @@ export async function library(
   const action = resolveAction(args.action);
   const searches = args.searches ?? args.queries;
 
-  if (searches != null && action !== "search") {
-    console.warn(`searches does not apply to action "${action}"; ignoring it`);
-  } else if (searches?.length === 0) {
+  refuseLibraryParamsOutsideAction(action, args);
+
+  if (searches?.length === 0) {
     // An empty list names no search at all, so there is nothing to guess at.
     throw new Error("searches must name at least one search");
   }
@@ -109,19 +109,15 @@ export async function library(
   }
 
   if (action === "list-plugins") {
-    // Plugins are classified as instrument or audiofx only — Live's plugin DB
-    // doesn't tag MIDI effects as a separate category. Warn instead of silently
-    // dropping the filter so the caller sees why the result wasn't narrowed.
+    // Plugins are classified as instrument or audiofx only: Live's plugin DB
+    // has no MIDI effect category, so that filter could only match nothing.
     if (args.deviceKind != null && !PLUGIN_CATEGORIES.has(args.deviceKind)) {
-      console.warn(
-        `list-plugins: deviceKind "${args.deviceKind}" is not a plugin category (instrument | audiofx); ignoring the filter`,
+      throw new Error(
+        `deviceKind "${args.deviceKind}" doesn't apply to action "list-plugins": plugins are "instrument" or "audiofx". Use one of those or drop deviceKind.`,
       );
     }
 
-    const category =
-      args.deviceKind != null && PLUGIN_CATEGORIES.has(args.deviceKind)
-        ? (args.deviceKind as PluginCategory)
-        : undefined;
+    const category = args.deviceKind as PluginCategory | undefined;
 
     return await callRoute<ListPluginsResult>("library.listPlugins", {
       query: args.query,

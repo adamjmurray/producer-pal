@@ -88,7 +88,7 @@ export const toolDefContext = defineTool("ppal-context", {
 
     name: param(z.string().max(200).optional(), {
       default:
-        "Memory entry name (read/write/delete on scope:memory), one entry per " +
+        "Memory entry name (read/write/delete on scope:memory only), one entry per " +
         "call. Reuse a name to update, not duplicate.",
       smallModel: null,
     }),
@@ -101,9 +101,9 @@ export const toolDefContext = defineTool("ppal-context", {
     }),
 
     // The escape hatch for the clobber guard (project-context-operations.ts's
-    // clobberWarning), and deliberately NOT taught in the skills: the model
-    // learns of it from the skipped write's message, at the moment it is relevant, so it never
-    // reaches for it casually. Declared in EVERY mode — including small-model,
+    // clobberRefusal), and deliberately NOT taught in the skills: the model
+    // learns of it from the refused write's message, at the moment it is
+    // relevant, so it never reaches for it casually. Declared in EVERY mode — including small-model,
     // where it costs a few tokens — because a guard whose only way out is hidden
     // from the tier that hits it would deadlock the write, which is worse than
     // the clobber it prevents.
@@ -118,7 +118,7 @@ export const toolDefContext = defineTool("ppal-context", {
       .boolean()
       .optional()
       .describe(
-        "Only when a write was skipped for dropping the whole document: " +
+        "Only when a write was refused for dropping the whole document: " +
           "true replaces it anyway.",
       ),
   },

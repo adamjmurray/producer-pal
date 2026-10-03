@@ -11,7 +11,6 @@ import {
   PLAY_ARRANGEMENT,
   readStartTime,
   reportArrangementLoop,
-  resolveArrangementParams,
   type TimelineWrites,
 } from "./helpers/playback/arrangement-playback.ts";
 import {
@@ -19,6 +18,10 @@ import {
   type FiredScene,
   type PlaybackState,
 } from "./helpers/playback/scene-playback.ts";
+import {
+  actionReadsTimeline,
+  refusePlaybackParamsOutsideAction,
+} from "./helpers/playback/playback-action-params.ts";
 import { resolvePlaybackTarget } from "./helpers/playback/playback-target.ts";
 import {
   sessionClipEntries,
@@ -85,7 +88,10 @@ interface PlaybackResult {
  * @returns Result with transport state
  */
 export function playback(
-  {
+  args: PlaybackArgs = {},
+  _context: Partial<ToolContext> = {},
+): PlaybackResult {
+  const {
     action,
     startTime,
     startLocator,
@@ -101,12 +107,14 @@ export function playback(
     paths,
     slots,
     focus,
-  }: PlaybackArgs = {},
-  _context: Partial<ToolContext> = {},
-): PlaybackResult {
+  } = args;
+
   if (!action) {
     throw new Error("action is required");
   }
+
+  // Before anything reads or writes, so a refused call leaves the Set alone.
+  refusePlaybackParamsOutsideAction(action, args);
 
   const { sceneIndex: sceneTarget, clips } = resolvePlaybackTarget(action, {
     id,
@@ -117,19 +125,18 @@ export function playback(
     sceneIndex,
   });
 
-  // Dropped before anything reads them, so a session action can't write the
-  // arrangement — and before the fold, so it looks up no locator and warns by
-  // the names the caller sent.
   const timeline = foldLocatorParams(
-    resolveArrangementParams(action, {
-      startTime,
-      startLocator,
-      loop,
-      loopStart,
-      loopStartLocator,
-      loopEnd,
-      loopEndLocator,
-    }),
+    actionReadsTimeline(action)
+      ? {
+          startTime,
+          startLocator,
+          loop,
+          loopStart,
+          loopStartLocator,
+          loopEnd,
+          loopEndLocator,
+        }
+      : {},
   );
 
   const liveSet = LiveAPI.from(livePath.liveSet);
