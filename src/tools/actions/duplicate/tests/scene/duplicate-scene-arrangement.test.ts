@@ -379,8 +379,7 @@ describe("duplicate - scene to the arrangement", () => {
   it("warns and ignores count when several arrangementStart positions are named", async () => {
     const track0 = setupSceneCopiedToBeats16And32();
 
-    // Two positions named, count says 2 as well — one copy per position,
-    // same as the clip path's "count ignored for clips" warning.
+    // Two positions named, count says 2 as well — one copy per position.
     const result = (await duplicate({
       type: "scene",
       id: "scene1",

@@ -5,6 +5,11 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
+import { isTakeLaneRequested } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  type ParamHome,
+  refuseParamsOutsideAction,
+} from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 
 /**
  * Validates basic input parameters for duplication
@@ -39,25 +44,20 @@ export function validateBasicInputs(
 }
 
 /**
- * Validates and configures route to source parameters
- * @param type - Type of object being duplicated
+ * Validates and configures route to source parameters. Only a track call gets
+ * here with routeToSource: any other type was refused up front.
  * @param routeToSource - Whether to route to source track
  * @param withoutClips - Whether to exclude clips
  * @param withoutDevices - Whether to exclude devices
  * @returns Configured withoutClips and withoutDevices values
  */
 export function validateAndConfigureRouteToSource(
-  type: string,
   routeToSource: boolean | undefined,
   withoutClips: boolean | undefined,
   withoutDevices: boolean | undefined,
 ): { withoutClips: boolean | undefined; withoutDevices: boolean | undefined } {
   if (!routeToSource) {
     return { withoutClips, withoutDevices };
-  }
-
-  if (type !== "track") {
-    throw new Error("routeToSource is only supported for type 'track'");
   }
 
   // About the call, not about any one copy: routeToSource settles both params
@@ -99,4 +99,52 @@ export function validateDestinationParameter(
       ? "arrangementStart doesn't apply to a lane copy: every clip keeps its own position; drop it"
       : "tracks cannot be duplicated to arrangement",
   );
+}
+
+const COPIES_MADE_IN_BULK: ParamHome = { type: ["track", "scene"] };
+const CLIPS: ParamHome = { type: ["clip"] };
+const ON_THE_TIMELINE: ParamHome = { type: ["track", "scene", "clip"] };
+
+// The types that read each param. The rest copy inside a rack or track, or one
+// copy per destination, and have no use for it.
+const DUPLICATE_PARAM_HOMES: Record<string, ParamHome> = {
+  count: COPIES_MADE_IN_BULK,
+  withoutClips: COPIES_MADE_IN_BULK,
+  withoutDevices: { type: ["track"] },
+  routeToSource: { type: ["track"] },
+  transforms: CLIPS,
+  code: CLIPS,
+  toSlot: CLIPS,
+  takeLane: CLIPS,
+  takeLaneName: { type: ["clip", "track"] },
+  arrangementStart: ON_THE_TIMELINE,
+  locator: ON_THE_TIMELINE,
+  arrangementLength: { type: ["clip", "scene"] },
+};
+
+/**
+ * Refuses a duplicate call that sends a param its type doesn't read.
+ * @param type - The type being duplicated
+ * @param args - The args as sent
+ */
+export function refuseDuplicateParamsOutsideType(
+  type: string,
+  args: object,
+): void {
+  const sent: Record<string, unknown> = { ...args };
+
+  // The schema fills count in, and a false flag or the main lane asks for nothing.
+  for (const [param, asksForNothing] of [
+    ["count", sent.count === 1],
+    ["routeToSource", sent.routeToSource === false],
+    ["withoutClips", sent.withoutClips === false],
+    ["withoutDevices", sent.withoutDevices === false],
+    ["takeLane", !isTakeLaneRequested(sent.takeLane as string | number)],
+  ] as const) {
+    if (asksForNothing) {
+      delete sent[param];
+    }
+  }
+
+  refuseParamsOutsideAction({ type }, sent, DUPLICATE_PARAM_HOMES);
 }

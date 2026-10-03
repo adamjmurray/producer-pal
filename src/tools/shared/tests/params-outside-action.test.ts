@@ -4,7 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApi } from "#src/tools/advanced/live-api.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { context } from "#src/tools/core/context.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { library } from "#src/tools/session/library.ts";
 import { playback } from "#src/tools/session/playback.ts";
 
@@ -66,6 +71,48 @@ const CASES: Array<[string, Tool, object, string]> = [
     { action: "read", scope: "memory", description: "x" },
     "description",
   ],
+  [
+    "library, top-level filters beside searches",
+    library as Tool,
+    { searches: [{ tags: "Kick" }], tags: "Snare" },
+    "tags",
+  ],
+  [
+    "context, force on a read",
+    context as Tool,
+    { action: "read", force: true },
+    "force",
+  ],
+  [
+    "duplicate, a param its type doesn't read",
+    duplicate as Tool,
+    { type: "device", id: "d1", transforms: "velocity = 80" },
+    "transforms",
+  ],
+  [
+    "update-live-set, locatorId on create",
+    updateLiveSet as Tool,
+    { locatorOperation: "create", locatorId: "1", locatorTime: "5|1" },
+    "locatorId",
+  ],
+  [
+    "update-device, an index beside another variation",
+    updateDevice as Tool,
+    { id: "d1", macroVariation: "create", macroVariationIndex: 1 },
+    "macroVariationIndex",
+  ],
+  [
+    "update-clip, a warp param for another operation",
+    updateClip as Tool,
+    { id: "c1", warpOp: "move", warpSampleTime: 1 },
+    "warpSampleTime",
+  ],
+  [
+    "live-api, a param its operation type doesn't read",
+    liveApi as Tool,
+    { operations: [{ type: "get", property: "tempo", method: "x" }] },
+    "method",
+  ],
 ];
 
 describe("a param that only another action reads", () => {
@@ -78,7 +125,7 @@ describe("a param that only another action reads", () => {
     async (_label, tool, args, param) => {
       await expect((async () => await tool(args as never))()).rejects.toThrow(
         new RegExp(
-          `${param}.* only for (action|scope) .*Change the .* or drop`,
+          `^(operations\\[\\d+\\] \\(counting from 0\\): )?${param}\\b.* (is|are) only for .*(Change|Set) the .* or drop|^${param}\\b.* can't be sent beside`,
         ),
       );
 

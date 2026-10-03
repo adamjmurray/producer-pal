@@ -136,6 +136,29 @@ describe("ppal-context (project scope)", () => {
     expect(verifyResult.content).toBe(INITIAL_CONTENT);
   });
 
+  it("refuses force on a read and leaves the document", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+
+    const message = getToolErrorMessage(
+      await ctx.client!.callTool({
+        name: "ppal-context",
+        arguments: { action: "read", force: true },
+      }),
+    );
+
+    expect(message).toBe(
+      'Error: force is only for action "write"; this call has action "read". Change the action or drop force.',
+    );
+
+    const verifyResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(verifyResult.content).toBe(INITIAL_CONTENT);
+  });
+
   it("says delete is memory-only on the project scope", async () => {
     const INITIAL_CONTENT = "- Genre: deep house.";
 

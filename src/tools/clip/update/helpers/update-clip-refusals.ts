@@ -19,6 +19,7 @@ import {
   pathEntries,
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { requireDestinationPerSource } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
@@ -32,7 +33,18 @@ export interface UpfrontArgs {
   toPath?: string;
   toSlot?: string;
   arrangementStart?: string;
+  warpOp?: string;
+  warpBeatTime?: number;
+  warpSampleTime?: number;
+  warpDistance?: number;
 }
+
+// The warp marker operations that read each param. Debug builds only.
+const WARP_PARAM_HOMES = {
+  warpBeatTime: { warpOp: ["add", "move", "remove"] },
+  warpSampleTime: { warpOp: ["add"] },
+  warpDistance: { warpOp: ["move"] },
+};
 
 /**
  * Refuses a call there is no reading of, before any clip is touched: a param
@@ -46,6 +58,11 @@ export function refuseUnreadableCall(
   targetCount: number,
 ): void {
   validateValueParams(args, targetCount);
+  refuseParamsOutsideAction(
+    { warpOp: args.warpOp },
+    { ...args },
+    WARP_PARAM_HOMES,
+  );
   refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
   refuseSharedClipDestination(args.toPath, args.toSlot, targetCount);
 }

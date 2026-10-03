@@ -186,7 +186,7 @@ describe("updateDevice - macroVariation", () => {
   // is refused before any target is touched (ADR-0035).
   it("refuses macroVariationIndex sent on its own", () => {
     expect(() => updateDevice({ id: "123", macroVariationIndex: 2 })).toThrow(
-      "macroVariationIndex requires macroVariation 'load' or 'delete'",
+      'macroVariationIndex is only for macroVariation "load" or "delete"; this call has no macroVariation. Set the macroVariation or drop macroVariationIndex.',
     );
 
     expect(rackDevice.set).not.toHaveBeenCalled();
@@ -218,8 +218,7 @@ describe("updateDevice - macroVariation", () => {
           macroVariationIndex: 1,
         }),
       ).toThrow(
-        `macroVariationIndex does nothing for macroVariation '${action}' — ` +
-          "only 'load' and 'delete' take one",
+        `macroVariationIndex is only for macroVariation "load" or "delete"; this call has macroVariation "${action}". Change the macroVariation or drop macroVariationIndex.`,
       );
 
       expect(rackDevice.call).not.toHaveBeenCalled();

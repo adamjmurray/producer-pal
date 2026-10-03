@@ -545,14 +545,13 @@ describe("duplicate - drum pad", () => {
     },
   );
 
-  it("warns that count does not apply", async () => {
-    registerCopyReadyRack();
+  it("refuses a count, since a pad copy goes one per toPath", async () => {
+    const rack = registerCopyReadyRack();
 
-    await copyC1ToD1({ count: 3 });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("count 3 ignored"),
+    await expect(copyC1ToD1({ count: 3 })).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "drum-pad".',
     );
+    expectNoCopy(rack);
   });
 
   it("refuses a chain id, which would copy the pad's other chains too", async () => {

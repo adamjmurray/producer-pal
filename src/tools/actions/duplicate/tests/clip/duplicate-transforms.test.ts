@@ -264,36 +264,30 @@ describe("duplicate - transforms/code", () => {
       expect(updateClipMock).not.toHaveBeenCalled();
     });
 
-    it("warns and skips transforms for non-clip types", async () => {
+    it("refuses transforms on a non-clip type", async () => {
       registerBareTrackDuplication();
 
-      await duplicate({
-        type: "track",
-        id: "track1",
-        transforms: "velocity *= 0.5",
-      });
+      await expect(
+        duplicate({
+          type: "track",
+          id: "track1",
+          transforms: "velocity *= 0.5",
+        }),
+      ).rejects.toThrow(
+        'transforms is only for type "clip"; this call has type "track".',
+      );
 
       expect(updateClipMock).not.toHaveBeenCalled();
-      expect(consoleMock.warn).toHaveBeenCalledWith(
-        expect.stringContaining("transforms/code ignored"),
-      );
     });
 
-    it("warns and skips code (no transforms) for non-clip types", async () => {
-      // Exercises the `code != null` arm of the ignore condition independently
-      // of transforms, so a mutated `code == null` no longer suppresses the warn.
+    it("refuses code on a non-clip type", async () => {
       registerBareTrackDuplication();
 
-      await duplicate({
-        type: "track",
-        id: "track1",
-        code: "return notes;",
-      });
+      await expect(
+        duplicate({ type: "track", id: "track1", code: "return notes;" }),
+      ).rejects.toThrow('code is only for type "clip"');
 
       expect(updateClipMock).not.toHaveBeenCalled();
-      expect(consoleMock.warn).toHaveBeenCalledWith(
-        expect.stringContaining("transforms/code ignored"),
-      );
     });
   });
 

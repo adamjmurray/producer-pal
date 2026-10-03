@@ -44,11 +44,26 @@ Change the action or drop similarTo.
   `list-plugins`, since no plugin is a MIDI effect.
 - **`ppal-context` refuses `delete` outside memory** with its own message: it is
   memory-only, and the project and global documents are replaced by writing.
+- **A param for one operation of a mode param is the same mistake.** The axis is
+  whatever call-level param picks the behavior: `type` on `ppal-duplicate` and
+  on each `ppal-live-api` operation, `locatorOperation`, `macroVariation`,
+  `warpOp`. The message is the same, naming that param.
+- **Top-level search filters beside `searches`** are refused: the call can't say
+  whether they were meant for every search or for none.
+- **`force` on `ppal-context`** is refused outside a project or global write,
+  the only calls with a guard to get past. `force: false` asks for nothing, so
+  it passes.
+- **A param that doesn't suit one target stays a skip.** `quantize` on an audio
+  clip, or a warp param on a MIDI clip, depends on the target, so it keeps the
+  per-target entry (ADR-0009). Only a param whose home is another value of a
+  call-level param is refused.
 - **The clobber guard throws.** A write that would drop the whole document used
   to return the document beside a warning, the same shape as a successful write.
   It now throws a message that names `force`.
 
-Tools that apply it: `ppal-library`, `ppal-playback`, `ppal-context`.
+Tools that apply it: `ppal-library`, `ppal-playback`, `ppal-context`,
+`ppal-duplicate`, `ppal-update-live-set`, `ppal-update-device`,
+`ppal-update-clip` and `ppal-live-api`.
 
 ## Alternatives rejected
 

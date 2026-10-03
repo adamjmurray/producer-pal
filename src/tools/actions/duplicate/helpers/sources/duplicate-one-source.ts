@@ -26,10 +26,7 @@ import {
   duplicateDeviceWithPaths,
   settleDevicePaths,
 } from "../device/duplicate-device.ts";
-import {
-  copyPerDestination,
-  warnCountIgnored,
-} from "../device/copy-per-destination.ts";
+import { copyPerDestination } from "../device/copy-per-destination.ts";
 import {
   duplicateDrumPad,
   resolveSourcePad,
@@ -178,23 +175,19 @@ export async function duplicateOneSource(
  * @param type - "device" or "drum-pad"
  * @param sources - The shares to copy, in order
  * @param labels - The call's names and colors
- * @param count - The raw count param, which neither type uses
  * @returns One entry per destination each source named, in source order
  */
 export function duplicateChainSources(
   type: string,
   sources: SourceShare[],
   labels: CopyLabels,
-  count: number,
 ): object[] {
   if (type === "drum-pad") {
     refusePadOverwrites(sources);
   }
 
-  const entries = sources.flatMap((source, i) =>
-    // `count` doesn't apply to either type, and the warning that says so
-    // belongs to the call rather than to every source in it.
-    runOneChainSource(type, source, labels, i === 0 ? count : 1),
+  const entries = sources.flatMap((source) =>
+    runOneChainSource(type, source, labels),
   );
 
   // A later copy, from this source or another, can push an earlier one along.
@@ -230,36 +223,22 @@ export function regularTrackIndex(object: LiveAPI): number {
  * @param type - Object type to duplicate
  * @param source - The source's turn
  * @param labels - The call's names and colors
- * @param count - Number of copies (warns if > 1)
  * @returns One entry per destination this source named
  */
 function runOneChainSource(
   type: string,
   source: SourceShare,
   labels: CopyLabels,
-  count: number,
 ): object[] {
   if (type === "drum-pad") {
-    return duplicateDrumPadSource(source, labels, count);
+    return duplicateDrumPadSource(source, labels);
   }
 
   const object = sourceObject(source, type);
 
   return type === "chain"
-    ? duplicateChainWithPaths(
-        object,
-        source.toPath,
-        source.named,
-        labels,
-        count,
-      )
-    : duplicateDeviceWithPaths(
-        object,
-        source.toPath,
-        source.named,
-        labels,
-        count,
-      );
+    ? duplicateChainWithPaths(object, source.toPath, source.named, labels)
+    : duplicateDeviceWithPaths(object, source.toPath, source.named, labels);
 }
 
 /**
@@ -283,16 +262,12 @@ function sourceObject(source: SourceShare, type: string): LiveAPI {
  * the caller their slots.
  * @param source - The source's turn
  * @param labels - The call's names and colors
- * @param count - Number of copies (warns if > 1)
  * @returns One entry per destination, in the order toPath named them
  */
 function duplicateDrumPadSource(
   source: SourceShare,
   labels: CopyLabels,
-  count: number,
 ): object[] {
-  warnCountIgnored(count, "drum pad");
-
   const paths = pathEntries(source.toPath, "toPath");
 
   // Unlike a device, a pad has no natural "next" slot to default to — the next

@@ -36,7 +36,6 @@ export interface DeviceCopy {
  * @param toPath - Destination path(s), comma-separated for multiple
  * @param source - The source device, as the caller named it
  * @param labels - The call's names and colors
- * @param count - Number of copies (warns if > 1)
  * @returns One entry per destination, in the order toPath named them, with no
  * paths yet
  */
@@ -45,17 +44,8 @@ export function duplicateDeviceWithPaths(
   toPath: string | undefined,
   source: NamedTarget,
   labels: CopyLabels,
-  count: number,
 ): Array<DeviceCopy | TargetSkip> {
-  return copyToDestinations(
-    object,
-    toPath,
-    source,
-    labels,
-    count,
-    "device",
-    duplicateDevice,
-  );
+  return copyToDestinations(object, toPath, source, labels, duplicateDevice);
 }
 
 /**

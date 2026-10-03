@@ -128,24 +128,15 @@ describe("duplicate - clip session validation", () => {
     ).rejects.toThrow("clip requires toPath");
   });
 
-  // Every other inapplicable param on this tool warns; these two used to be
-  // dropped without a word, so the copy count / length silently didn't happen.
-  it("warns that a clip copy ignores count", async () => {
+  // A clip makes one copy per destination, so a count is refused rather than
+  // trimmed: the call can't say whether count or the clip type is the mistake.
+  it("refuses a count on a clip copy", async () => {
     registerSessionClipDuplication({ destClipProperties: {} });
 
-    const result = await duplicate({
-      type: "clip",
-      id: "clip1",
-      toPath: "t0/s1",
-      count: 3,
-    });
-
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/0/clip_slots/1/clip",
-      path: "t0/s1",
-    });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("count ignored for clips"),
+    await expect(
+      duplicate({ type: "clip", id: "clip1", toPath: "t0/s1", count: 3 }),
+    ).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "clip".',
     );
   });
 

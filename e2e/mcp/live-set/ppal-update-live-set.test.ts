@@ -673,7 +673,7 @@ describe("ppal-update-live-set", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "locatorTime, locatorName require locatorOperation",
+      "locatorTime, locatorName are only for locatorOperation",
     );
 
     const after = await ctx.client!.callTool({
@@ -684,6 +684,25 @@ describe("ppal-update-live-set", () => {
     expect(parseToolResult<ReadResult>(after).locators ?? []).toStrictEqual(
       locatorsBefore,
     );
+  });
+
+  it("refuses locatorId on create and adds no locator", async () => {
+    const before = await readLocatorList();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorId: "1",
+        locatorTime: "45|1",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toBe(
+      'Error: locatorId is only for locatorOperation "delete" or "rename"; this call has locatorOperation "create". Change the locatorOperation or drop locatorId.',
+    );
+    expect(await readLocatorList()).toStrictEqual(before);
   });
 });
 

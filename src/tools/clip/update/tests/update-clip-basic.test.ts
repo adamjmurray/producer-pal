@@ -700,6 +700,28 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
+  // A warp param for another operation, or with none, is the call's mistake or
+  // the operation's, so it is refused before any clip is touched.
+  it.each([
+    [
+      { warpOp: "move", warpSampleTime: 1 },
+      'warpSampleTime is only for warpOp "add"; this call has warpOp "move". Change the warpOp or drop warpSampleTime.',
+    ],
+    [
+      { warpOp: "add", warpDistance: 1 },
+      'warpDistance is only for warpOp "move"',
+    ],
+    [
+      { warpBeatTime: 2 },
+      'warpBeatTime is only for warpOp "add", "move" or "remove"; this call has no warpOp. Set the warpOp or drop warpBeatTime.',
+    ],
+  ])("refuses %j", async (args, message) => {
+    setupAudioClipMock(mocks.clip456, { file_path: "/audio/test.wav" });
+
+    await expect(updateClip({ id: "456", ...args })).rejects.toThrow(message);
+    expect(mocks.clip456.call).not.toHaveBeenCalled();
+  });
+
   it("should write notes and not treat a MIDI clip as audio", async () => {
     setupMidiClipMock(mocks.clip123);
 

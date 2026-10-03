@@ -156,8 +156,9 @@ export function takeLaneLabel(target: ArrangementTrack): string {
 }
 
 /**
- * Warn when `duplicate` was given take-lane params it has no use for — a
- * non-clip type, or a session destination. Neither value is validated here: a
+ * Warn when `duplicate` was given take-lane params its destination has no use
+ * for: a track copy with no lane to land on, or a session destination. A type
+ * that never reads them was refused before this. Neither value is validated here: a
  * malformed one on a duplicate that ignores it should warn, not throw.
  * @param type - The duplicate target type ("clip", "track", etc.)
  * @param destination - "session" | "arrangement" | undefined
@@ -188,7 +189,7 @@ export function warnUnusedTakeLane(
 
   if (type !== "clip") {
     warn(
-      `${unusable} ignored: only supported when duplicating clips (type "${type}")`,
+      `${unusable} ignored: no destination names a take lane (type "${type}")`,
     );
   } else if (destination === "session") {
     warn(`${unusable} ignored for session destination (arrangement-only)`);

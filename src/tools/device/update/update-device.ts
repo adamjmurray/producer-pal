@@ -19,7 +19,7 @@ import {
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
-import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
+import { refuseMacroVariationParams } from "./helpers/rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import {
   type PresetOutcome,
@@ -223,14 +223,7 @@ export function planDeviceUpdate({
     }
   }
 
-  const badVariation = macroVariationParamsReason(
-    macroVariation,
-    macroVariationIndex,
-  );
-
-  if (badVariation != null) {
-    throw new Error(badVariation);
-  }
+  refuseMacroVariationParams(macroVariation, macroVariationIndex);
 
   if (wrapInRack) {
     return { wrap: { ids, path, toPath, name }, focus, sent };

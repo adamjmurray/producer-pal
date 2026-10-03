@@ -257,18 +257,21 @@ describe("duplicate - arrangementLength where no copy reads it", () => {
     clearCapturedWarnings();
   });
 
-  it("warns once for track copies, whatever the list length", async () => {
+  it("refuses a track copy, which never reads it, before copying", async () => {
     const { liveSet } = registerTrackCopySet(["track1"]);
 
-    await duplicate({
-      type: "track",
-      id: "track1",
-      count: 2,
-      arrangementLength: "1bar,2bar,3bar",
-    });
+    await expect(
+      duplicate({
+        type: "track",
+        id: "track1",
+        count: 2,
+        arrangementLength: "1bar,2bar,3bar",
+      }),
+    ).rejects.toThrow(
+      'arrangementLength is only for type "clip" or "scene"; this call has type "track".',
+    );
 
-    expect(liveSet.call).toHaveBeenCalledTimes(2);
-    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "track")`]);
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("warns for session scene copies, whatever the list length", async () => {
@@ -285,17 +288,17 @@ describe("duplicate - arrangementLength where no copy reads it", () => {
     expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "scene")`]);
   });
 
-  it("warns for a track copied onto a take lane", async () => {
+  it("refuses a track copied onto a take lane, which never reads it", async () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    await duplicateToLanes({
-      id: "src_track",
-      toPath: "t1/l+,t1/l+",
-      arrangementLength: "1bar,2bar,3bar",
-    });
-
-    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "track")`]);
+    await expect(
+      duplicateToLanes({
+        id: "src_track",
+        toPath: "t1/l+,t1/l+",
+        arrangementLength: "1bar,2bar,3bar",
+      }),
+    ).rejects.toThrow('arrangementLength is only for type "clip" or "scene"');
   });
 
   it("doesn't refuse a clip copy to a slot over the list length", async () => {

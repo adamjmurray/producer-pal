@@ -311,15 +311,44 @@ describe("library tool — searches fan-out", () => {
     warnSpy.mockRestore();
   });
 
-  // An empty array names no search at all, so running the top-level filters
-  // instead would just hide the mistake.
+  // An empty array names no search at all, so running a plain search instead
+  // would just hide the mistake.
   it("refuses an empty searches before searching anything", async () => {
     mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
 
-    await expect(
-      library({ action: "search", searches: [], tags: "Kick" }),
-    ).rejects.toThrow("searches must name at least one search");
+    await expect(library({ action: "search", searches: [] })).rejects.toThrow(
+      "searches must name at least one search",
+    );
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  // Each search takes its own filters, so a top-level one is ambiguous: it
+  // could be meant for every search, or for none.
+  it("refuses top-level filters beside searches", async () => {
+    mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
+
+    await expect(
+      library({
+        action: "search",
+        searches: [{ tags: "Kick" }],
+        tags: "Snare",
+        limit: 5,
+      }),
+    ).rejects.toThrow(
+      "tags, limit can't be sent beside searches: each entry of searches takes its own filters. Put them in the entries, or drop searches.",
+    );
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("names the old queries spelling, and lets the default kind through", async () => {
+    mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
+
+    await expect(
+      library({ queries: [{ tags: "Kick" }], sort: "name" }),
+    ).rejects.toThrow("sort can't be sent beside queries");
+    await expect(
+      library({ searches: [{ tags: "Kick" }], kind: "audio" }),
+    ).resolves.toBeDefined();
   });
 
   it("answers a lone search the way a plain search does", async () => {

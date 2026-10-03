@@ -58,7 +58,6 @@ interface ChainCopy {
  * @param toPath - Destination rack path(s), or omitted to append to its own rack
  * @param source - The source chain, as the caller named it
  * @param labels - The call's names and colors
- * @param count - Number of copies (warns if > 1)
  * @returns One entry per destination, in the order toPath named them
  */
 export function duplicateChainWithPaths(
@@ -66,17 +65,8 @@ export function duplicateChainWithPaths(
   toPath: string | undefined,
   source: NamedTarget,
   labels: CopyLabels,
-  count: number,
 ): object[] {
-  return copyToDestinations(
-    chain,
-    toPath,
-    source,
-    labels,
-    count,
-    "chain",
-    duplicateChain,
-  );
+  return copyToDestinations(chain, toPath, source, labels, duplicateChain);
 }
 
 /**

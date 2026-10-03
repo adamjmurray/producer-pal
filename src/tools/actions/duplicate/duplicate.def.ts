@@ -63,8 +63,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     }),
 
     count: param(z.coerce.number().int().min(1).default(1), {
-      default:
-        "copies per source (tracks/scenes only, ignored for clips/devices)",
+      default: "copies per source (tracks/scenes only)",
       smallModel: null,
     }),
 

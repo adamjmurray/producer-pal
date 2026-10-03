@@ -12,6 +12,8 @@ const CONTEXT_PARAM_HOMES: Record<string, ParamHome> = {
   name: { scope: ["memory"] },
   description: { scope: ["memory"], action: ["write"] },
   content: { action: ["write"] },
+  // Only the clobber guard on a project or global write reads it.
+  force: { action: ["write"], scope: ["project", "global"] },
 };
 
 /**
@@ -34,9 +36,12 @@ export function refuseContextParamsOutsideAction(
     );
   }
 
-  refuseParamsOutsideAction(
-    { action: action ?? "", scope },
-    { ...args },
-    CONTEXT_PARAM_HOMES,
-  );
+  const sent: Record<string, unknown> = { ...args };
+
+  // force:false asks for nothing, so it is the same as leaving it out.
+  if (sent.force === false) {
+    delete sent.force;
+  }
+
+  refuseParamsOutsideAction({ action, scope }, sent, CONTEXT_PARAM_HOMES);
 }

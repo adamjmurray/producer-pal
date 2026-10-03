@@ -220,22 +220,17 @@ describe("duplicate - a list of sources", () => {
       ).not.toHaveBeenCalledWith("duplicate_clip_to", expect.anything());
     });
 
-    // One source is the whole call, so the per-source rule never applies to it
-    // and count keeps working the way it always did.
+    // One source is the whole call, so the per-source rule never applies to it.
     it("leaves a lone source with one destination alone", async () => {
       registerTwoSlotSources([[2, 0]]);
 
       const result = await duplicate({
         type: "clip",
         id: "clipA",
-        count: 3,
         toPath: "t2/s0",
       });
 
       expect(result).toStrictEqual({ id: "clipA-in-t2s0", path: "t2/s0" });
-      expect(capturedWarnings().join("\n")).toContain(
-        "count ignored for clips",
-      );
     });
 
     // A slot holds one clip, so the second source can't share the first's.

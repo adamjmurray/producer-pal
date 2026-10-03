@@ -167,6 +167,38 @@ describe("ppal-live-api", () => {
     expect(parsed.results[5]).toBe(original);
   });
 
+  it("refuses a param the operation type doesn't read, before any operation runs", async () => {
+    const tempo = async (): Promise<unknown> =>
+      parseToolResult<LiveApiResult>(
+        await ctx.client!.callTool({
+          name: "ppal-live-api",
+          arguments: {
+            path: "live_set",
+            operations: [{ type: "get-property", property: "tempo" }],
+          },
+        }),
+      ).results[0];
+    const before = await tempo();
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [
+          { type: "set", property: "tempo", value: 77 },
+          { type: "get", property: "tempo", method: "stop_all_clips" },
+        ],
+      },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toBe(
+      'Error: operations[1] (counting from 0): method is only for type "call" or "call-method"; this call has type "get". Change the type or drop method.',
+    );
+    // The set before it never ran.
+    expect(await tempo()).toBe(before);
+  });
+
   // The nonexistent-object contract, pinned so a Live upgrade that changes it
   // fails here rather than as wrong values deep inside a tool. See
   // dev/coding-standards/live-api-behavior.md, "What Live Returns When There Is

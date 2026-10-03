@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   setConfig,
@@ -75,6 +76,21 @@ describe("ppal-library searches", () => {
   function names(entry: BatchEntry | undefined): string[] {
     return (entry?.items ?? []).map((item) => item.name).toSorted();
   }
+
+  it("refuses top-level filters beside searches", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-library",
+      arguments: {
+        searches: [{ label: "Kicks", query: "kick" }],
+        query: "snare",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toBe(
+      "Error: query can't be sent beside searches: each entry of searches takes its own filters. Put them in the entries, or drop searches.",
+    );
+  });
 
   it("applies each query's filters to its own group", async () => {
     // The repo's own sample folder holds exactly kick.aiff and sample.aiff, so

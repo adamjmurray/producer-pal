@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import {
   type TargetNotes,
   noteTarget,
@@ -49,31 +50,27 @@ export function updateMacroVariation(
 }
 
 /**
- * The reason a macroVariation/macroVariationIndex pair can't be read at all.
+ * Refuses a macroVariation/macroVariationIndex pair that can't be read at all.
  * Nothing about a device decides it, so the call is refused before any of its
  * targets is touched (ADR-0035).
  * @param action - Variation action
  * @param index - Variation index
- * @returns The reason, or null when the pair is usable
+ * @throws Error when load/delete has no index, or an index sits beside another
+ *   action
  */
-export function macroVariationParamsReason(
+export function refuseMacroVariationParams(
   action: string | undefined,
   index: number | undefined,
-): string | null {
-  if (index == null) {
-    return action === "load" || action === "delete"
-      ? `macroVariation '${action}' requires macroVariationIndex`
-      : null;
+): void {
+  if (index == null && (action === "load" || action === "delete")) {
+    throw new Error(`macroVariation '${action}' requires macroVariationIndex`);
   }
 
-  if (action == null) {
-    return "macroVariationIndex requires macroVariation 'load' or 'delete'";
-  }
-
-  return action === "load" || action === "delete"
-    ? null
-    : `macroVariationIndex does nothing for macroVariation '${action}' — ` +
-        "only 'load' and 'delete' take one";
+  refuseParamsOutsideAction(
+    { macroVariation: action },
+    { macroVariationIndex: index },
+    { macroVariationIndex: { macroVariation: ["load", "delete"] } },
+  );
 }
 
 /**

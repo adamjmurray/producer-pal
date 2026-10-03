@@ -5,6 +5,7 @@
 
 import {
   type ParamHome,
+  paramWasSent,
   refuseParamsOutsideAction,
 } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 
@@ -41,8 +42,24 @@ const LIBRARY_PARAM_HOMES: Record<string, ParamHome> = {
 // the default look the same. Only a different kind counts as sent.
 const DEFAULT_KIND = "audio";
 
+// The filters a plain search takes at the top level. `searches` carries its own
+// set per entry.
+const SINGLE_SEARCH_FILTERS = [
+  "query",
+  "tags",
+  "kind",
+  "type",
+  "deviceKind",
+  "source",
+  "inFolder",
+  "sort",
+  "verifyPaths",
+  "limit",
+];
+
 /**
- * Refuses a library call that sends a param its action doesn't read.
+ * Refuses a library call that sends a param its action doesn't read, or that
+ * sends top-level search filters beside `searches`.
  * @param action - The action the call will run
  * @param args - The args as sent
  */
@@ -57,4 +74,27 @@ export function refuseLibraryParamsOutsideAction(
   }
 
   refuseParamsOutsideAction({ action }, sent, LIBRARY_PARAM_HOMES);
+  refuseFiltersBesideSearches(sent);
+}
+
+/**
+ * Whether the call can't say which filters apply: the top-level ones or the
+ * ones inside each search.
+ * @param sent - The args as sent
+ * @throws Error naming the top-level filters
+ */
+function refuseFiltersBesideSearches(sent: Record<string, unknown>): void {
+  const searches = ["searches", "queries"].find((name) => sent[name] != null);
+  const filters = SINGLE_SEARCH_FILTERS.filter((name) =>
+    paramWasSent(sent[name]),
+  );
+
+  if (searches == null || filters.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `${filters.join(", ")} can't be sent beside ${searches}: each entry of ` +
+      `${searches} takes its own filters. Put them in the entries, or drop ${searches}.`,
+  );
 }

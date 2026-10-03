@@ -19,8 +19,6 @@ import {
   type ClipDestinations,
   type DuplicateArrangementTarget,
   warnInapplicableClipParams,
-  warnUnusedArrangementParams,
-  warnUnusedDestination,
 } from "./clip/clip-destinations.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
@@ -255,28 +253,20 @@ function copyBlockedToTrack(
 interface DestinationParams {
   type: string;
   clipDestinations: ClipDestinations | null;
-  count: number;
   toPath: string | undefined;
-  toSlot: string | undefined;
   arrangementStart: string | undefined;
   arrangementLength: string | undefined;
   takeLane: number | string | undefined;
   takeLaneName: string | undefined;
-  transforms: string | undefined;
-  code: string | undefined;
   /** Whether this call copies clips lane to lane rather than making a track. */
   laneCopy: boolean;
   /** Whether a destination names a take lane, which the call may create. */
   toTakeLane: boolean;
-  /** How many sources the call names. */
-  sourceCount: number;
 }
 
 /**
- * Settle where the copies go, warning for every param the chosen type and
- * destination have no use for. Grouped here so the tool's one rule — an
- * inapplicable param is warned about, never silently dropped — has one place
- * to hold.
+ * Settle where the copies go, warning for every param the chosen destination
+ * has no use for (a param the type has no use for was refused up front).
  * @param params - The destination and position params as the tool received them
  * @returns The destination, or undefined when the type has none
  */
@@ -286,16 +276,8 @@ export function resolveDestinationAndWarn(
   const { type, clipDestinations, arrangementStart } = params;
   const { arrangementLength, takeLane, takeLaneName } = params;
 
-  warnUnusedDestination(type, params.toSlot);
-  warnUnusedArrangementParams(type, arrangementStart, arrangementLength);
-
   if (clipDestinations != null) {
-    warnInapplicableClipParams(
-      clipDestinations,
-      params.count,
-      arrangementLength,
-      params.sourceCount,
-    );
+    warnInapplicableClipParams(clipDestinations, arrangementLength);
   }
 
   const destination =
@@ -304,17 +286,11 @@ export function resolveDestinationAndWarn(
   validateDestinationParameter(type, destination, params.laneCopy);
   warnUnusedArrangementLength(type, destination, arrangementLength);
 
-  if (type !== "clip" && (params.transforms != null || params.code != null)) {
-    console.warn(
-      `transforms/code ignored: only supported when duplicating clips (type "${type}")`,
-    );
-  }
-
-  // takeLane and takeLaneName only apply to arrangement-destination clips; the
-  // helper warns for non-clip types and session destinations so a malformed
-  // value doesn't throw before the warn-and-ignore path. Where they do apply,
-  // the destination resolver folded takeLane onto the paths already, and the
-  // lane resolver warns if it had no new lane to name.
+  // takeLane and takeLaneName only apply to arrangement-destination clips (and
+  // takeLaneName to a track copied onto a lane); the helper warns for the
+  // rest so a malformed value doesn't throw before the warn-and-ignore path.
+  // Where they do apply, the destination resolver folded takeLane onto the
+  // paths already, and the lane resolver warns if it had no new lane to name.
   warnUnusedTakeLane(
     type,
     destination,
@@ -342,8 +318,8 @@ export function readsArrangementLength(
 }
 
 /**
- * Warns once when a track or scene call sends an arrangementLength no copy
- * reads. Every other type warns for it elsewhere.
+ * Warns once when a scene call sends an arrangementLength no copy reads. A type
+ * that never reads it was refused up front.
  * @param type - Type of object being duplicated
  * @param destination - Where the call's copies go
  * @param arrangementLength - Requested arrangement length
@@ -355,7 +331,7 @@ function warnUnusedArrangementLength(
 ): void {
   if (
     arrangementLength == null ||
-    (type !== "track" && type !== "scene") ||
+    type !== "scene" ||
     readsArrangementLength(type, destination)
   ) {
     return;

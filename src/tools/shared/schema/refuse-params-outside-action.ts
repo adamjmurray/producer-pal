@@ -25,20 +25,21 @@ interface Misfit {
  * Refuses a call that sends a param the call's action (or scope) doesn't read.
  * A null, blank or "null" counts as not sent. The defaulted action counts like
  * an explicit one.
- * @param call - The call's axes and their values, e.g. `{ action: "search" }`
+ * @param call - The call's axes and their values, e.g. `{ action: "search" }`;
+ *   a value of undefined means the call names none
  * @param sent - The args, under the names the caller wrote
  * @param homes - Each param that only some axis values read, and which
  * @throws Error naming the params, where they apply, and what the call has
  */
 export function refuseParamsOutsideAction(
-  call: Record<string, string>,
+  call: Record<string, string | undefined>,
   sent: Record<string, unknown>,
   homes: Record<string, ParamHome>,
 ): void {
   const misfits: Misfit[] = [];
 
   for (const [param, home] of Object.entries(homes)) {
-    if (!isSent(sent[param])) {
+    if (!paramWasSent(sent[param])) {
       continue;
     }
 
@@ -56,13 +57,12 @@ export function refuseParamsOutsideAction(
   throw new Error(refusalMessage(call, misfits));
 }
 
-// --- Helpers below main exports ---
-
 /**
+ * Whether a param was sent: a null, a blank and the word "null" were not.
  * @param value - A param's value as sent
  * @returns True when it names something
  */
-function isSent(value: unknown): boolean {
+export function paramWasSent(value: unknown): boolean {
   return typeof value === "string" ? paramNamesSomething(value) : value != null;
 }
 
@@ -74,7 +74,7 @@ function isSent(value: unknown): boolean {
  * @returns The message
  */
 function refusalMessage(
-  call: Record<string, string>,
+  call: Record<string, string | undefined>,
   misfits: Misfit[],
 ): string {
   // A param that misses on two axes is one clause, so it isn't named twice.
@@ -102,10 +102,18 @@ function refusalMessage(
   const axes = Object.keys(call).filter((axis) =>
     misfits.some((misfit) => misfit.axis === axis),
   );
-  const has = axes.map((axis) => `${axis} "${call[axis]}"`).join(" and ");
-  const change = axes.length === 1 ? `the ${axes[0]}` : "the call";
+  const has = axes
+    .map((axis) =>
+      call[axis] == null ? `no ${axis}` : `${axis} "${call[axis]}"`,
+    )
+    .join(" and ");
+  const [only] = axes;
+  const change =
+    axes.length === 1 && only != null
+      ? `${call[only] == null ? "Set" : "Change"} the ${only}`
+      : "Change the call";
 
-  return `${clauses.join("; ")}; this call has ${has}. Change ${change} or drop ${[...homesByParam.keys()].join(", ")}.`;
+  return `${clauses.join("; ")}; this call has ${has}. ${change} or drop ${[...homesByParam.keys()].join(", ")}.`;
 }
 
 /**

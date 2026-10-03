@@ -43,8 +43,27 @@ The tables sit next to each tool's code and feed one helper,
   the plurals are for `play-scene`, `play-session-clips` and
   `stop-session-clips`; `sceneIndex` for `play-scene` only.
 - **`ppal-context`** (`context-action-params.ts`): `name` is for scope `memory`,
-  `description` for a memory `write`, `content` for `write`. `delete` outside
-  `memory` is refused as memory-only. The clobber guard throws.
-- **Not covered:** `force` on `ppal-context` is still accepted anywhere (the
-  eval seed passes it on every replace), and `ppal-live-api` operations accept
-  params their `type` doesn't read.
+  `description` for a memory `write`, `content` for `write`, `force` for a
+  project or global `write`. `delete` outside `memory` is refused as
+  memory-only. The clobber guard throws.
+- **`ppal-duplicate`** (`duplicate-input-validation.ts`), by `type`: `count` and
+  `withoutClips` are for `track` and `scene`, `withoutDevices` and
+  `routeToSource` for `track`, `transforms`, `code`, `toSlot` and `takeLane` for
+  `clip`, `takeLaneName` for `clip` and `track`, `arrangementStart` and
+  `locator` for `track`, `scene` and `clip`, `arrangementLength` for `clip` and
+  `scene`. The destination decides the rest (a session clip copy has no length,
+  a scene with several positions takes no count), so those stay warnings.
+- **`ppal-update-live-set`** (`locator-updates.ts`): `locatorId` is for `delete`
+  and `rename`; all three locator params need a `locatorOperation`.
+- **`ppal-update-device`** (`rack-macro-updates.ts`): `macroVariationIndex` is
+  for `load` and `delete`.
+- **`ppal-update-clip`** (`update-clip-refusals.ts`, debug builds): the warp
+  params belong to a `warpOp`: `warpSampleTime` to `add`, `warpDistance` to
+  `move`, `warpBeatTime` to any.
+- **`ppal-live-api`** (`live-api-operation-validation.ts`): per operation,
+  `property`, `method`, `args` and `value` are for the types that read them; the
+  message names `operations[N]`.
+- **`ppal-library`** also refuses top-level search filters beside `searches`.
+- **Not covered:** `ppal-create-track` (nothing depends on `type`; `arm` on a
+  return track is per target), and `ppal-update-device`'s `wrapInRack`, which
+  already refuses what it ignores in its own words.

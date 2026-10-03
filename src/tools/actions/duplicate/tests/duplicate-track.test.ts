@@ -237,10 +237,12 @@ describe("duplicate - track duplication", () => {
   });
 
   describe("routeToSource functionality", () => {
-    it("should throw an error when routeToSource is used with non-track type", async () => {
+    it("refuses routeToSource on a non-track type", async () => {
       await expect(
         duplicate({ type: "scene", id: "scene1", routeToSource: true }),
-      ).rejects.toThrow("routeToSource is only supported for type 'track'");
+      ).rejects.toThrow(
+        'routeToSource is only for type "track"; this call has type "scene". Change the type or drop routeToSource.',
+      );
     });
 
     it("should configure routing when routeToSource is true", async () => {

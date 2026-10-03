@@ -9,6 +9,10 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
+  type ParamHome,
+  refuseParamsOutsideAction,
+} from "#src/tools/shared/schema/refuse-params-outside-action.ts";
+import {
   type LiveApiOperation,
   MAX_OPERATIONS,
   type OperationType,
@@ -38,6 +42,8 @@ export function validateOperations(operations: LiveApiOperation[]): void {
     } catch (error) {
       throw new Error(operationError(index, error), { cause: error });
     }
+
+    refuseParamsTheTypeIgnores(operation, index);
   }
 }
 
@@ -52,6 +58,57 @@ export function operationError(index: number, error: unknown): string {
 }
 
 // --- Helpers below main exports ---
+
+// The operations that read each param. A param on any other operation is the
+// call's mistake or the type's, and nothing says which.
+const PROPERTY_TYPES = [
+  "get",
+  "set",
+  "set-property",
+  "get-field",
+  "get-property",
+  "get-child-ids",
+  "getcount",
+  "getstring",
+];
+const CALL_TYPES = ["call", "call-method"];
+const OPERATION_PARAM_HOMES: Record<string, ParamHome> = {
+  property: { type: PROPERTY_TYPES },
+  method: { type: CALL_TYPES },
+  args: { type: CALL_TYPES },
+  value: {
+    type: [
+      "set",
+      "set-property",
+      "goto",
+      "set-color",
+      "set-path",
+      "set-mode",
+      "set-id",
+    ],
+  },
+};
+
+/**
+ * Refuses an operation that sends a param its type doesn't read.
+ * @param operation - The operation, as sent
+ * @param index - Its place in the call's operations
+ * @throws Error naming the operation, the param, and where it applies
+ */
+function refuseParamsTheTypeIgnores(
+  operation: LiveApiOperation,
+  index: number,
+): void {
+  try {
+    refuseParamsOutsideAction(
+      { type: operation.type },
+      { ...operation },
+      OPERATION_PARAM_HOMES,
+    );
+  } catch (error) {
+    throw new Error(operationError(index, error), { cause: error });
+  }
+}
 
 interface OperationRequirements {
   property?: boolean;

@@ -21,7 +21,6 @@ import {
   type ClipDestinationPath,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
-  namedHiddenPath,
   slotPath,
   type ClipPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -125,81 +124,20 @@ export function resolveClipDestinations(
 }
 
 /**
- * Warns for params a clip duplicate has no use for. A clip gets one copy per
- * destination, and only an arrangement copy has a length.
+ * Warns for an arrangementLength a session copy has no use for. A clip gets one
+ * copy per destination (a count above 1 was refused up front), and only an
+ * arrangement copy has a length.
  * @param destinations - Where the copies go
- * @param count - Requested number of copies
  * @param arrangementLength - Requested arrangement length
- * @param sourceCount - How many sources the call names
  */
 export function warnInapplicableClipParams(
   destinations: ClipDestinations,
-  count: number,
   arrangementLength: string | undefined,
-  sourceCount = 1,
 ): void {
-  // Several sources take one destination each, so listing more is refused.
-  if (count > 1) {
-    console.warn(
-      sourceCount > 1
-        ? "count ignored for clips: one copy per destination — for more copies, send one call per source"
-        : "count ignored for clips: one copy per destination — list more in toPath",
-    );
-  }
-
   if (destinations.destination === "session" && arrangementLength != null) {
     console.warn(
       "arrangementLength ignored: it only applies to arrangement destinations",
     );
-  }
-}
-
-/**
- * Warns for arrangement position params on a type that lands nowhere on the
- * timeline. A device, drum pad or chain is copied inside a rack or track, so
- * these are dropped — and every other inapplicable param on this tool warns.
- * @param type - Type of object being duplicated
- * @param arrangementStart - Bar|beat position
- * @param arrangementLength - Requested arrangement length
- */
-export function warnUnusedArrangementParams(
-  type: string,
-  arrangementStart: string | undefined,
-  arrangementLength: string | undefined,
-): void {
-  if (type !== "device" && type !== "drum-pad" && type !== "chain") {
-    return;
-  }
-
-  const sent = [
-    arrangementStart != null ? "arrangementStart" : null,
-    arrangementLength != null ? "arrangementLength" : null,
-  ].filter((param) => param != null);
-
-  if (sent.length === 0) {
-    return;
-  }
-
-  console.warn(
-    `${sent.join("/")} ignored: a ${type} has no arrangement position (type "${type}")`,
-  );
-}
-
-/**
- * Warns when the deprecated toSlot was sent for a type other than clip.
- * @param type - Type of object being duplicated
- * @param rawToSlot - Deprecated clip slot(s)
- */
-export function warnUnusedDestination(
-  type: string,
-  rawToSlot: string | undefined,
-): void {
-  if (type === "clip") {
-    return;
-  }
-
-  if (namedHiddenPath(rawToSlot, "toSlot") != null) {
-    console.warn(`toSlot ignored: only supported for clips (type "${type}")`);
   }
 }
 

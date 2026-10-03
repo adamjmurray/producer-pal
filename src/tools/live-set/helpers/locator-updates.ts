@@ -9,6 +9,10 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { findLocator } from "#src/tools/shared/locator/locators.ts";
 import {
+  type ParamHome,
+  refuseParamsOutsideAction,
+} from "#src/tools/shared/schema/refuse-params-outside-action.ts";
+import {
   locateTarget,
   type LocatorTarget,
   type SongMeter,
@@ -167,8 +171,18 @@ export function renameLocator(
   return { operation: "rename", id: found.locator.id };
 }
 
+const LOCATOR_OPERATIONS = ["create", "delete", "rename"];
+
+// Create makes a locator, so it has no id to name.
+const LOCATOR_PARAM_HOMES: Record<string, ParamHome> = {
+  locatorId: { locatorOperation: ["delete", "rename"] },
+  locatorTime: { locatorOperation: LOCATOR_OPERATIONS },
+  locatorName: { locatorOperation: LOCATOR_OPERATIONS },
+};
+
 /**
- * Refuse a call that sends locator args with no locatorOperation to act on.
+ * Refuse a call that sends locator args its locatorOperation doesn't read, or
+ * that names no locatorOperation to act on.
  *
  * Without an operation there is nothing to create, delete or rename, so the
  * args name no work at all and the call returns a bare id that reads as
@@ -181,19 +195,7 @@ export function validateLocatorOperation(
   locatorOperation: string | undefined,
   args: { locatorId?: string; locatorTime?: string; locatorName?: string },
 ): void {
-  if (locatorOperation != null) {
-    return;
-  }
-
-  const sent = (["locatorId", "locatorTime", "locatorName"] as const).filter(
-    (key) => args[key] != null,
-  );
-
-  if (sent.length > 0) {
-    throw new Error(
-      `${sent.join(", ")} require locatorOperation ("create", "delete", or "rename")`,
-    );
-  }
+  refuseParamsOutsideAction({ locatorOperation }, args, LOCATOR_PARAM_HOMES);
 }
 
 // --- Helpers below main exports ---

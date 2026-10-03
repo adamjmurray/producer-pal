@@ -56,6 +56,7 @@ import {
   resolveDestinationAndWarn,
 } from "./helpers/duplicate-destinations.ts";
 import {
+  refuseDuplicateParamsOutsideType,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
 } from "./helpers/duplicate-input-validation.ts";
@@ -158,6 +159,7 @@ async function duplicateOnLanes(
 
   // Validate basic inputs
   validateBasicInputs(type, id, count, path);
+  refuseDuplicateParamsOutsideType(type, args);
 
   // A track copied onto a take lane — or off one, onto a track's main lane —
   // lands its clips there instead of making a new track, so the params that
@@ -169,7 +171,6 @@ async function duplicateOnLanes(
 
   if (!laneCopy) {
     ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
-      type,
       routeToSource,
       withoutClips,
       withoutDevices,
@@ -219,18 +220,13 @@ async function duplicateOnLanes(
   const destination = resolveDestinationAndWarn({
     type,
     clipDestinations: callClipDestinations(clipDestinations),
-    count,
     toPath,
-    toSlot,
     arrangementStart,
     arrangementLength,
     takeLane,
     takeLaneName,
-    transforms,
-    code,
     laneCopy,
     toTakeLane,
-    sourceCount: sources.length,
   });
 
   const labels = copyLabels(
@@ -259,7 +255,7 @@ async function duplicateOnLanes(
   // All three take comma-separated toPath for multiple destinations, and answer
   // with one entry per destination named.
   if (type === "drum-pad" || type === "device" || type === "chain") {
-    return oneOrAll(duplicateChainSources(type, sources, labels, count));
+    return oneOrAll(duplicateChainSources(type, sources, labels));
   }
 
   const createdObjects = await duplicateEverySource({

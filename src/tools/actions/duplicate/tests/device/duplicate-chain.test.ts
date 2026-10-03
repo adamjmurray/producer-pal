@@ -129,20 +129,21 @@ describe("duplicate - chain", () => {
     expect(created.set).toHaveBeenCalledWith("name", "Layer B");
   });
 
-  it("warns once that arrangement params do not apply to a chain", async () => {
-    setupRack();
+  it("refuses arrangement params on a chain, which has no position on the timeline", async () => {
+    const { rack } = setupRack();
 
-    await duplicate({
-      type: "chain",
-      id: "chain-0",
-      arrangementStart: "5|1",
-      arrangementLength: "1bar",
-    });
-
-    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'arrangementStart/arrangementLength ignored: a chain has no arrangement position (type "chain")',
+    await expect(
+      duplicate({
+        type: "chain",
+        id: "chain-0",
+        arrangementStart: "5|1",
+        arrangementLength: "1bar",
+      }),
+    ).rejects.toThrow(
+      'arrangementStart is only for type "track", "scene" or "clip"; arrangementLength is only for type "clip" or "scene"; this call has type "chain".',
     );
+
+    expect(rack.call).not.toHaveBeenCalled();
   });
 
   it("refuses a rack return chain, saying why", async () => {
@@ -429,13 +430,13 @@ describe("duplicate - chain", () => {
     expect(result).not.toHaveProperty("detail");
   });
 
-  it("warns that count is ignored, since only one copy is made", async () => {
+  it("refuses a count, since a chain copy goes one per toPath", async () => {
     setupRack();
 
-    await duplicate({ type: "chain", id: "chain-0", count: 2 });
-
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "count 2 ignored: chain copies go one per toPath",
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", count: 2 }),
+    ).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "chain".',
     );
   });
 

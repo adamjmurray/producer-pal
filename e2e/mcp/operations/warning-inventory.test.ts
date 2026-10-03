@@ -62,37 +62,23 @@ interface TargetEntry {
 }
 
 describe("warnings the tools still raise", () => {
-  it("says count was ignored by the types that copy once", async () => {
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "device",
-        path: "t2/d2",
-        count: 2,
-      }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: device copies go one per toPath",
-    ]);
-
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "chain",
-        path: "t6/d0/c0",
-        count: 2,
-      }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: chain copies go one per toPath",
-    ]);
-
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "drum-pad",
-        path: "t0/d0/pC1",
-        toPath: "t0/d0/pC2",
-        count: 2,
-      }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: drum pad copies go one per toPath",
-    ]);
+  it("refuses count on the types that copy once, copying nothing", async () => {
+    for (const [type, path] of [
+      ["device", "t2/d2"],
+      ["chain", "t6/d0/c0"],
+      ["drum-pad", "t0/d0/pC1"],
+    ] as const) {
+      expect(
+        await errorFrom("ppal-duplicate", {
+          type,
+          path,
+          ...(type === "drum-pad" ? { toPath: "t0/d0/pC2" } : {}),
+          count: 2,
+        }),
+      ).toBe(
+        `Error: count is only for type "track" or "scene"; this call has type "${type}". Change the type or drop count.`,
+      );
+    }
   });
 
   it("says what a track's take-lane copy has no use for", async () => {

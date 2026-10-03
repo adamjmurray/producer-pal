@@ -113,4 +113,38 @@ describe("context - params the scope or action doesn't read", () => {
       context({ action: "delete", name: "x", content: "y" }, toolContext),
     ).rejects.toThrow('action "delete" is only for scope "memory"');
   });
+
+  // Only the clobber guard on a project or global write reads it.
+  it.each([
+    ["a read", { action: "read" }],
+    ["a global read", { action: "read", scope: "global" }],
+    ["a memory write", { action: "write", scope: "memory", name: "x" }],
+  ])("refuses force on %s", async (_label, args) => {
+    await expect(
+      context({ ...args, force: true } as never, toolContext),
+    ).rejects.toThrow(
+      /^force is only for (action "write"|scope "project" or "global")/,
+    );
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("names the action and scope force misses on, together", async () => {
+    await expect(
+      context({ action: "read", scope: "memory", force: true }),
+    ).rejects.toThrow(
+      'force is only for action "write" and scope "project" or "global"; this call has action "read" and scope "memory". Change the call or drop force.',
+    );
+  });
+
+  it("lets a project or global write take force, and counts force:false as not sent", async () => {
+    await expect(
+      context(
+        { action: "write", content: "- Key: A minor.", force: true },
+        toolContext,
+      ),
+    ).resolves.toStrictEqual({ content: "- Key: A minor." });
+    await expect(
+      context({ action: "read", force: false }, toolContext),
+    ).resolves.toBeDefined();
+  });
 });

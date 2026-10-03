@@ -404,7 +404,7 @@ describe("ppal-update-device", () => {
   it.each([
     [
       { macroVariationIndex: 0 },
-      "macroVariationIndex requires macroVariation 'load' or 'delete'",
+      'macroVariationIndex is only for macroVariation "load" or "delete"; this call has no macroVariation',
     ],
     [
       { macroVariation: "load" },
@@ -412,7 +412,7 @@ describe("ppal-update-device", () => {
     ],
     [
       { macroVariation: "create", macroVariationIndex: 0 },
-      "macroVariationIndex does nothing for macroVariation 'create'",
+      'macroVariationIndex is only for macroVariation "load" or "delete"; this call has macroVariation "create"',
     ],
   ])("refuses the contradictory macro variation args %o", async (args, why) => {
     const rackId = await rackWithOneChain();

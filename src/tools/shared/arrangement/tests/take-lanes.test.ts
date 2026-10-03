@@ -49,13 +49,13 @@ describe("isTakeLaneClip", () => {
 });
 
 describe("warnUnusedTakeLane", () => {
-  it("warns for takeLane on a non-clip duplicate", () => {
+  it("warns for takeLaneName on a track copy that lands on no lane", () => {
     const warn = vi.fn();
 
-    warnUnusedTakeLane("track", "arrangement", 2, warn);
+    warnUnusedTakeLane("track", "arrangement", null, warn, "Take");
 
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("only supported when duplicating clips"),
+      'takeLaneName ignored: no destination names a take lane (type "track")',
     );
   });
 

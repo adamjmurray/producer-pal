@@ -120,6 +120,44 @@ describe("liveApi", () => {
         } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: unknown");
     });
+
+    // The type or the param is the mistake and nothing says which, so the call
+    // is refused whole, before the operations before it have run.
+    it.each([
+      [
+        { type: "get", property: "tempo", method: "x" },
+        'method is only for type "call" or "call-method"; this call has type "get". Change the type or drop method.',
+      ],
+      [
+        { type: "call", method: "stop_all_clips", property: "x" },
+        "property is only for type",
+      ],
+      [
+        { type: "get", property: "tempo", args: [1] },
+        'args is only for type "call" or "call-method"',
+      ],
+      [{ type: "get", property: "tempo", value: 1 }, "value is only for type"],
+      [{ type: "info", value: 1 }, "value is only for type"],
+    ])("refuses %j", (operation, message) => {
+      const first = { type: "set", property: "name", value: "A" };
+
+      expect(() =>
+        liveApi({
+          operations: [first, operation] as unknown as LiveApiOperation[],
+        }),
+      ).toThrow(`operations[1] (counting from 0): ${message}`);
+      expect(defaultMock.set).not.toHaveBeenCalled();
+    });
+
+    it("counts a blank as not sent", () => {
+      expect(() =>
+        liveApi({
+          operations: [
+            { type: "exists", property: "", value: "" },
+          ] as unknown as LiveApiOperation[],
+        }),
+      ).not.toThrow();
+    });
   });
 
   describe("core operations", () => {

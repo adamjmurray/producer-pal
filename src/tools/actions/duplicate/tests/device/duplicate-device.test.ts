@@ -164,13 +164,13 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 2);
   });
 
-  it("should emit warning when count > 1", async () => {
+  it("refuses a count above 1, since a device copy goes one per toPath", async () => {
     setupDeviceDuplicationMocks();
 
-    await duplicate({ type: "device", id: "device1", count: 3 });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      "count 3 ignored: device copies go one per toPath",
+    await expect(
+      duplicate({ type: "device", id: "device1", count: 3 }),
+    ).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "device".',
     );
   });
 
@@ -544,21 +544,21 @@ describe("duplicate - device duplication", () => {
     );
   });
 
-  // Every other inapplicable param on this tool warns; these were dropped in
-  // silence, so the caller read a copy inside the chain as a timeline placement.
-  it("warns that arrangement params do not apply to a device", async () => {
+  // These were dropped in silence, so the caller read a copy inside the chain
+  // as a timeline placement.
+  it("refuses arrangement params on a device", async () => {
     setupDeviceDuplicationMocks(1);
 
-    await duplicate({
-      type: "device",
-      id: "device1",
-      toPath: "t1/d0",
-      arrangementStart: "5|1",
-      arrangementLength: "4|0",
-    });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'arrangementStart/arrangementLength ignored: a device has no arrangement position (type "device")',
+    await expect(
+      duplicate({
+        type: "device",
+        id: "device1",
+        toPath: "t1/d0",
+        arrangementStart: "5|1",
+        arrangementLength: "4|0",
+      }),
+    ).rejects.toThrow(
+      'arrangementStart is only for type "track", "scene" or "clip"',
     );
   });
 

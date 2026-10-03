@@ -305,15 +305,13 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("warns and ignores takeLane for non-clip types", async () => {
+  it("refuses takeLane for non-clip types", async () => {
     registerBareTrackDuplication();
 
-    await duplicate({ type: "track", id: "track1", takeLane: 1 });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "takeLane ignored: only supported when duplicating clips",
-      ),
+    await expect(
+      duplicate({ type: "track", id: "track1", takeLane: 1 }),
+    ).rejects.toThrow(
+      'takeLane is only for type "clip"; this call has type "track".',
     );
   });
 
@@ -335,18 +333,12 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("ignores (does not validate) an invalid takeLane for non-clip types", async () => {
+  it("refuses an invalid takeLane for non-clip types by type, not by value", async () => {
     registerBareTrackDuplication();
 
-    // "garbage" would throw if normalized; for a non-clip type it is dropped
-    // (this await would reject if the value were still validated).
-    await duplicate({ type: "track", id: "track1", takeLane: "garbage" });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "takeLane ignored: only supported when duplicating clips",
-      ),
-    );
+    await expect(
+      duplicate({ type: "track", id: "track1", takeLane: "garbage" }),
+    ).rejects.toThrow('takeLane is only for type "clip"');
   });
 
   it("warns and skips when Live fails to create a take-lane clip (single position)", async () => {

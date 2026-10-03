@@ -108,8 +108,9 @@ export const toolDefContext = defineTool("ppal-context", {
     // from the tier that hits it would deadlock the write, which is worse than
     // the clobber it prevents.
     //
-    // Don't refuse a `force` that had nothing to get past. It also means "I
-    // mean to replace this wholesale" — which is how the eval harness seeds and
+    // Refused outside a project or global write, which are the only calls with
+    // a guard to get past. But don't refuse a `force` that had nothing to get
+    // past on one of those. It also means "I mean to replace this wholesale" — which is how the eval harness seeds and
     // restores the global document — and a caller can't predict whether the
     // guard would have fired, since that turns on whether its new content
     // happens to share a line. Refusing would break deliberate replacement at
