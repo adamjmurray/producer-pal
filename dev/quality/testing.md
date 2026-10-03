@@ -87,6 +87,17 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 What the mock does and doesn't model about a held object going stale is in
 `dev/live-api/object-reuse.md`.
 
+## Write-tool conformance
+
+`src/tools/shared/tests/write-conformance/` runs every write tool through the
+same cases from `dev/PRINCIPLES.md` (entries in order, a target named twice, a
+bad entry among good ones, a failure partway, a refusal that writes nothing,
+...). Each tool has a small adapter that builds its targets. A case a tool fails
+today is listed under `skip` in its adapter with what it does instead; those
+skips are the to-do list for a shared write pipeline. A skipped case still runs
+and has to keep failing, so fixing a tool turns its case red until the skip is
+removed.
+
 ## MCP server tests
 
 `test-setup.ts` installs the `max-api` mock from `src/test/mocks/mock-max.ts`,

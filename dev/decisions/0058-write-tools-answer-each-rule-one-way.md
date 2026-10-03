@@ -42,9 +42,10 @@ can't use it extends the pipeline rather than writing its own copy.
   One that parses but can't be applied skips that target (`ok: false` +
   `detail`) and the rest run. This holds in every tool: a missing duplicate
   source is a skip too.
-- **Live fails partway through:** that target gets an `ok: false` entry saying
-  what already changed; earlier targets keep their entries and later ones still
-  run.
+- **Live fails partway through a target:** if nothing of it landed, its entry is
+  `ok: false` with a `detail`; if some of it landed, it keeps its normal entry
+  plus a `detail` saying what landed and what didn't (ADR-0042). Earlier targets
+  keep their entries and later ones still run.
 - **`count` with a destination list** is refused up front, as is `capture` with
   `count` on create-scene.
 - **A lone target that is skipped:** the call throws that target's `detail`.
