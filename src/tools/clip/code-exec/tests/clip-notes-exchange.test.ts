@@ -219,10 +219,10 @@ describe("clip-notes-exchange", () => {
       const first = codeNote(60, 0, { duration: 1, velocity: 100 });
       const last = codeNote(60, 0, { duration: 2, velocity: 80 });
 
-      const dropped = applyNotesToClip(mockClip as unknown as LiveAPI, [
-        first,
-        last,
-      ]);
+      const { collisions: dropped } = applyNotesToClip(
+        mockClip as unknown as LiveAPI,
+        [first, last],
+      );
 
       // The duplicate collapses to the last write.
       expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {

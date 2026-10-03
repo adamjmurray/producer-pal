@@ -48,7 +48,7 @@ describe("applyNotesToClip dropped duplicates", () => {
     const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
     const { mockClip } = setupCollisionCase();
 
-    const dropped = applyNotesToClip(mockClip, notes);
+    const { collisions: dropped } = applyNotesToClip(mockClip, notes);
 
     expect(dropped).toBe(expectedDropped);
     expect(warn).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("applyNotesToClip dropped duplicates", () => {
   it("returns the count for more than one collision", () => {
     const { mockClip } = setupCollisionCase();
 
-    const dropped = applyNotesToClip(mockClip, [
+    const { collisions: dropped } = applyNotesToClip(mockClip, [
       note(0, 1, 100),
       note(0, 2, 90),
       note(0, 3, 80),
@@ -69,6 +69,6 @@ describe("applyNotesToClip dropped duplicates", () => {
   it("returns 0 for no notes", () => {
     const { mockClip } = setupCollisionCase();
 
-    expect(applyNotesToClip(mockClip, [])).toBe(0);
+    expect(applyNotesToClip(mockClip, []).collisions).toBe(0);
   });
 });

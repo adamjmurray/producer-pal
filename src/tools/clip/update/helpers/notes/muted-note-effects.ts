@@ -12,6 +12,7 @@ import {
   mutedOverlapNote,
   mutedReplacedNote,
 } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import { type AppliedNotes } from "#src/tools/clip/code-exec/clip-notes-exchange.ts";
 import {
   type ClipNotes,
   type CopiedNote,
@@ -46,6 +47,8 @@ export function mutedNotesHit(
  * @param effects.written - Every note written, muted ones included
  * @param effects.muted - The muted notes among them
  * @param effects.replaced - How many muted notes a transform replaced
+ * @param reasonId - The id the clip's reasons are kept under, when that isn't
+ *   the clip's own (a re-created clip has a new id)
  */
 export function reportMutedNoteEffects(
   clip: LiveAPI,
@@ -55,6 +58,7 @@ export function reportMutedNoteEffects(
     muted,
     replaced,
   }: { written: NoteEvent[]; muted: CopiedNote[]; replaced: number },
+  reasonId = clip.id,
 ): void {
   if (muted.length === 0) {
     return;
@@ -65,19 +69,42 @@ export function reportMutedNoteEffects(
       ? overlapEffects(written, new Set(muted), readAllClipNotes(clip))
       : { shortenedByMuted: 0, mutedShortened: 0 };
 
-  addCountedReason(reasons, clip.id, mutedReplacedNote, replaced);
+  addCountedReason(reasons, reasonId, mutedReplacedNote, replaced);
   addCountedReason(
     reasons,
-    clip.id,
+    reasonId,
     (count) => mutedOverlapNote(count, false),
     overlap.shortenedByMuted,
   );
   addCountedReason(
     reasons,
-    clip.id,
+    reasonId,
     (count) => mutedOverlapNote(count, true),
     overlap.mutedShortened,
   );
+}
+
+/**
+ * Say what a code write did to muted notes, the same way a note write does.
+ * Code never sees muted notes, so a muted note is replaced exactly when it is
+ * missing from what was written.
+ * @param clip - The clip the code just wrote
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param reasonId - The id the clip's reasons are kept under
+ * @param applied - What the write put in the clip
+ * @param applied.written - Every note written, muted ones kept included
+ * @param applied.muted - The clip's muted notes from before the write
+ */
+export function reportMutedCodeWrite(
+  clip: LiveAPI,
+  reasons: ClipReasons,
+  reasonId: string,
+  { written, muted }: AppliedNotes,
+): void {
+  const kept = new Set<NoteEvent>(written);
+  const replaced = muted.filter((note) => !kept.has(note)).length;
+
+  reportMutedNoteEffects(clip, reasons, { written, muted, replaced }, reasonId);
 }
 
 /**

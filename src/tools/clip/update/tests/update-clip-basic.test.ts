@@ -741,6 +741,7 @@ describe("updateClip - Basic operations", () => {
     vi.mocked(applyCodeToSingleClip).mockResolvedValue({
       noteCount: 3,
       droppedDuplicates: 0,
+      applied: { collisions: 0, written: [], muted: [] },
     });
 
     const result = await updateClip({ id: "123", code: "return notes" });

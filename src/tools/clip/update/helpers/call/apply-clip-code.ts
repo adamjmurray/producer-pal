@@ -11,6 +11,7 @@ import {
   ignoreClipParams,
   noteClipReason,
 } from "../entries/clip-reasons.ts";
+import { reportMutedCodeWrite } from "../notes/muted-note-effects.ts";
 
 /**
  * Run the call's `code` on the clips an update just wrote, and say how it went
@@ -58,6 +59,17 @@ export async function applyCodeToWrittenClips(
       // Tiled copies run the same code: say it once, like a failure
       if (dropped != null && !reasons.said.get(sourceId)?.includes(dropped)) {
         noteClipReason(reasons, sourceId, dropped);
+      }
+
+      // Muted notes are the first clip's to report: its copies carry the same
+      // ones, and counting them again would multiply what the code did.
+      if (clipResult === updatedClips[0]) {
+        reportMutedCodeWrite(
+          LiveAPI.from(["id", clipResult.id]),
+          reasons,
+          sourceId,
+          applied.applied,
+        );
       }
     }
   }

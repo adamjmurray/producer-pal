@@ -26,10 +26,12 @@ import {
   parseToolResultWithWarnings,
   type ReadClipResult,
   readClipWithNotes,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { createClipWithMutedNote } from "./helpers/clip-io-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -64,6 +66,25 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       expect(readClip.notes).toContain("C3");
       expect(readClip.notes).toContain("E3");
       expect(readClip.notes).toContain("G3");
+    });
+
+    it("says when update-clip code replaced a muted note", async () => {
+      await setConfig({ liveApiEnabled: true });
+      await sleep(50);
+
+      // The muted E3 sits on beat 3, where the code puts a visible E3.
+      const clipId = await createClipWithMutedNote(ctx.client!, 11);
+      const result = parseToolResult<{ detail?: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: {
+            id: clipId,
+            code: "return [...notes, {pitch: 64, start: 2, duration: 1}]",
+          },
+        }),
+      );
+
+      expect(result.detail).toContain("replaced 1 muted note");
     });
 
     it("transforms, filters, and clears notes via update-clip code", async () => {

@@ -101,7 +101,10 @@ ordinary one and the model took it for a note that plays. Muted notes (Live's
 - **Overlaps follow Live**: Live cuts whichever same-pitch note starts earlier
   at the next one's start, muted or not. After a note write the clip is read
   back (only when it has muted notes), and `detail` says when a muted note
-  shortened a note, or a note shortened a muted one.
+  shortened a note, or a note shortened a muted one. A `code` rewrite is a note
+  write too, so update-clip says the same of it (once, on the target's first
+  clip when tiling made copies). A clip create-clip just made holds no muted
+  notes, so its `code` has nothing to report.
 - **Bar copy skips them**: they aren't in the source bar the model sees.
 - **Copying a whole clip keeps them** (duplicate to a new place, take lanes);
   that isn't an edit of notes the model sees. Replacing, emptying or moving a
