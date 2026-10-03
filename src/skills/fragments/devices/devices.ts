@@ -50,8 +50,8 @@ Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` o
  * How a param write behaves (values snap; the response says where they landed),
  * plus the build recipes: loading samples into a Simpler, and building a whole
  * Drum Rack in one call. Only create-device and update-device can act on any of
- * it — a read-only device caller was paying for a recipe it had no tool to run. The direction split notation heads use
- * (ADR-0019), applied to devices.
+ * it — a read-only device caller was paying for a recipe it had no tool to run.
+ * The direction split notation heads use, applied to devices.
  *
  * The one read-device sentence rides along because it explains the write
  * asymmetry it sits beside (`sample` is a `params` entry going in, a flat field

@@ -11,7 +11,7 @@
  * nothing.
  *
  * The split is by DIRECTION, so a caller with only the read tools stops paying
- * for the authoring guide (see ADR-0019). {@link barbeatStandard} keeps the base
+ * for the authoring guide. {@link barbeatStandard} keeps the base
  * slot name and holds what reading a clip needs — the positions grammar and the
  * `v/n/p pitch bar|beat` shape the serializer actually emits;
  * {@link barbeatStandardWrite} is the sibling gated on the two clip writers,

@@ -66,7 +66,8 @@ import {
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
-// One outlet: MCP responses. Warnings ride inside the response JSON (ADR-0032).
+// One outlet: MCP responses. Warnings ride inside the response JSON, not as
+// trailing Max atoms.
 outlets = 1;
 setoutletassist(0, "tool call results");
 

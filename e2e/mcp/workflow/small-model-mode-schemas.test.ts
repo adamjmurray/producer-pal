@@ -66,7 +66,6 @@ function getParamDescription(
 describe("small model mode schema filtering", () => {
   // Both routing values go, not just available-routings: small mode hides every
   // routing write param, so reading the state it cannot change is dead weight.
-  // See ADR-0026.
   it("read-track excludes both routing values and warp from include", () => {
     const includeValues = getIncludeEnum("ppal-read-track");
 

@@ -44,7 +44,7 @@
     pointing at the fix — span pitches with a range (`C3-E3`), use one time
     range, or combine predicates with `&&`/`||` inside one `where(...)`. It is
     the same mistake for every clip, so it is refused once, up front (see
-    [ADR-0055](../../decisions/0055-a-bad-transform-argument-is-refused-up-front.md)).
+    [README.md](README.md)).
 
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3: velocity += 10`

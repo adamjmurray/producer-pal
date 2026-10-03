@@ -84,7 +84,7 @@ export function parseFrontmatter(
   // An all-blank fenced block (`---` immediately followed by `---`, or only
   // blank lines between the fences) is a thematic break too — no pairs, so keep
   // the whole document as body rather than swallowing it into empty metadata
-  // (ADR-0010 supports hand-edited files with no frontmatter).
+  // (hand-edited files with no frontmatter are supported).
   if (Object.keys(data).length === 0) {
     return { data: {}, body: raw };
   }

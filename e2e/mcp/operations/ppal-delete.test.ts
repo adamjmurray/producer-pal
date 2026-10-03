@@ -474,7 +474,7 @@ describe("ppal-delete", () => {
 
   // Live has no way to remove a drum pad — the 128 slots are permanent — so a
   // delete clears the pad's chains and leaves the slot. This pins the three
-  // things that make that read as a deletion anyway. See ADR-0034.
+  // things that make that read as a deletion anyway.
   it("deletes a drum pad by path, spelled the way a model guesses it", async () => {
     // "paths" is a permanent alias, so this checks the delete and the steer.
     // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1

@@ -83,7 +83,7 @@ const REMOTE_SCRIPT_FRAGMENTS = [
  * read-only caller still needs the grammar to parse what read-clip RETURNS. What
  * a read-only caller does NOT need is the authoring syntax, and that is a
  * separate `-write` fragment rather than a narrower gate here — see
- * {@link NOTE_WRITE_TOOLS} and ADR-0019.
+ * {@link NOTE_WRITE_TOOLS}.
  */
 const NOTE_TOOLS = [
   READ_CLIP,

@@ -17,9 +17,9 @@ names a different track, so it addresses nothing worth calling again. `path`
 means the target outlived the call — a drum pad, whose 128 slots are permanent,
 so a delete clears its chains and leaves the slot. The rack then reads exactly
 as it would for a pad that was never filled; see
-[ADR-0034](../../decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md).
-There is no `deleted` flag: the key is the answer, and a target the call
-couldn't delete says so as a skip.
+[drum racks](../../live-api/specialized-devices/drum-racks.md). There is no
+`deleted` flag: the key is the answer, and a target the call couldn't delete
+says so as a skip.
 
 | Object                 | Result                        |
 | ---------------------- | ----------------------------- |

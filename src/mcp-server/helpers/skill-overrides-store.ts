@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Node-side store for the user's built-in skills-fragment overrides under
-// ~/.producer-pal/skills/<slot>.md (ADR-0010, "the first true replace of
-// release-tuned content"). Each file replaces one buildSkills fragment; an
-// empty folder means every slot tracks the latest built-in. The filesystem
-// lives on the Node-for-Max side, so V8's buildSkills is assembled here (see
-// skills-inject.ts) and the webui editor round-trips through a REST route.
+// ~/.producer-pal/skills/<slot>.md. Each file replaces one buildSkills
+// fragment; an empty folder means every slot tracks the latest built-in. The
+// filesystem lives on the Node-for-Max side, so V8's buildSkills is assembled
+// here (see skills-inject.ts) and the webui editor round-trips through a REST
+// route.
 //
 // A saved override carries fork-time PROVENANCE in frontmatter (the Producer
 // Pal version and a hash of the built-in it forked from) so we can later flag

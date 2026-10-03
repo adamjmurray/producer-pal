@@ -14,7 +14,7 @@
  * EVERY mode, so read-back is unchanged; the basic head only narrows what a small
  * model is TAUGHT to generate. DIRECTION: chord symbols are the one thing here the
  * serializer never emits, so they split off into a `-write` sibling at both depths
- * and a read-only caller stops paying for them (ADR-0019).
+ * and a read-only caller stops paying for them.
  *
  * The matching driver (`standard` / `basic`) `@include`s the head and its `-write`
  * sibling on adjacent lines — `resolveIncludes` composes them, buildSkills glues
@@ -46,8 +46,8 @@ const starkDrumPitchNameFallback = ` A pad with no name uses an absolute pitch-n
 // Both bullets still name `chords:` (its default duration, its register) though
 // the chord SYMBOLS moved to the write half. That is the whole-bullet seam doing
 // its job: a read-back never carries a chords line, but trimming two clauses out
-// of the middle of a shared bullet is the mis-sort ADR-0019 rejected, and the
-// cost is a few tokens.
+// of the middle of a shared bullet is the mis-sort the read/write split avoids,
+// and the cost is a few tokens.
 const starkHeadPitched = `
 - **Pitched** — \`melody: C Eb G'\` (also \`bass:\`). A token is letter \`A\`-\`G\` + optional \`#\`/\`b\` (immediately after the letter, so \`Cb\`=C-flat but a lone \`b\`=note B) + octave marks (\`'\` up, \`,\` down, stackable) + duration \`/N\` + dynamic (\`!\`=accent, \`?\`=soft, omit=normal). \`/N\` is an ABSOLUTE note value: \`/1\`=whole (4 beats), \`/2\`=half, \`/4\`=quarter (1 beat), \`/8\`, \`/16\`. A trailing \`.\` means dotted (×1.5): \`/4.\`=dotted quarter (1.5 beats); a trailing \`t\` means triplet (×2/3): \`/8t\`=eighth-note triplet (⅓ beat, three per beat). One modifier max (\`.\` or \`t\`, not both). Repeat any token with a trailing \`*N\`: \`C*4\`, \`z*3\`. Rest = \`z\` or \`z/N\`. Default duration is \`/4\` for bass/melody, \`/1\` for chords; set a line default in the header (\`melody/8: ...\`).
 - **Registers** (the MIDI pitch a bare \`C\` maps to, Ableton naming where C3=60=middle C): bass=C1, melody=C3, chords=C2; octave marks shift from there. Every bare letter stays in that ONE octave — a line never climbs on its own, so an ascending run past \`B\` needs a mark: \`G A B C'\`, not \`G A B C\`, which drops back a seventh to where it started.`;

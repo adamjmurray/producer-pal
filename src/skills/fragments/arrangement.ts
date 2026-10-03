@@ -25,7 +25,7 @@ export const arrangement = `## Arrangement
  * Putting clips on the timeline: moving and splitting them, and stacking take
  * lanes. Four fifths of the subject, and only create-clip, update-clip, and
  * duplicate can run it — a read-only clip caller was paying for recipes it had
- * no tool to execute. The direction split (ADR-0019), applied to arrangement.
+ * no tool to execute. The direction split notation heads use, applied to arrangement.
  *
  * One line points past them: the lanes themselves are the track update tool's,
  * and this gate can't promise a caller has it, so the line names no tool. The

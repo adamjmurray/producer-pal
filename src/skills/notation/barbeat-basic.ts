@@ -5,7 +5,7 @@
 
 /**
  * bar|beat basic (small-model) notation head, in two halves — the same
- * read/write carve the standard head takes (ADR-0019). {@link barbeatBasic}
+ * read/write carve the standard head takes. {@link barbeatBasic}
  * keeps the base slot name and holds the format itself, which a caller needs to
  * parse what read-clip returns; {@link barbeatBasicWrite} is the worked examples,
  * gated on the two clip writers.

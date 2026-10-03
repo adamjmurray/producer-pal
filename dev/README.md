@@ -11,7 +11,8 @@ part is a file beside it.
 
 - [PRINCIPLES.md](PRINCIPLES.md) — first principles for tool design. Read before
   changing a tool's inputs, outputs, or failure behavior.
-- [architecture/](architecture/README.md) — how the pieces fit together.
+- [architecture/](architecture/README.md) — how the pieces fit together, the
+  Skills fragments, and the `~/.producer-pal` override layer.
 - [coding-standards/](coding-standards/README.md) — style guide and Live API
   reference.
 
@@ -42,7 +43,7 @@ part is a file beside it.
 - [live-api/device-param-labels.md](live-api/device-param-labels.md) — reading
   units and ranges off device parameters.
 - [live-api/specialized-devices/](live-api/specialized-devices/README.md) —
-  native devices with their own LOM class.
+  native devices with their own LOM class, and how Drum Racks are modeled.
 - [live-api/python-remote-script-api/](live-api/python-remote-script-api/README.md)
   — what only the Python API can do, and how to probe it.
 - [live-api/rack-macro-mappings.md](live-api/rack-macro-mappings.md) — what can

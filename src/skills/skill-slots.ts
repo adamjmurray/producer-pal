@@ -61,7 +61,7 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 const DEVICES = "devices";
 const ARRANGEMENT = "arrangement";
 
-// The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
+// The user-facing override "slots" (~/.producer-pal skills overrides).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
 // fragment, so renaming one orphans that user's override.
 //
@@ -83,7 +83,7 @@ const ARRANGEMENT = "arrangement";
 //
 // A second, independent suffix axis is DIRECTION: a fragment may spin the half
 // only a writer can act on out into a `-write` sibling, gated on that subject's
-// write tools, so a read-only caller stops paying for it (ADR-0019). The base
+// write tools, so a read-only caller stops paying for it. The base
 // name keeps meaning what it meant — the whole, minus what only a writer can use
 // — which is why splitting one costs no rename and no retired slot. Split so
 // far: bar|beat and stark at BOTH depths (the axes are independent — direction

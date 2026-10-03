@@ -38,7 +38,7 @@ When a param varies per item, use
 `src/tools/shared/validation/lists/list-pairing.ts`: one value covers every
 item, or exactly N pair 1:1 in order, and no entry may be empty. Anything else
 is refused before any work runs. Nothing cycles — including `color`, which used
-to (ADR-0031).
+to.
 
 `pairValues` / `valueForIndex` for values, `pairExact` for a destination that
 holds one item — broadcasting a lone clip slot to three clips would destroy two
@@ -213,7 +213,16 @@ Live owns keep Live's spelling: scale and view names, quantize grids like
 Renaming a value leaves the old spelling as a hidden alias: `aliasedEnum()`
 publishes only the new values, and a call using an old one validates and reaches
 the handler as the new one. No refusal, no warning. Don't rename a value without
-one. See ADR-0053.
+one: memory, custom Skills and user scripts can hold the old spelling for good,
+and none of them can be migrated for the user. The alias rewrites the value, so
+it works at the top level, inside arrays and objects, and over MCP and REST. A
+small model's enum trim removes a value's aliases along with it, and results
+echo the new value.
+
+When two operations would collapse into one kebab name, rename one. In
+`ppal-live-api`, `getProperty` (a normalized Live read) and `get_property` (a
+JavaScript field on the LiveAPI object) are different operations, so the second
+is `get-field`.
 
 ```typescript
 source: aliasedEnum(["sample-folder", "user"], {

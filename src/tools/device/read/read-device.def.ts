@@ -55,8 +55,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
         default:
           'chains, return-chains, drum-pads = rack contents (use maxDepth; chains on a Drum Rack gives its pads with their layers; a chain lists its own gainDb/pan/sends only when non-default). params, param-values = parameters of the addressed device only (read a nested device by its own path). drum-map = pad names keyed by note (drum name in stark, MIDI number in midi-json), plus drumRackPath naming the rack they belong to. sample = Simpler sample file path (flat top-level field; gainDb and other sample params are in params). actions = device-specific actions for update-device (name, signature, description). options = valid pseudo-param values (paramOptions) + dynamic catalogs for specialized devices (IR files, sidechain sources, wavetables) + Wavetable mod routes. "*" = all',
         // `actions` goes because its only consumer is update-device's `actions`
-        // param, which small mode hides — the whole option is dead there. See
-        // ADR-0026.
+        // param, which small mode hides — the whole option is dead there.
         smallModel: {
           description:
             "chains = rack contents (use maxDepth; a Drum Rack gives its pads with their layers). params, param-values = parameters of the addressed device only (read a nested device by its own path). drum-map = pad names keyed by note (drum name in stark, MIDI number in midi-json), plus drumRackPath naming the rack they belong to. sample = Simpler sample file path. options = valid param values + device catalogs",

@@ -203,7 +203,7 @@ export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
 
 /**
  * Delete a config markdown slot, if it exists. Used to reset an override back
- * to the built-in default (empty folder ⇒ latest built-ins, per ADR-0010). A
+ * to the built-in default (empty folder ⇒ latest built-ins). A
  * missing file is treated as already-reset, not an error.
  *
  * @param filename - Slot filename (e.g. "skills/barbeat-standard.md")

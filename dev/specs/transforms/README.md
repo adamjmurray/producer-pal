@@ -48,16 +48,40 @@ merge(noteValue) // glue same-pitch notes within that note-value gap (e.g. merge
 ```
 
 **A call with the wrong arguments is refused up front** — the whole call fails
-before any clip is touched, because the text is wrong the same way in every
-meter (see
-[ADR-0055](../../decisions/0055-a-bad-transform-argument-is-refused-up-front.md)).
+before any clip is touched, once, with a short message naming the function and
+what is wrong (`ratchet() needs a count of 2 or more`). The text is the same for
+every clip, so warning and skipping would repeat one line per clip and return a
+result that reads as success. `ppal-create-clip`, `ppal-update-clip` and
+`ppal-duplicate` run the same check where they parse the transform. Refused: a
+duplicate selector, a pitch name used as a value for anything but `pitch`, a
+built-in with the wrong argument count, and a constant argument that can't be
+evaluated, isn't finite or is out of range (a ratchet count below 2 or grid of
+0, a repeat offset of 0 or count below 1, a `curve()` exponent of 0 or less).
 Argument counts count only positional args — the trailing `sync`/`raw` keywords
-are not arguments. An argument that uses a note or clip variable or a random
-function can't be judged until the transform runs; it is reported on the clip
-then. So is a constant that mixes note values or bar lengths with other terms
-(`1bar - 4`, `n/16 - n/8`): its value depends on each clip's meter, so only the
-clips it is bad for fail (`ok: false`, notes untouched) and the rest go on.
-Handling differs by call kind:
+are not arguments.
+
+Two kinds of argument can't be judged up front, and are reported on the clip as
+the transform runs:
+
+- One that uses a note or clip variable or a random function (`rand()`, `cos()`)
+  — it has no value until a note exists. So are facts that exist only per note
+  or clip: a ratchet that spans no grid line, `repeat` collisions, `sync` on a
+  session clip.
+- A constant that mixes note values or bar lengths with other terms (`1bar - 4`,
+  `n/16 - n/8`): `1bar` is 4 beats in 4/4 and 6 in 6/4, and one call can target
+  clips with different meters. Only the clips it is bad for fail (`ok: false`,
+  notes untouched) and the rest go on. The call is still refused when every
+  meter fails, or when the clip can't be undone (an arrangement clip being
+  split, a duplicate onto the arrangement).
+
+A lone `n/8` or `2bar`, alone, negated or scaled by a constant, has the same
+sign in every meter. So a bare one is always above 0, and one at 0 or below
+(`-1bar`, `0 * n/8`) is bad everywhere and refused up front; a positive scaled
+one used as a count (`2 * n/8`) still depends on the meter.
+
+A cap is reported, not refused: `ratchet(500)` is a valid request, and the
+64-piece cap is Producer Pal's, not a mistake in the text. The clip's entry says
+it was clamped. Handling differs by call kind:
 
 - **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
   too many arguments refuses the call.

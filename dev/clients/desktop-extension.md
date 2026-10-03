@@ -33,6 +33,24 @@ in `src/portal/fallback-tools.ts`)
 
 **Dependencies**: Zero runtime dependencies (all bundled, OAuth stubbed)
 
+## Settings are per-client
+
+Every portal setting (env vars from the extension's `user_config`, or CLI flags)
+rides as a per-request header (`src/portal/portal-settings.ts`, resolved in
+`src/mcp-server/helpers/http/request-profile.ts`). A setting reaches only the
+client that sent it, and the device's own settings are the fallback for whatever
+a request doesn't specify. The device's Setup tab therefore doesn't change what
+Claude Desktop sees for small-model mode, Direct Live API or JSON output; those
+live in the extension's settings. Env vars apply directly, with no opt-in gate,
+because there is no shared state to clobber.
+
+mcpb can't express "unset": an untoggled checkbox arrives as `false`. So the
+three booleans are always sent, and `false` is the right default for Claude
+Desktop anyway (each is documented as not recommended for the models it runs).
+The string settings (`NOTATION`, `TOOLS`, `DISABLE_TOOLS`) treat `""` as "follow
+the device." Don't turn the booleans into tri-state text fields to avoid the
+forcing; a checkbox is the right control.
+
 ## Testing
 
 ### Manual (Claude Desktop)

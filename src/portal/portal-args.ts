@@ -29,7 +29,7 @@ export interface PortalArgs {
  *
  * Flags and env vars both apply directly: every setting rides as a per-request
  * header, so it reaches only this client and can't disturb the device or any
- * other client. See dev/decisions/0033-portal-settings-are-per-client.md.
+ * other client.
  *
  * Invalid values are logged and ignored rather than fatal, so a portal cached by
  * npx still starts against a device it doesn't fully understand.

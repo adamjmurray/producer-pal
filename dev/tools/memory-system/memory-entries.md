@@ -29,10 +29,11 @@ timing humanization by default.
   build with a `type:` line still parses fine — `parseFrontmatter` tolerates
   unknown keys, and the store simply never looks at `type`.)
 
-Frontmatter here is plain structure, not the ADR-0010 "eject trap": that
-provenance concept exists for _forked built-in defaults_, which can drift from
-an upstream they were copied from. Memory entries are purely additive user
-content with nothing upstream to drift from.
+Frontmatter here is plain structure, not the fork provenance of
+[override slots](../../architecture/user-content-overrides.md): that concept
+exists for _forked built-in defaults_, which can drift from an upstream they
+were copied from. Memory entries are purely additive user content with nothing
+upstream to drift from.
 
 Slugs are derived by lowercasing, collapsing non-alphanumerics to hyphens, and
 trimming edges (`slugifyCollectionName`) — the result can only contain

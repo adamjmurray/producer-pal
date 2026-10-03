@@ -3,8 +3,8 @@
 - **Status:** Accepted; extended to rack chains by
   [ADR-0045](0045-c-plus-appends-a-rack-chain.md)
 - **Date logged:** 2026-09-13
-- **Amends:** [ADR-0025](0025-object-path-grammar.md),
-  [ADR-0038](0038-l-equals-names-the-lane-l-plus-made.md)
+- **Amends:** [ADR-0025](0025-object-path-grammar.md), and the unreleased `l=`
+  spelling
 
 ## Context
 
