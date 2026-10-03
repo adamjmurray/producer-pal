@@ -4,6 +4,8 @@
 - **Date logged:** 2026-09-19
 - **Amended by:** [ADR-0050](0050-an-entry-explains-itself-in-detail.md) — the
   entry's `reason` was renamed `detail`.
+  [ADR-0058](0058-write-tools-answer-each-rule-one-way.md) — a copy or clip a
+  later one in the call replaces is skipped unwritten, not `deleted: true`.
 
 ## Context
 

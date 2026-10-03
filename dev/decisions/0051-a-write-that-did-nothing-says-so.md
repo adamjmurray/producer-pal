@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date logged:** 2026-09-25
 - **Amends:** [ADR-0042](0042-a-skipped-target-keeps-its-slot.md)
+- **Amended by:** [ADR-0058](0058-write-tools-answer-each-rule-one-way.md) (a
+  target a later one replaces is skipped unwritten, not `deleted: true`)
 
 ## Context
 
@@ -38,11 +40,12 @@ force-removed an instrument that can't be put back, so a report beats a
 half-undo. The one exception is wrapping an instrument in a rack: it removes the
 rack it made and puts the instrument back, then throws.
 
-**A clip another clip in the call was moved onto says so**, whether it was
-buried or held back: `deleted: true` and the same `detail`. A duplicate copy a
-later copy deleted is reported the same way (`deleted: true` and a `detail`),
-replacing `overwritten: true`. One a later copy only cut short still exists, so
-it keeps its entry with a `detail` saying so.
+(Amended by ADR-0058: such a target is now skipped unwritten, with a `detail`
+and no `deleted`.) **A clip another clip in the call was moved onto says so**,
+whether it was buried or held back: `deleted: true` and the same `detail`. A
+duplicate copy a later copy deleted is reported the same way (`deleted: true`
+and a `detail`), replacing `overwritten: true`. One a later copy only cut short
+still exists, so it keeps its entry with a `detail` saying so.
 
 **Locators follow the rest of the tools:**
 

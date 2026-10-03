@@ -6,7 +6,9 @@
   fourth bullet: a whole-call param with no valid reading)
 - **Amended by:**
   [ADR-0057](0057-a-param-only-another-action-reads-is-refused.md) (a param the
-  call's action doesn't read is refused)
+  call's action doesn't read is refused),
+  [ADR-0058](0058-write-tools-answer-each-rule-one-way.md) (rule 1's third
+  bullet is retired)
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md),
   [ADR-0029](0029-an-empty-param-is-dropped-from-the-args.md),
   [ADR-0031](0031-list-params-broadcast-or-pair-exactly.md)
@@ -58,7 +60,10 @@ either way.
 - **Applicability, found while working → warn and skip.** ADR-0009 is unchanged
   for its own case. Some items already succeeded and can't be rolled back, so
   the batch continues and the warning says what was skipped.
-- **Applicability that can be settled before work starts, in a tool whose work
+- **Retired by ADR-0058:** duplicate now skips a bad source like every other
+  tool. Kept for the record:
+
+  **Applicability that can be settled before work starts, in a tool whose work
   can't be repeated → throw.** A create has no partial state worth preserving:
   every copy it already made is a side effect the model has to clean up by hand
   before it can retry. So when the whole target list can be checked first, it
