@@ -209,9 +209,9 @@ export async function readNoteDicts(
     },
   });
   const [raw] = parseToolResult<{
-    results: Array<{ result: string }>;
+    results: string[];
   }>(result).results;
-  const { notes } = JSON.parse(raw!.result) as {
+  const { notes } = JSON.parse(raw!) as {
     notes: Array<Record<string, number>>;
   };
 

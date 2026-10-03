@@ -418,6 +418,18 @@ aliases. `call get_current_beats_song_time` works, while
 Live object, not the wrapper. Only `set` and `set-property` perform the same
 write, and even they report different results.
 
+#### Results
+
+`results` holds one value per operation, in order, without repeating the
+operation. Every operation is checked before any runs, and a malformed one
+refuses the whole call, naming it as `operations[N]` (counting from 0).
+
+If an operation throws at run time, the ones before it have already changed
+Live. The call returns their values in `results`, plus
+`"failed": {"index": 2, "detail": "..."}` for the one that threw, and nothing
+after it runs. If the first operation throws, nothing changed, so the call
+returns an error instead.
+
 #### When the object doesn't exist
 
 A bad path, a bad index, a bad id and a path cleared to `""` all behave the same
@@ -434,10 +446,10 @@ value all return `1` and change nothing. Read the property back if you need to
 know whether a write took.
 
 Normalizing that away is most of what the Producer Pal operations add over the
-raw Live ones: `get-property` gives `undefined`, `get-child-ids` gives `[]`,
-`get-color` gives `null`, and `exists` gives `false`. Prefer `exists` over
-reading Live's own `valid` field, which reads `1` in all four cases. It
-describes the wrapper object, not the target it points at.
+raw Live ones: `get-property` gives no value (`null` in JSON), `get-child-ids`
+gives `[]`, `get-color` gives `null`, and `exists` gives `false`. Prefer
+`exists` over reading Live's own `valid` field, which reads `1` in all four
+cases. It describes the wrapper object, not the target it points at.
 
 You don't need to call `set-path ""` yourself for cleanup. Live arms a path
 listener on every collection along a path-based object's path and never takes

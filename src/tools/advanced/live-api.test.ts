@@ -129,8 +129,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.operation.type).toBe("get-field");
-      expect(result.results[0]!.result).toBe("1"); // Default mock has bare id "1"
+      expect(result.results[0]).toBe("1"); // Default mock has bare id "1"
     });
 
     it("should throw error for get-field without property", () => {
@@ -147,8 +146,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.operation.type).toBe("set-property");
-      expect(result.results[0]!.result).toBe(140);
+      expect(result.results[0]).toBe(140);
     });
 
     it("should throw error for set-property without property", () => {
@@ -175,8 +173,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.operation.type).toBe("call-method");
-      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(result.results[0]).toStrictEqual([120]);
       expect(defaultMock.get).toHaveBeenCalledWith("tempo");
     });
 
@@ -188,7 +185,7 @@ describe("liveApi", () => {
         operations: [{ type: "call-method", method: "get" }],
       });
 
-      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(result.results[0]).toStrictEqual([120]);
       expect(defaultMock.get).toHaveBeenCalledWith();
     });
 
@@ -267,7 +264,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(result.results[0]).toStrictEqual([120]);
       expect(defaultMock.get).toHaveBeenCalledWith("tempo");
     });
 
@@ -287,7 +284,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(1);
+      expect(result.results[0]).toBe(1);
       expect(defaultMock.set).toHaveBeenCalledWith("tempo", 130);
     });
 
@@ -313,7 +310,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("001.01.01.000");
+      expect(result.results[0]).toBe("001.01.01.000");
       expect(defaultMock.call).toHaveBeenCalledWith(
         "get_current_beats_song_time",
       );
@@ -339,7 +336,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(1);
+      expect(result.results[0]).toBe(1);
       expect(result.path).toBe(String(livePath.track(0)));
     });
 
@@ -364,7 +361,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(mockInfo);
+      expect(result.results[0]).toBe(mockInfo);
     });
   });
 
@@ -377,7 +374,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("Test Track");
+      expect(result.results[0]).toBe("Test Track");
       expect(LiveAPI.prototype.getProperty).toHaveBeenCalledWith("name");
     });
 
@@ -395,7 +392,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toStrictEqual([
+      expect(result.results[0]).toStrictEqual([
         "id_clip_slots_1",
         "id_clip_slots_2",
       ]);
@@ -416,7 +413,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(true);
+      expect(result.results[0]).toBe(true);
       expect(LiveAPI.prototype.exists).toHaveBeenCalled();
     });
 
@@ -426,7 +423,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("#FF0000");
+      expect(result.results[0]).toBe("#FF0000");
       expect(LiveAPI.prototype.getColor).toHaveBeenCalled();
     });
 
@@ -436,7 +433,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("#00FF00");
+      expect(result.results[0]).toBe("#00FF00");
       expect(LiveAPI.prototype.setColor).toHaveBeenCalledWith("#00FF00");
     });
 
@@ -461,7 +458,7 @@ describe("liveApi", () => {
       });
 
       // The result is a read-back of api.path, not an echo of the input.
-      expect(result.results[0]!.result).toBe(String(livePath.track(0)));
+      expect(result.results[0]).toBe(String(livePath.track(0)));
       expect(result.path).toBe(String(livePath.track(0)));
     });
 
@@ -473,7 +470,7 @@ describe("liveApi", () => {
         operations: [{ type: "set-path", value: "" }],
       });
 
-      expect(result.results[0]!.result).toBe("");
+      expect(result.results[0]).toBe("");
       expect(result.path).toBe("");
       // A cleared path reports id "0", the same as any path that doesn't
       // resolve, so the object reads as nonexistent. (This suite stubs
@@ -501,7 +498,7 @@ describe("liveApi", () => {
 
       // The result is a read-back of api.id, not an echo of the input: a bad id
       // is dropped silently and leaves the previous target in place.
-      expect(result.results[0]!.result).toBe("7");
+      expect(result.results[0]).toBe("7");
       expect(result.path).toBe(String(livePath.track(0)));
     });
 
@@ -512,7 +509,7 @@ describe("liveApi", () => {
         operations: [{ type: "set-id", value: "id 7" }],
       });
 
-      expect(result.results[0]!.result).toBe("0");
+      expect(result.results[0]).toBe("0");
       expect(result.path).toBe("");
     });
 
@@ -532,8 +529,8 @@ describe("liveApi", () => {
         ],
       });
 
-      expect(result.results[0]!.result).toBe(1);
-      expect(result.results[1]!.result).toBe(1);
+      expect(result.results[0]).toBe(1);
+      expect(result.results[1]).toBe(1);
     });
 
     it("should handle set-mode operation with mode 0", () => {
@@ -543,7 +540,7 @@ describe("liveApi", () => {
         operations: [{ type: "set-mode", value: 0 }],
       });
 
-      expect(result.results[0]!.result).toBe(0);
+      expect(result.results[0]).toBe(0);
     });
 
     it("should throw error for set-mode without value", () => {
@@ -559,7 +556,7 @@ describe("liveApi", () => {
         operations: [{ type: "getcount", property: "tracks" }],
       });
 
-      expect(result.results[0]!.result).toBe(4);
+      expect(result.results[0]).toBe(4);
       expect(LiveAPI.prototype.getcount).toHaveBeenCalledWith("tracks");
     });
 
@@ -576,7 +573,7 @@ describe("liveApi", () => {
         operations: [{ type: "getstring", property: "tempo" }],
       });
 
-      expect(result.results[0]!.result).toBe("<tempo>");
+      expect(result.results[0]).toBe("<tempo>");
       expect(LiveAPI.prototype.getstring).toHaveBeenCalledWith("tempo");
     });
 
@@ -637,23 +634,16 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(3);
-      expect(result.results[0]!.operation.type).toBe("get-field");
-      expect(result.results[1]!.operation.type).toBe("get");
-      expect(result.results[2]!.operation.type).toBe("info");
     });
 
-    it("should return operation details with each result", () => {
+    it("should return bare values without echoing the operations", () => {
       defaultMock.get.mockReturnValueOnce([120]);
 
       const result = liveApi({
         operations: [{ type: "get", property: "tempo" }],
       });
 
-      expect(result.results[0]!.operation).toStrictEqual({
-        type: "get",
-        property: "tempo",
-      });
-      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(result.results).toStrictEqual([[120]]);
     });
   });
 
@@ -672,12 +662,7 @@ describe("liveApi", () => {
       expect(result).toStrictEqual({
         path: livePath.liveSet,
         id: "1",
-        results: [
-          {
-            operation: { type: "info" },
-            result: "Mock LiveAPI info",
-          },
-        ],
+        results: ["Mock LiveAPI info"],
       });
     });
   });
@@ -713,8 +698,20 @@ describe("liveApi", () => {
             { type: "set", property: "tempo" },
           ],
         }),
-      ).toThrow("Operation failed: set operation requires value");
+      ).toThrow(
+        "operations[1] (counting from 0): set operation requires value",
+      );
       expect(defaultMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should name the position of an unknown type", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "info" }, { type: "exists" }, { type: "nope" }],
+        } as unknown as Parameters<typeof liveApi>[0]),
+      ).toThrow(
+        "operations[2] (counting from 0): Unknown operation type: nope",
+      );
     });
 
     it("should wrap operation errors and preserve the original as cause", () => {
@@ -727,7 +724,7 @@ describe("liveApi", () => {
       }
 
       expect(caught).toBeInstanceOf(Error);
-      expect((caught as Error).message).toContain("Operation failed");
+      expect((caught as Error).message).toContain("operations[0]");
       expect((caught as Error).cause).toBeInstanceOf(Error);
       expect(((caught as Error).cause as Error).message).toContain(
         "get-field operation requires property",

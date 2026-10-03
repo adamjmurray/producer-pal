@@ -31,9 +31,9 @@ const READ_METRONOME = {
   operations: [{ type: "get-property", property: "metronome" }],
 };
 
-/** One entry of a ppal-live-api result. */
+/** A ppal-live-api result. */
 interface LiveApiResult {
-  results?: Array<{ result?: unknown }>;
+  results?: unknown[];
 }
 
 /**
@@ -119,10 +119,9 @@ export const liveApiEscapeHatch: EvalScenario = {
       type: "state",
       tool: TOOL_LIVE_API,
       args: READ_METRONOME,
-      expect: (result) =>
-        Number((result as LiveApiResult).results?.[0]?.result) === 1,
+      expect: (result) => Number((result as LiveApiResult).results?.[0]) === 1,
       explain: (result) =>
-        `expected metronome on, got ${String((result as LiveApiResult).results?.[0]?.result)}`,
+        `expected metronome on, got ${String((result as LiveApiResult).results?.[0])}`,
     },
 
     { type: "token_usage", maxTokens: 2_000 },

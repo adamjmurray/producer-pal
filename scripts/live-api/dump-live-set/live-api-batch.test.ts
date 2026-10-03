@@ -161,4 +161,23 @@ describe("runOperations", () => {
       runOperations(createBatchContext("http://fake"), [{ type: "info" }]),
     ).rejects.toThrow("HTTP 404 Not Found");
   });
+
+  it("throws when the tool stopped at a failed operation", async () => {
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            result: { results: [1], failed: { index: 1, detail: "nope" } },
+          }),
+      } as Response),
+    );
+
+    await expect(
+      runOperations(createBatchContext("http://fake"), [
+        { type: "info" },
+        { type: "info" },
+      ]),
+    ).rejects.toThrow("operations[1]: nope");
+  });
 });

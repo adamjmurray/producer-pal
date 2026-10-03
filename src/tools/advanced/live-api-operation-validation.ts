@@ -32,15 +32,23 @@ export function validateOperations(operations: LiveApiOperation[]): void {
     );
   }
 
-  for (const operation of operations) {
+  for (const [index, operation] of operations.entries()) {
     try {
       validateOperation(operation);
     } catch (error) {
-      throw new Error(`Operation failed: ${errorMessage(error)}`, {
-        cause: error,
-      });
+      throw new Error(operationError(index, error), { cause: error });
     }
   }
+}
+
+/**
+ * The message for an operation that failed, naming it by position.
+ * @param index - The operation's position in the call, counting from 0
+ * @param error - What went wrong
+ * @returns The message
+ */
+export function operationError(index: number, error: unknown): string {
+  return `operations[${index}] (counting from 0): ${errorMessage(error)}`;
 }
 
 // --- Helpers below main exports ---

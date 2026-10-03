@@ -21,7 +21,7 @@ import {
 } from "../../mcp-test-helpers";
 
 interface LiveApiResult {
-  results: Array<{ result?: unknown }>;
+  results: unknown[];
 }
 
 const VOLUME = "live_set tracks 0 mixer_device volume";
@@ -41,7 +41,7 @@ async function volume(operations: unknown[]): Promise<unknown[]> {
     }),
   );
 
-  return result.results.map((entry) => entry.result);
+  return result.results;
 }
 
 /**

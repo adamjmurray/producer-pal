@@ -37,7 +37,7 @@ interface SelectRackResult {
 }
 
 interface LiveApiResult {
-  results: { result: unknown }[];
+  results: unknown[];
 }
 
 /** The rack view properties no Producer Pal tool reports. */
@@ -82,7 +82,7 @@ async function readRackView(
       },
     }),
   );
-  const values = result.results.map((r) => r.result as unknown[]);
+  const values = result.results as unknown[][];
 
   return {
     selectedPadId: String(values[0]?.[1]),

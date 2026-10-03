@@ -9,22 +9,23 @@ import {
 } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type LiveApiOperation } from "#src/tools/advanced/live-api-operations.ts";
-import { validateOperations } from "#src/tools/advanced/live-api-operation-validation.ts";
+import {
+  operationError,
+  validateOperations,
+} from "#src/tools/advanced/live-api-operation-validation.ts";
 
 interface LiveApiArgs {
   path?: string;
   operations: LiveApiOperation[];
 }
 
-interface OperationResult {
-  operation: LiveApiOperation;
-  result: unknown;
-}
-
 interface LiveApiResult {
   path?: string;
   id: string;
-  results: OperationResult[];
+  /** One value per operation that ran, in order. */
+  results: unknown[];
+  /** Set when an operation threw after earlier ones ran; nothing ran after it. */
+  failed?: { index: number; detail: string };
 }
 
 /**
@@ -199,7 +200,8 @@ function objectForOperation(
  * @param args.path - Optional LiveAPI path
  * @param args.operations - Array of operations to execute
  * @param _context - Internal context object (unused)
- * @returns Result object with path, id, and operation results
+ * @returns Result object with path, id, the results of the operations that ran,
+ *   and the failed operation if one threw after the first
  */
 export function liveApi(
   { path, operations }: LiveApiArgs,
@@ -219,27 +221,27 @@ export function liveApi(
   clearLiveApiMemo();
 
   const api = LiveAPI.from(path ?? defaultPath);
-  const results: OperationResult[] = [];
+  const results: unknown[] = [];
+  let failed: LiveApiResult["failed"];
 
   try {
-    for (const operation of operations) {
-      let result: unknown;
-
+    for (const [index, operation] of operations.entries()) {
       try {
-        result = executeOperation(
-          objectForOperation(api, operation),
-          operation,
+        results.push(
+          executeOperation(objectForOperation(api, operation), operation),
         );
       } catch (error) {
-        throw new Error(`Operation failed: ${errorMessage(error)}`, {
-          cause: error,
-        });
-      }
+        // Nothing ran yet, so nothing changed: refuse like any other call that
+        // can't do anything.
+        if (index === 0) {
+          throw new Error(operationError(index, error), { cause: error });
+        }
 
-      results.push({
-        operation,
-        result,
-      });
+        // Earlier operations already changed Live and can't be undone, so keep
+        // their results, say which one stopped the call, and run nothing more.
+        failed = { index, detail: errorMessage(error) };
+        break;
+      }
     }
   } finally {
     clearLiveApiMemo();
@@ -255,5 +257,6 @@ export function liveApi(
     ...(includePath ? { path: api.path } : {}),
     id: api.id,
     results,
+    ...(failed ? { failed } : {}),
   };
 }

@@ -27,8 +27,7 @@ the same at the top level, inside arrays and objects, and over MCP and REST.
 
 ## Consequences
 
-- Results echo the new value: an item's `source` is `sample-folder`, and a
-  `ppal-live-api` result's `operation.type` is the kebab name.
+- Results echo the new value: an item's `source` is `sample-folder`.
 - `ppal-live-api`'s `getProperty` (a normalized Live read) and `get_property` (a
   JavaScript field on the LiveAPI object) are different operations, so both
   could not become `get-property`. The second is `get-field`.

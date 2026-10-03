@@ -8,8 +8,8 @@
 // over and over and read each target in turn — one HTTP round trip per fifty
 // operations instead of one per object.
 //
-// A request is all-or-nothing: the tool aborts the whole array on the first
-// operation that throws. So a failed request is halved and retried until the
+// A request counts as failed if any operation threw: the tool stops there and
+// reports `failed`. So a failed request is halved and retried until the
 // offending read is alone, and only that read is recorded as null. Without
 // that, one unreadable property would cost every other property on the object.
 
@@ -114,15 +114,21 @@ export async function runOperations(
     throw new Error(String(body.result));
   }
 
-  const results = (
-    body.result as { results?: { result: unknown }[] } | undefined
-  )?.results;
+  const result = body.result as
+    | { results?: unknown[]; failed?: { index: number; detail: string } }
+    | undefined;
 
-  if (!results) {
+  if (result?.failed) {
+    throw new Error(
+      `operations[${result.failed.index}]: ${result.failed.detail}`,
+    );
+  }
+
+  if (!result?.results) {
     throw new Error("ppal-live-api returned no results");
   }
 
-  return results.map((entry) => entry.result);
+  return result.results;
 }
 
 /**
