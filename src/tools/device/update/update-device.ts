@@ -37,8 +37,10 @@ import {
   pairParams,
 } from "#src/tools/shared/validation/lists/paired-values.ts";
 import {
+  type TargetParams,
   targetCount,
   targetParamLabel,
+  warnBlankTarget,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 
 export interface UpdateDeviceArgs extends UpdateTargetOptions {
@@ -80,7 +82,11 @@ const DEVICE_VALUE_LABELS: PairedParamLabels<
 };
 
 /** A device update, checked and ready to run: a wrap, or per-target updates. */
-export type DeviceUpdatePlan = { focus?: boolean } & (
+export type DeviceUpdatePlan = {
+  focus?: boolean;
+  /** The target params as sent, for a blank one to be reported */
+  sent: TargetParams;
+} & (
   | { wrap: Parameters<typeof wrapDevicesInRack>[0] }
   | {
       /** The targets, tagged with the param that named each */
@@ -164,6 +170,8 @@ export function planDeviceUpdate({
   preset,
   focus,
 }: UpdateDeviceArgs): DeviceUpdatePlan {
+  const sent = { id, ids, path, paths };
+
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
   ids = namedIdParam(id, ids, "ids");
@@ -225,7 +233,7 @@ export function planDeviceUpdate({
   }
 
   if (wrapInRack) {
-    return { wrap: { ids, path, toPath, name }, focus };
+    return { wrap: { ids, path, toPath, name }, focus, sent };
   }
 
   // Every list in the call is checked together, before any of them is split:
@@ -267,6 +275,7 @@ export function planDeviceUpdate({
       ),
     },
     focus,
+    sent,
   };
 }
 
@@ -289,6 +298,13 @@ export function runDeviceUpdate(
           plan.lists,
           presetOutcomes,
         );
+
+  // Said once the writes are done: it claims what the call did.
+  warnBlankTarget(
+    plan.sent,
+    "targets",
+    "wrap" in plan ? targetCount(plan.wrap) : plan.items.length,
+  );
 
   if (plan.focus) {
     const lastId = lastWrittenId(result);

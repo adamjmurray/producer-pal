@@ -18,6 +18,7 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   type SkippedTargetResult,
   sleep,
@@ -150,6 +151,19 @@ describe("ppal-update-track", () => {
     await sleep(100);
 
     expect(await readName()).toBe(before);
+  });
+
+  // A blank id reads as unset, so the path carries the call — but nothing in
+  // the result would say the id the caller sent was dropped.
+  it("warns once when a blank id rides along with a path", async () => {
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({ id: "   ", path: "t0", name: "Blank Id" }),
+    );
+
+    expect(data.path).toBe("t0");
+    expect(warnings).toStrictEqual([
+      'WARNING: blank id ignored — "path" names the tracks',
+    ]);
   });
 
   it("updates track mute, solo, and arm states", async () => {

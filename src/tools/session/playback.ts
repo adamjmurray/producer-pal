@@ -26,6 +26,7 @@ import {
   type ClipSlotTarget,
 } from "./helpers/playback/session-clip-targets.ts";
 import { select } from "./select.ts";
+import { warnBlankTarget } from "#src/tools/shared/validation/lists/target-lists.ts";
 
 interface PlaybackActionParams {
   sceneIndex?: number;
@@ -158,6 +159,13 @@ export function playback(
   if (timelineFollowsAction) {
     writes = writeTimeline();
   }
+
+  // Said once the action ran: it claims what the call did.
+  warnBlankTarget(
+    { id, ids, path, paths },
+    sceneTarget == null ? "clips" : "scene",
+    sceneTarget == null ? clips.length : 1,
+  );
 
   // Where the next play begins. Not the playhead: writing this leaves the
   // playhead where it was, and starting playback jumps it here.

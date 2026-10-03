@@ -18,6 +18,7 @@ import {
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { warnBlankTarget } from "#src/tools/shared/validation/lists/target-lists.ts";
 
 const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
   ", ",
@@ -72,9 +73,12 @@ export function deleteObject(
   const tracks = new Map<number, LiveAPI>();
   const deleted = deletable.map((target) => deleteOne(target, type, tracks));
 
-  return unwrapSingleResult(
-    refuseLoneSkip(orderedResults([...deleted, ...settled])),
-  );
+  const results = refuseLoneSkip(orderedResults([...deleted, ...settled]));
+
+  // Said last: a refused call deleted nothing.
+  warnBlankTarget(args, `${type}s`, results.length);
+
+  return unwrapSingleResult(results);
 }
 
 // --- Helpers below main exports ---

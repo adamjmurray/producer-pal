@@ -126,13 +126,15 @@ describe("playback ids that names no clip", () => {
     expect(warn).toHaveBeenCalledWith('id "null" names nothing');
   });
 
-  it("fires the path's clip when ids is blank, without a word", () => {
+  it("fires the path's clip when ids is blank, and says ids was dropped", () => {
     const warn = spyOnWarn();
 
     playback({ action: "play-session-clips", path: "t0/s1", id: "  " });
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
-    expect(warn).not.toHaveBeenCalled();
+    expect(warn.mock.calls).toStrictEqual([
+      ['blank id ignored — "path" names the clips'],
+    ]);
   });
 
   // Nothing named a clip, so the call has nothing to fire — and the message

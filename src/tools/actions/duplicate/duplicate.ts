@@ -12,6 +12,7 @@ import {
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { warnBlankTarget } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseClipDestinationList,
@@ -119,7 +120,18 @@ export async function duplicate(
 ): Promise<object | object[]> {
   // Every arrangement write in the call, and in a tool nested in it, shares the
   // one lane view the context carries meanwhile.
-  return await sharingLaneView(context, () => duplicateOnLanes(args, context));
+  const copies = await sharingLaneView(context, () =>
+    duplicateOnLanes(args, context),
+  );
+
+  // Said last: a refused call copied nothing.
+  warnBlankTarget(
+    args,
+    `${args.type}s`,
+    Array.isArray(copies) ? copies.length : 1,
+  );
+
+  return copies;
 }
 
 /**

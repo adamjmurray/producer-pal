@@ -58,6 +58,7 @@ import {
   writeFanOut,
   type WriteResult,
 } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 /** Params that name a track rather than asking anything of it, plus the
@@ -254,7 +255,7 @@ export function updateTrack(
   // was given decides what its sends resolve to.
   const sendsAt = trackSendsAt(sendGainDb, sendReturn, sends, targets.length);
 
-  return writeFanOut(targets, (target, i) => {
+  const writeOne = (target: NamedTarget, i: number) => {
     const trackName = getNameForIndex(name, i, parsedNames);
     const lane = laneTargets.get(i);
 
@@ -332,6 +333,11 @@ export function updateTrack(
       notes,
       trackWorkAsked(args, trackName, trackColor, routing),
     );
+  };
+
+  return writeFanOut(targets, writeOne, {
+    targets: { id, ids, path, paths },
+    objects: "tracks",
   });
 }
 

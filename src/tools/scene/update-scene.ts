@@ -17,6 +17,7 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   targetObject,
   writeFanOut,
@@ -102,7 +103,7 @@ export function updateScene(
   // The scenes written, for focus — which follows the call, not a target.
   const written: string[] = [];
 
-  const result = writeFanOut(targets, (target, i) => {
+  const writeOne = (target: NamedTarget, i: number): UpdateSceneResult => {
     const scene = targetObject(target, "scene", sceneToUpdateAtPath);
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);
@@ -130,6 +131,11 @@ export function updateScene(
       ...pathField(scene),
       ...landed,
     };
+  };
+
+  const result = writeFanOut(targets, writeOne, {
+    targets: { id, ids, path, paths },
+    objects: "scenes",
   });
 
   const lastScene = written.at(-1);
