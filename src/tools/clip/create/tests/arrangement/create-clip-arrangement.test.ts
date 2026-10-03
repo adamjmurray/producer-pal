@@ -141,7 +141,7 @@ describe("createClip - arrangement view", () => {
     track.properties.is_frozen = 1;
 
     // One destination, so the refusal goes back as the error it would have been
-    // all along rather than an entry with nothing around it (ADR-0042).
+    // all along rather than an entry with nothing around it.
     await expect(
       createClip({
         trackIndex: 0,

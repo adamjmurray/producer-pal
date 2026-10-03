@@ -83,8 +83,7 @@ export function trackSendsAt(
  *
  * The return tracks belong to the Live Set, not to any track being updated, so
  * only the sendReturn a track was given decides this. What matched nothing is
- * reported on that track's entry, so no track is left without an answer
- * (ADR-0042).
+ * reported on that track's entry, so no track is left without an answer.
  *
  * The scalar pair is resolved first, so a call using both honors both. They
  * only collide when they name the same return, and then the list is the later
@@ -236,7 +235,7 @@ function matchReturn(
         : "the Live Set has no return tracks";
 
     // Nothing resolved, so there is no id to quote and nothing to write. Every
-    // track the call named reports it on its own entry (ADR-0042).
+    // track the call named reports it on its own entry.
     unresolved.push(
       refusedSend(
         send.return,

@@ -125,7 +125,7 @@ interface TargetSide {
  * Warn when one of the two ways to name a target arrived blank and the other
  * one carried the call.
  *
- * A blank reads as unset (ADR-0029), so the call still runs on whichever param
+ * A blank reads as unset, so the call still runs on whichever param
  * named something — and nothing in the result would say the other one was
  * dropped. It is a claim about what the call did, not about what it was given,
  * so the caller says how many targets resolved and nothing is said when none

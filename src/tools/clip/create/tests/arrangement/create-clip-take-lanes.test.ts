@@ -421,7 +421,7 @@ describe("createClip take lane paths", () => {
 
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     // The lane that didn't fit keeps its place, and says why there instead of
-    // in a warning (ADR-0042).
+    // in a warning.
     expect(result[0]).toStrictEqual({
       path: `t0/l${MAX_TAKE_LANES}[1|1]`,
       ok: false,

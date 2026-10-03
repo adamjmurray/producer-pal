@@ -67,43 +67,17 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 
 ## Index
 
-| ADR                                                                | Decision                                                                |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| [0003](0003-notation-grammar-duplication.md)                       | Deliberately duplicate the note-value grammar                           |
-| [0005](0005-automation-via-live-api.md)                            | Automation goes through the Live API, not offline `.als` rewriting      |
-| [0006](0006-encrypted-keys-no-backend-proxy.md)                    | Provider keys encrypted at rest in the browser; no backend proxy        |
-| [0007](0007-no-native-ableton-extension.md)                        | Do not build a native Ableton extension                                 |
-| [0008](0008-device-disable-not-a-kill-switch.md)                   | Disabling the M4L device is not a server kill switch (won't fix)        |
-| [0009](0009-warn-and-skip-error-handling.md)                       | Update tools skip what doesn't apply, not throw (superseded in part)    |
-| [0012](0012-no-chord-symbols-in-bar-beat.md)                       | No chord symbols in bar\|beat; they stay Stark-only                     |
-| [0018](0018-tolerated-but-untaught-syntax.md)                      | Accept the syntax models already write, without teaching it             |
-| [0020](0020-looping-preserves-the-region.md)                       | `looping` changes the loop flag and nothing else                        |
-| [0021](0021-string-caps-stay-out-of-the-schema.md)                 | String caps over 2000 never reach the JSON Schema                       |
-| [0022](0022-audio-work-lives-in-companion-skills.md)               | Audio generation and analysis live in companion skills                  |
-| [0023](0023-live-api-objects-are-pooled-per-request.md)            | LiveAPI objects are released and pooled, never held across requests     |
-| [0025](0025-object-path-grammar.md)                                | One object-path grammar, scoped to clips and devices                    |
-| [0027](0027-setproperty-stays-out-of-ppal-live-api.md)             | `setProperty` stays out of ppal-live-api                                |
-| [0029](0029-an-empty-param-is-dropped-from-the-args.md)            | An empty param is dropped from the args                                 |
-| [0030](0030-leaving-a-conversation-stops-the-turn.md)              | Leaving a conversation stops the turn, with a warning                   |
-| [0031](0031-list-params-broadcast-or-pair-exactly.md)              | A list param broadcasts one value or pairs exactly (superseded in part) |
-| [0035](0035-malformed-calls-are-refused-up-front.md)               | A malformed call is refused up front, not warned mid-flight             |
-| [0036](0036-paths-address-tracks-and-scenes.md)                    | Paths address tracks and scenes too                                     |
-| [0037](0037-arrangement-time-is-part-of-the-path.md)               | Arrangement time is part of the path                                    |
-| [0039](0039-the-arrangement-timeline-is-state.md)                  | The arrangement timeline is state, the playhead is not                  |
-| [0040](0040-duplicate-loop-does-not-take-a-region.md)              | `duplicateLoop` does not take a region                                  |
-| [0041](0041-device-type-segments-are-input-only.md)                | `inst`/`mfx<n>`/`afx<n>` are input only; results keep `d<n>`            |
-| [0042](0042-a-skipped-target-keeps-its-slot.md)                    | A skipped target keeps its slot: `ok: false` and a reason               |
-| [0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md) | A `+` belongs to the tool that creates that kind of object              |
-| [0044](0044-write-results-report-only-what-changed.md)             | A write result reports only what didn't land as asked                   |
-| [0045](0045-c-plus-appends-a-rack-chain.md)                        | `c+` appends a rack chain; nothing ever inserts one                     |
-| [0046](0046-d-plus-appends-a-device.md)                            | `d+` appends a device; `d<n>` still inserts at n                        |
-| [0047](0047-an-arrangement-write-overwrites-and-says-so.md)        | An arrangement write overwrites, and says so on the entry               |
-| [0048](0048-typed-args-stay-typed.md)                              | Number, boolean and enum args stay typed; one value for every target    |
-| [0049](0049-every-string-arg-pairs.md)                             | Every string arg pairs per target, unless it's already a list           |
-| [0050](0050-an-entry-explains-itself-in-detail.md)                 | An entry explains itself in `detail`                                    |
-| [0051](0051-a-write-that-did-nothing-says-so.md)                   | A write that did nothing says so                                        |
-| [0052](0052-muted-notes-are-hidden-and-left-alone.md)              | Muted notes are hidden and left alone                                   |
-| [0054](0054-create-device-refuses-an-index-past-the-end.md)        | create-device refuses an index past the end, as update-device does      |
-| [0056](0056-a-send-return-resolves-id-name-path-prefix.md)         | A send's return resolves by id, name, path, then prefix                 |
-| [0057](0057-a-param-only-another-action-reads-is-refused.md)       | A param only another action reads is refused                            |
-| [0058](0058-write-tools-answer-each-rule-one-way.md)               | Write tools answer each rule one way                                    |
+| ADR                                                     | Decision                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------- |
+| [0003](0003-notation-grammar-duplication.md)            | Deliberately duplicate the note-value grammar                       |
+| [0005](0005-automation-via-live-api.md)                 | Automation goes through the Live API, not offline `.als` rewriting  |
+| [0006](0006-encrypted-keys-no-backend-proxy.md)         | Provider keys encrypted at rest in the browser; no backend proxy    |
+| [0007](0007-no-native-ableton-extension.md)             | Do not build a native Ableton extension                             |
+| [0008](0008-device-disable-not-a-kill-switch.md)        | Disabling the M4L device is not a server kill switch (won't fix)    |
+| [0012](0012-no-chord-symbols-in-bar-beat.md)            | No chord symbols in bar\|beat; they stay Stark-only                 |
+| [0018](0018-tolerated-but-untaught-syntax.md)           | Accept the syntax models already write, without teaching it         |
+| [0021](0021-string-caps-stay-out-of-the-schema.md)      | String caps over 2000 never reach the JSON Schema                   |
+| [0022](0022-audio-work-lives-in-companion-skills.md)    | Audio generation and analysis live in companion skills              |
+| [0023](0023-live-api-objects-are-pooled-per-request.md) | LiveAPI objects are released and pooled, never held across requests |
+| [0027](0027-setproperty-stays-out-of-ppal-live-api.md)  | `setProperty` stays out of ppal-live-api                            |
+| [0030](0030-leaving-a-conversation-stops-the-turn.md)   | Leaving a conversation stops the turn, with a warning               |

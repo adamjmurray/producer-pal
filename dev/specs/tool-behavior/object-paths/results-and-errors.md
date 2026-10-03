@@ -17,7 +17,7 @@ names a different track, so it addresses nothing worth calling again. `path`
 means the target outlived the call — a drum pad, whose 128 slots are permanent,
 so a delete clears its chains and leaves the slot. The rack then reads exactly
 as it would for a pad that was never filled; see
-[drum racks](../../live-api/specialized-devices/drum-racks.md). There is no
+[drum racks](../../../live-api/specialized-devices/drum-racks.md). There is no
 `deleted` flag: the key is the answer, and a target the call couldn't delete
 says so as a skip.
 
@@ -118,11 +118,11 @@ wrote it, and an object that doesn't exist yet has only a path. When there is no
 path to spell, the id stands alone.
 
 One helper owns this —
-[`targetLabel`](../../../src/tools/shared/validation/object-path-for-api.ts) and
-its variants, over `objectPathForApi`. A message that builds a path by hand is a
-bug: it drifts the first time the grammar changes. That's also the check on the
-coordinate work — once `objectPathForApi` spells `t0[5|1]` every warning gets it
-free, so a large sweep means messages aren't going through the helper.
+[`targetLabel`](../../../../src/tools/shared/validation/object-path-for-api.ts)
+and its variants, over `objectPathForApi`. A message that builds a path by hand
+is a bug: it drifts the first time the grammar changes. That's also the check on
+the coordinate work — once `objectPathForApi` spells `t0[5|1]` every warning
+gets it free, so a large sweep means messages aren't going through the helper.
 
 Name the path and show the fix, never restate a requirement in index terms.
 

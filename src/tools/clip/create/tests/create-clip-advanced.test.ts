@@ -341,7 +341,7 @@ describe("createClip - advanced features", () => {
       });
     });
 
-    // N destinations named, N entries back, in the order named (ADR-0042) —
+    // N destinations named, N entries back, in the order named —
     // not clip slots first and the arrangement after.
     it("answers in the order path names the destinations", async () => {
       setupDualMocks();

@@ -5,7 +5,7 @@
 
 // Whether a clip's turn keeps its entry or hands its target a skip. A clip
 // where nothing the call asked of it happened gets a skip (`ok: false`); one
-// where anything landed keeps its entry and the detail (ADR-0042).
+// where anything landed keeps its entry and the detail.
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";

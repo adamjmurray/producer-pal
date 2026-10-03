@@ -744,7 +744,7 @@ function sendsOf(result: ReturnType<typeof updateTrack>): unknown[] {
 /**
  * A send that named no return track: nothing was written, and with nothing else
  * asked of the lone track the call throws naming the return as the call spelled
- * it, and warns nowhere (ADR-0042).
+ * it, and warns nowhere.
  * @param call - Runs the updateTrack call
  * @param sends - The send params that must have stayed untouched
  * @param named - The return, spelled the way the call wrote it

@@ -607,7 +607,7 @@ describe("ppal-update-live-set", () => {
 
   it('drops a null locator name instead of naming a locator "null"', async () => {
     // The MCP SDK coerces args before our handler runs, so only a real call
-    // proves a null reaches it as unsent (ADR-0029).
+    // proves a null reaches it as unsent.
     const created = parseToolResult<UpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-live-set",

@@ -179,7 +179,7 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
     ]);
   });
 
-  // A lone destination has no list for an entry to hold a place in (ADR-0042).
+  // A lone destination has no list for an entry to hold a place in.
   it("throws when the call named one destination and it got no clip", async () => {
     registerFailingArrangementTrack();
 

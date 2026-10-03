@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The one way a write tool runs (ADR-0058): name the targets, check the call,
+// The one way a write tool runs: name the targets, check the call,
 // write each target in turn, settle, answer. A tool supplies the parts that
 // differ as a WriteSpec; the pipeline keeps the answers that must not differ.
 //

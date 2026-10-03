@@ -183,7 +183,7 @@ describe("updateDevice - macroVariation", () => {
   });
 
   // The pair says nothing about any one device, so a call that can't be read
-  // is refused before any target is touched (ADR-0035).
+  // is refused before any target is touched.
   it("refuses macroVariationIndex sent on its own", () => {
     expect(() => updateDevice({ id: "123", macroVariationIndex: 2 })).toThrow(
       'macroVariationIndex is only for macroVariation "load" or "delete"; this call has no macroVariation. Set the macroVariation or drop macroVariationIndex.',

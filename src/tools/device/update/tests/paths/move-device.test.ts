@@ -138,7 +138,7 @@ describe("moveDeviceToPath", () => {
       outcome: "refused",
       reason: undefined,
     });
-    // The caller puts the refusal on the target's own entry (ADR-0042).
+    // The caller puts the refusal on the target's own entry.
     expect(capturedWarnings()).toStrictEqual([]);
   });
 

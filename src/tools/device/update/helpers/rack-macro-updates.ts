@@ -53,7 +53,7 @@ export function updateMacroVariation(
 /**
  * Refuses a macroVariation/macroVariationIndex pair that can't be read at all.
  * Nothing about a device decides it, so the call is refused before any of its
- * targets is touched (ADR-0035).
+ * targets is touched.
  * @param action - Variation action
  * @param index - Variation index
  * @throws Error when load/delete has no index, or an index sits beside another

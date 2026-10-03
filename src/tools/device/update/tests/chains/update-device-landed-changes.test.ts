@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // A throw after a change already landed keeps the target's entry and names the
-// change (ADR-0042). Every kind of write has to count, not only the first one a
+// change. Every kind of write has to count, not only the first one a
 // target makes.
 
 import { describe, expect, it } from "vitest";

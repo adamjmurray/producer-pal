@@ -5,7 +5,7 @@
 
 // Checks a whole ppal-live-api call before any of it runs. The operations
 // write to Live and can't be taken back, so a malformed one late in the list
-// must not leave the earlier ones applied (ADR-0035).
+// must not leave the earlier ones applied.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import {

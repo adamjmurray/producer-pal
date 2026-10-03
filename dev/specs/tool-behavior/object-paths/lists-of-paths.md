@@ -4,16 +4,9 @@ How a comma-separated path list is carried out. Part of
 [Object Paths](README.md).
 
 A path param takes a comma-separated list (`paths` is accepted as a plural
-spelling wherever `path` is).
-
-**Every target named gets an entry, in the order named.** A target the call
-couldn't carry out keeps its slot as `{ id | path, ok: false, detail }`, under
-the param that named it and spelled as the caller wrote it — reads and writes
-alike. `ok` is on skips only, and a skip is never also a warning. One target is
-unwrapped and throws instead, having nothing to report. A target that needed no
-work (a `delete` of something already gone) is not a skip: its normal entry
-carries a `detail` and no `ok`. See
-[ADR-0042](../../decisions/0042-a-skipped-target-keeps-its-slot.md).
+spelling wherever `path` is). Entries, pairing and skips follow
+[Tool Behavior](../README.md#lists-and-pairing); what is specific to paths is
+below.
 
 **Creating tracks and scenes reads the list in the caller's coordinates.** Every
 entry names a place in the Set as the caller read it, so `t+,t+,t+` appends

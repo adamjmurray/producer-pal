@@ -21,12 +21,9 @@ part is a file beside it.
 - [tools/adding-a-tool.md](tools/adding-a-tool.md) — checklist for a new tool.
 - [tools/tool-schemas.md](tools/tool-schemas.md) — shaping input schemas and
   per-mode param text.
-- [tools/skip-entries-by-tool.md](tools/skip-entries-by-tool.md) — how each
-  write tool reports a skipped target.
-- [tools/up-front-refusals-by-tool.md](tools/up-front-refusals-by-tool.md) —
-  where each tool refuses a malformed call before any work.
-- [tools/object-paths/](tools/object-paths/README.md) — the path grammar every
-  tool uses to say where.
+- [specs/tool-behavior/](specs/tool-behavior/README.md) — how every tool answers
+  a call: the path grammar, lists, refusals, skips, result entries, and the
+  per-tool catalogs.
 - [tools/read-tool-includes/](tools/read-tool-includes/README.md) — what the
   read tools return, and their `include` param.
 - [tools/memory-system/](tools/memory-system/README.md) — the LLM-managed memory
@@ -76,7 +73,8 @@ part is a file beside it.
 
 ## Reference
 
-- [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark.
+- [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark,
+  and how every tool answers a call (`specs/tool-behavior/`).
 - [decisions/](decisions/README.md) — ADRs: why settled choices went the way
   they did.
 - [plans/](plans/README.md) — improvement plans not on the roadmap.

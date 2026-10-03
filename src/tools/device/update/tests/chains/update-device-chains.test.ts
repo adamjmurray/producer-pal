@@ -97,7 +97,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     // Nothing else was asked, so the lone target has nothing to report and
-    // throws instead (ADR-0042).
+    // throws instead.
     it("should refuse mute on a Device", () => {
       expect(() => updateDevice({ id: "123", mute: true })).toThrow(
         "mute not applicable to a device",

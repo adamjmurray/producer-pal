@@ -36,7 +36,7 @@ export interface ReturnMatch {
 /**
  * Find the return (track or rack chain) a send names. Order: id, exact name,
  * path (`pathIndex`, e.g. "rt0"), then letter prefix ("A" finds "A-Reverb" or
- * "a Reverb"); case-insensitive (ADR-0056). An exact name beats a prefix, so
+ * "a Reverb"); case-insensitive. An exact name beats a prefix, so
  * "Delay" finds "Delay", not "Delay 2". Only these returns' ids count.
  * @param names - Return names in send order
  * @param sendReturn - Id, name, path, or letter to match

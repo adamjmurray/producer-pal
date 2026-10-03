@@ -37,8 +37,8 @@ switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 When a param varies per item, use
 `src/tools/shared/validation/lists/list-pairing.ts`: one value covers every
 item, or exactly N pair 1:1 in order, and no entry may be empty. Anything else
-is refused before any work runs. Nothing cycles — including `color`, which used
-to.
+is refused before any work runs. Nothing cycles. The rules are in
+[Tool Behavior](../specs/tool-behavior/README.md#lists-and-pairing).
 
 `pairValues` / `valueForIndex` for values, `pairExact` for a destination that
 holds one item — broadcasting a lone clip slot to three clips would destroy two
@@ -77,17 +77,11 @@ target, the check is skipped: every value is read whole, commas and all.
 An item count the call works out for itself (`count: 3` on a create tool) is one
 of the lists, so `count: 3` with `name: "A,B"` is refused too.
 
-Two tools can't check their raw args. update-clip's `id` and `path` name
-different clips and add up, so it passes the sum as a count and never compares
-the two. duplicate shares its destinations out across the sources first, so its
-check (`requireSameLength`) runs where the copies are planned. A clip slot,
-lane, device or pad holds one object, so with several sources the destination
-list must name one per source: `requireDestinationPerSource` refuses anything
-else before the first copy is made. Only a clip destination that leaves the
-copies apart broadcasts: a bare `[5|1]`, or a track whose positions pair one per
-clip.
-
-See ADR-0035.
+Three tools can't check their raw args and do it where their targets are
+resolved; see
+[up-front refusals, tool by tool](../specs/tool-behavior/up-front-refusals-by-tool.md).
+A destination that holds one object is checked with
+`requireDestinationPerSource`.
 
 ## Params that don't apply to every action
 
@@ -101,7 +95,8 @@ the Live Set in a way nobody asked for.
 Build the refusal with `refuseParamsOutsideAction` so every tool words it the
 same way: it names the params, the actions that read them, and what the call
 has. A defaulted action counts like an explicit one; a null or blank counts as
-not sent. See ADR-0057.
+not sent. Rule:
+[Tool Behavior](../specs/tool-behavior/README.md#a-param-only-another-action-reads).
 
 ## Length caps
 
@@ -129,13 +124,14 @@ Write an optional param the plain way — nothing to remember. Clients fill the
 params they have no value for with `null`, and `unsetEmptyParams()` drops those
 args before validation on every call path, so a null reads as a param never
 sent. Without it `Number(null)` is 0, `z.coerce.string()` gives `"null"`, and a
-boolean or enum rejects the whole call. See ADR-0029.
+boolean or enum rejects the whole call. Rule:
+[Tool Behavior](../specs/tool-behavior/README.md#empty-and-blank-params).
 
 A blank string is not the same thing. It survives on a text param, where
 clearing a name or a clip's notes is a real request; on a param with no empty
 value of its own — a number, boolean, enum or array — it is **refused**, naming
 the param. Dropping it is what let `bpm: ""` become a call that set no tempo and
-said nothing. See ADR-0035 rule 5.
+said nothing.
 
 Both halves are held for the whole tool surface by
 `src/test/meta/tool-schemas/empty-params.test.ts`.
@@ -148,6 +144,16 @@ through a real client.
 
 A param nested below the args isn't reached — wrap that shape in
 `optionalParams()`, as `library-query-schema.ts` does.
+
+Two other ways to do this were tried and dropped. Making each param nullable
+(`z.preprocess(blank → null, inner.nullable())`) published
+`anyOf: [{integer}, {null}]` to the model and pushed `number | null` through
+every handler. Wrapping every param's schema in `resolveToolSchema` hid the
+inner `.description` and enum `.options` from the outer instance, so the docs
+generator and the modal-config machinery stopped seeing them. Scrubbing the args
+leaves every schema as authored; `optionalParams()` wraps only the SDK-facing
+copy, whose JSON Schema is byte-identical. `isCoercedNullish()` still earns its
+keep for a model that writes the _word_ `"null"`.
 
 ## Modal config: per-mode descriptions
 

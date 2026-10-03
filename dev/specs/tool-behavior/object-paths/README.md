@@ -3,9 +3,8 @@
 A path names a location in the Live Set: `t0/s3` is a session clip slot, `t0/d1`
 a device. One grammar serves every tool that needs to say _where_.
 
-Status: this describes the **end state** — everything except the `[...]`
-coordinate and `loc:` ships today. Treat it as the reference an implementation
-is checked against.
+Part of [Tool Behavior](../README.md). Treat this as the reference an
+implementation is checked against.
 
 ## Parts
 
@@ -37,7 +36,8 @@ them, and a proposed exception has to argue with one of them.
 is `clip_slots 3`. No off-by-one, no 1-based segment, anywhere.
 
 `p<note>` is the single exception: Live indexes `drum_pads` by MIDI note, so the
-segment carries a note name. Nothing else gets an exception without an ADR.
+segment carries a note name. Nothing else gets an exception without a deliberate
+decision.
 
 ## Grammar
 
@@ -62,17 +62,27 @@ list-length check, which would otherwise call one destination two and refuse a
 call for a mismatch that isn't there. Peeling the coordinate off first leaves a
 body with no brackets, so splitting that on `/` needs no depth of its own.
 
-One known gap, left on purpose: depth drops back to 0 at the first `]`, so a
-locator name with `]` followed by `,` (`t0[loc:A], B]`) splits as a list.
-Closing only on a `]` that comes before `,` or the end would still guess wrong
-for a name like `A], B`, and every path tool shares this lexer. Revisit only if
-a model trips on it.
+One limit, left on purpose: depth drops back to 0 at the first `]`, so a locator
+name with `]` followed by `,` (`t0[loc:A], B]`) splits as a list. Closing only
+on a `]` that comes before `,` or the end would still guess wrong for a name
+like `A], B`, and every path tool shares this lexer. Revisit only if a model
+trips on it.
 
 A `+` names a place rather than a thing, so it is taken only by the tool that
 creates that kind of object, and a `+` root is a whole path — `t+/s0` names
 nothing yet. On create, `t2` inserts at 2 while `t+` appends. `rt<n>` is refused
 there: Live always adds a return track at the end, so a path naming a position
 it can't honor would silently create the track somewhere else.
+
+**Tracks and scenes are addressed by `path`** like everything else: reads and
+writes take one and report one, and the old `trackType` and read-tool `index`
+params are retired. A track's `type` says only `midi` or `audio`, and is absent
+on a return or the main track, where the path carries the role. A constant
+`audio` there would read as an invitation to put an audio clip on it, which Live
+doesn't allow. So a result's `path` is the only thing that tells a return from
+another track, and a Live Set read reports `mainTrack`. `create-track`'s
+`type: "return"` is unpublished but still accepted, with a warning pointing at
+`rt+`.
 
 Segments have to nest the way Live does, and a path that doesn't is a parse
 error rather than a missing object later: a track holds devices, a device holds
@@ -95,11 +105,20 @@ is reported once, on the target: the miss says what the container does hold
 `midifx<n>` and `audiofx<n>` also parse: tolerated, and deliberately documented
 nowhere but here.
 
+A bare `afx` is refused, not read as `afx0`. It reads as "the audio effect" on a
+container that usually has several; a parse error costs one retry and teaches
+the numbering, where a silent first-effect default is a wrong target that looks
+like success. `inst` can be bare because a container holds one. A `params`
+entry's own path prefix doesn't take them (`pC1/inst/Volume` is not a path):
+that prefix is a separate grammar that may be retired, and extending it would
+make retiring it harder.
+
 **Input only — a result never emits one.** Spelling `afx<n>` off a Live path
 needs a device-list read on the per-object hot path, where `d<n>` comes free
-from string manipulation. Making them canonical is a separate decision that
-needs a measurement
-([ADR-0041](../../decisions/0041-device-type-segments-are-input-only.md)).
+from string manipulation. `d<n>` is also what Live's own path says, so it can't
+disagree with Live, where a filtered index can if the list shifts between the
+read and the next call. Making them canonical needs a measurement of that read,
+not an argument.
 
 Every shape, with the Live API path it names, and the rules for creating by path
 are in [path-catalog.md](path-catalog.md).
@@ -124,12 +143,25 @@ into it — see [Tolerance](tolerance.md).
 **Song timeline only.** `create-clip`'s `start` and `firstStart` are
 clip-relative and must not accept `loc:`.
 
+**Why brackets.** A bar|beat position can contain `/` (`±n<fraction>` offsets,
+`1|1-n/4`), and a locator name is user-typed and may contain `/`, `,` or spaces.
+No peel-the-tail scheme survives that, so the separator has to enclose. `t0@5|1`
+was rejected because `@` already means step interval and bar copy in bar|beat
+(`1|1x4@n/4`), and a model writes both in one call; `[..]` collides only with
+Stark's chord stacks, a different param and dialect.
+
+The bracket is deliberately narrow: **a point on the song timeline**, bar|beat
+or `loc:`. The wider reading, "a key into the parent where the index isn't a
+usable address", would make `p<note>` a counterexample already in the field.
+Widening the rule later is cheap; carrying an exception from the start is not.
+
 **A missing locator is reported where the spelling puts it.** Inside a `[...]`
 coordinate it is that entry's own miss: the clip the entry was written for says
 `not moved: ...` on its own entry, the rest of the batch still moves, and a lone
-clip throws (ADR-0042). `arrangementStart` and `arrangementSplit` are read as
-one list before anything moves — the same as a malformed bar|beat in them — so a
-missing name there refuses the call, on every tool that takes them.
+clip throws ([skips](../README.md#skips-no-ops-and-replaced-targets)).
+`arrangementStart` and `arrangementSplit` are read as one list before anything
+moves — the same as a malformed bar|beat in them — so a missing name there
+refuses the call, on every tool that takes them.
 
 Managing locators is separate and unchanged: `update-live-set`'s
 `locatorOperation` / `locatorId` / `locatorTime` / `locatorName` treat a locator
@@ -180,13 +212,13 @@ addressing a specific clip refuses it. Both partials work as destinations.
 `t0[5|1]` resolves to the clip **covering** `5|1`, even if it started earlier —
 a clip running from 3|1 through bar 6 is at `[5|1]`. When no clip covers the
 position, the path resolves to nothing and the target is reported like any other
-that isn't there (ADR-0042).
+that isn't there ([skips](../README.md#skips-no-ops-and-replaced-targets)).
 
 ### Which lists pair and which broadcast
 
 A value that **fully determines a location pairs 1:1** with the items; anything
-else broadcasts one value across them (ADR-0031). That single rule covers what
-used to be a carve-out:
+else broadcasts one value across them
+([lists and pairing](../README.md#lists-and-pairing)). That single rule covers:
 
 - `t0/s3` and `t0[5|1]` can't broadcast — a slot or spot holds one clip, so
   three clips into one destroys two. Several sources name one each, in order; a
@@ -226,3 +258,12 @@ address one that doesn't exist yet?).
 **`a<n>`**, an index into a track's arrangement clip list. It's unstable and
 means nothing to a user. Time is what a user already thinks in, and that's what
 the `[...]` coordinate spells.
+
+**`arrangementLength` and `arrangementSplit`.** A length is a property and a
+split is an operation; only the start was an address.
+
+**Reverse segment order (`s3/t0`).** One canonical spelling; the "did you mean"
+steer is cheap.
+
+**`slot` kept beside `path` in results.** It would spend context on every clip
+result and re-teach the spelling being retired. Results emit `path` only.

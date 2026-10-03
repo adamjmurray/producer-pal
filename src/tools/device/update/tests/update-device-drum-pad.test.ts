@@ -247,7 +247,7 @@ describe("updateDevice - bare drum pad paths", () => {
   });
 
   // The rack's return chains belong to the rack, so a send naming none is a
-  // fact about the pad the call named — its own entry says it (ADR-0042).
+  // fact about the pad the call named — its own entry says it.
   it("names a send naming no return chain in the pad's error", () => {
     registerDrumRack(1);
 

@@ -101,7 +101,7 @@ describe("updateClip - Basic operations", () => {
   // Same detail: "path names the clips" is false when it named none, and the
   // no-clip warning already says what went wrong.
   // One target, nothing done: there is no list for an entry to hold a place in,
-  // so the reason goes back as the error (ADR-0042).
+  // so the reason goes back as the error.
   it("throws when the one path it names holds no clip", async () => {
     mockNonExistentObjects();
 

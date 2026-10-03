@@ -185,7 +185,7 @@ async function duplicateOnLanes(
   ({ toPath, arrangementStart } = dest);
   count = sceneCopyCount(type, dest, count);
 
-  // Several sources take one destination each, in order (ADR-0031).
+  // Several sources take one destination each, in order.
   const sources = planSources({
     type,
     id,
@@ -393,7 +393,7 @@ function validateSourceIds(
  * The copy when the call asked for one, otherwise one entry per copy asked for.
  *
  * A lone copy that wasn't made has no list for its entry to hold a place in, so
- * its detail goes back as the error it would have been (ADR-0042).
+ * its detail goes back as the error it would have been.
  * @param createdObjects - One entry per copy the call asked for
  * @returns The single entry, or all of them
  * @throws Error when the call asked for one copy and it wasn't made

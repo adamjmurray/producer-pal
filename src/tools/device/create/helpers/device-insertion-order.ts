@@ -54,7 +54,7 @@ export interface InsertionEntry {
  * entry has renumbered. An insert shifts every later device down a slot, so a
  * `d<n>` written after it — in that chain or below it — names something that
  * has already moved. An append renumbers too when Live re-sorts the chain
- * around it, which is every device but an audio effect (ADR-0035).
+ * around it, which is every device but an audio effect.
  * @param entries - The path entries and the device each one inserts, in order
  * @throws Error when an entry is spelled through a renumbered chain
  */

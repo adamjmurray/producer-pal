@@ -188,7 +188,7 @@ export function copyEffectsOf(entry: object): string | undefined {
 
 /**
  * The entry a destination no copy landed at keeps in the result, so a call
- * naming N destinations still answers with N entries (ADR-0042).
+ * naming N destinations still answers with N entries.
  * @param path - The destination, as the path a copy there would report
  * @param detail - Why no copy landed, in the words a single one would throw
  * @returns The skip entry

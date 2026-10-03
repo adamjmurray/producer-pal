@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // One entry per destination a clip duplicate named, in the order it named them:
-// the copy that landed, or why none did (ADR-0042).
+// the copy that landed, or why none did.
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
@@ -52,7 +52,7 @@ export interface DestinationEntriesArgs {
 
 /**
  * One entry per destination the call named, in the order it named them: the copy
- * that landed, or the entry saying why none did (ADR-0042).
+ * that landed, or the entry saying why none did.
  * @param args - The copies made, and the destinations they were asked for
  * @returns The result entries, in request order
  */

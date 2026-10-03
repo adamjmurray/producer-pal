@@ -240,7 +240,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
 
   // A chain's mixer params have no entry of their own on a device — `params`
   // reports per param, these don't go through it — so they ride on the
-  // target's entry, and a target they were the whole of throws (ADR-0042).
+  // target's entry, and a target they were the whole of throws.
   it("refuses the chain mixer params sent to a device", () => {
     registerMockObject("target-1", { type: "SimplerDevice" });
 

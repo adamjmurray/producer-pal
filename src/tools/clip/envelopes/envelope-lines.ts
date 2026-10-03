@@ -5,7 +5,7 @@
 
 // Reading the `envelopes` param: one "<target>: <notation>" line per parameter.
 // Every line is checked before the call touches anything, because a half-written
-// batch of envelopes can't be cleaned up (ADR-0035).
+// batch of envelopes can't be cleaned up.
 
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";

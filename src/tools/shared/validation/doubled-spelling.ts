@@ -40,7 +40,7 @@ export interface NamedSpelling {
  * Reads the pair, refusing a call that spelled it both ways. The conflict is in
  * the args, so it is known before anything runs: refusing is atomic and the
  * caller retries with one spelling. Warning instead would return a
- * success-shaped result for the rest of a call we couldn't read (ADR-0035).
+ * success-shaped result for the rest of a call we couldn't read.
  * @param args - The two params as the tool received them
  * @returns What each spelling named
  */

@@ -143,8 +143,9 @@ loop.
 This matters when you select a sub-region smaller than the clip's content and
 then double it. That takes **two calls**: `update-clip` refuses `start`/`length`
 alongside `duplicateLoop`, because they set the region being doubled and the
-combined call reads two ways (ADR-0040). `firstStart` still composes — it moves
-the playback marker, not the loop region.
+combined call reads two ways
+([why](../specs/tool-behavior/clips-playback-and-sends.md#duplicateloop)).
+`firstStart` still composes — it moves the playback marker, not the loop region.
 
 Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
 `C3` at bar 1 and `E3` at bar 2, then `{ length: "1bar" }` followed by

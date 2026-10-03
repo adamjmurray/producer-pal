@@ -58,7 +58,7 @@ export function entriesFrom(
   split: (value: string) => string[],
   label: string,
 ): string[] {
-  // A blank value is an unsent param (ADR-0029), not a list that names nothing.
+  // A blank value is an unsent param, not a list that names nothing.
   // A lone comma is something the caller typed, and that is the error below.
   if (raw == null || raw.trim() === "") {
     return [];

@@ -113,7 +113,7 @@ function refuseSharedClipDestination(
  * Refuse start/length next to duplicateLoop. They set the loop region, which is
  * exactly what duplicate_loop copies, so the call reads two ways - "the region
  * to double" or "the length to end up at" - and both look like success, since
- * the note count doubles either way. Two calls say which (ADR-0040). firstStart
+ * the note count doubles either way. Two calls say which. firstStart
  * still composes: it moves the playback marker, not the region.
  * @param start - Loop region start, if sent
  * @param length - Loop region length, if sent

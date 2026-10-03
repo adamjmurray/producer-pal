@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for the rules every write tool answers the same way (ADR-0058),
+ * E2E tests for the rules every write tool answers the same way,
  * as ppal-update-device keeps them: a target named twice, an entry that can't
  * be parsed, and an action named twice.
  * Uses: e2e-test-set

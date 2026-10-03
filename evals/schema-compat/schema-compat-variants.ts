@@ -218,8 +218,8 @@ export const VARIANTS: Variant[] = [
       },
     },
     prompt: "Set the song tempo to 120 using update_song. Change nothing else.",
-    // ADR-0029 assumes clients fill a param they have no value for with null
-    // or a blank string; ADR-0035's rule 5 would turn the blank into an error.
+    // The tools drop a null and refuse a blank on a number, boolean, enum or
+    // array, which only matters if clients fill params they have no value for.
     // Pass only when nothing came through empty. The details dump shows which
     // unasked-for params were filled and with what.
     check: (i) =>

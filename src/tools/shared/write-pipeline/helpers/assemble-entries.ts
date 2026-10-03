@@ -13,7 +13,7 @@ import {
 /**
  * Stage 5's answer: one entry per target in the order named, or the lone
  * entry on its own. A lone target that was skipped throws its detail, since
- * there is no list for its entry to hold a place in (ADR-0042).
+ * there is no list for its entry to hold a place in.
  * @param entries - One per target, in the order named
  * @param outcomes - What happened to each
  * @returns The call's result

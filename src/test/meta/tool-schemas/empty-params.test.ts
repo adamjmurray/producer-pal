@@ -16,7 +16,7 @@ import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-p
 // enum or array rejects it and takes the whole call down. Every call path
 // drops those args first — this pins the result for every param of every tool.
 //
-// A blank string is not the same thing (ADR-0035 rule 5): a param with no empty
+// A blank string is not the same thing: a param with no empty
 // value of its own refuses one, because dropping it silently is how `bpm: ""`
 // became a call that set no tempo and said nothing. This pins that for the whole
 // tool surface too, since it is the half most likely to be loosened by accident.

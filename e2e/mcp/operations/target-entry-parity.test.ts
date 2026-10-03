@@ -6,7 +6,7 @@
 /**
  * E2E sweep across the write tools: the same multi-target call, once by `path`
  * and once by `id`, answers with the same entries in the same order, each
- * addressed by the spelling its caller wrote (ADR-0042).
+ * addressed by the spelling its caller wrote.
  *
  * Every case names a target the call refuses or can only half serve — the
  * entries that used to be dropped or turned into a warning, and the ones most

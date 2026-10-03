@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // One entry per destination a device, chain or drum-pad copy named: the copy
-// that landed, or why none did (ADR-0042).
+// that landed, or why none did.
 
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {

@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * The detail on a target whose write threw after part of it had landed
- * (ADR-0042): why it stopped, and what the caller already has.
+ * The detail on a target whose write threw after part of it had landed: why
+ * it stopped, and what the caller already has.
  * @param message - What the throw said
  * @param phrases - What had landed, in the order it did
  * @returns The detail

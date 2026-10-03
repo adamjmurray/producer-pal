@@ -117,8 +117,8 @@ for (let i = 0; i < tracks.length; i++) {
 - A commented `as` is for an index you can _prove_ is in range. Never delete a
   runtime guard to buy coverage. A target the call can't handle is skipped and
   reported in its own result entry; a malformed call is refused up front. Both
-  are product behavior, not coverage noise (`dev/PRINCIPLES.md`, ADR-0035,
-  ADR-0042).
+  are product behavior, not coverage noise (`dev/PRINCIPLES.md`,
+  `dev/specs/tool-behavior/`).
 
 ## Tools
 

@@ -6,7 +6,7 @@
 // The clips a call names, and what the result says where one of them got no
 // update. N targets named, N entries back, in the order named: a target the
 // call couldn't carry out keeps its slot as a skip, and one whose work had
-// already happened keeps it as a normal entry with a detail (ADR-0042).
+// already happened keeps it as a normal entry with a detail.
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";

@@ -5,7 +5,7 @@
 
 // Sources run in call order, so a copy landing on a later source of the same
 // call either destroys it before its turn or changes what its turn copies. The
-// call is refused before anything is made (ADR-0035). A copy onto an earlier
+// call is refused before anything is made. A copy onto an earlier
 // source lands after its turn, so it goes ahead. Only clips, drum pads and lane
 // copies can land on something: every other copy is inserted.
 

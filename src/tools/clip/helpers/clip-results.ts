@@ -59,7 +59,7 @@ export interface ClipResult {
   /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take
-   * lane. Anything about a clip the call named belongs here (ADR-0042).
+   * lane. Anything about a clip the call named belongs here.
    */
   detail?: string;
   /**

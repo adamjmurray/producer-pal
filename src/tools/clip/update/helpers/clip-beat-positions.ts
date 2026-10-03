@@ -153,7 +153,7 @@ export function calculateBeatPositions({
 
   // A loop toggle swaps which pair plays, and Live reveals the other pair's old
   // values instead of carrying the region over. Restate the region that was
-  // playing, so `looping` changes the loop flag and nothing else (ADR-0020).
+  // playing, so `looping` changes the loop flag and nothing else.
   if (isLooping !== wasLooping) {
     startBeats ??= currentStart;
     endBeats ??= currentEnd;

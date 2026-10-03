@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // What a clip's own entry says when its update didn't go as asked. Anything
-// about a clip the call named belongs there, never in a warning (ADR-0042), so
+// about a clip the call named belongs there, never in a warning, so
 // the helpers that find out collect it here and the update loop puts it on the
 // entry they wrote.
 //

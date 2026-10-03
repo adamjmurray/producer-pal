@@ -7,6 +7,11 @@ The main arrangement lane has **no segment** — `t0` is it. `Track.take_lanes`
 excludes the main lane, so `l0` is the first take lane and the segment index is
 the Live API index like every other segment.
 
+A 1-based `l` segment was rejected: `t0/l1` would be the first lane while
+`t0/s1` is the second scene. Dropping the segment and keeping `takeLane` as a
+sibling param was rejected too: without `l`, a take-lane clip has no correct
+result path, and `update-clip` couldn't move one.
+
 `takeLane` (1-based, `0` = main) is a hidden alias mapping `N → l(N-1)` and
 `0 → no segment`. `takeLaneName` is deprecated: naming a lane is a property of
 the lane, not an address, so it belongs to the lane's own target —

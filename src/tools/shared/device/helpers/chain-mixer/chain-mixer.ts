@@ -256,7 +256,7 @@ function applyChainSend(
         : " (rack has no return chains; they can only be added in Live)";
 
     // A fact about the chain the call named, so it rides back on that chain's
-    // own entry (ADR-0042).
+    // own entry.
     refused.push(
       refusedSend(
         send.return,

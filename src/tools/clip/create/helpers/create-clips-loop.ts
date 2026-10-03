@@ -91,7 +91,7 @@ export interface CreateClipsParams {
 
 /**
  * Creates one clip per destination, in the order the call named them. A
- * destination that got no clip keeps its place as a skip entry (ADR-0042).
+ * destination that got no clip keeps its place as a skip entry.
  * @param params - All parameters for clip creation
  * @returns One entry per destination, in call order
  */

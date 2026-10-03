@@ -67,7 +67,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   options.params = validateParamEntries(options.params);
 
   // Checked for the whole call, so a per-target skip wouldn't repeat itself
-  // down the list. Refused before any target is touched (ADR-0035).
+  // down the list. Refused before any target is touched.
   for (const pitch of everyEntry(
     options.mappedPitch,
     targetCount({ ids: namedIds, path: namedPaths }),

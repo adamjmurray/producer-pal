@@ -15,9 +15,10 @@ and stops. For each (model × variant) it records whether the provider:
   `check()` in [`schema-compat-variants.ts`](./schema-compat-variants.ts).
 
 A second, narrower question was added later: **does a model fill an optional
-param it has no value for with `""` or `null`, or leave it out?** ADR-0029
-assumes it fills; ADR-0035's rule 5 would make the blank an error. The
-`unset-optionals` variant measures it, and is not in the AI SDK snapshot below.
+param it has no value for with `""` or `null`, or leave it out?** The tools drop
+a `null` and refuse a blank on a number, boolean, enum or array param, which
+only matters if clients fill blanks. The `unset-optionals` variant measures it,
+and is not in the AI SDK snapshot below.
 
 ## Two runners, one corpus
 
@@ -143,10 +144,10 @@ variants came back `ok`, including the two that break AI SDK models:
 | `object-map`            | ok     | `{"params":{"Frequency":"500",…}}`   |
 | `unset-optionals`       | ok     | `{"tempo":120}`                      |
 
-The `unset-optionals` cell is the one ADR-0035's rule 5 rests on: five optional
-params offered, one asked for, nothing blank-filled. It matches what 128 tool
-calls over 13 eval scenarios showed on the same model. **One model, one draw** —
-it says nothing about the clients most users run.
+The `unset-optionals` cell is the one the blank-refusal rule rests on: five
+optional params offered, one asked for, nothing blank-filled. It matches what
+128 tool calls over 13 eval scenarios showed on the same model. **One model, one
+draw** — it says nothing about the clients most users run.
 
 ### Bottom line
 

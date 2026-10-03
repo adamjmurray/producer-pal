@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-create-clip's multi-destination result: N destinations
  * named, N entries back, in the order named, each saying what its own
- * destination got — including a slot whose clip the call replaced (ADR-0042).
+ * destination got — including a slot whose clip the call replaced.
  * Uses: e2e-test-set (t8 is empty, session and arrangement alike)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *

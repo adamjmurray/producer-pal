@@ -159,7 +159,7 @@ describe("updateClip - duplicateLoop", () => {
 
   // start/length set the loop region, which is exactly what duplicate_loop
   // copies, so the pair reads two ways - "the region to double" or "the length
-  // to end up at" - and both look like success. Refused instead (ADR-0040).
+  // to end up at" - and both look like success. Refused instead.
   it.each([
     ["length", { length: "4bar" }, "combined with length: length sets"],
     ["start", { start: "2|1" }, "combined with start: start sets"],

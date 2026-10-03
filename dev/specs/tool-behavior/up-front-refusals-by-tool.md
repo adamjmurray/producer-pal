@@ -1,14 +1,13 @@
 # Up-front refusals, tool by tool
 
-Where each tool applies the refusal rules from
-[ADR-0035](../decisions/0035-malformed-calls-are-refused-up-front.md). This list
+Where each tool applies the [refusal rules](README.md#refusals). This list
 follows the code; when it disagrees with a tool, the tool wins.
 
-- **Rule 1's fourth bullet is where warn-and-skip had spread furthest.** Six
-  conditions moved: the send pair in `updateTrack`/`updateDevice`, the tempo
-  range in `updateScene`/`createScene`/`updateLiveSet`, `quantizePitch` in
-  `updateClip`, `mappedPitch` in `updateDevice`, and the three malformed
-  `params` entries in `updateDevice`/`createDevice`.
+- **Whole-call params are checked before any target is touched.** The send pair
+  in `updateTrack`/`updateDevice`, the tempo range in
+  `updateScene`/`createScene`/`updateLiveSet`, `quantizePitch` in `updateClip`,
+  `mappedPitch` in `updateDevice`, and the three malformed `params` entries in
+  `updateDevice`/`createDevice`.
 - **`updateTrack`, `updateScene` and `updateClip` refuse a call naming no
   target.** They warned and returned `[]`, which reads as "there was nothing to
   do" — every other tool already threw. They had applied their own warn-and-skip
@@ -26,8 +25,8 @@ follows the code; when it disagrees with a tool, the tool wins.
 
 ## A param the action doesn't read
 
-[ADR-0057](../decisions/0057-a-param-only-another-action-reads-is-refused.md).
-The tables sit next to each tool's code and feed one helper,
+The rule is in [Tool Behavior](README.md#a-param-only-another-action-reads). The
+tables sit next to each tool's code and feed one helper,
 `refuseParamsOutsideAction`.
 
 - **`ppal-library`** (`library-action-params.ts`): `similarTo` is for

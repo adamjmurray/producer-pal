@@ -57,7 +57,7 @@ import {
  * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction> (end = start + length), one per clip
  * @param args.firstStart - Bar|beat position for initial playback start, one per clip
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles. Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
  * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: <count>bar, n<fraction>, or <count>bar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
@@ -113,7 +113,7 @@ async function updateClipOnLanes(
   refuseUnreadableCall(args, targets.named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
   // Every envelope line is read before the first clip is touched: a batch of
-  // them half written can't be cleaned up (ADR-0035).
+  // them half written can't be cleaned up.
   const envelopeLines: EnvelopeLine[] | undefined =
     args.envelopes == null ? undefined : parseEnvelopeLines(args.envelopes);
 

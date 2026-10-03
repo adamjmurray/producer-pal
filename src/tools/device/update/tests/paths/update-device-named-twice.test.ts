@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // One object named twice is one target: the last mention writes, and each
-// earlier one says so in its own entry (ADR-0058).
+// earlier one says so in its own entry.
 
 import { describe, expect, it } from "vitest";
 import {

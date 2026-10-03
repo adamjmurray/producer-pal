@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// What one target's update has to say, for its own result entry (ADR-0042).
+// What one target's update has to say, for its own result entry.
 // The helpers that find out collect it here and the loop that wrote the entry
 // puts it on. A caller with no entry to put it on passes nothing, and the note
 // goes to the Max console instead.

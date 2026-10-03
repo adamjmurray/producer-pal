@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // A split that finishes just as the request runs out of time still changed the
-// Set, so the clips it cut keep their entries (ADR-0042).
+// Set, so the clips it cut keep their entries.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";

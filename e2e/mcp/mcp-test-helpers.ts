@@ -143,7 +143,7 @@ export function parseToolResultWithWarnings<T>(
 
 /**
  * Parse a tool result's JSON text, failing on a `reason` key at any depth:
- * every explanation on a result entry is `detail` (ADR-0050).
+ * every explanation on a result entry is `detail`.
  * @param text - The result's JSON text
  * @returns The parsed result
  */

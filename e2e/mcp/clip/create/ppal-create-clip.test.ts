@@ -370,7 +370,7 @@ describe("ppal-create-clip", () => {
     // create calls answer with another object — the Live Set (id 1). Reported
     // as created, that id aimed every follow-up call at the Live Set. So the
     // track is checked before the create. One destination, so the refusal comes
-    // back as the call's error rather than an entry (ADR-0042).
+    // back as the call's error rather than an entry.
     const midiOnAudio = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: { path: `t${AUDIO_TRACK}[61|1]`, name: "empty" },

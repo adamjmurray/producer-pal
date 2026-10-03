@@ -20,7 +20,7 @@ import {
   stopPipelineProbe,
 } from "#src/tools/shared/write-pipeline/pipeline-probe.ts";
 
-// Every write tool runs through the shared pipeline (ADR-0058), which is how
+// Every write tool runs through the shared pipeline, which is how
 // the rules it enforces reach all of them. This holds the migration to its list.
 
 /** The tools that write to the Live Set. Every other tool has to be read-only. */

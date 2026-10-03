@@ -4,7 +4,7 @@ How Producer Pal models a Drum Rack, and why. Part of
 [Specialized Devices](README.md). Live facts that came out of probing (nested
 racks, chainless pads, `pad.name`) are in
 [live-api-behavior.md](../../coding-standards/live-api-behavior.md); the path
-rules are in [object-paths](../../tools/object-paths/README.md).
+rules are in [object-paths](../../specs/tool-behavior/object-paths/README.md).
 
 ## Live's model
 

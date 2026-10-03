@@ -5,7 +5,7 @@
 
 // What an arrangement copy did to the clips already on its lane: Live
 // overwrites, trims and splits them without a word, so the copy's own entry
-// says it (ADR-0047). One ledger serves the whole call, over the call's lane
+// says it. One ledger serves the whole call, over the call's lane
 // view: a lane is read once, and after each copy only what the copy could have
 // changed is read again.
 //

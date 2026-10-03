@@ -26,7 +26,7 @@ describe("createClip - deadline exceeded", () => {
   });
 
   // Every destination the call never reached says so in its own entry, so the
-  // warning only reports how far the call got (ADR-0042).
+  // warning only reports how far the call got.
   it("refuses every destination when the deadline is already up", async () => {
     setupArrangementClipMocks();
 

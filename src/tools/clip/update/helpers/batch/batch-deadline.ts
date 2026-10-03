@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // What an update-clip batch reports when the request's deadline cuts it short:
-// every clip it didn't reach keeps an entry (ADR-0042).
+// every clip it didn't reach keeps an entry.
 
 import {
   buildClipResultObject,

@@ -276,7 +276,7 @@ const DROPPED_WHEN_BLANK = [
 /**
  * Say which of the plan's args arrived blank and were dropped.
  *
- * A blank reads as unset (ADR-0029), so the move, the position, the length or
+ * A blank reads as unset, so the move, the position, the length or
  * the split it asked for never happens — and no result entry can carry that:
  * these are one value for the whole call, not a property of any one clip. Said
  * by the spelling the caller wrote, deprecated names included.

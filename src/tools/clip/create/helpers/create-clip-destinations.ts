@@ -251,7 +251,7 @@ function splitPathDestinations(
 
 /**
  * Every destination in the order the call named it, so the result's entries
- * pair with the call position for position (ADR-0042).
+ * pair with the call position for position.
  * @param slotOrdinals - Where the call named each clip slot
  * @param arrangementOrdinals - Where the call named each arrangement clip
  * @returns One ref per destination, in call order

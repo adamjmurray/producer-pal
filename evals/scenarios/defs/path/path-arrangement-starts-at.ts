@@ -6,8 +6,8 @@
 /**
  * Scenario: `t3[5|1]` means STARTS at bar 5, not covers it.
  *
- * This is the decision ADR-0037 flags as most likely to need adjusting, and it
- * is the only way to find out. A 4-bar clip at bar 1 runs through bar 5, so a
+ * This is the path decision most likely to need adjusting, and it is the only
+ * way to find out. A 4-bar clip at bar 1 runs through bar 5, so a
  * model asked about "the clip playing at bar 3" may reach for `t3[3|1]` — which
  * names nothing, warns, and skips.
  *
@@ -30,7 +30,7 @@ const CLIP_NAME = "Long One";
 const COVERED_POSITION = /\[\s*3\|1\s*\]/;
 
 /**
- * The measurement ADR-0037 asks for: one wrong aim is fine, two is the finding.
+ * The measurement this scenario is for: one wrong aim is fine, two is the finding.
  * @param turn - Turn index to grade
  * @returns A custom assertion over every path the turn wrote
  */

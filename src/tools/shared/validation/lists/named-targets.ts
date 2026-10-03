@@ -124,7 +124,7 @@ export const REQUEST_OUT_OF_TIME = "the request ran out of time";
 
 /**
  * The detail on the skip entry of a target the deadline never reached, in one
- * wording for every tool (ADR-0042).
+ * wording for every tool.
  * @param rerunFor - What to re-run for, e.g. "clip" or "destination"
  * @param notDone - What wasn't done to it, when the entry should say, e.g.
  *   "not created"
@@ -159,7 +159,7 @@ export function isNamedAgain(detail: string | undefined): boolean {
 
 /**
  * The reason a lone target that got nothing done throws with, since there is no
- * list for its entry to hold a place in (ADR-0042).
+ * list for its entry to hold a place in.
  * @param entries - The call's result entries, in call order
  * @returns The reason, or null when the call named more than one target or did its work
  */

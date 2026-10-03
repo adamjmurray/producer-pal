@@ -6,7 +6,7 @@
 // `id` and `path` each name one source or a list of them. A list runs the
 // single-source logic once per source, in order, and concatenates — so the only
 // thing to settle here is how the destinations are shared out. One source takes
-// any number; several take one each, in order (ADR-0031).
+// any number; several take one each, in order.
 
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
@@ -317,8 +317,7 @@ function positionShares(
 
 /**
  * A destination list's share per source: one each, in order. Refused before
- * the first copy otherwise, which the caller would have to undo by hand
- * (ADR-0035).
+ * the first copy otherwise, which the caller would have to undo by hand.
  * @param entries - The destination param's entries, in call order
  * @param param - The param's name, for an error message
  * @param sources - What named the sources, and how many there are
@@ -348,7 +347,7 @@ function destinationShares(
  *
  * A path that names nothing refuses the call. `delete` reports such a miss as
  * undeleted, but a duplicate leaves copies behind for the caller to clean up by
- * hand, so nothing starts until every source is known (ADR-0035).
+ * hand, so nothing starts until every source is known.
  * @param type - Object type to duplicate, which says how a path resolves
  * @param id - Source id(s), comma-separated for multiple
  * @param path - Source path(s), comma-separated for multiple

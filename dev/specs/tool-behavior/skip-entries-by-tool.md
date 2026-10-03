@@ -1,7 +1,7 @@
 # Skip entries, tool by tool
 
-How each write tool applies the skip-entry rule from
-[ADR-0042](../decisions/0042-a-skipped-target-keeps-its-slot.md): one entry per
+How each write tool applies the entry rules in
+[Tool Behavior](README.md#skips-no-ops-and-replaced-targets): one entry per
 target named, `ok: false` plus a `detail` for a skip, and a `detail` alone for a
 target that landed incomplete. This list follows the code; when it disagrees
 with a tool, the tool wins.
@@ -31,20 +31,21 @@ with a tool, the tool wins.
   step that writes under a new id — a move re-creates the clip — hands what it
   reports back to the id the caller named. One target never answers with no
   entries: a split whose pieces the rescan can't find says so too. A clip
-  another clip in the same call was moved onto keeps a normal entry rather than
-  a skip — `deleted: true` and the address it had: nothing the call asked of it
-  landed, but that it is gone is news no skip can carry. When several clips name
-  one slot, the last one moves there and the others stay put, each with a detail
-  naming that clip, or a skip when the move was all it was asked.
+  another clip in the same call was moved onto is skipped unwritten, with a
+  `detail` naming the later clip and no `ok`
+  ([replaced targets](README.md#a-later-target-replaces-an-earlier-one)). When
+  several clips name one slot, the last one moves there and the others stay put,
+  each with a detail naming that clip, or a skip when the move was all it was
+  asked.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer
   every clip slot first and the arrangement after. A destination that got no
-  clip holds its slot as a skip: a clip slot a later destination names again
-  (the last one wins), a track that won't take the clip, a create Live declined,
-  a take lane past the cap, one the deadline never reached. A `firstStart` the
-  call can't use — it only lands alongside `looping: true` — is a `detail` on
-  that clip's entry rather than a warning, and no `ok`: the clip exists.
+  clip holds its slot as a skip: a track that won't take the clip, a create Live
+  declined, a take lane past the cap, one the deadline never reached. A
+  `firstStart` the call can't use — it only lands alongside `looping: true` — is
+  a `detail` on that clip's entry rather than a warning, and no `ok`: the clip
+  exists.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry

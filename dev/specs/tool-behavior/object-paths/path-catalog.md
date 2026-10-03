@@ -44,37 +44,60 @@ Depth changes nothing: a pad on a Drum Rack nested in another rack's pad
 up to the index named, capped at `MAX_TAKE_LANES`.
 
 A `+` is accepted only by the tool that creates that kind of object: `t+`, `rt+`
-and `s+` by the create tools, `l+` by `ppal-update-track`, because a take lane
-is an aspect of its track rather than an object a tool makes on its own
-([ADR-0043](../../decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
-`c+` is the chain's, taken by the tools that make chains: `ppal-create-device`,
-`ppal-duplicate` and `ppal-update-device`
-([ADR-0045](../../decisions/0045-c-plus-appends-a-rack-chain.md)). `d+` is the
-device's, taken by those same three
-([ADR-0046](../../decisions/0046-d-plus-appends-a-device.md)). Every other path
-must name something that already exists, or an index a tool fills in up to. A
-tool that only reads or writes an existing object refuses a `+` and says which
-tool takes it.
+and `s+` by the create tools, `l+` by `ppal-update-track` (and by
+`ppal-duplicate` copying a track onto a lane), `c+` and `d+` by
+`ppal-create-device`, `ppal-duplicate` and `ppal-update-device`. Every other
+path must name something that already exists, or an index a tool fills in up to.
+A tool that only reads or writes an existing object refuses a `+` and names the
+tool that takes it. It is a rule about which tool, not about where the `+` sits
+in the path.
+
+A take lane is an aspect of its track (it can't exist apart from one, and Live
+gives it a name and nothing else), so `ppal-update-track` makes them, with
+`t2/l+`; each `l+` in a list appends its own. Putting lanes on
+`ppal-create-track` was rejected: a create tool makes standalone objects, and it
+would have to tell "make a track" from "make a lane on this one" out of one
+`path` list. A `takeLane` param on update-track would be an index beside the
+path grammar, for the one object the grammar can already spell, and would have
+to answer what `0` means.
 
 `t0/d+` appends a device to the track, `t0/d0/c0/d+` to that chain, and `d<n>`
-inserts at n. A bare container (`t0`, `t0/d0/c0`, `t0/d0/pC1`) appends too — it
-is what results and reads spell a container as — but `d+` is the spelling to
-teach, since it says what happens. One marker covers every device type: Live's
-`insert_device` appends within the section for the device's own type, so nothing
-has to say which.
+inserts at n. One marker covers every device type: Live's `insert_device` with
+no index appends within the section for the device's own type, so the type is
+Live's business, not the path's (`mfx+`/`inst+`/`afx+` would be three spellings
+for one behavior). A bare container (`t0`, `t0/d0/c0`, `t0/d0/pC1`) appends too.
+It is what results and reads spell a container as, so refusing it would break a
+caller pasting a path back, but `d+` is the spelling to teach because it says
+what happens.
+
+**An index past the end of a container is refused**, by every tool that places a
+device, in the same words
+(`"t0/d9" is past the end of a container holding 2 devices`): `ok: false` on
+that path's entry, a throw when it was the only path. `d+` is how to append.
+Appending anyway would guess what the caller meant, and Live itself silently
+drops such an index in a move. The check runs before anything is made, so a
+browser device is never loaded for a refused path and no chain or pad layer is
+created first: a chain that doesn't exist yet holds no devices, so only index 0
+or `d+` is in range there. A path earlier in the list that creates a chain
+counts toward later indices; a refused path inserts nothing. Index 0 on an empty
+chain is an append, since it is the end.
 
 Live's `insert_chain` only ever appends, so neither `c+` nor `c<n>` can mean
 "insert at n": `c<n>` fills in the chains up to n, and `c+` adds one past the
-last. Rack return chains can't be created at all. A `c+` on a Drum Rack is
-refused and points at the pad spelling — a new, empty chain has no note, so it
-would land on the catch-all pad and sound on every note no pad claims. On a pad
-(`t0/d0/pC1/c+`) it appends a layer, which does have a note.
+last. Rack return chains can't be created at all. A `c+` must be the last
+segment, since the chain it makes is empty.
+
+**Drum Racks.** A new chain in a Drum Rack gets `in_note` -1, the catch-all pad,
+which sounds on every note no pad claims, so `t0/d0/c+` there is refused and
+points at the pad spelling. Reporting the catch-all in the result would say
+where the chain went but not undo it. `t0/d0/pC1/c+` is accepted: a pad holds
+layered chains (`pC1/c1` addresses the second), and the pad supplies the note.
+The exception is `ppal-duplicate`, since a copy carries its source's `in_note`:
+`toPath: "t0/d0/c+"` into a Drum Rack lands on the source's own pad, the same
+place the bare rack path names.
 
 ## Naming a return in a send
 
-`sendReturn` and `sends[].return` take a return track's id, exact name, path
-(`rt0`) or letter prefix, tried in that order; first hit wins. Rack return
-chains take the same, minus the path. When a value also fits a second return (an
-id that is another return's name, or a name that is a path to another return),
-the winner is used and the send's own entry says so in `detail`
-([ADR-0056](../../decisions/0056-a-send-return-resolves-id-name-path-prefix.md)).
+`sendReturn` and `sends[].return` take an id, name, path (`rt0`) or letter
+prefix. The order and clash rules are in
+[Sends](../clips-playback-and-sends.md#sends).

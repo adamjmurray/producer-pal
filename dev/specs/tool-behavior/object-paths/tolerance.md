@@ -23,7 +23,7 @@ Four tiers, in order of preference.
    and `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
    migration: models reach for them unprompted, and catching the guess beats a
    round trip. See
-   [hidden-param.ts](../../../src/tools/shared/tool-framework/hidden-param.ts).
+   [hidden-param.ts](../../../../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
    bare `"0"` is honored only where the tool has exactly one legal

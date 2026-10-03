@@ -6,7 +6,7 @@
 // Finding the clip a complete arrangement path names. `t0[5|1]` means the clip
 // COVERING 5|1 on that lane, so dragging a clip in Live doesn't strand a path
 // that used to reach it. A clip ending exactly at 5|1 loses a tie to one
-// starting there (ADR-0037).
+// starting there.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";

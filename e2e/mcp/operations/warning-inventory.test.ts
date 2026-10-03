@@ -6,7 +6,7 @@
 /**
  * E2E inventory of the `WARNING:` blocks the tools still raise, and of the
  * calls that raise none. Anything about one target belongs on that target's own
- * entry (ADR-0042), so this suite pins down what is left: a per-target warning
+ * entry, so this suite pins down what is left: a per-target warning
  * slipping back in fails here instead of going unnoticed.
  *
  * Each probe asserts the exact warnings, in order — not "contains", and not

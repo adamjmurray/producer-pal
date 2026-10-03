@@ -20,7 +20,7 @@ describe("updateClip - blank and empty target params", () => {
   });
 
   // The wording truth table is target-lists.test.ts; these pin WHEN update-clip
-  // says it. A blank is an unset param (ADR-0029), so the path carries the call
+  // says it. A blank is an unset param, so the path carries the call
   // — but nothing in the result would say the id the caller sent was dropped.
   it("warns when a blank id is dropped and path carries the call", async () => {
     setupMidiClipMock(mocks.clip456);

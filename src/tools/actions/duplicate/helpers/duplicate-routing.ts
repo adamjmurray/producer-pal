@@ -5,7 +5,7 @@
 
 // Routing a new track back to the one it was copied from. Everything this
 // changes is about the copy and its source, so it goes on the copy's own entry
-// rather than warning the whole call (ADR-0042).
+// rather than warning the whole call.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {

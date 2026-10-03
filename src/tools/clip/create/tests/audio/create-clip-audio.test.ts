@@ -203,7 +203,7 @@ describe("createClip - audio clips", () => {
     });
 
     // A lone destination that got no clip throws, since there is no list for
-    // its entry to hold a place in (ADR-0042).
+    // its entry to hold a place in.
     it("should throw when the scene index exceeds the maximum", async () => {
       registerLiveSetAndTrack(AUDIO_TRACK);
 

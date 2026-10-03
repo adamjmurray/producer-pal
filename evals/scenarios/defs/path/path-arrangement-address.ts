@@ -8,7 +8,7 @@
  *
  * Creating an arrangement clip returns `path: "t3[1|1]"` alongside its id, and
  * both spellings reach the clip — pasting the path straight back into
- * update-clip renames it, which is the round trip ADR-0037 exists to close.
+ * update-clip renames it, which is the round trip arrangement paths exist to close.
  * This grades the rename landing, whichever spelling the model reaches for.
  */
 

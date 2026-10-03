@@ -106,7 +106,7 @@ describe("arrangementClipAtPosition", () => {
   });
 
   // A path is an address, not a "starts at": a clip running from bar 3 through
-  // bar 6 is the clip at 5|1 (ADR-0037).
+  // bar 6 is the clip at 5|1.
   it("finds a clip that only spans the position, not starts there", () => {
     registerMockObject("clip_long", {
       path: livePath.track(0).arrangementClip(0),

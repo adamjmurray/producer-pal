@@ -208,7 +208,7 @@ export function liveApi(
   _context: Partial<ToolContext> = {},
 ): LiveApiResult {
   // Every operation is checked before any runs, so a malformed one refuses the
-  // call with nothing done (ADR-0035).
+  // call with nothing done.
   validateOperations(operations);
 
   const defaultPath = "live_set";

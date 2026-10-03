@@ -19,7 +19,7 @@ import { type ProcessSingleClipUpdateParams } from "./process-single-clip-update
  *
  * Runs BEFORE duplicateLoop (see the caller). start/length can't reach here
  * alongside it — they pick what gets doubled, so the combination is refused up
- * front (ADR-0040) — but firstStart can, and it sets the playback marker
+ * front — but firstStart can, and it sets the playback marker
  * without moving the region.
  *
  * @param params - The full single-clip update params
