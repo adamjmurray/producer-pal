@@ -49,21 +49,21 @@ The theme is that a result now says _where_ its object is, once, in a `path` you
 can pass straight back into the next call, instead of scattering `trackIndex`,
 `sceneIndex`, `deviceIndex` and `arrangementStart` across the response.
 
-| Tool                                            | Change                                                         | What to do                                                                                           |
-| ----------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `ppal-read-live-set`                            | `masterTrack` → `mainTrack`                                    | rename the key you read                                                                              |
-| read-live-set, read-track, select               | `type` is gone from return tracks and the main track           | read `path` (`rt0`, `mt`); `type` is now only `midi`/`audio`, on regular tracks                      |
-| create-track, read-track, read-live-set, select | `trackIndex`, `returnTrackIndex` removed                       | parse `path` (`t3`, `rt0`)                                                                           |
-| create-scene, read-scene, read-live-set         | `sceneIndex` removed                                           | parse `path` (`s2`)                                                                                  |
-| create-device                                   | `deviceIndex` removed                                          | parse `path` (`t1/d2`)                                                                               |
-| every clip result                               | `arrangementStart` removed                                     | the clip's `path` carries it: `t0[5\|1]`                                                             |
-| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on the key: `deletedPath` means removed, `path` means still there                             |
-| `ppal-playback`                                 | `currentTime` removed                                          | it was never the playhead; read `startTime` for where the next play begins                           |
-| `ppal-playback`                                 | `arrangementLoop: {start, end}` → `loop`/`loopStart`/`loopEnd` | read the three flat fields                                                                           |
-| `ppal-playback`                                 | `sceneIndex`, `sceneName` → `scene: {id, path, name}`          | read `scene.path`, an address you can spend; 2.4 drops `name` (see below)                            |
-| `ppal-duplicate`                                | a buried copy has no `id`                                      | `{path, overwritten: true}` marked a copy this call destroyed; 2.4 reads `deleted: true` (see below) |
-| `ppal-duplicate`                                | `name` removed from scene→arrangement clip entries             | it only echoed your own argument; entries are `{id, path}`                                           |
-| update-device, create-device                    | a device inside a drum pad reports `p<pitch>/c<n>`, not `c<n>` | don't rebuild rack-relative chain paths from a write result                                          |
+| Tool                                            | Change                                                         | What to do                                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `ppal-read-live-set`                            | `masterTrack` → `mainTrack`                                    | rename the key you read                                                                        |
+| read-live-set, read-track, select               | `type` is gone from return tracks and the main track           | read `path` (`rt0`, `mt`); `type` is now only `midi`/`audio`, on regular tracks                |
+| create-track, read-track, read-live-set, select | `trackIndex`, `returnTrackIndex` removed                       | parse `path` (`t3`, `rt0`)                                                                     |
+| create-scene, read-scene, read-live-set         | `sceneIndex` removed                                           | parse `path` (`s2`)                                                                            |
+| create-device                                   | `deviceIndex` removed                                          | parse `path` (`t1/d2`)                                                                         |
+| every clip result                               | `arrangementStart` removed                                     | the clip's `path` carries it: `t0[5\|1]`                                                       |
+| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on the key: `deletedPath` means removed, `path` means still there                       |
+| `ppal-playback`                                 | `currentTime` removed                                          | it was never the playhead; read `startTime` for where the next play begins                     |
+| `ppal-playback`                                 | `arrangementLoop: {start, end}` → `loop`/`loopStart`/`loopEnd` | read the three flat fields                                                                     |
+| `ppal-playback`                                 | `sceneIndex`, `sceneName` → `scene: {id, path, name}`          | read `scene.path`, an address you can spend; 2.4 drops `name` (see below)                      |
+| `ppal-duplicate`                                | a buried copy has no `id`                                      | `{path, overwritten: true}` marked a copy this call destroyed; 2.4 never writes it (see below) |
+| `ppal-duplicate`                                | `name` removed from scene→arrangement clip entries             | it only echoed your own argument; entries are `{id, path}`                                     |
+| update-device, create-device                    | a device inside a drum pad reports `p<pitch>/c<n>`, not `c<n>` | don't rebuild rack-relative chain paths from a write result                                    |
 
 `type` is the subtle one. It used to answer two questions (which signal a track
 carries, and what role it plays) and now answers only the first. A script
@@ -146,12 +146,12 @@ routing params, `sendReturn` and `mappedPitch`. Write a comma inside a value as
 `\,` (`"Kick\, Hard.wav"`). `\,` now reads as a plain comma even with one
 target; 2.3 kept the backslash.
 
-**Naming a target twice acts on it once, at the last mention.** `ppal-delete`
-and `ppal-update-live-set` now work like `ppal-update-clip` and `ppal-playback`:
-the earlier mention's entry says `named again as "t8/s0" later in this call`.
-2.3 used the first mention. Likewise, when `params` entries reach the same
-device param, only the last is written, and the earlier ones come back
-`ok: false`.
+**Naming a target twice acts on it once, at the last mention.** `ppal-delete`,
+`ppal-update-live-set` and `ppal-create-clip` (a slot or arrangement spot named
+again) now work like `ppal-update-clip` and `ppal-playback`: the earlier
+mention's entry says `named again as "t8/s0" later in this call`. 2.3 used the
+first mention. Likewise, when `params` entries reach the same device param, only
+the last is written, and the earlier ones come back `ok: false`.
 
 **`ppal-select` switches the view.** Selecting a clip, clip slot or arrangement
 position shows Session or Arrangement to match, unless you pass `view`.
@@ -235,15 +235,32 @@ left as a warning is only what no entry can carry:
 `withoutClips/withoutDevices ignored: routeToSource always copies without clips and devices`
 (one line for the pair, naming only what you sent).
 
+**`ppal-duplicate` skips a source that isn't there, and refuses what it used to
+ignore.** A source whose id or path names nothing used to refuse the whole call
+before any copy was made. Now it holds its slot as a skip
+(`{id or path, ok: false, detail}`, one per copy it was to make) and the other
+sources still copy. A skip for a clip, device, chain or drum pad, or for a scene
+copied to an arrangement position, is named by its destination path (`t1[5|1]`,
+`t2/d0`, `[5|1]`) when the call names one, not by the source. A path that can't
+be parsed still refuses the call. `count` beside a list of destinations (several
+scene positions, several take lanes) was ignored with a warning and is now
+refused, the way create-track and create-scene refuse it. A copy of a track onto
+a take lane with `count`, `withoutClips`, `withoutDevices` or `routeToSource` is
+refused too: a lane takes clips and nothing else. A track copy's entries come
+back in the order the copies sit, so the one that failed holds its own place
+instead of coming last.
+
 **`ppal-create-clip` answers per destination named.** A `path` list mixing clip
 slots and arrangement positions used to come back clip slots first and the
 arrangement after; it now comes back in the order you named them, and `name` and
-`color` pair with that place. A destination that got no clip (a slot named again
-later in the call, a track that won't take the clip, a create Live declined, a
-take lane past the cap, one the request ran out of time for) used to drop out of
-the array with a warning, and now holds its slot as `{path, ok: false, detail}`.
-Where that was the only destination you named, the reason comes back as the
-call's error instead of an empty array.
+`color` pair with that place. A destination that got no clip (a track that won't
+take the clip, a create Live declined, a take lane past the cap, one the request
+ran out of time for) used to drop out of the array with a warning, and now holds
+its slot as `{path, ok: false, detail}`. A slot or arrangement spot named again
+later in the call is not a failure: its entry is
+`{path, detail: 'named again as "t8/s0" later in this call'}` with no `ok`, and
+only the last mention is written. Where that was the only destination you named,
+the reason comes back as the call's error instead of an empty array.
 
 It says the rest on the clip's entry too: a `firstStart` sent without
 `looping: true` used to warn (and, with `looping` left out, was dropped without
@@ -338,15 +355,17 @@ names what Live objected to on its destination entry, after the
 
 **`ppal-playback`'s clip actions answer per target named.** `play-session-clips`
 and `stop-session-clips` used to report only `playing`, and quietly warned past
-an id they couldn't use. They now carry a `clips` array with one entry per `id`
-or `path` you named, in order: `{id, path}` for a slot they acted on, and
+an id they couldn't use. They now carry a `clip` field with one entry per `id`
+or `path` you named, in order (a single target comes back unwrapped, several as
+an array): `{id, path}` for a slot they acted on, and
 `{id or path, ok: false, detail}`, spelled the way you wrote it, for one that
 named no session clip, or no clip slot. A slot you named twice (once by id, once
-by path) is still acted on once, at its last mention, and the earlier entry says
-so in a `detail`. Naming a single target that fails is now an error instead of a
-warning, and a call where every target failed reports `playing` as it found it
-rather than claiming a launch. The other actions are unchanged and have no
-`clips`.
+by path) is still acted on once, at its last mention, and the earlier entry,
+spelled the way you wrote it, says so in a `detail`. If Live throws on one slot,
+that slot gets `ok: false` with the reason and the later slots still run. Naming
+a single target that fails is now an error instead of a warning, and a call
+where every target failed reports `playing` as it found it rather than claiming
+a launch. The other actions are unchanged and have no `clip`.
 
 **A call naming one target that can't be done now throws** instead of returning
 an empty array with a warning. `ppal-update-track path="t99"` is an error, as is
@@ -423,8 +442,9 @@ the id of the locator they touched; a delete by name keeps its `count` and the
 name it matched. The `time` and `name` you sent don't come back.
 
 `operation` also answers in the words the schema publishes: `create`, `delete`
-and `rename`, not `created`, `deleted` and `renamed`. A skip still reads
-`skipped`, with `ok: false`.
+and `rename`, not `created`, `deleted` and `renamed`. A skip is
+`{id, ok: false, detail}`, or `time` or `name` in place of `id` for a locator
+you named that way, with no `operation`.
 
 A locator call that needed no work isn't a skip any more. A delete of a locator
 that isn't there answers `operation: "delete"` with
@@ -475,13 +495,14 @@ unchanged length was everything you asked of the clip, its entry is `ok: false`,
 and a lone target throws. A script matching on any of that warning text needs to
 read the entries instead.
 
-**A copy a later copy landed on reads like update-clip's.** `ppal-duplicate`
-marked one `overwritten: true`. A copy the later one covered whole is now
-`{path, deleted: true, detail}` (plus `created` when it made scenes), as
-`ppal-update-clip` reports a clip another was moved onto. One that lost only
-part of itself still exists, so its entry names the piece that is left, a new
-`id` and `path`, with a `detail` saying it was trimmed. Read `deleted` instead
-of `overwritten`.
+**A copy a later copy lands on reads like update-clip's.** `ppal-duplicate`
+marked one `overwritten: true`. A copy the later one covers whole is now left
+unwritten, as `ppal-update-clip` leaves a move another goes over:
+`{path, detail: "overwritten later in this call by <where>"}`, with no `ok`. One
+that loses only part of itself is still written first, so its entry says
+`shortened by <where> later in this call`, and names the piece that is left, a
+new `id` and `path`. Nothing is `deleted: true`. Read `detail` instead of
+`overwritten`.
 
 `ppal-select`'s result is unchanged: what it reports is the selection it made.
 
