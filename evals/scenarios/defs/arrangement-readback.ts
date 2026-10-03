@@ -21,6 +21,7 @@ const COORDINATE = /\[([^\]]*)\]$/;
 export interface TakeLane {
   /** The lane's own path, e.g. "t1/l0". */
   path?: string;
+  name?: string;
   clips?: ArrangementClip[];
 }
 

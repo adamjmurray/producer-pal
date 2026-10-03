@@ -74,10 +74,15 @@ export {
   libraryTypeOneshot,
 } from "./workflow/library/library-filters.ts";
 export { librarySearchFanout } from "./workflow/library/library-search-fanout.ts";
-export { locatorNavigation } from "./workflow/locator-navigation/locator-navigation.ts";
+export { locatorDeleteByName } from "./locators/locator-delete-by-name.ts";
+export { locatorLifecycle } from "./locators/locator-lifecycle.ts";
+export { locatorNavigation } from "./locators/locator-navigation/locator-navigation.ts";
 export { liveApiEscapeHatch } from "./workflow/live-api-escape-hatch.ts";
 export { mixerLanguage } from "./workflow/mixer-language.ts";
+export { deviceAppendPaths } from "./device/device-append-paths.ts";
 export { deviceDrumKit } from "./device/device-drum-kit.ts";
+export { deviceMovePairing } from "./device/device-move-pairing.ts";
+export { deviceTypePaths } from "./device/device-type-paths.ts";
 export { deviceKitByName } from "./device/device-kit-by-name.ts";
 export { deviceLibraryPadSamples } from "./device/device-library-pad-samples.ts";
 export { drumPadForceGuard } from "./device/drum-pad-force-guard.ts";
@@ -144,6 +149,7 @@ export { partialFailureHonesty } from "./result/partial-failure-honesty.ts";
 export { writeTrustSilentResult } from "./result/write-result-trust.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
+export { takeLaneUpdate } from "./workflow/take-lane-update.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";
 export { updateLiveSet } from "./workflow/update-live-set.ts";
 export { pathInsertPosition } from "./path/path-insert-position.ts";
