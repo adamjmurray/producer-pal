@@ -91,6 +91,20 @@ describe("ppal-update-clip ignored params", () => {
     );
   });
 
+  it("refuses a call that names a clip and asks nothing of it", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s27`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, focus: false },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("nothing to update");
+  });
+
   // Nothing else was asked of the one clip named, so the reason comes back as
   // the error rather than an entry nobody can pair against a list.
   it("refuses a lone clip whose only param it can do nothing with", async () => {

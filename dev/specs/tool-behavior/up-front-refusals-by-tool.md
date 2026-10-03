@@ -17,11 +17,15 @@ follows the code; when it disagrees with a tool, the tool wins.
   so `refuseNoWrite` leaves that part out). It answered with the Set's id, which
   reads as if something had been written. A blank `scale` counts as sent, since
   an empty string disables the scale.
-- **`updateTrack` and `updateScene` refuse a call that asks nothing of their
-  targets** (an `id` or `path` and no other param). Answering with the targets
-  read as if something had been written. Any other param counts, `focus`
-  included, and so does a take lane path that adds a lane (`t0/l+`).
-  `refuseNoWrite` builds the message, so every update tool can share it:
+- **`updateTrack`, `updateScene`, `updateClip` and `updateDevice` refuse a call
+  that asks nothing of their targets** (an `id` or `path` and no other param).
+  Answering with the targets read as if something had been written. Any other
+  param counts, `focus` included, and so does a take lane path that adds a lane
+  (`t0/l+`). Switches set to false (`focus`, `wrapInRack`, `duplicateLoop`),
+  `force`, which only unlocks another write, and a blank `toPath`, `toSlot`,
+  `arrangementStart`, `arrangementLength`, `arrangementSplit` or `split` count
+  for nothing. `refuseNoWrite` builds the message, so every update tool can
+  share it:
   `nothing to update: id and path only name the scenes; also send a param to change`.
 - **`updateTrack` and `updateScene` refuse a `path` entry they can't parse**
   before anything is written; an entry that parses but names no track or scene

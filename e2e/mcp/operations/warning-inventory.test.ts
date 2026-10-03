@@ -144,7 +144,11 @@ describe("warnings the tools still raise", () => {
     ).toStrictEqual(["WARNING: ignored unexpected argument(s): bogusArg"]);
 
     expect(
-      await warningsFrom("ppal-update-clip", { path: "t0/s0", toPath: "   " }),
+      await warningsFrom("ppal-update-clip", {
+        path: "t0/s0",
+        name: "Blank Destination",
+        toPath: "   ",
+      }),
     ).toStrictEqual(["WARNING: blank toPath ignored: leave it out instead"]);
   });
 });

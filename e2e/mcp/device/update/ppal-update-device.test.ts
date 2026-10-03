@@ -463,6 +463,18 @@ describe("ppal-update-device", () => {
     expect(written.warnings).toStrictEqual([]);
   });
 
+  it("refuses a call that names a device and asks nothing of it", async () => {
+    const path = await createTestDeviceAt(ctx.client!, "Compressor", "t0");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path, force: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("nothing to update");
+  });
+
   it("names path, not id, when a path-only call's lists disagree", async () => {
     const pathA = await createTestDeviceAt(ctx.client!, "Compressor", "t0");
     const pathB = await createTestDeviceAt(ctx.client!, "Compressor", "t1");

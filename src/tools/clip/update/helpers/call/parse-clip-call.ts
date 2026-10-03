@@ -20,6 +20,7 @@ import {
   type PairedLabels,
   pairLabels,
 } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   type NamedTarget,
@@ -89,7 +90,8 @@ export interface ClipCall {
  * two to each other would refuse a call naming two of each.
  * @param args - The update-clip args
  * @returns The call
- * @throws Error when the call names no clip, or its params can't go together
+ * @throws Error when the call names no clip, asks nothing of the clips it
+ *   names, or its params can't go together
  */
 export function parseClipCall(args: ClipUpdateArgs): ClipCall {
   const { id, ids, path, paths } = args;
@@ -104,6 +106,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
     throw new Error("id or path is required");
   }
 
+  refuseNoWrite(args, "clips");
   refuseUnreadableCall(args, named.length);
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 

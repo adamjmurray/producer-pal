@@ -237,7 +237,7 @@ describe("updateDevice — pairing toPath with the targets", () => {
   });
 
   it("reads a blank toPath as no move at all", () => {
-    const result = updateDevice({ path: "t0/d0,t0/d1", toPath: "" });
+    const result = updateDevice({ path: "t0/d0,t0/d1", toPath: "", name: "X" });
 
     expect(result).toStrictEqual([
       { id: "src-0", path: "t0/d0" },

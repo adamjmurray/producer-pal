@@ -10,6 +10,7 @@ import {
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import {
   type TargetParams,
   targetCount,
@@ -41,7 +42,8 @@ const WRAP_ALLOWED_ARGS = new Set(["name", "force"]);
  * anything is touched.
  * @param args - The update-device args
  * @returns The call, with its target params folded
- * @throws Error when the call names no target, or its args can't go together
+ * @throws Error when the call names no target, asks nothing of the targets it
+ *   names, or its args can't go together
  */
 export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   const { id, ids, path, paths, toPath, wrapInRack, focus } = args;
@@ -55,6 +57,8 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   if (namedIds == null && namedPaths == null) {
     throw new Error("id or path is required");
   }
+
+  refuseNoWrite(args, "targets");
 
   // No toPath here: each target takes the destination at its own position.
   const options = updateOptionsOf(args);

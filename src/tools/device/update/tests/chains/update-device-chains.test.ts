@@ -222,7 +222,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should not warn when params is an empty array on a Chain", () => {
-      const result = updateDevice({ id: "456", params: [] });
+      const result = updateDevice({ id: "456", params: [], name: "A" });
 
       expect(capturedWarnings()).not.toContain(
         "'params' not applicable to a chain id 456",

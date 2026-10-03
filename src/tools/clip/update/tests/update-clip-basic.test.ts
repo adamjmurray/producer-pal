@@ -102,9 +102,9 @@ describe("updateClip - Basic operations", () => {
   it("throws when the one path it names holds no clip", async () => {
     mockNonExistentObjects();
 
-    await expect(updateClip({ id: "   ", path: "t9/s9" })).rejects.toThrow(
-      'no clip at path "t9/s9"',
-    );
+    await expect(
+      updateClip({ id: "   ", path: "t9/s9", name: "A" }),
+    ).rejects.toThrow('no clip at path "t9/s9"');
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -134,7 +134,7 @@ describe("updateClip - Basic operations", () => {
   it("treats a whitespace-only whole-call arg as blank", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ id: "123", arrangementStart: "   " });
+    await updateClip({ id: "123", arrangementStart: "   ", name: "A" });
 
     expect(capturedWarnings()).toStrictEqual([
       "blank arrangementStart ignored: leave it out instead",
@@ -543,7 +543,11 @@ describe("updateClip - Basic operations", () => {
     setupToSlotMocks();
 
     // The word, written out by a model that had no destination to name.
-    const result = await updateClip({ id: "123", toPath: "null" });
+    const result = await updateClip({
+      id: "123",
+      toPath: "null",
+      name: "A",
+    });
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('toPath "null" names nothing'),
@@ -560,7 +564,7 @@ describe("updateClip - Basic operations", () => {
     const toSlot = toolDefUpdateClip.toolOptions.inputSchema.toSlot?.parse(
       null,
     ) as string;
-    const result = await updateClip({ id: "123", toSlot });
+    const result = await updateClip({ id: "123", toSlot, name: "A" });
 
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("clip not moved"),
@@ -572,7 +576,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({ id: "123", toSlot: "" });
+    const result = await updateClip({ id: "123", toSlot: "", name: "A" });
 
     expect(result).not.toHaveProperty("slot");
   });
@@ -641,7 +645,7 @@ describe("updateClip - Basic operations", () => {
         .spyOn(selectModule, "select")
         .mockReturnValue({} as never);
 
-      await updateClip({ id: "123" });
+      await updateClip({ id: "123", name: "A" });
 
       // focus is falsy so the whole guard must be false (kills forced-true).
       expect(selectSpy).not.toHaveBeenCalled();

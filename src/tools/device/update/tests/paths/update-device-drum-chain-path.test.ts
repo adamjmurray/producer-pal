@@ -198,7 +198,7 @@ describe("updateDevice — drum chain path spelling", () => {
     ).toStrictEqual({ id: "plain-dev", path: "t0/d0/pC1/c1/d0" });
 
     // The device it displaced answers with the index it shifted to.
-    expect(updateDevice({ id: "dev-2" })).toStrictEqual({
+    expect(updateDevice({ id: "dev-2", focus: true })).toStrictEqual({
       id: "dev-2",
       path: "t0/d0/pC1/c1/d1",
     });

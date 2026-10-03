@@ -117,12 +117,8 @@ describe("updateDevice", () => {
   });
 
   it("should not call set when no properties provided", () => {
-    const result = updateDevice({
-      id: "123",
-    });
-
+    expect(() => updateDevice({ id: "123" })).toThrow("nothing to update");
     expect(device123.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   describe("params - numeric values", () => {

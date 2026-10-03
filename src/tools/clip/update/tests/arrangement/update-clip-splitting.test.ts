@@ -114,7 +114,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    await updateClip({ id: clipId, arrangementSplit: "" }, {});
+    await updateClip({ id: clipId, arrangementSplit: "", name: "A" }, {});
 
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
