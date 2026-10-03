@@ -105,7 +105,7 @@ describe("duplicate take lane to a main lane", () => {
     expect(result[0]?.clips.map((clip) => clip.path)).toStrictEqual([
       "t1[1|1]",
     ]);
-    expect(result[1]?.created).toBe(true);
+    expect(result[1]?.created).toBe("l0");
     expect(result[1]?.clips.map((clip) => clip.path)).toStrictEqual([
       "t1/l0[3|1]",
     ]);

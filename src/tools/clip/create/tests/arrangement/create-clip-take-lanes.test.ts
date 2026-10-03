@@ -26,7 +26,6 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
-import { createTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
@@ -533,68 +532,5 @@ describe("createClip take lane paths", () => {
     });
 
     expectTakeLaneMidiClip(1, 0);
-  });
-});
-
-describe("createTakeLanes (unit)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("resolves a lane per destination and reports it as a path", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const lanes = createTakeLanes(null, [{ trackIndex: 0, takeLane: 0 }]);
-
-    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    // Which lane a clip landed on rides on that clip's entry, not a warning.
-    expect(consoleMock.warn).not.toHaveBeenCalled();
-  });
-
-  // One lane named twice keys the same, so both its positions land on the one
-  // lane instead of resolving it twice.
-  it("resolves one lane per destination, not per position", () => {
-    const track0 = registerTakeLaneTrack({ initialLanes: 0 });
-    const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
-
-    const lanes = createTakeLanes(null, [
-      { trackIndex: 0, takeLane: 0 },
-      { trackIndex: 1, takeLane: 0 },
-      { trackIndex: 0, takeLane: 0 },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
-    // The keys alone can't catch a lost dedup — Map.set on a key that's already
-    // there adds no key. The append count is what proves t0's second position
-    // reused the lane its first one made.
-    expect(track0.call).toHaveBeenCalledTimes(1);
-    expect(track1.call).toHaveBeenCalledTimes(1);
-  });
-
-  // The same lane written twice is one resolve, and each position lands on it.
-  it("creates one lane when the path names it twice", () => {
-    const track = registerTakeLaneTrack({ initialLanes: 0 });
-
-    const lanes = createTakeLanes(null, [
-      { trackIndex: 0, takeLane: 0 },
-      { trackIndex: 0, takeLane: 0 },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual(["t0/l0"]);
-    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-  });
-
-  // Two destinations naming different lanes on one track each get their own.
-  it("keeps distinct lanes on the same track apart", () => {
-    registerTakeLaneTrack({ initialLanes: 3 });
-
-    const lanes = createTakeLanes(null, [
-      { trackIndex: 0, takeLane: 0 },
-      { trackIndex: 0, takeLane: 2 },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
-    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    expect(lanes.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
   });
 });

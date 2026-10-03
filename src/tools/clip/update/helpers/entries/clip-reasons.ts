@@ -32,6 +32,8 @@ export interface ClipReasons {
   ignoredParams: Map<string, Set<string>>;
   /** The color a clip ended up with, when it isn't the one asked for. */
   colors: Map<string, string>;
+  /** The take lanes a clip's move made on the way ("l1-l3"), and their track. */
+  created: Map<string, { lanes: string; trackIndex: number }>;
   /**
    * Where the target being written says what has landed, so a throw later in
    * its update keeps the entry for what exists by then. Set per target.
@@ -53,6 +55,7 @@ export function newClipReasons(): ClipReasons {
     landed: new Set(),
     ignoredParams: new Map(),
     colors: new Map(),
+    created: new Map(),
   };
 }
 
@@ -69,6 +72,26 @@ export function noteLanded(
   partial?: Record<string, unknown>,
 ): void {
   reasons.journal?.(phrase, partial);
+}
+
+/**
+ * Say that a clip's move made take lanes. Lanes can't be deleted, so they are
+ * reported whatever the move then does, and the clip's entry stays a real one
+ * even when the move itself is refused.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param created - The lanes made ("l1-l3")
+ * @param trackIndex - The track they are on
+ */
+export function noteTakeLanesMade(
+  reasons: ClipReasons,
+  clipId: string,
+  created: string,
+  trackIndex: number,
+): void {
+  reasons.created.set(clipId, { lanes: created, trackIndex });
+  markClipLanded(reasons, clipId);
+  noteLanded(reasons, `take lane ${created} made`, { id: clipId, created });
 }
 
 /**
@@ -260,6 +283,13 @@ export function moveClipReasons(
     reasons.colors.delete(fromId);
   }
 
+  const created = reasons.created.get(fromId);
+
+  if (created != null) {
+    reasons.created.set(toId, created);
+    reasons.created.delete(fromId);
+  }
+
   // `landed` needs no move: the loop marks it against the clip the caller named.
   if (reasons.refused.delete(fromId)) {
     reasons.refused.add(toId);
@@ -287,5 +317,21 @@ export function reportClipReasons(
 
   for (const reason of reasons.said.get(clipId) ?? []) {
     appendDetail(entry, reason);
+  }
+
+  const made = reasons.created.get(clipId);
+
+  if (made != null) {
+    entry.created = made.lanes;
+
+    // A move that didn't happen leaves the clip's own path on the entry, which
+    // would read as lanes on that track. A path into the lanes' own track
+    // already says where they are, so only the other case gets the words.
+    if (!(entry.path ?? "").startsWith(`t${made.trackIndex}/l`)) {
+      appendDetail(
+        entry,
+        `take ${made.lanes.includes("-") ? "lanes" : "lane"} ${made.lanes} made on t${made.trackIndex}`,
+      );
+    }
   }
 }

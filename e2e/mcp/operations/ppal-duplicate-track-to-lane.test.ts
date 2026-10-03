@@ -45,7 +45,7 @@ const GROUP_TRACK = 9;
 interface LaneCopyResult {
   id: string;
   path: string;
-  created?: true;
+  created?: string;
   clips: Array<{
     id?: string;
     path?: string;
@@ -148,7 +148,7 @@ async function expectBothClipsOnNewLane(
   sourceNotes: string,
 ): Promise<void> {
   expect(result.path).toBe(`${DESTINATION}/l0`);
-  expect(result.created).toBe(true);
+  expect(result.created).toBe("l0");
   expect(result.clips.map((clip) => clip.path)).toStrictEqual([
     `${DESTINATION}/l0[1|1]`,
     `${DESTINATION}/l0[5|1]`,
@@ -241,7 +241,7 @@ describe("ppal-duplicate track to a take lane", () => {
 
     // l+ appends: the destination had no lanes, so the copy made l0.
     expect(result[0]!.path).toBe(`${DESTINATION}/l0`);
-    expect(result[0]!.created).toBe(true);
+    expect(result[0]!.created).toBe("l0");
     expect(result[1]).toStrictEqual({
       path: `t${GROUP_TRACK}/l0`,
       ok: false,

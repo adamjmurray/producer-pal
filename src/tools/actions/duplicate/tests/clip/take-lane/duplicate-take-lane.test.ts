@@ -116,6 +116,7 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
+      created: "l0",
       detail:
         "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
     });
@@ -396,6 +397,7 @@ describe("duplicate take lane", () => {
 
     expect(result).toStrictEqual({
       path: "t0/l0[1|1]",
+      created: "l0",
       detail:
         "the take-lane copy failed: Live created no clip at t0/l0[1|1]; " +
         "already changed: take lane t0/l0 made",
@@ -699,6 +701,8 @@ describe("duplicate take lane", () => {
       {
         id: expect.any(String),
         path: "t0/l0[1|1]",
+        // Only the copy that reached the lane first says it made it.
+        created: "l0",
         detail:
           "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
       },
@@ -748,6 +752,7 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual({
       id: expect.stringMatching(/^tl_clip_\d+$/),
       path: "t0/l1[5|1]",
+      created: "l1",
       detail:
         "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
     });

@@ -18,7 +18,7 @@ export const CLIPS_ONLY =
 export interface LaneCopyEntry {
   id: string;
   path: string;
-  created?: true;
+  created?: string;
   name?: string;
   clips: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
   detail: string;

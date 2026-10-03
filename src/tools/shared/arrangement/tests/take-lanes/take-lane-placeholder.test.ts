@@ -9,8 +9,8 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { emptyTakeLaneClip } from "../helpers/take-lane-placeholder.ts";
-import { takeLaneIndexOfClip } from "../helpers/take-lanes.ts";
+import { emptyTakeLaneClip } from "../../helpers/take-lane-placeholder.ts";
+import { takeLaneIndexOfClip } from "../../helpers/take-lanes.ts";
 
 const CLIP_ID = "42";
 

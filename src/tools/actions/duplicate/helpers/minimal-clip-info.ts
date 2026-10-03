@@ -45,7 +45,8 @@ export interface MinimalClipInfo {
   transformed?: number;
   /** Notes the copy's transforms removed. */
   deletedNotes?: number;
-  /** The scenes the destination had to make ("s8-s9"), when it made any. */
+  /** The scenes ("s8-s9") or take lanes ("l1-l3") the destination had to make,
+   * when it made any. */
   created?: string;
   /** The palette color Live snapped the color to, when it isn't the one asked */
   color?: string;

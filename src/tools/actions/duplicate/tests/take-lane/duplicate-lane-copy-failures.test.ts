@@ -184,7 +184,7 @@ describe("duplicate track to take lane - nothing landed", () => {
       }),
     );
     expect(result[1]).toStrictEqual(
-      expect.objectContaining({ path: "t2/l0", created: true }),
+      expect.objectContaining({ path: "t2/l0", created: "l0" }),
     );
   });
 
@@ -211,7 +211,7 @@ describe("duplicate track to take lane - nothing landed", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         path: "t1/l0",
-        created: true,
+        created: "l0",
         detail: expect.stringContaining(
           "no clip landed: the take-lane copy failed",
         ),
@@ -251,7 +251,7 @@ describe("duplicate track to take lane - a destination that throws", () => {
       detail: "Live is unhappy",
     });
     expect(result[1]).toStrictEqual(
-      expect.objectContaining({ path: "t2/l0", created: true }),
+      expect.objectContaining({ path: "t2/l0", created: "l0" }),
     );
   });
 
@@ -272,7 +272,7 @@ describe("duplicate track to take lane - a destination that throws", () => {
     // The lane can't be deleted, so the entry isn't a skip.
     expect(await copyToLanes("t1/l0")).toStrictEqual({
       path: "t1/l0",
-      created: true,
+      created: "l0",
       clips: [],
       detail:
         "the take lane was made, but Live is unhappy; no clip was copied to it",

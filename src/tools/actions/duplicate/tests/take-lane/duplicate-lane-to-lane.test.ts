@@ -43,7 +43,7 @@ describe("duplicate take lane to take lane", () => {
     });
 
     expect(result.path).toBe("t1/l0");
-    expect(result.created).toBe(true);
+    expect(result.created).toBe("l0");
     expect(result.clips.map((clip) => clip.path)).toStrictEqual([
       "t1/l0[3|1]",
       "t1/l0[7|1]",

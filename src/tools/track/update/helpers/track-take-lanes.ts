@@ -15,8 +15,8 @@ import {
   resolveTakeLane,
   takeLaneById,
   takeLaneCapacityMessage,
+  takeLanesMadeBy,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { takeLanePathEntry } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { CREATE_TRACK_ADVICE } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -110,11 +110,9 @@ export function updateTakeLane(
   const track = laneTrack(spec);
   const before = track.getChildCount("take_lanes");
   const laneIndex = spec.laneIndex ?? before;
-  const { lane } = resolveTakeLane(track, laneIndex);
   // Naming a lane past the end fills in every lane below it too, so the entry
   // says which lanes the call made, not just the one it asked for.
-  const created =
-    laneIndex >= before ? createdRange("l", before, laneIndex) : null;
+  const { lane, created } = resolveLane(track, laneIndex, landed);
 
   // A lane the call made or named still got what it could give it, so the
   // ignored params are a note on a hit. With nothing written, the target was
@@ -142,6 +140,32 @@ export function updateTakeLane(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Resolves the lane, saying what was made if Live stops partway.
+ * @param track - The track
+ * @param laneIndex - The lane to resolve
+ * @param landed - Told what has changed as it does
+ * @returns The lane, and the lanes made
+ */
+function resolveLane(
+  track: LiveAPI,
+  laneIndex: number,
+  landed: (phrase: string, partial?: Record<string, unknown>) => void,
+): ReturnType<typeof resolveTakeLane> {
+  try {
+    return resolveTakeLane(track, laneIndex);
+  } catch (error) {
+    // The throw skips the journal below, so what Live did make is said here.
+    const made = takeLanesMadeBy(error);
+
+    if (made != null) {
+      landed(`take lane ${made} made`, { created: made });
+    }
+
+    throw error;
+  }
+}
 
 /**
  * What a lane says about the params it can't use.

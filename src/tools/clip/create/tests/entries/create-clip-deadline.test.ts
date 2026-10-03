@@ -8,7 +8,10 @@ import {
   setupArrangementClipMocks,
   setupSessionMocks,
 } from "../create-clip-test-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 // Mock the loop-deadline module to control deadline behavior
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
@@ -54,6 +57,29 @@ describe("createClip - deadline exceeded", () => {
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Ran out of time"),
     );
+  });
+
+  // Lanes can't be taken back, so a destination that never runs must not make
+  // one that no entry would say.
+  it("makes no take lane for destinations it never reached", async () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    vi.mocked(isDeadlineExceeded).mockReturnValue(true);
+
+    const result = await createClip(
+      { path: "t0/l2[1|1],t0/l2[5|1]", notes: "C3 1|1" },
+      { timeoutMs: 1 },
+    );
+
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t0/l2[1|1]", ok: false }),
+      expect.objectContaining({ path: "t0/l2[5|1]", ok: false }),
+    ]);
   });
 
   it("should create partial clips before deadline exceeded", async () => {

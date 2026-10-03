@@ -52,7 +52,7 @@ describe("duplicate track to take lane", () => {
 
     expect(destination.call).toHaveBeenCalledWith("create_take_lane");
     expect(result.path).toBe("t1/l0");
-    expect(result.created).toBe(true);
+    expect(result.created).toBe("l0");
     expect(result.clips.map((clip) => clip.path)).toStrictEqual([
       "t1/l0[1|1]",
       "t1/l0[5|1]",
@@ -60,6 +60,16 @@ describe("duplicate track to take lane", () => {
     // Copying a track onto a lane leaves everything but the clips behind, and
     // this source loses nothing else.
     expect(result.detail).toBe(CLIPS_ONLY);
+  });
+
+  it("names every lane it made when the destination is past the end", async () => {
+    registerMainLaneSource([0]);
+    registerTakeLaneTrack({ trackIndex: 1 });
+
+    const result = await copyToLanes<LaneCopyEntry>({ toPath: "t1/l2" });
+
+    expect(result.path).toBe("t1/l2");
+    expect(result.created).toBe("l0-l2");
   });
 
   it("names the copies and reports what re-creating them lost", async () => {

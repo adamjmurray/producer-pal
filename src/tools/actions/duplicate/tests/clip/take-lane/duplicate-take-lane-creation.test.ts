@@ -13,25 +13,18 @@ import {
   registerArrangementSource,
   registerLiveSet,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  registerTakeLaneTrack,
+  stopMakingTakeLanesAfter,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 describe("duplicate - take lanes made on the way to a copy", () => {
   it("says which lanes were made when Live stops before the one asked for", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
-    const track = registerTakeLaneTrack({ initialLanes: 0 });
-    const create = track.methods.create_take_lane as () => unknown;
-    let made = 0;
-
     // The first lane is made, and the second is where Live gives up.
-    track.methods.create_take_lane = () => {
-      if (made++ > 0) {
-        throw new Error("Live is unhappy");
-      }
-
-      return create();
-    };
+    stopMakingTakeLanesAfter(registerTakeLaneTrack({ initialLanes: 0 }));
 
     const result = await duplicate({
       type: "clip",
@@ -41,8 +34,26 @@ describe("duplicate - take lanes made on the way to a copy", () => {
 
     expect(result).toStrictEqual({
       path: "t0/l1[1|1]",
+      created: "l0",
       detail: "Live is unhappy; already changed: take lanes made on t0",
     });
+  });
+
+  it("names every lane a copy past the end made, once", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l2[1|1],t0/l2[5|1]",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t0/l2[1|1]", created: "l0-l2" }),
+      expect.not.objectContaining({ created: expect.anything() }),
+    ]);
   });
 
   it("keeps no trace of a lane Live never made", async () => {

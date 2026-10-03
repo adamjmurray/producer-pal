@@ -8,6 +8,7 @@
 
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { type ResolvedTakeLane } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   type LandingLog,
   newLandingLog,
@@ -20,8 +21,11 @@ export interface CreateRun {
   ledger: LaneLedger;
   /** The spans the call has written to the arrangement */
   landings: LandingLog;
-  /** The take lanes the call writes to, by lane, made before the first write */
-  takeLanes: Map<string, LiveAPI>;
+  /**
+   * The take lanes the call has written to, by lane, made on first use. Each
+   * keeps the lanes it made until the first clip written to it says so.
+   */
+  takeLanes: Map<string, ResolvedTakeLane>;
 }
 
 /**

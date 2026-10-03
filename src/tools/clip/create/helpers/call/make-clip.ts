@@ -14,7 +14,12 @@ import {
   createInSessionSlot,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import { takeLaneLabel } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  resolveTakeLane,
+  type ResolvedTakeLane,
+  takeLaneLabel,
+  takeLanesMadeBy,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -37,6 +42,9 @@ export interface MadeClip {
   lane: ArrangementLane | null;
   /** The take lane object, or the track, that the clip was made on */
   laneApi: LiveAPI | null;
+  /** The take lanes made on the way to the clip's lane ("l1-l3"), when this
+   * is the first clip written to them */
+  lanesCreated?: string;
 }
 
 /**
@@ -119,12 +127,19 @@ function makeArrangementClip(
 ): MadeClip {
   const { position, plan, transform, track } = payload;
   const lane = arrangementLaneOf(position);
-  // Made for every destination that fits, before the first write.
-  const takeLane =
-    position.takeLane == null
-      ? null
-      : (run.takeLanes.get(takeLaneLabel(position)) as LiveAPI);
+  const resolved =
+    position.takeLane == null ? null : resolveRunLane(run, step, payload);
+  const takeLane = resolved?.lane ?? null;
   const laneApi = takeLane ?? track;
+  const lanesCreated = resolved?.created ?? undefined;
+
+  // Lanes can't be deleted, so the first clip written to them says they exist,
+  // whatever happens to the clip.
+  if (resolved != null && lanesCreated != null) {
+    resolved.created = null;
+    step.landed(`take lane ${lanesCreated} made`, { created: lanesCreated });
+  }
+
   const start = position.arrangementStartBeats as number;
 
   run.ledger.scan(lane, laneApi);
@@ -158,7 +173,53 @@ function makeArrangementClip(
   step.coverLanded();
   step.landed("clip created", { id: clip.id, path: objectPathForApi(clip) });
 
-  return { clip, slotWork: null, lane, laneApi };
+  return { clip, slotWork: null, lane, laneApi, lanesCreated };
+}
+
+/**
+ * The take lane a clip is written to, made when no clip of the call has
+ * reached it yet. A target that never runs makes no lane, so none is left that
+ * no entry says.
+ * @param run - The call's shared state, which keeps the lanes made so far
+ * @param step - The call's state for this target
+ * @param payload - The target's payload
+ * @returns The lane, and the lanes made for it when this is the first clip there
+ */
+function resolveRunLane(
+  run: CreateRun,
+  step: Step<CreateClipCall>,
+  payload: CreatePayload,
+): ResolvedTakeLane {
+  const { position, track } = payload;
+  const key = takeLaneLabel(position);
+  // Later clips on the lane find it there, whoever made it.
+  const known = run.takeLanes.get(key);
+
+  if (known != null) {
+    return known;
+  }
+
+  try {
+    const resolved = resolveTakeLane(
+      track,
+      position.takeLane as number,
+      step.checked.args.takeLaneName ?? null,
+    );
+
+    run.takeLanes.set(key, resolved);
+
+    return resolved;
+  } catch (error) {
+    // Live may have stopped after making some of the lanes. They stay, so the
+    // target's entry names them even though it made no clip.
+    const made = takeLanesMadeBy(error);
+
+    if (made != null) {
+      step.landed(`take lane ${made} made`, { created: made });
+    }
+
+    throw error;
+  }
 }
 
 /**

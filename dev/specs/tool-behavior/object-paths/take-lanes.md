@@ -28,6 +28,17 @@ the lane and, with the `arrangement-clips` include, its clips. Both tools take a
 lane's `id` as well, so the id either one reports goes straight back as a
 target.
 
+**Lanes made on the way are reported, by every tool.** A path past the last lane
+fills the gap, and the entry's `created` names every lane made (`l0-l2`, or `l3`
+for one) — create-clip, update-clip moves, `duplicate` of a clip and of a track,
+and update-track alike. Lanes are made when the first target that needs them
+runs, so a target the call never reaches makes none. Several clips on a lane the
+call made share it: the first one written says so. The lanes stay on the entry
+when a later step fails, or when Live stops partway through making them: a
+failed write lists them under `already changed`, and a move that update-clip
+refuses says `take lanes l0-l1 made on t5`, since its path still names the
+clip's own track.
+
 **Writes to and from a lane re-create the clip**, because Live's arrangement
 duplicate handles neither direction: `TakeLane` has no duplicate API, and
 `Track.duplicate_clip_to_arrangement` silently no-ops when the _source_ is a

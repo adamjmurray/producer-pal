@@ -145,6 +145,10 @@ function fillClip(
     noteSlotWork(entry, made.slotWork);
   }
 
+  if (made.lanesCreated != null) {
+    entry.created = made.lanesCreated;
+  }
+
   return entry;
 }
 

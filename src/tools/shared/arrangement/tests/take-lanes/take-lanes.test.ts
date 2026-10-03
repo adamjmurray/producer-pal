@@ -11,12 +11,16 @@ import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
   resolveTakeLane,
+  takeLanesMadeBy,
   takeLaneLabel,
   takeLaneTargetsThatFit,
   warnUnusedTakeLane,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
+import {
+  registerTakeLaneTrack,
+  stopMakingTakeLanesAfter,
+} from "../helpers/take-lane-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -168,9 +172,10 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 1 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneIndex } = resolveTakeLane(trackApi, 1);
+    const { lane, laneIndex, created } = resolveTakeLane(trackApi, 1);
 
     expect(laneIndex).toBe(1);
+    expect(created).toBe("l1");
     expect(lane.path).toBe("live_set tracks 0 take_lanes 1");
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
   });
@@ -179,9 +184,10 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 2 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneIndex } = resolveTakeLane(trackApi, 0);
+    const { lane, laneIndex, created } = resolveTakeLane(trackApi, 0);
 
     expect(laneIndex).toBe(0);
+    expect(created).toBeNull();
     expect(lane.path).toBe("live_set tracks 0 take_lanes 0");
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
@@ -190,11 +196,27 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneIndex } = resolveTakeLane(trackApi, 2);
+    const { lane, laneIndex, created } = resolveTakeLane(trackApi, 2);
 
     expect(laneIndex).toBe(2);
+    expect(created).toBe("l0-l2");
     expect(lane.path).toBe("live_set tracks 0 take_lanes 2");
     expect(track.call).toHaveBeenCalledTimes(3);
+  });
+
+  it("says which lanes it made when Live stops partway", () => {
+    stopMakingTakeLanesAfter(registerTakeLaneTrack({ initialLanes: 0 }));
+
+    let failure: unknown;
+
+    try {
+      resolveTakeLane(LiveAPI.from(livePath.track(0)), 2);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect((failure as Error).message).toBe("Live is unhappy");
+    expect(takeLanesMadeBy(failure)).toBe("l0");
   });
 
   it("names a newly created lane but never renames an existing one", () => {

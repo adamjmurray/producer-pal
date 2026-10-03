@@ -77,6 +77,7 @@ describe("a clip re-created on a take lane that can't be read back", () => {
       }),
     ).toStrictEqual({
       id: expect.any(String),
+      created: "l0",
       detail: expect.stringContaining("couldn't read the copy back: "),
     });
   });

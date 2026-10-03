@@ -7,7 +7,6 @@ import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangeme
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import { type WriteSpec } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type ClipResultObject } from "./helpers/created-clip-result.ts";
-import { checkCreateCall } from "./helpers/call/check-create-call.ts";
 import { type CreateClipArgs } from "./helpers/call/create-clip-args.ts";
 import {
   type CreatePayload,
@@ -65,7 +64,9 @@ function createClipSpec(
 
     parse: parseCreateCall,
     targets: createClipTargets,
-    check: (call, targets) => checkCreateCall(call, targets, run),
+    // Nothing to look up: take lanes are made when a target first needs one,
+    // so a target the call never reaches (the deadline, say) makes none.
+    check: (call) => call,
 
     write: (target, step) => writeCreatedClip(run, target, step),
 

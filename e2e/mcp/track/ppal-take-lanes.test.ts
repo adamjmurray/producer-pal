@@ -71,6 +71,8 @@ interface LiveSetTracksResult {
 interface DuplicateClipResult {
   id: string;
   path?: string;
+  /** The take lanes the copy made on the way ("l0-l2"), when it made any */
+  created?: string;
   detail?: string;
 }
 
@@ -788,6 +790,52 @@ describe("take lanes", () => {
       expect(detail.takeLanes).toHaveLength(1);
       expect(detail.takeLanes![0]!.clips).toHaveLength(1);
     }
+  });
+});
+
+// A path past the last lane makes the lanes up to it, and Live can't remove a
+// lane, so every clip tool says which lanes it made.
+describe("take lanes made on the way", () => {
+  it("names them on a created clip", async () => {
+    const clip = await createOnLane({
+      path: `t${EMPTY_MIDI_TRACK}/l2[1|1]`,
+      notes: "C3 1|1",
+    });
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/l2[1|1]`);
+    expect(clip.created).toBe("l0-l2");
+  });
+
+  it("names them on a duplicate, once for a stack on the new lane", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Gap Source");
+
+    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${RACKS_TRACK}/l1[5|1],t${RACKS_TRACK}/l1[9|1]`,
+        },
+      }),
+    ).data;
+
+    expect(dup[0]!.created).toBe("l0-l1");
+    expect(dup[1]).not.toHaveProperty("created");
+  });
+
+  it("names them on a clip moved onto a new lane", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Gap Mover");
+
+    const moved = parseToolResultWithWarnings<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: source.id, toPath: `t${RACKS_TRACK}/l2[5|1]` },
+      }),
+    ).data;
+
+    expect(moved.path).toBe(`t${RACKS_TRACK}/l2[5|1]`);
+    expect(moved.created).toBe("l0-l2");
   });
 });
 

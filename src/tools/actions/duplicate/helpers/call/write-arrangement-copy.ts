@@ -6,6 +6,7 @@
 import {
   resolveTakeLane,
   takeLaneLabel,
+  takeLanesMadeBy,
   type ArrangementTrack,
   type ResolvedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
@@ -46,10 +47,18 @@ export async function writeArrangementCopy(
   // One track serves every copy to it; the copy takes it from the call's.
   trackFor(run, target.trackIndex);
 
+  // The lanes this copy made, if it is the first to reach them.
+  const lanes: { made: string | null } = { made: null };
   const attempt = await duplicateOneCopy({
     target,
     startBeats: body.startBeats,
-    laneFor: () => laneFor(target, step, run),
+    laneFor: () => {
+      const resolved = laneFor(target, step, run);
+
+      lanes.made = resolved.created;
+
+      return resolved;
+    },
     object: liveObject(run, body.sourceId),
     id: body.sourceId,
     name: label.name,
@@ -65,7 +74,10 @@ export async function writeArrangementCopy(
   if (attempt.copy != null) {
     step.coverLanded();
 
-    return attempt.copy;
+    // On the entry itself: a copy would lose the span recorded for it.
+    return lanes.made == null
+      ? attempt.copy
+      : Object.assign(attempt.copy, { created: lanes.made });
   }
 
   // Live declined the copy after its landing cleared clips: the Set changed,
@@ -73,7 +85,10 @@ export async function writeArrangementCopy(
   if (attempt.cleared != null) {
     step.coverLanded();
 
-    return clearedCopy(named.value, `${attempt.refused}; ${attempt.cleared}`);
+    return {
+      ...clearedCopy(named.value, `${attempt.refused}; ${attempt.cleared}`),
+      ...(lanes.made == null ? {} : { created: lanes.made }),
+    };
   }
 
   throw new Error(attempt.refused);
@@ -102,7 +117,6 @@ function laneFor(
   }
 
   const track = trackFor(run, target.trackIndex);
-  const before = track.getChildCount("take_lanes");
   let resolved: ResolvedTakeLane;
 
   try {
@@ -113,20 +127,26 @@ function laneFor(
     );
   } catch (error) {
     // Some of the lanes may have been made before Live stopped.
-    if (track.getChildCount("take_lanes") > before) {
+    const made = takeLanesMadeBy(error);
+
+    if (made != null) {
       step.landed(
         `take lanes made on ${takeLaneLabel({ ...target, takeLane: null })}`,
+        { created: made },
       );
     }
 
     throw error;
   }
 
-  if (resolved.laneIndex >= before) {
-    step.landed(`take lane ${key} made`);
+  if (resolved.created != null) {
+    step.landed(`take lane ${key} made`, { created: resolved.created });
   }
 
-  run.lanes.set(key, resolved);
+  // Later copies to this lane find it there, so only this one reports it. The
+  // lane is kept for the call, never the lanes made for it: a copy that
+  // reaches the lane second has nothing to say about how it got there.
+  run.lanes.set(key, { ...resolved, created: null });
 
   return resolved;
 }

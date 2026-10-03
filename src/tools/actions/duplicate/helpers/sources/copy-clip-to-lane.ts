@@ -8,7 +8,10 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
-import { resolveTakeLane } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  resolveTakeLane,
+  takeLanesMadeBy,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
@@ -155,19 +158,27 @@ export function runLaneCopy(
 ): object {
   const { trackIndex, laneIndex, label, sourceClips, name, color } = target;
   const onLane = laneIndex != null;
-  const lanesBefore = onLane ? target.track.getChildCount("take_lanes") : 0;
   let lane: LiveAPI;
+  let created: string | null;
 
   try {
-    lane = resolveCopyDestination(target, takeLaneName);
+    ({ lane, created } = resolveCopyDestination(target, takeLaneName));
   } catch (error) {
     // Lanes can't be deleted: one made before the throw is a change to report.
-    return target.track.getChildCount("take_lanes") > lanesBefore && onLane
-      ? { path: label, created: true, clips: [], detail: lanePartial(error) }
+    // A track copy has one entry per destination, so the lanes made go on it
+    // with no clips; with none made, the destination is a skip.
+    const made = takeLanesMadeBy(error);
+
+    return made != null
+      ? {
+          path: label,
+          created: made,
+          clips: [],
+          detail: lanePartial(error),
+        }
       : skippedCopy(entry, errorMessage(error));
   }
 
-  const created = onLane && laneIndex >= lanesBefore;
   const losses = new Set<string>();
   // A create truncates whatever it lands on, so a clip already at the position
   // is replaced, on a take lane as on the main one.
@@ -212,10 +223,10 @@ export function runLaneCopy(
   const base = {
     id: lane.id,
     path: label,
-    ...(created ? { created: true as const } : {}),
+    ...(created == null ? {} : { created }),
     // resolveTakeLane names a lane only when it made it, so that is the one
     // case the name is worth reporting.
-    ...(created && paramNamesSomething(takeLaneName)
+    ...(created != null && paramNamesSomething(takeLaneName)
       ? { name: takeLaneName }
       : {}),
     clips,
@@ -234,7 +245,7 @@ export function runLaneCopy(
   // to report on; with one, the lane exists and says none landed on it.
   const none = `no clip landed: ${[...new Set(refused.map((clip) => clip.detail))].join("; ")}`;
 
-  return created ? { ...base, detail: none } : skippedCopy(entry, none);
+  return created == null ? skippedCopy(entry, none) : { ...base, detail: none };
 }
 
 // --- Helpers below main exports ---
@@ -297,17 +308,17 @@ function recreate(
  * and `create_audio_clip`.
  * @param target - The plan for this destination
  * @param takeLaneName - Deprecated: name for a lane this call creates
- * @returns The destination
+ * @returns The destination, and the lanes made to reach it
  */
 function resolveCopyDestination(
   target: LaneTarget,
   takeLaneName: string | undefined,
-): LiveAPI {
+): { lane: LiveAPI; created: string | null } {
   const { track, laneIndex } = target;
 
   return laneIndex == null
-    ? track
-    : resolveTakeLane(track, laneIndex, takeLaneName).lane;
+    ? { lane: track, created: null }
+    : resolveTakeLane(track, laneIndex, takeLaneName);
 }
 
 /**

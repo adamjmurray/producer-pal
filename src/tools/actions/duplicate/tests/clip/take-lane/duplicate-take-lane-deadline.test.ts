@@ -83,6 +83,7 @@ describe("duplicate to a take lane, cut short", () => {
       {
         id: "tl_clip_1",
         path: "t1/l0[1|1]",
+        created: "l0",
         detail:
           "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
       },

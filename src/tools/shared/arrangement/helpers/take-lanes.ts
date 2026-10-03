@@ -38,6 +38,7 @@ import {
   type ClipPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
+import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 
 /** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
  * keeps the match anchored to the segment so future paths that happen to
@@ -201,6 +202,10 @@ export interface ResolvedTakeLane {
   lane: LiveAPI;
   /** 0-based lane index (matches the `l<n>` path segment). */
   laneIndex: number;
+  /** The lanes this resolve made ("l3", or "l1-l3" when it filled the gap
+   * below the one named), or null when the lane was already there. Lanes can't
+   * be deleted, so every tool says them on the entry. */
+  created: string | null;
 }
 
 /**
@@ -285,10 +290,14 @@ export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
  * throwing validation (e.g. invalid takeLane) before calling this — and pick
  * the destinations with {@link takeLaneTargetsThatFit} first, or a later
  * destination's cap error strands the lanes the earlier ones made.
+ *
+ * If Live stops partway, the lanes it did make stay. The throw is then a
+ * {@link TakeLanesMadeError}, which every caller turns into `created` on the
+ * target's entry; its message is the original one.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (0-based lane index)
  * @param takeLaneName - Optional name for a newly created lane
- * @returns The resolved take lane and its 0-based index
+ * @returns The resolved take lane, its 0-based index, and the lanes made
  */
 export function resolveTakeLane(
   track: LiveAPI,
@@ -303,25 +312,69 @@ export function resolveTakeLane(
     assertTakeLaneCapacity(laneIndex);
   }
 
-  // Auto-create lanes until the target lane exists (empty lanes persist).
-  for (let i = currentCount; i <= laneIndex; i++) {
-    track.call("create_take_lane");
-  }
-
-  const lane = track.child("take_lanes", String(laneIndex));
-  const laneWasCreated = laneIndex >= currentCount;
-
-  if (takeLaneName != null && takeLaneName !== "") {
-    if (laneWasCreated) {
-      lane.setAll({ name: takeLaneName });
-    } else {
-      console.warn(
-        `takeLaneName ignored: take lane ${arrangementPath(track.trackIndex as number, laneIndex)} already exists; rename it with ppal-update-track`,
-      );
+  try {
+    // Auto-create lanes until the target lane exists (empty lanes persist).
+    for (let i = currentCount; i <= laneIndex; i++) {
+      track.call("create_take_lane");
     }
-  }
 
-  return { lane, laneIndex };
+    const lane = track.child("take_lanes", String(laneIndex));
+    const created =
+      laneIndex >= currentCount
+        ? createdRange("l", currentCount, laneIndex)
+        : null;
+
+    if (takeLaneName != null && takeLaneName !== "") {
+      if (created != null) {
+        lane.setAll({ name: takeLaneName });
+      } else {
+        console.warn(
+          `takeLaneName ignored: take lane ${arrangementPath(track.trackIndex as number, laneIndex)} already exists; rename it with ppal-update-track`,
+        );
+      }
+    }
+
+    return { lane, laneIndex, created };
+  } catch (error) {
+    // Live stopped partway, but the lanes it did make are permanent: say so.
+    // Recounted rather than tracked, since the call that threw may have made
+    // its lane before failing (naming it, say).
+    const after = track.getChildCount("take_lanes");
+
+    throw after > currentCount
+      ? new TakeLanesMadeError(
+          error,
+          createdRange("l", currentCount, after - 1),
+        )
+      : error;
+  }
+}
+
+/**
+ * A failure of {@link resolveTakeLane} after it had made lanes. It reads like
+ * the failure it wraps; callers ask {@link takeLanesMadeBy} what was made, so
+ * their entries can say so.
+ */
+export class TakeLanesMadeError extends Error {
+  readonly created: string;
+
+  /**
+   * @param cause - What failed
+   * @param created - The lanes made before it did ("l0", "l1-l2")
+   */
+  constructor(cause: unknown, created: string) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.created = created;
+  }
+}
+
+/**
+ * The lanes a failed {@link resolveTakeLane} had made.
+ * @param error - What was thrown
+ * @returns The lanes ("l0", "l1-l2"), or null when it made none
+ */
+export function takeLanesMadeBy(error: unknown): string | null {
+  return error instanceof TakeLanesMadeError ? error.created : null;
 }
 
 /** A destination {@link takeLaneTargetsThatFit} kept, so its lane is known. */

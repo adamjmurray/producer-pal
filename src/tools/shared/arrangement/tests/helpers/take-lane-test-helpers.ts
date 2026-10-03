@@ -75,6 +75,28 @@ export interface TakeLaneTrackOptions {
 }
 
 /**
+ * Makes the track's `create_take_lane` fail after it has made some lanes, as
+ * Live can: the lanes made stay, and the call that wanted more throws.
+ * @param track - A track from {@link registerTakeLaneTrack}
+ * @param lanes - How many lanes it makes before it gives up
+ */
+export function stopMakingTakeLanesAfter(
+  track: RegisteredMockObject,
+  lanes = 1,
+): void {
+  const create = track.methods.create_take_lane as () => unknown;
+  let made = 0;
+
+  track.methods.create_take_lane = () => {
+    if (made++ >= lanes) {
+      throw new Error("Live is unhappy");
+    }
+
+    return create();
+  };
+}
+
+/**
  * Register a regular track with stateful take-lane support. `create_take_lane`
  * appends a lane and grows the track's `take_lanes` list; each lane's
  * `create_midi_clip` / `create_audio_clip` registers and returns a fresh
