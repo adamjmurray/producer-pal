@@ -227,8 +227,8 @@ describe("ppal-update-clip", () => {
     // Setup: a clip with two off-grid notes on the empty MIDI track
     const clipId = await createOffGridClip(6, OFF_GRID_NOTES);
 
-    // n/4 is the note-value alias for the native 1/4 grid (bridged in
-    // handleQuantization). Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
+    // n/4 is the note-value alias for the native 1/4 grid: accepted but not
+    // published, and normalized during validation. Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { id: clipId, quantize: 1.0, quantizeGrid: "n/4" },

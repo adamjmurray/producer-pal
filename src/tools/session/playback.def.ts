@@ -69,7 +69,7 @@ stop: session and arrangement; takes startTime to park the next play`,
       .string()
       .optional()
       .describe(
-        "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
+        "clip id(s), comma-separated; for play-scene, a scene id (or a clip id in that scene)",
       ),
 
     ...addressingAliases(),

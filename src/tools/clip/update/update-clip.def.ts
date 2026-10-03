@@ -5,10 +5,15 @@
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import {
+  QUANTIZE_GRID_ALIASES,
+  QUANTIZE_GRID_VALUES,
+} from "#src/tools/clip/update/helpers/notes/quantize-grid.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -29,10 +34,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
   inputSchema: {
     // Basic clip properties
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("clip ID(s) to update, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("clip id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
@@ -63,12 +65,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per clip",
       ),
-    length: z
-      .string()
-      .optional()
-      .describe(
+    length: param(z.string().optional(), {
+      default:
+        "duration, e.g. '4bar' (see Skills); clip meter; or comma-separated one per clip. Without start, a non-looping clip keeps its end and moves its start to fit",
+      // Small mode ships no time-and-values fragment, so the grammar stays here.
+      smallModel:
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter; or comma-separated one per clip. Without start, a non-looping clip keeps its end and moves its start to fit",
-      ),
+    }),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
       default:
@@ -85,13 +88,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       replacedBy: "toPath",
       example: "[5|1]",
     }),
-    arrangementLength: z
-      .string()
-      .optional()
-      .describe(
+    arrangementLength: param(z.string().optional(), {
+      default:
+        "duration, e.g. '4bar' (see Skills), or comma-separated one per clip. Arrangement clips only; song meter. " +
+        "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
+      smallModel:
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per clip. Arrangement clips only; song meter. " +
-          "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
-      ),
+        "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
+    }),
     arrangementSplit: param(z.string().optional(), {
       default:
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
@@ -194,30 +198,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
     // mapping directly to Live's quantize API constants — do not migrate to n/N.
-    // The mixed grids (1/8+1/8T, 1/16+1/16T) have no note-value spelling, so they
-    // stay enum-only. The single-grid values ALSO accept the n/N note-value alias
-    // used elsewhere (n/4=1/4, n/8=1/8, n/12=1/8T, n/16=1/16, n/24=1/16T,
-    // n/32=1/32), normalized to the native form in handleQuantization.
-    quantizeGrid: z
-      .enum([
-        "1/4",
-        "1/8",
-        "1/8T",
-        "1/8+1/8T",
-        "1/16",
-        "1/16T",
-        "1/16+1/16T",
-        "1/32",
-        "n/4",
-        "n/8",
-        "n/12",
-        "n/16",
-        "n/24",
-        "n/32",
-      ])
+    // Only these are published. The n/N note-value aliases of the single grids
+    // (n/16 = 1/16, n/12 = 1/8T, ...) are accepted but unpublished: the call
+    // validates and reaches the handler as the native form. The mixed grids have
+    // no note-value spelling.
+    quantizeGrid: aliasedEnum(QUANTIZE_GRID_VALUES, QUANTIZE_GRID_ALIASES)
       .optional()
       .describe(
-        "grid that note starts snap to: 1/16 (default), 1/8, 1/4, 1/8T, 1/16T, 1/32; n/N note values also accepted (n/12=1/8T, n/24=1/16T); mixed grids 1/8+1/8T and 1/16+1/16T are enum-only",
+        "grid that note starts snap to: 1/16 (default), 1/8, 1/4, 1/8T, 1/16T, 1/32, 1/8+1/8T, 1/16+1/16T",
       ),
 
     quantizePitch: param(z.string().optional(), {

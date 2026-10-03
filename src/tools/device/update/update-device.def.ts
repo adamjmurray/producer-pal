@@ -26,9 +26,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     id: z.coerce
       .string()
       .optional()
-      .describe(
-        "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
-      ),
+      .describe("device, chain or drum pad id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
@@ -142,7 +140,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     sends: param(sendsInputSchema, {
       default:
-        "set several of a chain's sends at once: [{return, gainDb}], where return is a rack return chain's id, exact name, or letter — the `return`/`returnId` read-device reports. Use instead of sendGainDb + sendReturn, which set one",
+        "several of a chain's sends at once: [{return, gainDb}], return as for sendReturn. Use instead of sendGainDb + sendReturn",
       smallModel: null,
     }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {

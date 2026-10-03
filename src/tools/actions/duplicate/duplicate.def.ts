@@ -40,7 +40,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "id(s) of the object(s) to duplicate, comma-separated for multiple " +
+        "id(s), comma-separated " +
           "(type 'track' also takes a take lane's id, which needs a lane or track toPath)",
       ),
 
@@ -87,13 +87,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       replacedBy: "toPath",
       example: "t2[loc:Verse]",
     }),
-    arrangementLength: z
-      .string()
-      .optional()
-      .describe(
+    arrangementLength: param(z.string().optional(), {
+      default:
+        "clip/scene copies to the arrangement only. duration, e.g. '4bar' (see Skills), or comma-separated one per copy; song meter. " +
+        "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+      smallModel:
         "clip/scene copies to the arrangement only. duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per copy; song meter. " +
-          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
-      ),
+        "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+    }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
     }),

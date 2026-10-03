@@ -4,11 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { handleQuantization } from "#src/tools/clip/update/helpers/notes/note-updates.ts";
 import {
-  handleQuantization,
   QUANTIZE_GRID,
   QUANTIZE_GRID_ALIASES,
-} from "#src/tools/clip/update/helpers/notes/note-updates.ts";
+  QUANTIZE_GRID_VALUES,
+} from "#src/tools/clip/update/helpers/notes/quantize-grid.ts";
+import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type ClipReasons,
@@ -327,5 +331,71 @@ describe("handleQuantization", () => {
         "quantized 2 muted notes",
       ]);
     });
+  });
+});
+
+const MODES = [
+  ["default", {}],
+  ["small-model", { smallModelMode: true }],
+] as const;
+
+describe.each(MODES)("quantizeGrid schema (%s)", (_, mode) => {
+  const { published, validating } = resolveToolSchema(
+    toolDefUpdateClip.toolOptions.inputSchema,
+    mode,
+  );
+
+  it("publishes only Live's grid spellings", () => {
+    const json = z.toJSONSchema(z.object(published)) as unknown as {
+      properties: { quantizeGrid: { enum: string[] } };
+    };
+
+    expect(json.properties.quantizeGrid.enum).toStrictEqual([
+      ...QUANTIZE_GRID_VALUES,
+    ]);
+    expect(Object.keys(QUANTIZE_GRID)).toStrictEqual([...QUANTIZE_GRID_VALUES]);
+  });
+
+  it.each(Object.entries(QUANTIZE_GRID_ALIASES))(
+    "still accepts %s and hands the handler %s",
+    (alias, native) => {
+      for (const schema of [validating, published]) {
+        const parsed = z.object(schema).parse({ quantizeGrid: alias });
+
+        expect(parsed.quantizeGrid).toBe(native);
+      }
+    },
+  );
+
+  it("still refuses an unknown grid, listing only the published ones", () => {
+    const refusal = z.object(published).safeParse({ quantizeGrid: "n/7" });
+
+    const message = refusal.error?.issues[0]?.message;
+
+    expect(message).toContain("1/16+1/16T");
+    expect(message).not.toContain("n/16");
+  });
+
+  it("quantizes an n/16 call as 1/16", () => {
+    const { quantizeGrid } = z
+      .object(published)
+      .parse({ quantizeGrid: "n/16" });
+    const clip = {
+      id: "321",
+      call: vi.fn().mockReturnValue(JSON.stringify({ notes: [] })),
+      getProperty: vi.fn().mockReturnValue(1),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock clip
+    handleQuantization(clip as any, newClipReasons(), {
+      quantize: 1,
+      quantizeGrid: quantizeGrid as string | undefined,
+    });
+
+    expect(clip.call).toHaveBeenCalledWith(
+      "quantize",
+      QUANTIZE_GRID["1/16"],
+      1,
+    );
   });
 });

@@ -21,10 +21,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("clip ID(s) to read, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("clip id(s), comma-separated"),
 
     ...addressingAliases({ idAlias: "clipId" }),
     path: z.coerce

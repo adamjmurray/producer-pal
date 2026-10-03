@@ -17,10 +17,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     destructiveHint: true,
   },
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("scene ID(s) to update, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("scene id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {

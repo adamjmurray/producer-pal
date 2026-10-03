@@ -20,8 +20,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
   },
   inputSchema: {
     id: param(z.coerce.string().optional(), {
-      default:
-        "ID(s) to delete, comma-separated for multiple (must be same type)",
+      default: "id(s), comma-separated (must be same type)",
       smallModel: "object ID to delete",
     }),
 

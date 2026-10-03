@@ -42,6 +42,7 @@ import {
   ignoreClipParams,
   noteLanded,
 } from "../entries/clip-reasons.ts";
+import { QUANTIZE_GRID, QUANTIZE_GRID_ALIASES } from "./quantize-grid.ts";
 import {
   mutedNotesHit,
   reportMutedCopies,
@@ -49,34 +50,6 @@ import {
   reportMutedQuantize,
 } from "./muted-note-effects.ts";
 import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
-
-/**
- * Quantization grid values mapping user-friendly strings to Live API integers
- */
-export const QUANTIZE_GRID: Record<string, number> = {
-  "1/4": 1,
-  "1/8": 2,
-  "1/8T": 3,
-  "1/8+1/8T": 4,
-  "1/16": 5,
-  "1/16T": 6,
-  "1/16+1/16T": 7,
-  "1/32": 8,
-};
-
-/**
- * n/N note-value aliases for quantizeGrid. Each maps to a native grid
- * value that has an exact note-value spelling. The mixed grids (1/8+1/8T,
- * 1/16+1/16T) have no single note-value form, so they stay enum-only.
- */
-export const QUANTIZE_GRID_ALIASES: Record<string, string> = {
-  "n/4": "1/4",
-  "n/8": "1/8",
-  "n/12": "1/8T",
-  "n/16": "1/16",
-  "n/24": "1/16T",
-  "n/32": "1/32",
-};
 
 interface QuantizationOptions {
   /** Quantization strength 0-1 */
