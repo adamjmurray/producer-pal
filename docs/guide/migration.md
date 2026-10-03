@@ -232,7 +232,6 @@ its source rack's macro mappings not coming along. A refusal to copy a chain
 between racks of different kinds now names both in words (`an instrument rack`,
 `a drum rack`) instead of Live class names like `InstrumentGroupDevice`. What is
 left as a warning is only what no entry can carry:
-`count ignored: <what> copies go one per toPath`, and
 `withoutClips/withoutDevices ignored: routeToSource always copies without clips and devices`
 (one line for the pair, naming only what you sent).
 
