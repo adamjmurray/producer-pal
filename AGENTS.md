@@ -131,6 +131,12 @@ UI.
   of two entries wins) is a rule change, not a fix: ask before making it, update
   the spec in `dev/specs/tool-behavior/`, then apply it to every tool at once.
 
+- **Every write tool runs through the shared write pipeline** (`runWrite`). A
+  tool never hand-rolls its own refuse, skip, entry, last-wins or deadline
+  logic: add a hook to the pipeline instead. The meta test
+  (`write-tools-use-pipeline.test.ts`) and the write conformance suite enforce
+  it. See `dev/tools/write-pipeline.md`.
+
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
   async context to do that automatically. So: adding an `await` to

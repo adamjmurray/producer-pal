@@ -47,6 +47,9 @@ them — this list is so you don't discover that one at a time.
    which runs against the mock Live Set in that directory. Every tool needs one.
    If the fixture has nothing your tool can act on, add it there too.
 
+A write tool also runs through the shared pipeline and joins its conformance
+suite: see [write-pipeline.md](write-pipeline.md).
+
 Then `npm run fix && npm run check`. The tests that hold steps 4, 5, and 7 are
 [tool-groups-catalog.test.ts](../../src/shared/tests/tool-groups-catalog.test.ts),
 [fragment-tool-gates.test.ts](../../src/skills/tests/fragment-tool-gates.test.ts),

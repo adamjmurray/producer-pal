@@ -19,6 +19,8 @@ part is a file beside it.
 ## Tools
 
 - [tools/adding-a-tool.md](tools/adding-a-tool.md) — checklist for a new tool.
+- [tools/write-pipeline.md](tools/write-pipeline.md) — the shared pipeline every
+  write tool runs through, and how to add one.
 - [tools/tool-schemas.md](tools/tool-schemas.md) — shaping input schemas and
   per-mode param text.
 - [specs/tool-behavior/](specs/tool-behavior/README.md) — how every tool answers
