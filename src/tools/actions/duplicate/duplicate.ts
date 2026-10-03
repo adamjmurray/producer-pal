@@ -52,6 +52,7 @@ import {
 } from "./helpers/clip/apply-clip-transforms.ts";
 import {
   hasArrangementPosition,
+  refuseDuplicatePositionsPastCap,
   resolveDestinationAndWarn,
 } from "./helpers/duplicate-destinations.ts";
 import {
@@ -205,6 +206,15 @@ async function duplicateOnLanes(
     type === "clip"
       ? resolveSourceClipDestinations(sources, dest.onArrangement)
       : null;
+
+  // Before the first copy or lane: neither can be undone.
+  if ((type === "clip" || type === "scene") && dest.onArrangement) {
+    refuseDuplicatePositionsPastCap(
+      arrangementStart,
+      dest.startParam,
+      clipDestinations,
+    );
+  }
 
   const destination = resolveDestinationAndWarn({
     type,

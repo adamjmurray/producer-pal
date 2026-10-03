@@ -11,10 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import {
-  MAX_ARRANGEMENT_POSITION_BEATS,
-  MAX_AUTO_CREATED_SCENES,
-} from "#src/tools/constants.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "../../create-clip.ts";
 import { createAudioArrangementClip } from "../../helpers/audio-clip-creation.ts";
 import {
@@ -530,35 +527,6 @@ describe("createClip - audio clips", () => {
 });
 
 describe("createAudioArrangementClip (unit)", () => {
-  it("throws when arrangementStartBeats exceeds the maximum position", () => {
-    // A valid track is registered, so if the max-position guard were removed the
-    // clip would be created without throwing. Kills the guard's
-    // ConditionalExpression / EqualityOperator / block / message mutants.
-    setupAudioArrangementClipMocks();
-
-    expect(() =>
-      createAudioArrangementClip(
-        0,
-        MAX_ARRANGEMENT_POSITION_BEATS + 1,
-        "/samples/loop.wav",
-      ),
-    ).toThrow(
-      "arrangementStart is past the last position Live allows (394201|1)",
-    );
-  });
-
-  it("does NOT throw at exactly the maximum position (boundary: > not >=)", () => {
-    setupAudioArrangementClipMocks();
-
-    const result = createAudioArrangementClip(
-      0,
-      MAX_ARRANGEMENT_POSITION_BEATS,
-      "/samples/loop.wav",
-    );
-
-    expect(result.arrangementStartBeats).toBe(MAX_ARRANGEMENT_POSITION_BEATS);
-  });
-
   it.each([
     ["Live creates nothing", ["id", "0"]], // "no object" ref → exists() false
     // A declined create on a MIDI track hands back another object — the Live

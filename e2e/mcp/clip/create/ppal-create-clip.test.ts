@@ -33,6 +33,7 @@ import {
 } from "../helpers/audio-warp-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
+import { readArrangementClips } from "../helpers/arrangement-clip-query-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -223,6 +224,50 @@ describe("ppal-create-clip", () => {
 
     expect(arrangementClip.view).toBe("arrangement");
     expect(arrangementStartOf(arrangementClip)).toBe("41|1");
+  });
+
+  it("refuses a multi-destination call whose last position is past the last Live allows, leaving no clips or take lanes", async () => {
+    const pastTheEnd =
+      "arrangementStart is past the last position Live allows (";
+
+    // Main lane: the clip at 1|1 must not exist once the second is refused.
+    const mainLanes = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}[1|1],t${EMPTY_MIDI_TRACK}[999999|1]`,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(isToolError(mainLanes)).toBe(true);
+    expect(getToolErrorMessage(mainLanes)).toContain(pastTheEnd);
+
+    // Take lanes can't be deleted, so one made for the first destination would
+    // outlive the refusal.
+    const takeLanes = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/l0[1|1],t${EMPTY_MIDI_TRACK}/l1[999999|1]`,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(isToolError(takeLanes)).toBe(true);
+    expect(getToolErrorMessage(takeLanes)).toContain(pastTheEnd);
+
+    await sleep(100);
+    expect(
+      await readArrangementClips(ctx.client!, EMPTY_MIDI_TRACK),
+    ).toStrictEqual([]);
+
+    const track = parseToolResult<{ takeLaneCount?: number }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}` },
+      }),
+    );
+
+    expect(track.takeLaneCount ?? 0).toBe(0);
   });
 
   it("accepts n<count>bar as an alias for <count>bar in the length field", async () => {

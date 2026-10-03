@@ -13,6 +13,7 @@ import {
   warnUnusedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type ClipDestinations,
@@ -72,6 +73,55 @@ export function arrangementPositionToBeats(
   validateBarBeatPosition(position);
 
   return barBeatToAbletonBeats(position, timeSigNumerator, timeSigDenominator);
+}
+
+/**
+ * Refuses a call that names an arrangement position Live won't take, before the
+ * first copy or take lane exists. Live declines such a position without saying
+ * why, and a take lane made for it is left behind empty.
+ *
+ * Only the positions the call writes out are checked: copies laid end to end
+ * from one scene position are placed from lengths read as the scene is copied.
+ * @param arrangementStart - Bar|beat position list, as settled for the call
+ * @param startParam - The param the caller wrote that list in
+ * @param clipDestinations - Each clip source's destinations, or null
+ * @throws When a named position is past the last one Live allows
+ */
+export function refuseDuplicatePositionsPastCap(
+  arrangementStart: string | undefined,
+  startParam: string,
+  clipDestinations: ClipDestinations[] | null,
+): void {
+  const named = [
+    ...(hasArrangementPosition(arrangementStart)
+      ? parseArrangementStartList(arrangementStart).map((position) => ({
+          position,
+          param: startParam,
+        }))
+      : []),
+    ...(clipDestinations ?? []).flatMap(({ arrangementPositions }) =>
+      arrangementPositions.flatMap((position) =>
+        position == null ? [] : [{ position, param: "toPath" }],
+      ),
+    ),
+  ];
+
+  if (named.length === 0) {
+    return;
+  }
+
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const numerator = liveSet.getProperty("signature_numerator") as number;
+  const denominator = liveSet.getProperty("signature_denominator") as number;
+
+  for (const { position, param } of named) {
+    refuseArrangementPositionPastCap(
+      arrangementPositionToBeats(position, numerator, denominator),
+      numerator,
+      denominator,
+      param,
+    );
+  }
 }
 
 /**

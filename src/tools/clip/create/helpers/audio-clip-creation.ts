@@ -3,14 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createInSessionSlot,
   requireCreatedArrangementClip,
   type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 
 export interface AudioSessionClipResult extends SlotWork {
   clip: LiveAPI;
@@ -63,16 +61,6 @@ export function createAudioArrangementClip(
   takeLane: LiveAPI | null = null,
   track: LiveAPI | null = null,
 ): AudioArrangementClipResult {
-  // Live API limit check
-  if (
-    arrangementStartBeats != null &&
-    arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS
-  ) {
-    throw new Error(
-      `arrangementStart is past the last position Live allows (${maxArrangementBarBeat()})`,
-    );
-  }
-
   const target = takeLane ?? track ?? LiveAPI.from(livePath.track(trackIndex));
 
   // Create audio clip at position
@@ -90,18 +78,4 @@ export function createAudioArrangementClip(
   );
 
   return { clip, arrangementStartBeats };
-}
-
-/**
- * The last arrangement position Live allows, as a bar|beat in the song's meter.
- * @returns The position, e.g. "394201|1" in 4/4
- */
-function maxArrangementBarBeat(): string {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  return abletonBeatsToBarBeat(
-    MAX_ARRANGEMENT_POSITION_BEATS,
-    liveSet.getProperty("signature_numerator") as number,
-    liveSet.getProperty("signature_denominator") as number,
-  );
 }

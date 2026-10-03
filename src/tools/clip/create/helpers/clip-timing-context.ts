@@ -13,6 +13,7 @@ import {
   takeLaneLabel,
   takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
@@ -118,7 +119,8 @@ export function readSongMeter(liveSet: LiveAPI): SongMeter {
 }
 
 /**
- * Refuses the whole call when any arrangement position won't parse.
+ * Refuses the whole call when any arrangement position won't parse or is past
+ * the last one Live allows, MIDI and audio alike.
  *
  * Positions are converted per clip in the create loop, but a bad one has to be
  * caught before anything exists. Past the first clip — or the first take lane,
@@ -127,7 +129,7 @@ export function readSongMeter(liveSet: LiveAPI): SongMeter {
  * @param arrangementPositions - Resolved arrangement destinations
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
- * @throws When a position isn't a usable bar|beat
+ * @throws When a position isn't a usable bar|beat, or is past Live's last
  */
 export function validateArrangementPositions(
   arrangementPositions: ArrangementPosition[],
@@ -137,8 +139,12 @@ export function validateArrangementPositions(
   for (const { arrangementStart } of arrangementPositions) {
     // The 1-indexing steer first, then the format error the conversion raises.
     validateBarBeatPosition(arrangementStart);
-    barBeatToAbletonBeats(
-      arrangementStart,
+    refuseArrangementPositionPastCap(
+      barBeatToAbletonBeats(
+        arrangementStart,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      ),
       songTimeSigNumerator,
       songTimeSigDenominator,
     );

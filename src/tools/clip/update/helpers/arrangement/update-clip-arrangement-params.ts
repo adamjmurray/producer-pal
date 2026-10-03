@@ -9,6 +9,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
@@ -101,7 +102,18 @@ export function parseArrangementParams(
   const toBeats = (position: string): number => {
     validateBarBeatPosition(position);
 
-    return barBeatToAbletonBeats(position, numerator, denominator);
+    const beats = barBeatToAbletonBeats(position, numerator, denominator);
+
+    // Before anything moves: Live declines a position past its last without
+    // saying why, after earlier clips in the call have already moved.
+    refuseArrangementPositionPastCap(
+      beats,
+      numerator,
+      denominator,
+      fromPath ? "toPath" : "arrangementStart",
+    );
+
+    return beats;
   };
 
   return {
