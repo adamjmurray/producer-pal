@@ -429,6 +429,28 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       expectCleanedUp();
     });
 
+    it("naming the chain a c+ made when Live drops the move", async () => {
+      liveSet.methods.move_device = () => null;
+      registerMockObject("rack", {
+        path: livePath.track(0).device(0),
+        type: "RackDevice",
+        properties: { can_have_chains: 1, can_have_drum_pads: 0, chains: [] },
+        methods: { insert_chain: () => ["id", "chain-0"] },
+      });
+      registerMockObject("chain-0", {
+        path: livePath.track(0).device(0).chain(0),
+        type: "Chain",
+        properties: { devices: [] },
+      });
+
+      await expect(
+        createDevice({ device: "Pro-Q 4", path: "t0/d0/c+" }),
+      ).rejects.toThrow(
+        `could not insert "Pro-Q 4" at end in path "t0/d0/c+"; left an empty chain: c0`,
+      );
+      expectCleanedUp();
+    });
+
     it("naming why Live dropped it, when the move says", async () => {
       // A second instrument on one track: the refusal carries a reason, and
       // the caller gets it rather than a bare "could not insert".

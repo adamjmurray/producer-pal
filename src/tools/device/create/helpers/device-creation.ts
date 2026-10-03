@@ -11,6 +11,10 @@ import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import {
+  errorWithChainsLeft,
+  withChainsLeft,
+} from "#src/tools/shared/device/helpers/path/chains-left.ts";
+import {
   ONE_INSTRUMENT_PER_CHAIN,
   deviceHasInstrument,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
@@ -42,6 +46,8 @@ export interface CreationTarget {
   containerPath: string;
   /** The rack chains the path made on the way to the container, if any */
   createdChains?: string;
+  /** Every chain the path made, the `c+` one included: what a failure left */
+  madeChains?: string;
 }
 
 /**
@@ -56,6 +62,21 @@ export function insertNativeDevice(
   path: string,
 ): { device: LiveAPI; entry: CreateDeviceResult } {
   const target = resolveCreationTarget(path);
+
+  try {
+    return insertInto(target, deviceName, path);
+  } catch (error) {
+    // The chains the path made stay in the Set whether or not the insert does.
+    throw errorWithChainsLeft(error, target.madeChains);
+  }
+}
+
+// Hand Live the insert at an already-resolved target.
+function insertInto(
+  target: CreationTarget,
+  deviceName: string,
+  path: string,
+): { device: LiveAPI; entry: CreateDeviceResult } {
   const { container } = target;
   const { position, deviceCount } = insertionPosition(target);
 
@@ -119,8 +140,14 @@ export function appendRenumbers(deviceName: string): boolean {
  * @throws Error when the path names no place a device can go
  */
 export function resolveCreationTarget(path: string): CreationTarget {
-  const { container, position, containerPath, namesNothing, createdChains } =
-    resolveInsertionPath(path);
+  const {
+    container,
+    position,
+    containerPath,
+    namesNothing,
+    createdChains,
+    madeChains,
+  } = resolveInsertionPath(path);
 
   if (namesNothing != null) {
     throw new Error(
@@ -129,7 +156,9 @@ export function resolveCreationTarget(path: string): CreationTarget {
   }
 
   if (!container?.exists()) {
-    throw new Error(`container at path "${path}" does not exist`);
+    throw new Error(
+      withChainsLeft(`container at path "${path}" does not exist`, madeChains),
+    );
   }
 
   // Live ignores a position past the end without a word, so refuse it before
@@ -141,10 +170,10 @@ export function resolveCreationTarget(path: string): CreationTarget {
   );
 
   if (tooFar != null) {
-    throw new Error(tooFar);
+    throw new Error(withChainsLeft(tooFar, madeChains));
   }
 
-  return { container, position, containerPath, createdChains };
+  return { container, position, containerPath, createdChains, madeChains };
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import {
   requireDeviceContainer,
   trackSegmentPath,
@@ -57,6 +58,10 @@ export interface InsertionPathResolution {
   /** The rack chains the path had to make first ("c2-c3"), when it made any.
    * Numbered within the rack the path names. */
   createdChains?: string;
+  /** Every chain the path made, including the one a `c+` appended, which
+   * `createdChains` leaves out because `containerPath` already names it. For a
+   * failure to say what it left behind. */
+  madeChains?: string;
 }
 
 /**
@@ -106,9 +111,24 @@ export function resolveInsertionPath(
   // name the wrong thing — echo what the call wrote instead.
   const spelled = resolved ? above : held(segments);
   const created: CreatedChains = [];
-  const container = resolved
-    ? resolveContainer(root, above, path, appendsChain, created)
-    : null;
+  let container: LiveAPI | null;
+
+  try {
+    container = resolved
+      ? resolveContainer(root, above, path, appendsChain, created)
+      : null;
+  } catch (error) {
+    // Chains made on the way down stay in the Set, so the refusal names them.
+    throw errorWithChainsLeft(error, created.join(", "));
+  }
+
+  // The chain a `c+` made has an index only now that it exists, and the
+  // result has to name it rather than the `c+` the call wrote.
+  const appendedPath =
+    appendsChain && container != null ? objectPathForApi(container) : undefined;
+  const made = [...created, appendedPath?.split("/").at(-1) ?? ""].filter(
+    (range) => range !== "",
+  );
 
   return {
     container,
@@ -116,12 +136,9 @@ export function resolveInsertionPath(
     ...(appendsDevice ? { appendsDevice } : {}),
     ...(resolved ? {} : { namesNothing }),
     ...(created.length > 0 ? { createdChains: created.join(", ") } : {}),
-    // The chain a `c+` made has an index only now that it exists, and the
-    // result has to name it rather than the `c+` the call wrote.
+    ...(made.length > 0 ? { madeChains: made.join(", ") } : {}),
     containerPath:
-      (appendsChain && container != null
-        ? objectPathForApi(container)
-        : null) ??
+      appendedPath ??
       formatObjectPath({ kind: "device", root, segments: spelled }),
   };
 }

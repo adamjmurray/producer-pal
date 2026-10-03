@@ -120,3 +120,20 @@ with a tool, the tool wins.
   entry's `detail` or a single-target error. The fallback index lands one past
   the last device, so `delete` reads it as the empty place an out-of-range
   `d<n>` names: `nothing to delete`, and no `ok`.
+- **Chains a device path makes on the way are reported, also when the call then
+  fails.** create-device, update-device (`toPath`, `wrapInRack`) and a device
+  copy's `toPath` resolve a destination through one resolver, which makes the
+  chains a path names past the last one. A success reports them as
+  `created: "c1-c2"` on the entry (the rack's, for `wrapInRack`). A failure
+  after them — a refused insert or move, a browser load that fails, a path that
+  then names no device, Live making only some of the chains — ends its reason
+  with `; left 3 empty chains: c1-c3`, the chain a `c+` appended included, since
+  the path names that chain only once it exists. A failed move or copy names
+  them in its reason instead of `created`. A lone target throws that reason; in
+  a list it is the target's skip `detail`, the way created scenes are named: no
+  device landed, so `ok: false`. Chain and drum-pad copies make no chains
+  through a path (they append their own copy), so they have nothing to name.
+  Wrapping an instrument keeps its undo-then-throw, and the chains `toPath` made
+  before it began stay in the error. An instrument wrap's `toPath` slot reads
+  against the container as the call found it, though Live keeps an instrument
+  ahead of audio effects, so the rack may land before them.

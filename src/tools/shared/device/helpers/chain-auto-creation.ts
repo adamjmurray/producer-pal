@@ -191,16 +191,25 @@ function autoCreateChains(
     );
   }
 
-  // Create the exact number of chains needed (bounded loop, not while)
-  for (let i = 0; i < chainsToCreate; i++) {
-    if (appendChain(device) == null) {
-      throw new Error(
-        `Failed to create chain ${i + 1}/${chainsToCreate} in path "${fullPath}"`,
-      );
+  // Create the exact number of chains needed (bounded loop, not while). A
+  // failure partway still names the chains already made.
+  let made = 0;
+
+  try {
+    for (let i = 0; i < chainsToCreate; i++) {
+      if (appendChain(device) == null) {
+        throw new Error(
+          `Failed to create chain ${i + 1}/${chainsToCreate} in path "${fullPath}"`,
+        );
+      }
+
+      made++;
+    }
+  } finally {
+    if (made > 0) {
+      created?.push(createdRange("c", firstIndex, firstIndex + made - 1));
     }
   }
-
-  created?.push(createdRange("c", firstIndex, targetIndex));
 }
 
 /**

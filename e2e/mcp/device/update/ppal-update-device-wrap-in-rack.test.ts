@@ -18,6 +18,7 @@ import {
   getToolWarnings,
   isToolError,
   parseToolResult,
+  readDeviceCount,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
@@ -101,6 +102,43 @@ describe("ppal-update-device wrapInRack", () => {
     expect(result.type).toBe("instrument-rack");
     expect(result.deviceCount).toBe(1);
     expect(result.path).toBe(devicePath);
+  });
+
+  // toPath names a slot in the container as the call found it, so the slot
+  // past its last device is accepted even though the instrument leaves the
+  // container while the rack is made. Live keeps an instrument ahead of audio
+  // effects, so the rack lands before the Reverb rather than at the end.
+  it("wraps an instrument to the slot past its own track's last device", async () => {
+    const trackIndex = await createMidiTrack(ctx.client!);
+    const synth = await createTestDeviceAt(
+      ctx.client!,
+      "Operator",
+      `t${trackIndex}`,
+    );
+
+    await createTestDeviceAt(ctx.client!, "Reverb", `t${trackIndex}`);
+
+    const count = await readDeviceCount(ctx.client!, trackIndex);
+
+    const result = parseToolResult<WrapResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path: synth,
+          wrapInRack: true,
+          toPath: `t${trackIndex}/d${count}`,
+        },
+      }),
+    );
+
+    expect(result.type).toBe("instrument-rack");
+    expect(result.deviceCount).toBe(1);
+    expect(result.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
+    // The rack holds the instrument, read back from where the result says.
+    expect((await readDevice(`${result.path}/c0/d0`)).type).toContain(
+      "Operator",
+    );
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(count);
   });
 
   it("wraps an instrument and its effect in series in one chain", async () => {

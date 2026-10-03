@@ -5,6 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
+import { withChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { type CopyLabels } from "../sources/copy-labels.ts";
@@ -27,6 +28,8 @@ import { copyToDestinations } from "./copy-per-destination.ts";
 export interface DeviceCopy {
   id: string;
   path?: string;
+  /** The rack chains the destination had to make first ("c2-c3") */
+  created?: string;
 }
 
 /**
@@ -121,7 +124,7 @@ function duplicateDevice(
       // the temp copy — the temp track shifted its track index, and the cleanup
       // deletes it. Nothing survives a failure either way: the copy is still on
       // the temp track.
-      const { outcome, reason } = moveDeviceToPath(
+      const { outcome, reason, created, madeChains } = moveDeviceToPath(
         tempDevice,
         adjustedDestination,
         device,
@@ -130,14 +133,22 @@ function duplicateDevice(
 
       if (outcome === "no-destination") {
         throw new Error(
-          `${sourceLabel} not copied — no destination at toPath "${destination}"`,
+          withChainsLeft(
+            `${sourceLabel} not copied — no destination at toPath "${destination}"`,
+            madeChains,
+          ),
         );
       }
 
       if (outcome === "refused") {
         const refusal = `the copy of ${sourceLabel} could not be moved to "${destination}"`;
 
-        throw new Error(reason == null ? refusal : `${refusal}: ${reason}`);
+        throw new Error(
+          withChainsLeft(
+            reason == null ? refusal : `${refusal}: ${reason}`,
+            madeChains,
+          ),
+        );
       }
 
       if (outcome === "unresolvable") {
@@ -149,7 +160,7 @@ function duplicateDevice(
       }
 
       // Read the device's id before the temp track goes away.
-      return { id: tempDevice.id };
+      return { id: tempDevice.id, ...(created == null ? {} : { created }) };
     },
   );
 }

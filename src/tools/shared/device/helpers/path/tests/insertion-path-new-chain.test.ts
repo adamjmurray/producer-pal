@@ -11,6 +11,7 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   lookupMockObject,
+  mockNonExistentObjects,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -158,6 +159,65 @@ describe('resolveInsertionPath, the "c+" that appends a chain', () => {
 
     expect(rack.call).toHaveBeenCalledTimes(1);
     expect(containerPath).toBe("t0/d0/pD1/c0");
+  });
+});
+
+// Every tool that places something at a path resolves it here, so this is
+// where they all learn what the path made — and what a failure left behind.
+describe("resolveInsertionPath, the chains a path makes", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("lists the appended chain among those made, but not as created", () => {
+    registerRack({ inNotes: [0, 0] });
+
+    const resolved = resolveInsertionPath("t0/d0/c+");
+
+    expect(resolved.madeChains).toBe("c2");
+    expect(resolved).not.toHaveProperty("createdChains");
+  });
+
+  it("lists a gap a chain index made under both names", () => {
+    mockNonExistentObjects();
+    registerRack({ inNotes: [0] });
+
+    const resolved = resolveInsertionPath("t0/d0/c3/d+");
+
+    expect(resolved.madeChains).toBe("c1-c3");
+    expect(resolved.createdChains).toBe("c1-c3");
+  });
+
+  it("lists nothing when the chain was already there", () => {
+    registerRack({ inNotes: [0, 0] });
+
+    expect(resolveInsertionPath("t0/d0/c1/d+")).not.toHaveProperty(
+      "madeChains",
+    );
+  });
+
+  it("names the chains made before Live stopped making them", () => {
+    mockNonExistentObjects();
+
+    const rack = registerRack({ inNotes: [0] });
+    const makeChain = rack.methods.insert_chain as () => unknown;
+    let calls = 0;
+
+    // Live makes the first chain, then makes none.
+    rack.methods.insert_chain = () => (++calls === 1 ? makeChain() : 1);
+
+    expect(() => resolveInsertionPath("t0/d0/c3/d+")).toThrow(
+      'Failed to create chain 2/3 in path "t0/d0/c3/d+"; left an empty chain: c1',
+    );
+  });
+
+  it("names the chains it made when the path then fails", () => {
+    mockNonExistentObjects();
+    registerRack({ inNotes: [0] });
+
+    expect(() => resolveInsertionPath("t0/d0/c2/d0/c0/d+")).toThrow(
+      'Device in path "t0/d0/c2/d0/c0/d+" does not exist; left 2 empty chains: c1-c2',
+    );
   });
 });
 

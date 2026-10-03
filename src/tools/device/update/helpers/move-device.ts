@@ -40,8 +40,12 @@ export interface DeviceMove {
    * "unresolvable" and on a "refused". */
   reason?: string;
   /** The rack chains toPath had to make first ("c2-c3"), when it made any.
-   * They exist whether or not the move itself went through. */
+   * Only on a move that went through; a failed one names them in `madeChains`. */
   created?: string;
+  /** Every chain toPath made, the `c+` one included, when the move did not go
+   * through. They stay in the Set empty, so the caller names them in its own
+   * words with `withChainsLeft`. */
+  madeChains?: string;
 }
 
 /**
@@ -80,6 +84,12 @@ export function moveDeviceToPath(
     reportPath,
     notes,
   );
+
+  if (move.outcome !== "moved") {
+    return destination.madeChains == null
+      ? move
+      : { ...move, madeChains: destination.madeChains };
+  }
 
   return destination.createdChains == null
     ? move

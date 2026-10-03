@@ -17,6 +17,7 @@ import {
   type BrowserItemResolution,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import {
   remoteScriptExpiry,
@@ -68,21 +69,13 @@ export async function createBrowserDevice(
   timing: RequestTiming = {},
 ): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
   const target = resolveCreationTarget(path);
-  const waitMs = remoteScriptWait(timing.deadline, ARRIVAL_WAIT_MS);
 
-  if (waitMs == null) {
-    throw new Error(
-      `could not load "${deviceName}": ${outOfTime(timing.timeoutMs)}`,
-    );
+  try {
+    return await loadAndMove(item, deviceName, target, path, timing);
+  } catch (error) {
+    // The chains the path made stay in the Set whether or not the load does.
+    throw errorWithChainsLeft(error, target.madeChains);
   }
-
-  return await withTempTrack(deviceName, async (track) => {
-    const device = await loadOnto(track, item, deviceName, waitMs);
-
-    moveIntoPlace(device, target, deviceName, path);
-
-    return { device, entry: createdDeviceEntry(device.id, device, target) };
-  });
 }
 
 /**
@@ -129,6 +122,31 @@ export async function resolveBrowserDevice(
 }
 
 // --- Helpers below main exports ---
+
+// Load the item onto a temp track, then move it to the resolved target.
+async function loadAndMove(
+  item: BrowserItem,
+  deviceName: string,
+  target: CreationTarget,
+  path: string,
+  timing: RequestTiming,
+): Promise<{ device: LiveAPI; entry: CreateDeviceResult }> {
+  const waitMs = remoteScriptWait(timing.deadline, ARRIVAL_WAIT_MS);
+
+  if (waitMs == null) {
+    throw new Error(
+      `could not load "${deviceName}": ${outOfTime(timing.timeoutMs)}`,
+    );
+  }
+
+  return await withTempTrack(deviceName, async (track) => {
+    const device = await loadOnto(track, item, deviceName, waitMs);
+
+    moveIntoPlace(device, target, deviceName, path);
+
+    return { device, entry: createdDeviceEntry(device.id, device, target) };
+  });
+}
 
 /**
  * Why a load didn't start for lack of time. When the whole budget can't cover

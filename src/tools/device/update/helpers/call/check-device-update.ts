@@ -30,7 +30,7 @@ import { lookUpPresets, presetDevice } from "./device-presets.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
 import { type UpdateTargetOptions } from "../update-device-properties.ts";
-import { type wrapDevicesInRack } from "../wrap-devices-in-rack.ts";
+import { type wrapDevicesInRack } from "../wrap/wrap-devices-in-rack.ts";
 
 /** What one target of an update-device call carries into its write. */
 export type DevicePayload =

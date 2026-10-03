@@ -46,7 +46,7 @@ import {
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateDeviceTarget } from "./helpers/update-device-target.ts";
 import { updateDrumPadGroup } from "./helpers/update-drum-pad-group.ts";
-import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
+import { wrapDevicesInRack } from "./helpers/wrap/wrap-devices-in-rack.ts";
 
 export interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;

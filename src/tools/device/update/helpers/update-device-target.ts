@@ -8,6 +8,7 @@ import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { type WrittenContainer } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { withChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { moveDeviceToPath } from "./move-device.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
 import { type PresetOutcome } from "./call/device-presets.ts";
@@ -233,7 +234,7 @@ function moveDevice(
   toPath: string,
   notes: TargetNotes,
 ): TargetMove {
-  const { outcome, reason, created } = moveDeviceToPath(
+  const { outcome, reason, created, madeChains } = moveDeviceToPath(
     device,
     toPath,
     device,
@@ -249,12 +250,16 @@ function moveDevice(
     refuseTargetWork(
       notes,
       ["toPath"],
-      `not moved: nothing at toPath "${toPath}"`,
+      withChainsLeft(`not moved: nothing at toPath "${toPath}"`, madeChains),
     );
   } else if (outcome === "refused") {
     const explained = reason == null ? "" : `: ${reason}`;
 
-    refuseTargetWork(notes, ["toPath"], `not moved to "${toPath}"${explained}`);
+    refuseTargetWork(
+      notes,
+      ["toPath"],
+      withChainsLeft(`not moved to "${toPath}"${explained}`, madeChains),
+    );
   } else {
     noteLanded(notes, "move");
   }
