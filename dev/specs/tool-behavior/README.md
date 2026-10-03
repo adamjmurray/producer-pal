@@ -112,6 +112,29 @@ How the tool answers depends on what is wrong:
   move (destination, clip type) before shortening the clip.
 - **A device list that reads through its own inserts** is refused before
   anything is created ([lists of paths](object-paths/lists-of-paths.md)).
+- **A target named twice is refused**, in every tool, before any work. Two
+  params that name the same target, whether they agree or not:
+  - a param that names it on its own (`path`, `slot`, `slots`, `devicePath`,
+    `toPath`) with a second name for it (`trackIndex`, `sceneIndex`, `takeLane`
+    beside a path with a lane segment);
+  - a published param with the deprecated spelling it replaced (`path` and
+    `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`, `startTime`
+    and `startLocator`, `arrangementStart` and `locator`, `device` and
+    `deviceName`), or with a position spelled in its own coordinate
+    (`toPath: "t0[5|1]"` and `arrangementStart`);
+  - `id` beside `ids` or the tool's own id spelling (`clipId`, `trackId`, ...),
+    and `path` beside `paths`, whatever the values: a param and its alias are
+    never sent together.
+
+  One wording, built by `refuseNamedTwice`:
+  `<param> names the <noun> on its own - don't send <params> with it`, listing
+  only the params sent, with an optional note on the end
+  (`(slot is deprecated)`). Not this: an `id` beside a `path` (in the read tools
+  a second target), a `slot` list beside a bare `trackIndex` on create-clip
+  (session slots plus an arrangement track), `trackType` (a category),
+  `arrangementStart` beside a clip-slot destination of `duplicate`, and
+  `routeToSource` with `withoutClips`/`withoutDevices`.
+
 - **`count` with a destination list**, and `capture` with `count` on
   create-scene: refused, since the destinations already say how many.
 - **A bad transform arg** is refused when it does not depend on the clip's
@@ -173,6 +196,9 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   `{ path: "t99", detail: "nothing to delete" }`. A lone one is satisfied, not
   refused; making it an error would let a model retry forever. A read miss stays
   `ok: false`, since a read can't be satisfied by an absent object.
+- **An empty clip slot is a miss.** A lone `read-clip` of one throws
+  `no clip at <path>`, a listed one gets an `ok: false` entry, and a clip list
+  nested in a `read-scene` or `read-track` result leaves it out.
 - **A target the call could only half serve** keeps its normal entry plus a
   `detail` naming what did not land. `ok: false` means nothing asked of that
   target landed.
@@ -193,15 +219,18 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   `ok: false` with a `detail`; if some of it landed, it keeps its normal entry
   plus a `detail` saying what landed and what didn't. Earlier targets keep their
   entries and later ones still run.
-- **A deadline is no exception.** When a call stops early because the request
-  ran out of time, every target it never reached keeps a skip entry with a
-  `detail` saying so and what to re-run. A target whose work had begun keeps its
-  normal entry with a `detail` for what did not run. A lookup that runs out of
-  time before anything is written refuses the call.
+- **A deadline is no exception, reads included.** When a call stops early
+  because the request ran out of time, every target it never reached keeps a
+  skip entry with a `detail` saying so and what to re-run. `readFanOut` checks
+  the deadline before each target of a multi-target read. A one-target read, and
+  the inside of one big read (`read-live-set`), are not cut short. A target
+  whose work had begun keeps its normal entry with a `detail` for what did not
+  run. A lookup that runs out of time before anything is written refuses the
+  call.
 - **"Ignored" is one wording, in a warning and in an entry:**
   `X ignored: reason`. A param the whole call ignored is a warning
-  (`trackIndex, sceneIndex ignored: "path" already names the clip`). Params one
-  target can't use are a `detail` on that target's entry, in the same shape
+  (`takeLane ignored: session clips have no take lanes`). Params one target
+  can't use are a `detail` on that target's entry, in the same shape
   (`gainDb, pan ignored: can't be set on a device`,
   `gain ignored: the clip is MIDI`). Several params are joined with `, `, never
   `/`. The code builds both with `ignoredText` and `warnIgnored`

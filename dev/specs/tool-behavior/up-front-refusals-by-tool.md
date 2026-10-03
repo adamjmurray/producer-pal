@@ -27,12 +27,6 @@ follows the code; when it disagrees with a tool, the tool wins.
   for nothing. `refuseNoWrite` builds the message, so every update tool can
   share it:
   `nothing to update: id and path only name the scenes; also send a param to change`.
-- **A param and the deprecated spelling it replaced, both sent, is refused**
-  (`refuseDoubledSpelling`): `path`/`slot` in `readClip` and `createClip`,
-  `toPath`/`toSlot` in `updateClip` and `duplicate`, and
-  `arrangementSplit`/`split` in `updateClip`. Neither is honored, so a warning
-  would return a success-shaped result for a call that moved or split nothing. A
-  spelling that names nothing (blank, or a coerced null) isn't sent.
 - **`updateTrack` and `updateScene` refuse a `path` entry they can't parse**
   before anything is written; an entry that parses but names no track or scene
   skips only its own target. `rt0/l0` is such an entry: only regular tracks have
@@ -65,6 +59,39 @@ follows the code; when it disagrees with a tool, the tool wins.
   refuse a `timeSignature`** that isn't `N/D` (or `disabled`, on scenes) or
   whose denominator isn't a power of two, since Live would change it. One check
   serves all five (`live-api-values.ts`).
+- **A target named twice is refused**
+  (`<param> names the <noun> on its own - don't send <params> with it`) by every
+  tool that takes both params:
+  - `readTrack`, `readScene`, `readClip`: `path` with `trackIndex` or
+    `sceneIndex`, and `readClip`'s `slot` with them. This is in `readFanOut`,
+    before any target is read, list or not.
+  - `createTrack`, `createScene`: `path` with `trackIndex` or `sceneIndex`.
+  - `createClip`: `path` with `trackIndex` or `sceneIndex`; `slot` with both (a
+    `slot` list with a bare `trackIndex` is allowed); `takeLane` with a path
+    that names a lane.
+  - `duplicate` of a clip: `takeLane` with a `toPath` that names a lane, even
+    one the copy can't reach. Other types refuse `takeLane` outright.
+  - `select`: `path`, `slot` or `devicePath` with `trackIndex` or `sceneIndex`.
+  - `playback`, for `play-scene`: `path` or `slots` with `sceneIndex`.
+  - Every tool that reads an id or path list (the four reads, the update tools,
+    `delete`, `duplicate`, `playback`): `id` with `ids` or its own id spelling,
+    and `path` with `paths`, whatever the values. This is in
+    `namedIdParam`/`namedPathParam`, before the targets are counted.
+  - A param with its deprecated spelling, by `refuseDoubledSpelling` (`path` and
+    `slot` in `readClip`/`createClip`, `toPath` and `toSlot` in `duplicate` and
+    `updateClip`, `arrangementSplit` and `split`), and by hand in `select`
+    (`path` with `slot` or `devicePath`; `slot` and `devicePath` without a path
+    name a slot and a device, and select takes both), `playback` (`path` and
+    `slots`; `startTime`, `loopStart`, `loopEnd` and their `*Locator`
+    spellings), `duplicate` (`arrangementStart` and `locator`), `createDevice`
+    (`device` and `deviceName`) and every tool with a position in a path
+    coordinate (`refuseDoubledPosition`).
+
+  Neither param is honored, so a warning would return a success-shaped result
+  for a call that moved or split nothing. A param that names nothing (blank, or
+  a coerced null) isn't sent. One helper words them all (`refuseNamedTwice`),
+  and a test fails when a tool takes a pair of naming params and is not covered.
+
 - **`updateClip` refuses a hole in `arrangementSplit` or `split`** (`2|1,,3|1`,
   `,`) before any clip is cut, worded as for any other list. A position at or
   before the clip's start is not a hole: it is dropped, and a list of only those

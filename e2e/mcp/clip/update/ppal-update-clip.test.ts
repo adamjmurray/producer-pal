@@ -727,7 +727,7 @@ describe("ppal-update-clip", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "toPath and toSlot both name a destination",
+      "toPath names the destination on its own - don't send toSlot with it",
     );
 
     await sleep(100);

@@ -96,7 +96,7 @@ export function resolveClipDestinations(
     value: rawToPath,
     alias: "toSlot",
     aliasValue: rawToSlot,
-    noun: "a destination",
+    noun: "destination",
   });
 
   if (toSlot != null) {

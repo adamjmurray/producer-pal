@@ -166,6 +166,25 @@ describe("ppal-update-track", () => {
     ]);
   });
 
+  it("refuses path beside paths with different values, renaming nothing", async () => {
+    const readNames = async (): Promise<string[]> =>
+      (await readTracks()).tracks!.map((track) => track.name);
+    const before = await readNames();
+
+    const refused = await updateTrack({
+      path: "t0",
+      paths: "t1",
+      name: "Not Renamed",
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the target on its own - don't send paths with it",
+    );
+
+    await sleep(100);
+    expect(await readNames()).toStrictEqual(before);
+  });
+
   it("updates track mute, solo, and arm states", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;

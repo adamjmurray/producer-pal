@@ -679,6 +679,34 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
+  it("refuses a scene path sent with sceneIndex, firing nothing", async () => {
+    // read-live-set reports isPlaying only while the transport runs, and firing
+    // a scene would start it.
+    const isPlaying = async (): Promise<boolean | undefined> =>
+      parseToolResult<{ isPlaying?: boolean }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-live-set",
+          arguments: {},
+        }),
+      ).isPlaying;
+
+    await playback({ action: "stop" });
+    await sleep(100);
+    expect(await isPlaying()).toBeUndefined();
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", path: "s0", sceneIndex: 0 },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the scene on its own - don't send sceneIndex with it",
+    );
+
+    await sleep(100);
+    expect(await isPlaying()).toBeUndefined();
+  });
+
   it("errors on a locator name nothing matches", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-playback",

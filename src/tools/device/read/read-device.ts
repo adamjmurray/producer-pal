@@ -66,8 +66,10 @@ export function readDevice(
   args: ReadDeviceArgs,
   context: Partial<ToolContext> = {},
 ): ReadResult<Record<string, unknown>> {
-  return readFanOut(args, { object: "device", idAlias: "deviceId" }, (one) =>
-    readOneDevice(one, context),
+  return readFanOut(
+    args,
+    { object: "device", idAlias: "deviceId", deadline: context.deadline },
+    (one) => readOneDevice(one, context),
   );
 }
 

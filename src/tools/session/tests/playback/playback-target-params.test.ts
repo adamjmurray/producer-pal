@@ -78,15 +78,15 @@ describe("playback paths alias", () => {
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
   });
 
-  it("keeps path and says paths went nowhere when they disagree", () => {
-    const warn = spyOnWarn();
-
-    playback({ action: "play-session-clips", path: "t0/s1", paths: "t9/s9" });
-
-    expect(clipSlot.call).toHaveBeenCalledWith("fire");
-    expect(warn).toHaveBeenCalledWith(
-      'paths "t9/s9" ignored: "path" names the target',
-    );
+  it("refuses paths when it disagrees with path, firing nothing", () => {
+    expect(() =>
+      playback({
+        action: "play-session-clips",
+        path: "t0/s1",
+        paths: "t9/s9",
+      }),
+    ).toThrow("path names the target on its own - don't send paths with it");
+    expect(clipSlot.call).not.toHaveBeenCalled();
   });
 
   it("names the alias as it was sent when the action takes no target", () => {

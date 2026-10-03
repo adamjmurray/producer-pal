@@ -242,15 +242,6 @@ describe("readOneTrack", () => {
       );
     });
 
-    it.each([
-      ["id", { id: "123" }],
-      ["trackIndex", { trackIndex: 0 }],
-    ])("refuses a path sent with %s", (_name, other) => {
-      expect(() => readOneTrack({ path: "t0", ...other })).toThrow(
-        "path names the track on its own",
-      );
-    });
-
     // Same as an id: the object found says what category it is, so a trackType
     // alongside has nothing to decide.
     it("ignores trackType", () => {

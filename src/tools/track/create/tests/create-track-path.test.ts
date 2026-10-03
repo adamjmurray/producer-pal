@@ -162,7 +162,7 @@ describe("createTrack by path", () => {
 
   it("refuses a path sent with trackIndex", () => {
     expect(() => createTrack({ path: "t+", trackIndex: 1 })).toThrow(
-      "path says where the track goes - don't send trackIndex with it",
+      "path names the destination on its own - don't send trackIndex with it",
     );
   });
 

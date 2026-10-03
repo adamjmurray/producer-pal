@@ -115,7 +115,7 @@ export function duplicateTargets(
       ? "copy"
       : "destination";
 
-  const drafts = copyDrafts(run, parsed, sources, clipDestinations, call);
+  const drafts = copyDrafts(run, parsed, sources, clipDestinations);
   const labelFor = pairCopyLabels(
     args,
     drafts.length,
@@ -152,7 +152,6 @@ export function duplicateTargets(
  * @param parsed - The call, as read
  * @param sources - The sources, with their shares of the destinations
  * @param clipDestinations - Where each clip source's copies go, for a clip call
- * @param call - The call's shared state
  * @returns The drafts, a source's copies together
  */
 function copyDrafts(
@@ -160,7 +159,6 @@ function copyDrafts(
   parsed: DuplicateCall,
   sources: SourceShare[],
   clipDestinations: ClipDestinations[] | null,
-  call: Call,
 ): CopyDraft[] {
   const { type } = parsed;
 
@@ -177,7 +175,6 @@ function copyDrafts(
       laneNamed: () => {
         run.namesTakeLane = true;
       },
-      ignored: call.ignored,
     });
   }
 

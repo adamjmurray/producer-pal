@@ -59,11 +59,14 @@ should follow from them unambiguously, without being spelled out here.
    that can't do anything, can't be interpreted unambiguously, or would leave
    work the tool must undo if it stopped partway throws an error before it
    starts, having changed nothing. An entry that can't be parsed means the call
-   was written wrong, so the whole call is refused; a well-formed target that
-   can't be applied is skipped. Validation that needs to read from the API
-   happens at each target, as it is reached — except when stopping partway would
-   leave work the tool must undo (a temporary track, not a result the caller
-   asked for), where the whole list is checked before anything runs.
+   was written wrong, so the whole call is refused. Two spellings of one arg in
+   the same call — an arg and its alias, or a deprecated arg and the one that
+   replaced it — are refused whatever their values: no caller has a reason to
+   send both. A well-formed target that can't be applied is skipped. Validation
+   that needs to read from the API happens at each target, as it is reached —
+   except when stopping partway would leave work the tool must undo (a temporary
+   track, not a result the caller asked for), where the whole list is checked
+   before anything runs.
 
 5. Observability: On a write, don't report an arg that took effect as intended.
    Report a value the API changed, reading it back off the object, with a

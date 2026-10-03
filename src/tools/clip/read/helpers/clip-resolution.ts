@@ -5,7 +5,6 @@
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
@@ -178,9 +177,10 @@ interface ClipLocation {
 }
 
 /**
- * Resolve clip location from args. `path` wins, then the deprecated `slot`,
- * then the trackIndex/sceneIndex pair — which doubles as the hidden alias and
- * as how batch readers pass indices they already parsed.
+ * Resolve clip location from args: `path`, then the deprecated `slot`, then the
+ * trackIndex/sceneIndex pair — which doubles as the hidden alias and as how
+ * batch readers pass indices they already parsed. A path sent beside the pair
+ * is refused before this runs (read-clip's fan-out).
  * @param args - The location params as read-clip received them
  * @returns Resolved clipId, trackIndex, and sceneIndex
  */
@@ -191,18 +191,10 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
     value: args.path,
     alias: "slot",
     aliasValue: args.slot,
-    noun: "a clip",
+    noun: "clip",
   });
 
   if (path != null) {
-    // The aliases are a fallback for a caller that did not use path.
-    if (args.trackIndex != null || args.sceneIndex != null) {
-      warnIgnored(
-        ["trackIndex", "sceneIndex"],
-        '"path" already names the clip',
-      );
-    }
-
     const parsed = parseObjectPath(path, "path");
 
     // An arrangement clip has no slot to report — the path names it outright,

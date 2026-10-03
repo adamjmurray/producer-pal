@@ -85,7 +85,7 @@ describe("updateClip - splitting smoke tests", () => {
         {},
       ),
     ).rejects.toThrow(
-      "arrangementSplit and split both name split positions; use arrangementSplit alone (split is deprecated)",
+      "arrangementSplit names the split positions on its own - don't send split with it (split is deprecated)",
     );
     expect(callState.trackMock.call).not.toHaveBeenCalled();
     expect(lookupMockObject(clipId)?.set).not.toHaveBeenCalled();
@@ -104,7 +104,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     expectDuplicateCalled(callState.trackMock);
     expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit and split both name split"),
+      expect.stringContaining("arrangementSplit names the split positions"),
     );
   });
 

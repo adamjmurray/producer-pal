@@ -146,6 +146,9 @@ export async function readClip(
       object: "clip",
       idAlias: "clipId",
       oneTargetParams: ["trackIndex", "sceneIndex", "slot"],
+      indexParams: ["trackIndex", "sceneIndex"],
+      pathSpellings: ["slot"],
+      deadline: context.deadline,
     },
     (one) => readNamedClip(one, context),
   );

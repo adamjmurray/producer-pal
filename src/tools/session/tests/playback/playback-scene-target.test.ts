@@ -303,14 +303,6 @@ describe("playback play-scene from a clip slot", () => {
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
 
-  it("fires the scene when a position and sceneIndex agree", () => {
-    const scene = mockScene(1);
-
-    playback({ action: "play-scene", path: "t0/s1", sceneIndex: 1 });
-
-    expect(scene.call).toHaveBeenCalledWith("fire");
-  });
-
   it("refuses positions in different scenes, naming each", () => {
     expect(() =>
       playback({ action: "play-scene", path: "t0/s1,t2/s3" }),
@@ -329,12 +321,11 @@ describe("playback play-scene from a clip slot", () => {
     );
   });
 
-  it("refuses a position that disagrees with sceneIndex", () => {
+  it("refuses a position sent with sceneIndex", () => {
     expect(() =>
-      playback({ action: "play-scene", path: "t0/s1", sceneIndex: 3 }),
+      playback({ action: "play-scene", path: "t0/s1", sceneIndex: 1 }),
     ).toThrow(
-      'action "play-scene" plays one scene, but got ' +
-        'scene 1 from path "t0/s1", scene 3 from sceneIndex 3',
+      "path names the scene on its own - don't send sceneIndex with it",
     );
   });
 

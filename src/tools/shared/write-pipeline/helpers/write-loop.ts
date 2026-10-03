@@ -4,13 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import {
   type NamedTarget,
   namedLaterReason,
   noteEntry,
   skipEntry,
-  unreachedDetail,
+  unreachedDetailAfter,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { entryAndPieces, type WithPieces } from "../entry-pieces.ts";
 import { type Supersession } from "../plans/supersession.ts";
@@ -166,8 +165,13 @@ function runTarget<Args, Parsed, P, Checked, E extends object, Each>(
     return skipped(target.named, target.skip);
   }
 
-  if (isDeadlineExceeded(context.call.ctx.deadline ?? null)) {
-    return skipped(target.named, unreachedDetail(spec.words.rerun), true);
+  const late = unreachedDetailAfter(
+    context.call.ctx.deadline,
+    spec.words.rerun,
+  );
+
+  if (late != null) {
+    return skipped(target.named, late, true);
   }
 
   return attemptWrite(spec, target, context);

@@ -202,6 +202,81 @@ describe("ppal-create-clip", () => {
     );
   });
 
+  it("refuses a path sent with trackIndex or sceneIndex, creating nothing", async () => {
+    // A clip past the last scene makes scenes up to its index, so a created
+    // clip would show as a longer scene list.
+    const sceneCount = async (): Promise<number> =>
+      parseToolResult<{ sceneCount: number }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-live-set",
+          arguments: {},
+        }),
+      ).sceneCount;
+    const before = await sceneCount();
+    const path = `t${EMPTY_MIDI_TRACK}/s${before + 1}`;
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path,
+        trackIndex: EMPTY_MIDI_TRACK,
+        sceneIndex: before + 1,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the destination on its own - don't send trackIndex or sceneIndex with it",
+    );
+
+    await sleep(100);
+    expect(await sceneCount()).toBe(before);
+  });
+
+  it("refuses takeLane beside a path that names a lane, creating nothing", async () => {
+    const clipCount = async (): Promise<number> =>
+      parseToolResult<{ arrangementClipCount?: number }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: {
+            path: `t${EMPTY_MIDI_TRACK}`,
+            include: ["arrangement-clips"],
+          },
+        }),
+      ).arrangementClipCount ?? 0;
+    const before = await clipCount();
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/l1[41|1]`,
+        takeLane: "2",
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+
+    await sleep(100);
+    expect(await clipCount()).toBe(before);
+  });
+
+  it("refuses the deprecated slot sent with trackIndex and sceneIndex", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${EMPTY_MIDI_TRACK}/9`,
+        trackIndex: EMPTY_MIDI_TRACK,
+        sceneIndex: 9,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "slot names the destination on its own - don't send trackIndex or sceneIndex with it",
+    );
+  });
+
   it("creates arrangement MIDI clips", async () => {
     // Test: Create arrangement clip
     const arrangementResult = await ctx.client!.callTool({

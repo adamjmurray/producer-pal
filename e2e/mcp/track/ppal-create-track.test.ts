@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
+  getToolErrorMessage,
   parseBatchResult,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -521,6 +522,21 @@ describe("ppal-create-track", () => {
 
       expect(data).toHaveLength(2);
       expect(warnings.join("\n")).toContain('param "count" is deprecated');
+    });
+
+    it("refuses a path sent with trackIndex, creating nothing", async () => {
+      const before = await trackCount();
+      const refused = await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "t+", trackIndex: 0 },
+      });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the destination on its own - don't send trackIndex with it",
+      );
+
+      await sleep(100);
+      expect(await trackCount()).toBe(before);
     });
 
     it("refuses count sent with a path list", async () => {

@@ -296,3 +296,10 @@ with a tool, the tool wins.
   before it began stay in the error. An instrument wrap's `toPath` slot reads
   against the container as the call found it, though Live keeps an instrument
   ahead of audio effects, so the rack may land before them.
+- **The read tools answer per target named, through one `readFanOut`.** A target
+  that can't be read holds its slot as `{id | path, ok: false, detail}`, and a
+  lone one throws. A multi-target read checks the deadline before each target;
+  every target it never reached gets the same skip the write tools give
+  (`the request ran out of time; re-run for this <object>`). An empty clip slot
+  is a miss: a lone `read-clip` throws `no clip at <path>`, a listed one is a
+  skip, and `read-scene` and `read-track` leave it out of their clip lists.

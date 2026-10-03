@@ -114,7 +114,7 @@ const TOOLS: Array<{
   },
   {
     tool: "playback",
-    refusal: "both name clips",
+    refusal: "names the clips on its own",
     objects: "scene",
     path: "s0",
     setup: () => {

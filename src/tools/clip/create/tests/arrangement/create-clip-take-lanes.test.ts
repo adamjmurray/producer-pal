@@ -360,45 +360,64 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(2, 4);
   });
 
-  it("ignores the takeLane alias when the path already names a lane", async () => {
+  it("refuses the takeLane alias when the path already names a lane", async () => {
     registerLiveSet();
-    registerTakeLaneTrack({ initialLanes: 3 });
+    const track = registerTakeLaneTrack({ initialLanes: 3 });
 
-    await createClip({
-      path: "t0/l2",
-      arrangementStart: "1|1",
-      notes: "C3",
-      takeLane: "1",
-    });
-
-    expectTakeLaneMidiClip(2, 0);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'takeLane ignored: "path" already names the take lane',
+    await expect(
+      createClip({
+        path: "t0/l2",
+        arrangementStart: "1|1",
+        notes: "C3",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
     );
   });
 
   // One destination can't tell the guard apart from its opposite: `some` and
-  // `every` agree on a one-item list. With two, the alias names a lane for a
-  // destination that never asked for one, which is the thing being refused.
-  it("ignores the takeLane alias when any destination's path names a lane", async () => {
+  // `every` agree on a one-item list. With two, one path naming a lane is
+  // enough, even though the other names none.
+  it("refuses the takeLane alias when any destination's path names a lane", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 3 });
 
     const mainTrack = registerArrangementTrack(1);
 
-    await createClip({
-      path: "t0/l2,t1",
-      arrangementStart: "1|1",
-      notes: "C3",
-      takeLane: "1",
-    });
+    await expect(
+      createClip({
+        path: "t0/l2,t1",
+        arrangementStart: "1|1",
+        notes: "C3",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+    expect(mainTrack.call).not.toHaveBeenCalled();
+  });
 
-    expectTakeLaneMidiClip(2, 0);
-    // t1 named no lane, so it stays on the main lane rather than inheriting one.
-    expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(mainTrack.call).not.toHaveBeenCalledWith("create_take_lane");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'takeLane ignored: "path" already names the take lane',
+  it("refuses takeLane beside a lane path without first warning about session clips", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    await expect(
+      createClip({
+        path: "t0/s0,t0/l2[1|1]",
+        notes: "C3",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 

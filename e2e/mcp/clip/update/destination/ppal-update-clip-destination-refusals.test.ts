@@ -204,7 +204,7 @@ describe("ppal-update-clip destinations it can make nothing of", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "toPath and toSlot both name a destination",
+      "toPath names the destination on its own - don't send toSlot with it",
     );
 
     const clip = await readClipFully(ctx.client!, { id: clipId });

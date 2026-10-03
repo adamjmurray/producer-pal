@@ -24,6 +24,7 @@ import {
   arrangementPositionPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
@@ -56,8 +57,6 @@ export interface ClipDraftParams {
   meter: () => SongMeter;
   /** Says a destination of the call is a take lane */
   laneNamed: () => void;
-  /** Warns that a param did nothing, in the one wording for it */
-  ignored: (params: string | readonly string[], why: string) => void;
 }
 
 /**
@@ -72,16 +71,12 @@ export function clipCopyDrafts(
   destinations: ClipDestinations[],
   params: ClipDraftParams,
 ): CopyDraft[] {
-  // The alias folds on after resolution, so it can only say it was ignored
-  // once for the call, not once per source.
-  const warned = { takeLane: false };
-
   return sources.flatMap((source, index) => {
     const where = destinations[index] as ClipDestinations;
 
     return where.destination === "session"
       ? slotDrafts(source, where.slots, params)
-      : arrangementDrafts(source, where, params, warned);
+      : arrangementDrafts(source, where, params);
   });
 }
 
@@ -168,15 +163,13 @@ interface ArrangementSource {
  * @param share - The source
  * @param where - Where its copies go
  * @param params - What the clip copies are told about the call
- * @param warned - What the call has already said, so each is said once
- * @param warned.takeLane - Whether the takeLane alias was said to do nothing
  * @returns One draft per destination, in the order named
+ * @throws Error when toPath names a take lane and takeLane names one too
  */
 function arrangementDrafts(
   share: SourceShare,
   where: ClipDestinations,
   params: ClipDraftParams,
-  warned: { takeLane: boolean },
 ): CopyDraft[] {
   const clip = share.skip == null ? params.objectOf(share.id) : null;
   const resolved =
@@ -185,13 +178,17 @@ function arrangementDrafts(
       : resolveDestinationTargets(clip, where.arrangementTargets);
   const requested = aliasTakeLane(resolved.destinations, params.takeLane);
 
-  if (
-    !warned.takeLane &&
-    isTakeLaneRequested(params.takeLane) &&
-    resolved.destinations.some((target) => target?.takeLane != null)
-  ) {
-    warned.takeLane = true;
-    params.ignored("takeLane", '"toPath" already names the take lane');
+  // Decided from what toPath named, not from what could be resolved: a lane
+  // on a blocked destination is still a lane the caller named.
+  if (isTakeLaneRequested(params.takeLane)) {
+    refuseNamedTwice({
+      param: "toPath",
+      value: where.arrangementTargets.some((target) => target?.takeLane != null)
+        ? "t<n>/l<n>"
+        : null,
+      noun: "take lane",
+      also: { takeLane: params.takeLane },
+    });
   }
 
   if (requested.some((target) => target?.takeLane != null)) {

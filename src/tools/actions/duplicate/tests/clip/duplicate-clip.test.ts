@@ -224,7 +224,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("refuses when toPath and toSlot both name a destination", async () => {
+    it("refuses toPath sent with the deprecated toSlot", async () => {
       registerSourceClip();
 
       await expect(
@@ -234,7 +234,9 @@ describe("duplicate - clip duplication", () => {
           toPath: "t0/s1",
           toSlot: "0/2",
         }),
-      ).rejects.toThrow(/toPath and toSlot both name a destination/);
+      ).rejects.toThrow(
+        "toPath names the destination on its own - don't send toSlot with it",
+      );
     });
 
     // The first copy is never written, so the second is the one that makes the

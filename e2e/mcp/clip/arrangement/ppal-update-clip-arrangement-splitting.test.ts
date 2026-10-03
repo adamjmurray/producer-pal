@@ -437,7 +437,7 @@ describe("Behavioral splitting tests", () => {
       });
 
       expect(getToolErrorMessage(result)).toContain(
-        "arrangementSplit and split both name split positions; use arrangementSplit alone",
+        "arrangementSplit names the split positions on its own - don't send split with it",
       );
 
       await sleep(200);

@@ -19,6 +19,7 @@ import {
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 
 /**
  * Refuses new scenes that would reach past the scene cap.
@@ -144,17 +145,18 @@ export function resolveCreateSceneIndex(
   sceneIndex: number | undefined,
   liveSet: LiveAPI,
 ): number | undefined {
+  refuseNamedTwice({
+    param: "path",
+    value: path,
+    noun: "destination",
+    also: { sceneIndex },
+  });
+
   const entries = pathEntries(path, "path");
   const entry = entries[0];
 
   if (entry == null) {
     return sceneIndex;
-  }
-
-  if (sceneIndex != null) {
-    throw new Error(
-      "path says where the scene goes - don't send sceneIndex with it",
-    );
   }
 
   if (entries.length > 1) {
@@ -188,6 +190,13 @@ export function resolveCreateSceneSpots(
   sceneIndex: number | undefined,
   count: number | undefined,
 ): SceneSpot[] {
+  refuseNamedTwice({
+    param: "path",
+    value: path,
+    noun: "destination",
+    also: { sceneIndex },
+  });
+
   const entries = pathEntries(path, "path");
 
   if (entries.length === 0) {
@@ -205,12 +214,6 @@ export function resolveCreateSceneSpots(
         },
       ],
       count,
-    );
-  }
-
-  if (sceneIndex != null) {
-    throw new Error(
-      "path says where the scene goes - don't send sceneIndex with it",
     );
   }
 

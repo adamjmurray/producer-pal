@@ -15,7 +15,10 @@
 // Resolved before anything is created, so a bad destination fails instead of
 // quietly landing clips somewhere else.
 
-import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
+import {
+  namedParam,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
@@ -110,8 +113,29 @@ export function resolveCreateClipDestinations(
     value: params.path,
     alias: "slot",
     aliasValue: params.slot,
-    noun: "a destination",
+    noun: "destination",
   });
+
+  const { trackIndex, sceneIndex } = params;
+
+  refuseNamedTwice({
+    param: "path",
+    value: path,
+    noun: "destination",
+    also: { trackIndex, sceneIndex },
+  });
+  // A slot list with a bare trackIndex is a deliberate mix (session slots plus
+  // an arrangement track). Both halves of a slot beside it name it twice.
+  refuseNamedTwice({
+    param: "slot",
+    value: slot,
+    noun: "destination",
+    also:
+      trackIndex != null && sceneIndex != null
+        ? { trackIndex, sceneIndex }
+        : {},
+  });
+
   // A position list that is not blank but still names nothing warns rather than
   // vanishing: a real position beside a slot-only path is refused.
   const arrangementStarts = targetEntries(
@@ -121,7 +145,7 @@ export function resolveCreateClipDestinations(
 
   const { clipSlots, slotOrdinals, tracks } =
     path != null
-      ? splitPathDestinations(path, params, ignored)
+      ? splitPathDestinations(path)
       : legacyDestinations(slot, params, arrangementStarts.length > 0, ignored);
   const paired = pairTracksWithStarts(
     applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length, ignored),
@@ -204,25 +228,9 @@ function clipCounter({
  * may name both, which is how one call fills a clip slot and drops an
  * arrangement clip at the same time.
  * @param path - The raw path param, already known to name something
- * @param params - The destination params as the tool received them
- * @param ignored - Says that a whole-call param did nothing
  * @returns Clip slots and arrangement tracks, in order
  */
-function splitPathDestinations(
-  path: string,
-  params: ClipDestinationParams,
-  ignored: Call["ignored"],
-): SplitDestinations {
-  // The aliases are a fallback for a caller that did not use path. One that did
-  // is naming the destination twice, so honor the explicit param and say the
-  // other went unused rather than guessing which was meant.
-  if (params.trackIndex != null || params.sceneIndex != null) {
-    ignored(
-      ["trackIndex", "sceneIndex"],
-      '"path" already names the destination',
-    );
-  }
-
+function splitPathDestinations(path: string): SplitDestinations {
   const clipSlots: ClipSlotPosition[] = [];
   const slotOrdinals: number[] = [];
   const tracks: ArrangementTrackTarget[] = [];
@@ -302,13 +310,14 @@ function noTrack(position: string | null): never {
 
 /**
  * Folds the `takeLane` alias onto the destinations. It names one lane for the
- * whole call, so a path that already named its own lane wins — the alias is a
- * fallback for a caller that didn't use the segment.
+ * whole call, so it is a fallback for a path with no lane segment of its own;
+ * beside one it is refused.
  * @param tracks - Arrangement destinations, in order
  * @param takeLane - The raw takeLane param
  * @param clipSlotCount - Number of clip slots in this request
  * @param ignored - Says that a whole-call param did nothing
  * @returns The destinations, with the alias applied where a lane was unnamed
+ * @throws Error when a path names a lane and takeLane names one too
  */
 function applyTakeLaneAlias(
   tracks: ArrangementTrackTarget[],
@@ -320,6 +329,14 @@ function applyTakeLaneAlias(
     return tracks;
   }
 
+  // Refused before anything is said about slots: the pair is the mistake.
+  refuseNamedTwice({
+    param: "path",
+    value: tracks.some((track) => track.takeLane != null) ? "t<n>/l<n>" : null,
+    noun: "take lane",
+    also: { takeLane },
+  });
+
   // Warn-and-ignore without validating the value: an LLM passing garbage on a
   // request with nowhere to put a lane shouldn't lose the whole call to it.
   if (tracks.length === 0 || clipSlotCount > 0) {
@@ -327,12 +344,6 @@ function applyTakeLaneAlias(
   }
 
   if (tracks.length === 0) {
-    return tracks;
-  }
-
-  if (tracks.some((track) => track.takeLane != null)) {
-    ignored("takeLane", '"path" already names the take lane');
-
     return tracks;
   }
 
@@ -372,18 +383,8 @@ function legacyDestinations(
     );
   }
 
+  // Both halves of a slot. Beside a slot list they were refused already.
   if (sceneIndex != null) {
-    // Both halves of a slot. A slot list already names the session
-    // destinations, so the guess is the redundant one.
-    if (slot != null) {
-      ignored(
-        ["trackIndex", "sceneIndex"],
-        '"slot" already names the session destination',
-      );
-
-      return sessionOnly(clipSlots);
-    }
-
     return sessionOnly([{ trackIndex, sceneIndex }]);
   }
 

@@ -340,6 +340,32 @@ describe("ppal-select", () => {
     await expectRefusal({ path: "t0/d99" }, 'no device at "t0/d99"');
   });
 
+  it("refuses a path sent with trackIndex or sceneIndex, even one that agrees", async () => {
+    await expectRefusal(
+      { path: "t0/s0", trackIndex: 0, sceneIndex: 0 },
+      "path names the target on its own - don't send trackIndex or sceneIndex with it",
+    );
+    await expectRefusal(
+      { path: "s1", sceneIndex: 1 },
+      "path names the target on its own - don't send sceneIndex with it",
+    );
+    await expectRefusal(
+      { path: "t1", trackIndex: 2 },
+      "path names the target on its own - don't send trackIndex with it",
+    );
+  });
+
+  it("refuses the deprecated slot and devicePath sent with an index", async () => {
+    await expectRefusal(
+      { slot: "0/0", trackIndex: 0, sceneIndex: 0 },
+      "slot names the target on its own - don't send trackIndex or sceneIndex with it",
+    );
+    await expectRefusal(
+      { devicePath: "t3/d0", trackIndex: 3 },
+      "devicePath names the target on its own - don't send trackIndex with it",
+    );
+  });
+
   it("changes nothing when the select is refused", async () => {
     // A scene selection would have switched to session view before it ever
     // looked for the scene.

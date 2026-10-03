@@ -16,6 +16,7 @@ import {
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 
 export type CreateTrackType = "midi" | "audio" | "return";
 
@@ -51,18 +52,19 @@ export function resolveCreateTrackTargets({
   count,
   type = "midi",
 }: CreateTrackTargetArgs): CreateTrackTarget[] {
+  refuseNamedTwice({
+    param: "path",
+    value: path,
+    noun: "destination",
+    also: { trackIndex },
+  });
+
   const entries = pathEntries(path, "path");
 
   if (entries.length === 0) {
     validateCount(count);
 
     return repeatForCount([targetFromIndex(trackIndex, type)], count);
-  }
-
-  if (trackIndex != null) {
-    throw new Error(
-      "path says where the track goes - don't send trackIndex with it",
-    );
   }
 
   refuseCountWithPathList(count, entries.length, "track", "t+,t+,t+");

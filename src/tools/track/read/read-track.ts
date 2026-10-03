@@ -107,6 +107,8 @@ export function readTrack(
       object: "track",
       idAlias: "trackId",
       oneTargetParams: ["trackIndex", "trackType"],
+      indexParams: ["trackIndex"],
+      deadline: context.deadline,
     },
     (one) => readOneTrack(one, context),
   );

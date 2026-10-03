@@ -210,6 +210,21 @@ describe("ppal-create-device", () => {
     expect((await createDevice("Limiter", "mt")).id).toBeDefined();
   });
 
+  it("refuses device beside the deprecated deviceName, creating nothing", async () => {
+    const before = await readDeviceCount(ctx.client!, 0);
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { device: "Reverb", deviceName: "Delay", path: "t0/d+" },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "device names the device on its own - don't send deviceName with it (deviceName is deprecated)",
+    );
+
+    await sleep(100);
+    expect(await readDeviceCount(ctx.client!, 0)).toBe(before);
+  });
+
   it("refuses a device name Live doesn't have", async () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({

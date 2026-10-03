@@ -21,8 +21,8 @@ Four tiers, in order of preference.
    it is a name we coined, so a model that never reads it in the Skills has no
    reason to emit it, and the runway is for people scripting Live. `trackIndex`
    and `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
-   migration: models reach for them unprompted, and catching the guess beats a
-   round trip. See
+   migration: models reach for them unprompted, and a call that uses them alone
+   still works. Sent beside a `path` they are refused (tier 4). See
    [hidden-param.ts](../../../../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
@@ -40,6 +40,11 @@ Four tiers, in order of preference.
 4. **Never pick one.** Honoring one param and dropping the other is the silent
    wrong-target bug this grammar exists to prevent. What to do instead depends
    on what the param names:
+   - **A target named twice — throw**, in every tool that takes both, even when
+     they agree: `path`, `slot` or `devicePath` with an index param, `takeLane`
+     with a path that names a lane, and a published param with the deprecated
+     spelling it replaced. `id` beside `ids` (or a tool's own id spelling) and
+     `path` beside `paths` throw too, whatever the values.
    - **A source — throw.** Where the call acts on one target (`playback`'s
      `play-scene`), two params naming different things has no answer, so it
      errors. Naming the same target twice over is not a conflict: `play-scene`

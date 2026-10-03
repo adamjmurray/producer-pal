@@ -100,7 +100,7 @@ export function resolveMoveDestinations(
     value: rawToPath,
     alias: "toSlot",
     aliasValue: rawToSlot,
-    noun: "a destination",
+    noun: "destination",
   });
 
   if (toPath == null && toSlot == null) {

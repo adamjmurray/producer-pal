@@ -349,6 +349,32 @@ describe("ppal-read-clip over a list of targets", () => {
     ]);
   });
 
+  it("refuses a path sent with trackIndex or sceneIndex, even for a list", async () => {
+    for (const path of ["t0/s0", "t0/s0,t1/s0"]) {
+      const refused = await readClips({
+        path,
+        trackIndex: 0,
+        sceneIndex: 0,
+      });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the clip on its own - don't send trackIndex or sceneIndex with it",
+      );
+    }
+  });
+
+  it("refuses the deprecated slot sent with trackIndex or sceneIndex", async () => {
+    const refused = await readClips({
+      slot: "0/0",
+      trackIndex: 0,
+      sceneIndex: 0,
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "slot names the clip on its own - don't send trackIndex or sceneIndex with it",
+    );
+  });
+
   it("unwraps a single target", async () => {
     const clip = parseToolResult<ReadClipResult>(
       await readClips({ path: "t0/s0" }),

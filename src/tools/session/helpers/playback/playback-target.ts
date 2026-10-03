@@ -12,6 +12,7 @@ import {
   namedIdParam,
   namedParam,
   namedPathParam,
+  refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
@@ -109,6 +110,13 @@ export function resolvePlaybackTarget(
   const namedIds = namedIdParam(id, ids, "ids");
   const namedPaths = namedPathParam(path, paths);
 
+  for (const [param, value] of [
+    ["path", namedPaths],
+    ["slots", slots],
+  ] as const) {
+    refuseNamedTwice({ param, value, noun: "scene", also: { sceneIndex } });
+  }
+
   const { entries, source } = readPathParam(namedPaths, slots);
 
   if (action === PLAY_SCENE) {
@@ -146,11 +154,13 @@ function readPathParam(
   const named = namedParam(path, "path");
   const legacy = namedHiddenPath(slots, "slots");
 
-  if (named != null && legacy != null) {
-    throw new Error(
-      "path and slots both name clips; use path alone (slots is deprecated)",
-    );
-  }
+  refuseNamedTwice({
+    param: "path",
+    value: named,
+    noun: "clips",
+    also: { slots: legacy },
+    hint: "slots is deprecated",
+  });
 
   if (named != null) {
     return {

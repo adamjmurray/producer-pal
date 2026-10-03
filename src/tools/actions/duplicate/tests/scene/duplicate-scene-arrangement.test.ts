@@ -254,7 +254,9 @@ describe("duplicate - scene to the arrangement", () => {
         toPath: "[5|1]",
         arrangementStart: "9|1",
       }),
-    ).rejects.toThrow("both name a song position; use one");
+    ).rejects.toThrow(
+      "toPath names the song position on its own - don't send arrangementStart with it",
+    );
   });
 
   it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {

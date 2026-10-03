@@ -9,6 +9,7 @@
 // Holds the one wording a target the request's deadline never reached gets.
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   foundId,
@@ -167,6 +168,23 @@ export function unreachedDetail(rerunFor: string, notDone?: string): string {
   const reason = `${REQUEST_OUT_OF_TIME}; re-run for this ${rerunFor}`;
 
   return notDone == null ? reason : `${notDone}: ${reason}`;
+}
+
+/**
+ * The detail a target gets when the request's deadline has passed before its
+ * turn, or null while there is time left: the one check every tool's loop makes
+ * before taking a target.
+ * @param deadline - The request deadline (ToolContext.deadline), if any
+ * @param rerunFor - What to re-run for, e.g. "clip"
+ * @returns The skip detail, or null when the target may still run
+ */
+export function unreachedDetailAfter(
+  deadline: number | null | undefined,
+  rerunFor: string,
+): string | null {
+  return isDeadlineExceeded(deadline ?? null)
+    ? unreachedDetail(rerunFor)
+    : null;
 }
 
 /**

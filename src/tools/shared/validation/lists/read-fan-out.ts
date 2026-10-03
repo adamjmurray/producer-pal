@@ -5,16 +5,20 @@
 
 // Reading every object a call names, the way the write tools act on every one.
 // `id` and `path` add up, ids first. One target reads exactly as it always did,
-// throw included — a call that can do nothing has nothing to report.
+// throw included — a call that can do nothing has nothing to report. A target
+// the request's deadline arrives before is skipped, as a write tool would.
 
 import {
   namedIdParam,
   namedPathParam,
   paramNamesSomething,
+  refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   attemptTarget,
   namedTargets,
+  skipEntry,
+  unreachedDetailAfter,
   type NamedTarget,
   type TargetSkip,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -37,6 +41,18 @@ interface FanOutOptions {
    * "slot", "trackType". A list has no room for them.
    */
   oneTargetParams?: readonly string[];
+  /**
+   * The deprecated index params ("trackIndex", "sceneIndex"). A path names the
+   * target on its own, so one sent beside it is refused.
+   */
+  indexParams?: readonly string[];
+  /**
+   * Deprecated spellings of `path` ("slot"). Each names the target on its own
+   * too, so an index param beside one is refused the same way.
+   */
+  pathSpellings?: readonly string[];
+  /** The request's deadline (ToolContext.deadline), checked before each target */
+  deadline?: number | null;
 }
 
 /**
@@ -56,6 +72,9 @@ export function readFanOut<A extends TargetParams, T>(
   // Every target param is read once, here, so a value that names nothing says
   // so once rather than once more inside each target's own read.
   const call = foldTargets(args, options.idAlias, alias);
+
+  refuseIndexBesideTarget(args, call.path, options);
+
   const targets = namedTargets(call);
   const first = targets[0];
 
@@ -69,9 +88,13 @@ export function readFanOut<A extends TargetParams, T>(
 
   refuseOneTargetParams(args, options, targets.length);
 
-  const entries = targets.map((target) =>
-    attemptTarget(target, () => readOne(withTarget(call, target))),
-  );
+  const entries = targets.map((target) => {
+    const late = unreachedDetailAfter(options.deadline, options.object);
+
+    return late == null
+      ? attemptTarget(target, () => readOne(withTarget(call, target)))
+      : skipEntry(target, late);
+  });
 
   warnBlank(args, options, alias, entries.length);
 
@@ -79,6 +102,32 @@ export function readFanOut<A extends TargetParams, T>(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Refuse an index param sent beside the param that names the target on its own.
+ * @param args - The call's args as the caller sent them
+ * @param path - The folded `path` param
+ * @param options - What this tool reads, and the params it accepts
+ * @param options.object - What this tool reads, singular
+ * @param options.indexParams - The deprecated index params
+ * @param options.pathSpellings - Deprecated spellings of `path`
+ * @throws Error when an index param arrived beside `path` or one of them
+ */
+function refuseIndexBesideTarget(
+  args: TargetParams,
+  path: string | null | undefined,
+  { object, indexParams = [], pathSpellings = [] }: FanOutOptions,
+): void {
+  const also = Object.fromEntries(
+    indexParams.map((param) => [param, paramValue(args, param)]),
+  );
+
+  for (const param of ["path", ...pathSpellings]) {
+    const value = param === "path" ? path : paramValue(args, param);
+
+    refuseNamedTwice({ param, value, noun: object, also });
+  }
+}
 
 /**
  * Refuse a param that names one target by itself when the call already names

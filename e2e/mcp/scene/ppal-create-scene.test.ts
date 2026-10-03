@@ -306,6 +306,21 @@ describe("ppal-create-scene", () => {
     });
   });
 
+  it("refuses a path sent with sceneIndex, creating nothing", async () => {
+    const before = (await allScenes()).length;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { path: "s+", sceneIndex: 0 },
+    });
+
+    expect(getToolErrorMessage(result)).toContain(
+      "path names the destination on its own - don't send sceneIndex with it",
+    );
+
+    await sleep(100);
+    expect((await allScenes()).length).toBe(before);
+  });
+
   it("refuses count with capture, before anything is captured", async () => {
     const before = (await allScenes()).length;
     const result = await ctx.client!.callTool({

@@ -8,7 +8,7 @@
 // keeps the clip's position, and `[5|1]` keeps its lane. Sources take neither
 // partial; see dev/specs/tool-behavior/object-paths/README.md, "Complete and partial".
 
-import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   parseObjectPathList,
@@ -126,12 +126,10 @@ export function refuseDoubledPosition(
   arrangementStart: string | null | undefined,
   label: string,
 ): void {
-  if (!pathCarriesPosition(rawPath) || !paramNamesSomething(arrangementStart)) {
-    return;
-  }
-
-  throw new Error(
-    `${label} "${rawPath?.trim()}" and arrangementStart both name a song ` +
-      `position; use one`,
-  );
+  refuseNamedTwice({
+    param: label,
+    value: pathCarriesPosition(rawPath) ? rawPath : undefined,
+    noun: "song position",
+    also: { arrangementStart },
+  });
 }

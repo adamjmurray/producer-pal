@@ -256,11 +256,11 @@ describe("resolveClipDestinations", () => {
     });
   });
 
-  it("refuses when toPath and toSlot both name a destination", () => {
+  it("refuses toPath sent with the deprecated toSlot", () => {
     // Honoring one and dropping the other is the silent-destination bug toPath
     // exists to end, so neither wins.
     expect(() => resolveClipDestinations("t2/s1", "3/0", false)).toThrow(
-      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath names the destination on its own - don't send toSlot with it (toSlot is deprecated)",
     );
   });
 

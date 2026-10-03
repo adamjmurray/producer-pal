@@ -47,11 +47,11 @@ describe("resolveMoveDestinations", () => {
     expect(moveLanes(undefined, "  ", 1)).toStrictEqual([null]);
   });
 
-  it("refuses when toPath and toSlot both name a destination", () => {
+  it("refuses toPath sent with the deprecated toSlot", () => {
     // Nothing has run yet, so the whole call is refused rather than moving
     // nowhere while the rest of the update succeeds.
     expect(() => moveLanes("t2/s3", "4/5", 1)).toThrow(
-      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath names the destination on its own - don't send toSlot with it (toSlot is deprecated)",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });

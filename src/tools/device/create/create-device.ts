@@ -5,6 +5,7 @@
 
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { withDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
@@ -84,6 +85,15 @@ export async function createDevice(
   args: CreateDeviceArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<CreateDeviceAnswer> {
+  // Both spellings name the device, so neither is honored over the other.
+  refuseNamedTwice({
+    param: "device",
+    value: args.device,
+    noun: "device",
+    also: { deviceName: args.deviceName },
+    hint: "deviceName is deprecated",
+  });
+
   // List mode: return valid devices when no device is named
   if (args.device == null && args.deviceName == null && args.preset == null) {
     validateListModeArgs(args);

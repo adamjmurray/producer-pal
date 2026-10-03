@@ -9,6 +9,10 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
+import {
+  paramNamesSomething,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import {
@@ -200,17 +204,23 @@ function foldLocatorParam(
   arrangementStart: string | undefined,
   locator: string | undefined,
 ): string | undefined {
-  if (locator == null) {
+  // A blank, or the word "null", is a param left out.
+  if (!paramNamesSomething(locator)) {
     return arrangementStart;
   }
 
   // Never pick one: the two params name the same position, so a caller who sent
   // both told us two different things about it.
-  if (arrangementStart != null && arrangementStart.trim() !== "") {
-    throw new Error("arrangementStart and locator are mutually exclusive");
-  }
+  refuseNamedTwice({
+    param: "arrangementStart",
+    value: arrangementStart,
+    noun: "position",
+    also: { locator },
+    hint: "locator is deprecated",
+  });
 
-  // A blank locator is still one entry, so it is refused as naming no locator.
+  // A comma-only locator names nothing but is still sent, so it is refused as
+  // naming no locator.
   const names = targetEntries(locator, "locator");
 
   return (names.length === 0 ? [""] : names)

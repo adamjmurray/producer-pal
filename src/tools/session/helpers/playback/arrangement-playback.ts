@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  paramNamesSomething,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { applyArrangementLoop } from "./arrangement-loop.ts";
 import {
   locatorRef,
@@ -213,15 +217,20 @@ export function foldLocatorParams(
   for (const [position, legacy] of LOCATOR_PARAM_PAIRS) {
     const locator = params[legacy];
 
-    if (locator == null) {
+    // A blank, or the word "null", is a param left out.
+    if (!paramNamesSomething(locator)) {
       continue;
     }
 
     // Never pick one: the two params name the same position, so a caller who
     // sent both told us two different things about it.
-    if (folded[position] != null) {
-      throw new Error(`${position} cannot be used with ${legacy}`);
-    }
+    refuseNamedTwice({
+      param: position,
+      value: folded[position],
+      noun: "position",
+      also: { [legacy]: locator },
+      hint: `${legacy} is deprecated`,
+    });
 
     folded[position] = `loc:${locator}`;
   }

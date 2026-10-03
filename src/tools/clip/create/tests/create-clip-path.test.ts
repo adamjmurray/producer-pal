@@ -317,7 +317,7 @@ describe("createClip path param", () => {
 
   it("refuses path and slot together rather than picking one", async () => {
     await expect(createClip({ path: "t0/s0", slot: "1/1" })).rejects.toThrow(
-      "path and slot both name a destination",
+      "path names the destination on its own - don't send slot with it (slot is deprecated)",
     );
   });
 });
@@ -377,42 +377,42 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     );
   });
 
-  it("ignores the aliases when path already named the destination", async () => {
+  it("refuses a path sent with trackIndex or sceneIndex", async () => {
     const { clipSlot } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { length: 4 },
     });
 
-    await createClip({
-      path: "t0/s0",
-      trackIndex: 5,
-      sceneIndex: 5,
-      notes: "C3 1|1",
-    });
-
-    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'trackIndex, sceneIndex ignored: "path" already names the destination',
+    await expect(
+      createClip({
+        path: "t0/s0",
+        trackIndex: 5,
+        sceneIndex: 5,
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "path names the destination on its own - don't send trackIndex or sceneIndex with it",
     );
+    expect(clipSlot.call).not.toHaveBeenCalled();
   });
 
-  it("ignores the aliases when the deprecated slot named the session destination", async () => {
+  it("refuses the deprecated slot sent with trackIndex and sceneIndex", async () => {
     const { clipSlot } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { length: 4 },
     });
 
-    await createClip({
-      slot: "0/0",
-      trackIndex: 5,
-      sceneIndex: 5,
-      notes: "C3 1|1",
-    });
-
-    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'trackIndex, sceneIndex ignored: "slot" already names the session destination',
+    await expect(
+      createClip({
+        slot: "0/0",
+        trackIndex: 5,
+        sceneIndex: 5,
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "slot names the destination on its own - don't send trackIndex or sceneIndex with it",
     );
+    expect(clipSlot.call).not.toHaveBeenCalled();
   });
 
   // trackIndex with a slot list is today's session+arrangement combination, so
@@ -484,8 +484,7 @@ describe("createClip path coordinate", () => {
     await expect(
       createClip({ path: "t0[5|1]", arrangementStart: "9|1", notes: "C3 1|1" }),
     ).rejects.toThrow(
-      'path "t0[5|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "path names the song position on its own - don't send arrangementStart with it",
     );
   });
 

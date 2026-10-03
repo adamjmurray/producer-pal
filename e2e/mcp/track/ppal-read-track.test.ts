@@ -327,6 +327,24 @@ describe("ppal-read-track over a list of targets", () => {
     ]);
   });
 
+  it("refuses a path sent with trackIndex, even for a list", async () => {
+    for (const path of ["t0", "t0,t1"]) {
+      const refused = await readTracks({ path, trackIndex: 0 });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the track on its own - don't send trackIndex with it",
+      );
+    }
+  });
+
+  it("refuses id beside ids with different values, even for a list", async () => {
+    const refused = await readTracks({ id: "1,2", ids: "3" });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "id names the target on its own - don't send ids with it",
+    );
+  });
+
   it("unwraps a single target", async () => {
     const track = parseToolResult<ReadTrackResult>(
       await readTracks({ path: "t0" }),

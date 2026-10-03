@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
 // "undefined" as a param's whole value. (A JSON null never gets this far — it
@@ -72,12 +71,13 @@ export function namedParam(
 /**
  * Reads a target from the canonical `id` param, falling back to a name the tool
  * still accepts (`clipId`, `ids`, ...). The alias only fills in for a caller
- * that did not send `id`. Both arriving with different values means one was
- * about to be dropped in silence, so say which.
+ * that did not send `id`. Both arriving names the target twice, so the call is
+ * refused, whatever the values.
  * @param id - The `id` param
  * @param alias - The alias param
- * @param aliasLabel - The alias's name, for the warnings
+ * @param aliasLabel - The alias's name, for the refusal
  * @returns The trimmed value, or undefined when neither names anything
+ * @throws Error when both name something
  */
 export function namedIdParam(
   id: string | null | undefined,
@@ -90,10 +90,11 @@ export function namedIdParam(
 /**
  * Reads a target from the canonical `path` param, falling back to `paths`. Same
  * deal as {@link namedIdParam}: `path` already takes a comma-separated list, so
- * the plural is a guess worth catching rather than dropping.
+ * the plural is a guess, and one beside `path` is refused.
  * @param path - The `path` param
  * @param paths - The `paths` alias param
  * @returns The trimmed value, or undefined when neither names anything
+ * @throws Error when both name something
  */
 export function namedPathParam(
   path: string | null | undefined,
@@ -109,6 +110,7 @@ export function namedPathParam(
  * @param alias - The alias param's value
  * @param aliasLabel - The alias param's name
  * @returns The trimmed value, or undefined when neither names anything
+ * @throws Error when both name something
  */
 function namedAliasedParam(
   value: string | null | undefined,
@@ -123,12 +125,64 @@ function namedAliasedParam(
     return namedAlias;
   }
 
-  if (namedAlias != null && namedAlias !== named) {
-    warnIgnored(
-      `${aliasLabel} "${namedAlias}"`,
-      `"${canonical}" names the target`,
-    );
-  }
+  // A param and its alias are never sent together, whatever their values: no
+  // caller has a reason to, and a pair that agrees today can drift apart.
+  refuseNamedTwice({
+    param: canonical,
+    value: named,
+    noun: "target",
+    also: { [aliasLabel]: namedAlias },
+  });
 
   return named;
+}
+
+/** The param that names the target, and the params sent beside it. */
+interface NamedTwice {
+  /** The param that names the target on its own ("path", "slot") */
+  param: string;
+  /** That param's value, as received */
+  value: unknown;
+  /** What it names, for the message ("scene", "destination") */
+  noun: string;
+  /** The params that name it again, by name, as received */
+  also: Readonly<Record<string, unknown>>;
+  /** A short note on the end, e.g. which spelling is deprecated */
+  hint?: string;
+}
+
+/**
+ * Refuses a call that names its target twice, through two params. The one
+ * wording for every such refusal: `<param> names the <noun> on its own - don't
+ * send <params> with it`. The conflict is in the args, so the refusal comes
+ * before any work and nothing is changed.
+ * @param args - The naming param, what it names, and the params to check
+ * @param args.param - The param that names the target on its own
+ * @param args.value - That param's value, as received
+ * @param args.noun - What it names, for the message
+ * @param args.also - The params that name it again, by name, as received
+ * @param args.hint - A short note on the end, e.g. which spelling is deprecated
+ * @throws Error naming the params that were sent beside it
+ */
+export function refuseNamedTwice({
+  param,
+  value,
+  noun,
+  also,
+  hint,
+}: NamedTwice): void {
+  if (!paramNamesSomething(value)) {
+    return;
+  }
+
+  const sent = Object.keys(also).filter((name) =>
+    paramNamesSomething(also[name]),
+  );
+
+  if (sent.length > 0) {
+    throw new Error(
+      `${param} names the ${noun} on its own - don't send ${sent.join(" or ")} with it` +
+        (hint == null ? "" : ` (${hint})`),
+    );
+  }
 }

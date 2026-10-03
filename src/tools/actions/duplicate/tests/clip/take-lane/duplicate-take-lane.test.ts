@@ -510,29 +510,29 @@ describe("duplicate take lane", () => {
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
-  it("ignores the takeLane alias when toPath already names a lane", async () => {
+  it("refuses the takeLane alias when toPath already names a lane", async () => {
     registerLiveSet();
     registerArrangementSource(true);
-    registerTakeLaneTrack({ initialLanes: 3 });
+    const track = registerTakeLaneTrack({ initialLanes: 3 });
 
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      toPath: "t0/l2",
-      arrangementStart: "5|1",
-      takeLane: "1",
-    });
-
-    expectTakeLaneMidiClip(2, 16);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'takeLane ignored: "toPath" already names the take lane',
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t0/l2",
+        arrangementStart: "5|1",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "toPath names the take lane on its own - don't send takeLane with it",
     );
+    expect(track.call).not.toHaveBeenCalled();
   });
 
   // One destination can't tell the guard apart from its opposite: `some` and
-  // `every` agree on a one-item list. With two, the alias reaches a destination
-  // that named no lane, which is the thing being refused.
-  it("ignores the takeLane alias when any toPath names a lane", async () => {
+  // `every` agree on a one-item list. With two, one toPath naming a lane is
+  // enough, even though the other names none.
+  it("refuses the takeLane alias when any toPath names a lane", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 3 });
@@ -541,24 +541,42 @@ describe("duplicate take lane", () => {
 
     registerArrangementClip(1, 0, 32);
 
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      toPath: "t0/l2,t1",
-      arrangementStart: "5|1,9|1",
-      takeLane: "1",
-    });
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t0/l2,t1",
+        arrangementStart: "5|1,9|1",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "toPath names the take lane on its own - don't send takeLane with it",
+    );
+    expect(mainTrack.call).not.toHaveBeenCalled();
+  });
 
-    expectTakeLaneMidiClip(2, 16);
-    // t1 named no lane, so it stays on the main lane rather than inheriting one.
-    expect(mainTrack.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id src_clip",
-      32,
+  // A destination the copy can't reach still named its lane, so the alias
+  // can't go on to give it to the one that can.
+  it("refuses the takeLane alias when the toPath that names a lane is blocked", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTrackWithArrangementDup(5, { is_foldable: 1 });
+
+    const reachable = registerTrackWithArrangementDup(6, { has_midi_input: 1 });
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        // t5 is a group track, which can't hold a copy
+        toPath: "t5/l1,t6",
+        arrangementStart: "5|1,9|1",
+        takeLane: "2",
+      }),
+    ).rejects.toThrow(
+      "toPath names the take lane on its own - don't send takeLane with it",
     );
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'takeLane ignored: "toPath" already names the take lane',
-    );
+    expect(reachable.call).not.toHaveBeenCalled();
   });
 
   // The lane is resolved once per DESTINATION TRACK, not once per copy.

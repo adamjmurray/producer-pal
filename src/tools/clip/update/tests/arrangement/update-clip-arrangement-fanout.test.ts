@@ -284,8 +284,7 @@ describe("updateClip - a toPath coordinate", () => {
     await expect(
       updateClip({ id: "100", toPath: "t1[5|1]", arrangementStart: "9|1" }),
     ).rejects.toThrow(
-      'toPath "t1[5|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "toPath names the song position on its own - don't send arrangementStart with it",
     );
 
     expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);

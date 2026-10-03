@@ -557,6 +557,41 @@ last mention.** 2.4 gave the earlier mention `{path, ok: false, detail}`. It is
 now `{path, detail: 'named again as "t8/s0" later in this call'}` with no `ok`,
 as for the other tools that work this way, and only the last mention is written.
 
+**A call that names its target twice is refused.** Every tool that takes both
+refuses the pair with one message, even when they agree:
+`path names the clip on its own - don't send trackIndex or sceneIndex with it`.
+Send one.
+
+- `path`, `slot` or `devicePath` with `trackIndex` or `sceneIndex`:
+  `ppal-read-clip`, `ppal-create-clip`, `ppal-select`. `ppal-read-clip` and
+  `ppal-create-clip` used to warn and use the path; `ppal-select` refused only
+  when the two disagreed.
+- `slots` or `path` with `sceneIndex` on `ppal-playback`'s `play-scene`: refused
+  only when they disagreed.
+- `slot` with both `trackIndex` and `sceneIndex` on `ppal-create-clip` used to
+  warn. A `slot` list with a bare `trackIndex` still works.
+- `takeLane` with a path that already names a lane (`t0/l2`) on
+  `ppal-create-clip` and `ppal-duplicate` used to warn and use the path.
+- `ppal-read-track`, `ppal-read-scene`, `ppal-create-track` and
+  `ppal-create-scene` already refused; only the wording changed.
+- A published param sent with the deprecated spelling it replaced was already
+  refused. It now reads the same way, for example
+  `path names the clip on its own - don't send slot with it (slot is deprecated)`:
+  `path` and `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`,
+  `startTime` and `startLocator` (and the loop pair), `arrangementStart` and
+  `locator`, `device` and `deviceName` on `ppal-create-device`, and a `toPath`
+  with a position in it beside `arrangementStart`. 2.4 quietly used `device`.
+- `id` beside `ids` (or a tool's own spelling such as `clipId`), and `path`
+  beside `paths`. 2.4 used the first and warned about the other when the values
+  differed, and said nothing when they matched; every tool that takes them now
+  refuses, whatever the values, including the update, delete and duplicate
+  tools, before anything changes.
+
+**A read of several targets can run out of time.** `ppal-read-track`,
+`ppal-read-scene`, `ppal-read-clip` and `ppal-read-device` now return
+`{id or path, ok: false, detail: "the request ran out of time; re-run for this clip"}`
+for each target they didn't reach.
+
 A `transforms` or `preTransforms` mistake that is the same for every clip is now
 refused up front, before any clip changes, by `ppal-create-clip`,
 `ppal-update-clip` and `ppal-duplicate`: a duplicate selector, a note name used

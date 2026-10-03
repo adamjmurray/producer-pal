@@ -327,7 +327,9 @@ describe("duplicate - locators as arrangement positions", () => {
           arrangementStart: "5|1",
           locator,
         }),
-      ).rejects.toThrow("arrangementStart and locator are mutually exclusive");
+      ).rejects.toThrow(
+        "arrangementStart names the position on its own - don't send locator with it",
+      );
     });
 
     // A device has no arrangement position, so neither param is read and there
@@ -356,7 +358,7 @@ describe("duplicate - locators as arrangement positions", () => {
         locator: "Verse",
       }).catch((error: unknown) => error);
 
-      expect(String(outcome)).not.toContain("mutually exclusive");
+      expect(String(outcome)).not.toContain("on its own");
     });
 
     // A whitespace-only arrangementStart is an unsent param, so it leaves the
@@ -374,23 +376,23 @@ describe("duplicate - locators as arrangement positions", () => {
       expectDuplicatedAt(track0, "id clip1", 8);
     });
 
-    // A locator naming nothing places no copy: the destination list is cycled
-    // against the positions, so an empty one would land a copy at beat 0.
+    // A blank locator, or the word "null", is a param left out, so
+    // arrangementStart alone places the copy.
     it.each([
       ["empty", ""],
       ["whitespace", "   "],
-    ])("throws for a locator that is %s", async (_label, locator) => {
+      ["the word null", "null"],
+    ])("treats a locator that is %s as unsent", async (_label, locator) => {
       const track0 = setupClipWithLocators(standardCuePoints);
 
-      await expect(
-        duplicate({ type: "clip", id: "clip1", locator }),
-      ).rejects.toThrow('arrangementStart "loc:" names no locator');
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "5|1",
+        locator,
+      });
 
-      expect(track0.call).not.toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        expect.anything(),
-        expect.anything(),
-      );
+      expectDuplicatedAt(track0, "id clip1", 16);
     });
 
     it.each([
