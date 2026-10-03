@@ -215,7 +215,9 @@ skipped unwritten, and its entry has a `detail` ("named again later in this
 call") and no `ok`, since the work it asked for happened through the later
 entry. Creating twice (`l+,l+`, `d+,d+`) is two targets. Device actions and
 nested list items (sends, `params`) follow the same rule. A caller correcting
-itself writes the fix last, so first-wins would lose it.
+itself writes the fix last, so first-wins would lose it. First-wins would also
+split the rule in two: a later write that lands on the same slot or arrangement
+spot replaces the earlier one in Live whatever the rule says.
 
 That holds only while the later mention does its work. If it lands nothing of
 the replacement (it failed, or the deadline never reached it), the earlier
