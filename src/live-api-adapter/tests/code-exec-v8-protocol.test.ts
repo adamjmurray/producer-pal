@@ -146,6 +146,25 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
       "outlet exploded",
     );
   });
+
+  it("cancels the timeout task when outlet() throws", async () => {
+    const scheduleCalls: number[] = [];
+    const restore = installTrackingTask(scheduleCalls);
+
+    try {
+      vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+        throw new Error("outlet exploded");
+      });
+
+      await expect(requestCodeExecution("return notes")).rejects.toThrow(
+        "outlet exploded",
+      );
+
+      expect(scheduleCalls).toStrictEqual([10_000, -1]);
+    } finally {
+      restore();
+    }
+  });
 });
 
 describe("code-exec-v8-protocol handleCodeExecResult", () => {
