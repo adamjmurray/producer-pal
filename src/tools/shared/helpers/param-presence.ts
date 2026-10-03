@@ -102,22 +102,6 @@ export function namedPathParam(
 }
 
 /**
- * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
- * @param ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
- * @returns Array of trimmed ID strings
- */
-export function parseCommaSeparatedIds(ids?: string | null): string[] {
-  if (ids == null) {
-    return [];
-  }
-
-  return ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
-}
-
-/**
  * Folds an alias onto the param it stands in for.
  * @param value - The canonical param's value
  * @param canonical - The canonical param's name

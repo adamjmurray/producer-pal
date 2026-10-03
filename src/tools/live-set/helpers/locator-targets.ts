@@ -17,10 +17,7 @@ import {
   findLocator,
   findLocatorsByName,
 } from "#src/tools/shared/locator/locators.ts";
-import {
-  nameEntries,
-  targetEntries,
-} from "#src/tools/shared/helpers/target-entries.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   splitList,
@@ -248,7 +245,7 @@ function deleteNames(
     return [whole];
   }
 
-  return nameEntries(locatorName, "locatorName");
+  return targetEntries(locatorName, "locatorName");
 }
 
 /**

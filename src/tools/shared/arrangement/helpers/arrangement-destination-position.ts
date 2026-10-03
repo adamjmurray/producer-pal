@@ -6,7 +6,7 @@
 // Rewriting the `loc:` inside a destination coordinate as the bar|beat it
 // names, so nothing downstream needs a Live Set of its own. One position at a
 // time rather than a comma-separated list: a locator name may hold a comma, and
-// the coordinate is the one place it can be spelled.
+// inside the `[...]` coordinate it needs no `\,`.
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";

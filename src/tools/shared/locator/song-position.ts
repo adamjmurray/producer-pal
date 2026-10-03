@@ -8,6 +8,8 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
 import { resolveLocatorRefToBeats } from "./locators.ts";
 
 // The published prefix and its undocumented spelling, longest first so
@@ -87,15 +89,14 @@ export function songPositionToBeats(
 /**
  * Rewrite every `loc:` entry in a comma-separated song-position list as the
  * bar|beat it names, so everything downstream sees one spelling and needs no
- * Live Set of its own. A bar|beat entry passes through byte for byte, keeping
- * its own format errors and any `±n` offset exactly as the caller wrote it.
+ * Live Set of its own. A bar|beat entry passes through as written, keeping its
+ * own format errors and any `±n` offset (a `\,` in one stays escaped).
  *
  * The song meter is read here rather than passed in, and only when the list
  * actually names a locator — a call with none costs nothing.
  *
- * A locator name containing a comma can't be spelled here, since the list
- * splits on commas first. The `[...]` coordinate is where such a name gets
- * said.
+ * A comma inside a locator name is written `\,`. An empty entry is refused
+ * before any locator is looked up. Any other entry keeps its commas as written.
  * @param liveSet - The live_set LiveAPI object, for the meter and the lookups
  * @param value - The position list as the caller wrote it
  * @param labels - How to name this in errors
@@ -106,7 +107,9 @@ export function resolveLocatorPositions(
   value: string,
   labels: SongPositionLabels,
 ): string {
-  const entries = value.split(",");
+  targetEntries(value, labels.paramName);
+
+  const entries = splitEntries(value);
 
   if (!entries.some((entry) => locatorRef(entry.trim()) != null)) {
     return value;
@@ -123,7 +126,7 @@ export function resolveLocatorPositions(
       const trimmed = entry.trim();
 
       if (locatorRef(trimmed) == null) {
-        return entry;
+        return entry.replaceAll(",", "\\,");
       }
 
       return abletonBeatsToBarBeat(

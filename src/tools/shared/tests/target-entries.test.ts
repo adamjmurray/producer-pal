@@ -68,4 +68,11 @@ describe("targetEntries", () => {
       'invalid id "t0,t1,," - it has an empty entry.',
     );
   });
+
+  // A locator name can hold a comma, so a target list reads \, like any other.
+  it("keeps \\, as a comma inside an entry", () => {
+    expect(
+      targetEntries("loc:Verse\\, part 2,loc:Drop", "arrangementStart"),
+    ).toStrictEqual(["loc:Verse, part 2", "loc:Drop"]);
+  });
 });

@@ -378,7 +378,6 @@ describe("duplicate - locators as arrangement positions", () => {
     // against the positions, so an empty one would land a copy at beat 0.
     it.each([
       ["empty", ""],
-      ["separators only", ","],
       ["whitespace", "   "],
     ])("throws for a locator that is %s", async (_label, locator) => {
       const track0 = setupClipWithLocators(standardCuePoints);
@@ -386,6 +385,23 @@ describe("duplicate - locators as arrangement positions", () => {
       await expect(
         duplicate({ type: "clip", id: "clip1", locator }),
       ).rejects.toThrow('arrangementStart "loc:" names no locator');
+
+      expect(track0.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it.each([
+      ["separators only", ",", "it names nothing"],
+      ["a hole", "Start,,Drop", "it has an empty entry"],
+    ])("refuses a locator list with %s", async (_label, locator, why) => {
+      const track0 = setupClipWithLocators(standardCuePoints);
+
+      await expect(
+        duplicate({ type: "clip", id: "clip1", locator }),
+      ).rejects.toThrow(`invalid locator "${locator}" - ${why}`);
 
       expect(track0.call).not.toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",

@@ -108,7 +108,7 @@ describe("readSplitPoints", () => {
     return Array.from({ length: count }, (_, i) => `${i + 2}|1`).join(", ");
   }
 
-  it.each(["invalid", ",", "2|1, notaposition"])(
+  it.each(["invalid", "2|1, notaposition"])(
     "refuses %j as an invalid format",
     (value) => {
       setup();

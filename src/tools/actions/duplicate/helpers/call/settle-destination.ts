@@ -210,8 +210,10 @@ function foldLocatorParam(
     throw new Error("arrangementStart and locator are mutually exclusive");
   }
 
-  return locator
-    .split(",")
-    .map((entry) => `loc:${entry.trim()}`)
+  // A blank locator is still one entry, so it is refused as naming no locator.
+  const names = targetEntries(locator, "locator");
+
+  return (names.length === 0 ? [""] : names)
+    .map((name) => `loc:${name.replaceAll(",", "\\,")}`)
     .join(",");
 }

@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { nameEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
   everyEntry,
@@ -63,8 +63,8 @@ const READERS: Array<[string, (value: string) => unknown]> = [
   ],
   // values checked before any write: update-clip, update-device
   ["everyEntry", (value) => everyEntry(value, 2, "quantizePitch")],
-  // locatorName on delete, where each name is a target
-  ["nameEntries", (value) => nameEntries(value, "locatorName")],
+  // id, path, arrangementStart, locatorName on delete: each entry is a target
+  ["targetEntries", (value) => targetEntries(value, "locatorName")],
 ];
 
 describe.each(READERS)("%s", (_reader, read) => {

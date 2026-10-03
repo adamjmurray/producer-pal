@@ -8,7 +8,8 @@ import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.t
 /**
  * Splits a target list — a param naming objects or places (`id`, `path`,
  * `toPath`, `arrangementStart`, `locator`) — into its entries, refusing a list
- * it can't read cleanly.
+ * it can't read cleanly. `\,` is a comma inside an entry, as in every other
+ * list, so a locator name can hold one.
  *
  * One trailing comma is not an entry, the way most languages read a list
  * literal. Any other empty entry is a hole, and a hole is refused rather than
@@ -25,20 +26,6 @@ import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.t
  * @throws Error when the list has a hole or names nothing
  */
 export function targetEntries(
-  raw: string | null | undefined,
-  label: string,
-): string[] {
-  return entriesFrom(raw, (value) => value.split(","), label);
-}
-
-/**
- * {@link targetEntries} for a list of names, where `\,` is a comma inside a
- * name, as in every other text list.
- * @param raw - The param as the caller sent it
- * @param label - Param name for error messages
- * @returns One trimmed name per target, in order
- */
-export function nameEntries(
   raw: string | null | undefined,
   label: string,
 ): string[] {

@@ -21,7 +21,6 @@ import {
 import {
   namedParam,
   paramNamesSomething,
-  parseCommaSeparatedIds,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { entriesFrom } from "#src/tools/shared/helpers/target-entries.ts";
 import {
@@ -109,7 +108,10 @@ export function pathEntries(input?: string | null, label = "path"): string[] {
  * @returns True when the value names something
  */
 export function pathNamesSomething(value: string | null | undefined): boolean {
-  return paramNamesSomething(value) && parseCommaSeparatedIds(value).length > 0;
+  return (
+    paramNamesSomething(value) &&
+    splitPathEntries(String(value)).some((entry) => entry.trim() !== "")
+  );
 }
 
 /**

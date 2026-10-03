@@ -53,6 +53,13 @@ follows the code; when it disagrees with a tool, the tool wins.
   refuse a `timeSignature`** that isn't `N/D` (or `disabled`, on scenes) or
   whose denominator isn't a power of two, since Live would change it. One check
   serves all five (`live-api-values.ts`).
+- **`updateClip` refuses a hole in `arrangementSplit` or `split`** (`2|1,,3|1`,
+  `,`) before any clip is cut, worded as for any other list. A position at or
+  before the clip's start is not a hole: it is dropped, and a list of only those
+  is refused as having no valid point.
+- **A list of locators reads `\,` as a comma in a name** wherever positions take
+  `loc:` (`arrangementStart`, `arrangementSplit`, `duplicate`'s retired
+  `locator`), and refuses a hole before any locator is looked up.
 - **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
   any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
   skips that clip, as does a `start` at or past a looping clip's loop end sent

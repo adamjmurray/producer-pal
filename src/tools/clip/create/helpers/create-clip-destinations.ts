@@ -18,6 +18,7 @@
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { plural } from "#src/tools/shared/validation/lists/plural.ts";
+import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
 import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
@@ -133,7 +134,8 @@ export function resolveCreateClipDestinations(
         clipSlots.length === 0 &&
         path != null &&
         splitPathEntries(path).length > 1,
-      starts: arrangementStart?.includes(",") ?? false,
+      starts:
+        arrangementStart != null && splitEntries(arrangementStart).length > 1,
     },
   );
 

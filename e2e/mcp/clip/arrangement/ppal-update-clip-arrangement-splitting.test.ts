@@ -722,6 +722,48 @@ describe("ppal-update-clip refuses an unreadable split call", () => {
     );
   });
 
+  it.each([
+    ["a hole", 541, "541|2,,541|3", "it has an empty entry"],
+    ["a list with nothing in it", 551, ",", "it names nothing"],
+  ])("throws for %s in arrangementSplit", async (_label, bar, split, why) => {
+    await expectRefusedWithoutCutting(
+      bar,
+      { arrangementSplit: split },
+      `invalid arrangementSplit "${split}" - ${why}`,
+    );
+  });
+
+  // The name holds a comma, so `\,` keeps it from reading as two positions.
+  it("cuts at a locator whose name holds a comma", async () => {
+    const live = (args: Record<string, unknown>) =>
+      ctx.client!.callTool({ name: "ppal-update-live-set", arguments: args });
+    const id = await createSplittableClip(561);
+
+    await live({
+      locatorOperation: "create",
+      locatorTime: "562|1",
+      locatorName: "E2E Cut, here",
+    });
+
+    try {
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id, arrangementSplit: "loc:E2E Cut\\, here" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      // The clip runs 561|1-563|1 and the locator sits at 562|1.
+      const pieces = parseToolResult<Array<{ path?: string }>>(result);
+
+      expect(pieces.map((piece) => arrangementStartOf(piece))).toStrictEqual([
+        "561|1",
+        "562|1",
+      ]);
+    } finally {
+      await live({ locatorOperation: "delete", locatorTime: "562|1" });
+    }
+  });
+
   // 1|6-2|1 runs backwards in 4/4 but is a valid range in 6/8.
   it("splits a 6/8 clip whose transform range only fits its own meter", async () => {
     const created = await ctx.client!.callTool({

@@ -688,7 +688,12 @@ describe("updateClip - a split with a value it can't read", () => {
   it.each([
     ["an unreadable list", "nope", "Invalid arrangementSplit format"],
     ["one bad point in a list", "2|1, nope", "Invalid arrangementSplit format"],
-    ["no position at all", ",", "Invalid arrangementSplit format"],
+    [
+      "no position at all",
+      ",",
+      'invalid arrangementSplit "," - it names nothing',
+    ],
+    ["a hole in the list", "2|1,,3|1", "it has an empty entry"],
     [
       "too many points",
       Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(","),

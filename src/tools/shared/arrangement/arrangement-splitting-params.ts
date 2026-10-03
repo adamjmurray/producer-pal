@@ -10,6 +10,7 @@ import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type SplitMode } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
 /**
  * Read the split positions, in song meter, and refuse any the tool can't use.
@@ -26,6 +27,7 @@ export function readSplitPoints(split: string, mode: SplitMode): number[] {
     split,
     liveSet.getProperty("signature_numerator") as number,
     liveSet.getProperty("signature_denominator") as number,
+    mode.param,
   );
 
   if (splitPoints == null || splitPoints.length === 0) {
@@ -62,21 +64,19 @@ export function readSplitPoints(split: string, mode: SplitMode): number[] {
  * @param splitStr - Comma-separated bar|beat positions (e.g., "2|1, 3|1, 4|1")
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Sorted array of beat offsets, or null if invalid
+ * @param label - The split param's name, for list errors
+ * @returns Sorted array of beat offsets, or null if a position is invalid
+ * @throws Error when the list has an empty entry or names nothing
  */
 function parseSplitPoints(
   splitStr: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  label: string,
 ): number[] | null {
   const points: number[] = [];
-  const parts = splitStr.split(",").map((s) => s.trim());
 
-  for (const part of parts) {
-    if (!part) {
-      continue;
-    }
-
+  for (const part of targetEntries(splitStr, label)) {
     try {
       const beats = barBeatToAbletonBeats(
         part,
