@@ -50,17 +50,11 @@ function setUpTracks(
 export const deleteAdapter: WriteToolAdapter = {
   tool: "ppal-delete",
   run: (args) => deleteObject({ type: "track", ...args }),
-  skip: {
-    unparsable:
-      "a path it can't parse becomes an ok:false entry, and the other targets are still deleted",
-    midway:
-      "a throw from Live escapes the call: earlier targets are already deleted, later ones never run, and no entry says so",
-  },
   na: {
     newTwice: "deletes existing objects; nothing is created",
     replacedLater: "no destination: nothing is created or moved",
     afterChange:
-      "one delete per target, so nothing can have changed before a throw",
+      "one Live call per target, so nothing has changed before a throw (a drum chain's parking has its own test)",
     wrongLength: "takes no per-target list",
     countWithDestinations: "takes no count",
   },

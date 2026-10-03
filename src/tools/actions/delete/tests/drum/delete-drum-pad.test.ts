@@ -14,8 +14,8 @@ import {
 import {
   setupDrumPadMocks,
   setupDrumPadPathMocks,
-} from "./delete-test-helpers.ts";
-import { deleteObject } from "../delete.ts";
+} from "../delete-test-helpers.ts";
+import { deleteObject } from "../../delete.ts";
 
 describe("deleteObject drum-pad deletion", () => {
   it("should delete a drum pad by id", () => {
@@ -289,7 +289,6 @@ describe("deleteObject drum-pad refusals", () => {
         {
           id: "host-pad",
           ok: false,
-          path: "t0/d0/pC1",
           detail:
             "cannot delete drum pad t0/d0/pC1 (id host-pad): it holds the Producer Pal device",
         },

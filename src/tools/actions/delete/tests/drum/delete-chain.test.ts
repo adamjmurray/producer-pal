@@ -7,7 +7,7 @@
 // unused pad and clearing that pad. These cover the borrow and everything it
 // can't reach.
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -18,7 +18,7 @@ import {
   registerMockObject,
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
-import { deleteObject } from "../delete.ts";
+import { deleteObject } from "../../delete.ts";
 
 const RACK_PATH = String(livePath.track(0).device(0));
 
@@ -70,6 +70,43 @@ function registerDrumRack(
   );
 
   return { chains, pads };
+}
+
+/**
+ * Make an in_note write stick, as it does in Live: the mock's set() is a spy
+ * that leaves the property alone, so a later pad search would still see the
+ * chain on its old note.
+ * @param chains - The chains to make writable
+ */
+function makeInNoteStick(chains: RegisteredMockObject[]): void {
+  for (const chain of chains) {
+    const write = chain.set;
+
+    chain.set = vi.fn((property: string, value: unknown) => {
+      if (property === "in_note") {
+        chain.properties.in_note = value;
+      }
+
+      return write(property, value);
+    }) as Mock;
+  }
+}
+
+/**
+ * A pad whose clear fails.
+ * @param note - The pad's note
+ */
+function registerThrowingPad(note: number): void {
+  registerMockObject(`pad-${note}`, {
+    path: livePath.track(0).device(0).drumPad(note),
+    type: "DrumPad",
+    properties: { note },
+    methods: {
+      delete_all_chains: () => {
+        throw new Error("Live is busy");
+      },
+    },
+  });
 }
 
 describe("deleteObject chain deletion", () => {
@@ -157,7 +194,6 @@ describe("deleteObject chain deletion", () => {
     ).toStrictEqual([
       {
         id: "rack-chain",
-        path: "t0/d0/c5",
         ok: false,
         detail:
           "chain t0/d0/c5 (id rack-chain) is not on a drum pad. Live has no way to " +
@@ -215,6 +251,77 @@ describe("deleteObject chain deletion", () => {
     expect(chains[0]?.set).toHaveBeenCalledWith("in_note", 37);
     expect(chains[0]?.set).toHaveBeenCalledWith("in_note", 36);
     expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  // Deleting the first chain shifts the second down to c0, but the result names
+  // each chain by the address it had before the call.
+  it("names two chains of one pad by their addresses from before the call", () => {
+    const { chains } = registerDrumRack([36, 36]);
+
+    expect(
+      deleteObject({ id: "chain-0,chain-1", type: "chain" }),
+    ).toStrictEqual([
+      { id: "chain-0", deletedPath: "t0/d0/pC1/c0" },
+      { id: "chain-1", deletedPath: "t0/d0/pC1/c1" },
+    ]);
+    expect(chains[0]?.deleted).toBe(true);
+    expect(chains[1]?.deleted).toBe(true);
+    // The mock shifted it, so a late read of its address would have said c0.
+    expect(chains[1]?.path).toBe(String(livePath.track(0).device(0).chain(0)));
+  });
+
+  // The chain was already parked on the spare pad when Live threw, and nothing
+  // puts it back.
+  it("says the chain was moved when Live fails clearing the spare pad", () => {
+    const { chains } = registerDrumRack([36, 36]);
+
+    makeInNoteStick(chains);
+    registerThrowingPad(37);
+    registerThrowingPad(38);
+
+    expect(
+      deleteObject({ id: "chain-1,chain-0", type: "chain" }),
+    ).toStrictEqual([
+      {
+        id: "chain-1",
+        path: "t0/d0/pC1/c1",
+        detail:
+          "Live is busy; already changed: moved the chain to a spare drum pad",
+      },
+      {
+        id: "chain-0",
+        path: "t0/d0/pC1/c0",
+        detail:
+          "Live is busy; already changed: moved the chain to a spare drum pad",
+      },
+    ]);
+    // The first chain stays on 37, so the second has to borrow 38.
+    expect(chains[1]?.set).toHaveBeenCalledWith("in_note", 37);
+    expect(chains[0]?.set).toHaveBeenCalledWith("in_note", 38);
+  });
+
+  it("says the chain was moved when putting it back fails too", () => {
+    const { chains } = registerDrumRack([36]);
+
+    // A clear that does nothing, then a restore Live refuses.
+    registerMockObject("pad-37", {
+      path: livePath.track(0).device(0).drumPad(37),
+      type: "DrumPad",
+      properties: { note: 37 },
+      methods: { delete_all_chains: () => null },
+    });
+    chains[0]?.set.mockImplementation((_property, value) => {
+      if (value === 36) {
+        throw new Error("Live is busy");
+      }
+    });
+
+    expect(deleteObject({ id: "chain-0", type: "chain" })).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/pC1/c0",
+      detail:
+        "Live is busy; already changed: moved the chain to a spare drum pad",
+    });
   });
 
   it("refuses a device path, saying what it found", () => {

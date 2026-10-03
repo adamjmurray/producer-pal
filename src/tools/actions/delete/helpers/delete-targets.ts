@@ -3,135 +3,64 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// What a delete call names: the objects it can remove, and the entries for the
-// targets it won't.
+// What a delete call names: the objects it can remove, and the targets it
+// won't.
 //
 // A target that isn't there needed no work — what was asked for has already
-// happened — so its entry says so and carries no `ok`, as does one repeating an
-// object named earlier. A target that is there and this call can't remove is
-// skipped, `ok: false`, with the reason a lone target would have thrown.
+// happened — so it is written as a no-op entry with no `ok`. A target that is
+// there and this call can't remove is skipped, with the reason a lone target
+// would have thrown. A path that can't be parsed refuses the whole call.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  type ObjectPath,
-  parseObjectPath,
-} from "#src/tools/shared/validation/object-path.ts";
-import {
-  namedLaterReason,
-  namedTargets,
   type NamedTarget,
+  namedTargets,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { type DeleteCall } from "./parse-delete-call.ts";
 
-/** What the call has to say about one target. */
-export interface DeleteResult {
-  /** The object's id, when the target resolved to one. */
-  id?: string;
-  /**
-   * The address of an object this call removed. It is an address from before
-   * the call: a positional delete shifts later siblings, so afterwards this
-   * path names whatever slid into the slot.
-   */
-  deletedPath?: string;
-  /** The target's address when this entry removed nothing. */
-  path?: string;
-  /** Only on a target this call could not delete. */
-  ok?: false;
-  /** Why it wasn't deleted, or why there was nothing left for it to delete. */
-  detail?: string;
-}
-
-/** A result entry tagged with its target's position in the request. */
-export interface IndexedDeleteResult extends DeleteResult {
-  requestIndex: number;
-}
-
-/** An object to delete, the spelling that named it, and where it was named. */
-export interface DeleteTarget {
-  id: string;
-  object: LiveAPI;
-  /** The caller's own spelling, when the target came from `path`. */
-  requestPath?: string;
-  /** Position among all named targets, so the result can restore this order. */
-  requestIndex: number;
-}
-
-/** What a call's targets came to. */
-export interface ResolvedTargets {
-  /** The objects to delete, one entry per object, in the order named. */
-  deletable: DeleteTarget[];
-  /** Entries for the targets this call won't delete. */
-  settled: IndexedDeleteResult[];
-}
-
-/** One named target: the object to delete, or the entry saying why not. */
-type TargetOutcome =
-  | { target: DeleteTarget; entry?: undefined }
-  | { target?: undefined; entry: IndexedDeleteResult };
+/** What one target of a delete call carries into its write. */
+export type DeletePayload =
+  | {
+      kind: "delete";
+      id: string;
+      object: LiveAPI;
+      /** The caller's own spelling, when the target came from `path` */
+      requestPath?: string;
+    }
+  | {
+      /** Nothing is there, so the write has nothing to do */
+      kind: "nothing";
+    };
 
 /** An absent target: what the call asked for has already happened. */
-const NOTHING_TO_DELETE = "nothing to delete";
+export const NOTHING_TO_DELETE = "nothing to delete";
 
 /**
- * Resolve every target a delete call names.
- * @param ids - The `id` param, comma-separated
- * @param path - The `path` param, comma-separated
- * @param type - Type of objects to delete
- * @returns The objects to delete, and the entries for the targets it won't
- * @throws Error when the call names no target at all
+ * Name every target a delete call makes, and resolve each now, before the
+ * first delete.
+ * @param call - The delete call
+ * @returns One target per entry named, in the order named
+ * @throws Error when a list has a hole, or a path can't be parsed
  */
-export function resolveDeleteTargets(
-  ids: string | null | undefined,
-  path: string | null | undefined,
-  type: string,
-): ResolvedTargets {
-  const targets = namedTargets({ id: ids, path });
+export function deleteTargets(call: DeleteCall): Array<Target<DeletePayload>> {
+  const named = namedTargets({ id: call.ids, path: call.path });
 
-  if (targets.length === 0) {
-    throw new Error("id or path is required");
-  }
-
-  const settled: IndexedDeleteResult[] = [];
-  const deletable: DeleteTarget[] = [];
-  const resolved = targets.map((named, requestIndex) =>
-    resolveTarget(named, type, requestIndex),
-  );
-  // The last target to name an object deletes it; deleting it again would
-  // shift another object into the slot and remove that instead. Keyed by what
-  // each target resolved to, so an id and a path naming one object are caught.
-  const lastNamedBy = new Map<string, NamedTarget>();
-
-  for (const [requestIndex, { target }] of resolved.entries()) {
-    if (target != null) {
-      lastNamedBy.set(target.object.id, targets[requestIndex] as NamedTarget);
+  // A path that can't be parsed was written wrong, so it refuses the call
+  // before anything is looked up. One that parses but names the wrong kind of
+  // thing skips only its own target.
+  for (const target of named) {
+    if (target.param === "path") {
+      parseObjectPath(target.value, "path", true);
     }
   }
 
-  for (const [requestIndex, { target, entry }] of resolved.entries()) {
-    if (entry != null) {
-      settled.push(entry);
-      continue;
-    }
-
-    const later = lastNamedBy.get(target.object.id) as NamedTarget;
-
-    if (later !== targets[requestIndex]) {
-      settled.push({
-        id: target.id,
-        ...requestAddress(target.requestPath),
-        detail: namedLaterReason(later),
-        requestIndex,
-      });
-      continue;
-    }
-
-    deletable.push(target);
-  }
-
-  return { deletable, settled };
+  return named.map((target) => resolveTarget(target, call.type));
 }
 
 // --- Helpers below main exports ---
@@ -149,13 +78,8 @@ const TAKE_LANE_REFUSAL =
  *   there, which the type's lookup reports
  */
 function existingTakeLane(requestPath: string): IdLookup | null {
-  let parsed: ObjectPath;
-
-  try {
-    parsed = parseObjectPath(requestPath);
-  } catch {
-    return null;
-  }
+  // Parsed once already by deleteTargets, which refused anything unparsable.
+  const parsed = parseObjectPath(requestPath, "path", true);
 
   if (parsed.kind !== "take-lane") {
     return null;
@@ -169,20 +93,16 @@ function existingTakeLane(requestPath: string): IdLookup | null {
 }
 
 /**
- * One named target: the object to delete, or the entry standing in for it.
+ * One named target: the object to delete, or why there is nothing to do.
  * @param named - The target, as the caller named it
  * @param type - Type of objects to delete
- * @param requestIndex - Its position among the named targets
- * @returns The object to delete, or the entry saying why there isn't one
+ * @returns The target
  */
 function resolveTarget(
   named: NamedTarget,
   type: string,
-  requestIndex: number,
-): TargetOutcome {
+): Target<DeletePayload> {
   const requestPath = named.param === "path" ? named.value : undefined;
-  const address = requestAddress(requestPath);
-
   const lookup: IdLookup =
     requestPath == null
       ? { id: named.value }
@@ -190,46 +110,38 @@ function resolveTarget(
         resolvePathForType(type, requestPath));
 
   if (lookup.id == null) {
-    return {
-      entry: {
-        ...address,
-        ...(lookup.empty
-          ? { detail: NOTHING_TO_DELETE }
-          : { ok: false as const, detail: lookup.reason }),
-        requestIndex,
-      },
-    };
+    return lookup.empty ? nothingThere(named) : { named, skip: lookup.reason };
   }
 
-  const id = lookup.id;
+  const { id } = lookup;
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    return {
-      entry: { id, ...address, detail: NOTHING_TO_DELETE, requestIndex },
-    };
+    return nothingThere(named);
   }
 
   const refusal = undeletable(object, type);
 
   if (refusal != null) {
-    return {
-      entry: { id, ...address, ok: false, detail: refusal, requestIndex },
-    };
+    return { named, skip: refusal };
   }
 
-  return { target: { id, object, requestPath, requestIndex } };
+  // Keyed by the object, so an id and a path naming one object are caught.
+  return {
+    named,
+    key: object.id,
+    data: { kind: "delete", id, object, requestPath },
+  };
 }
 
 /**
- * The caller's own path as a spreadable field. A path is echoed back the way it
- * was written; an id target has none to report, because the object it named is
- * not where the call found it.
- * @param requestPath - The path the caller wrote, when they wrote one
- * @returns `{ path }`, or `{}` for a target named by id
+ * A target with nothing there. It has no key: nothing is named twice that
+ * isn't there.
+ * @param named - The target, as the caller named it
+ * @returns A target whose write does nothing
  */
-function requestAddress(requestPath: string | undefined): { path?: string } {
-  return requestPath == null ? {} : { path: requestPath };
+function nothingThere(named: NamedTarget): Target<DeletePayload> {
+  return { named, data: { kind: "nothing" } };
 }
 
 /**

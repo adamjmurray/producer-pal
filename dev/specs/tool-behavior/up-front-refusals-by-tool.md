@@ -17,6 +17,10 @@ follows the code; when it disagrees with a tool, the tool wins.
   slot, or one track with a single position, can't cover several clips and is
   refused. One track or take lane takes several when `arrangementStart` names a
   position per clip.
+- **`delete` refuses a `path` entry it can't parse** before anything is deleted,
+  as well as a missing or unknown `type`, a call naming no target and a list
+  with a hole. A path that parses but names the wrong kind of thing skips only
+  its own target.
 - **`createDevice` refuses a `path` entry it can't parse** before anything is
   made or loaded, as well as a list with a hole, lists of different lengths, a
   device name Live doesn't have, and a path list spelled through its own

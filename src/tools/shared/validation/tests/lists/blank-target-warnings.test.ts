@@ -96,6 +96,7 @@ const TOOLS: Array<{
     },
     call: (targets) => deleteObject({ ...targets, type: "track" }),
     refused: (targets) => deleteObject({ ...targets, type: "nope" }),
+    pipeline: true,
   },
   {
     tool: "duplicate",

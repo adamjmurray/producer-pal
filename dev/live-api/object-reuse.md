@@ -45,7 +45,8 @@ for objects it holds.
 
 **A dead target disagrees with itself.** `path` tells the truth and `id` lies,
 so `exists()` — which is derived from the id — reports `true` for a clip that is
-gone. `confirmDeleted` in `tools/actions/delete/delete.ts` depends on a fresh
+gone. `confirmDeleted` in
+`tools/actions/delete/helpers/delete-object-by-type.ts` depends on a fresh
 lookup of the dead id reading `"0"`, which still holds. Do not substitute
 `exists()` on a held object for it.
 

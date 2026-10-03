@@ -71,6 +71,21 @@ with a tool, the tool wins.
   device where it sits after the call, since a later insert can push an earlier
   one down a slot. The `name` list pairs by the path's place, so a skip doesn't
   slide it.
+- **delete answers per target named.** A path that can't be parsed refuses the
+  call. A path that parses but names the wrong kind of thing, an object this
+  call won't remove (the Producer Pal device or its track, a take lane, a chain
+  of the wrong type), or a delete Live ignored or threw on holds its slot as
+  `{id | path, ok: false, detail}` in the caller's own spelling, and the other
+  targets still run. A target with nothing there is a no-op: its spelling and
+  `detail: "nothing to delete"`, no `ok`, and a lone one is satisfied. A removed
+  object reports `{id, deletedPath}`, its address from before the call: every
+  address is read before the first delete, since deleting shifts later siblings.
+  A drum pad is cleared, not removed, so it reports `path`. An object named
+  twice is deleted once, by its last mention; the earlier ones are
+  `{id | path, detail}` with no `ok`, and fail with the last one if it fails. A
+  drum chain Live parked on a spare pad before a throw keeps its normal entry,
+  `<error>; already changed: moved the chain to a spare drum pad`. Targets are
+  deleted from the highest position down, but entries stay in call order.
 - **duplicate answers per destination named.** A destination no copy landed at
   keeps its slot as `{path, ok: false, detail}` — a track that won't take the
   clip, a copy Live declined, a take lane past the cap, a re-create that failed,

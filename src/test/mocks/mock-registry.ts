@@ -422,7 +422,7 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
  *
  * A fresh lookup misses it, but anything already holding it keeps the stale id
  * — only its path clears and its property reads dry up. `confirmDeleted` in
- * `tools/actions/delete/delete.ts` depends on that split.
+ * `tools/actions/delete/helpers/delete-object-by-type.ts` depends on that split.
  *
  * Exported for the fixtures whose own `call` implementations destroy something
  * — an arrangement create clears the range it writes to — since those never

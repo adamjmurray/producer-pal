@@ -168,10 +168,9 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   entry to hold a place in.
 - **A target that needed no work is not a skip.** It gets its normal entry plus
   a `detail` saying why, and no `ok`: `delete` of a missing `t99` is
-  `{ path: "t99", type: "track", detail: "nothing to delete" }`. A lone one is
-  satisfied, not refused; making it an error would let a model retry forever. A
-  read miss stays `ok: false`, since a read can't be satisfied by an absent
-  object.
+  `{ path: "t99", detail: "nothing to delete" }`. A lone one is satisfied, not
+  refused; making it an error would let a model retry forever. A read miss stays
+  `ok: false`, since a read can't be satisfied by an absent object.
 - **A target the call could only half serve** keeps its normal entry plus a
   `detail` naming what did not land. `ok: false` means nothing asked of that
   target landed.

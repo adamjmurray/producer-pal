@@ -169,6 +169,60 @@ describe("ppal-delete", () => {
     await expectGone("ppal-read-track", { id: track.id });
   });
 
+  // Each earlier mention keeps the spelling it was written in. Naming it by what
+  // it resolved to would give a path for whatever slid into its slot.
+  it("answers each earlier mention in its own spelling when the last ones delete", async () => {
+    const first = await createTrack({ name: "Mixed First" });
+    const second = await createTrack({ name: "Mixed Second" });
+    const data = parseToolResult<DeleteResult[]>(
+      await del({
+        id: `${first.id},${second.id}`,
+        path: `${second.path},${first.path}`,
+        type: "track",
+      }),
+    );
+
+    expect(data).toStrictEqual([
+      {
+        id: first.id,
+        detail: `named again as "${first.path}" later in this call`,
+      },
+      {
+        id: second.id,
+        detail: `named again as "${second.path}" later in this call`,
+      },
+      { id: second.id, deletedPath: second.path },
+      { id: first.id, deletedPath: first.path },
+    ]);
+
+    await expectGone("ppal-read-track", { id: first.id });
+    await expectGone("ppal-read-track", { id: second.id });
+  });
+
+  // A path that can't be parsed was written wrong, so the call is refused and
+  // the target beside it is left alone.
+  it("refuses the whole call for a path it can't parse", async () => {
+    const track = await createTrack({ name: "Kept By A Refusal" });
+    const result = await del({
+      id: track.id,
+      path: "not-a-path",
+      type: "track",
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("not-a-path");
+
+    // Still there.
+    expect(
+      parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { id: track.id },
+        }),
+      ).id,
+    ).toBe(track.id);
+  });
+
   // Named, another, named again: the delete reports third, where it was named,
   // so matching entries against the call by position pairs the right ones.
   it("reports a repeated id at the slot it was named at", async () => {

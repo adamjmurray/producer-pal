@@ -247,7 +247,6 @@ describe("a write answers the same by path and by id", () => {
     );
 
     expect(host).toStrictEqual({
-      id: hostTrackId,
       path: "t11",
       ok: false,
       detail: `cannot delete track t11 (id ${hostTrackId}), which hosts the Producer Pal device`,
