@@ -204,3 +204,17 @@ export function planTrialLiveSetOpens(
     index === 0 ? liveSetAlreadyOpened : reuseLiveSet === true,
   );
 }
+
+/**
+ * Whether a Live Set is known to be open after a scenario's trials. A run that
+ * errored may have died partway through the open, so it counts as not opened
+ * and the next run opens the Set again.
+ *
+ * @param results - The scenario's trial results, in order
+ * @returns True when the last trial ran far enough to have opened the Set
+ */
+export function liveSetLeftOpen(results: JsonEvalResult[]): boolean {
+  const last = results.at(-1);
+
+  return last != null && last.result !== "error";
+}
