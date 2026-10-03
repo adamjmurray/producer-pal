@@ -300,7 +300,7 @@ describe("a lane move whose resize can't run", () => {
     expect(result.id).not.toBe(SOURCE_ID);
     expect(result.detail).toBe(
       `re-created on t${DEST_TRACK}/l0; ` +
-        "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
+        "arrangementLength ignored: this is a take-lane clip; adjust it in Live's UI",
     );
   });
 });

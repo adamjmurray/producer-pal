@@ -9,7 +9,7 @@
 // concatenation and the count is their sum. Comparing the two to each other
 // would refuse a call naming two of each.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import {
   namedIdParam,
   namedPathParam,
@@ -124,7 +124,7 @@ export function warnBlankTarget(
     resolved,
     idAlias,
   )) {
-    console.warn(`${param} ignored — ${why}`);
+    warnIgnored(param, why);
   }
 }
 

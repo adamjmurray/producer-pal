@@ -392,7 +392,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'trackIndex/sceneIndex ignored: "path" already names the destination',
+      'trackIndex, sceneIndex ignored: "path" already names the destination',
     );
   });
 
@@ -411,7 +411,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'trackIndex/sceneIndex ignored: "slot" already names the session destination',
+      'trackIndex, sceneIndex ignored: "slot" already names the session destination',
     );
   });
 

@@ -125,7 +125,7 @@ describe("handleQuantization", () => {
     });
 
     expect(reasons.said.get("321")?.join("; ")).toBe(
-      "quantize/quantizeGrid ignored: the clip is audio",
+      "quantize, quantizeGrid ignored: the clip is audio",
     );
     expect(capturedWarnings()).toHaveLength(0);
     expect(mockClip.call).not.toHaveBeenCalled();

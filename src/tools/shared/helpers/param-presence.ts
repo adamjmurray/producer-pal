@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
 // "undefined" as a param's whole value. (A JSON null never gets this far — it
@@ -123,8 +124,9 @@ function namedAliasedParam(
   }
 
   if (namedAlias != null && namedAlias !== named) {
-    console.warn(
-      `${aliasLabel} "${namedAlias}" ignored — "${canonical}" names the target`,
+    warnIgnored(
+      `${aliasLabel} "${namedAlias}"`,
+      `"${canonical}" names the target`,
     );
   }
 

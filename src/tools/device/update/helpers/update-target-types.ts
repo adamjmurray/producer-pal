@@ -10,6 +10,7 @@ import {
 } from "#src/tools/shared/helpers/target-notes.ts";
 import { liveObjectWords } from "#src/tools/shared/device/device-target-types.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 /**
  * Check if type is a rack device
@@ -61,7 +62,7 @@ export function refuseIgnoredParams(
     refuseTargetWork(
       notes,
       ignored,
-      `${ignored.join(", ")} not applicable to ${liveObjectWords(type)}`,
+      ignoredText(ignored, `can't be set on ${liveObjectWords(type)}`),
     );
   }
 }
@@ -79,5 +80,8 @@ export function notApplicableReason(
   type: string,
   target: LiveAPI,
 ): string {
-  return `'${paramName}' not applicable to ${liveObjectWords(type)} ${targetLabel(target)}`;
+  return ignoredText(
+    paramName,
+    `can't be set on ${liveObjectWords(type)} ${targetLabel(target)}`,
+  );
 }

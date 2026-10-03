@@ -142,7 +142,7 @@ describe("updateTrack take lane targets", () => {
       path: "t0/l0",
       name: "Take A",
       created: "l0",
-      detail: "a take lane takes only name; ignored color, mute",
+      detail: "color, mute ignored: a take lane takes only name",
     });
   });
 
@@ -160,7 +160,7 @@ describe("updateTrack take lane targets", () => {
       {
         path: "t0/l0",
         ok: false,
-        detail: "a take lane takes only name; ignored color",
+        detail: "color ignored: a take lane takes only name",
       },
     ]);
   });
@@ -169,10 +169,10 @@ describe("updateTrack take lane targets", () => {
     registerTakeLaneTrack({ initialLanes: 1 });
 
     expect(() => updateTrack({ path: "t0/l0", gainDb: -3 })).toThrow(
-      "a take lane takes only name; ignored gainDb",
+      "gainDb ignored: a take lane takes only name",
     );
     expect(() => updateTrack({ id: lane(0)!.id, color: "#FF0000" })).toThrow(
-      "a take lane takes only name; ignored color",
+      "color ignored: a take lane takes only name",
     );
   });
 
@@ -224,7 +224,7 @@ describe("updateTrack take lane targets", () => {
         ok: false,
         detail: `not written: id ${id} was meant to replace it, but failed`,
       },
-      { id, ok: false, detail: "a take lane takes only name; ignored color" },
+      { id, ok: false, detail: "color ignored: a take lane takes only name" },
     ]);
   });
 

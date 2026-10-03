@@ -546,7 +546,7 @@ describe("duplicate - clip duplication", () => {
       ).rejects.toThrow("Live made no copy there");
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          "arrangementStart ignored — toSlot names a clip slot",
+          "arrangementStart ignored: toSlot names a clip slot",
         ),
       );
     });

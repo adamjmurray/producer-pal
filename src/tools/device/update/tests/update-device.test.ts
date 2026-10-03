@@ -423,7 +423,7 @@ describe("updateDevice", () => {
 
     it("should reject non-rack devices with error", () => {
       expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
-        "macroCount not applicable to a device",
+        "macroCount ignored: can't be set on a device",
       );
       expect(device456.call).not.toHaveBeenCalled();
       expect(capturedWarnings()).toStrictEqual([]);

@@ -254,7 +254,7 @@ describe("updateClip - splitting smoke tests", () => {
     await expect(
       updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
     ).rejects.toThrow(
-      "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
+      "arrangementSplit ignored: this is a take-lane clip; split it in Live's UI",
     );
   });
 
@@ -366,7 +366,7 @@ describe("updateClip - splitting smoke tests", () => {
       expect.objectContaining({
         id: clipId,
         detail:
-          "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
+          "arrangementSplit ignored: this is a take-lane clip; split it in Live's UI",
       }),
     );
   });
@@ -462,7 +462,7 @@ describe("updateClip - splitting smoke tests", () => {
     await updateClip({ id: clipId, name: "renamed" }, {});
 
     expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("ignored for take-lane clip"),
+      expect.stringContaining("ignored: this is a take-lane clip"),
     );
   });
 });

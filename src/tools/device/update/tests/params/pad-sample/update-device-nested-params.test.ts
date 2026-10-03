@@ -501,7 +501,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     registerPadRack();
 
     const notApplicable =
-      "'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id chain-0)";
+      "params ignored: can't be set on a drum pad chain t0/d0/pC1/c0 (id chain-0)";
 
     expect(
       noParamLanded(() =>
@@ -530,7 +530,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
           params: [{ name: "Volume", value: "50" }],
         }),
       "Volume",
-      "'params' not applicable to a drum pad chain t0/d0/pC1/c0",
+      "params ignored: can't be set on a drum pad chain t0/d0/pC1/c0",
     );
   });
 });

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
@@ -162,7 +163,10 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
 
   if (hasAudioTimeRange) {
     console.clipDetail(
-      "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+      ignoredText(
+        "timeRange selector",
+        "audio transforms apply to the whole clip",
+      ),
     );
   }
 
@@ -174,7 +178,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
 
   if (hasAudioPitchRange) {
     console.clipDetail(
-      "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+      ignoredText("pitch selector", "audio clips have no pitch"),
     );
   }
 
@@ -186,7 +190,10 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
 
   if (hasAudioPredicate) {
     console.clipDetail(
-      "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+      ignoredText(
+        "where() predicate",
+        "audio transforms apply to the whole clip",
+      ),
     );
   }
 }

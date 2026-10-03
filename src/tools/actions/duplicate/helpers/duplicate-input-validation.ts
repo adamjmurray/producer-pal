@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
 import { isTakeLaneRequested } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
@@ -68,9 +68,9 @@ export function validateAndConfigureRouteToSource(
   ];
 
   if (ignored.length > 0) {
-    console.warn(
-      `${ignored.join("/")} ignored: routeToSource always copies without ` +
-        "clips and devices",
+    warnIgnored(
+      ignored,
+      "routeToSource always copies without clips and devices",
     );
   }
 

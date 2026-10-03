@@ -13,6 +13,7 @@ import {
 } from "../entries/clip-reasons.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { type SplitRequest } from "./parse-clip-call.ts";
+import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 /**
  * Why a clip can't be cut, or null when it can.
@@ -29,11 +30,14 @@ export function cutBlocker(
   request: SplitRequest,
 ): string | null {
   if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
-    return `${request.mode.param} ignored: this is a session clip`;
+    return ignoredText(request.mode.param, SESSION_CLIP);
   }
 
   return isTakeLaneClip(clip)
-    ? `${request.mode.param} ignored for a take-lane clip; split it in Live's UI`
+    ? ignoredText(
+        request.mode.param,
+        "this is a take-lane clip; split it in Live's UI",
+      )
     : null;
 }
 

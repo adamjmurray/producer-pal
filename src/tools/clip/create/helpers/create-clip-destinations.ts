@@ -217,7 +217,10 @@ function splitPathDestinations(
   // is naming the destination twice, so honor the explicit param and say the
   // other went unused rather than guessing which was meant.
   if (params.trackIndex != null || params.sceneIndex != null) {
-    ignored("trackIndex/sceneIndex", '"path" already names the destination');
+    ignored(
+      ["trackIndex", "sceneIndex"],
+      '"path" already names the destination',
+    );
   }
 
   const clipSlots: ClipSlotPosition[] = [];
@@ -374,7 +377,7 @@ function legacyDestinations(
     // destinations, so the guess is the redundant one.
     if (slot != null) {
       ignored(
-        "trackIndex/sceneIndex",
+        ["trackIndex", "sceneIndex"],
         '"slot" already names the session destination',
       );
 

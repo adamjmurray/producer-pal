@@ -68,7 +68,7 @@ describe("ppal-update-clip ignored params", () => {
     });
 
     expect(entry.detail).toContain(
-      "gainDb/pitchShift ignored: the clip is MIDI",
+      "gainDb, pitchShift ignored: the clip is MIDI",
     );
     expect(entry).not.toHaveProperty("ok");
     expect(clip.name).toBe("Renamed Anyway");

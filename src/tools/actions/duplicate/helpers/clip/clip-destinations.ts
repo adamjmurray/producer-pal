@@ -10,7 +10,7 @@
 // is created, so a bad destination fails instead of quietly landing the copy
 // somewhere else.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import {
   takeLaneFromPath,
   type ArrangementTrack,
@@ -135,8 +135,9 @@ export function warnInapplicableClipParams(
   arrangementLength: string | undefined,
 ): void {
   if (destinations.destination === "session" && arrangementLength != null) {
-    console.warn(
-      "arrangementLength ignored: it only applies to arrangement destinations",
+    warnIgnored(
+      "arrangementLength",
+      "it only applies to arrangement destinations",
     );
   }
 }
@@ -161,8 +162,9 @@ function legacySlotDestinations(
   // destination arrangementStart wants. Drop the weaker of the two rather than
   // failing the call, the way toPath does for the same conflict.
   if (hasArrangementParams) {
-    console.warn(
-      "arrangementStart ignored — toSlot names a clip slot; " +
+    warnIgnored(
+      "arrangementStart",
+      "toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
@@ -255,8 +257,9 @@ function arrangementDestinations(
     !beside.arrangement &&
     arrangementTargets.every((target) => target == null)
   ) {
-    console.warn(
-      `arrangementStart ignored — toPath "${named}" names a clip slot; ` +
+    warnIgnored(
+      "arrangementStart",
+      `toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 

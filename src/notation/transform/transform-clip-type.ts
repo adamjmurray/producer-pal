@@ -3,6 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  CLIP_IS_AUDIO,
+  CLIP_IS_MIDI,
+  ignoredText,
+} from "#src/shared/max/ignored-wording.ts";
 import { isNoteOp } from "./helpers/transform-evaluation.ts";
 import {
   type TransformStatement,
@@ -48,14 +53,15 @@ export function wrongClipTypeStatements(
   }
 
   const reasons: string[] = [];
-  const clipType = isAudio ? "audio" : "MIDI";
 
   if (params.size > 0) {
-    reasons.push(`${[...params].join("/")} ignored: the clip is ${clipType}`);
+    reasons.push(
+      ignoredText([...params], isAudio ? CLIP_IS_AUDIO : CLIP_IS_MIDI),
+    );
   }
 
   if (noteOps.size > 0) {
-    reasons.push(`${[...noteOps].join("/")} ignored: the clip is audio`);
+    reasons.push(ignoredText([...noteOps], CLIP_IS_AUDIO));
   }
 
   return { reasons, all: ast.length > 0 && wrong === ast.length };

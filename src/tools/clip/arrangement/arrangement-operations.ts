@@ -20,6 +20,7 @@ import {
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-length-changes.ts";
+import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
@@ -55,7 +56,7 @@ export function handleArrangementLengthOperation({
     refuseClipWork(
       reasons,
       clip.id,
-      "arrangementLength ignored: this is a session clip",
+      ignoredText("arrangementLength", SESSION_CLIP),
     );
 
     return updatedClips;
@@ -68,7 +69,10 @@ export function handleArrangementLengthOperation({
     refuseClipWork(
       reasons,
       clip.id,
-      "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
+      ignoredText(
+        "arrangementLength",
+        "this is a take-lane clip; adjust it in Live's UI",
+      ),
     );
 
     return updatedClips;

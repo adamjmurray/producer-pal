@@ -232,7 +232,7 @@ its source rack's macro mappings not coming along. A refusal to copy a chain
 between racks of different kinds now names both in words (`an instrument rack`,
 `a drum rack`) instead of Live class names like `InstrumentGroupDevice`. What is
 left as a warning is only what no entry can carry:
-`withoutClips/withoutDevices ignored: routeToSource always copies without clips and devices`
+`withoutClips, withoutDevices ignored: routeToSource always copies without clips and devices`
 (one line for the pair, naming only what you sent).
 
 **`ppal-duplicate` skips a source that isn't there, and refuses what it used to
@@ -285,7 +285,7 @@ of a coarse ladder) carries the value it reads as plus a `detail`. Key off
 **`ppal-update-device` reports a param the object can't take on its entry.**
 `gainDb`, `pan`, `mute`, `solo`, `sends` and the rest sent to an object with no
 use for them used to warn once per param. The target's entry now carries
-`detail: "gainDb, pan not applicable to a device"`, and where they were
+`detail: "gainDb, pan ignored: can't be set on a device"`, and where they were
 everything you asked of it the entry is `ok: false`, and a lone target throws. A
 `sends` entry naming no return chain of the rack is that send's own
 `{return, ok: false, detail}` under the chain or pad it was sent to, matching
@@ -598,8 +598,8 @@ Errors and warnings dropped their Live class names too:
 `is not a track (found Scene)` now reads `(found scene)`. The few that printed a
 raw Live path (`live_set return_tracks 0`) print the path you wrote instead.
 `ppal-update-device` says it that way on the target's own entry as well:
-`not applicable to a drum pad chain` and `cannot update a track` where they used
-to read `DrumChain` and `Track objects`.
+`ignored: can't be set on a drum pad chain` and `cannot update a track` where
+they used to read `DrumChain` and `Track objects`.
 
 ## Deprecated params
 

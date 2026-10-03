@@ -72,7 +72,7 @@ describe("duplicate - transforms/code", () => {
       // A clip legitimately supports transforms — the "ignored" warn (gated on
       // type !== "clip") must NOT fire here.
       expect(consoleMock.warn).not.toHaveBeenCalledWith(
-        expect.stringContaining("transforms/code ignored"),
+        expect.stringContaining("transforms, code ignored"),
       );
       expect(result).toStrictEqual({
         id: destId,

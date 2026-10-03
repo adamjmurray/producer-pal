@@ -33,6 +33,7 @@ import {
   splitOffsetsInside,
   type SplitClipRange,
 } from "./arrangement-splitting-rescan.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 export interface SplittingContext {
   silenceWavPath?: string;
@@ -116,7 +117,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   if (trackIndex == null) {
     reportClip?.refuse(
       clip.id,
-      `${mode.param} ignored: could not find the clip's track`,
+      ignoredText(mode.param, "could not find the clip's track"),
     );
 
     return false;
@@ -173,7 +174,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   if (!sourceClip.exists()) {
     reportClip?.refuse(
       originalClipId,
-      `${mode.param} ignored: Live refused the copy the cut works from`,
+      ignoredText(mode.param, "Live refused the copy the cut works from"),
     );
 
     // The split failed, but the points were measured above, so what the caller

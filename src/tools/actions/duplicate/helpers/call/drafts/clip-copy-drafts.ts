@@ -57,7 +57,7 @@ export interface ClipDraftParams {
   /** Says a destination of the call is a take lane */
   laneNamed: () => void;
   /** Warns that a param did nothing, in the one wording for it */
-  ignored: (param: string, why: string) => void;
+  ignored: (params: string | readonly string[], why: string) => void;
 }
 
 /**

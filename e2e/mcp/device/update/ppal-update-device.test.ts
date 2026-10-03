@@ -450,7 +450,7 @@ describe("ppal-update-device", () => {
 
   // A reason names the object the way the tools publish it, never by Live's
   // class name.
-  it("says a rack-only param is not applicable to a chain", async () => {
+  it("says a rack-only param can't be set on a chain", async () => {
     const written = parseToolResultWithWarnings<UpdateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
@@ -459,7 +459,9 @@ describe("ppal-update-device", () => {
     );
 
     // The name landed, so the refused param rides along as a reason.
-    expect(written.data.detail).toBe("macroCount not applicable to a chain");
+    expect(written.data.detail).toBe(
+      "macroCount ignored: can't be set on a chain",
+    );
     expect(written.warnings).toStrictEqual([]);
   });
 

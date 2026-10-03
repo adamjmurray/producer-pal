@@ -217,7 +217,7 @@ describe("take lanes as track-tool targets", () => {
     expect(lane.path).toBe(`t${EMPTY_MIDI_TRACK}/l2`);
     // The gap below the lane the path named is filled in, and named.
     expect(lane.created).toBe("l0-l2");
-    expect(lane.detail).toBe("a take lane takes only name; ignored color");
+    expect(lane.detail).toBe("color ignored: a take lane takes only name");
 
     await sleep(100);
     const track = parseToolResult<ReadTrackTakeLanesResult>(
@@ -243,7 +243,7 @@ describe("take lanes as track-tool targets", () => {
 
     expect(isToolError(refused)).toBe(true);
     expect(getToolErrorMessage(refused)).toContain(
-      "a take lane takes only name; ignored gainDb",
+      "gainDb ignored: a take lane takes only name",
     );
 
     // In a list the same lane holds its slot as a skip. Named twice, the
@@ -263,7 +263,7 @@ describe("take lanes as track-tool targets", () => {
       {
         path: lanePath,
         ok: false,
-        detail: "a take lane takes only name; ignored gainDb",
+        detail: "gainDb ignored: a take lane takes only name",
       },
     ]);
   });

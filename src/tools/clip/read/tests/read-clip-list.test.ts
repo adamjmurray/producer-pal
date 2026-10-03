@@ -139,7 +139,7 @@ describe("readClip over a list of targets", () => {
       clip0,
     );
     expect(capturedWarnings()).toStrictEqual([
-      'blank clipId ignored — "path" names the clips',
+      'blank clipId ignored: "path" names the clips',
     ]);
   });
 

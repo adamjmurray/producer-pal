@@ -57,7 +57,7 @@ describe("warnBlankTarget", () => {
     warnBlankTarget({ id: "   ", path: "t1/s1" }, "clips", 1);
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank id ignored — "path" names the clips',
+      'blank id ignored: "path" names the clips',
     ]);
   });
 
@@ -65,7 +65,7 @@ describe("warnBlankTarget", () => {
     warnBlankTarget({ id: "123", path: "   " }, "clips", 1);
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank path ignored — "id" names the clips',
+      'blank path ignored: "id" names the clips',
     ]);
   });
 
@@ -76,7 +76,7 @@ describe("warnBlankTarget", () => {
     warnBlankTarget({ ids: "   ", path: "t1/s1" }, "clips", 1);
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank ids ignored — "path" names the clips',
+      'blank ids ignored: "path" names the clips',
     ]);
   });
 
@@ -84,7 +84,7 @@ describe("warnBlankTarget", () => {
     warnBlankTarget({ id: "   ", paths: "t1/s1" }, "clips", 1);
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank id ignored — "paths" names the clips',
+      'blank id ignored: "paths" names the clips',
     ]);
   });
 
@@ -92,7 +92,7 @@ describe("warnBlankTarget", () => {
     warnBlankTarget({ paths: "   ", ids: "123" }, "clips", 1);
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank paths ignored — "ids" names the clips',
+      'blank paths ignored: "ids" names the clips',
     ]);
   });
 
@@ -100,7 +100,7 @@ describe("warnBlankTarget", () => {
     warnBlankTarget({ id: "   ", path: "t1" }, "tracks", 1);
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank id ignored — "path" names the tracks',
+      'blank id ignored: "path" names the tracks',
     ]);
   });
 

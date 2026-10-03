@@ -12,7 +12,7 @@ import {
   type ArrangementTrack,
   warnUnusedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -291,7 +291,6 @@ export function resolveDestinationAndWarn(
     type,
     destination,
     takeLane,
-    console.warn,
     takeLaneName,
     params.toTakeLane,
   );
@@ -333,7 +332,8 @@ function warnUnusedArrangementLength(
     return;
   }
 
-  console.warn(
-    `arrangementLength ignored: only clip and scene copies to the arrangement use it (type "${type}")`,
+  warnIgnored(
+    "arrangementLength",
+    `only clip and scene copies to the arrangement use it (type "${type}")`,
   );
 }

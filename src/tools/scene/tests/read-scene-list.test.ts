@@ -113,7 +113,7 @@ describe("readScene over a list of targets", () => {
       scene1,
     ]);
     expect(capturedWarnings()).toContainEqual(
-      'blank id ignored — "path" names the scenes',
+      'blank id ignored: "path" names the scenes',
     );
   });
 });

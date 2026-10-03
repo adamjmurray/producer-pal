@@ -672,7 +672,9 @@ describe("createClip - audio clip warping", () => {
       looping: true,
     })) as { detail?: string };
 
-    expect(result.detail).toContain("length, looping ignored for audio clips");
+    expect(result.detail).toContain(
+      "length, looping ignored: the clip is audio, so the sample defines its region",
+    );
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
@@ -689,7 +691,7 @@ describe("createClip - audio clip warping", () => {
       warping: true,
     })) as { detail?: string };
 
-    expect(result.detail).toContain("warping ignored for MIDI clips");
+    expect(result.detail).toContain("warping ignored: the clip is MIDI");
     expect(warnSpy).not.toHaveBeenCalledWith(
       expect.stringContaining("ignored"),
     );

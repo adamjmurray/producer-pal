@@ -299,7 +299,7 @@ describe("updateDevice with a preset", () => {
 
     await expect(
       updateDevice({ path: "t3/d0/c0", preset: "AG Bass" }),
-    ).rejects.toThrow("preset not applicable to a chain");
+    ).rejects.toThrow("preset ignored: can't be set on a chain");
     expect(requestNode).not.toHaveBeenCalled();
   });
 

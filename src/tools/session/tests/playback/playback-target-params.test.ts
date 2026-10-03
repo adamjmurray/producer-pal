@@ -85,7 +85,7 @@ describe("playback paths alias", () => {
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      'paths "t9/s9" ignored — "path" names the target',
+      'paths "t9/s9" ignored: "path" names the target',
     );
   });
 

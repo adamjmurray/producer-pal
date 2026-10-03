@@ -88,7 +88,8 @@ All decided before the first write (`plans/`), so the loop never has to undo:
 - `step.coverLanded()`: see above.
 - `withPieces(entry, extra)`: return the target's own entry plus extra entries
   that ride behind it (a clip split into pieces).
-- `call.ignored(param, why)`: warn that a whole-call param did nothing.
+- `call.ignored(params, why)`: warn that a whole-call param did nothing, as
+  `X ignored: why`.
 
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.

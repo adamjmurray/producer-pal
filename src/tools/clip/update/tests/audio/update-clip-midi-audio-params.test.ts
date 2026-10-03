@@ -35,7 +35,7 @@ describe("updateClip - audio params on a MIDI clip", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      detail: "gainDb/pitchShift ignored: the clip is MIDI",
+      detail: "gainDb, pitchShift ignored: the clip is MIDI",
     });
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
     expect(capturedWarnings()).toHaveLength(0);
@@ -54,7 +54,7 @@ describe("updateClip - audio params on a MIDI clip", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      detail: "warpMode/warping ignored: the clip is MIDI",
+      detail: "warpMode, warping ignored: the clip is MIDI",
     });
   });
 

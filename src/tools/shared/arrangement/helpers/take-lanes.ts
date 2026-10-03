@@ -31,7 +31,7 @@
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
   arrangementPath,
@@ -164,7 +164,6 @@ export function takeLaneLabel(target: ArrangementTrack): string {
  * @param type - The duplicate target type ("clip", "track", etc.)
  * @param destination - "session" | "arrangement" | undefined
  * @param takeLane - Raw takeLane value from the tool args
- * @param warn - console.warn binding (Max-aware in V8, native in tests)
  * @param takeLaneName - Raw takeLaneName value from the tool args
  * @param toTakeLane - Whether a destination names a lane, which a track copy
  *   also lands on: takeLaneName then names the lane it creates
@@ -173,7 +172,6 @@ export function warnUnusedTakeLane(
   type: string,
   destination: string | undefined,
   takeLane: number | string | null | undefined,
-  warn: (...args: unknown[]) => void,
   takeLaneName?: string | null,
   toTakeLane = false,
 ): void {
@@ -182,18 +180,16 @@ export function warnUnusedTakeLane(
     ...(paramNamesSomething(takeLaneName) && !toTakeLane
       ? ["takeLaneName"]
       : []),
-  ].join(" and ");
+  ];
 
-  if (unusable === "") {
+  if (unusable.length === 0) {
     return;
   }
 
   if (type !== "clip") {
-    warn(
-      `${unusable} ignored: no destination names a take lane (type "${type}")`,
-    );
+    warnIgnored(unusable, `no destination names a take lane (type "${type}")`);
   } else if (destination === "session") {
-    warn(`${unusable} ignored for session destination (arrangement-only)`);
+    warnIgnored(unusable, "session destinations have no take lanes");
   }
 }
 
@@ -328,8 +324,9 @@ export function resolveTakeLane(
       if (created != null) {
         lane.setAll({ name: takeLaneName });
       } else {
-        console.warn(
-          `takeLaneName ignored: take lane ${arrangementPath(track.trackIndex as number, laneIndex)} already exists; rename it with ppal-update-track`,
+        warnIgnored(
+          "takeLaneName",
+          `take lane ${arrangementPath(track.trackIndex as number, laneIndex)} already exists; rename it with ppal-update-track`,
         );
       }
     }

@@ -121,7 +121,7 @@ describe("a write answers the same by path and by id", () => {
     expect(entry).toStrictEqual({
       path: lane.path,
       ok: false,
-      detail: "a take lane takes only name; ignored color",
+      detail: "color ignored: a take lane takes only name",
     });
   });
 
@@ -188,12 +188,12 @@ describe("a write answers the same by path and by id", () => {
     expect(chain).toStrictEqual({
       path: "t6/d0/c0",
       ok: false,
-      detail: `no param landed — "Volume": 'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
+      detail: `no param landed — "Volume": params ignored: can't be set on a chain t6/d0/c0 (id ${chainId})`,
     });
     expect(pad).toStrictEqual({
       path: "t0/d0/pC1",
       ok: false,
-      detail: `no param landed — "Volume": 'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
+      detail: `no param landed — "Volume": params ignored: can't be set on a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
     });
   });
 

@@ -73,7 +73,7 @@ describe("ppal-create-clip with params for the other clip type", () => {
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
     expect(created.data.detail).toContain(
-      "start, length, looping ignored for audio clips",
+      "start, length, looping ignored: the clip is audio, so the sample defines its region",
     );
     expect(created.warnings).toStrictEqual([]);
 
@@ -103,7 +103,9 @@ describe("ppal-create-clip with params for the other clip type", () => {
     });
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(created.data.detail).toContain("length ignored for audio clips");
+    expect(created.data.detail).toContain(
+      "length ignored: the clip is audio, so the sample defines its region",
+    );
     expect(created.warnings).toStrictEqual([]);
     expect(created.data.id).toBeDefined();
   });
@@ -119,7 +121,7 @@ describe("ppal-create-clip with params for the other clip type", () => {
     });
     const created = parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(created.data.detail).toContain("warping ignored for MIDI clips");
+    expect(created.data.detail).toContain("warping ignored: the clip is MIDI");
     expect(created.warnings).toStrictEqual([]);
 
     await sleep(100);

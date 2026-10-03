@@ -37,6 +37,11 @@ import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 import { writeClipProperties } from "./write-clip-properties.ts";
 import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
+import {
+  CLIP_IS_AUDIO,
+  CLIP_IS_MIDI,
+  ignoredText,
+} from "#src/shared/max/ignored-wording.ts";
 
 interface ClipResult {
   id: string;
@@ -181,7 +186,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
       reasons,
       clip.id,
       ["firstStart"],
-      "firstStart ignored: the clip is not looping",
+      ignoredText("firstStart", "the clip is not looping"),
     );
   }
 
@@ -215,7 +220,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
         reasons,
         clip.id,
         ["notes"],
-        "notes ignored: the clip is audio",
+        ignoredText("notes", CLIP_IS_AUDIO),
       );
     }
   }
@@ -391,7 +396,7 @@ function handleAudioClipUpdate(
       params.reasons,
       clip.id,
       ["preTransforms"],
-      "preTransforms ignored: the clip is audio",
+      ignoredText("preTransforms", CLIP_IS_AUDIO),
     );
   }
 }
@@ -430,10 +435,5 @@ function ignoreAudioParams(
     return;
   }
 
-  ignoreClipParams(
-    reasons,
-    clipId,
-    sent,
-    `${sent.join("/")} ignored: the clip is MIDI`,
-  );
+  ignoreClipParams(reasons, clipId, sent, ignoredText(sent, CLIP_IS_MIDI));
 }

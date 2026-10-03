@@ -198,7 +198,14 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   `detail` saying so and what to re-run. A target whose work had begun keeps its
   normal entry with a `detail` for what did not run. A lookup that runs out of
   time before anything is written refuses the call.
-- **Whole-call "ignored" warnings** share one wording: `X ignored: reason`.
+- **"Ignored" is one wording, in a warning and in an entry:**
+  `X ignored: reason`. A param the whole call ignored is a warning
+  (`trackIndex, sceneIndex ignored: "path" already names the clip`). Params one
+  target can't use are a `detail` on that target's entry, in the same shape
+  (`gainDb, pan ignored: can't be set on a device`,
+  `gain ignored: the clip is MIDI`). Several params are joined with `, `, never
+  `/`. The code builds both with `ignoredText` and `warnIgnored`
+  (`src/shared/max/ignored-wording.ts`), and states each reason once.
 
 ### An entry that can't be parsed
 

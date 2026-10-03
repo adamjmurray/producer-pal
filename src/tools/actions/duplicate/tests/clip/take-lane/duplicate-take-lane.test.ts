@@ -339,7 +339,9 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session destination"),
+      expect.stringContaining(
+        "takeLane ignored: session destinations have no take lanes",
+      ),
     );
   });
 
@@ -367,7 +369,9 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session destination"),
+      expect.stringContaining(
+        "takeLane ignored: session destinations have no take lanes",
+      ),
     );
   });
 

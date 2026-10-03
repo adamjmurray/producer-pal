@@ -20,6 +20,7 @@ import {
   ignoreClipParams,
   noteLanded,
 } from "./entries/clip-reasons.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface AudioParams extends AudioClipProperties {
   /** Audio clip warping on/off */
@@ -232,6 +233,6 @@ function ignoreWarpParams(
     reasons,
     clip.id,
     ["warpOp", "warpBeatTime", "warpSampleTime", "warpDistance"],
-    `warpOp ignored: ${why}`,
+    ignoredText("warpOp", why),
   );
 }

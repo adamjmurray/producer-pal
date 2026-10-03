@@ -79,7 +79,9 @@ describe("createClip - audio properties", () => {
       warpMode: "texture",
     })) as { detail?: string };
 
-    expect(result.detail).toContain("gainDb, warpMode ignored for MIDI clips");
+    expect(result.detail).toContain(
+      "gainDb, warpMode ignored: the clip is MIDI",
+    );
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });

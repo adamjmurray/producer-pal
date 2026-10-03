@@ -238,7 +238,7 @@ describe("resolveClipDestinations", () => {
       );
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          "arrangementStart ignored — toSlot names a clip slot",
+          "arrangementStart ignored: toSlot names a clip slot",
         ),
       );
     });

@@ -255,8 +255,8 @@ with a tool, the tool wins.
 - **The params that never go through `params` report on the target.** `gainDb`,
   `pan`, `mute`, `solo`, `sends` and the rest are their own arguments, so there
   is no param entry to hold them: a kind of object with no use for one collects
-  it and the target's entry says `gainDb, pan not applicable to RackDevice` —
-  the type, without the label the entry already carries. They stop counting as
+  it and the target's entry says `gainDb, pan ignored: can't be set on a device`
+  — the type, without the label the entry already carries. They stop counting as
   work asked of that target, so a target they were the whole of keeps its slot
   as a skip and a lone one throws.
 - **A rack's return chains are the rack's, so a send that names none is the

@@ -6,6 +6,8 @@
 // The facts about a clip that create-clip and update-clip put on its entry in
 // the same words.
 
+import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
+
 /**
  * What to say when notes sharing a pitch and start were collapsed into one.
  * @param count - How many notes were dropped
@@ -27,7 +29,10 @@ export function transformsIgnoredNoNotesNote(
   sent: string[],
   hasMuted = false,
 ): string {
-  return `${sent.join("/")} ignored: the clip has ${hasMuted ? "only muted notes, which edits leave alone" : "no notes"}`;
+  return ignoredText(
+    sent,
+    `the clip has ${hasMuted ? "only muted notes, which edits leave alone" : "no notes"}`,
+  );
 }
 
 /**
@@ -35,7 +40,7 @@ export function transformsIgnoredNoNotesNote(
  * @returns The note for the clip's entry
  */
 export function transformsIgnoredAudioNote(): string {
-  return "transforms ignored: the clip is audio";
+  return ignoredText("transforms", CLIP_IS_AUDIO);
 }
 
 /**

@@ -5,7 +5,7 @@
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
@@ -197,8 +197,9 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   if (path != null) {
     // The aliases are a fallback for a caller that did not use path.
     if (args.trackIndex != null || args.sceneIndex != null) {
-      console.warn(
-        'trackIndex/sceneIndex ignored — "path" already names the clip',
+      warnIgnored(
+        ["trackIndex", "sceneIndex"],
+        '"path" already names the clip',
       );
     }
 

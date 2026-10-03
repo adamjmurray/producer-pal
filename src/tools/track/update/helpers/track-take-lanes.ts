@@ -21,6 +21,7 @@ import { takeLanePathEntry } from "#src/tools/shared/validation/helpers/object-p
 import { CREATE_TRACK_ADVICE } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 /** One take-lane target of a call, as the caller spelled it. */
 export interface TakeLaneTargetSpec {
@@ -173,7 +174,7 @@ function resolveLane(
  * @returns The detail
  */
 function ignoredParamsDetail(ignored: string[]): string {
-  return `a take lane takes only name; ignored ${ignored.join(", ")}`;
+  return ignoredText(ignored, "a take lane takes only name");
 }
 
 /**

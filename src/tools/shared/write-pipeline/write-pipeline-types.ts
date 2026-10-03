@@ -67,7 +67,7 @@ export type Target<P> = AppliedTarget<P> | SkippedTarget;
 export interface Call {
   ctx: Partial<ToolContext>;
   /** Warns that a whole-call param did nothing: `X ignored: reason` */
-  ignored: (param: string, why: string) => void;
+  ignored: (params: string | readonly string[], why: string) => void;
 }
 
 /** What one target's write hands the pipeline. */

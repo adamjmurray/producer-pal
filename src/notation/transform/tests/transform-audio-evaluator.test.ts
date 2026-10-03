@@ -308,7 +308,7 @@ describe("Audio Transform Evaluator", () => {
       // Still applies to the whole clip
       expect(result.gain).toBe(3);
       expect(console.warn).toHaveBeenCalledWith(
-        "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+        "timeRange selector ignored: audio transforms apply to the whole clip",
       );
     });
 
@@ -316,7 +316,7 @@ describe("Audio Transform Evaluator", () => {
       applyAudioTransform(0, 0, "gain += 3");
 
       expect(console.warn).not.toHaveBeenCalledWith(
-        "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+        "timeRange selector ignored: audio transforms apply to the whole clip",
       );
     });
   });
@@ -332,7 +332,7 @@ describe("Audio Transform Evaluator", () => {
       // Still applies to the whole clip
       expect(result.gain).toBe(3);
       expect(console.warn).toHaveBeenCalledWith(
-        "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+        "pitch selector ignored: audio clips have no pitch",
       );
     });
 
@@ -340,7 +340,7 @@ describe("Audio Transform Evaluator", () => {
       applyAudioTransform(0, 0, "gain += 3");
 
       expect(console.warn).not.toHaveBeenCalledWith(
-        "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+        "pitch selector ignored: audio clips have no pitch",
       );
     });
 
@@ -367,7 +367,7 @@ describe("Audio Transform Evaluator", () => {
       // Predicate has no note axis on an audio clip; the gain still applies.
       expect(result.gain).toBe(3);
       expect(console.warn).toHaveBeenCalledWith(
-        "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+        "where() predicate ignored: audio transforms apply to the whole clip",
       );
     });
 
@@ -375,7 +375,7 @@ describe("Audio Transform Evaluator", () => {
       applyAudioTransform(0, 0, "gain += 3");
 
       expect(console.warn).not.toHaveBeenCalledWith(
-        "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+        "where() predicate ignored: audio transforms apply to the whole clip",
       );
     });
   });

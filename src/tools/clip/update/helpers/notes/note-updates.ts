@@ -47,6 +47,7 @@ import {
   reportMutedNoteEffects,
   reportMutedQuantize,
 } from "./muted-note-effects.ts";
+import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
@@ -307,7 +308,7 @@ export function handleDuplicateLoop(
       reasons,
       clip.id,
       ["duplicateLoop"],
-      "duplicateLoop ignored: the clip is audio",
+      ignoredText("duplicateLoop", CLIP_IS_AUDIO),
     );
 
     return null;
@@ -531,12 +532,7 @@ export function handleQuantization(
       quantizePitch != null ? "quantizePitch" : null,
     ].filter((param) => param != null);
 
-    ignoreClipParams(
-      reasons,
-      clip.id,
-      sent,
-      `${sent.join("/")} ignored: the clip is audio`,
-    );
+    ignoreClipParams(reasons, clip.id, sent, ignoredText(sent, CLIP_IS_AUDIO));
 
     return;
   }

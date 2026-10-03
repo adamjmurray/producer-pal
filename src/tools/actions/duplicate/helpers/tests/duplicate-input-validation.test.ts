@@ -29,7 +29,7 @@ describe("validateAndConfigureRouteToSource", () => {
     expect(result).toStrictEqual({ withoutClips: true, withoutDevices: true });
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
-      "withoutClips/withoutDevices ignored: routeToSource always copies " +
+      "withoutClips, withoutDevices ignored: routeToSource always copies " +
         "without clips and devices",
     );
   });

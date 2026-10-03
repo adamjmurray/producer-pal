@@ -153,7 +153,7 @@ describe("duplicate - a list of sources", () => {
     it("shares toSlot out even beside an arrangement position", async () => {
       await expectSessionCopiesBesideArrangementStart(
         { toSlot: "2/0,3/0" },
-        "arrangementStart ignored — toSlot names a clip slot",
+        "arrangementStart ignored: toSlot names a clip slot",
       );
     });
 

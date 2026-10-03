@@ -161,7 +161,7 @@ describe("updateDevice - every param failed", () => {
 
     expect(() =>
       updateDevice({ id: "chain-0", params: [{ name: "Volume", value: "1" }] }),
-    ).toThrow(/^no param landed — "Volume": 'params' not applicable/);
+    ).toThrow(/^no param landed — "Volume": params ignored: can't be set on/);
   });
 });
 

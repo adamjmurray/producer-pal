@@ -24,6 +24,7 @@ import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
 } from "../slot-move/clip-slot-move.ts";
+import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface HandlePositionOperationsArgs {
   clip: LiveAPI;
@@ -64,7 +65,10 @@ export function handlePositionOperations(
       noteClipReason(
         args.reasons,
         clip.id,
-        `${destinationParam} ignored: a clip slot is off the arrangement timeline the other position params name`,
+        ignoredText(
+          destinationParam,
+          "a clip slot is off the arrangement timeline the other position params name",
+        ),
       );
     } else {
       const move =
@@ -131,7 +135,7 @@ function refuseSessionClipMove(args: HandlePositionOperationsArgs): boolean {
     refuseClipWork(
       args.reasons,
       clip.id,
-      "arrangementStart ignored: this is a session clip",
+      ignoredText("arrangementStart", SESSION_CLIP),
     );
 
     return true;

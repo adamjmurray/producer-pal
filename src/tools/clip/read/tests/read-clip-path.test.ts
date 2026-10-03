@@ -351,7 +351,7 @@ describe("readOneClip path param", () => {
       readOneClip({ path: "t1/s1", trackIndex: 2, sceneIndex: 3 }).name,
     ).toBe("From path");
     expect(warn).toHaveBeenCalledWith(
-      'trackIndex/sceneIndex ignored — "path" already names the clip',
+      'trackIndex, sceneIndex ignored: "path" already names the clip',
     );
   });
 });

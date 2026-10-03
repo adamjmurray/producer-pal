@@ -735,7 +735,7 @@ describe("updateClip - Basic operations", () => {
       expect.anything(),
     );
     expect(capturedWarnings()).not.toContain(
-      "notes parameter ignored for audio clip",
+      "notes ignored: the clip is audio",
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
   });

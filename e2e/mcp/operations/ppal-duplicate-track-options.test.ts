@@ -205,7 +205,7 @@ describe("ppal-duplicate track options", () => {
     // One warning for the pair, not one each: it is about the call's params,
     // which no copy's entry can speak for.
     expect(warnings).toStrictEqual([
-      "WARNING: withoutClips/withoutDevices ignored: routeToSource always " +
+      "WARNING: withoutClips, withoutDevices ignored: routeToSource always " +
         "copies without clips and devices",
     ]);
   });

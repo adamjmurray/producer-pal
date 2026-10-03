@@ -13,7 +13,7 @@
 // hook's awaits go through suspendWarningCapture, and nothing here can park
 // outside one.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { assembleEntries } from "./helpers/assemble-entries.ts";
 import { afterMaybe } from "./helpers/maybe-async.ts";
 import { resolveTargets } from "./helpers/resolve-targets.ts";
@@ -170,13 +170,4 @@ function completeOrder(order: number[] | undefined, count: number): number[] {
   const left = everyone.filter((index) => !asked.includes(index));
 
   return [...asked, ...left];
-}
-
-/**
- * Warn that a whole-call param did nothing, in the one wording for it.
- * @param param - The param, or what the caller sent
- * @param why - Why it did nothing
- */
-function warnIgnored(param: string, why: string): void {
-  console.warn(`${param} ignored: ${why}`);
 }

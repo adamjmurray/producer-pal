@@ -54,57 +54,47 @@ describe("isTakeLaneClip", () => {
 
 describe("warnUnusedTakeLane", () => {
   it("warns for takeLaneName on a track copy that lands on no lane", () => {
-    const warn = vi.fn();
+    warnUnusedTakeLane("track", "arrangement", null, "Take");
 
-    warnUnusedTakeLane("track", "arrangement", null, warn, "Take");
-
-    expect(warn).toHaveBeenCalledWith(
+    expect(consoleMock.warn).toHaveBeenCalledWith(
       'takeLaneName ignored: no destination names a take lane (type "track")',
     );
   });
 
   it("warns for takeLane on a session-destination clip duplicate", () => {
-    const warn = vi.fn();
+    warnUnusedTakeLane("clip", "session", 3);
 
-    warnUnusedTakeLane("clip", "session", 3, warn);
-
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("session destination"),
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      "takeLane ignored: session destinations have no take lanes",
     );
   });
 
   it("warns for takeLaneName the same way, and names both when both are sent", () => {
-    const warn = vi.fn();
+    warnUnusedTakeLane("track", "arrangement", null, "Verse take");
+    warnUnusedTakeLane("clip", "session", 3, "Verse take");
 
-    warnUnusedTakeLane("track", "arrangement", null, warn, "Verse take");
-    warnUnusedTakeLane("clip", "session", 3, warn, "Verse take");
-
-    expect(warn).toHaveBeenNthCalledWith(
+    expect(consoleMock.warn).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining("takeLaneName ignored"),
     );
-    expect(warn).toHaveBeenNthCalledWith(
+    expect(consoleMock.warn).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining("takeLane and takeLaneName ignored"),
+      expect.stringContaining("takeLane, takeLaneName ignored"),
     );
   });
 
   it("stays quiet when no take lane was requested", () => {
-    const warn = vi.fn();
+    warnUnusedTakeLane("track", "arrangement", 0);
+    warnUnusedTakeLane("clip", "session", null);
+    warnUnusedTakeLane("track", "arrangement", 0, "");
 
-    warnUnusedTakeLane("track", "arrangement", 0, warn);
-    warnUnusedTakeLane("clip", "session", null, warn);
-    warnUnusedTakeLane("track", "arrangement", 0, warn, "");
-
-    expect(warn).not.toHaveBeenCalled();
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   it("stays quiet for an arrangement clip duplicate, which uses it", () => {
-    const warn = vi.fn();
+    warnUnusedTakeLane("clip", "arrangement", 2);
 
-    warnUnusedTakeLane("clip", "arrangement", 2, warn);
-
-    expect(warn).not.toHaveBeenCalled();
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 });
 

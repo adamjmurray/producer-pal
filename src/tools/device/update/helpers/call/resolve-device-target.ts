@@ -104,7 +104,7 @@ function resolveIdToTarget(id: string): ResolvedTarget | null {
 /**
  * A DrumPad id names the same thing its pad path does, so give it the same
  * whole-pad update. read-device hands these ids out, and without this most of
- * what it reports on a pad is "not applicable to a drum pad" when written back.
+ * what it reports on a pad is "ignored: can't be set on a drum pad" when written back.
  * @param target - The object an id resolved to
  * @returns The whole-pad target, or null when this isn't a pad
  */

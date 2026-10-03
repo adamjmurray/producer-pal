@@ -31,6 +31,10 @@ import { type CreatePayload } from "./create-clip-targets.ts";
 import { type CreateRun } from "./create-run.ts";
 import { type MadeClip, makeClip } from "./make-clip.ts";
 import { type CreateClipCall } from "./parse-create-call.ts";
+import {
+  CLIP_IS_AUDIO,
+  CLIP_IS_MIDI,
+} from "#src/shared/max/ignored-wording.ts";
 
 /**
  * Write one target: make its clip, then give it its name, color, notes and the
@@ -290,7 +294,7 @@ function unusableParams(
           looping: args.looping,
           firstStart: args.firstStart,
         },
-        "audio clips - the sample defines the clip region",
+        `${CLIP_IS_AUDIO}, so the sample defines its region`,
       ]
     : [
         {
@@ -299,6 +303,6 @@ function unusableParams(
           pitchShift: args.pitchShift,
           warpMode: args.warpMode,
         },
-        "MIDI clips",
+        CLIP_IS_MIDI,
       ];
 }

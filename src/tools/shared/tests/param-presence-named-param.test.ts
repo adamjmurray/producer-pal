@@ -74,7 +74,7 @@ describe("namedIdParam", () => {
 
     expect(namedIdParam("42", "99", "clipId")).toBe("42");
     expect(warn).toHaveBeenCalledWith(
-      'clipId "99" ignored — "id" names the target',
+      'clipId "99" ignored: "id" names the target',
     );
   });
 });
@@ -97,7 +97,7 @@ describe("namedPathParam", () => {
 
     expect(namedPathParam("t0/s1", "t9/s9")).toBe("t0/s1");
     expect(warn).toHaveBeenCalledWith(
-      'paths "t9/s9" ignored — "path" names the target',
+      'paths "t9/s9" ignored: "path" names the target',
     );
   });
 });
