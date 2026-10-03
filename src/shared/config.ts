@@ -28,6 +28,12 @@ declare const process: { env: Record<string, string | undefined> };
 
 export const BUILD_SHA = process.env.BUILD_SHA ?? "";
 
+// The MCP server's default port: the device's Server Port starts at this value
+// (max-for-live-device/tab-setup.maxpat) and every client falls back to it.
+export const DEFAULT_MCP_PORT = 3350;
+export const DEFAULT_MCP_ORIGIN = `http://localhost:${DEFAULT_MCP_PORT}`;
+export const DEFAULT_MCP_URL = `${DEFAULT_MCP_ORIGIN}/mcp`;
+
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";
 

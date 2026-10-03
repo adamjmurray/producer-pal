@@ -21,7 +21,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
-import { MCP_URL } from "../mcp-test-helpers";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 interface ToolInfo {
   name: string;

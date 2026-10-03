@@ -8,6 +8,7 @@
 // CI-runnable suite lives in e2e/ui (config/playwright.ui.config.ts).
 
 import { defineConfig, devices } from "@playwright/test";
+import { DEFAULT_MCP_ORIGIN } from "#src/shared/config.ts";
 
 export default defineConfig({
   testDir: "../e2e/webui",
@@ -17,7 +18,7 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3350",
+    baseURL: DEFAULT_MCP_ORIGIN,
     trace: "on-first-retry",
   },
   projects: [

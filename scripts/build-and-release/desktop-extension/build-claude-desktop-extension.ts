@@ -8,6 +8,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_MCP_ORIGIN, DEFAULT_MCP_PORT } from "#src/shared/config.ts";
 import { getManifestTools } from "./desktop-extension-tools.ts";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
@@ -36,6 +37,8 @@ const template = readFileSync(
 );
 const manifest = template
   .replaceAll('"{{version}}"', JSON.stringify(version))
+  .replaceAll("{{origin}}", DEFAULT_MCP_ORIGIN)
+  .replaceAll("{{port}}", String(DEFAULT_MCP_PORT))
   .replaceAll(
     '"{{tools}}"',
     JSON.stringify(tools, null, 2).replaceAll("\n", "\n  "),

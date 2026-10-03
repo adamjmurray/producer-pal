@@ -26,8 +26,8 @@ import {
   scanPath,
   type ScanContext,
 } from "./live-api-scan.ts";
+import { DEFAULT_MCP_ORIGIN } from "#src/shared/config.ts";
 
-const DEFAULT_URL = "http://localhost:3350";
 const MAX_TRACKS = 8;
 
 const CORE_PATHS: [string, string][] = [
@@ -51,7 +51,7 @@ const CORE_PATHS: [string, string][] = [
 function parseArgs(): { outputPath: string; baseUrl: string } {
   const args = process.argv.slice(2);
   let outputPath = "tmp/live-api-scan.txt";
-  let baseUrl = DEFAULT_URL;
+  let baseUrl = DEFAULT_MCP_ORIGIN;
 
   for (const arg of args) {
     if (arg.startsWith("--url=")) {
@@ -73,7 +73,7 @@ function parseArgs(): { outputPath: string; baseUrl: string } {
         "  output-file    Output path (default: tmp/live-api-scan.txt)",
       );
       console.log(
-        "  --url=URL      Server base URL (default: http://localhost:3350)",
+        `  --url=URL      Server base URL (default: ${DEFAULT_MCP_ORIGIN})`,
       );
       process.exit(0);
     } else {

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { DEFAULT_MCP_ORIGIN } from "#src/shared/config.ts";
 import { isNotation, type Notation, NOTATIONS } from "#src/shared/notation.ts";
 import {
   ALL_TOOL_IDS,
@@ -43,9 +44,10 @@ export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
 
   // Strip trailing slashes from the origin so a value like
   // "http://localhost:3350/" doesn't produce "http://localhost:3350//mcp" (404).
-  const mcpServerOrigin = (
-    env.MCP_SERVER_ORIGIN ?? "http://localhost:3350"
-  ).replace(/\/+$/, "");
+  const mcpServerOrigin = (env.MCP_SERVER_ORIGIN ?? DEFAULT_MCP_ORIGIN).replace(
+    /\/+$/,
+    "",
+  );
 
   const bridgeOptions: BridgeOptions = {};
 

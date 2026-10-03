@@ -21,6 +21,7 @@ import {
   setConfig,
   type ConfigOptions,
 } from "#evals/shared/config.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { KICK_FILE, LIVE_SET_PATH, SAMPLE_FILE } from "./e2e-test-set.ts";
 
 // Re-export for use in tests
@@ -194,8 +195,6 @@ export function parseAliasedToolResult<T>(
 
   return data;
 }
-
-export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 
 /**
  * Sleep for a specified number of milliseconds.

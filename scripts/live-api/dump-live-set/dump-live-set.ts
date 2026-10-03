@@ -21,8 +21,8 @@ import { gzipSync } from "node:zlib";
 import { createBatchContext, runOperations } from "./live-api-batch.ts";
 import { type LiveSetDump } from "./dump-types.ts";
 import { walkLiveSet } from "./walk-live-set.ts";
+import { DEFAULT_MCP_ORIGIN } from "#src/shared/config.ts";
 
-const DEFAULT_URL = "http://localhost:3350";
 const DEFAULT_OUTPUT = "tmp/live-set-dump.json";
 const DEFAULT_MAX_OBJECTS = 20_000;
 
@@ -44,7 +44,7 @@ the path a tool would build. Read-only.
 
 Options:
   output-file        Output path (default: ${DEFAULT_OUTPUT})
-  --url=URL          Server base URL (default: ${DEFAULT_URL})
+  --url=URL          Server base URL (default: ${DEFAULT_MCP_ORIGIN})
   --root=PATH        Where to start; repeatable (default: live_set)
   --skip=NAMES       Child names never traversed, comma-separated; repeatable.
                      canonical_parent is always skipped — it points back up.
@@ -67,7 +67,7 @@ Options:
 function parseArgs(): Args {
   const args: Args = {
     outputPath: DEFAULT_OUTPUT,
-    baseUrl: DEFAULT_URL,
+    baseUrl: DEFAULT_MCP_ORIGIN,
     roots: [],
     skipChildren: new Set(),
     maxObjects: DEFAULT_MAX_OBJECTS,

@@ -23,6 +23,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { buildSkills, type SkillOverrides } from "#src/skills/build-skills.ts";
@@ -33,7 +34,6 @@ import {
   fetchSkillOverrides,
   getToolErrorMessage,
   isToolError,
-  MCP_URL,
   parseToolResult,
   type ReadClipResult,
   setConfig,

@@ -26,8 +26,8 @@ import {
   parseInfo,
   type InfoEntry,
 } from "./live-api-scan.ts";
+import { DEFAULT_MCP_ORIGIN } from "#src/shared/config.ts";
 
-const DEFAULT_URL = "http://localhost:3350";
 const MAX_TRACKS = 20;
 const MAX_DEVICES_PER_TRACK = 50;
 
@@ -48,7 +48,7 @@ interface DeviceRecord {
  */
 function parseArgs(): { outputPath: string; baseUrl: string } {
   let outputPath = "tmp/per-device-scan.txt";
-  let baseUrl = DEFAULT_URL;
+  let baseUrl = DEFAULT_MCP_ORIGIN;
 
   for (const arg of process.argv.slice(2)) {
     if (arg.startsWith("--url=")) {
@@ -70,7 +70,7 @@ function parseArgs(): { outputPath: string; baseUrl: string } {
         "  output-file    Output path (default: tmp/per-device-scan.txt)",
       );
       console.log(
-        "  --url=URL      Server base URL (default: http://localhost:3350)",
+        `  --url=URL      Server base URL (default: ${DEFAULT_MCP_ORIGIN})`,
       );
       process.exit(0);
     } else {

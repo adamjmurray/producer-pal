@@ -16,8 +16,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-
-const DEFAULT_SERVER_URL = "http://localhost:3350/mcp";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
 
 const INSTRUMENTS = [
   "Analog",
@@ -105,7 +104,7 @@ interface ToolContent {
  * @returns Parsed arguments
  */
 function parseArgs(): { serverUrl: string } {
-  let serverUrl = DEFAULT_SERVER_URL;
+  let serverUrl = DEFAULT_MCP_URL;
 
   for (const arg of process.argv.slice(2)) {
     if (arg.startsWith("--url=")) {
