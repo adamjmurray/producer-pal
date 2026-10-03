@@ -13,7 +13,8 @@ import {
   MockSequence,
   detectTypeFromPath,
   getPropertyByType,
-} from "./mock-live-api-property-helpers.ts";
+} from "../mock-live-api-property-helpers.ts";
+import { logMockWrites } from "./mock-write-log.ts";
 
 export interface RegisteredMockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
@@ -102,8 +103,13 @@ export function createRegistration(
   };
 
   mock.get = createGetMock(mock);
-  mock.set = createSetMock(mock);
-  mock.call = createCallMock(mock, fallbackCall);
+  const target = (): { id: string; path: string } => ({
+    id: mock.id,
+    path: mock.path,
+  });
+
+  mock.set = logMockWrites(createSetMock(mock), "set", target);
+  mock.call = logMockWrites(createCallMock(mock, fallbackCall), "call", target);
   applyRegistrationOptions(mock, options);
 
   return mock;

@@ -71,6 +71,10 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
   `deleteMockObject(id)` does the same for a fixture whose own `call`
   implementation destroys something — an arrangement create clears the range it
   writes to, and that never reaches a `delete_*`.
+- `getMockWrites()` / `clearMockWrites()` (`mocks/registry/mock-write-log.ts`)
+  read the ordered log of every `set` and `call` on any LiveAPI object,
+  registered or not, with its id, path, name and args. Use it for "this wrote
+  nothing" assertions. It includes read-only calls like `get_version_string`.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 

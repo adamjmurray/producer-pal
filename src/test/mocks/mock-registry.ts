@@ -12,7 +12,8 @@ import {
   createRegistration,
   refreshHolders,
   setKeepAllMockWrites,
-} from "./mock-registry-helpers.ts";
+} from "./registry/mock-registry-helpers.ts";
+import { clearMockWrites } from "./registry/mock-write-log.ts";
 
 export type { RegisteredMockObject, RegisteredMockObjectOptions };
 
@@ -377,4 +378,5 @@ export function clearMockRegistry(): void {
   setKeepAllMockWrites(false);
   _nonExistentByDefault = false;
   mockTrackCopies = 0;
+  clearMockWrites();
 }

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { mixerPathIds } from "#src/test/mocks/mock-registry-helpers.ts";
+import { mixerPathIds } from "#src/test/mocks/registry/mock-registry-helpers.ts";
 import {
   createOutputOnlyRoutingMock,
   createSimpleRoutingMock,

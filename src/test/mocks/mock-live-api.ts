@@ -20,6 +20,7 @@ import {
   isNonExistentByDefault,
   lookupMockObject,
 } from "./mock-registry.ts";
+import { logMockWrites } from "./registry/mock-write-log.ts";
 
 export { MockSequence, children };
 
@@ -101,12 +102,21 @@ export class LiveAPI {
         // register a backing property. See mock-registry.createGetMock.
         return getPropertyByType(this.type, prop, this.path) ?? [];
       }) as Mock;
-      this.set = vi.fn() as Mock;
-      this.call = vi
-        .fn()
-        .mockImplementation((method: string, ...args: unknown[]) =>
-          defaultMockCall(method, args, this.path),
-        ) as Mock;
+      const target = (): { id: string; path: string } => ({
+        id: this.id,
+        path: this.path,
+      });
+
+      this.set = logMockWrites(vi.fn() as Mock, "set", target);
+      this.call = logMockWrites(
+        vi
+          .fn()
+          .mockImplementation((method: string, ...args: unknown[]) =>
+            defaultMockCall(method, args, this.path),
+          ) as Mock,
+        "call",
+        target,
+      );
     }
   }
 
