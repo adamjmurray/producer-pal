@@ -39,6 +39,7 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
+import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -56,6 +57,10 @@ interface ProducerPalConfig {
   sampleFolder: string;
   liveApiEnabled: boolean;
   liveApiForcedOn: boolean;
+  // Debug builds only: false makes the remote script look uninstalled. POST
+  // /config only (evals and e2e); not a device setting, so it is never sent to
+  // Max. A release build neither lists nor accepts it.
+  remoteScriptEnabled?: boolean;
   tools: string[];
 }
 
@@ -78,6 +83,7 @@ const config: ProducerPalConfig = {
   sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
+  ...(liveApiForcedOn && { remoteScriptEnabled: true }),
   tools: liveApiForcedOn
     ? [...TOOL_NAMES, toolDefLiveApi.toolName]
     : [...TOOL_NAMES],
@@ -441,7 +447,11 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   // /config is a benign no-op update instead of a TypeError → 500.
   // Check every field first: a bad one refuses the whole request, so a 400
   // never leaves config half-applied (or Node and the device out of step).
-  const parsed = parseConfigBody(requestBody(req), config.liveApiEnabled);
+  const parsed = parseConfigBody(
+    requestBody(req),
+    config.liveApiEnabled,
+    liveApiForcedOn,
+  );
 
   if (!parsed.ok) {
     res.status(400).json(parsed.error);
@@ -493,6 +503,11 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
       () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
       () => Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
     );
+  }
+
+  if (incoming.remoteScriptEnabled !== undefined) {
+    config.remoteScriptEnabled = incoming.remoteScriptEnabled;
+    setRemoteScriptEnabled(incoming.remoteScriptEnabled);
   }
 
   if (incoming.tools !== undefined) {

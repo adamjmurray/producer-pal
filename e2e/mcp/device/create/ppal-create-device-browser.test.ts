@@ -18,6 +18,7 @@
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
  */
 import { describe, expect, it } from "vitest";
+import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
   getToolErrorMessage,
   isToolError,
@@ -179,11 +180,13 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     it("remote script refuses a second Producer Pal device", async () => {
       const before = await trackCount();
-      const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
-      const response = await fetch(`http://127.0.0.1:${port}/load`, {
-        method: "POST",
-        body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
-      });
+      const response = await fetch(
+        `http://127.0.0.1:${remoteScriptPort()}/load`,
+        {
+          method: "POST",
+          body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
+        },
+      );
       const body = (await response.json()) as { error?: string };
 
       expect(response.status).toBe(409);

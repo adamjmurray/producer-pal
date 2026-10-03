@@ -9,13 +9,15 @@ import { validateTools } from "../../create-mcp-server.ts";
 
 // `null` is allowed on the two text fields: Max sends a bare null for an
 // emptied one. Booleans are strict: the string "false" is refused, not read as
-// true. Unknown keys are ignored.
-const configBodySchema = z.object({
+// true. Unknown keys are ignored — on a release build that includes
+// `remoteScriptEnabled`, which only a debug build accepts.
+const debugConfigBodySchema = z.object({
   projectContext: z.string().nullable().optional(),
   sampleFolder: z.string().nullable().optional(),
   smallModelMode: z.boolean().optional(),
   jsonOutput: z.boolean().optional(),
   liveApiEnabled: z.boolean().optional(),
+  remoteScriptEnabled: z.boolean().optional(),
   notation: z
     .custom<Notation>(isNotation, {
       message: `must be one of: ${NOTATIONS.join(", ")}`,
@@ -24,7 +26,14 @@ const configBodySchema = z.object({
   tools: z.unknown().optional(),
 });
 
-export type ConfigBody = Omit<z.infer<typeof configBodySchema>, "tools"> & {
+const releaseConfigBodySchema = debugConfigBodySchema.omit({
+  remoteScriptEnabled: true,
+});
+
+export type ConfigBody = Omit<
+  z.infer<typeof debugConfigBodySchema>,
+  "tools"
+> & {
   tools?: string[];
 };
 
@@ -40,13 +49,18 @@ export interface ConfigBodyError {
  *
  * @param body - The parsed request body
  * @param currentLiveApiEnabled - liveApiEnabled to use when the body omits it
+ * @param debugBuild - Whether this is a debug build, the only kind that accepts
+ *   `remoteScriptEnabled`
  * @returns The validated body, or an error naming every bad field
  */
 export function parseConfigBody(
   body: unknown,
   currentLiveApiEnabled: boolean,
+  debugBuild: boolean,
 ): { ok: true; value: ConfigBody } | { ok: false; error: ConfigBodyError } {
-  const parsed = configBodySchema.safeParse(body);
+  const parsed = (
+    debugBuild ? debugConfigBodySchema : releaseConfigBodySchema
+  ).safeParse(body);
   const fields: Record<string, string> = {};
   let validToolNames: string[] | undefined;
 
@@ -101,4 +115,5 @@ const FIELD_TYPES: Record<string, string> = {
   smallModelMode: "boolean",
   jsonOutput: "boolean",
   liveApiEnabled: "boolean",
+  remoteScriptEnabled: "boolean",
 };

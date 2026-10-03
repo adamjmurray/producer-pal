@@ -17,6 +17,7 @@
  * Run with: npm run e2e:mcp:remote-script -- clip/update/ppal-update-clip-envelopes
  */
 import { beforeAll, describe, expect, it } from "vitest";
+import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   type ClipEnvelopeResult,
@@ -42,7 +43,7 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
     beforeAll(async () => {
       if (!(await remoteScriptAnswers())) {
         throw new Error(
-          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349"}. Install it and select it as a control surface (see remote-script/README.md).`,
+          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(remoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
         );
       }
     });

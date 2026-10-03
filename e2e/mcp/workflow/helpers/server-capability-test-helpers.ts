@@ -7,6 +7,7 @@
  * What the Live and server under test can do, for tests that depend on it.
  */
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { parseToolResult } from "../../mcp-test-helpers.ts";
 
 /**
@@ -62,9 +63,7 @@ export async function serverHasCodeExec(client: Client): Promise<boolean> {
  * @returns True when GET /ping answered within a second
  */
 export async function remoteScriptAnswers(): Promise<boolean> {
-  const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
-
-  return await fetch(`http://127.0.0.1:${port}/ping`, {
+  return await fetch(`http://127.0.0.1:${remoteScriptPort()}/ping`, {
     signal: AbortSignal.timeout(1000),
   }).then(
     (response) => response.ok,
