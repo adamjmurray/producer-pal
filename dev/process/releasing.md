@@ -353,15 +353,27 @@ After testing succeeds:
    Create a new GitHub release for `vX.Y.Z` (not a pre-release) and upload the
    fresh files. This is the release everyone gets prompted to install.
 
-4. Publish to npm — the first and only publish of this version:
+4. Publish to npm — the first and only publish of this version. Pack the
+   `npm run release` build, test that tarball as in Step 4, then publish that
+   same file:
 
    ```sh
    npm login
-   cd npm && npm publish && cd ..
+   cd npm
+   npm run guard:no-prerelease
+   npm pack                              # → producer-pal-X.Y.Z.tgz; test it
+   npm publish ./producer-pal-X.Y.Z.tgz
+   rm producer-pal-X.Y.Z.tgz
+   cd ..
    ```
 
-   No `--tag next` dance: what's being published has already been tested as a
-   tarball, and the version is a GA version, so `latest` is where it belongs.
+   Publish the tarball, not the folder: publishing the folder runs
+   `prepublishOnly`, which rebuilds without the release's `BUILD_SHA`, so the
+   bytes differ from the ones tested. Publishing a tarball skips
+   `prepublishOnly`, guard included, which is why the guard runs by hand.
+
+   No `--tag next` dance: the version is a GA version, so `latest` is where it
+   belongs.
 
 ## Fixing Issues During Pre-Release
 
@@ -443,15 +455,15 @@ can run `npx producer-pal` to connect any MCP client to Producer Pal.
 **Prerequisites:**
 
 - npm account with publish access to `producer-pal` package
-- A GA version — `prepublishOnly` refuses to publish anything with a `-` in it
+- A GA version — `guard:no-prerelease` refuses anything with a `-` in it
 - Version numbers already updated everywhere (`npm run version:bump:*` does
   this; `npm run check` asserts it)
 
 **Publishing Process:**
 
 ```sh
-# Build everything (including npm/ folder)
-npm run build
+# Build everything (including npm/ folder), as the release does
+npm run release
 
 # Change to npm directory
 cd npm
@@ -465,8 +477,10 @@ npm install -g ./producer-pal-X.Y.Z.tgz
 npx producer-pal # actually use this with an MCP Client, running it on the command line does nothing visible
 npm uninstall -g producer-pal
 
-# When ready to publish
-npm publish
+# When ready, publish the tested tarball (not the folder)
+npm run guard:no-prerelease
+npm publish ./producer-pal-X.Y.Z.tgz
+rm producer-pal-X.Y.Z.tgz
 
 # Return to root directory
 cd ..
@@ -474,9 +488,10 @@ cd ..
 
 **Notes:**
 
-- The `prepublishOnly` hook in `npm/package.json` runs `guard:no-prerelease`
-  (which fails on an `-rcN` version) and then `npm run build`, so a publish
-  always ships fresh artifacts of a releasable version
+- Publishing the folder runs the `prepublishOnly` hook in `npm/package.json`:
+  `guard:no-prerelease` (which fails on an `-rcN` version), then `npm run build`
+  without the release's `BUILD_SHA` — different bytes from the tested tarball.
+  Publishing the tarball skips the hook, so run the guard by hand
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
   - `LICENSE` (GPL 3.0 license)
