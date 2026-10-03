@@ -11,6 +11,17 @@
  * scenario registration in load-scenarios.ts.
  */
 
+export {
+  automationArrangementDirectLimit,
+  automationArrangementViaSession,
+} from "./clip/automation/automation-arrangement.ts";
+export { automationClearOne } from "./clip/automation/automation-clear-one.ts";
+export { automationNoRemoteScript } from "./clip/automation/automation-no-remote-script.ts";
+export { automationReadEnvelopes } from "./clip/automation/automation-read.ts";
+export {
+  automationWriteDeviceParam,
+  automationWriteMixer,
+} from "./clip/automation/automation-write.ts";
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export { arpeggioBracketIdiom } from "./clip/notation/arpeggio-bracket-idiom.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";

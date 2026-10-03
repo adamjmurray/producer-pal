@@ -15,6 +15,7 @@
  * transforms). Adding a name here is what makes it usable.
  */
 export const SCENARIO_TAGS = [
+  "automation",
   "clips",
   "context",
   "devices",

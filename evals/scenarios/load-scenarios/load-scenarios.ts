@@ -12,6 +12,13 @@ import {
   arpeggioBracketIdiom,
   arrangementClipWorkflow,
   audioSampleWorkflow,
+  automationArrangementDirectLimit,
+  automationArrangementViaSession,
+  automationClearOne,
+  automationNoRemoteScript,
+  automationReadEnvelopes,
+  automationWriteDeviceParam,
+  automationWriteMixer,
   barBeatAbsoluteDurationUniformity,
   barBeatCompoundFeelPulse,
   barBeatGallop,
@@ -179,6 +186,14 @@ const allScenarios: EvalScenario[] = [
   libraryTagDiscovery,
   libraryDiscoveryActions,
   locatorNavigation,
+  // Clip automation. Needs the Producer Pal remote script running in Live.
+  automationReadEnvelopes,
+  automationWriteDeviceParam,
+  automationWriteMixer,
+  automationClearOne,
+  automationArrangementViaSession,
+  automationArrangementDirectLimit,
+  automationNoRemoteScript,
   pathLocatorCoordinate,
   // Object-path addressing (2.2.0). Contiguous and on one Live Set:
   // path-session-slot resets the slots it writes, so it can reuse the open one.
