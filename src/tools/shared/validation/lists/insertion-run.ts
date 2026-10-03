@@ -22,6 +22,14 @@ export interface Placed {
   emptyBelow: number;
 }
 
+/** What a failed insert left in the container. */
+export interface LeftBehind {
+  /** The ids it made before it failed (empty scenes it padded) */
+  ids: string[];
+  /** Why it failed, as the entry says it before naming what was left */
+  reason: string;
+}
+
 /** One create call's inserts, as they stand. */
 export interface InsertionRun {
   /** Where each entry goes, as the call named it */
@@ -34,6 +42,8 @@ export interface InsertionRun {
   plan: Insertion[];
   /** The id each entry made, once it did; null until then, and for good if it failed */
   made: Array<string | null>;
+  /** What each failed entry left behind, by entry */
+  left: Array<LeftBehind | undefined>;
   /** An insert failed, so the entries after it aren't where the plan has them */
   stale: boolean;
 }
@@ -56,6 +66,7 @@ export function startInsertionRun(
     before: new Set(before),
     plan: planInsertions(spots, before.length, padsGaps),
     made: spots.map(() => null),
+    left: [],
     stale: false,
   };
 }
@@ -79,7 +90,7 @@ export function insertionFor(
     const spots = run.spots.map((spot, i) =>
       i < entry && run.made[i] == null ? "end" : spot,
     );
-    const layout = layoutFromIds(readIds(), run.before, run.made, run.padsGaps);
+    const layout = layoutOf(run, readIds());
 
     run.plan.splice(
       entry,
@@ -108,9 +119,16 @@ export function insertMade(run: InsertionRun, entry: number, id: string): void {
 /**
  * Record that an entry's insert failed, so the rest are planned again.
  * @param run - The call's inserts
+ * @param entry - The entry
+ * @param left - What the failed insert left in the container, if anything
  */
-export function insertFailed(run: InsertionRun): void {
+export function insertFailed(
+  run: InsertionRun,
+  entry: number,
+  left?: LeftBehind,
+): void {
   run.stale = true;
+  run.left[entry] = left;
 }
 
 /**
@@ -131,7 +149,22 @@ export function placesAfter(
     }));
   }
 
-  const layout = layoutFromIds(readIds(), run.before, run.made, run.padsGaps);
+  const layout = layoutOf(run, readIds());
 
   return run.made.map((_, entry) => placeInLayout(layout, entry));
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The container as it stands, in tokens. What a failed entry left is reported
+ * with that entry, so no other entry fills or claims it.
+ * @param run - The call's inserts
+ * @param ids - The ids in the container now, in order
+ * @returns A token per object
+ */
+function layoutOf(run: InsertionRun, ids: string[]): number[] {
+  const left = new Set(run.left.flatMap((entry) => entry?.ids ?? []));
+
+  return layoutFromIds(ids, run.before, run.made, run.padsGaps, left);
 }

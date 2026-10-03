@@ -5,48 +5,10 @@
 
 import { describe, expect, it } from "vitest";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
-import {
-  type RegisteredMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { captureScene } from "../capture-scene.ts";
-
-/**
- * Register the live_set, the selected scene, and the scene a capture inserts
- * right after it.
- * @param selectedIndex - Index of the selected scene
- * @param tracks - The live_set's tracks child list
- * @param sceneCount - How many scenes already exist (default: enough to cover selectedIndex)
- * @returns The live_set and the newly inserted scene
- */
-function setupCaptureMocks(
-  selectedIndex = 1,
-  tracks: unknown[] = [],
-  sceneCount = selectedIndex + 1,
-): { liveSet: RegisteredMockObject; newScene: RegisteredMockObject } {
-  const liveSet = registerMockObject("live_set", {
-    path: livePath.liveSet,
-    properties: {
-      tracks,
-      scenes: children(
-        ...Array.from({ length: sceneCount }, (_, i) => `scene${i}`),
-      ),
-    },
-  });
-
-  registerMockObject("live_set/view/selected_scene", {
-    path: livePath.scene(selectedIndex),
-  });
-
-  const newScene = registerMockObject(
-    `live_set/scenes/${String(selectedIndex + 1)}`,
-    { path: livePath.scene(selectedIndex + 1) },
-  );
-
-  return { liveSet, newScene };
-}
+import { captureScene } from "../../capture-scene.ts";
+import { setupCaptureMocks } from "./capture-scene-mocks.ts";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {

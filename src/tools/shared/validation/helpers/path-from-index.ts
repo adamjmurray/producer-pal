@@ -101,7 +101,7 @@ export function newScenePathFromIndex(
  * The path list that makes the same scenes as create-scene's deprecated count.
  * @param args - The args the call sent
  * @returns The list, or undefined when it would be too long to show, or when
- * capture ignored count
+ * capture, which takes no count, was asked for
  */
 export function newScenePathFromCount(
   args: Record<string, unknown>,

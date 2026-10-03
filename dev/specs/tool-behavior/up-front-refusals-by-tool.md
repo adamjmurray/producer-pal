@@ -41,6 +41,12 @@ follows the code; when it disagrees with a tool, the tool wins.
   device name Live doesn't have, and a path list spelled through its own
   inserts. A path that parses but names no place (`t9/d+`, a scene) skips only
   its own target.
+- **`createTrack` and `createScene` refuse a `path` entry they can't read**
+  before anything is made, as well as a list with a hole, lists of different
+  lengths, `count` with a path list, and a track or scene past the cap.
+  `createScene` also refuses `count` with `capture`, a tempo out of range, and a
+  `timeSignature` that isn't `N/D` (or `disabled`) with a power-of-two
+  denominator, since Live would change it.
 - **Three tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the

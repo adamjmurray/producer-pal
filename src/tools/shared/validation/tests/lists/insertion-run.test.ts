@@ -33,6 +33,7 @@ interface Outcome {
  * @param padsGaps - Fill a gap past the end (scenes)
  * @param fails - The entries whose insert throws
  * @param padsBeforeFailing - Whether a failing entry pads before it throws
+ * @param stopAt - The first entry that never runs, as when the deadline hits
  * @returns What the call left
  */
 function simulate(
@@ -41,16 +42,20 @@ function simulate(
   padsGaps: boolean,
   fails: number[] = [],
   padsBeforeFailing = false,
+  stopAt = spots.length,
 ): Outcome {
   const ids = Array.from({ length: existing }, (_, i) => `id old${i}`);
   const run = startInsertionRun(spots, [...ids], padsGaps);
   const creates: Array<number | "end"> = [];
 
-  for (let entry = 0; entry < spots.length; entry++) {
+  for (let entry = 0; entry < stopAt; entry++) {
     const insertion = insertionFor(run, entry, () => [...ids]);
+
+    const padded: string[] = [];
 
     if (!fails.includes(entry) || padsBeforeFailing) {
       for (let pad = 0; pad < insertion.padCount; pad++) {
+        padded.push(`id pad${entry}.${pad}`);
         ids.push(`id pad${entry}.${pad}`);
       }
     }
@@ -63,7 +68,7 @@ function simulate(
     creates.push(insertion.insertIndex);
 
     if (fails.includes(entry)) {
-      insertFailed(run);
+      insertFailed(run, entry, { ids: padded, reason: "refused" });
       continue;
     }
 
@@ -162,6 +167,37 @@ describe("an insertion run", () => {
     expect(outcome.places[0]).toStrictEqual({ finalIndex: 5, emptyBelow: 3 });
   });
 
+  it("claims every empty scene a landed entry padded when later entries never ran", () => {
+    // s7 pads four scenes on the assumption that s4 and s5 fill two of them.
+    const spots: InsertionSpot[] = [7, 4, 5, 4];
+
+    for (const stopAt of [1, 2, 3, 4]) {
+      const outcome = simulate(spots, 2, true, [], false, stopAt);
+      const padded = outcome.ids.filter((id) => id.startsWith("id pad"));
+      const claimed = outcome.places.reduce(
+        (sum, place) => sum + (place?.emptyBelow ?? 0),
+        0,
+      );
+
+      expect(claimed, `stopped at ${stopAt}`).toBe(padded.length);
+    }
+  });
+
+  it("claims none of the empty scenes a failed entry left, and leaves the rest planned around them", () => {
+    // The failed entry padded two scenes and then Live refused its insert.
+    const outcome = simulate([5, 3, "end"], 2, true, [0], true);
+    const left = outcome.ids.filter((id) => id.startsWith("id pad"));
+
+    expect(left.length).toBeGreaterThan(0);
+    expect(
+      outcome.places.reduce((sum, place) => sum + (place?.emptyBelow ?? 0), 0),
+    ).toBe(0);
+
+    for (const [named, actual] of namedAgainstActual(outcome)) {
+      expect(named).toBe(actual);
+    }
+  });
+
   it("keeps an object a failed track insert left behind where it is", () => {
     // Live threw after making the track. It isn't a scene's padding, so the
     // next entry still goes where the caller read its index, ahead of it.
@@ -170,7 +206,7 @@ describe("an insertion run", () => {
 
     insertionFor(run, 0, () => ids);
     ids.push("id stray");
-    insertFailed(run);
+    insertFailed(run, 0);
 
     const insertion = insertionFor(run, 1, () => ids);
 

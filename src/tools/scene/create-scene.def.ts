@@ -19,8 +19,9 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   // it) rather than conditionally.
   description: {
     default:
-      "Create empty scene(s) or capture playing session clips. Params with no " +
-      "list form apply to every scene.",
+      "Create empty scene(s) or capture playing session clips. Inserting shifts " +
+      "later scenes down, so a result path is where the scene sits after the " +
+      "call. Params with no list form apply to every scene.",
     smallModel: "Create an empty scene.",
   },
   annotations: {
@@ -30,7 +31,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where they go: 's+' appends, 's<index>' inserts there and shifts the rest down (s0 is the first scene, so a user's \"scene 3\" is s2). Comma-separated for several, one entry per scene, in order (e.g. 's+,s+' appends two, 's2,s2' inserts two at 2). Required when capture=false. With capture=true it takes one entry, and with none the new scene goes after the selected scene",
+        "where they go: 's+' appends, 's<index>' inserts there (s0 is the first scene, so a user's \"scene 3\" is s2). Comma-separated for several, one entry per scene, in order (e.g. 's+,s+' appends two, 's2,s2' inserts two at 2). Required when capture=false. With capture=true it takes one entry, and with none the new scene goes after the selected scene",
       smallModel:
         "required: 's+' to append, or 's<index>' to insert there and shift the rest down (s0 is the first scene, so a user's \"scene 3\" is s2)",
     }),
@@ -43,7 +44,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
       example: newScenePathFromCount,
-      note: "path names every scene, so repeat it once per scene instead of counting. Capture makes one scene and ignores count",
+      note: "path names every scene, so repeat it once per scene instead of counting. Not with capture, which makes one scene",
     }),
 
     capture: param(z.boolean().default(false), {

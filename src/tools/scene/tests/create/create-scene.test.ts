@@ -15,8 +15,9 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { expectSceneSetToRed34 } from "./scene-assertions.ts";
-import { createScene } from "../create-scene.ts";
+import { captureAddsScene } from "./capture-scene-mocks.ts";
+import { expectSceneSetToRed34 } from "../scene-assertions.ts";
+import { createScene } from "../../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -389,10 +390,12 @@ describe("createScene", () => {
     let captureAppView: RegisteredMockObject;
 
     beforeEach(() => {
-      captureLiveSet = registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: [] },
-      });
+      captureLiveSet = captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: [] },
+        }),
+      );
       captureAppView = registerMockObject("live_set/view", {
         path: livePath.view.song,
       });
@@ -524,10 +527,12 @@ describe("createScene", () => {
     });
 
     it("should return clips when capturing with existing clips", () => {
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
-      });
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
+        }),
+      );
       // Mark track 1's clip as non-existent (id "0" makes exists() return false)
       registerMockObject("0", {
         path: livePath.track(1).clipSlot(2).clip(),
@@ -569,10 +574,12 @@ describe("createScene", () => {
     });
 
     it("should select scene in session view when capturing with focus=true", () => {
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: [] },
-      });
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: [] },
+        }),
+      );
       registerMockObject("live_set/view/selected_scene", {
         path: livePath.scene(1),
       });
@@ -603,10 +610,12 @@ describe("createScene", () => {
     });
 
     it("should not call select when capturing with focus omitted", () => {
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: [] },
-      });
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: [] },
+        }),
+      );
       registerMockObject("live_set/view/selected_scene", {
         path: livePath.scene(1),
       });

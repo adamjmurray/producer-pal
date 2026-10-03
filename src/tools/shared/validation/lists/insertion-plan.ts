@@ -125,6 +125,8 @@ export function planInsertions<S extends InsertionSpot>(
  * @param made - The id each entry made, by entry; null for one that made none
  * @param strayIsEmpty - Read an id nothing accounts for as an empty object
  *   (scenes pad); otherwise as one that was there all along
+ * @param left - Ids a failed entry left behind: they count as objects that were
+ *   there, so no entry fills or claims them
  * @returns A token per object, for `planInsertions` to carry on from
  */
 export function layoutFromIds(
@@ -132,9 +134,10 @@ export function layoutFromIds(
   before: ReadonlySet<string>,
   made: ReadonlyArray<string | null>,
   strayIsEmpty: boolean,
+  left: ReadonlySet<string>,
 ): number[] {
   return ids.map((id) => {
-    if (before.has(id)) {
+    if (before.has(id) || left.has(id)) {
       return EXISTING;
     }
 

@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { withCreatedScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
@@ -35,12 +37,17 @@ interface CaptureSceneArgs {
  * @param args - The parameters
  * @param args.sceneIndex - Optional index the new scene should land at
  * @param args.name - Optional name for the captured scene
+ * @param landed - Told once the scene exists, so a throw after that can say so
  * @returns The captured scene, plus its index for the caller's follow-up writes
+ * @throws Error when Live captures no scene, naming the empty scenes added first
  */
-export function captureScene({
-  sceneIndex,
-  name,
-}: CaptureSceneArgs = {}): CaptureSceneResult & { sceneIndex: number } {
+export function captureScene(
+  { sceneIndex, name }: CaptureSceneArgs = {},
+  landed: (
+    phrase: string,
+    partial?: Record<string, unknown>,
+  ) => void = () => {},
+): CaptureSceneResult & { sceneIndex: number } {
   if (sceneIndex === 0) {
     throw new Error(
       "capture can't insert at s0 - it always inserts after an existing scene. Use s1 or later, or s+ to append",
@@ -48,7 +55,6 @@ export function captureScene({
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
-  const appView = LiveAPI.from(livePath.view.song);
   let padded: string | null = null;
 
   if (sceneIndex != null) {
@@ -59,25 +65,34 @@ export function captureScene({
     // result leaves the selection change out on purpose, to stay short.
     validateSceneIndexCap([sceneIndex]);
     padded = ensureSceneCountForIndex(liveSet, sceneIndex);
-
-    const scene = LiveAPI.from(livePath.scene(sceneIndex - 1));
-
-    appView.setProperty("selected_scene", toLiveApiId(scene.id));
   }
 
-  const selectedScene = LiveAPI.from(livePath.view.selectedScene);
-  const selectedSceneIndex = Number.parseInt(
-    selectedScene.path.match(/live_set scenes (\d+)/)?.[1] ?? "",
-  );
+  // The empty scenes stay in the Set whatever happens next.
+  const withPadding = (error: unknown): Error =>
+    padded == null
+      ? (error as Error)
+      : new Error(withCreatedScenes(errorMessage(error), padded), {
+          cause: error,
+        });
 
-  if (Number.isNaN(selectedSceneIndex)) {
-    throw new Error(`couldn't determine selected scene index`);
+  let selectedSceneIndex: number;
+
+  try {
+    selectedSceneIndex = selectAndCapture(liveSet, sceneIndex);
+  } catch (error) {
+    throw withPadding(error);
   }
-
-  liveSet.call("capture_and_insert_scene");
 
   const newSceneIndex = selectedSceneIndex + 1;
   const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
+
+  const path = formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex });
+
+  landed("scene captured", {
+    id: newScene.id,
+    path,
+    ...(padded == null ? {} : { created: padded }),
+  });
 
   if (name != null) {
     newScene.set("name", name);
@@ -103,9 +118,53 @@ export function captureScene({
   // Build optimistic result object
   return {
     id: newScene.id,
-    path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
+    path,
     ...(padded == null ? {} : { created: padded }),
     sceneIndex: newSceneIndex,
     clips,
   };
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Selects the scene the capture goes after, when a place was asked for, and
+ * captures.
+ * @param liveSet - The LiveAPI live_set object
+ * @param sceneIndex - Where the new scene should land, or undefined for after
+ *   the selected scene
+ * @returns The index of the scene the capture went after
+ * @throws Error when the selected scene can't be told, or Live refuses
+ */
+function selectAndCapture(
+  liveSet: LiveAPI,
+  sceneIndex: number | undefined,
+): number {
+  if (sceneIndex != null) {
+    const appView = LiveAPI.from(livePath.view.song);
+    const scene = LiveAPI.from(livePath.scene(sceneIndex - 1));
+
+    appView.setProperty("selected_scene", toLiveApiId(scene.id));
+  }
+
+  const selectedScene = LiveAPI.from(livePath.view.selectedScene);
+  const selectedSceneIndex = Number.parseInt(
+    selectedScene.path.match(/live_set scenes (\d+)/)?.[1] ?? "",
+  );
+
+  if (Number.isNaN(selectedSceneIndex)) {
+    throw new Error(`couldn't determine selected scene index`);
+  }
+
+  const count = liveSet.getChildCount("scenes");
+
+  liveSet.call("capture_and_insert_scene");
+
+  // A scene already stands where the capture goes, so only the count tells that
+  // Live made one rather than ignored the call.
+  if (liveSet.getChildCount("scenes") <= count) {
+    throw new Error("Live did not capture a scene");
+  }
+
+  return selectedSceneIndex;
 }

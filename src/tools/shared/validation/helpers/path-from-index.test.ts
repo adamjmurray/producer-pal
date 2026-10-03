@@ -108,7 +108,7 @@ describe("newScenePathFromIndex", () => {
     // A path the tool reads as unsent leaves the index to name the place.
     [{ path: " null ", sceneIndex: 4 }, "s4"],
     [{ path: "", sceneIndex: 4 }, "s4"],
-    // capture makes one scene and ignores count.
+    // capture makes one scene, so the index names the one place.
     [{ sceneIndex: 2, count: 3, capture: true }, "s2"],
   ])("spells %o as %s", (args, path) => {
     expect(newScenePathFromIndex(args)).toBe(path);
@@ -131,7 +131,7 @@ describe("newScenePathFromCount", () => {
     [{ count: 7 }],
     // count with a path list is refused, so no list reproduces it.
     [{ path: "s+,s+", count: 2 }],
-    // capture ignores count, so no path stands in for it.
+    // capture takes no count, so no path stands in for it.
     [{ count: 2, capture: true }],
   ])("gives no example for %o", (args) => {
     expect(newScenePathFromCount(args)).toBeUndefined();

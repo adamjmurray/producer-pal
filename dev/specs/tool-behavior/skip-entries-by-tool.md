@@ -107,6 +107,19 @@ with a tool, the tool wins.
   names its track where it sits after the call. `arm` on a return track is a
   `detail` on its entry, in update-track's words, not a failure: the track was
   made.
+- **create-scene answers per path named, the same way.** A scene Live didn't
+  make holds its slot as `{path, ok: false, detail}`; one that exists keeps its
+  normal entry plus `<error>; already changed: scene created`. Empty scenes made
+  to reach a path past the end are the scene's `created: "s2-s4"`; when the
+  insert then fails they are named in its detail, where they sit after the call
+  (`<error>; created s2-s4 to reach it`), and a scene made later doesn't claim
+  them. A create Live ignored is a skip too, though a scene already stands at
+  that index; the count of scenes tells. A capture is one target, so a lone
+  failure throws; a capture that succeeded and then failed on its name or color
+  keeps its entry with `already changed: scene captured`. A time signature Live
+  changed (a denominator it rounds) is reported as the value read back plus
+  `timeSignature read back as shown, not as sent`; one that can't be kept is
+  refused up front.
 - **delete answers per target named.** A path that can't be parsed refuses the
   call. A path that parses but names the wrong kind of thing, an object this
   call won't remove (the Producer Pal device or its track, a take lane, a chain

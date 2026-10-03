@@ -306,17 +306,38 @@ describe("ppal-create-scene", () => {
     });
   });
 
-  it("tells a capture caller that the deprecated count does nothing", async () => {
-    const { warnings } = parseToolResultWithWarnings<CaptureSceneResult>(
-      await ctx.client!.callTool({
-        name: "ppal-create-scene",
-        arguments: { capture: true, count: 2, name: "Counted Capture" },
-      }),
+  it("refuses count with capture, before anything is captured", async () => {
+    const before = (await allScenes()).length;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { capture: true, count: 2, name: "Counted Capture" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "count can't be used with capture",
     );
 
-    expect(warnings.join("\n")).toContain(
-      "Capture makes one scene and ignores count",
+    await sleep(100);
+    expect((await allScenes()).length).toBe(before);
+  });
+
+  // Live rounds a denominator that isn't a power of two (4/3 would become 4/2),
+  // so the call is refused before a scene is made.
+  it("refuses a time signature Live can't keep", async () => {
+    const before = (await allScenes()).length;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { path: "s+", timeSignature: "4/3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'timeSignature "4/3" has a denominator Live can\'t keep',
     );
+
+    await sleep(100);
+    expect((await allScenes()).length).toBe(before);
   });
 
   /**

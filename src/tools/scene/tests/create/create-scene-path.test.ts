@@ -14,8 +14,9 @@ import {
   collectHiddenParams,
   hiddenParamWarnings,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { toolDefCreateScene } from "../create-scene.def.ts";
-import { createScene } from "../create-scene.ts";
+import { toolDefCreateScene } from "../../create-scene.def.ts";
+import { createScene } from "../../create-scene.ts";
+import { captureAddsScene } from "./capture-scene-mocks.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -191,13 +192,15 @@ describe("createScene by path", () => {
     let appView: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: {
-          scenes: children("existing1", "existing2", "existing3"),
-          tracks: [],
-        },
-      });
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: {
+            scenes: children("existing1", "existing2", "existing3"),
+            tracks: [],
+          },
+        }),
+      );
       appView = registerMockObject("live_set/view", {
         path: livePath.view.song,
       });
@@ -309,7 +312,7 @@ describe("createScene sceneIndex and count deprecation examples", () => {
     );
   });
 
-  it("gives capture's one place, since capture ignores count", () => {
+  it("gives capture's one place, and none for count", () => {
     const warnings = hiddenParamWarnings(["sceneIndex", "count"], hidden, {
       sceneIndex: 2,
       count: 3,
@@ -320,12 +323,12 @@ describe("createScene sceneIndex and count deprecation examples", () => {
     expect(warnings[1]).not.toContain("e.g.");
   });
 
-  it("tells a capture caller that count does nothing", () => {
+  it("tells a capture caller that count doesn't go with it", () => {
     const [warning] = hiddenParamWarnings(["count"], hidden, {
       count: 3,
       capture: true,
     });
 
-    expect(warning).toContain("Capture makes one scene and ignores count");
+    expect(warning).toContain("Not with capture, which makes one scene");
   });
 });

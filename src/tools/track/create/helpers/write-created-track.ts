@@ -64,7 +64,7 @@ export function writeCreatedTrack(
   } catch (error) {
     // The tracks after this one were planned on the assumption it landed.
     if (run != null && entry != null) {
-      insertFailed(run);
+      insertFailed(run, entry);
     }
 
     throw error;

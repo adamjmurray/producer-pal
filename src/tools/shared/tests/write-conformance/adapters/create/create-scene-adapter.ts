@@ -28,14 +28,6 @@ function setUpSet(): RegisteredMockObject {
 export const createSceneAdapter: WriteToolAdapter = {
   tool: "ppal-create-scene",
   run: (args) => createScene(args),
-  skip: {
-    midway:
-      "a throw from Live escapes the call: earlier scenes stay created, later ones are never made, and no entry says so",
-    afterChange:
-      "a throw while naming the new scene escapes the call: the scene exists, but no entry reports it",
-    loneSkipped:
-      'when Live makes no scene the call returns an entry with id "0" instead of throwing',
-  },
   na: {
     unappliable:
       "every entry that parses is a place for a new scene; a bad one fails the whole-call checks instead",
@@ -92,7 +84,7 @@ export const createSceneAdapter: WriteToolAdapter = {
       failIndex: 1,
       message: LIVE_FAILURE,
       changed: { id: expect.any(String), path: "s3" },
-      landed: "made",
+      landed: "created",
       expected: [{ path: "s2" }, {}, { path: "s4" }],
     };
   },
