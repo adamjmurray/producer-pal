@@ -8,6 +8,7 @@ import { withClipWarningLabel } from "#src/notation/transform/transform-warning-
 import { type Notation } from "#src/shared/notation.ts";
 import { readBackAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
@@ -88,6 +89,8 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
+  /** The call's shared scale mask reader; each clip reads the Set when absent. */
+  scaleMask?: ScaleMaskReader;
   updatedClips: ClipResult[];
   landings: LandingLog;
   /** What each clip has to say beyond its result, for the clip's own entry. */
@@ -206,7 +209,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   // else uses it — a batch of renames would otherwise read the scale per clip.
   // prettier-ignore
   const clipContext = hasNoteEdits(notationString, transformString, preTransformString)
-    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator)
+    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator, params.scaleMask)
     : undefined;
 
   if (isAudioClip) {
@@ -356,6 +359,7 @@ function resolveNoteResult(
       clipIndex,
       clipCount,
       notation,
+      scaleMask: params.scaleMask,
     });
   }
 

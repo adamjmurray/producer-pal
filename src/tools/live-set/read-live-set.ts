@@ -48,8 +48,12 @@ export function readLiveSet(
   // Build include array to propagate to track/scene readers
   const trackInclude = buildTrackInclude(includeFlags);
 
-  // Read the return tracks once for efficiency (used for sends in mixer data)
-  const returnTracks = readReturnTrackInfo();
+  // Only track mixer sends name their return tracks. Read them once for all the
+  // tracks, and not at all when no track reports a mixer.
+  const returnTracks =
+    includeFlags.includeTracks && includeFlags.includeMixer
+      ? readReturnTrackInfo()
+      : undefined;
 
   // One pass over the session grid, shared by the scenes and the tracks below:
   // each counts the same slots, so counting in both built every clip twice.

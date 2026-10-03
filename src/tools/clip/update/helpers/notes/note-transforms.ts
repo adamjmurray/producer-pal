@@ -21,7 +21,10 @@ import {
   buildTransformClipContext,
   type TransformClipContextInput,
 } from "#src/tools/clip/helpers/transform-clip-context.ts";
-import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import {
+  readLiveSetScaleMask,
+  type ScaleMaskReader,
+} from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,
   rawNotesToCopiedNotes,
@@ -153,6 +156,8 @@ export function noteDroppedDuplicates(
  * @param clipCount - Total number of clips in the operation
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @param readScaleMask - Reads the scale mask; pass a reader shared across the
+ *   call so a batch asks Live once
  * @returns ClipContext with clip-level metadata
  */
 export function buildClipContext(
@@ -161,6 +166,7 @@ export function buildClipContext(
   clipCount: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  readScaleMask: ScaleMaskReader = readLiveSetScaleMask,
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
@@ -176,7 +182,7 @@ export function buildClipContext(
     ...noteTimeRegion(clip),
     timeSigNumerator,
     timeSigDenominator,
-    scalePitchClassMask: readLiveSetScaleMask(),
+    scalePitchClassMask: readScaleMask(),
   });
 }
 

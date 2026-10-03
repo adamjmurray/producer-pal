@@ -9,6 +9,29 @@ import {
   scaleIntervalsToPitchClassMask,
 } from "#src/shared/pitch.ts";
 
+/** Reads the Live Set's scale mask, as {@link readLiveSetScaleMask} does. */
+export type ScaleMaskReader = () => number | undefined;
+
+/**
+ * A scale mask reader that asks Live once, at the first read. The scale can't
+ * change inside one call, so a batch of clips needs one read, not one each.
+ * Holds the mask, a plain number, never a LiveAPI. A failed read isn't kept.
+ * @returns A reader to share across one call
+ */
+export function onceScaleMaskReader(): ScaleMaskReader {
+  let read = false;
+  let mask: number | undefined;
+
+  return () => {
+    if (!read) {
+      mask = readLiveSetScaleMask();
+      read = true;
+    }
+
+    return mask;
+  };
+}
+
 /**
  * Read the Live Set's global scale and return a pitch class bitmask for the
  * transform `scale:mask` variable. Shared by the clip create/update transform

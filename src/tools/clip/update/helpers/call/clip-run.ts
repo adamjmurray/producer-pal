@@ -13,6 +13,10 @@ import {
   type LandingLog,
   newLandingLog,
 } from "#src/tools/shared/clip/landings/landing-log.ts";
+import {
+  onceScaleMaskReader,
+  type ScaleMaskReader,
+} from "#src/tools/clip/helpers/scale-mask.ts";
 import { type ClipReasons, newClipReasons } from "../entries/clip-reasons.ts";
 
 /** One call's shared state. */
@@ -28,6 +32,8 @@ export interface ClipRun {
   stayed: Set<number>;
   /** Targets whose move and resize the call gave up on */
   calledOff: Set<number>;
+  /** The Live Set's scale mask, read the first time a clip's notes need it */
+  scaleMask: ScaleMaskReader;
   /** The call's cuts, once its first split clip is reached */
   split?: SplitRun;
   /** How many clips the call set out to cut */
@@ -44,6 +50,7 @@ export function newClipRun(context: Partial<ToolContext>): ClipRun {
     context,
     reasons: newClipReasons(),
     landings: newLandingLog(),
+    scaleMask: onceScaleMaskReader(),
     destinationTracks: new Map(),
     stayed: new Set(),
     calledOff: new Set(),

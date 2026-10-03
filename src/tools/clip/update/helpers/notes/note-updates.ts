@@ -23,6 +23,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   clipNoteScanWindow,
   getClipNoteCount,
@@ -357,6 +358,7 @@ export function handleDuplicateLoop(
  * @param params.clipIndex - 0-based index in the multi-clip batch
  * @param params.clipCount - Total clips in the batch
  * @param params.notation - Global notation setting the notes string is written in (or undefined)
+ * @param params.scaleMask - The call's shared scale mask reader, when it has one
  * @returns Note update result with the final post-edit note count
  */
 export function handleDuplicateLoopWithEdits({
@@ -370,6 +372,7 @@ export function handleDuplicateLoopWithEdits({
   clipIndex,
   clipCount,
   notation,
+  scaleMask,
 }: {
   clip: LiveAPI;
   reasons: ClipReasons;
@@ -381,6 +384,7 @@ export function handleDuplicateLoopWithEdits({
   clipIndex: number;
   clipCount: number;
   notation: Notation | undefined;
+  scaleMask?: ScaleMaskReader;
 }): NoteUpdateResult | null {
   // Stage 1: flush preTransforms onto the existing notes before doubling.
   let preCounts: TransformCounts = {};
@@ -392,6 +396,7 @@ export function handleDuplicateLoopWithEdits({
       clipCount,
       timeSigNumerator,
       timeSigDenominator,
+      scaleMask,
     );
     const preResult = applyTransformsToExistingNotes(
       clip,
@@ -425,6 +430,7 @@ export function handleDuplicateLoopWithEdits({
     clipCount,
     timeSigNumerator,
     timeSigDenominator,
+    scaleMask,
   );
   const mergeResult = handleNoteUpdates(
     freshClip,

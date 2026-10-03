@@ -270,6 +270,7 @@ async function updatePiece(
       startParam: call.startParam,
       destinationTracks: run.destinationTracks,
       context,
+      scaleMask: run.scaleMask,
       updatedClips: updated,
       landings: run.landings,
       reasons,
