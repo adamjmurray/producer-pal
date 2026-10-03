@@ -19,6 +19,7 @@ import {
   registerStackingTrack,
   stackedLaneSpans,
 } from "./stacking-track-test-helpers.ts";
+import { newLandingLog } from "#src/tools/clip/update/helpers/arrangement/landing-log.ts";
 
 const MAIN = { kind: "track", trackIndex: 0 } as const;
 
@@ -144,11 +145,9 @@ describe("a lane view after a write that threw", () => {
         clip: LiveAPI.from(ids[0] as string),
         arrangementStartBeats: 20,
         destination: null,
-        movedClipGroups: new Map(),
+        landings: newLandingLog(),
         isMidiClip: true,
         context: context(),
-        updatedClips: [],
-        noteResult: null,
         reasons: newClipReasons(),
       }),
     ).toThrow("Live refused the copy");

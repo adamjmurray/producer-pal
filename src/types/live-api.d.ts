@@ -158,8 +158,14 @@ declare global {
     /** Get the object's name, always as a string. See the implementation. */
     getName(): string;
 
-    /** Set multiple properties at once, skipping null/undefined values */
-    setAll(properties: Record<string, unknown>): void;
+    /**
+     * Set multiple properties at once, skipping null/undefined values. `landed`
+     * hears each property once it is written.
+     */
+    setAll(
+      properties: Record<string, unknown>,
+      landed?: (property: string) => void,
+    ): void;
 
     // ===== Index extraction getters =====
 

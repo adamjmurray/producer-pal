@@ -24,8 +24,9 @@ import {
   type ClipReasons,
   ignoreClipParams,
   noteClipReason,
+  noteLanded,
 } from "../entries/clip-reasons.ts";
-import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
+import { type LandingLog } from "../arrangement/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { getTimeSignature } from "../clip-beat-positions.ts";
@@ -77,12 +78,11 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
-  nonSurvivorClipIds?: Set<string> | null;
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
-  movedClipGroups: Map<string, MoveGroup>;
+  landings: LandingLog;
   /** What each clip has to say beyond its result, for the clip's own entry. */
   reasons: ClipReasons;
 }
@@ -141,10 +141,6 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     timeSignature,
     firstStart,
     looping,
-    gainDb,
-    pitchShift,
-    warpMode,
-    warping,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -154,7 +150,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     quantizePitch,
     context,
     updatedClips,
-    movedClipGroups,
+    landings,
     reasons,
   } = params;
 
@@ -166,18 +162,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
 
   if (isAudioClip) {
-    // Before the region write, because `warping` changes what the region write
-    // means: it picks the unit the markers are in, forces `looping` off, and
-    // switching it off resets end_marker to the whole file — which would erase
-    // a start/length requested in the same call.
-    setAudioParameters(clip, {
-      gainDb,
-      pitchShift,
-      warpMode,
-      warping,
-      looping,
-    });
-    forceWarpForLooping(clip, reasons, looping, warping);
+    writeAudioParams(params);
   } else {
     parseNoteEdits(params, timeSigNumerator, timeSigDenominator);
     ignoreAudioParams(clip.id, reasons, params);
@@ -238,6 +223,10 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
 
   reportNotesOutsideRegion(params, isAudioClip);
 
+  if (noteResult != null) {
+    noteLanded(reasons, "notes", { id: clip.id });
+  }
+
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, reasons, {
     quantize,
@@ -266,14 +255,32 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     startParam: params.startParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
-    movedClipGroups,
+    landings,
     destinationTracks: params.destinationTracks,
     context,
     updatedClips,
     noteResult,
     reasons,
-    isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
+}
+
+/**
+ * Write the audio params, ahead of the region write: `warping` changes what the
+ * region write means. It picks the unit the markers are in, forces `looping`
+ * off, and switching it off resets end_marker to the whole file — which would
+ * erase a start/length requested in the same call.
+ * @param params - The full single-clip update params
+ */
+function writeAudioParams(params: ProcessSingleClipUpdateParams): void {
+  const { clip, gainDb, pitchShift, warpMode, warping, looping, reasons } =
+    params;
+
+  setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping, looping });
+  forceWarpForLooping(clip, reasons, looping, warping);
+
+  if ([gainDb, pitchShift, warpMode, warping, looping].some((v) => v != null)) {
+    noteLanded(reasons, "audio params", { id: clip.id });
+  }
 }
 
 /**

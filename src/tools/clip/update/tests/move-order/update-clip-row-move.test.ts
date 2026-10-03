@@ -431,7 +431,7 @@ describe("updateClip - moving a row of take-lane clips", () => {
     ]);
 
     for (const entry of result) {
-      expect(entry.deleted).toBeUndefined();
+      expect(entry).not.toHaveProperty("deleted");
       expect(entry.detail).toContain("re-created on t0/l0");
     }
   });

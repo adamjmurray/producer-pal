@@ -5,12 +5,10 @@
 
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type ClipPath,
   pathEntries,
   pathNamesSomething,
-  slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import {
@@ -18,25 +16,12 @@ import {
   type ClipDestinationPath,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { destinationPositionResolver } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
-import { takeLaneIndexOfClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import {
-  destinationNamedLaterReason,
-  namedLaterReason,
-  type NamedTarget,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   pairExact,
   pairValues,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import {
-  objectPathForApi,
-  targetLabel,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
-import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
-import { refuseTarget, type ClipTargets } from "../entries/clip-targets.ts";
 
 /**
  * The param the caller used to name a destination, so a warning names one they
@@ -92,12 +77,15 @@ export interface MoveDestinations {
  * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3", "t2[5|1]", "[5|1]")
  * @param rawToSlot - Deprecated destination slot(s) (trackIndex/sceneIndex)
  * @param clipCount - How many clips the call named, before any are dropped
+ * @param spreadLane - Whether one track or take lane covers every clip, because
+ *   arrangementStart gives each its own position
  * @returns One lane, one position and one refusal per named clip
  */
 export function resolveMoveDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
   clipCount: number,
+  spreadLane = false,
 ): MoveDestinations {
   const none = {
     destinations: Array.from({ length: clipCount }, () => null),
@@ -131,9 +119,10 @@ export function resolveMoveDestinations(
   };
   // A bare "[5|1]" keeps each clip's lane, so one covers every clip. A lane or
   // slot holds one clip, so those pair 1:1 (see dev/specs/tool-behavior/object-paths/README.md).
-  const paired = namesNoLane(entries)
-    ? pairValues(entries, clipCount, labels)
-    : pairExact(entries, clipCount, labels);
+  const paired =
+    namesNoLane(entries) || spreadLane
+      ? pairValues(entries, clipCount, labels)
+      : pairExact(entries, clipCount, labels);
 
   return {
     destinations: paired.map((entry) => entry?.lane ?? null),
@@ -142,160 +131,7 @@ export function resolveMoveDestinations(
   };
 }
 
-interface RequestedClips {
-  clips: LiveAPI[];
-  destinationById: Map<string, ClipPath>;
-  /** Each clip's position in the call, for the params paired against it. */
-  requestedIndexById: Map<string, number>;
-}
-
-/**
- * Resolves the requested ids to clips, drops repeats, and gives each clip the
- * destination named at its own position in the call.
- *
- * Pairing happens here, against what the caller asked for, because an id that
- * doesn't resolve has to take its own destination with it. Pairing the
- * survivors by position instead slides every later clip onto the wrong slot,
- * and a move overwrites whatever it lands on.
- * @param targets - The targets the call named and the ids they found
- * @param moves - One destination and one refusal per requested entry
- * @param reasons - What each clip has to say beyond its result, added to
- * @returns The clips to update, plus their destinations and call positions keyed by clip id
- */
-export function resolveRequestedClips(
-  targets: ClipTargets,
-  moves: MoveDestinations,
-  reasons: ClipReasons,
-): RequestedClips {
-  const clips: LiveAPI[] = [];
-  const destinationById = new Map<string, ClipPath>();
-  const requestedIndexById = new Map<string, number>();
-  const claims: Array<[string, ClipPath]> = [];
-
-  const named = targets.ids.map((id, index) =>
-    // A path that named no clip already holds its slot with the reason.
-    id == null ? null : namedClip(id, targets, index),
-  );
-  const lastIndexById = new Map<string, number>();
-
-  for (const [index, clip] of named.entries()) {
-    if (clip != null) {
-      lastIndexById.set(clip.id, index);
-    }
-  }
-
-  for (const [index, clip] of named.entries()) {
-    if (clip == null) {
-      continue;
-    }
-
-    // An id and a path can name the same clip, as can a repeated id. Updating
-    // it twice compounds every operation — duplicateLoop would double it again
-    // — so only the last target to name it runs.
-    const last = lastIndexById.get(clip.id) as number;
-
-    if (last !== index) {
-      targets.unused.set(index, {
-        id: clip.id,
-        path: objectPathForApi(clip),
-        detail: namedLaterReason(targets.named[last] as NamedTarget),
-      });
-
-      continue;
-    }
-
-    clips.push(clip);
-    requestedIndexById.set(clip.id, index);
-    noteRefusedDestination(reasons, clip.id, moves.refusals[index]);
-
-    const destination = moves.destinations[index];
-
-    if (destination != null) {
-      claims.push([clip.id, destination]);
-    }
-  }
-
-  assignDestinations(claims, destinationById, reasons);
-
-  dropDestinationsHoldingBatchClips(
-    destinationById,
-    new Set(requestedIndexById.keys()),
-    reasons,
-  );
-
-  return { clips, destinationById, requestedIndexById };
-}
-
-/**
- * Sends a clip back to its own take lane when the call named a position but no
- * lane. A move with no destination lands on the track's MAIN lane, so a bare
- * `[5|1]` promoted a take-lane clip off a lane the caller never mentioned, and a
- * batch sharing one position piled every lane's clip onto the main one, where
- * each landing cleared the last. Main-lane clips need nothing: an unnamed
- * destination already means their own lane.
- * @param clips - The clips this call updates
- * @param destinationById - Destinations by clip id, added to
- * @param startBeatsFor - Where each clip is headed, or null when it stays put
- */
-export function keepSourceLaneDestinations(
-  clips: LiveAPI[],
-  destinationById: Map<string, ClipPath>,
-  startBeatsFor: (clip: LiveAPI) => number | null,
-): void {
-  for (const clip of clips) {
-    if (destinationById.has(clip.id) || startBeatsFor(clip) == null) {
-      continue;
-    }
-
-    const laneIndex = takeLaneIndexOfClip(clip);
-    const trackIndex = clip.trackIndex;
-
-    if (laneIndex == null || trackIndex == null) {
-      continue;
-    }
-
-    destinationById.set(clip.id, { kind: "take-lane", trackIndex, laneIndex });
-  }
-}
-
 // --- Helpers below main exports ---
-
-/**
- * The clip one id names, or null with the target's slot holding the reason.
- * @param id - The id the call named
- * @param targets - The targets the call named
- * @param slot - The target's place in the call
- * @returns The clip, or null when the id names none
- */
-function namedClip(
-  id: string,
-  targets: ClipTargets,
-  slot: number,
-): LiveAPI | null {
-  try {
-    return validateIdType(id, "clip");
-  } catch (error) {
-    refuseTarget(targets.unused, targets.named, slot, errorMessage(error));
-
-    return null;
-  }
-}
-
-/**
- * Carry a destination the call couldn't read onto the clip it was meant for.
- * @param reasons - What each clip has to say beyond its result, added to
- * @param clipId - The clip that is not moving
- * @param refused - Why its destination named nowhere, when it named nowhere
- */
-function noteRefusedDestination(
-  reasons: ClipReasons,
-  clipId: string,
-  refused: string | null | undefined,
-): void {
-  if (refused != null) {
-    refuseClipWork(reasons, clipId, refused);
-  }
-}
 
 /**
  * Whether the call named one destination that leaves the lane to the clip.
@@ -304,108 +140,6 @@ function noteRefusedDestination(
  */
 function namesNoLane(entries: Array<DestinationEntry | null>): boolean {
   return entries.length === 1 && entries[0]?.lane == null;
-}
-
-/**
- * Gives each clip the destination named at its position. When several clips
- * name one slot, the last wins and the others stay put: moving both would have
- * the later one overwrite the earlier, and the response claim both are there.
- *
- * Only slots are exclusive. An arrangement lane holds as many clips as fit on
- * it, so several clips can share one — and when they do land on top of each
- * other, the entry of the clip underneath says so.
- * @param claims - Each clip and the destination named for it, in call order
- * @param destinationById - Destinations by clip id, added to
- * @param reasons - What each clip has to say beyond its result, added to
- */
-function assignDestinations(
-  claims: Array<[string, ClipPath]>,
-  destinationById: Map<string, ClipPath>,
-  reasons: ClipReasons,
-): void {
-  const lastClaimant = new Map<string, string>();
-
-  for (const [clipId, destination] of claims) {
-    if (destination.kind === "slot") {
-      lastClaimant.set(destinationSlot(destination), clipId);
-    }
-  }
-
-  for (const [clipId, destination] of claims) {
-    const slot =
-      destination.kind === "slot" ? destinationSlot(destination) : null;
-
-    if (slot != null && lastClaimant.get(slot) !== clipId) {
-      refuseClipWork(
-        reasons,
-        clipId,
-        `not moved: ${destinationNamedLaterReason(slot)}`,
-      );
-    } else {
-      destinationById.set(clipId, destination);
-    }
-  }
-}
-
-/**
- * @param destination - A slot destination
- * @returns The slot, as a path
- */
-function destinationSlot(
-  destination: Extract<ClipPath, { kind: "slot" }>,
-): string {
-  return slotPath(destination.trackIndex, destination.sceneIndex);
-}
-
-/**
- * Drops a slot destination that holds another clip this call updates. The move
- * would overwrite that clip, and the batch would then work on a clip that no
- * longer exists and report it as updated — the loss the 1:1 pairing exists to
- * prevent.
- *
- * Slots only. An arrangement move can overwrite a batch clip too, but not
- * from here: this runs while the destinations are being paired to the clips,
- * and all it is handed is the destinations. Knowing what an arrangement move
- * would clear takes the position it lands at, the clip's own length, and the
- * track it ends up on. That case is handled in update-clip-move-order.ts,
- * which runs the operations in an order that clears nobody's way and refuses
- * the ones with no such order.
- * @param destinationById - Destinations by clip id, pruned in place
- * @param batchIds - Ids of every clip this call updates
- * @param reasons - What each clip has to say beyond its result, added to
- */
-function dropDestinationsHoldingBatchClips(
-  destinationById: Map<string, ClipPath>,
-  batchIds: Set<string>,
-  reasons: ClipReasons,
-): void {
-  for (const [clipId, destination] of destinationById) {
-    if (destination.kind !== "slot") {
-      continue;
-    }
-
-    const { trackIndex, sceneIndex } = destination;
-    const occupant = LiveAPI.from(
-      livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
-    );
-
-    // A clip's own slot is the no-op the move already handles.
-    if (!occupant.exists() || occupant.id === clipId) {
-      continue;
-    }
-
-    if (!batchIds.has(occupant.id)) {
-      continue;
-    }
-
-    refuseClipWork(
-      reasons,
-      clipId,
-      `not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
-        `${targetLabel(occupant)}, which this call also updates; move that clip out in its own call first`,
-    );
-    destinationById.delete(clipId);
-  }
 }
 
 /**

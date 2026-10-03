@@ -55,7 +55,7 @@ function outOfTime(id: string): Record<string, unknown> {
   return {
     id,
     ok: false,
-    detail: "not updated: the request ran out of time; re-run for this clip",
+    detail: "the request ran out of time; re-run for this clip",
   };
 }
 

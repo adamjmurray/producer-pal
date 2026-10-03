@@ -36,7 +36,11 @@ import {
   hasNoteEdits,
   noteDroppedDuplicates,
 } from "./note-transforms.ts";
-import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
+import {
+  type ClipReasons,
+  ignoreClipParams,
+  noteLanded,
+} from "../entries/clip-reasons.ts";
 import {
   mutedNotesHit,
   reportMutedCopies,
@@ -558,5 +562,6 @@ export function handleQuantization(
     clip.call("quantize", gridValue, strength);
   }
 
+  noteLanded(reasons, "quantize", { id: clip.id });
   reportMutedQuantize(clip, reasons, before);
 }

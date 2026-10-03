@@ -49,7 +49,7 @@ describe("updateClip - a split cut short by the deadline", () => {
     ]);
   });
 
-  it("still refuses a clip the split never reached", async () => {
+  it("skips a clip after it that the request ran out of time before", async () => {
     setupClipSplittingMocks("clip_1");
     registerMockObject("session_clip", {
       path: livePath.track(0).clipSlot(0).clip(),
@@ -58,19 +58,18 @@ describe("updateClip - a split cut short by the deadline", () => {
     });
 
     const result = await updateClip(
-      { ids: "session_clip,clip_1", arrangementSplit: "2|1" },
+      { ids: "clip_1,session_clip", arrangementSplit: "2|1" },
       { timeoutMs: 100 },
     );
 
     expect(result).toStrictEqual([
+      { id: "clip_1", path: "t0[1|1]", detail: NOT_RUN },
+      { id: "dup_2", path: "t0[2|1]", detail: NOT_RUN },
       {
         id: "session_clip",
         ok: false,
-        detail:
-          "not updated: the request ran out of time; re-run for this clip",
+        detail: "the request ran out of time; re-run for this clip",
       },
-      { id: "clip_1", path: "t0[1|1]", detail: NOT_RUN },
-      { id: "dup_2", path: "t0[2|1]", detail: NOT_RUN },
     ]);
   });
 });

@@ -22,6 +22,7 @@ import { handlePositionOperations } from "../../helpers/move/position-operations
 import { handleClipSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { newLandingLog } from "#src/tools/clip/update/helpers/arrangement/landing-log.ts";
 
 vi.mock(import("../../helpers/arrangement/arrangement-move.ts"), () => ({
   handleArrangementOperations: vi.fn(),
@@ -633,12 +634,11 @@ function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
       toSlot == null ? (toLane ?? null) : { kind: "slot", ...toSlot },
     arrangementStartBeats,
     arrangementLengthBeats,
-    movedClipGroups: new Map(),
+    landings: newLandingLog(),
     context: {},
     updatedClips: [],
     noteResult: null,
     reasons,
-    isNonSurvivor: false,
   });
 
   return reasons;

@@ -11,7 +11,7 @@ import {
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
 import { calculateBeatPositions } from "../clip-beat-positions.ts";
-import { noteClipColor } from "../entries/clip-reasons.ts";
+import { noteClipColor, noteLanded } from "../entries/clip-reasons.ts";
 import { type ProcessSingleClipUpdateParams } from "./process-single-clip-update.ts";
 
 /**
@@ -78,6 +78,11 @@ export function writeClipProperties(
   const readMarker = (property: string) =>
     markerBeats(clip, property, markerScale);
 
+  // Each property says it landed as it does, so a later one that throws leaves
+  // the clip's entry naming what stuck.
+  const landed = (property: string): void =>
+    noteLanded(reasons, landedPhrase(property), { id: clip.id });
+
   clip.setAll(
     buildClipPropertiesToSet({
       name,
@@ -95,9 +100,30 @@ export function writeClipProperties(
       currentEndMarker: readMarker("end_marker"),
       beatsPerMarkerUnit: markerScale.beatsPerMarkerUnit,
     }),
+    landed,
   );
 
   if (color != null) {
     noteClipColor(reasons, clip.id, landedColor(clip, color));
   }
 }
+
+/**
+ * What a written clip property is called in an entry's account of what landed.
+ * @param property - The Live property
+ * @returns A few words for it
+ */
+function landedPhrase(property: string): string {
+  if (property.startsWith("signature_")) {
+    return "time signature";
+  }
+
+  return REGION_PROPERTIES.has(property) ? "region" : property;
+}
+
+const REGION_PROPERTIES = new Set([
+  "loop_start",
+  "loop_end",
+  "start_marker",
+  "end_marker",
+]);

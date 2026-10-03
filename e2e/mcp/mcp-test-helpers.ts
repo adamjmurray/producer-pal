@@ -660,8 +660,6 @@ export interface ReadClipResult {
   /** Where the clip is: "t0/s3", "t0[5|1]", or "t0/l1[5|1]" */
   path?: string;
   arrangementLength?: string;
-  /** Only on a clip a move was set to overwrite: whether it was cleared */
-  deleted?: boolean;
   /** Why the update didn't go as asked, when something landed anyway */
   detail?: string;
   noteCount?: number;

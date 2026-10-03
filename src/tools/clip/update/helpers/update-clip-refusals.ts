@@ -11,8 +11,10 @@ import {
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   destinationLane,
+  loneToPath,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
@@ -64,23 +66,51 @@ export function refuseUnreadableCall(
     WARP_PARAM_HOMES,
   );
   refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
-  refuseSharedClipDestination(args.toPath, args.toSlot, targetCount);
+  refuseSharedClipDestination(
+    args.toPath,
+    args.toSlot,
+    targetCount,
+    args.arrangementStart,
+  );
+}
+
+/**
+ * Whether one track or take lane is the whole toPath and arrangementStart names
+ * a position per clip: the positions keep the clips apart, so the lane covers
+ * them all. One position would stack them on one spot.
+ * @param toPath - Destination path(s), if sent
+ * @param arrangementStart - Position(s), if sent
+ * @returns True when a lone lane takes one position per clip
+ */
+export function laneWithPositionPerClip(
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): boolean {
+  return (
+    paramNamesSomething(toPath) &&
+    paramNamesSomething(arrangementStart) &&
+    loneToPath(pathEntries(toPath, "toPath")).trackOrLane &&
+    targetEntries(arrangementStart, "arrangementStart").length > 1
+  );
 }
 
 /**
  * Refuse one destination for several clips. A lane or slot (`t0`, `t0/s1`,
  * `t0[5|1]`) holds one clip, so it has to be named once per clip. A bare
- * `[5|1]` is fine: each clip stays on its own lane.
+ * `[5|1]` is fine: each clip stays on its own lane. So is one track or take
+ * lane with a position per clip in arrangementStart.
  * @param toPath - Destination path(s), if sent
  * @param toSlot - Deprecated destination slot(s), if sent
  * @param targetCount - How many ids the call named
+ * @param arrangementStart - Position(s), if sent
  */
 function refuseSharedClipDestination(
   toPath: string | undefined,
   toSlot: string | undefined,
   targetCount: number,
+  arrangementStart: string | undefined,
 ): void {
-  if (targetCount <= 1) {
+  if (targetCount <= 1 || laneWithPositionPerClip(toPath, arrangementStart)) {
     return;
   }
 

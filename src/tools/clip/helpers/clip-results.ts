@@ -68,13 +68,6 @@ export interface ClipResult {
    * lane. Anything about a clip the call named belongs here.
    */
   detail?: string;
-  /**
-   * True when another clip in the same call left this one gone (`path` is the
-   * address it last had). A placement that failed destroys it just the same —
-   * it clears the target range before the copy it never makes — so this says
-   * what became of the clip, not whether the overwrite went to plan.
-   */
-  deleted?: true;
 }
 
 /**

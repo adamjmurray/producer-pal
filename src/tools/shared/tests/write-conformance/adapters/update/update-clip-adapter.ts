@@ -47,14 +47,6 @@ function setUpClips(count: number): RegisteredMockObject[] {
 export const updateClipAdapter: WriteToolAdapter = {
   tool: "ppal-update-clip",
   run: (args) => updateClip(args),
-  skip: {
-    replacedLater:
-      'skips the earlier move unwritten, as "named again later" with ok:false; the clip is never moved, so no entry says deleted',
-    unparsable:
-      "a path it can't parse becomes an ok:false entry, and the other targets are still written",
-    afterChange:
-      "the entry is a plain skip with the throw's reason; it doesn't say the name had already been set",
-  },
   na: {
     newTwice: "updates existing clips; nothing is created",
     countWithDestinations: "takes no count",

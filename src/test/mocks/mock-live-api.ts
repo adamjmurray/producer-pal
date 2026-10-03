@@ -325,7 +325,10 @@ export class LiveAPI {
   declare getName: () => string;
   declare setColor: (cssColor: string) => void;
   declare setProperty: (property: string, value: unknown) => void;
-  declare setAll: (properties: Record<string, unknown>) => void;
+  declare setAll: (
+    properties: Record<string, unknown>,
+    landed?: (property: string) => void,
+  ) => void;
 }
 
 interface TrackOverrides {

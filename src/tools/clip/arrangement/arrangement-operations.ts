@@ -10,6 +10,7 @@ import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-la
 import {
   markClipLanded,
   noteClipReason,
+  noteLanded,
   refuseClipWork,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
@@ -147,6 +148,7 @@ export function handleArrangementLengthOperation({
     });
     // The clip was cut in place, so it is updated, not a clip left as it was.
     markClipLanded(reasons, clip.id);
+    noteLanded(reasons, "shortened", { id: clip.id });
   }
 
   return updatedClips;

@@ -30,6 +30,7 @@ import {
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   rescanSplitClips,
+  splitOffsetsInside,
   type SplitClipRange,
 } from "./arrangement-splitting-rescan.ts";
 
@@ -121,29 +122,16 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     return false;
   }
 
-  // Song-timeline positions become offsets from this clip's start; the
-  // deprecated `split` param already gives offsets. Everything below is
-  // clip-relative.
-  const offsets =
-    mode.origin === "song"
-      ? splitPoints.map((p) => p - clipArrangementStart)
-      : splitPoints;
-
-  // Filter split points to those within clip bounds.
-  //
-  // The margin is EPSILON, not 0, and it is load-bearing: the trims below are
-  // all guarded by `> EPSILON`, so a point within EPSILON of either edge would
-  // let one of them be skipped, and a skipped trim leaves a span the moves
-  // below assume was vacated still occupied. Those moves skip the overlap
-  // clear, so Live would crash on the next duplicate. Keep the two thresholds
-  // equal. Such a point asks for a zero-length segment anyway.
   const validPoints: number[] = [];
 
-  for (const [index, p] of offsets.entries()) {
-    if (p > EPSILON && p < clipLength - EPSILON) {
-      validPoints.push(p);
-      args.usedPoints.add(index);
-    }
+  for (const { index, offset } of splitOffsetsInside(
+    splitPoints,
+    mode,
+    clipArrangementStart,
+    clipLength,
+  )) {
+    validPoints.push(offset);
+    args.usedPoints.add(index);
   }
 
   if (validPoints.length === 0) {
@@ -446,11 +434,120 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
   return segmentCount - 1;
 }
 
+/** One call's cuts, a clip at a time, and what the cuts add up to. */
+export interface SplitRun {
+  /** Where each cut clip sat before it was cut, by the id it was cut at */
+  ranges: Map<string, SplitClipRange>;
+  /**
+   * Cut one clip at the call's positions. A clip left whole says why on its
+   * own entry; one cut leaves its range in `ranges`.
+   * @param clip - The arrangement clip to cut
+   */
+  cut: (clip: LiveAPI) => void;
+  /**
+   * The pieces a clip became once it was cut, found on its lane.
+   * @param clip - The clip that was cut
+   * @returns The pieces, in lane order; empty when the clip was not cut
+   */
+  piecesOf: (clip: LiveAPI) => LiveAPI[];
+  /**
+   * Say what the whole call cut nothing of. Only holds when every clip was
+   * measured, so a deadline stop or a skipped clip says nothing.
+   * @param clipCount - How many clips the call set out to cut
+   */
+  finish: (clipCount: number) => void;
+}
+
 /**
- * Perform splitting of arrangement clips at specified positions.
+ * Begin cutting clips at specified positions, one clip at a time.
  *
  * Uses partial-success model: a clip that fails to split is skipped, and says
  * so on its own result entry.
+ *
+ * @param splitPoints - Parsed bar|beat positions in beats, read per `mode`
+ * @param context - Internal context object
+ * @param mode - Whether positions are song-timeline or clip-relative
+ * @returns The run to cut clips with
+ */
+export function startSplitting(
+  splitPoints: number[],
+  context: SplittingContext,
+  mode: SplitMode,
+): SplitRun {
+  const ranges = new Map<string, SplitClipRange>();
+  const misses: SplitMiss[] = [];
+  const usedPoints = new Set<number>();
+  const tracks = new Map<number, TrackSplitState>();
+  // Both warnings speak for the whole call, and neither holds unless every clip
+  // was measured against every position. A deadline stop, a throw, or a skipped
+  // clip leaves the count short and usedPoints partial, and the warning would
+  // then blame a position that a clip nobody looked at spans.
+  let measuredClips = 0;
+
+  return {
+    ranges,
+    piecesOf: (clip) => {
+      const range = ranges.get(clip.id);
+
+      return range == null
+        ? []
+        : (rescanSplitClips(
+            new Map([[clip.id, range]]),
+            [],
+            laneViewOf(context),
+            (trackIndex) => tracks.get(trackIndex)?.track,
+          ).get(clip.id) ?? []);
+    },
+    cut: (clip) => {
+      const clipId = clip.id;
+
+      try {
+        const measured = splitSingleClip({
+          clip,
+          splitPoints,
+          mode,
+          context,
+          splitClipRanges: ranges,
+          misses,
+          usedPoints,
+          tracks,
+        });
+
+        if (measured) {
+          measuredClips++;
+        }
+      } catch (error) {
+        // Whatever Live refused, the rest of the batch is still worth cutting.
+        // This clip is left as it fell; the rescan reports what survived.
+        context.reportClip?.note(
+          clipId,
+          `${mode.param} failed: ${errorMessage(error)}; the clip may be left ` +
+            `partly cut, with a copy past the end of the arrangement`,
+        );
+      }
+    },
+    finish: (clipCount) => {
+      if (measuredClips !== clipCount) {
+        return;
+      }
+
+      // Nothing cut and nothing skipped, so every clip is a miss — unless there
+      // were no clips at all.
+      if (ranges.size === 0) {
+        if (misses.length > 0) {
+          warnNothingSplit(misses, mode);
+        }
+      } else {
+        // Something was cut, so the caller gets a result that looks like it
+        // worked. A position that landed in no clip at all has to say so itself.
+        warnUnusedSplitPoints(splitPoints, usedPoints, mode);
+      }
+    },
+  };
+}
+
+/**
+ * Perform splitting of arrangement clips at specified positions.
  *
  * @param arrangementClips - Array of arrangement clips to split
  * @param splitPoints - Parsed bar|beat positions in beats, read per `mode`
@@ -466,17 +563,9 @@ export function performSplitting(
   _context: SplittingContext,
   mode: SplitMode,
 ): Map<string, LiveAPI[]> {
-  const splitClipRanges = new Map<string, SplitClipRange>();
-  const misses: SplitMiss[] = [];
-  const usedPoints = new Set<number>();
-  const tracks = new Map<number, TrackSplitState>();
-  // Both warnings below speak for the whole call, and neither holds unless
-  // every clip was measured against every position. A deadline stop, a throw,
-  // or a skipped clip leaves the count short and usedPoints partial, and the
-  // warning would then blame a position that a clip nobody looked at spans.
-  let measuredClips = 0;
+  const run = startSplitting(splitPoints, _context, mode);
 
-  for (let i = 0; i < arrangementClips.length; i++) {
+  for (const clip of arrangementClips) {
     // Between clips, so no clip is left half-cut. One clip's own splitting is
     // bounded by MAX_SPLIT_POINTS, and it checks the deadline itself. The clips
     // left stay unsplit, and update-clip's own deadline check gives each its
@@ -485,48 +574,10 @@ export function performSplitting(
       break;
     }
 
-    const clip = arrangementClips[i] as LiveAPI; // bounded by the loop
-    const clipId = clip.id;
-
-    try {
-      const measured = splitSingleClip({
-        clip,
-        splitPoints,
-        mode,
-        context: _context,
-        splitClipRanges,
-        misses,
-        usedPoints,
-        tracks,
-      });
-
-      if (measured) {
-        measuredClips++;
-      }
-    } catch (error) {
-      // Whatever Live refused, the rest of the batch is still worth cutting.
-      // This clip is left as it fell; the rescan below reports what survived.
-      _context.reportClip?.note(
-        clipId,
-        `${mode.param} failed: ${errorMessage(error)}; the clip may be left ` +
-          `partly cut, with a copy past the end of the arrangement`,
-      );
-    }
+    run.cut(clip);
   }
 
-  const everyClipMeasured = measuredClips === arrangementClips.length;
+  run.finish(arrangementClips.length);
 
-  if (splitClipRanges.size === 0) {
-    // Nothing cut and nothing skipped, so every clip is a miss — unless there
-    // were no clips at all.
-    if (everyClipMeasured && misses.length > 0) {
-      warnNothingSplit(misses, mode);
-    }
-  } else if (everyClipMeasured) {
-    // Something was cut, so the caller gets a result that looks like it worked.
-    // A position that landed in no clip at all has to say so itself.
-    warnUnusedSplitPoints(splitPoints, usedPoints, mode);
-  }
-
-  return rescanSplitClips(splitClipRanges, clips, laneViewOf(_context));
+  return rescanSplitClips(run.ranges, clips, laneViewOf(_context));
 }

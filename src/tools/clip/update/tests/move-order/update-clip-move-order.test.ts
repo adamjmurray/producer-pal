@@ -6,9 +6,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { type ClipMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
 import {
   type ArrangementMoveOrder,
+  type ClipMoves,
   orderArrangementMoves,
 } from "#src/tools/clip/update/helpers/arrangement/update-clip-move-order.ts";
 import {
@@ -157,8 +157,8 @@ describe("orderArrangementMoves", () => {
     expect(blockedIds).toStrictEqual(new Set());
   });
 
-  // Stacking one clip on another is what the caller asked for, and the survivor
-  // plan decides which one wins it — so it's not a reason to reorder.
+  // Stacking one clip on another is what the caller asked for, and the covers
+  // decide which one wins it — so it's not a reason to reorder.
   it("keeps call order when a clip lands on the clip it stacks with", () => {
     const clips = registerRow(row);
 

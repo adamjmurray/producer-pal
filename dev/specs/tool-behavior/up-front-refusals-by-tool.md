@@ -12,6 +12,11 @@ follows the code; when it disagrees with a tool, the tool wins.
   target.** They warned and returned `[]`, which reads as "there was nothing to
   do" — every other tool already threw. They had applied their own warn-and-skip
   rule to a call with no items rather than to an item.
+- **`updateClip` refuses a `path` entry it can't parse** before anything is
+  written; an entry that parses but names no clip skips only its own target. One
+  slot, or one track with a single position, can't cover several clips and is
+  refused. One track or take lane takes several when `arrangementStart` names a
+  position per clip.
 - **Three tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the

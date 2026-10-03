@@ -13,7 +13,7 @@ import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { handleArrangementOperations } from "../../helpers/arrangement/arrangement-move.ts";
-import { type MoveGroup } from "../../helpers/arrangement/update-clip-move-groups.ts";
+import { newLandingLog } from "#src/tools/clip/update/helpers/arrangement/landing-log.ts";
 import {
   newClipReasons,
   type ClipReasons,
@@ -163,7 +163,7 @@ describe("update-clip over a long lane", () => {
         clip: LiveAPI.from(clipId),
         isAudioClip: false,
         ...change,
-        movedClipGroups: new Map<string, MoveGroup>(),
+        landings: newLandingLog(),
         context,
         updatedClips: [],
         noteResult: null,

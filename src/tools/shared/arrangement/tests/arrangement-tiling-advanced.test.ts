@@ -89,6 +89,31 @@ describe("createPartialTile", () => {
     expect(result).toBeInstanceOf(MockLiveAPI);
   });
 
+  // The tile is in the Set once it is moved from the holding area; a marker
+  // write after that can still throw, so the caller hears of it first.
+  it("tells the caller about the tile before writing its start marker", () => {
+    const { sourceClip, track } = setupPartialTileMocks({
+      loopStart: 2,
+      loopEnd: 10,
+      holdingEndTime: 1008,
+      finalClipProps: { start_marker: 2, loop_start: 2 },
+    });
+    const heard: string[] = [];
+
+    expect(() =>
+      createPartialTile(sourceClip, track, 500, 6, true, mockContext, {
+        onPlaced: (tile) => {
+          heard.push(tile.id);
+
+          tile.set = () => {
+            throw new Error("Live refused the marker");
+          };
+        },
+      }),
+    ).toThrow("Live refused the marker");
+    expect(heard).toStrictEqual(["400"]);
+  });
+
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
     const { sourceClip, track } = setupPartialTileMocks({
       loopStart: 1,

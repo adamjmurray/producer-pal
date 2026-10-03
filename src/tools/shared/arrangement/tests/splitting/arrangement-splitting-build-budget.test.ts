@@ -68,16 +68,17 @@ describe("arrangement splitting build budget", () => {
 
     await updateClip({ id: clipIds.join(","), arrangementSplit: points }, {});
 
-    // Two, whatever the cut count: once for the splitting itself, once more
-    // for the rescan that collects the pieces. Resolving the track is what used
-    // to carry the per-clip holding-area scan with it.
-    expect(resolves("live_set tracks *")).toBe(2);
+    // One, whatever the cut count: the split resolves it, and each clip's pieces
+    // are read back through that same track. Resolving the track is what used to
+    // carry the per-clip holding-area scan with it.
+    expect(resolves("live_set tracks *")).toBe(1);
 
-    // Four per clip and no more: once for the id the caller listed, once for
-    // the single scan of the track (which the holding area comes from), once
-    // more when the cut trims it and its span is read again, once for the piece
-    // the rescan hands back. A scan per clip would make this term quadratic.
-    expect(resolves("id *")).toBe(CLIPS * 4);
+    // About 6 per clip: the id the caller listed, the one scan of the track
+    // (which the holding area comes from), the clips the cut changed, and the
+    // pieces each clip's own rescan hands back — which runs right after each
+    // cut, so it re-reads a neighbour a piece overlaps. The count is exact so
+    // a scan per clip, which would make it quadratic, can't creep in.
+    expect(resolves("id *")).toBe(34);
   });
 
   it("builds a clip no cut touches once, for the scan, and never again", async () => {

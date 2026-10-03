@@ -602,10 +602,10 @@ describe("ppal-update-clip", () => {
       );
 
     expect(data).toHaveLength(2);
-    // The earlier mention needed no work, so it carries a reason and no `ok`.
+    // The earlier mention was never written, so it carries a reason and no
+    // `ok`, spelled as the caller wrote it.
     expect(data[0]).toStrictEqual({
       id: clipId,
-      path,
       detail: `named again as "${path}" later in this call`,
     });
     expect(data[1]?.id).toBe(clipId);
@@ -615,6 +615,24 @@ describe("ppal-update-clip", () => {
     await sleep(100);
 
     expect(await readClipName(clipId)).toBe("Last");
+  });
+
+  // A path that can't be parsed means the call was written wrong: it is
+  // refused whole, so the target before it is left alone too.
+  it("refuses the whole call for a path it can't parse", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s27`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { path: `${path},not-a-path`, name: "Changed,Other" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+
+    await sleep(100);
+
+    expect(await readClipName(clipId)).not.toBe("Changed");
   });
 
   // One target and nothing done: there is no list for an entry to hold a place
@@ -732,7 +750,7 @@ describe("ppal-update-clip", () => {
 
     expect(isToolError(result)).toBe(false);
     expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining('blank id ignored — "path" names the clips'),
+      expect.stringContaining('blank id ignored: "path" names the clips'),
     );
 
     await sleep(100);
@@ -758,7 +776,7 @@ describe("ppal-update-clip", () => {
 
     expect(isToolError(result)).toBe(false);
     expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("blank toPath ignored — leave it out instead"),
+      expect.stringContaining("blank toPath ignored: leave it out instead"),
     );
 
     await sleep(100);
@@ -795,7 +813,7 @@ describe("ppal-update-clip", () => {
     expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining(
         "blank toSlot, arrangementStart, arrangementLength, " +
-          "arrangementSplit, split ignored — leave them out instead",
+          "arrangementSplit, split ignored: leave them out instead",
       ),
     );
   });

@@ -28,6 +28,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   destinationLane,
+  loneToPath,
   pathCarriesPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
@@ -265,29 +266,6 @@ function namesArrangementEntry(toPath: string | undefined): boolean {
   return pathEntries(toPath, "toPath").some(
     (entry) => destinationLane(entry, "toPath")?.kind !== "slot",
   );
-}
-
-/**
- * What a toPath of one entry names: a bare `[5|1]` (or an entry that doesn't
- * parse, which is reported where it's resolved), or a track or take lane with
- * no position. A slot is neither — arrangementStart doesn't move it.
- * @param paths - toPath's entries, in call order
- * @returns Whether the lone entry is bare, or a track or lane alone
- */
-function loneToPath(paths: string[]): { bare: boolean; trackOrLane: boolean } {
-  const only = paths.length === 1 ? (paths[0] as string) : null;
-
-  if (only == null) {
-    return { bare: false, trackOrLane: false };
-  }
-
-  const lane = destinationLane(only, "toPath");
-
-  return {
-    bare: lane == null,
-    trackOrLane:
-      lane != null && lane.kind !== "slot" && !pathCarriesPosition(only),
-  };
 }
 
 /**

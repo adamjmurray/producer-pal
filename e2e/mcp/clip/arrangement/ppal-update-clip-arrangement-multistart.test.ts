@@ -6,7 +6,7 @@
 /**
  * E2E tests for multi-clip arrangement start operations.
  * Tests the crash fix (clearClipAtDuplicateTarget before duplication)
- * and non-survivor optimization (skipping moves for covered clips).
+ * and the skipping of a move a later move covers whole.
  * Uses: e2e-test-set — t8 is the empty MIDI track for dynamic clip creation.
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -76,7 +76,6 @@ interface UpdatedClip {
   id: string;
   path?: string;
   detail?: string;
-  deleted?: boolean;
   arrangementLength?: string;
 }
 
@@ -122,15 +121,19 @@ async function moveClipsTo(
 }
 
 /**
- * Assert each entry's `deleted` flag, in call order.
+ * Assert which entries say a later write of the call went over their clip, in
+ * call order. None may say it was deleted.
  * @param clips - The move's per-clip entries
- * @param deleted - The expected flag per entry
+ * @param overwritten - Whether each entry says it was overwritten
  */
-function expectDeleted(
-  clips: UpdatedClip[],
-  deleted: (true | undefined)[],
-): void {
-  expect(clips.map((clip) => clip.deleted)).toStrictEqual(deleted);
+function expectOverwritten(clips: UpdatedClip[], overwritten: boolean[]): void {
+  expect(
+    clips.map((clip) => clip.detail?.includes(OVERWRITTEN) === true),
+  ).toStrictEqual(overwritten);
+
+  for (const clip of clips) {
+    expect(clip).not.toHaveProperty("deleted");
+  }
 }
 
 /**
@@ -149,8 +152,8 @@ function expectAllOnTrack(
   }
 }
 
-const MOVED_ONTO = "another clip in this call was moved onto it";
-const TRIMMED = "trimmed: another clip in this call landed on part of it";
+const OVERWRITTEN = "overwritten later in this call";
+const SHORTENED = "shortened by";
 
 describe("ppal-update-clip arrangement multistart", () => {
   it("moves clip to position with existing clip without crashing", async () => {
@@ -185,9 +188,9 @@ describe("ppal-update-clip arrangement multistart", () => {
     expect(arrangementStartOf(clip)).toBe("101|1");
   });
 
-  it("deletes non-survivors and keeps survivors", async () => {
-    // A(4 beats), B(8 beats), C(2 beats)
-    // Backwards: C(2)>0 survives, B(8)>2 survives, A(4)<=8 non-survivor
+  it("leaves a move unwritten that a later, longer move covers", async () => {
+    // A(4 beats), B(8 beats), C(2 beats), all to one spot: B covers A whole,
+    // and C covers only the front of B.
     const { clips, finalClips } = await moveClipsTo(
       [
         ["151|1", "1bar"],
@@ -197,20 +200,20 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[170|1]",
     );
 
-    // Every target gets an entry, in the order the call named them. A is the
-    // non-survivor, and says so rather than going unmentioned.
-    expectDeleted(clips, [true, undefined, undefined]);
+    // Every target gets an entry, in the order the call named them. A was never
+    // moved, and says so rather than going unmentioned.
+    expectOverwritten(clips, [true, false, false]);
 
     // Verify final state: 2 clips on track
     expect(finalClips).toHaveLength(2);
     expect(arrangementStartOf(finalClips[0]!)).toBe("170|1");
   });
 
-  // Survivors descend in length, but a non-survivor can outlast a later, shorter
-  // one. A(20) is buried by B(40); C(12) survives on top of B without being long
-  // enough to bury A on its own. The clearing gate has to compare lengths, not
-  // just ask whether some survivor landed.
-  it("buries a non-survivor only under a landing long enough to cover it", async () => {
+  // A move can outlast a later, shorter one. A(20) is covered whole by B(40);
+  // C(12) lands on top of B without being long enough to cover A on its own.
+  // Whether a move is left unwritten has to compare what the later ones cover,
+  // not just ask whether some later move landed there.
+  it("leaves a move unwritten only when later landings cover all of it", async () => {
     const { clips, finalClips } = await moveClipsTo(
       [
         ["301|1", "5bar"],
@@ -220,8 +223,8 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[340|1]",
     );
 
-    // A is the only non-survivor, and B's landing is what buries it.
-    expectDeleted(clips, [true, undefined, undefined]);
+    // B's landing covers all of A, so A is the only move left unwritten.
+    expectOverwritten(clips, [true, false, false]);
 
     // B underneath, C stacked on its front — A gone, nothing left at 301|1.
     expect(finalClips).toHaveLength(2);
@@ -239,14 +242,10 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[220|1]",
     );
 
-    // Same length: only the last survives (4>0), the first two are buried by
-    // it — and each of them says so in its own entry.
+    // Same length: only the last is written, and each of the first two says it
+    // was overwritten by it in its own entry.
     expect(clips).toHaveLength(3);
-    expect(clips[0]?.deleted).toBe(true);
-    expect(clips[1]?.deleted).toBe(true);
-    expect(clips[2]?.deleted).toBeUndefined();
-    expect(clips[0]?.detail).toBe(MOVED_ONTO);
-    expect(clips[1]?.detail).toBe(MOVED_ONTO);
+    expectOverwritten(clips, [true, true, false]);
 
     expect(finalClips).toHaveLength(1);
     expect(arrangementStartOf(finalClips[0]!)).toBe("220|1");
@@ -264,10 +263,9 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[270|1]",
     );
 
-    // All survive: C(2)>0, B(4)>2, A(8)>4. Each of the first two is trimmed by
-    // the next, which re-creates it — trimmed is not deleted, and the entry
-    // has to name the clip that is really there.
-    expectDeleted(clips, [undefined, undefined, undefined]);
+    // All are written: each of the first two is cut short by the next, which
+    // re-creates it — the entry has to name the clip that is really there.
+    expectOverwritten(clips, [false, false, false]);
     // C sits at the target; A's remainder starts a bar in, B's half a bar in.
     expect(clips.map((clip) => clip.path)).toStrictEqual([
       `t${EMPTY_MIDI_TRACK}[271|1]`,
@@ -275,10 +273,10 @@ describe("ppal-update-clip arrangement multistart", () => {
       `t${EMPTY_MIDI_TRACK}[270|1]`,
     ]);
     // B and C each cut the front off the clip they landed on, and say where
-    // what is left of it now starts.
+    // what is left of it now starts. A and B say they were cut short too.
     expect(clips.map((clip) => clip.detail)).toStrictEqual([
-      TRIMMED,
-      `shortened the clip at t${EMPTY_MIDI_TRACK}[271|1]; ${TRIMMED}`,
+      `shortened by t${EMPTY_MIDI_TRACK}[270|1] later in this call`,
+      `shortened the clip at t${EMPTY_MIDI_TRACK}[271|1]; shortened by t${EMPTY_MIDI_TRACK}[270|1] later in this call`,
       `shortened the clip at t${EMPTY_MIDI_TRACK}[270|3]`,
     ]);
     // A trimmed entry says how much is left: A(8) minus B(4), B(4) minus C(2).
@@ -298,7 +296,7 @@ describe("ppal-update-clip arrangement multistart", () => {
   // A second group lands right where A's remainder is predicted to start.
   // A(8) at 401|1 is trimmed to 403|1 by B(2); C(12) lands at 403|1 too, and
   // buries the remainder outright. C must not be mistaken for A.
-  it("reports a remainder buried by another group as deleted", async () => {
+  it("leaves a move unwritten that two later landings cover between them", async () => {
     const { clips, finalClips } = await moveClipsTo(
       [
         ["381|1", "2bar"],
@@ -308,7 +306,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[401|1],[401|1],[401|3]",
     );
 
-    expectDeleted(clips, [true, undefined, undefined]);
+    expectOverwritten(clips, [true, false, false]);
     expect(clips[0]?.id).not.toBe(clips[2]?.id);
 
     expect(finalClips).toHaveLength(2);
@@ -326,9 +324,9 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[441|1],[441|1],[441|3]",
     );
 
-    expectDeleted(clips, [undefined, undefined, undefined]);
+    expectOverwritten(clips, [false, false, false]);
     expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[442|3]`);
-    expect(clips[0]?.detail).toContain("trimmed:");
+    expect(clips[0]?.detail).toContain(SHORTENED);
     expect(clips[0]?.id).not.toBe(clips[2]?.id);
 
     expect(finalClips).toHaveLength(3);
@@ -351,10 +349,10 @@ describe("ppal-update-clip remainder cut again", () => {
       "[501|1],[501|1],[505|1]",
     );
 
-    expectDeleted(clips, [undefined, undefined, undefined]);
+    expectOverwritten(clips, [false, false, false]);
     expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[503|1]`);
     expect(clips[0]?.arrangementLength).toBe("2bar");
-    expect(clips[0]?.detail).toContain(TRIMMED);
+    expect(clips[0]?.detail).toContain(SHORTENED);
 
     expect(finalClips).toHaveLength(3);
     expectAllOnTrack(clips, finalClips);
@@ -372,10 +370,10 @@ describe("ppal-update-clip remainder cut again", () => {
       "[521|1],[521|1],[525|1]",
     );
 
-    expectDeleted(clips, [undefined, undefined, undefined]);
+    expectOverwritten(clips, [false, false, false]);
     expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[526|1]`);
     expect(clips[0]?.arrangementLength).toBe("3bar");
-    expect(clips[0]?.detail).toContain(TRIMMED);
+    expect(clips[0]?.detail).toContain(SHORTENED);
 
     // The front piece is the fourth clip, and no entry names it.
     expect(finalClips).toHaveLength(4);
@@ -393,10 +391,10 @@ describe("ppal-update-clip remainder cut again", () => {
       { arrangementLength: "3bar,1bar" },
     );
 
-    expectDeleted(clips, [undefined, undefined]);
+    expectOverwritten(clips, [false, false]);
     expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[542|1]`);
     expect(clips[0]?.arrangementLength).toBe("2bar");
-    expect(clips[0]?.detail).toContain(TRIMMED);
+    expect(clips[0]?.detail).toContain(SHORTENED);
 
     expect(finalClips).toHaveLength(2);
     expectAllOnTrack(clips, finalClips);

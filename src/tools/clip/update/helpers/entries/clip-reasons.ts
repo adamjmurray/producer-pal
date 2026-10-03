@@ -32,6 +32,11 @@ export interface ClipReasons {
   ignoredParams: Map<string, Set<string>>;
   /** The color a clip ended up with, when it isn't the one asked for. */
   colors: Map<string, string>;
+  /**
+   * Where the target being written says what has landed, so a throw later in
+   * its update keeps the entry for what exists by then. Set per target.
+   */
+  journal?: (phrase: string, partial?: Record<string, unknown>) => void;
 }
 
 /** Shared empty answer for a clip that ignored nothing. */
@@ -49,6 +54,21 @@ export function newClipReasons(): ClipReasons {
     ignoredParams: new Map(),
     colors: new Map(),
   };
+}
+
+/**
+ * Say that something of the target being written has changed Live. A throw
+ * after this keeps the target's entry, with a detail naming what landed.
+ * @param reasons - What each clip has to say, which carries the journal
+ * @param phrase - What landed, in a few words
+ * @param partial - Entry fields known now (the id and path of what exists)
+ */
+export function noteLanded(
+  reasons: ClipReasons,
+  phrase: string,
+  partial?: Record<string, unknown>,
+): void {
+  reasons.journal?.(phrase, partial);
 }
 
 /**
@@ -252,19 +272,13 @@ export function moveClipReasons(
  * target named.
  * @param reasons - What each clip has to say
  * @param clipId - The clip, by the id the call found it at
- * @param results - The entries that clip's turn wrote
+ * @param entry - The first entry that clip's turn wrote
  */
 export function reportClipReasons(
   reasons: ClipReasons,
   clipId: string,
-  results: ClipResult[],
+  entry: ClipResult,
 ): void {
-  const entry = results[0];
-
-  if (entry == null) {
-    return;
-  }
-
   const color = reasons.colors.get(clipId);
 
   if (color != null) {

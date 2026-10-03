@@ -32,7 +32,7 @@ describe("updateClip - blank and empty target params", () => {
     });
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank id ignored — "path" names the clips',
+      'blank id ignored: "path" names the clips',
     ]);
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
     expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
@@ -53,7 +53,7 @@ describe("updateClip - blank and empty target params", () => {
     await updateClip({ id: "123", path: "   ", name: "By Id" });
 
     expect(capturedWarnings()).toStrictEqual([
-      'blank path ignored — "id" names the clips',
+      'blank path ignored: "id" names the clips',
     ]);
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "By Id");
   });

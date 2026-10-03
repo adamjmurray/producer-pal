@@ -63,7 +63,6 @@ const ORIGINALLY_NOT_MIGRATED: ReadonlySet<string> = new Set([
  * them.
  */
 const NOT_MIGRATED = [
-  "ppal-update-clip",
   "ppal-duplicate",
   "ppal-create-device",
   "ppal-create-clip",

@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { setUpArrangementPair } from "../move-order/arrangement-pair-test-helpers.ts";
 
 // A toPath naming a lane or slot fully determines one place, so it can't cover
 // more than one clip. Refused before any Live read - `id` alone never
@@ -68,5 +69,55 @@ describe("updateClip - refuses one toPath place for several clips", () => {
     await expect(
       updateClip({ id: "1,2", toPath: "t0[5|1],t1[9|1]" }),
     ).resolves.toStrictEqual([notAClip("1"), notAClip("2")]);
+  });
+
+  // One track and a position per clip: the positions keep the clips apart, so
+  // the track covers them all (ppal-duplicate reads it the same way).
+  it.each([
+    ["a track", "t0"],
+    ["a take lane", "t0/l0"],
+  ])(
+    "does not refuse %s shared by several ids when each has a position",
+    async (_label, toPath) => {
+      await expect(
+        updateClip({ id: "1,2", toPath, arrangementStart: "5|1,9|1" }),
+      ).resolves.toStrictEqual([notAClip("1"), notAClip("2")]);
+    },
+  );
+
+  it.each([
+    ["a track", "t0"],
+    ["a take lane", "t0/l0"],
+    ["a slot", "t0/s1"],
+  ])(
+    "still refuses %s shared by several ids when one position covers them all",
+    async (_label, toPath) => {
+      await expect(
+        updateClip({ id: "1,2", toPath, arrangementStart: "5|1" }),
+      ).rejects.toThrow(
+        "toPath names 1 destination but the call names 2 clips",
+      );
+    },
+  );
+
+  it("still refuses a slot for several ids even with a position each", async () => {
+    await expect(
+      updateClip({ id: "1,2", toPath: "t0/s1", arrangementStart: "5|1,9|1" }),
+    ).rejects.toThrow("toPath names 1 destination but the call names 2 clips");
+  });
+
+  it("lands each clip on the shared track at its own position", async () => {
+    setUpArrangementPair();
+
+    const result = await updateClip({
+      id: "100,101",
+      toPath: "t0",
+      arrangementStart: "17|1,25|1",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "copy-1", path: "t0[17|1]" },
+      { id: "copy-2", path: "t0[25|1]" },
+    ]);
   });
 });

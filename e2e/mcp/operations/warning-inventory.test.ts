@@ -139,14 +139,14 @@ describe("warnings the tools still raise", () => {
 
     expect(
       await warningsFrom("ppal-update-clip", { path: "t0/s0", toPath: "   " }),
-    ).toStrictEqual(["WARNING: blank toPath ignored — leave it out instead"]);
+    ).toStrictEqual(["WARNING: blank toPath ignored: leave it out instead"]);
   });
 });
 
 describe("calls that report on the entry and warn about nothing", () => {
   // This used to be a whole-call warning naming the lane and a count. The
-  // clip that was buried carries the news itself now.
-  it("marks the clip two moves onto one spot buried, and warns nothing", async () => {
+  // clip that was left unwritten carries the news itself now.
+  it("says the first of two moves onto one spot was overwritten, and warns nothing", async () => {
     for (const bar of ["1|1", "5|1"]) {
       parseToolResult<CreateClipResult>(
         await ctx.client!.callTool({
@@ -168,8 +168,7 @@ describe("calls that report on the entry and warn about nothing", () => {
 
     expect(entries[0]).toStrictEqual(
       expect.objectContaining({
-        deleted: true,
-        detail: "another clip in this call was moved onto it",
+        detail: `overwritten later in this call by ${SCRATCH}[21|1]`,
       }),
     );
     expect(entries[1]?.path).toBe(`${SCRATCH}[21|1]`);

@@ -25,9 +25,6 @@ import {
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
-import { resolveClipTargets } from "#src/tools/clip/update/helpers/entries/clip-targets.ts";
-import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
-import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import * as processModule from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
@@ -128,7 +125,7 @@ describe("updateClip - splitting smoke tests", () => {
     // format of a param that named nothing sends the model looking for a
     // problem with a value it never meant to send.
     expect(consoleSpy).toHaveBeenCalledExactlyOnceWith(
-      "blank arrangementSplit ignored — leave it out instead",
+      "blank arrangementSplit ignored: leave it out instead",
     );
   });
 
@@ -280,8 +277,9 @@ describe("updateClip - splitting smoke tests", () => {
   });
 
   // A cut whose pieces the rescan can't find leaves the target with no clip at
-  // all. One target never comes back as no entries — and a lone one throws.
-  it("refuses a target whose split left no clip behind", async () => {
+  // all. One target never comes back as no entries: the cut landed, so it keeps
+  // an entry that says so rather than being refused.
+  it("keeps an entry for a target whose split left no clip behind", async () => {
     const clipId = "clip_1";
 
     setupClipSplittingMocks(clipId);
@@ -305,13 +303,16 @@ describe("updateClip - splitting smoke tests", () => {
 
     await expect(
       updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
-    ).rejects.toThrow("not updated: no clip was left to update");
+    ).resolves.toStrictEqual({
+      id: clipId,
+      path: "t0[1|1]",
+      detail: "not updated: no clip was left to update; already changed: split",
+    });
   });
 
   // A split answers with several clips under one target. A piece whose own
-  // update fails used to vanish, because a sibling with results spoke for the
-  // target: the failure has to show up on the target's entry.
-  it("says so on the target's entry when one split piece fails", async () => {
+  // update fails keeps an entry of its own, and its sibling is still updated.
+  it("gives the piece that failed an entry saying so, beside the one that didn't", async () => {
     const clipId = "clip_1";
 
     setupClipSplittingMocks(clipId);
@@ -334,14 +335,19 @@ describe("updateClip - splitting smoke tests", () => {
       {},
     );
 
-    // The piece that did answer carries what the one that didn't had to say.
-    expect(result).toStrictEqual({
-      id: "dup_2",
-      noteCount: 0,
-      path: "t0[2|1]",
-      detail:
-        "transforms ignored: the clip has no notes; Live refused the note read",
-    });
+    expect(result).toStrictEqual([
+      {
+        id: clipId,
+        path: "t0[1|1]",
+        detail: "update stopped partway: Live refused the note read",
+      },
+      {
+        id: "dup_2",
+        noteCount: 0,
+        path: "t0[2|1]",
+        detail: "transforms ignored: the clip has no notes",
+      },
+    ]);
   });
 
   // The same call with a name to write: the rename lands, so the clip keeps a
@@ -648,30 +654,6 @@ describe("updateClip - arrangementSplit next to a move", () => {
     );
 
     expectDuplicateCalled(callState.trackMock);
-  });
-});
-
-describe("planClipUpdate - the pieces a split makes", () => {
-  it("gives the piece on a new id nothing a list could have paired with", () => {
-    setupClipSplittingMocks("clip_1");
-
-    const plan = planClipUpdate({
-      targets: resolveClipTargets({ id: "clip_1" }),
-      arrangementSplit: "2|1",
-      noteEdits: { context: {} },
-      reasons: newClipReasons(),
-      context: {},
-    });
-
-    // Why every position and length is refused above: the second piece is on
-    // an id the call never named, so a list has no entry to pair with it and
-    // a single value would reach it whether or not that made sense.
-    expect(
-      plan.clips.map((clip) => [clip.id, plan.lengthBeatsFor(clip)]),
-    ).toStrictEqual([
-      ["clip_1", null],
-      ["dup_2", null],
-    ]);
   });
 });
 

@@ -16,9 +16,6 @@ import {
 } from "#src/test/test-data-builders.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { type BlankArgs } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
-import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
-import * as sessionHelpers from "#src/tools/clip/update/helpers/move/position-operations.ts";
 import {
   expectNotesWritten,
   mockMergeNoteTracking,
@@ -29,7 +26,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
-import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { type ClipUpdateArgs } from "#src/tools/clip/update/helpers/call/clip-update-args.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -41,7 +38,7 @@ vi.mock(import("#src/tools/clip/code-exec/apply-code-to-clip.ts"), () => ({
 }));
 
 // Each one is a single value for the whole call, not a per-clip list.
-const BLANK_ARGS: Array<[string, BlankArgs]> = [
+const BLANK_ARGS: Array<[string, ClipUpdateArgs]> = [
   ["toPath", { toPath: "" }],
   ["toSlot", { toSlot: "" }],
   ["arrangementStart", { arrangementStart: "" }],
@@ -126,7 +123,7 @@ describe("updateClip - Basic operations", () => {
       });
 
       expect(capturedWarnings()).toStrictEqual([
-        `blank ${param} ignored — leave it out instead`,
+        `blank ${param} ignored: leave it out instead`,
       ]);
       // The blank is all that was dropped: the rest of the call still lands.
       expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Still Renamed");
@@ -140,7 +137,7 @@ describe("updateClip - Basic operations", () => {
     await updateClip({ id: "123", arrangementStart: "   " });
 
     expect(capturedWarnings()).toStrictEqual([
-      "blank arrangementStart ignored — leave it out instead",
+      "blank arrangementStart ignored: leave it out instead",
     ]);
   });
 
@@ -151,7 +148,7 @@ describe("updateClip - Basic operations", () => {
     await updateClip({ id: "123", split: "", toPath: "", name: "Renamed" });
 
     expect(capturedWarnings()).toStrictEqual([
-      "blank toPath, split ignored — leave them out instead",
+      "blank toPath, split ignored: leave them out instead",
     ]);
   });
 
@@ -766,35 +763,6 @@ describe("updateClip - Basic operations", () => {
     // noteCount != null guard: a null result must not set the field.
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(result).not.toHaveProperty("noteCount");
-  });
-
-  it("should thread isNonSurvivor from nonSurvivorClipIds into position ops", async () => {
-    setupMidiClipMock(mocks.clip123);
-    const clip = LiveAPI.from("id 123");
-    const posSpy = vi
-      .spyOn(sessionHelpers, "handlePositionOperations")
-      .mockImplementation(() => {
-        /* intercept only */
-      });
-
-    processSingleClipUpdate({
-      clip,
-      clipIndex: 0,
-      clipCount: 1,
-      destinationParam: "toPath",
-      startParam: "arrangementStart",
-      context: {},
-      reasons: newClipReasons(),
-      updatedClips: [],
-      movedClipGroups: new Map(),
-      nonSurvivorClipIds: new Set(["123"]),
-    });
-
-    // clip.id "123" is in the set, so isNonSurvivor must be true (?? false, not
-    // && false which would force it false).
-    expect(posSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ isNonSurvivor: true }),
-    );
   });
 });
 

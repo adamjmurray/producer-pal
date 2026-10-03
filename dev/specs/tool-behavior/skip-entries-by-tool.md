@@ -7,36 +7,37 @@ target that landed incomplete. This list follows the code; when it disagrees
 with a tool, the tool wins.
 
 - **update-clip answers per target named, not per clip reached.** Its targets
-  resolve up front, the plan carries which target each clip (and each piece a
-  split cut it into) belongs to, and the results are assembled back into call
-  order. The `name` and `color` lists pair by that target's place too, so a skip
-  doesn't slide the names after it onto the wrong clips and every piece of a
-  split takes the name its own target asked for. A target whose path or id found
-  no clip, or that the deadline never reached (unless a split already cut it:
-  its pieces keep their entries), holds its slot as a skip; so does one whose
-  only requested work — a move, a position, a split — was refused outright,
-  since where the clip still sits is nothing the caller asked about. A clip
-  named twice is updated as its last mention asks; the earlier mention holds its
-  slot as a normal entry pointing at the later one, and a clip that was written
-  but not as asked keeps its entry with a `detail`: a throw partway, a move
-  refused beside a name or a length that landed, a re-create and what it cost, a
-  take-lane leftover, a move that replaced the clip already in the destination
-  slot. A param the clip can't take — notes, preTransforms, duplicateLoop or
-  quantize on an audio clip, warp markers or the audio params (gainDb,
-  pitchShift, warpMode, warping) on a MIDI clip, firstStart on a clip that isn't
-  looping or past its content end, warping off while looping — is a detail on
-  its entry too, and a skip when it was all the call asked of the clip. The move
-  and arrangement helpers report all of it on the clip's entry instead of
-  warning, through a per-call collector keyed by the clip id the call found; a
-  step that writes under a new id — a move re-creates the clip — hands what it
-  reports back to the id the caller named. One target never answers with no
-  entries: a split whose pieces the rescan can't find says so too. A clip
-  another clip in the same call was moved onto is skipped unwritten, with a
-  `detail` naming the later clip and no `ok`
-  ([replaced targets](README.md#a-later-target-replaces-an-earlier-one)). When
-  several clips name one slot, the last one moves there and the others stay put,
-  each with a detail naming that clip, or a skip when the move was all it was
-  asked.
+  resolve up front, and the entries come back in call order: a split target's
+  pieces and a lengthened clip's tiles come right after its own. A path that
+  can't be parsed refuses the call. A path or id that finds no clip, a target
+  whose only requested work (a move, a position, a split) was refused, and a
+  clip an earlier write of the call already cleared hold their slot as a skip.
+  The `name` and `color` lists pair by the target's place, so a skip doesn't
+  slide them. The deadline skips every target it never reached; a split that
+  already cut keeps its pieces, each saying what did not run.
+- **update-clip: a clip named twice** (id and path, or an id repeated) is
+  updated as its last mention asks. The earlier mention keeps its slot as
+  `{ id | path, detail }` with no `ok`; if the last mention then fails with
+  nothing landed, the earlier one becomes `ok: false`
+  (`not written: <later> was meant to replace it, but failed`). Two moves to one
+  slot, or a move or resize a later target goes over, work the same way: left
+  unwritten (`overwritten later in this call by <where>`) when the later one
+  covers all of it, written and noted `shortened by <where> later in this call`
+  when it covers part; either is said only once the later write really landed. A
+  clip cleared by a write nobody predicted, or an unwritten one cleared where it
+  stood by another landing, drops its `id` and says it was overwritten (the
+  lander says `overwrote the clip at <where>`), or follows what is left of it.
+  Nothing is `deleted: true`.
+- **update-clip: Live fails partway** leaves the clip's normal entry, naming
+  what exists now (the copy a move made, not the source) and what landed:
+  `<error>; already changed: name, copy at t1/s2`. A move is checked before it
+  shortens or resizes, so a refused move leaves the clip as it was. A param the
+  clip can't take is a detail on its entry, and a skip when it was all the call
+  asked. The move and arrangement helpers report on the clip's entry through a
+  per-call collector keyed by the clip id; a step that writes under a new id
+  hands what it reports back to the id the caller named. Moves are written in an
+  order that clears nobody's way, and one that can't be ordered is refused with
+  the clip it would land on named.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer

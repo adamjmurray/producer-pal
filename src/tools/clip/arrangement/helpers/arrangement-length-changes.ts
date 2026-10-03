@@ -23,6 +23,7 @@ import {
 import {
   clipReporterFor,
   noteClipReason,
+  noteLanded,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
@@ -103,7 +104,7 @@ export function handleArrangementLengthening({
 
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
-    return handleUnloopedLengthening({
+    const grown = handleUnloopedLengthening({
       clip,
       isAudioClip,
       arrangementLengthBeats,
@@ -113,6 +114,13 @@ export function handleArrangementLengthening({
       track,
       reasons,
     });
+
+    // It returns the clip only when it grew.
+    if (grown.length > 0) {
+      noteLanded(reasons, "lengthened", { id: clip.id });
+    }
+
+    return grown;
   }
 
   // Tiles land one at a time, so a throw partway leaves some in the Set.
@@ -160,6 +168,7 @@ export function handleArrangementLengthening({
         track,
         context: tilingContext,
         placed,
+        reasons,
       });
     }
   } catch (error) {
@@ -173,6 +182,11 @@ export function handleArrangementLengthening({
       `arrangementLength didn't finish: ${errorMessage(error)}`,
     );
     tiledClips = placed;
+  }
+
+  // A pass whose every tile was refused changed nothing.
+  if (tiledClips.length > 0) {
+    noteLanded(reasons, "lengthened", { id: clip.id });
   }
 
   updatedClips.push({ id: clip.id });
@@ -194,6 +208,8 @@ interface CreateLoopedClipTilesArgs {
   context: TilingContext;
   /** Collects each tile as it lands */
   placed: CreatedClip[];
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 /**
@@ -210,6 +226,7 @@ interface CreateLoopedClipTilesArgs {
  * @param options.track - The LiveAPI track object
  * @param options.context - Tool execution context
  * @param options.placed - Collects each tile as it lands
+ * @param options.reasons - What each clip has to say beyond its result
  * @returns Array of tiled clip info
  */
 function createLoopedClipTiles({
@@ -224,6 +241,7 @@ function createLoopedClipTiles({
   track,
   context,
   placed,
+  reasons,
 }: CreateLoopedClipTilesArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
@@ -264,6 +282,8 @@ function createLoopedClipTiles({
       silenceWavPath: context.silenceWavPath,
       lanes: context.lanes,
     });
+    // The clip is shorter from here, whatever the tiles after it do.
+    noteLanded(reasons, "shortened", { id: clip.id });
 
     newEndTime = currentStartTime + totalContentLength;
     const firstTileLength = newEndTime - currentStartTime;

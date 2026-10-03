@@ -387,20 +387,30 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
   instead of over the clip's old neighbors. Take-lane moves re-create the clip
   and take-lane clips refuse `arrangementLength`, so they keep this order too.
 
-If the second step throws, the clip's entry says what landed:
-`shortened, but the move didn't finish` or
-`moved, but arrangementLength didn't finish`. A move refused after the
-shortening adds `shortened in place` to the refusal.
+Shortening can't be undone, so a move that would be refused (a track that won't
+take the clip) is checked first: nothing is shortened, and the refusal is the
+reason on the entry. If Live throws after a step landed, the entry names what
+exists now (the copy, not the source it replaced) and says what landed:
+`<error>; already changed: shortened, copy at t0[5|1]` (a lengthening says
+`lengthened`, once it grew the clip or laid a tile). A resize that throws after
+a move landed says `moved, but arrangementLength didn't finish`, and a move
+refused after the shortening adds `shortened in place` to the refusal.
 
 **The duplicate clears its destination range first**, so it destroys whatever
 sat there — including another clip the same call names. A take-lane create does
 the same on its own lane. `update-clip-move-order.ts` orders the moves to avoid
 that where an order exists, keying each span by track AND lane so clips on
 different lanes never hold each other up. Two clips sent to one spot have no
-such order — that stack is what the call asked for. `buried-clips.ts` reports
-what is left: a clip found gone before its turn gets `deleted: true` and the
-address it had instead of an update read off a dead object, and a read-back at
-the end of the batch marks an entry whose clip a later sibling buried.
+such order — that stack is what the call asked for, and the write pipeline
+settles it before anything is written: a target a later one covers whole is left
+unwritten (`overwritten later in this call by t0[5|1]`, no `ok`), and one it
+covers only part of is written and says
+`shortened by t0[5|1] later in this call`. What nobody predicted is reported
+once the writes are done (`settle-clip-update.ts`): an entry whose clip a later
+write cleared drops its `id` and says it was overwritten, or follows what is
+left of it. A clip found gone before its turn is skipped
+(`not updated: the clip was overwritten earlier in this call`). Nothing is ever
+reported `deleted` unless the call asked.
 
 ### Splitting
 
@@ -425,13 +435,12 @@ A split can't be combined with `toPath`, `toSlot`, `arrangementStart` or
 `arrangementLength`, whatever they name. `refuseSplitWithMove()` throws before
 anything is cut. Live keeps only the first piece on the id that was named, so a
 list reaches that piece and no other; a single value reaches every piece, which
-is worse. One `arrangementStart` stacks them all on one bar and
-`computeOverwritePlan` deletes all but the last — an optimizer doing as it is
-told, not a guard. One `arrangementLength` longer than a piece tiles copies in
-from that piece's end, which is where the next piece starts, so each piece
-buries the one after it. Telling a safe length from a destructive one needs each
-piece's own length, and that needs a Live read this has to answer before, so the
-whole param is refused.
+is worse. One `arrangementStart` stacks them all on one bar and the covers leave
+all but the last unwritten — doing as it is told, not a guard. One
+`arrangementLength` longer than a piece tiles copies in from that piece's end,
+which is where the next piece starts, so each piece buries the one after it.
+Telling a safe length from a destructive one needs each piece's own length, and
+that needs a Live read this has to answer before, so the whole param is refused.
 
 ---
 

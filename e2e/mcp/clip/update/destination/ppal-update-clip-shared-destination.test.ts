@@ -121,10 +121,12 @@ describe("ppal-update-clip refuses a shared destination", () => {
       }),
     );
 
-    expect(entries[0]?.ok).toBe(false);
+    // The first move was never written, so it says what replaced it and has
+    // no `ok`; the call is the same as naming only the last clip.
+    expect(entries[0]?.ok).toBeUndefined();
     expect(entries[0]?.id).toBe(id1);
-    expect(entries[0]?.detail).toContain(
-      `not moved: t${EMPTY_MIDI_TRACK}/s6 is named again later in this call`,
+    expect(entries[0]?.detail).toBe(
+      `overwritten later in this call by t${EMPTY_MIDI_TRACK}/s6`,
     );
     expect(entries[1]?.ok).toBeUndefined();
     expect(entries[1]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
@@ -139,6 +141,52 @@ describe("ppal-update-clip refuses a shared destination", () => {
     );
 
     expect(read1.path).toBe(`t${EMPTY_MIDI_TRACK}[461|1]`);
+  });
+
+  // One track with a position per clip: the positions keep the clips apart, so
+  // the track covers them all, the way ppal-duplicate reads it.
+  it("lands each clip at its own position on one track", async () => {
+    const id1 = await createArrangementClip("601|1");
+    const id2 = await createArrangementClip("605|1");
+
+    await sleep(200);
+
+    const { data: moved } = parseToolResultWithWarnings<{ path: string }[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: `${id1},${id2}`,
+          toPath: `t${EMPTY_MIDI_TRACK}`,
+          arrangementStart: "620|1,624|1",
+        },
+      }),
+    );
+
+    expect(moved.map((clip) => clip.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}[620|1]`,
+      `t${EMPTY_MIDI_TRACK}[624|1]`,
+    ]);
+  });
+
+  it("still refuses one track with a single position for two clips", async () => {
+    const id1 = await createArrangementClip("631|1");
+    const id2 = await createArrangementClip("635|1");
+
+    await sleep(200);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: `${id1},${id2}`,
+        toPath: `t${EMPTY_MIDI_TRACK}`,
+        arrangementStart: "650|1",
+      },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain(
+      "toPath names 1 destination but the call names 2 clips",
+    );
   });
 
   // The bare form still fans out: each clip keeps its own track and moves to

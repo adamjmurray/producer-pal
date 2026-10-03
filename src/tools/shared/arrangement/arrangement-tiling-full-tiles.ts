@@ -199,7 +199,7 @@ export function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
     // A false safeToTile means the source itself occupies this position, so
     // the tile is skipped rather than corrupting the source or crashing Live.
     if (safeToTile) {
-      const placed = placeTile({
+      placeTile({
         freshTrack,
         sourceClipId,
         currentPosition,
@@ -210,11 +210,8 @@ export function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
         isMidiClip,
         adjustPreRoll,
         context,
+        createdClips,
       });
-
-      if (placed != null) {
-        createdClips.push(placed);
-      }
     }
 
     currentPosition += arrangementTileLength; // Space tiles at arrangement intervals
@@ -240,14 +237,17 @@ interface PlaceTileArgs {
   isMidiClip: boolean;
   adjustPreRoll: boolean;
   context: TilingContext;
+  /** Collects the tile the moment it exists, before anything else is written */
+  createdClips: CreatedClip[];
 }
 
 /**
  * Duplicate the source to one tile position and point it at the right content.
+ * The tile is recorded as soon as Live has made it: a write after that can
+ * throw, and the tile is in the Set either way.
  * @param args - Placement parameters
- * @returns The created tile, or null if Ableton refused the duplicate
  */
-function placeTile(args: PlaceTileArgs): CreatedClip | null {
+function placeTile(args: PlaceTileArgs): void {
   const {
     freshTrack,
     sourceClipId,
@@ -259,6 +259,7 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
     isMidiClip,
     adjustPreRoll,
     context,
+    createdClips,
   } = args;
 
   const tileClip = clipFromDuplicateResult(
@@ -276,10 +277,12 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
       `Live refused a copy, so the tile at ${currentPosition} beats was skipped`,
     );
 
-    return null;
+    return;
   }
 
   const clipId = tileClip.id;
+
+  createdClips.push({ id: clipId });
 
   // Recreate LiveAPI object with fresh reference
   const freshClip = LiveAPI.from(toLiveApiId(clipId));
@@ -299,6 +302,4 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
   if (adjustPreRoll) {
     adjustClipPreRoll(freshClip, freshTrack, isMidiClip, context);
   }
-
-  return { id: clipId };
 }

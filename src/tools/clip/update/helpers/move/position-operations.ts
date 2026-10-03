@@ -19,7 +19,7 @@ import {
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
 import { handleArrangementOperations } from "../arrangement/arrangement-move.ts";
-import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
+import { type LandingLog } from "../arrangement/landing-log.ts";
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
@@ -34,7 +34,7 @@ interface HandlePositionOperationsArgs {
   startParam: "toPath" | "arrangementStart";
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
-  movedClipGroups: Map<string, MoveGroup>;
+  landings: LandingLog;
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
@@ -42,7 +42,6 @@ interface HandlePositionOperationsArgs {
   noteResult: NoteUpdateResult | null;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
-  isNonSurvivor: boolean;
 }
 
 /**
@@ -98,12 +97,11 @@ export function handlePositionOperations(
     arrangementStartBeats: refused ? null : arrangementStartBeats,
     arrangementLengthBeats,
     destination: refused ? null : arrangementDestination(destination),
-    movedClipGroups: args.movedClipGroups,
+    landings: args.landings,
     context: args.context,
     updatedClips: args.updatedClips,
     noteResult: args.noteResult,
     reasons: args.reasons,
-    isNonSurvivor: args.isNonSurvivor,
   });
 }
 

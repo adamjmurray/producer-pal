@@ -13,6 +13,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
   performSplitting,
+  startSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   addArrangementClip,
@@ -209,5 +210,66 @@ describe("performSplitting across a batch of clips", () => {
       "piece_c",
       "piece_d",
     ]);
+  });
+});
+
+describe("startSplitting, one clip at a time", () => {
+  it("cuts the clips it is handed, and finds each one's own pieces", () => {
+    const { callState, arrangementClips } = setupBatchSplitTest();
+
+    mockArrangementClipsRescan(callState.trackMock, [
+      ["piece_a", 0],
+      ["piece_b", 8],
+      ["piece_c", 32],
+      ["piece_d", 40],
+    ]);
+
+    const run = startSplitting([8, 40], HOLDING_AREA, ARRANGEMENT_SPLIT_MODE);
+    const [first, second] = arrangementClips as [LiveAPI, LiveAPI];
+
+    // Nothing is cut yet, so there are no pieces to find.
+    expect(run.piecesOf(first)).toStrictEqual([]);
+
+    run.cut(first);
+
+    expect([...run.ranges.keys()]).toStrictEqual(["clip_1"]);
+    expect(run.piecesOf(first).map((piece) => piece.id)).toStrictEqual([
+      "piece_a",
+      "piece_b",
+    ]);
+    expect(run.piecesOf(second)).toStrictEqual([]);
+
+    run.cut(second);
+
+    expect(run.piecesOf(second).map((piece) => piece.id)).toStrictEqual([
+      "piece_c",
+      "piece_d",
+    ]);
+  });
+
+  it("says what a position cut nothing of once every clip has been measured", () => {
+    const { arrangementClips } = setupBatchSplitTest();
+    // 8 falls inside clip_1 only, and 100 inside neither.
+    const run = startSplitting([8, 100], HOLDING_AREA, ARRANGEMENT_SPLIT_MODE);
+
+    for (const clip of arrangementClips) {
+      run.cut(clip);
+    }
+
+    run.finish(arrangementClips.length);
+
+    expect(capturedWarnings()).toStrictEqual([
+      expect.stringContaining("arrangementSplit cut nothing at"),
+    ]);
+  });
+
+  it("says nothing of the call while a clip it set out to cut hasn't been measured", () => {
+    const { arrangementClips } = setupBatchSplitTest();
+    const run = startSplitting([100], HOLDING_AREA, ARRANGEMENT_SPLIT_MODE);
+
+    run.cut(arrangementClips[0] as LiveAPI);
+    run.finish(arrangementClips.length);
+
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
