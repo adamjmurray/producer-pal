@@ -248,32 +248,41 @@ describe("arrangement clip moved to another lane", () => {
     expect(warnings).toStrictEqual([]);
   });
 
-  // One lane, one position: these really do land on top of each other, and the
-  // clip that arrived second is the one that can say so.
-  it("says on the later clip's entry that it overwrote the earlier one", async () => {
+  // One lane, one position: the later move covers the earlier one whole, so the
+  // earlier is left unwritten and its clip stays where it was. The later entry
+  // names nothing it overwrote, since nothing was written under it.
+  it("leaves the earlier move unwritten when a later one lands on the same spot", async () => {
     const first = await createClip("77|1", "Stacked One");
     const second = await createClip("89|1", "Stacked Two");
+    const target = `t${CHILD_TRACK}/l2[93|1]`;
 
     const { data, warnings } = await updateClip(
       ctx.client!,
       `${first.id},${second.id}`,
-      {
-        toPath: `t${CHILD_TRACK}/l2[93|1],t${CHILD_TRACK}/l2[93|1]`,
-      },
+      { toPath: `${target},${target}` },
     );
     const entries = data as unknown as ReadClipResult[];
 
-    // Both moves ran, so the stack is real.
-    for (const entry of entries) {
-      expect(entry.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
-    }
+    expect(entries[0]?.id).toBe(first.id);
+    expect(entries[0]?.detail).toBe(
+      `overwritten later in this call by ${target}`,
+    );
 
-    // The first found the lane empty; the second found the first there.
-    expect(entries[0]?.detail).not.toContain("overwrote");
-    expect(entries[1]?.detail).toMatch(
-      new RegExp(`overwrote the clip at t${CHILD_TRACK}/l\\d+\\[93\\|1\\]`),
+    // Only the later move ran.
+    expect(entries[1]?.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
+    expect(entries[1]?.detail).not.toContain("overwrote the clip");
+    expect(entries[1]?.path).toMatch(
+      new RegExp(`^t${CHILD_TRACK}/l\\d+\\[93\\|1\\]$`),
     );
     expect(warnings).toStrictEqual([]);
+
+    // The first clip never moved; the second is gone from its source.
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "77|1"))?.id,
+    ).toBe(first.id);
+    expect(
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "89|1"),
+    ).toBeUndefined();
   });
 
   // Each move reads only the lane it lands on, so each entry has to say what

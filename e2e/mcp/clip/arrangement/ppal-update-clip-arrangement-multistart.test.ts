@@ -85,13 +85,15 @@ interface UpdatedClip {
  * @param sources - [position, length] for each clip to create, in call order
  * @param toPath - Where the clips move to, e.g. "[170|1]"
  * @param extra - Any other update-clip arguments, e.g. arrangementLength
- * @returns The move's per-clip entries and the clips left on the track
+ * @returns The ids the clips were created with, the move's per-clip entries,
+ *   and the clips left on the track
  */
 async function moveClipsTo(
   sources: [position: string, length: string][],
   toPath: string,
   extra: Record<string, unknown> = {},
 ): Promise<{
+  ids: string[];
   clips: UpdatedClip[];
   finalClips: ReadClipResult[];
 }> {
@@ -117,7 +119,30 @@ async function moveClipsTo(
     EMPTY_MIDI_TRACK,
   );
 
-  return { clips, finalClips };
+  return { ids, clips, finalClips };
+}
+
+/**
+ * Assert an entry says its move was left unwritten for a later one: it keeps
+ * the id of the clip that never moved, and names what overwrote it.
+ * @param clip - The move's entry for the clip
+ * @param id - The id the clip was created with
+ * @param by - Where the landing it names put its clip, e.g. "[170|1]"
+ */
+function expectLeftUnwritten(clip: UpdatedClip, id: string, by: string): void {
+  expect(clip.id).toBe(id);
+  expect(clip.detail).toBe(`${OVERWRITTEN} by t${EMPTY_MIDI_TRACK}${by}`);
+}
+
+/**
+ * Assert where the clips left on the track start, in track order.
+ * @param finalClips - The clips left on the track
+ * @param starts - Their start positions, e.g. ["151|1", "170|1"]
+ */
+function expectStarts(finalClips: ReadClipResult[], starts: string[]): void {
+  expect(finalClips.map((clip) => arrangementStartOf(clip))).toStrictEqual(
+    starts,
+  );
 }
 
 /**
@@ -191,7 +216,7 @@ describe("ppal-update-clip arrangement multistart", () => {
   it("leaves a move unwritten that a later, longer move covers", async () => {
     // A(4 beats), B(8 beats), C(2 beats), all to one spot: B covers A whole,
     // and C covers only the front of B.
-    const { clips, finalClips } = await moveClipsTo(
+    const { ids, clips, finalClips } = await moveClipsTo(
       [
         ["151|1", "1bar"],
         ["155|1", "2bar"],
@@ -203,10 +228,12 @@ describe("ppal-update-clip arrangement multistart", () => {
     // Every target gets an entry, in the order the call named them. A was never
     // moved, and says so rather than going unmentioned.
     expectOverwritten(clips, [true, false, false]);
+    expectLeftUnwritten(clips[0]!, ids[0]!, "[170|1]");
 
-    // Verify final state: 2 clips on track
-    expect(finalClips).toHaveLength(2);
-    expect(arrangementStartOf(finalClips[0]!)).toBe("170|1");
+    // A stays at its source, nothing lands there. C sits at the destination
+    // and B keeps the 6 beats C doesn't cover.
+    expectStarts(finalClips, ["151|1", "170|1", "170|3"]);
+    expectAllOnTrack(clips, finalClips);
   });
 
   // A move can outlast a later, shorter one. A(20) is covered whole by B(40);
@@ -214,7 +241,7 @@ describe("ppal-update-clip arrangement multistart", () => {
   // Whether a move is left unwritten has to compare what the later ones cover,
   // not just ask whether some later move landed there.
   it("leaves a move unwritten only when later landings cover all of it", async () => {
-    const { clips, finalClips } = await moveClipsTo(
+    const { ids, clips, finalClips } = await moveClipsTo(
       [
         ["301|1", "5bar"],
         ["311|1", "10bar"],
@@ -225,15 +252,17 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     // B's landing covers all of A, so A is the only move left unwritten.
     expectOverwritten(clips, [true, false, false]);
+    expectLeftUnwritten(clips[0]!, ids[0]!, "[340|1]");
 
-    // B underneath, C stacked on its front — A gone, nothing left at 301|1.
-    expect(finalClips).toHaveLength(2);
-    expect(arrangementStartOf(finalClips[0]!)).toBe("340|1");
+    // A stays at 301|1, since the move that replaced it never ran. B is
+    // underneath, C stacked on its front, so B keeps what C doesn't cover.
+    expectStarts(finalClips, ["301|1", "340|1", "343|1"]);
+    expectAllOnTrack(clips, finalClips);
   });
 
-  it("only last clip survives when all have same length", async () => {
+  it("writes only the last move when all have the same length", async () => {
     // 3 clips of 4 beats (1 bar) each
-    const { clips, finalClips } = await moveClipsTo(
+    const { ids, clips, finalClips } = await moveClipsTo(
       [
         ["201|1", "1bar"],
         ["205|1", "1bar"],
@@ -246,10 +275,13 @@ describe("ppal-update-clip arrangement multistart", () => {
     // was overwritten by it in its own entry.
     expect(clips).toHaveLength(3);
     expectOverwritten(clips, [true, true, false]);
+    expectLeftUnwritten(clips[0]!, ids[0]!, "[220|1]");
+    expectLeftUnwritten(clips[1]!, ids[1]!, "[220|1]");
 
-    expect(finalClips).toHaveLength(1);
-    expect(arrangementStartOf(finalClips[0]!)).toBe("220|1");
-    expect(finalClips[0]!.arrangementLength).toBe("1bar");
+    // The first two never moved, so they stay at their sources.
+    expectStarts(finalClips, ["201|1", "205|1", "220|1"]);
+    expect(finalClips[2]!.arrangementLength).toBe("1bar");
+    expectAllOnTrack(clips, finalClips);
   });
 
   it("all clips survive when in descending length order", async () => {
@@ -297,7 +329,7 @@ describe("ppal-update-clip arrangement multistart", () => {
   // A(8) at 401|1 is trimmed to 403|1 by B(2); C(12) lands at 403|1 too, and
   // buries the remainder outright. C must not be mistaken for A.
   it("leaves a move unwritten that two later landings cover between them", async () => {
-    const { clips, finalClips } = await moveClipsTo(
+    const { ids, clips, finalClips } = await moveClipsTo(
       [
         ["381|1", "2bar"],
         ["385|1", "n/2"],
@@ -307,9 +339,12 @@ describe("ppal-update-clip arrangement multistart", () => {
     );
 
     expectOverwritten(clips, [true, false, false]);
+    expectLeftUnwritten(clips[0]!, ids[0]!, "[401|3]");
     expect(clips[0]?.id).not.toBe(clips[2]?.id);
 
-    expect(finalClips).toHaveLength(2);
+    // A stays at its source; B and C land side by side at the destination.
+    expectStarts(finalClips, ["381|1", "401|1", "401|3"]);
+    expectAllOnTrack(clips, finalClips);
   });
 
   // Same shape with a shorter C(4): it trims A's remainder again instead of
