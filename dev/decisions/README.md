@@ -123,3 +123,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0055](0055-a-bad-transform-argument-is-refused-up-front.md)       | A bad transform argument is refused up front                            |
 | [0056](0056-a-send-return-resolves-id-name-path-prefix.md)         | A send's return resolves by id, name, path, then prefix                 |
 | [0057](0057-a-param-only-another-action-reads-is-refused.md)       | A param only another action reads is refused                            |
+| [0058](0058-write-tools-answer-each-rule-one-way.md)               | Write tools answer each rule one way                                    |
