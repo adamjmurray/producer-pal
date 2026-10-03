@@ -203,7 +203,8 @@ node scripts/live-api/scan-live-api/scan-all-devices.ts
 ```
 
 (For core LOM object types rather than devices — Song, Track, Scene, Clip, etc.
-— use the sibling `scan-live-api.ts`.)
+— use the sibling `scan-live-api.ts`. To compare with the Python API, see
+[python-remote-script-api/](../python-remote-script-api/README.md).)
 
 **Ad-hoc single-device inspection** — `scripts/ppal-client.ts` drives any tool
 directly. To inspect one device:

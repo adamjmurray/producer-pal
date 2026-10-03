@@ -43,6 +43,10 @@ part is a file beside it.
   units and ranges off device parameters.
 - [live-api/specialized-devices/](live-api/specialized-devices/README.md) —
   native devices with their own LOM class.
+- [live-api/python-remote-script-api/](live-api/python-remote-script-api/README.md)
+  — what only the Python API can do, and how to probe it.
+- [live-api/rack-macro-mappings.md](live-api/rack-macro-mappings.md) — what can
+  be learned about rack macro mappings.
 
 ## Clients
 

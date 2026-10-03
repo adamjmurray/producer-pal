@@ -7,7 +7,10 @@
 /**
  * Copy the Producer_Pal remote script into Live's User Library.
  *
- * Usage: npm run remote-script:install
+ * Usage: npm run remote-script:install [-- --probe]
+ *
+ * --probe also adds the dev-only /probe route, which runs posted Python in
+ * Live (see scripts/live-api/python-probe/). Reinstall without it to remove it.
  *
  * Reads ABLETON_USER_LIBRARY from .env (see .env.example). The device installs
  * the same files from its own bundle; this is the dev shortcut. Live only scans
@@ -18,6 +21,7 @@ import {
   RemoteScriptInstallError,
   installRemoteScript,
 } from "#src/mcp-server/rpc/remote-script/remote-script-install.ts";
+import { addProbeRoute } from "./python-probe/add-probe-route.ts";
 
 // installRemoteScript expands a leading "~" and checks the folder.
 const userLibrary = process.env.ABLETON_USER_LIBRARY;
@@ -33,6 +37,11 @@ try {
   const { path } = installRemoteScript(userLibrary);
 
   console.log(`Installed to ${path}`);
+
+  if (process.argv.includes("--probe")) {
+    addProbeRoute(path);
+    console.log("Added the dev-only /probe route.");
+  }
 } catch (error) {
   console.error(
     error instanceof RemoteScriptInstallError
