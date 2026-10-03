@@ -40,12 +40,15 @@ export function lastWins(claims: string[][]): Map<number, number> {
 
 /**
  * Find the targets a later target overrides. Targets with no key (skipped,
- * or creating something new) never override or lose.
+ * or creating something new) never override or lose. A target with several
+ * keys loses to a later one sharing any of them.
  * @param targets - The call's targets, in the order named
  * @returns For each overridden target, the index of the one that overrides it
  */
 export function lastWinsTargets<P>(
   targets: Array<Target<P>>,
 ): Map<number, number> {
-  return lastWins(targets.map(({ key }) => (key == null ? [] : [key])));
+  return lastWins(
+    targets.map(({ key, keys }) => keys ?? (key == null ? [] : [key])),
+  );
 }

@@ -251,7 +251,7 @@ describe("transport", () => {
 
     expect(result).toStrictEqual({
       playing: true,
-      clips: [{ id: "clip1", path: "t0/s0" }],
+      clip: { id: "clip1", path: "t0/s0" },
     });
   });
 
@@ -600,7 +600,7 @@ describe("transport", () => {
     // The caller spelled it "0/1", and the entry answers in the taught path.
     expect(result).toStrictEqual({
       playing: true,
-      clips: [{ id: "clip1", path: "t0/s1" }],
+      clip: { id: "clip1", path: "t0/s1" },
     });
   });
 
@@ -684,6 +684,6 @@ function expectStopsClip1(target: { id?: string; slots?: string }): void {
   // Transport/arrangement can still be playing
   expect(result).toStrictEqual({
     playing: true,
-    clips: [{ id: "clip1", path: "t0/s0" }],
+    clip: { id: "clip1", path: "t0/s0" },
   });
 }

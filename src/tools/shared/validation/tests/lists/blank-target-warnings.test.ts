@@ -123,6 +123,7 @@ const TOOLS: Array<{
     call: (targets) => playback({ ...targets, action: "play-scene" }),
     refused: (targets) =>
       playback({ ...targets, action: "play-scene", slots: "x" }),
+    pipeline: true,
   },
 ];
 

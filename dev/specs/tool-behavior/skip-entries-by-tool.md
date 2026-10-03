@@ -138,6 +138,28 @@ with a tool, the tool wins.
   chain whose devices didn't all cross, a pad copy that layered onto chains
   already there. `count`, which none of these types uses, is still a warning: it
   is about the call, not a destination.
+- **update-live-set answers per locator named.** `locatorId`, `locatorTime` and
+  `locatorName` make one target list, and `locator` carries its entries,
+  unwrapped for one. A locator that can't be created, renamed or reached holds
+  its slot as `{id | time | name, ok: false, detail}` in the caller's own
+  spelling; one that needed no work (`delete` of a missing one) is a no-op with
+  a `detail`. A locator named twice (by id and time, or a name that matches it)
+  is acted on once, by the last mention; the earlier ones are
+  `{id | time | name, detail}` with no `ok`, and fail with the last one if it
+  fails. A locator made and then refused its name keeps
+  `{operation: "create", id, detail}`, the detail ending
+  `already changed: created`. A lone refusal throws only when no tempo, time
+  signature or scale was sent; beside one it keeps its `ok: false` entry. Those
+  whole-call params are written first and read back as before.
+- **playback answers per clip slot named** for `play-session-clips` and
+  `stop-session-clips`, in `clip` (unwrapped for one). An id naming no session
+  clip, a slot that isn't there, and a launch Live threw on hold their slot as
+  `{id | path, ok: false, detail}`, and the later slots still fire. A slot named
+  twice fires once, by its last mention; the earlier one is
+  `{id | path, detail}`. Slots the deadline never reached are skips. A lone skip
+  throws.
+- **select has one target**: nothing to list, so a refusal or a failed selection
+  throws.
 - **update-device's per-param drop paths became entries.** A `params` list
   answers with one entry per param sent: a disabled param, an ambiguous name, an
   unreadable value, a unit that can't be checked, a write Live ignored, a nested

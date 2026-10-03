@@ -12,7 +12,6 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type LocatorMatch,
   findLocator,
@@ -120,29 +119,6 @@ export function locatorTargets(
       );
     default:
       throw new Error(`Unknown locator operation: ${operation}`);
-  }
-}
-
-/**
- * Runs one locator, turning a throw into that locator's skip entry so the rest
- * of the call still runs.
- * @param target - The locator, as the caller named it
- * @param run - The operation on that locator
- * @returns The operation's result, or the skip entry standing in for it
- */
-export async function attemptLocator(
-  target: LocatorTarget,
-  run: () => Promise<Record<string, unknown>>,
-): Promise<Record<string, unknown>> {
-  try {
-    return await run();
-  } catch (error) {
-    return {
-      operation: "skipped",
-      ...locatorAddress(target),
-      ok: false,
-      detail: errorMessage(error),
-    };
   }
 }
 
@@ -323,19 +299,4 @@ function targetLabel(args: LocatorArgs): string {
   }
 
   return hasIds ? "locatorId" : "locatorTime";
-}
-
-/**
- * How a skip names its locator: the spelling that named it, and the name it was
- * to get, which is all the caller has to match the entry on.
- * @param target - The locator, as the caller named it
- * @returns The address
- */
-function locatorAddress(target: LocatorTarget): Record<string, string> {
-  const key = { locatorId: "id", locatorTime: "time", locatorName: "name" };
-
-  return {
-    [key[target.param]]: target.value as string,
-    ...(target.name != null && { name: target.name }),
-  };
 }

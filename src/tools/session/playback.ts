@@ -5,12 +5,27 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  blankTargetIgnores,
+  type TargetParams,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
+import {
+  type AppliedTarget,
+  type Call,
+  type Done,
+  type PipelineResult,
+  type Step,
+  type Target,
+  type WriteSpec,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import {
   applyArrangementTimeline,
   foldLocatorParams,
   handlePlayArrangement,
   PLAY_ARRANGEMENT,
   readStartTime,
   reportArrangementLoop,
+  type ArrangementParams,
   type TimelineWrites,
 } from "./helpers/playback/arrangement-playback.ts";
 import {
@@ -24,17 +39,10 @@ import {
 } from "./helpers/playback/playback-action-params.ts";
 import { resolvePlaybackTarget } from "./helpers/playback/playback-target.ts";
 import {
-  sessionClipEntries,
   type ClipSlotEntry,
-  type ClipSlotTarget,
+  type SlotPayload,
 } from "./helpers/playback/session-clip-targets.ts";
 import { select } from "./select.ts";
-import { warnBlankTarget } from "#src/tools/shared/validation/lists/target-lists.ts";
-
-interface PlaybackActionParams {
-  sceneIndex?: number;
-  clips: ClipSlotTarget[];
-}
 
 interface PlaybackArgs {
   action?: string;
@@ -63,8 +71,61 @@ interface PlaybackResult {
   loopStart?: string;
   loopEnd?: string;
   scene?: FiredScene;
-  clips?: ClipSlotEntry[];
+  /** One entry per clip slot named, in order; a lone one is unwrapped */
+  clip?: PipelineResult<ClipSlotEntry>;
 }
+
+/** What the hooks learn about the call as a whole, for the result. */
+interface PlaybackOutcome {
+  playing: boolean;
+  startTime?: string;
+  scene?: FiredScene;
+  loop: ReturnType<typeof reportArrangementLoop>;
+}
+
+/** The call, and the place its hooks leave what the result reports. */
+interface PlaybackRun {
+  args: PlaybackArgs;
+  outcome: PlaybackOutcome;
+}
+
+/** The call, read once. */
+interface PlaybackCall {
+  run: PlaybackRun;
+  action: string;
+  /** The timeline params, with locators already folded in */
+  timeline: ArrangementParams;
+  sceneIndex: number | null;
+  clips: Array<Target<SlotPayload>>;
+  /** The target params as sent, for a blank one to be reported */
+  sent: TargetParams;
+  focus?: boolean;
+}
+
+/** What the call shares between its hooks. */
+interface PlaybackChecked extends PlaybackCall {
+  liveSet: LiveAPI;
+  /** Read before the action: Live updates is_playing asynchronously */
+  isPlayingBefore: boolean;
+  writes: TimelineWrites;
+  state: PlaybackState;
+  /** The tracks stop-session-clips has already stopped */
+  stopped: Set<number>;
+}
+
+const PLAY_SESSION_CLIPS = "play-session-clips";
+const PLAY_SCENE = "play-scene";
+const STOP = "stop";
+const SESSION_CLIP_ACTIONS = [PLAY_SESSION_CLIPS, "stop-session-clips"];
+
+const ACTIONS = new Set([
+  PLAY_ARRANGEMENT,
+  "update-arrangement",
+  PLAY_SCENE,
+  "stop-all-session-clips",
+  STOP,
+  ...SESSION_CLIP_ACTIONS,
+]);
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.
@@ -84,113 +145,257 @@ interface PlaybackResult {
  * @param args.paths - Hidden alias for path
  * @param args.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param args.focus - Switch to arrangement or session view based on action
- * @param _context - Internal context object (unused, for consistent tool interface)
+ * @param ctx - Internal context object, for the request deadline
  * @returns Result with transport state
  */
 export function playback(
   args: PlaybackArgs = {},
-  _context: Partial<ToolContext> = {},
+  ctx: Partial<ToolContext> = {},
 ): PlaybackResult {
-  const {
-    action,
-    startTime,
-    startLocator,
-    loop,
-    loopStart,
-    loopStartLocator,
-    loopEnd,
-    loopEndLocator,
-    sceneIndex,
-    id,
-    ids,
-    path,
-    paths,
-    slots,
-    focus,
-  } = args;
+  const run: PlaybackRun = { args, outcome: { playing: false, loop: {} } };
+  // No hook awaits, so the answer is never a promise.
+  const clip = runWrite(
+    PLAYBACK_WRITE,
+    run,
+    ctx,
+  ) as PipelineResult<ClipSlotEntry>;
+  const { playing, startTime, scene, loop } = run.outcome;
+
+  return {
+    playing,
+    ...(startTime != null && { startTime }),
+    // Which scene fired, since a scene id or a clip in it can name it
+    ...(scene && { scene }),
+    // One entry per clip slot the call named, in the order it named them
+    ...(Array.isArray(clip) && clip.length === 0 ? {} : { clip }),
+    ...loop,
+  };
+}
+
+const PLAYBACK_WRITE: WriteSpec<
+  PlaybackRun,
+  PlaybackCall,
+  SlotPayload,
+  PlaybackChecked,
+  ClipSlotEntry
+> = {
+  tool: "ppal-playback",
+  words: { rerun: "clip" },
+  parse: parsePlayback,
+  targets: playbackTargets,
+  check: (call) => ({
+    ...call,
+    liveSet: LiveAPI.from(livePath.liveSet),
+    isPlayingBefore: false,
+    writes: { wroteLoop: false },
+    state: { isPlaying: false },
+    stopped: new Set(),
+  }),
+  before: beforeTargets,
+  write: writeClip,
+  settle: settlePlayback,
+};
+
+// --- Helpers below main export ---
+
+/**
+ * Read the call, refusing one that is malformed before anything is written.
+ * @param run - The call
+ * @returns The call, with its targets and timeline resolved
+ */
+function parsePlayback(run: PlaybackRun): PlaybackCall {
+  const { args } = run;
+  const { action } = args;
 
   if (!action) {
     throw new Error("action is required");
   }
 
-  // Before anything reads or writes, so a refused call leaves the Set alone.
   refusePlaybackParamsOutsideAction(action, args);
 
-  const { sceneIndex: sceneTarget, clips } = resolvePlaybackTarget(action, {
-    id,
-    ids,
-    path,
-    paths,
-    slots,
-    sceneIndex,
-  });
+  const { sceneIndex, clips } = resolvePlaybackTarget(action, args);
 
   const timeline = foldLocatorParams(
     actionReadsTimeline(action)
       ? {
-          startTime,
-          startLocator,
-          loop,
-          loopStart,
-          loopStartLocator,
-          loopEnd,
-          loopEndLocator,
+          startTime: args.startTime,
+          startLocator: args.startLocator,
+          loop: args.loop,
+          loopStart: args.loopStart,
+          loopStartLocator: args.loopStartLocator,
+          loopEnd: args.loopEnd,
+          loopEndLocator: args.loopEndLocator,
         }
       : {},
   );
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
+  if (!ACTIONS.has(action)) {
+    throw new Error(`unknown action "${action}"`);
+  }
 
-  // The timeline is written before the action, except on stop: Live's own
-  // second stop sends the start position to the top, wiping one written first.
-  const writeTimeline = (): TimelineWrites =>
-    applyArrangementTimeline(liveSet, timeline);
-  const timelineFollowsAction = action === "stop";
-  let writes: TimelineWrites = timelineFollowsAction
-    ? { wroteLoop: false }
-    : writeTimeline();
+  return {
+    run,
+    action,
+    timeline,
+    sceneIndex,
+    clips,
+    sent: { id: args.id, ids: args.ids, path: args.path, paths: args.paths },
+    focus: args.focus,
+  };
+}
+
+/**
+ * The clip slots the action acts on: none for an action that acts on the
+ * transport alone.
+ * @param call - The call
+ * @returns One target per clip slot named, in the order named
+ * @throws Error when a clip action names no slot
+ */
+function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
+  if (!SESSION_CLIP_ACTIONS.includes(call.action)) {
+    return [];
+  }
+
+  if (call.clips.length === 0) {
+    throw new Error(`id or path is required for action "${call.action}"`);
+  }
+
+  return call.clips;
+}
+
+/**
+ * Write the timeline and run the actions that take no clip slot, before any
+ * slot is touched. The timeline goes first, except on stop: Live's own second
+ * stop sends the start position to the top, wiping one written first.
+ * @param checked - The checked call
+ */
+function beforeTargets(checked: PlaybackChecked): void {
+  const { action, liveSet, timeline, sceneIndex } = checked;
+
+  checked.writes =
+    action === STOP
+      ? { wroteLoop: false }
+      : applyArrangementTimeline(liveSet, timeline);
 
   // Read before the action: Live updates is_playing asynchronously, so an
   // action that starts or stops the transport can't read it after, and predicts
   // the new state instead. The playhead has the same problem, so it isn't
   // reported at all.
-  const isPlayingBefore = (liveSet.getProperty("is_playing") as number) > 0;
+  checked.isPlayingBefore = (liveSet.getProperty("is_playing") as number) > 0;
+  checked.state = { isPlaying: checked.isPlayingBefore };
 
-  const playbackState: PlaybackState = handlePlaybackAction(
-    action,
-    liveSet,
-    { sceneIndex: sceneTarget ?? undefined, clips },
-    { isPlaying: isPlayingBefore },
-  );
+  switch (action) {
+    case PLAY_ARRANGEMENT:
+      checked.state = handlePlayArrangement(liveSet);
+      break;
 
-  if (timelineFollowsAction) {
-    writes = writeTimeline();
+    case PLAY_SCENE:
+      checked.state = handlePlayScene(sceneIndex ?? undefined);
+      break;
+
+    case "stop-all-session-clips":
+      // The transport/arrangement might still be playing, so isPlaying stays.
+      liveSet.call("stop_all_clips");
+      break;
+
+    case STOP:
+      // The start position outlives the transport, so stopping puts it back
+      // where the caller left it. A startTime this call carries is written
+      // after this, and wins.
+      checked.state = stopTransport(liveSet);
+      break;
+
+    default:
+  }
+}
+
+/**
+ * Fire or stop one clip slot.
+ * @param target - The slot
+ * @param step - The call's state for this target
+ * @returns The slot's entry: its clip, when it holds one, and where it is
+ */
+function writeClip(
+  target: AppliedTarget<SlotPayload>,
+  step: Step<PlaybackChecked>,
+): ClipSlotEntry {
+  const { slot, position, path } = target.data;
+  const { action, stopped } = step.checked;
+  const clip = slot.child("clip");
+  const entry: ClipSlotEntry = { ...(clip.exists() && { id: clip.id }), path };
+
+  if (action === PLAY_SESSION_CLIPS) {
+    slot.call("fire");
+  } else if (!stopped.has(position.trackIndex)) {
+    // A track stops all its clips at once, so two slots on it are one Live call.
+    LiveAPI.from(livePath.track(position.trackIndex)).call("stop_all_clips");
+    // Only once it went through: after a throw, the next slot tries again.
+    stopped.add(position.trackIndex);
+  }
+
+  return entry;
+}
+
+/**
+ * Once every slot has had its turn: finish the transport, write the timeline
+ * a stop leaves for last, and gather what the result reports.
+ * @param done - What the call did
+ * @param call - The call's shared state
+ */
+function settlePlayback(
+  done: Done<SlotPayload, PlaybackChecked, ClipSlotEntry>,
+  call: Call,
+): void {
+  const { checked } = done;
+  const { action, liveSet, timeline, sceneIndex } = checked;
+  let { isPlaying } = checked.state;
+
+  if (action === PLAY_SESSION_CLIPS) {
+    const fired = done.outcomes.filter((outcome) => outcome === "written");
+
+    // Clips fired after the first are subject to launch quantization, so
+    // restart the transport to keep them in sync.
+    if (fired.length > 1) {
+      liveSet.call("stop_playing");
+      liveSet.call("start_playing");
+    }
+
+    // Nothing fired leaves the transport where it was, so don't claim a launch.
+    isPlaying = fired.length > 0 || checked.isPlayingBefore;
+  }
+
+  if (action === STOP) {
+    checked.writes = applyArrangementTimeline(liveSet, timeline);
   }
 
   // Said once the action ran: it claims what the call did.
-  warnBlankTarget(
-    { id, ids, path, paths },
-    sceneTarget == null ? "clips" : "scene",
-    sceneTarget == null ? clips.length : 1,
-  );
+  for (const { param, why } of blankTargetIgnores(
+    checked.sent,
+    sceneIndex == null ? "clips" : "scene",
+    sceneIndex == null ? done.targets.length : 1,
+  )) {
+    call.ignored(param, why);
+  }
 
   // Where the next play begins. Not the playhead: writing this leaves the
   // playhead where it was, and starting playback jumps it here.
-  const startTimePosition = readStartTime(liveSet, action, {
-    ...writes,
+  const startTime = readStartTime(liveSet, action, {
+    ...checked.writes,
     startTime: timeline.startTime,
   });
 
-  handleFocus(action, focus);
+  handleFocus(action, checked.focus);
 
-  return {
-    playing: playbackState.isPlaying,
-    ...(startTimePosition != null && { startTime: startTimePosition }),
-    // Which scene fired, since a scene id or a clip in it can name it
-    ...(playbackState.scene && { scene: playbackState.scene }),
-    // One entry per clip slot the call named, in the order it named them
-    ...(playbackState.clips && { clips: playbackState.clips }),
-    ...reportArrangementLoop(liveSet, action, timeline, writes.wroteLoop),
+  checked.run.outcome = {
+    playing: isPlaying,
+    startTime,
+    scene: checked.state.scene,
+    loop: reportArrangementLoop(
+      liveSet,
+      action,
+      timeline,
+      checked.writes.wroteLoop,
+    ),
   };
 }
 
@@ -206,7 +411,7 @@ function handleFocus(action: string, focus?: boolean): void {
 
   if (action === PLAY_ARRANGEMENT) {
     select({ view: "arrangement" });
-  } else if (action === "play-scene" || action === "play-session-clips") {
+  } else if (action === PLAY_SCENE || action === PLAY_SESSION_CLIPS) {
     select({ view: "session" });
   }
 }
@@ -223,117 +428,4 @@ function stopTransport(liveSet: LiveAPI): PlaybackState {
   liveSet.set("start_time", startTimeBeats);
 
   return { isPlaying: false };
-}
-
-/**
- * Handle playing specific session clips
- *
- * @param action - Action name for error messages
- * @param liveSet - LiveAPI instance for live_set
- * @param clips - The clip slots the call named
- * @param state - Current playback state
- * @returns Updated playback state
- */
-function handlePlaySessionClips(
-  action: string,
-  liveSet: LiveAPI,
-  clips: ClipSlotTarget[],
-  state: PlaybackState,
-): PlaybackState {
-  let fired = 0;
-  const entries = sessionClipEntries(action, clips, (clipSlot) => {
-    clipSlot.call("fire");
-    fired++;
-  });
-
-  // Fix launch quantization: when playing multiple clips, stop and restart transport
-  // to ensure in-sync playback (clips fired after the first are subject to quantization)
-  if (fired > 1) {
-    liveSet.call("stop_playing");
-    liveSet.call("start_playing");
-  }
-
-  // Nothing fired leaves the transport where it was, so don't claim a launch.
-  return { isPlaying: fired > 0 || state.isPlaying, clips: entries };
-}
-
-/**
- * Handle stopping specific session clips
- *
- * @param action - Action name for error messages
- * @param clips - The clip slots the call named
- * @param state - Current playback state
- * @returns Updated playback state
- */
-function handleStopSessionClips(
-  action: string,
-  clips: ClipSlotTarget[],
-  state: PlaybackState,
-): PlaybackState {
-  // A track stops all its clips at once, so two slots on it are one Live call.
-  const stopped = new Set<number>();
-  const entries = sessionClipEntries(action, clips, (_slot, { trackIndex }) => {
-    if (stopped.has(trackIndex)) {
-      return;
-    }
-
-    stopped.add(trackIndex);
-    LiveAPI.from(livePath.track(trackIndex)).call("stop_all_clips");
-  });
-
-  // this doesn't affect the isPlaying state
-  return { ...state, clips: entries };
-}
-
-/**
- * Route to appropriate handler based on playback action
- *
- * @param action - Playback action to perform
- * @param liveSet - LiveAPI instance for live_set
- * @param params - Action parameters
- * @param state - Current playback state
- * @returns Updated playback state
- */
-function handlePlaybackAction(
-  action: string,
-  liveSet: LiveAPI,
-  params: PlaybackActionParams,
-  state: PlaybackState,
-): PlaybackState {
-  const { sceneIndex, clips } = params;
-
-  switch (action) {
-    case PLAY_ARRANGEMENT:
-      return handlePlayArrangement(liveSet);
-
-    case "update-arrangement":
-      // No playback state change, just the loop and follow settings above
-      return state;
-
-    case "play-scene":
-      return handlePlayScene(sceneIndex);
-
-    case "play-session-clips":
-      return handlePlaySessionClips(action, liveSet, clips, state);
-
-    case "stop-session-clips":
-      return handleStopSessionClips(action, clips, state);
-
-    case "stop-all-session-clips":
-      liveSet.call("stop_all_clips");
-
-      // the transport/arrangement might still be playing so don't update isPlaying
-      return state;
-
-    case "stop":
-      // The start position outlives the transport, so stopping puts it back
-      // where the caller left it. Live moves it on its own: stopping an
-      // already-stopped transport is Live's second press of stop, which sends
-      // both the playhead and the start position to the top. A startTime this
-      // call carries is written after this, and wins.
-      return stopTransport(liveSet);
-
-    default:
-      throw new Error(`unknown action "${action}"`);
-  }
 }

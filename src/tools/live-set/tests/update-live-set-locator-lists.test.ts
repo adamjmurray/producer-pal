@@ -36,15 +36,8 @@ const VERSE_PART_2_LOCATORS = [
   { time: 32, name: "part 2" },
 ];
 
-/** The entries for deleting id 26, once by id and again by its time. */
-const ID_26_NAMED_AGAIN_AT_1_1 = [
-  {
-    operation: "delete",
-    id: "26",
-    detail: 'named again as "1|1" later in this call',
-  },
-  { operation: "delete", id: "26" },
-];
+/** Why the earlier of two mentions of the locator at 1|1 was left unwritten. */
+const NAMED_AGAIN_AT_1_1 = 'named again as "1|1" later in this call';
 
 describe("updateLiveSet - locator lists", () => {
   let liveSet: RegisteredMockObject;
@@ -267,9 +260,7 @@ describe("updateLiveSet - locator lists", () => {
       expect(result.locator).toStrictEqual([
         { operation: "rename", id: "26" },
         {
-          operation: "skipped",
           id: "27",
-          name: "Chorus",
           ok: false,
           detail: "Live refused the write",
         },
@@ -288,7 +279,6 @@ describe("updateLiveSet - locator lists", () => {
       expect(result.locator).toStrictEqual([
         { operation: "rename", id: "26" },
         {
-          operation: "skipped",
           ok: false,
           detail: 'no locator with id "99"',
           id: "99",
@@ -426,9 +416,14 @@ describe("updateLiveSet - locator targets", () => {
       [
         "deletes a locator named by id and time once",
         { locatorId: "26", locatorTime: "1|1" },
+        { id: "26" },
       ],
-      ["deletes a time named twice once", { locatorTime: "1|1,1|1" }],
-    ])("%s", async (_name, target) => {
+      [
+        "deletes a time named twice once",
+        { locatorTime: "1|1,1|1" },
+        { time: "1|1" },
+      ],
+    ])("%s", async (_name, target, earlier) => {
       const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
 
       const result = await updateLiveSet({
@@ -436,7 +431,11 @@ describe("updateLiveSet - locator targets", () => {
         ...target,
       });
 
-      expect(result.locator).toStrictEqual(ID_26_NAMED_AGAIN_AT_1_1);
+      // The earlier mention answers in the caller's own spelling.
+      expect(result.locator).toStrictEqual([
+        { ...earlier, detail: NAMED_AGAIN_AT_1_1 },
+        { operation: "delete", id: "26" },
+      ]);
       // A second toggle at 1|1 would have created a new locator there.
       expect(cueToggles()).toBe(1);
       expect(set.locators()).toStrictEqual(INTRO_VERSE_DROP.slice(1));
@@ -453,7 +452,6 @@ describe("updateLiveSet - locator targets", () => {
 
       expect(result.locator).toStrictEqual([
         {
-          operation: "delete",
           id: "27",
           detail: 'named again as "Verse" later in this call',
         },
@@ -472,7 +470,6 @@ describe("updateLiveSet - locator targets", () => {
 
       expect(result.locator).toStrictEqual([
         {
-          operation: "delete",
           name: "Verse",
           detail: 'named again as "Verse" later in this call',
         },
@@ -496,7 +493,6 @@ describe("updateLiveSet - locator targets", () => {
 
       expect(result.locator).toStrictEqual([
         {
-          operation: "delete",
           id: "26",
           detail: 'named again as "Verse" later in this call',
         },
@@ -639,7 +635,6 @@ describe("updateLiveSet - locator targets", () => {
 
       expect(result.locator).toStrictEqual([
         {
-          operation: "rename",
           id: "26",
           detail: 'named again as "1|1" later in this call',
         },
@@ -661,7 +656,6 @@ describe("updateLiveSet - locator targets", () => {
       expect(result.locator).toStrictEqual([
         { operation: "rename", id: "26" },
         {
-          operation: "skipped",
           ok: false,
           detail: "no locator at 20|1",
           time: "20|1",
@@ -682,7 +676,6 @@ describe("updateLiveSet - locator targets", () => {
 
       expect(result.locator).toStrictEqual([
         {
-          operation: "create",
           time: "1|1",
           detail: 'named again as "1|1" later in this call',
         },

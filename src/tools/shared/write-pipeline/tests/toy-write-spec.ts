@@ -29,6 +29,8 @@ export interface ToyArgs {
   refuse?: boolean;
   /** Ids that name the same object as another (id to key) */
   keys?: Record<string, string>;
+  /** Ids that name several objects at once (id to keys), instead of one key */
+  manyKeys?: Record<string, string[]>;
   /** What each id's write goes over */
   covers?: Record<string, Cover[]>;
   /** The order to write the targets in, by position in the call */
@@ -109,10 +111,14 @@ export function toySpec(
       namedTargets({ id: args.ids }).map((named) => {
         const reason = args.skip?.[named.value];
 
+        const many = args.manyKeys?.[named.value];
+
         return reason == null
           ? {
               named,
-              key: args.keys?.[named.value] ?? named.value,
+              ...(many == null
+                ? { key: args.keys?.[named.value] ?? named.value }
+                : { keys: many }),
               covers: args.covers?.[named.value],
               data: undefined,
             }

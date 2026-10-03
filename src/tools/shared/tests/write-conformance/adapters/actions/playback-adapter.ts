@@ -38,13 +38,8 @@ function setUpClips(count: number): RegisteredMockObject[] {
 export const playbackAdapter: WriteToolAdapter = {
   tool: "ppal-playback",
   // The session-clip actions are the ones with a list of targets.
-  run: (args) => playback({ action: "play-session-clips", ...args }).clips,
-  skip: {
-    midway:
-      "a throw from Live escapes the call: earlier clips fired, later ones never run, and no entry says so",
-  },
+  run: (args) => playback({ action: "play-session-clips", ...args }).clip,
   na: {
-    lone: "clips is a list field inside a state result, so it stays an array for one target by decision",
     newTwice: "plays existing clips; nothing is created",
     replacedLater: "plays existing clips; nothing is created or moved",
     afterChange:

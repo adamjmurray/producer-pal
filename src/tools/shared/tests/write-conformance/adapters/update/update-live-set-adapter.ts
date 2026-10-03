@@ -50,10 +50,6 @@ export const updateLiveSetAdapter: WriteToolAdapter = {
 
     return result.locator;
   },
-  skip: {
-    afterChange:
-      "the entry is a plain skip with the time and name asked for; it never says a locator was made, or its id",
-  },
   na: {
     replacedLater:
       "a locator at one time is one locator: naming the time twice is a repeat",

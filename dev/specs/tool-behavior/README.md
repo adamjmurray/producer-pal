@@ -253,9 +253,11 @@ nobody asked for.
 `create` where a locator already is does nothing, and never renames it: with no
 name that is a no-op (`detail`, no `ok`); with a name the name didn't land, so
 `ok: false` pointing at `rename`. `delete` of a missing locator is a no-op. A
-no-op is not labelled `operation: "skipped"`. A lone locator refusal throws when
-it was the call's only work; when the call also changed something else (tempo),
-the locator keeps its `ok: false` entry so the error doesn't hide what landed.
+no-op is not labelled `operation: "skipped"`, and neither is a skip: it is
+`{ id | time | name, ok: false, detail }`, in the caller's own spelling, like
+every skip. A lone locator refusal throws when it was the call's only work; when
+the call also changed something else (tempo), the locator keeps its `ok: false`
+entry so the error doesn't hide what landed.
 
 ## Result entries and observability
 
@@ -264,9 +266,8 @@ the locator keeps its `ok: false` entry so the error doesn't hide what landed.
   already names the appended `WARNING:` block, and `note` reads as a pitch.
 - **A single target returns its entry unwrapped.** A list field inside a result
   mirrors the param it came from. A singular param that takes a comma list gives
-  a singular field, unwrapped for one target (`locator`; playback's `clips`
-  becomes `clip`). A param that is itself a list (`sends`, `params`) gives an
-  array.
+  a singular field, unwrapped for one target (`locator`; playback's `clip`). A
+  param that is itself a list (`sends`, `params`) gives an array.
 - **A write reports a value only when it isn't the one asked for**, compared at
   the resolution the read tools publish (two decimals for dB, pan and tempo; the
   bar|beat spelling for a position). One comparison and one detail serve every

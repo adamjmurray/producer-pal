@@ -471,17 +471,49 @@ describe("ppal-playback", () => {
       id: `999999,${clip}`,
     });
 
-    expect(stopped.clips).toHaveLength(2);
-    expect(stopped.clips?.[0]).toStrictEqual({
+    const entries = stopped.clip as ClipEntry[];
+
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toStrictEqual({
       id: "999999",
       ok: false,
       detail: 'id "999999" does not exist',
     });
-    expect(stopped.clips?.[1]).toStrictEqual({
+    expect(entries[1]).toStrictEqual({
       id: clip,
       path: `t${EMPTY_MIDI_TRACK}/s0`,
     });
 
+    await playback({ action: "stop" });
+  });
+
+  // `clip` mirrors the singular `id`/`path` params: one target comes back
+  // alone, several as a list.
+  it("answers one clip unwrapped and several as an array", async () => {
+    const clip1 = await createSessionClip(0, "C3");
+    const clip2 = await createSessionClip(1, "D3");
+
+    await sleep(100);
+
+    const one = await playback({ action: "play-session-clips", id: clip1 });
+
+    expect(one.clip).toStrictEqual({
+      id: clip1,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
+    });
+
+    const two = await playback({
+      action: "play-session-clips",
+      id: `${clip1},${clip2}`,
+    });
+
+    expect(two.clip).toHaveLength(2);
+    expect(two.clip).toStrictEqual([
+      expect.objectContaining({ id: clip1 }),
+      expect.objectContaining({ id: clip2 }),
+    ]);
+
+    await playback({ action: "stop-all-session-clips" });
     await playback({ action: "stop" });
   });
 
@@ -660,11 +692,18 @@ describe("ppal-playback", () => {
   });
 });
 
+interface ClipEntry {
+  id?: string;
+  path?: string;
+  ok?: false;
+  detail?: string;
+}
+
 interface PlaybackResult {
   playing: boolean;
   startTime?: string;
   scene?: { id: string; path?: string };
-  clips?: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
+  clip?: ClipEntry | ClipEntry[];
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;

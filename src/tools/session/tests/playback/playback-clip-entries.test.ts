@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
@@ -45,6 +45,10 @@ describe("playback clip entries", () => {
     liveSet = setupPlaybackLiveSet();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("keeps a bad id's slot and fires the rest", () => {
     const slot = mockClipInSlot("clip2", 1, 0);
 
@@ -56,7 +60,7 @@ describe("playback clip entries", () => {
     });
 
     expect(slot.call).toHaveBeenCalledWith("fire");
-    expect(result.clips).toStrictEqual([
+    expect(result.clip).toStrictEqual([
       { id: "999999", ok: false, detail: 'id "999999" does not exist' },
       { id: "clip2", path: "t1/s0" },
     ]);
@@ -77,7 +81,7 @@ describe("playback clip entries", () => {
       path: "t2/s2,t1/s1",
     });
 
-    expect(result.clips).toStrictEqual([
+    expect(result.clip).toStrictEqual([
       { id: "clip1", path: "t0/s0" },
       { path: "t2/s2" },
       { id: "clip2", path: "t1/s1" },
@@ -94,12 +98,8 @@ describe("playback clip entries", () => {
     });
 
     expect(slot.call).toHaveBeenCalledExactlyOnceWith("fire");
-    expect(result.clips).toStrictEqual([
-      {
-        id: "clip1",
-        path: "t0/s0",
-        detail: 'named again as "t0/s0" later in this call',
-      },
+    expect(result.clip).toStrictEqual([
+      { id: "clip1", detail: 'named again as "t0/s0" later in this call' },
       { id: "clip1", path: "t0/s0" },
     ]);
   });
@@ -113,7 +113,7 @@ describe("playback clip entries", () => {
       slots: "0/0,99/0",
     });
 
-    expect(result.clips).toStrictEqual([
+    expect(result.clip).toStrictEqual([
       { id: "clip1", path: "t0/s0" },
       { path: "99/0", ok: false, detail: "no clip slot at t99/s0" },
     ]);
@@ -134,9 +134,54 @@ describe("playback clip entries", () => {
     });
 
     expect(track0.call).toHaveBeenCalledExactlyOnceWith("stop_all_clips");
-    expect(result.clips).toStrictEqual([
+    expect(result.clip).toStrictEqual([
       { id: "clip1", path: "t0/s0" },
       { id: "999999", ok: false, detail: 'id "999999" does not exist' },
+    ]);
+  });
+
+  it("stops a track once for two of its slots", () => {
+    mockClipInSlot("clip1", 0, 0);
+    mockClipInSlot("clip2", 0, 1);
+
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+
+    const result = playback({
+      action: "stop-session-clips",
+      path: "t0/s0,t0/s1",
+    });
+
+    expect(track0.call).toHaveBeenCalledExactlyOnceWith("stop_all_clips");
+    expect(result.clip).toStrictEqual([
+      { id: "clip1", path: "t0/s0" },
+      { id: "clip2", path: "t0/s1" },
+    ]);
+  });
+
+  it("tries a track again for its next slot when a stop threw", () => {
+    mockClipInSlot("clip1", 0, 0);
+    mockClipInSlot("clip2", 0, 1);
+
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+
+    track0.call.mockImplementationOnce(() => {
+      throw new Error("Live refused the stop");
+    });
+
+    const result = playback({
+      action: "stop-session-clips",
+      path: "t0/s0,t0/s1",
+    });
+
+    // The stop that never happened is not reported as done.
+    expect(track0.call).toHaveBeenCalledTimes(2);
+    expect(result.clip).toStrictEqual([
+      { path: "t0/s0", ok: false, detail: "Live refused the stop" },
+      { id: "clip2", path: "t0/s1" },
     ]);
   });
 
@@ -152,6 +197,108 @@ describe("playback clip entries", () => {
 
     expect(liveSet.call).not.toHaveBeenCalledWith("start_playing");
     expect(result.playing).toBe(false);
-    expect(result.clips).toHaveLength(2);
+    expect(result.clip).toHaveLength(2);
+  });
+
+  // `clip` mirrors the singular `id`/`path` params: a lone target comes back
+  // unwrapped, several as a list.
+  it("answers one clip on its own and several as a list", () => {
+    mockClipInSlot("clip1", 0, 0);
+    mockClipInSlot("clip2", 1, 0);
+
+    expect(
+      playback({ action: "play-session-clips", id: "clip1" }).clip,
+    ).toStrictEqual({ id: "clip1", path: "t0/s0" });
+    expect(
+      playback({ action: "play-session-clips", id: "clip1,clip2" }).clip,
+    ).toStrictEqual([
+      { id: "clip1", path: "t0/s0" },
+      { id: "clip2", path: "t1/s0" },
+    ]);
+    // A trailing comma is not a second target.
+    expect(
+      playback({ action: "play-session-clips", id: "clip1," }).clip,
+    ).toStrictEqual({ id: "clip1", path: "t0/s0" });
+  });
+
+  it("has no clip field when the action takes no clips", () => {
+    expect(playback({ action: "stop-all-session-clips" })).not.toHaveProperty(
+      "clip",
+    );
+  });
+
+  it("gives a clip Live fails on its own entry and still fires the rest", () => {
+    const slots = [
+      mockClipInSlot("clip0", 0, 0),
+      mockClipInSlot("clip1", 1, 0),
+      mockClipInSlot("clip2", 2, 0),
+    ];
+
+    (slots[1] as RegisteredMockObject).call.mockImplementation(() => {
+      throw new Error("Live refused the launch");
+    });
+
+    const result = playback({
+      action: "play-session-clips",
+      id: "clip0,clip1,clip2",
+    });
+
+    expect(result.clip).toStrictEqual([
+      { id: "clip0", path: "t0/s0" },
+      { id: "clip1", ok: false, detail: "Live refused the launch" },
+      { id: "clip2", path: "t2/s0" },
+    ]);
+    expect(slots[2]?.call).toHaveBeenCalledWith("fire");
+    // The two that fired are what the transport restart is about.
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expect(result.playing).toBe(true);
+  });
+
+  it("throws when the one clip's launch fails", () => {
+    const slot = mockClipInSlot("clip0", 0, 0);
+
+    slot.call.mockImplementation(() => {
+      throw new Error("Live refused the launch");
+    });
+
+    expect(() =>
+      playback({ action: "play-session-clips", id: "clip0" }),
+    ).toThrow("Live refused the launch");
+  });
+
+  it("leaves the clips the deadline never reached as skips", () => {
+    const start = 1_000_000;
+    let now = start;
+
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    const first = mockClipInSlot("clip0", 0, 0);
+
+    mockClipInSlot("clip1", 1, 0);
+    mockClipInSlot("clip2", 2, 0);
+    // The first launch uses up the time.
+    first.call.mockImplementation(() => {
+      now = start + 5000;
+    });
+
+    const result = playback(
+      { action: "play-session-clips", id: "clip0,clip1,clip2" },
+      { deadline: start + 1000 },
+    );
+
+    expect(result.clip).toStrictEqual([
+      { id: "clip0", path: "t0/s0" },
+      {
+        id: "clip1",
+        ok: false,
+        detail: "the request ran out of time; re-run for this clip",
+      },
+      {
+        id: "clip2",
+        ok: false,
+        detail: "the request ran out of time; re-run for this clip",
+      },
+    ]);
+    expect(result.playing).toBe(true);
   });
 });

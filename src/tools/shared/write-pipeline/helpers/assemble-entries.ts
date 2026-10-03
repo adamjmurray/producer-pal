@@ -19,6 +19,8 @@ import {
  * @param entries - One per target, in the order named
  * @param pieces - The extra entries each target made
  * @param outcomes - What happened to each
+ * @param loneSkipThrows - Whether a lone skipped target throws; when not, its
+ *   skip entry is the answer
  * @returns The call's result
  * @throws Error with the detail of a lone skipped target
  */
@@ -26,6 +28,7 @@ export function assembleEntries<E extends object>(
   entries: Array<AnyEntry<E>>,
   pieces: E[][],
   outcomes: Outcome[],
+  loneSkipThrows = true,
 ): PipelineResult<E> {
   const all = entries.flatMap((entry, index) => [
     entry,
@@ -38,7 +41,7 @@ export function assembleEntries<E extends object>(
 
   const only = all[0] as AnyEntry<E>;
 
-  if (outcomes[0] === "skipped") {
+  if (loneSkipThrows && outcomes[0] === "skipped") {
     throw new Error((only as TargetSkip).detail);
   }
 

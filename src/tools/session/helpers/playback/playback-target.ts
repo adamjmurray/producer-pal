@@ -6,7 +6,7 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   sessionClipTargets,
-  type ClipSlotTarget,
+  type SlotPayload,
 } from "./session-clip-targets.ts";
 import {
   namedIdParam,
@@ -30,12 +30,13 @@ import {
   parseSlotList,
 } from "#src/tools/shared/validation/position-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
   /** The clip slots every target param named, in call order */
-  clips: ClipSlotTarget[];
+  clips: Array<Target<SlotPayload>>;
 }
 
 export interface PlaybackTargetParams {

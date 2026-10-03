@@ -14,10 +14,11 @@ const TARGET_PARAMS = new Set(["id", "ids", "path", "paths"]);
  * Any other param counts as asked, including one that only does something
  * beside the write (`focus: true`; `focus: false` does nothing).
  * @param args - The call's args
- * @param objects - What the targets are, plural ("tracks")
+ * @param objects - What the targets are, plural ("tracks"); omit for a tool
+ *   with no `id` or `path` targets
  * @throws Error when no param besides the target params was sent
  */
-export function refuseNoWrite(args: object, objects: string): void {
+export function refuseNoWrite(args: object, objects?: string): void {
   const asked = Object.entries(args).some(
     ([param, value]) =>
       !TARGET_PARAMS.has(param) &&
@@ -27,7 +28,9 @@ export function refuseNoWrite(args: object, objects: string): void {
 
   if (!asked) {
     throw new Error(
-      `nothing to update: id and path only name the ${objects}; also send a param to change`,
+      objects == null
+        ? "nothing to update: send a param to change"
+        : `nothing to update: id and path only name the ${objects}; also send a param to change`,
     );
   }
 }

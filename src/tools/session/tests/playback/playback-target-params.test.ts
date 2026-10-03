@@ -122,7 +122,7 @@ describe("playback ids that names no clip", () => {
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
     expect(warn.mock.calls).toStrictEqual([
-      ['blank id ignored — "path" names the clips'],
+      ['blank id ignored: "path" names the clips'],
     ]);
   });
 

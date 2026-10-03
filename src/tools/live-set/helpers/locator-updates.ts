@@ -17,6 +17,7 @@ import {
   type LocatorTarget,
   type SongMeter,
 } from "./locator-targets.ts";
+import { type Step } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { cleanupTempClip, extendSongIfNeeded } from "./song-extension.ts";
 
 /**
@@ -97,13 +98,16 @@ export async function toggleCueAt(
  * @param target - The time to create at, and the name to give it
  * @param meter - The song meter a bar|beat is read in
  * @param context - Context object with silenceWavPath
+ * @param landed - Says the locator exists, so a failure naming it still reports it
  * @returns Created locator info
+ * @throws Error when no locator could be made, or it exists with another name
  */
 export async function createLocator(
   liveSet: LiveAPI,
   target: LocatorTarget,
   meter: SongMeter,
   context: { silenceWavPath?: string },
+  landed: Step<unknown>["landed"],
 ): Promise<Record<string, unknown>> {
   const { beats, found: existing } = locateTarget(liveSet, target, meter);
   const targetBeats = beats as number;
@@ -126,14 +130,10 @@ export async function createLocator(
   const found = findLocator(liveSet, { timeInBeats: targetBeats });
 
   if (found == null) {
-    return {
-      operation: "skipped",
-      time: target.value,
-      ...(target.name != null && { name: target.name }),
-      ok: false,
-      detail: `Live made no locator at ${target.value}`,
-    };
+    throw new Error(`Live made no locator at ${target.value}`);
   }
+
+  landed("created", { operation: "create", id: found.locator.id });
 
   if (target.name != null) {
     found.locator.set("name", target.name);
@@ -148,6 +148,7 @@ export async function createLocator(
  * @param target - The locator, and its new name
  * @param meter - The song meter a bar|beat is read in
  * @returns Rename result
+ * @throws Error when no locator is there to rename
  */
 export function renameLocator(
   liveSet: LiveAPI,
@@ -157,13 +158,11 @@ export function renameLocator(
   const { found } = locateTarget(liveSet, target, meter);
 
   if (found == null) {
-    return {
-      operation: "skipped",
-      ok: false,
-      ...(target.param === "locatorId"
-        ? { detail: `no locator with id "${target.value}"`, id: target.value }
-        : { detail: `no locator at ${target.value}`, time: target.value }),
-    };
+    throw new Error(
+      target.param === "locatorId"
+        ? `no locator with id "${target.value}"`
+        : `no locator at ${target.value}`,
+    );
   }
 
   found.locator.set("name", target.name);
@@ -205,7 +204,8 @@ export function validateLocatorOperation(
  * toggle there would delete it, and renaming it is rename's job.
  * @param target - The time, and the name the caller asked for
  * @param existing - The locator already there
- * @returns A no-op entry, or a refusal when the name asked for didn't land
+ * @returns A no-op entry
+ * @throws Error when the name asked for didn't land
  */
 function createWhereOneIs(
   target: LocatorTarget,
@@ -217,11 +217,5 @@ function createWhereOneIs(
     return { operation: "create", id: existing.id, detail: already };
   }
 
-  return {
-    operation: "skipped",
-    time: target.value,
-    name: target.name,
-    ok: false,
-    detail: `not created: ${already}; rename it instead`,
-  };
+  throw new Error(`not created: ${already}; rename it instead`);
 }

@@ -67,9 +67,6 @@ const NOT_MIGRATED = [
   "ppal-create-clip",
   "ppal-create-track",
   "ppal-create-scene",
-  "ppal-update-live-set",
-  "ppal-playback",
-  "ppal-select",
 ];
 
 /** Tools that don't write to the Live Set, with why where it isn't obvious. */

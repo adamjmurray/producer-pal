@@ -128,6 +128,110 @@ describe("runWrite", () => {
     });
   });
 
+  describe("a target that names several objects", () => {
+    it("replaces every earlier target that shares any of them", () => {
+      const { result, log } = runToy({
+        ids: "a,b,c,d",
+        keys: { a: "x", b: "y", c: "z" },
+        manyKeys: { d: ["x", "y"] },
+      });
+
+      expect(log.writes).toStrictEqual(["c", "d"]);
+      expect(result).toStrictEqual([
+        { id: "a", detail: "named again as id d later in this call" },
+        { id: "b", detail: "named again as id d later in this call" },
+        { id: "c", wrote: true },
+        { id: "d", wrote: true },
+      ]);
+    });
+  });
+
+  describe("the whole-call step", () => {
+    it("runs once, after the checks and before the first write", () => {
+      const log = newToyLog();
+      const spec = toySpec(log);
+
+      const result = runWrite(
+        { ...spec, before: () => void log.writes.push("before") },
+        { ids: "a,b" },
+      );
+
+      expect(result as unknown[]).toHaveLength(2);
+      expect(log.writes).toStrictEqual(["before", "a", "b"]);
+    });
+
+    it("never runs for a call the check refuses", () => {
+      const log = newToyLog();
+      const spec = toySpec(log);
+
+      expect(() =>
+        runWrite(
+          { ...spec, before: () => void log.writes.push("before") },
+          { ids: "a", refuse: true },
+        ),
+      ).toThrow("refused by the check");
+      expect(log.writes).toStrictEqual([]);
+    });
+
+    it("ends the call when it throws, writing no target", () => {
+      const log = newToyLog();
+      const spec = toySpec(log);
+
+      const before = (): void => {
+        throw new Error("tempo refused");
+      };
+
+      expect(() => runWrite({ ...spec, before }, { ids: "a" })).toThrow(
+        "tempo refused",
+      );
+      expect(log.writes).toStrictEqual([]);
+    });
+
+    it("waits for an async step before the first write", async () => {
+      const log = newToyLog();
+      const spec = toySpec(log);
+
+      const before = async (): Promise<void> => {
+        await Promise.resolve();
+        log.writes.push("before");
+      };
+
+      await runWrite({ ...spec, before }, { ids: "a" });
+      expect(log.writes).toStrictEqual(["before", "a"]);
+    });
+  });
+
+  describe("a lone skip the tool lets through", () => {
+    it("is the call's answer instead of a throw", () => {
+      const log = newToyLog();
+      const spec = toySpec(log);
+
+      expect(
+        runWrite(
+          { ...spec, loneSkipThrows: () => false },
+          { ids: "a", skip: { a: "nope" } },
+        ),
+      ).toStrictEqual({ id: "a", ok: false, detail: "nope" });
+      // Settled, since the call went through.
+      expect(log.settled).toHaveLength(1);
+    });
+
+    it("changes nothing for a list", () => {
+      const log = newToyLog();
+      const spec = toySpec(log);
+
+      expect(
+        runWrite(
+          { ...spec, loneSkipThrows: () => true },
+          { ids: "a,b", skip: { a: "nope" } },
+        ),
+      ).toStrictEqual([
+        { id: "a", ok: false, detail: "nope" },
+        { id: "b", wrote: true },
+      ]);
+    });
+  });
+
   describe("a target that can't be applied", () => {
     it("gets a skip entry in its own slot while the rest are written", () => {
       const { result, log } = runToy({

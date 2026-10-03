@@ -18,7 +18,11 @@ import { assembleEntries } from "./helpers/assemble-entries.ts";
 import { afterMaybe } from "./helpers/maybe-async.ts";
 import { resolveTargets } from "./helpers/resolve-targets.ts";
 import { settleSupersession } from "./helpers/settle-supersession.ts";
-import { type Planned, writeLoop } from "./helpers/write-loop.ts";
+import {
+  type Planned,
+  type TargetRun,
+  writeLoop,
+} from "./helpers/write-loop.ts";
 import { supersession } from "./plans/supersession.ts";
 import { recordPipelineRun } from "./pipeline-probe.ts";
 import {
@@ -59,43 +63,63 @@ export function runWrite<
     ({ targets, checked }) => {
       const planned = planWrites(spec, targets, checked, call);
 
-      return afterMaybe(
-        writeLoop(spec, targets, checked, call, planned),
-        (runs) => {
-          const shortened = settleSupersession(
-            runs,
-            targets,
-            planned.supersession,
-            spec.words.rerun,
-          );
-
-          const entries = runs.map(({ entry }) => entry);
-          const pieces = runs.map((run) => run.pieces);
-          const outcomes = runs.map(({ outcome }) => outcome);
-          // Before settle: a lone skip throws, and a call that did nothing has no
-          // paths to fix up or claims to make.
-          const result = assembleEntries(entries, pieces, outcomes);
-
-          spec.settle?.(
-            {
-              targets,
-              checked,
-              entries,
-              pieces,
-              outcomes,
-              shortened,
-            },
-            call,
-          );
-
-          return result;
-        },
+      return afterMaybe(spec.before?.(checked, call), () =>
+        afterMaybe(writeLoop(spec, targets, checked, call, planned), (runs) =>
+          finish(spec, { targets, checked, call, planned, runs }),
+        ),
       );
     },
   );
 }
 
 // --- Helpers below main export ---
+
+/** What the call has once every target has had its turn. */
+interface Finished<P, Checked, E, Each> {
+  targets: Array<Target<P>>;
+  checked: Checked;
+  call: Call;
+  planned: Planned<Each>;
+  runs: Array<TargetRun<E>>;
+}
+
+/**
+ * Stage 5: correct what later targets say about earlier ones, settle, answer.
+ * @param spec - The tool's hooks
+ * @param done - The targets, what the check found, and each target's run
+ * @returns The lone entry, or one entry per target
+ */
+function finish<Args, Parsed, P, Checked, E extends object, Each>(
+  spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
+  done: Finished<P, Checked, E, Each>,
+): PipelineResult<E> {
+  const { targets, checked, call, planned, runs } = done;
+  const shortened = settleSupersession(
+    runs,
+    targets,
+    planned.supersession,
+    spec.words.rerun,
+  );
+
+  const entries = runs.map(({ entry }) => entry);
+  const pieces = runs.map((run) => run.pieces);
+  const outcomes = runs.map(({ outcome }) => outcome);
+  // Before settle: a lone skip throws, and a call that did nothing has no
+  // paths to fix up or claims to make.
+  const result = assembleEntries(
+    entries,
+    pieces,
+    outcomes,
+    spec.loneSkipThrows?.(checked) ?? true,
+  );
+
+  spec.settle?.(
+    { targets, checked, entries, pieces, outcomes, shortened },
+    call,
+  );
+
+  return result;
+}
 
 /**
  * Decide what the loop writes and in what order: which targets a later one

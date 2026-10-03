@@ -39,6 +39,11 @@ export interface AppliedTarget<P> {
   named: NamedTarget;
   /** The resolved identity: same key, same object, whatever the spelling */
   key?: string;
+  /**
+   * The identities of every object it acts on, for a target that acts on
+   * several (a name that matches many locators). Use instead of `key`.
+   */
+  keys?: string[];
   /** What the write goes over, for a later target to replace or cut short */
   covers?: Cover[];
   skip?: undefined;
@@ -49,6 +54,7 @@ export interface AppliedTarget<P> {
 export interface SkippedTarget {
   named: NamedTarget;
   key?: undefined;
+  keys?: undefined;
   covers?: undefined;
   /** Why, in the words a lone target throws */
   skip: string;
@@ -158,6 +164,18 @@ export interface WriteSpec<
     targets: Array<Target<P>>,
     call: Call,
   ) => MaybePromise<Checked>;
+  /**
+   * Stage 3b: write what the call as a whole changes (tempo, the transport),
+   * once, before the first target. Runs after every refusal the earlier stages
+   * can make, so a refused call has written nothing. A throw ends the call.
+   */
+  before?: (checked: Checked, call: Call) => MaybePromise<void>;
+  /**
+   * Whether a lone target that is skipped makes the call throw. It does unless
+   * this says otherwise: a call that changed something else keeps the skip
+   * as its answer, so the error doesn't hide what landed.
+   */
+  loneSkipThrows?: (checked: Checked) => boolean;
   /**
    * Stage 4a: decide the order the targets are written in, and what each needs
    * to know. Pure: it reads what the earlier stages found and writes nothing.

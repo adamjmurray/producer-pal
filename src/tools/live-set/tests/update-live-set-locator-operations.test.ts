@@ -122,9 +122,7 @@ describe("updateLiveSet - locator operations", () => {
         expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
         expect(existing?.set).not.toHaveBeenCalled();
         expect(result.locator).toStrictEqual({
-          operation: "skipped",
           time: "5|1",
-          name: "New Locator",
           ok: false,
           detail: "not created: a locator is already at 5|1; rename it instead",
         });
@@ -335,7 +333,6 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
       expect(result.locator).toStrictEqual({
-        operation: "skipped",
         ok: false,
         detail: 'no locator with id "99"',
         id: "99",

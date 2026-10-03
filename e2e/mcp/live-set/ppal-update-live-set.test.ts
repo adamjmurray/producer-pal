@@ -253,6 +253,18 @@ describe("ppal-update-live-set", () => {
     expect(parseToolResult<ReadResult>(after).tempo).toBe(originalTempo);
   });
 
+  it("refuses a call that asks for nothing", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {},
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "nothing to update: send a param to change",
+    );
+  });
+
   it("creates, renames, and deletes locators", async () => {
     // A locator id is Live's own and only assignment against real Live proves
     // it round-trips, so this runs the full create/rename/delete cycle. The Set
@@ -487,7 +499,6 @@ describe("ppal-update-live-set", () => {
 
     expect(deleted.locator).toStrictEqual([
       {
-        operation: "delete",
         id: soloId,
         detail: 'named again as "6|1" later in this call',
       },
@@ -557,9 +568,7 @@ describe("ppal-update-live-set", () => {
         locatorName: "E2E Other",
       }),
     ).toStrictEqual({
-      operation: "skipped",
       time: "5|1",
-      name: "E2E Other",
       ok: false,
       detail: "not created: a locator is already at 5|1; rename it instead",
     });
@@ -746,7 +755,7 @@ interface ReadResult {
 /** A call naming several locators answers with one entry each, in order. */
 interface UpdateLocatorListResult {
   locator?: Array<{
-    operation: string;
+    operation?: string;
     id?: string;
     name?: string;
     time?: string;
@@ -764,7 +773,7 @@ interface UpdateResult {
   detail?: string;
   $meta?: string[];
   locator?: {
-    operation: string;
+    operation?: string;
     id?: string;
     name?: string;
     time?: string;

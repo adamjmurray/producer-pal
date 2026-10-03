@@ -358,7 +358,7 @@ describe("ppal-select", () => {
     });
 
     expect(getToolWarnings(result).join("\n")).toContain(
-      "openPluginWindow requires a plug-in device",
+      "openPluginWindow ignored: it needs a plug-in device",
     );
   });
 

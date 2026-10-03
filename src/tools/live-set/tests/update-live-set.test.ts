@@ -356,14 +356,24 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should return only song ID when no properties are updated", async () => {
-    const result = await updateLiveSet({});
-
+  // A call that asks for nothing changes nothing, and an answer would read as
+  // if it had.
+  it.each([
+    ["no params", {}],
+    ["only blank params", { tempo: undefined }],
+  ])("refuses a call with %s, writing nothing", async (_name, args) => {
+    await expect(updateLiveSet(args)).rejects.toThrow(
+      "nothing to update: send a param to change",
+    );
     expect(liveSet.set).not.toHaveBeenCalled();
     expect(liveSet.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-    });
+  });
+
+  it("counts a scale that disables the scale as asked", async () => {
+    const result = await updateLiveSet({ scale: "" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 0);
+    expect(result.id).toBe("live_set_id");
   });
 
   it("should return scalePitches when scale is set", async () => {

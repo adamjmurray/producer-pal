@@ -20,7 +20,8 @@ import { type TargetParams } from "#src/tools/shared/validation/lists/target-lis
 
 /** One object a call names, and which param named it. */
 export interface NamedTarget {
-  param: "id" | "path";
+  /** `time` and `name` are how a locator is named, beside `id` */
+  param: "id" | "path" | "time" | "name";
   /** The entry as the caller wrote it */
   value: string;
 }
@@ -29,6 +30,8 @@ export interface NamedTarget {
 export interface TargetSkip {
   id?: string;
   path?: string;
+  time?: string;
+  name?: string;
   ok: false;
   detail: string;
 }
@@ -38,6 +41,8 @@ export interface TargetSkip {
 export interface NoteEntry {
   id?: string;
   path?: string;
+  time?: string;
+  name?: string;
   detail: string;
 }
 
@@ -218,10 +223,8 @@ export function loneRefusal(entries: object[]): string | null {
  * The address a skip reports under: the caller's own spelling, and nothing
  * else. A skip may have resolved to no object at all, so it has no id to add.
  * @param target - The target, as the caller named it
- * @returns `{ id }` or `{ path }`
+ * @returns `{ id }`, `{ path }`, or for a locator `{ time }` or `{ name }`
  */
-function targetAddress(
-  target: NamedTarget,
-): { id: string; path?: undefined } | { id?: undefined; path: string } {
-  return target.param === "id" ? { id: target.value } : { path: target.value };
+function targetAddress(target: NamedTarget): Partial<Record<string, string>> {
+  return { [target.param]: target.value };
 }

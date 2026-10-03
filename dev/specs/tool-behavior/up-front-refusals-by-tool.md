@@ -12,6 +12,11 @@ follows the code; when it disagrees with a tool, the tool wins.
   target.** They warned and returned `[]`, which reads as "there was nothing to
   do" — every other tool already threw. They had applied their own warn-and-skip
   rule to a call with no items rather than to an item.
+- **`updateLiveSet` refuses a call that sends no param at all**, with
+  `nothing to update: send a param to change` (it has no `id` or `path` targets,
+  so `refuseNoWrite` leaves that part out). It answered with the Set's id, which
+  reads as if something had been written. A blank `scale` counts as sent, since
+  an empty string disables the scale.
 - **`updateTrack` and `updateScene` refuse a call that asks nothing of their
   targets** (an `id` or `path` and no other param). Answering with the targets
   read as if something had been written. Any other param counts, `focus`
