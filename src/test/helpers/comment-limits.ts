@@ -25,7 +25,7 @@ export type TreeLimits = Record<CommentTree, number>;
  * Each cap sits within 0.005 of its tree's density.
  */
 export const COMMENT_DENSITY_LIMITS: TreeLimits = {
-  src: 0.52,
+  src: 0.515,
   scripts: 0.325,
   webui: 0.46,
   evals: 0.475,

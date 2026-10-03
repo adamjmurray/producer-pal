@@ -278,6 +278,12 @@ entry so the error doesn't hide what landed.
     `gainDb, pan read back as shown, not as sent`. The wording is observational
     because Live clamps, snaps, or ignores the write and the tool can't tell
     which.
+  - Applies to every write a tool can read back: clip `start`/`length` (a region
+    Live kept in place of the one asked for) and audio `gainDb`, `pitchShift`
+    and `warpMode` (update-clip and create-clip), a scene, clip or Live Set
+    `timeSignature`, and `tempo`. One detail names every field a clip entry
+    reports (`start, gainDb read back as shown, not as sent`). update-clip reads
+    the meter back first and works in the one Live kept.
   - Not comparable: always report. A value written as a display string (a unit,
     an enum label, a note name, `loc:Verse`) is a spelling, not a number; so is
     a read-back that isn't a number (`-inf`). `scale` always reports, since Live

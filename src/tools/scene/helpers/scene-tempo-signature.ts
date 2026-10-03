@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import {
+  keptTimeSignature,
+  parseKeptTimeSignature,
+} from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /**
@@ -43,7 +47,7 @@ export function applyTimeSignatureProperty(
     scene.set("time_signature_enabled", false);
     landed?.("time signature");
   } else if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
+    const parsed = parseKeptTimeSignature(timeSignature);
 
     scene.set("time_signature_numerator", parsed.numerator);
     landed?.("time signature");
@@ -52,13 +56,48 @@ export function applyTimeSignatureProperty(
   }
 }
 
+/** What a scene's entry says about the time signature Live kept. */
+export interface KeptSceneTimeSignature {
+  /** The time signature Live kept, when it isn't the one asked for */
+  timeSignature?: string;
+  detail?: string;
+}
+
 /**
- * Refuse a malformed time signature before any scene is touched, so a bad
- * entry can't leave the scenes before it already changed. "disabled" is a
- * sentinel each scene handles, not a time signature.
+ * Read back the time signature a scene was just given, so one Live clamped is
+ * reported rather than claimed. Both scene tools answer through this.
+ * @param scene - The LiveAPI scene object
+ * @param requested - What was written: "N/D", or "disabled"
+ * @returns The kept signature and why it is shown, or nothing when it is as
+ *   asked
+ */
+export function readBackSceneTimeSignature(
+  scene: LiveAPI,
+  requested: string,
+): KeptSceneTimeSignature {
+  if (requested === "disabled") {
+    return {};
+  }
+
+  const timeSignature = keptTimeSignature(
+    parseKeptTimeSignature(requested),
+    scene.getProperty("time_signature_numerator"),
+    scene.getProperty("time_signature_denominator"),
+  );
+
+  return timeSignature == null
+    ? {}
+    : { timeSignature, detail: readBackDetail(["timeSignature"]) };
+}
+
+/**
+ * Refuse a time signature that is malformed, or that Live can't keep as
+ * written, before any scene is touched, so a bad entry can't leave the scenes
+ * before it already changed. "disabled" is a sentinel each scene handles, not a
+ * time signature.
  * @param value - The raw timeSignature param
  * @param parsed - The split time signatures, or null
- * @throws Error when an entry isn't "disabled" or an N/D time signature
+ * @throws Error when an entry isn't "disabled" or a time signature Live keeps
  */
 export function validateTimeSignatures(
   value: string | null | undefined,
@@ -68,7 +107,7 @@ export function validateTimeSignatures(
 
   for (const entry of entries) {
     if (entry !== "disabled") {
-      parseTimeSignature(entry);
+      parseKeptTimeSignature(entry);
     }
   }
 }

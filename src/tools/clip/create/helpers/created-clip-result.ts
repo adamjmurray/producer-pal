@@ -124,6 +124,12 @@ export interface ClipResultObject {
   length?: string;
   /** Audio clips only: the warp state Live settled on, when it isn't the one asked for */
   warping?: boolean;
+  /** The time signature Live kept, when it isn't the one asked for */
+  timeSignature?: string;
+  /** Audio clips only: the values Live kept in place of the ones asked for */
+  gainDb?: number;
+  pitchShift?: number;
+  warpMode?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any. */

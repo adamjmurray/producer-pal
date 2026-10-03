@@ -137,9 +137,10 @@ with a tool, the tool wins.
   that index; the count of scenes tells. A capture is one target, so a lone
   failure throws; a capture that succeeded and then failed on its name or color
   keeps its entry with `already changed: scene captured`. A time signature Live
-  changed (a denominator it rounds) is reported as the value read back plus
-  `timeSignature read back as shown, not as sent`; one that can't be kept is
-  refused up front.
+  changed (a numerator it clamps) is reported as the value read back plus
+  `timeSignature read back as shown, not as sent`; one that can't be kept (a
+  denominator that isn't a power of two) is refused up front. update-scene
+  answers the same way, through the same code.
 - **delete answers per target named.** A path that can't be parsed refuses the
   call. A path that parses but names the wrong kind of thing, an object this
   call won't remove (the Producer Pal device or its track, a take lane, a chain

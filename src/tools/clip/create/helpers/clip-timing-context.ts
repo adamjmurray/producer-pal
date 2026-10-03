@@ -8,7 +8,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
 
@@ -160,7 +160,7 @@ function resolveTimeSignature(
   songTimeSigDenominator: number,
 ): { timeSigNumerator: number; timeSigDenominator: number } {
   if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
+    const parsed = parseKeptTimeSignature(timeSignature);
 
     return {
       timeSigNumerator: parsed.numerator,

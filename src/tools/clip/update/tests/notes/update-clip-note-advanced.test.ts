@@ -65,7 +65,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should set loop start when start is provided", async () => {
-    setupMidiClipMock(mocks.clip123, { looping: 1 });
+    setupMidiClipMock(mocks.clip123, { looping: 1, loop_end: 8 });
 
     await updateClip({
       id: "123",
@@ -290,7 +290,8 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update warp mode for audio clips", async () => {
-    setupAudioClipMock(mocks.clip123);
+    // The mock keeps what Live would: the mode written
+    setupAudioClipMock(mocks.clip123, { warp_mode: 4 });
 
     const result = await updateClip({
       id: "123",

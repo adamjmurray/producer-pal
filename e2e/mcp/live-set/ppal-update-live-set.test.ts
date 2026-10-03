@@ -96,6 +96,19 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  // Live would turn 4/3 into 4/2, so the call is refused before it writes.
+  it("refuses a time signature with a denominator Live would change", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { timeSignature: "4/3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'timeSignature "4/3" has a denominator Live can\'t keep',
+    );
+  });
+
   it("reads back a noisy tempo rounded to Live's 2dp display precision", async () => {
     const { originalTempo } = await readLiveSetOriginals();
 

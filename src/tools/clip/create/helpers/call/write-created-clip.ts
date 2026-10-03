@@ -7,10 +7,13 @@
 // what it has to say on the entry. What has landed is journaled as it does, so
 // a throw partway keeps the entry for the clip that exists by then.
 
+import { type AudioReadBack } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { ignoredParamsNote } from "#src/tools/clip/helpers/ignored-params-note.ts";
 import { type SlotWork } from "#src/tools/clip/helpers/clip-results.ts";
 import { recordLandedClip } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { keptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import {
   type AppliedTarget,
   type Step,
@@ -120,8 +123,10 @@ function fillClip(
   const { args } = step.checked;
   const { timing } = plan;
 
+  let audioKept: AudioReadBack = {};
+
   if (plan.sampleFile) {
-    configureAudioClip(step, made.clip, payload);
+    audioKept = configureAudioClip(step, made.clip, payload);
   } else {
     configureMidiClip(step, made.clip, payload);
   }
@@ -140,6 +145,29 @@ function fillClip(
     payload.color ?? null,
     args.warping ?? null,
   );
+
+  const keptMeter =
+    args.timeSignature == null
+      ? undefined
+      : keptTimeSignature(
+          {
+            numerator: timing.timeSigNumerator,
+            denominator: timing.timeSigDenominator,
+          },
+          made.clip.getProperty("signature_numerator"),
+          made.clip.getProperty("signature_denominator"),
+        );
+  const kept = {
+    ...(keptMeter == null ? {} : { timeSignature: keptMeter }),
+    ...audioKept,
+  };
+  const keptDetail = readBackDetail(Object.keys(kept));
+
+  Object.assign(entry, kept);
+
+  if (keptDetail != null) {
+    appendDetail(entry, keptDetail);
+  }
 
   if (made.slotWork != null) {
     noteSlotWork(entry, made.slotWork);

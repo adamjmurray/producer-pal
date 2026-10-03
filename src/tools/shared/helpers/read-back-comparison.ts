@@ -35,18 +35,36 @@ export function publishedReadBack(
  * Live keeps a 32-bit float, so -6.333333 reads back as -6.33 either way and is
  * the same value. A read-back that isn't a number can't be compared with one,
  * so it always counts as different.
+ *
+ * A quantity Live stores as a float32 itself (a position in beats) can sit on a
+ * rounding boundary: 1.0035 rounds up as written and down once stored. Say so
+ * with `storedAsFloat32`, and the read-back also counts as the same when it
+ * matches what the stored form of the request rounds to. A quantity Live stores
+ * some other way (a send, whose dB is read off a linear gain) must not use it,
+ * or a value Live really did change reads as the one written.
  * @param requested - The value the call asked for
  * @param published - The read-back, as a read publishes it
  * @param round - The resolution reads publish at; omit where the read already
  *   publishes at the value's own precision
+ * @param storedAsFloat32 - Whether Live stores this very quantity as a float32
  * @returns True when the result should report the read-back
  */
 export function differsAtPublishedResolution(
   requested: number,
   published: unknown,
   round: (value: number) => number = (value) => value,
+  storedAsFloat32 = false,
 ): boolean {
-  return typeof published !== "number" || round(published) !== round(requested);
+  if (typeof published !== "number") {
+    return true;
+  }
+
+  const landed = round(published);
+
+  return (
+    landed !== round(requested) &&
+    !(storedAsFloat32 && landed === round(Math.fround(requested)))
+  );
 }
 
 /**

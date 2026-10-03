@@ -9,7 +9,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
@@ -23,6 +23,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { refuseEmptyLength } from "./clip-beat-positions.ts";
 import { requireDestinationPerSource } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 /** The update-clip params read before any clip is touched. */
@@ -295,7 +296,7 @@ function validateValueParams(
   targetCount: number,
 ): void {
   for (const meter of everyEntry(timeSignature, targetCount, "timeSignature")) {
-    parseTimeSignature(meter);
+    parseKeptTimeSignature(meter);
   }
 
   for (const pitch of everyEntry(quantizePitch, targetCount, "quantizePitch")) {
@@ -314,6 +315,10 @@ function validateValueParams(
 
   for (const duration of everyEntry(length, targetCount, "length")) {
     durationToAbletonBeats(duration, 4, 4);
+    // A bar only grows with the meter, so a length that spans nothing in the
+    // widest meter spans nothing in any. A meter-dependent one is refused per
+    // clip, in its own meter.
+    refuseEmptyLength(duration, durationToAbletonBeats(duration, 99, 1));
   }
 }
 

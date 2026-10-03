@@ -139,6 +139,7 @@ describe("updateLiveSet", () => {
     expect(await updateLiveSet({ tempo: 140 })).toStrictEqual({
       id: "live_set_id",
       tempo: 140.5,
+      detail: "tempo read back as shown, not as sent",
     });
   });
 
@@ -162,7 +163,32 @@ describe("updateLiveSet", () => {
     expect(await updateLiveSet({ timeSignature: "7/8" })).toStrictEqual({
       id: "live_set_id",
       timeSignature: "4/4",
+      detail: "timeSignature read back as shown, not as sent",
     });
+  });
+
+  it("names every field Live changed in one detail", async () => {
+    kept.tempo = 140.5;
+    kept.signature_numerator = 4;
+    kept.signature_denominator = 4;
+
+    liveSet.set.mockImplementation(() => undefined);
+
+    expect(
+      await updateLiveSet({ tempo: 140, timeSignature: "7/8" }),
+    ).toStrictEqual({
+      id: "live_set_id",
+      tempo: 140.5,
+      timeSignature: "4/4",
+      detail: "tempo, timeSignature read back as shown, not as sent",
+    });
+  });
+
+  it("refuses a denominator that isn't a power of two, writing nothing", async () => {
+    await expect(
+      updateLiveSet({ tempo: 120, timeSignature: "4/3" }),
+    ).rejects.toThrow('timeSignature "4/3" has a denominator Live can\'t keep');
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
   it("should throw error for invalid time signature format", async () => {

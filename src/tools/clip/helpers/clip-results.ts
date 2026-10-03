@@ -52,8 +52,16 @@ export interface ClipResult {
   deletedNotes?: number;
   /** Where the clip is, as a path. Pastes back into any path/toPath param. */
   path?: string;
+  /** The start the clip ended up at, when Live kept a different one. */
+  start?: string;
   /** The length the clip ended up at, when the call moved it off the arg. */
   length?: string;
+  /** The time signature Live kept, when it isn't the one asked for. */
+  timeSignature?: string;
+  /** The audio values Live kept in place of the ones asked for. */
+  gainDb?: number;
+  pitchShift?: number;
+  warpMode?: string;
   /** The span left on the arrangement, when the call cut it short. */
   arrangementLength?: string;
   /** The palette color Live settled on, when it isn't the one asked for. */

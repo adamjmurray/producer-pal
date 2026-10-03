@@ -48,9 +48,15 @@ follows the code; when it disagrees with a tool, the tool wins.
 - **`createTrack` and `createScene` refuse a `path` entry they can't read**
   before anything is made, as well as a list with a hole, lists of different
   lengths, `count` with a path list, and a track or scene past the cap.
-  `createScene` also refuses `count` with `capture`, a tempo out of range, and a
-  `timeSignature` that isn't `N/D` (or `disabled`) with a power-of-two
-  denominator, since Live would change it.
+  `createScene` also refuses `count` with `capture` and a tempo out of range.
+- **`createScene`, `updateScene`, `updateLiveSet`, `createClip` and `updateClip`
+  refuse a `timeSignature`** that isn't `N/D` (or `disabled`, on scenes) or
+  whose denominator isn't a power of two, since Live would change it. One check
+  serves all five (`live-api-values.ts`).
+- **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
+  any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
+  skips that clip, as does a `start` at or past a looping clip's loop end sent
+  without a `length`: Live would keep the old region.
 - **`createClip` refuses a `path` entry it can't parse** before anything is
   made, as well as an arrangement position that won't parse or is past Live's
   last, a list that doesn't pair, and an unknown `auto`. A destination that

@@ -5,8 +5,9 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
+import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
@@ -151,7 +152,9 @@ function parseUpdateLiveSet(run: UpdateLiveSetRun): UpdateLiveSetCall {
   // Parsed up front so a malformed format fails before any property is
   // written, instead of after tempo already landed.
   const timeSignature =
-    args.timeSignature == null ? null : parseTimeSignature(args.timeSignature);
+    args.timeSignature == null
+      ? null
+      : parseKeptTimeSignature(args.timeSignature);
   // Named before anything is written: an unreadable list or time is refused
   // with the Set untouched.
   const locators = locatorsNamed(args, liveSet, timeSignature);
@@ -223,6 +226,15 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
 
   if (timeSignature != null) {
     applyTimeSignature(liveSet, timeSignature, result);
+  }
+
+  // Said once for both: the value Live kept sits in the field it was asked in.
+  const changed = ["tempo", "timeSignature"].filter((field) => field in result);
+
+  const readBack = readBackDetail(changed);
+
+  if (readBack != null) {
+    result.detail = readBack;
   }
 
   if (scale != null) {

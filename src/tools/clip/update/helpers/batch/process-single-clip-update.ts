@@ -6,6 +6,7 @@
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { readBackAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
@@ -23,13 +24,14 @@ import {
 import {
   type ClipReasons,
   ignoreClipParams,
+  noteClipReadBack,
   noteClipReason,
   noteLanded,
 } from "../entries/clip-reasons.ts";
 import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { getTimeSignature } from "../clip-beat-positions.ts";
+import { writeClipMeter } from "./write-clip-meter.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
 import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
@@ -154,9 +156,10 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     reasons,
   } = params;
 
-  const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
-    timeSignature,
+  const { timeSigNumerator, timeSigDenominator } = writeClipMeter(
     clip,
+    timeSignature,
+    reasons,
   );
 
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
@@ -182,12 +185,16 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     );
   }
 
-  writeClipProperties(params, {
-    timeSigNumerator,
-    timeSigDenominator,
-    isLooping,
-    wasLooping,
-  });
+  // The meter is already written, so the rest of the properties leave it be.
+  writeClipProperties(
+    { ...params, timeSignature: undefined },
+    {
+      timeSigNumerator,
+      timeSigDenominator,
+      isLooping,
+      wasLooping,
+    },
+  );
 
   // Context for transform variables (clip.*, bar.*). Built only when the call
   // edits notes, because building it reads the Live Set's scale and nothing
@@ -281,6 +288,12 @@ function writeAudioParams(params: ProcessSingleClipUpdateParams): void {
   if ([gainDb, pitchShift, warpMode, warping, looping].some((v) => v != null)) {
     noteLanded(reasons, "audio params", { id: clip.id });
   }
+
+  noteClipReadBack(
+    reasons,
+    clip.id,
+    readBackAudioClipProperties(clip, { gainDb, pitchShift, warpMode }),
+  );
 }
 
 /**

@@ -13,6 +13,7 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 
 interface AddedNote {
   pitch: number;
@@ -196,7 +197,7 @@ describe("updateClip - preTransforms", () => {
   });
 
   it("reports ignored preTransforms on an audio clip's own entry", async () => {
-    setupAudioClipMock(mocks.clip123, { length: 8 });
+    setupAudioClipMock(mocks.clip123, { length: 8, gain: dbToLiveGain(-6) });
 
     // gainDb lands, so the ignored preTransforms is a reason on a real entry.
     const result = await updateClip({

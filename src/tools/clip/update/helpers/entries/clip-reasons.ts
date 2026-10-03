@@ -17,6 +17,7 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { type LandedColor } from "#src/tools/shared/helpers/landed-color.ts";
 
@@ -34,6 +35,9 @@ export interface ClipReasons {
   colors: Map<string, string>;
   /** The take lanes a clip's move made on the way ("l1-l3"), and their track. */
   created: Map<string, { lanes: string; trackIndex: number }>;
+  /** The values Live kept in place of the ones asked for, by the entry field
+   * that reports them (`start`, `gainDb`, ...). */
+  readBacks: Map<string, Record<string, number | string>>;
   /**
    * Where the target being written says what has landed, so a throw later in
    * its update keeps the entry for what exists by then. Set per target.
@@ -56,6 +60,7 @@ export function newClipReasons(): ClipReasons {
     ignoredParams: new Map(),
     colors: new Map(),
     created: new Map(),
+    readBacks: new Map(),
   };
 }
 
@@ -106,6 +111,27 @@ export function noteClipReason(
   reason: string,
 ): void {
   reasons.said.set(clipId, [...(reasons.said.get(clipId) ?? []), reason]);
+}
+
+/**
+ * Note the values Live kept in place of the ones this clip was asked for. They
+ * go on the entry under the field they were asked in, and one detail names them
+ * all, however many writes found one.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param shown - The kept values, by entry field; nothing to do when empty
+ */
+export function noteClipReadBack(
+  reasons: ClipReasons,
+  clipId: string,
+  shown: Record<string, number | string>,
+): void {
+  if (Object.keys(shown).length > 0) {
+    reasons.readBacks.set(clipId, {
+      ...reasons.readBacks.get(clipId),
+      ...shown,
+    });
+  }
 }
 
 /**
@@ -290,6 +316,13 @@ export function moveClipReasons(
     reasons.created.delete(fromId);
   }
 
+  const readBack = reasons.readBacks.get(fromId);
+
+  if (readBack != null) {
+    reasons.readBacks.set(toId, readBack);
+    reasons.readBacks.delete(fromId);
+  }
+
   // `landed` needs no move: the loop marks it against the clip the caller named.
   if (reasons.refused.delete(fromId)) {
     reasons.refused.add(toId);
@@ -315,6 +348,10 @@ export function reportClipReasons(
     entry.color = color;
   }
 
+  const kept = reasons.readBacks.get(clipId) ?? {};
+
+  Object.assign(entry, kept);
+
   for (const reason of reasons.said.get(clipId) ?? []) {
     appendDetail(entry, reason);
   }
@@ -334,4 +371,22 @@ export function reportClipReasons(
       );
     }
   }
+
+  const detail = readBackDetail(
+    READ_BACK_FIELDS.filter((field) => field in kept),
+  );
+
+  if (detail != null) {
+    appendDetail(entry, detail);
+  }
 }
+
+/** The fields a read-back can report, in the order the detail names them. */
+const READ_BACK_FIELDS = [
+  "start",
+  "length",
+  "timeSignature",
+  "gainDb",
+  "pitchShift",
+  "warpMode",
+];

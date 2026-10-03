@@ -170,6 +170,8 @@ describe("updateClip - Properties and ID handling", () => {
      */
     function clipReadsColor(colorValue: number): void {
       setupMidiClipMock(mocks.clip123, { color: colorValue });
+      // Live picks the color, so what was written isn't what it answers with.
+      mocks.clip123.set.mockImplementation(() => undefined);
     }
 
     it("reports the palette color Live snapped to on the clip's entry", async () => {

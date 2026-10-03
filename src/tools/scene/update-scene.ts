@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   landedColor,
   type LandedColor,
@@ -37,6 +38,7 @@ import {
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
+  readBackSceneTimeSignature,
 } from "./helpers/scene-tempo-signature.ts";
 
 interface UpdateSceneResult {
@@ -44,6 +46,8 @@ interface UpdateSceneResult {
   path?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
+  /** The time signature Live kept, when it isn't the one asked for */
+  timeSignature?: string;
   detail?: string;
 }
 
@@ -124,13 +128,27 @@ function writeScene(
   }
 
   applyTempoProperty(scene, checked.tempo, landed);
-  applyTimeSignatureProperty(
-    scene,
-    valueForIndex(checked.timeSignature, index, checked.timeSignatures),
-    landed,
+
+  const timeSignature = valueForIndex(
+    checked.timeSignature,
+    index,
+    checked.timeSignatures,
   );
 
-  return { ...address, ...colorLanded };
+  applyTimeSignatureProperty(scene, timeSignature, landed);
+
+  const kept =
+    timeSignature == null
+      ? {}
+      : readBackSceneTimeSignature(scene, timeSignature);
+  const detail = joinDetails([colorLanded.detail, kept.detail]);
+
+  return {
+    ...address,
+    ...colorLanded,
+    ...kept,
+    ...(detail == null ? {} : { detail }),
+  };
 }
 
 /**

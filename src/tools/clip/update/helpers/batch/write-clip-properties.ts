@@ -13,6 +13,7 @@ import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
 import { calculateBeatPositions } from "../clip-beat-positions.ts";
 import { noteClipColor, noteLanded } from "../entries/clip-reasons.ts";
 import { type ProcessSingleClipUpdateParams } from "./process-single-clip-update.ts";
+import { noteRegionReadBack } from "./region-read-back.ts";
 
 /**
  * Write the clip's name, color, meter, and loop region.
@@ -106,6 +107,20 @@ export function writeClipProperties(
   if (color != null) {
     noteClipColor(reasons, clip.id, landedColor(clip, color));
   }
+
+  noteRegionReadBack(
+    clip,
+    reasons,
+    {
+      startBeats: start == null ? null : startBeats,
+      lengthBeats:
+        length == null || startBeats == null || endBeats == null
+          ? null
+          : endBeats - startBeats,
+    },
+    { timeSigNumerator, timeSigDenominator },
+    isLooping,
+  );
 }
 
 /**

@@ -68,6 +68,12 @@ describe("createClip - advanced features", () => {
       },
     });
 
+    // Live took the meter as written
+    Object.assign(clip.properties, {
+      signature_numerator: 6,
+      signature_denominator: 8,
+    });
+
     const result = await createClip({
       slot: "0/0",
       timeSignature: "6/8",
@@ -79,6 +85,37 @@ describe("createClip - advanced features", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       path: "t0/s0",
     });
+  });
+
+  it("reports the time signature Live kept in place of the one asked for", async () => {
+    const { clip } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    Object.assign(clip.properties, {
+      signature_numerator: 1,
+      signature_denominator: 32,
+    });
+
+    expect(
+      await createClip({ slot: "0/0", timeSignature: "100/32" }),
+    ).toStrictEqual({
+      id: "live_set/tracks/0/clip_slots/0/clip",
+      path: "t0/s0",
+      timeSignature: "1/32",
+      detail: "timeSignature read back as shown, not as sent",
+    });
+  });
+
+  it("refuses a denominator Live would change before making the clip", async () => {
+    const { clipSlot } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    await expect(
+      createClip({ slot: "0/0", timeSignature: "4/3" }),
+    ).rejects.toThrow('timeSignature "4/3" has a denominator Live can\'t keep');
+    expect(clipSlot.call).not.toHaveBeenCalled();
   });
 
   it("should calculate correct clip length based on note start position", async () => {

@@ -19,7 +19,7 @@ import {
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { validateSceneIndexCap } from "../scene-slots.ts";
-import { validateCreatedTimeSignatures } from "./created-scene-properties.ts";
+import { validateTimeSignatures } from "../scene-tempo-signature.ts";
 import {
   type CreateSceneCall,
   type ScenePayload,
@@ -55,7 +55,7 @@ export function checkCreateSceneCall(
     // Checked before capturing: they're only applied once the scene exists.
     const labels = pairLabels({ noun: "scene", count: 1, color });
 
-    validateCreatedTimeSignatures(timeSignature, null);
+    validateTimeSignatures(timeSignature, null);
 
     return { ...labels, liveSet, call, run: null, timeSignatures: null };
   }
@@ -87,7 +87,7 @@ export function checkCreateSceneCall(
     "timeSignature",
   );
 
-  validateCreatedTimeSignatures(timeSignature, timeSignatures);
+  validateTimeSignatures(timeSignature, timeSignatures);
 
   return { ...labels, liveSet, call, run, timeSignatures };
 }

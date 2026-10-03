@@ -156,6 +156,38 @@ describe("ppal-update-scene", () => {
     ).toBeUndefined();
   });
 
+  it("refuses a denominator Live would change, writing nothing", async () => {
+    const [sceneId] = await createScenes();
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-scene",
+      arguments: { id: sceneId, timeSignature: "4/3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'timeSignature "4/3" has a denominator Live can\'t keep',
+    );
+  });
+
+  it("reports the time signature Live kept when it clamps the numerator", async () => {
+    const [sceneId] = await createScenes();
+    const result = parseToolResult<UpdateSceneResult & { detail?: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-scene",
+        arguments: { id: sceneId, timeSignature: "100/32" },
+      }),
+    );
+
+    // Live clamped it: the entry carries the kept value, not the one sent.
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: sceneId,
+        timeSignature: expect.not.stringMatching(/^100\//),
+        detail: "timeSignature read back as shown, not as sent",
+      }),
+    );
+  });
+
   it("pairs one time signature per scene in one call", async () => {
     const [sceneId, secondSceneId] = await createScenes();
     const result = await ctx.client!.callTool({

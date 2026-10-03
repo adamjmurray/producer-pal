@@ -7,7 +7,11 @@
 // lands is said as it does (`step.landed`), so a step that throws leaves an
 // entry that names what the clip has by then.
 
-import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
+import {
+  type AudioReadBack,
+  readBackAudioClipProperties,
+  setAudioClipProperties,
+} from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import { type Step } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { buildClipProperties } from "../created-clip-result.ts";
@@ -57,12 +61,13 @@ export function configureMidiClip(
  * @param step - The call's state for this target
  * @param clip - The new clip
  * @param payload - The target's payload
+ * @returns The audio values Live kept in place of the ones asked for
  */
 export function configureAudioClip(
   step: Step<CreateClipCall>,
   clip: LiveAPI,
   payload: CreatePayload,
-): void {
+): AudioReadBack {
   const { args } = step.checked;
   const { timing } = payload.plan;
   const props: Record<string, unknown> = {};
@@ -104,4 +109,6 @@ export function configureAudioClip(
   if (args.warping != null) {
     step.landed("warping");
   }
+
+  return readBackAudioClipProperties(clip, audio);
 }
