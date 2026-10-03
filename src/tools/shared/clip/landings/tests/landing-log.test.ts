@@ -121,6 +121,7 @@ describe("recordResize", () => {
       start: 24,
       end: 40,
       order: expect.any(Number),
+      resizes: "resized",
     });
     expect(resize?.order).toBeGreaterThan(landedAt?.order as number);
   });
@@ -137,6 +138,7 @@ describe("recordResize", () => {
         start: 20,
         end: 24,
         order: expect.any(Number),
+        resizes: "resized",
       },
     ]);
   });
@@ -146,7 +148,9 @@ describe("recordResize", () => {
 
     recordResize(log, clipAt(null), 4);
 
-    expect(log.written).toStrictEqual([wholeLane(0)]);
+    expect(log.written).toStrictEqual([
+      { ...wholeLane(0), resizes: "resized" },
+    ]);
   });
 
   it("records nothing for a clip on no track", () => {

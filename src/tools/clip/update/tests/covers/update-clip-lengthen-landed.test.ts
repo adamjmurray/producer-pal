@@ -86,6 +86,24 @@ describe("a resize in place", () => {
     expect(result[0]?.detail).toContain("overwritten later in this call");
   });
 
+  it("doesn't call a clip cut short by its own shortening", async () => {
+    vi.mocked(applyClipEnvelopes).mockResolvedValue(undefined);
+    setUpLane([
+      { id: "100", start: 0, length: 16 },
+      { id: "101", start: 40, length: 8 },
+    ]);
+
+    const result = await updateClip({
+      id: "100,101",
+      arrangementLength: "2bar,1bar",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "100", path: "t0[1|1]" },
+      { id: "101", path: "t0[11|1]" },
+    ]);
+  });
+
   it("replaces nothing when a looped clip's every tile was refused", async () => {
     setUpLane(
       [

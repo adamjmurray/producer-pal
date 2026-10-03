@@ -127,7 +127,7 @@ export function recordResize(
   const end = clip.getProperty("end_time");
 
   if (typeof start !== "number" || typeof end !== "number") {
-    log.written.push(wholeLaneWrite(lane));
+    log.written.push({ ...wholeLaneWrite(lane), resizes: clip.id });
 
     return;
   }
@@ -139,6 +139,7 @@ export function recordResize(
     start: Math.min(end, newEnd),
     end: Math.max(end, newEnd),
     order: nextLandingOrder(),
+    resizes: clip.id,
   });
 }
 
@@ -153,20 +154,48 @@ export function writtenOverBy(
   span: LandedSpan | undefined,
   written: readonly LandedSpan[],
 ): string | undefined {
-  const lane = JSON.stringify(span?.lane);
-  const over = written
-    .filter(
-      (other) =>
-        span != null &&
-        other.order > span.order &&
-        JSON.stringify(other.lane) === lane &&
-        other.start < span.end - SAME_TIME_EPSILON &&
-        other.end > span.start + SAME_TIME_EPSILON &&
-        Number.isFinite(other.start),
-    )
+  const over = writesOver(span, written)
+    .filter((other) => Number.isFinite(other.start))
     .toSorted((a, b) => a.order - b.order)[0];
 
   return over == null
     ? undefined
     : arrangementPositionPath(over.lane, over.start);
+}
+
+/**
+ * Whether any write after a span reaches into it, a write that can't be named
+ * (a whole lane) included. A clip that ends sooner than it landed was cut by a
+ * write of the call only if this is true.
+ * @param span - Where the clip sat, if known
+ * @param written - Every span the call wrote
+ * @returns True when a later write overlapped it
+ */
+export function wroteOver(
+  span: LandedSpan | undefined,
+  written: readonly LandedSpan[],
+): boolean {
+  return writesOver(span, written).length > 0;
+}
+
+/**
+ * The writes after a span that reach into it, on its lane.
+ * @param span - Where the clip sat, if known
+ * @param written - Every span the call wrote
+ * @returns The overlapping later writes
+ */
+function writesOver(
+  span: LandedSpan | undefined,
+  written: readonly LandedSpan[],
+): LandedSpan[] {
+  const lane = JSON.stringify(span?.lane);
+
+  return written.filter(
+    (other) =>
+      span != null &&
+      other.order > span.order &&
+      JSON.stringify(other.lane) === lane &&
+      other.start < span.end - SAME_TIME_EPSILON &&
+      other.end > span.start + SAME_TIME_EPSILON,
+  );
 }

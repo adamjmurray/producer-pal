@@ -28,6 +28,8 @@ export interface LandedSpan {
   end: number;
   /** Higher landed later, from nextLandingOrder(). Not result order. */
   order: number;
+  /** Set on a resize's span: the clip it resizes, which it never cuts short */
+  resizes?: string;
 }
 
 /** What is left of a landed clip, and the path to report it by. */

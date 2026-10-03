@@ -18,7 +18,7 @@ import {
   type LandedSpan,
   claimRemainders,
 } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
-import { type LandingLog, writtenOverBy } from "./landing-log.ts";
+import { type LandingLog, writtenOverBy, wroteOver } from "./landing-log.ts";
 
 /** What the read-back needs of an entry, and what it may change on it. */
 export interface ClearedClipEntry {
@@ -83,7 +83,7 @@ export function reportClearedClips<E extends ClearedClipEntry>(
   });
 
   for (const { entry, said } of gone) {
-    const by = writtenOverBy(read.spanOf(entry), log.written);
+    const by = writtenOverBy(read.spanOf(entry), othersWrites(entry, log));
     const remainder = remainders.get(entry);
 
     if (remainder == null) {
@@ -145,7 +145,15 @@ function noteCutShort<E extends ClearedClipEntry>(
     return;
   }
 
-  const by = writtenOverBy(span, read.log.written);
+  // A clip can end sooner than its entry's span with no later write to blame:
+  // lengthening tiles cut the first one to a whole loop.
+  const written = othersWrites(entry, read.log);
+
+  if (!wroteOver(span, written)) {
+    return;
+  }
+
+  const by = writtenOverBy(span, written);
 
   entry.arrangementLength = lengthOf(clip);
   appendDetail(
@@ -153,6 +161,19 @@ function noteCutShort<E extends ClearedClipEntry>(
     by == null
       ? "shortened later in this call"
       : `shortened by ${by} later in this call`,
+  );
+}
+
+/**
+ * What the call wrote that could have cut an entry's clip: not its own resize,
+ * which shortens it on purpose.
+ * @param entry - The entry whose clip is in question
+ * @param log - What the call has written
+ * @returns The spans written
+ */
+function othersWrites(entry: ClearedClipEntry, log: LandingLog): LandedSpan[] {
+  return log.written.filter(
+    ({ resizes }) => resizes == null || resizes !== entry.id,
   );
 }
 
