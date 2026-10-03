@@ -16,7 +16,7 @@ import {
   codeExecSuccess,
   codeExecFailure,
 } from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
-import { createClip } from "../create-clip.ts";
+import { createClip } from "../../create-clip.ts";
 
 // Mock the code execution protocol module
 vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({

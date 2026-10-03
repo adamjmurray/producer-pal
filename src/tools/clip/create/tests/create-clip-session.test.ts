@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -16,7 +17,8 @@ import {
 import { createNote } from "#src/test/test-data-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "../create-clip.ts";
-import { mockScratchSwap } from "./create-clip-test-helpers.ts";
+import { mockScratchSwap } from "./create-clip-scratch-mocks.ts";
+import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 interface SessionClipSetupOptions {
   hasClip?: number;
@@ -342,7 +344,9 @@ describe("createClip - session view", () => {
     );
   });
 
-  it("should throw error when scene does not exist for auto=play-scene", async () => {
+  // The clip is made by then, so a launch that fails can't take it back out
+  // of the answer.
+  it("keeps the clip and warns when the scene to launch is missing", async () => {
     mockNonExistentObjects();
     setupLiveSet();
     setupTrack(0);
@@ -350,13 +354,16 @@ describe("createClip - session view", () => {
       clipProperties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    await expect(
-      createClip({
-        slot: "0/0",
-        notes: "C3 1|1",
-        auto: "play-scene",
-      }),
-    ).rejects.toThrow('auto="play-scene" failed: no scene at "s0"');
+    const result = await createClip({
+      slot: "0/0",
+      notes: "C3 1|1",
+      auto: "play-scene",
+    });
+
+    expect(result).toStrictEqual(expect.objectContaining({ path: "t0/s0" }));
+    expect(capturedWarnings()).toContain(
+      'auto ignored: play-scene failed: no scene at "s0"',
+    );
   });
 
   it("should throw error for invalid auto value", async () => {
@@ -528,9 +535,8 @@ describe("createClip - session view", () => {
     expect(clip.set).not.toHaveBeenCalledWith("name", "A");
     expect(result).toStrictEqual([
       {
-        ok: false,
         path: "t0/s0",
-        detail: "not created: t0/s0 is named again later in this call",
+        detail: 'named again as "t0/s0" later in this call',
       },
       { id: "clip_0_0", path: "t0/s0" },
     ]);
@@ -646,6 +652,8 @@ describe("createClip - session view - per-clip transforms", () => {
 });
 
 describe("createClip - session view - auto", () => {
+  const NO_SLOT_LAUNCHED =
+    "auto ignored: it launches clip slots, and none got a clip";
   const frozen = "track t1 (id track-1) is frozen; unfreeze it first";
 
   it("play-clip fires only the slots that got a clip", async () => {
@@ -698,5 +706,24 @@ describe("createClip - session view - auto", () => {
       { ok: false, path: "t1/s0", detail: frozen },
     ]);
     expect(scene0.call).not.toHaveBeenCalledWith("fire");
+    expect(capturedWarnings()).toContain(NO_SLOT_LAUNCHED);
+  });
+
+  it("says that auto did nothing for an arrangement-only call", async () => {
+    setupArrangementClipMocks();
+
+    await createClip({ path: "t0[5|1]", auto: "play-scene" });
+
+    expect(capturedWarnings()).toStrictEqual([NO_SLOT_LAUNCHED]);
+  });
+
+  it("says nothing when auto launched a slot", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    setupSessionClip(0, 0, { clipProperties: { length: 4 } });
+
+    await createClip({ path: "t0/s0", auto: "play-clip" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

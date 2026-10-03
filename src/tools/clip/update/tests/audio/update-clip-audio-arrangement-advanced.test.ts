@@ -248,7 +248,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     expect(sourceClip!.set).not.toHaveBeenCalledWith("loop_end", 8.0);
 
     // Single moved clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: movedClipId, path: "t0[3|1]" });
     mockCreate.mockRestore();
   });

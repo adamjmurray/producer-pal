@@ -11,7 +11,7 @@
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { claimRemainders } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
-import { writtenOverBy } from "#src/tools/clip/update/helpers/arrangement/landing-log.ts";
+import { writtenOverBy } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { stillAtPath } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {

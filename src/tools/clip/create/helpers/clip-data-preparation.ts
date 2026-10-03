@@ -18,7 +18,7 @@ interface PreparedClipData {
 
 /**
  * Prepares clip data (notes and initial length) based on clip type.
- * Notation is interpreted once here; transforms run per clip in createClips so
+ * Notation is interpreted once here; transforms run per clip, once its target is named, so
  * clip.index/clip.count/clipseq() vary across a multi-clip create.
  * @param sampleFile - Audio file path (if audio clip)
  * @param notationString - MIDI notation string (if MIDI clip)

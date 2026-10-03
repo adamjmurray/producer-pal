@@ -17,7 +17,7 @@ import {
 import {
   type LandingLog,
   newLandingLog,
-} from "../../helpers/arrangement/landing-log.ts";
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 import {
   type ClipReasons,
   newClipReasons,

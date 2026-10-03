@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { createClip } from "../../create-clip.ts";
 import {
+  registerArrangementTrack,
   setupArrangementClipMocks,
   setupAudioArrangementClipMocks,
   setupSessionAudioClipMocks,
@@ -160,9 +161,10 @@ describe("createClip - facts about a clip go on its entry", () => {
 
     it("are counted on every clip of a multi-clip create", async () => {
       setupArrangementClipMocks();
+      registerArrangementTrack(1);
 
       const result = (await createClip(
-        { path: "t0[1|1],t0[3|1]", notes: DUPLICATE_PAIR },
+        { path: "t0[1|1],t1[1|1]", notes: DUPLICATE_PAIR },
         { notation: "midi-json" },
       )) as Array<{ detail?: string }>;
 

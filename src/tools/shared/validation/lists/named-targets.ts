@@ -152,16 +152,6 @@ export function spelledAs(target: NamedTarget): string {
   return target.param === "id" ? `id ${target.value}` : `"${target.value}"`;
 }
 
-/**
- * How a destination says a later one names the same place, in the words
- * {@link namedLaterReason} uses: the last to name it gets the clip.
- * @param destination - The place, as a path
- * @returns The reason, e.g. "t0/s1 is named again later in this call"
- */
-export function destinationNamedLaterReason(destination: string): string {
-  return `${destination} is ${namedAgain()}`;
-}
-
 /** What every named-again detail looks like, whoever wrote it. */
 const NAMED_AGAIN = /^named again( as .+)? later in this call$/s;
 
@@ -201,20 +191,6 @@ export function namedAgain(address?: string): string {
  */
 export function isNamedAgain(detail: string | undefined): boolean {
   return detail != null && NAMED_AGAIN.test(detail);
-}
-
-/**
- * The reason a lone target that got nothing done throws with, since there is no
- * list for its entry to hold a place in.
- * @param entries - The call's result entries, in call order
- * @returns The reason, or null when the call named more than one target or did its work
- */
-export function loneRefusal(entries: object[]): string | null {
-  const [only] = entries;
-
-  return entries.length === 1 && only != null && "ok" in only
-    ? (only as TargetSkip).detail
-    : null;
 }
 
 // --- Helpers below main exports ---

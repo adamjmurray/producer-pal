@@ -3,25 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import {
-  type LandedSpan,
-  claimRemainders,
-} from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import { type LandedSpan } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import { reportClearedClips } from "#src/tools/shared/clip/landings/report-cleared-clips.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
-import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
-import {
-  objectPathForApi,
-  stillAtPath,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type Call,
   type Done,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
-import { writtenOverBy } from "../arrangement/landing-log.ts";
+import { writtenOverBy } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { clipIsGone } from "../arrangement/moved-source.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
@@ -171,16 +163,8 @@ function reportClearedInPlace(run: ClipRun, done: ClipDone): void {
   }
 }
 
-/** One entry the call wrote, and the target that wrote it. */
-interface WrittenEntry {
-  index: number;
-  entry: ClipResult;
-}
-
 /**
- * Account for every clip a later write of the same call cleared or cut. A clip
- * is checked by reading its id back, not by comparing the paths the call
- * reported: a clip can be cleared by one that starts somewhere else. Most
+ * Account for every clip a later write of the same call cleared or cut. Most
  * clashes are met before the write (and say so on the entry); this is the one
  * the call only found out about while writing.
  * @param run - The call's shared state
@@ -195,28 +179,12 @@ function reportOverwritten(run: ClipRun, done: ClipDone): void {
         target.data.startBeats != null ||
         target.data.lengthBeats != null),
   );
-  const written: WrittenEntry[] = entries.flatMap((entry, index) =>
-    outcomes[index] === "written"
-      ? [entry, ...(pieces[index] as ClipResult[])].map((each) => ({
-          index,
-          entry: each as ClipResult,
-        }))
-      : [],
-  );
 
-  // The read-back costs a look-up per entry, so most calls skip it: one that
-  // clears nothing buries nothing, and a lone entry has no sibling.
-  if (!writes || written.length < 2) {
+  // One that clears nothing buries nothing, so most calls skip the read-back.
+  if (!writes) {
     return;
   }
 
-  const gone = written.filter(
-    ({ entry }) =>
-      (entry as Partial<ClipResult>).id != null &&
-      entry.path != null &&
-      !stillAtPath(entry.id, entry.path),
-  );
-  const goneEntries = new Set(gone.map(({ entry }) => entry));
   const sat = new Map<string, LandedSpan>();
 
   for (const target of targets) {
@@ -225,59 +193,17 @@ function reportOverwritten(run: ClipRun, done: ClipDone): void {
     }
   }
 
-  const spanOf = (entry: ClipResult): LandedSpan | undefined =>
-    run.landings.landed.get(entry.id) ?? sat.get(entry.id);
-  // Gone from where it was doesn't mean gone: a later landing that takes only
-  // part of it re-creates the rest under a new id.
-  const remainders = claimRemainders({
-    entries: gone.map(({ entry }) => entry),
-    spanOf,
-    written: run.landings.written,
-    taken: written
-      .filter(({ entry }) => !goneEntries.has(entry))
-      .map(({ entry }) => entry.id),
+  reportClearedClips<ClipResult>({
+    written: entries.flatMap((entry, index) =>
+      outcomes[index] === "written"
+        ? [entry, ...(pieces[index] as ClipResult[])].map((each) => ({
+            entry: each as ClipResult,
+            said: done.shortened.has(index),
+          }))
+        : [],
+    ),
+    spanOf: (entry) => run.landings.landed.get(entry.id) ?? sat.get(entry.id),
+    log: run.landings,
     lanes: run.context.lanes,
   });
-
-  for (const { index, entry } of gone) {
-    const by = writtenOverBy(spanOf(entry), run.landings.written);
-    const remainder = remainders.get(entry);
-
-    if (remainder == null) {
-      // It names nothing now.
-      delete (entry as Partial<ClipResult>).id;
-      appendDetail(
-        entry,
-        by == null
-          ? "overwritten later in this call"
-          : `overwritten later in this call by ${by}`,
-      );
-    } else {
-      entry.id = remainder.clip.id;
-      entry.path = remainder.path;
-      entry.arrangementLength = lengthOf(remainder.clip);
-
-      if (!done.shortened.has(index)) {
-        appendDetail(
-          entry,
-          by == null
-            ? "shortened later in this call"
-            : `shortened by ${by} later in this call`,
-        );
-      }
-    }
-  }
-}
-
-/**
- * How much of the arrangement a clip covers, as read-clip reports it.
- * @param clip - The clip to measure
- * @returns Its span as a duration
- */
-function lengthOf(clip: LiveAPI): string {
-  const start = clip.getProperty("start_time") as number;
-  const end = clip.getProperty("end_time") as number;
-  const { numerator, denominator } = songMeter();
-
-  return abletonBeatsToDuration(end - start, numerator, denominator);
 }

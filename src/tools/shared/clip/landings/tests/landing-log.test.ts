@@ -13,7 +13,7 @@ import {
   recordLandedClip,
   recordResize,
   writtenOverBy,
-} from "../../helpers/arrangement/landing-log.ts";
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 
 /**
  * A track's main arrangement lane, where a move with no take lane lands.

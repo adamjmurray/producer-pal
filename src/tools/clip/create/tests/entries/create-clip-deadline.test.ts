@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
+import {
+  setupArrangementClipMocks,
+  setupSessionMocks,
+} from "../create-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock the loop-deadline module to control deadline behavior
@@ -16,7 +19,7 @@ vi.mock(import("#src/shared/max/v8-request-deadline.ts"), () => ({
   isDeadlineExceeded: vi.fn(() => false),
 }));
 
-const { createClip } = await import("../create-clip.ts");
+const { createClip } = await import("../../create-clip.ts");
 const { isDeadlineExceeded } =
   await import("#src/shared/max/v8-request-deadline.ts");
 
@@ -42,8 +45,7 @@ describe("createClip - deadline exceeded", () => {
       { timeoutMs: 1 },
     );
 
-    const reason =
-      "not created: the request ran out of time; re-run for this clip";
+    const reason = "the request ran out of time; re-run for this clip";
 
     expect(result).toStrictEqual([
       { path: "t0[1|1]", ok: false, detail: reason },
@@ -96,12 +98,40 @@ describe("createClip - deadline exceeded", () => {
       {
         path: "t0[3|1]",
         ok: false,
-        detail:
-          "not created: the request ran out of time; re-run for this clip",
+        detail: "the request ran out of time; re-run for this clip",
       },
     ]);
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Ran out of time"),
     );
+  });
+
+  // A clip whose turn began is finished, scenes made on the way and all; only
+  // the destinations the deadline never reached are skipped.
+  it("keeps what a session clip cost when the deadline stops the next", async () => {
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    // The first destination is reached; the clock is up from then on.
+    vi.mocked(isDeadlineExceeded)
+      .mockReturnValueOnce(false)
+      .mockReturnValue(true);
+
+    const result = await createClip({ path: "t0/s0,t0/s1,t0/s2" });
+
+    expect(result).toStrictEqual([
+      { id: "live_set/tracks/0/clip_slots/0/clip", path: "t0/s0" },
+      {
+        path: "t0/s1",
+        ok: false,
+        detail: "the request ran out of time; re-run for this clip",
+      },
+      {
+        path: "t0/s2",
+        ok: false,
+        detail: "the request ran out of time; re-run for this clip",
+      },
+    ]);
   });
 });

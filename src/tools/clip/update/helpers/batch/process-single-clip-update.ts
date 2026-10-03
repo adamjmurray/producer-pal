@@ -26,7 +26,7 @@ import {
   noteClipReason,
   noteLanded,
 } from "../entries/clip-reasons.ts";
-import { type LandingLog } from "../arrangement/landing-log.ts";
+import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { getTimeSignature } from "../clip-beat-positions.ts";

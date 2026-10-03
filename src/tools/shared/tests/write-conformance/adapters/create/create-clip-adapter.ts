@@ -83,14 +83,6 @@ function slotPaths(order: number[]): string {
 export const createClipAdapter: WriteToolAdapter = {
   tool: "ppal-create-clip",
   run: (args) => createClip({ length: "1bar", ...args }),
-  skip: {
-    namedTwice:
-      'skips the earlier mention unwritten, but marks it ok:false with "not created: ... named again later in this call"',
-    replacedLater:
-      "the earlier clip is reported like any other, with its id, though the later one cleared it; only the later entry says it overwrote one",
-    afterChange:
-      "the entry is a plain skip with the throw's reason; it carries no id and doesn't say the clip was created",
-  },
   na: {
     newTwice:
       "a clip goes in a named slot or position; there is no spelling for a new one",
@@ -151,13 +143,14 @@ export const createClipAdapter: WriteToolAdapter = {
       (args) => Number(args[1]),
     );
 
-    // The second clip covers the first whole.
+    // The second clip, starting earlier and running longer, covers the first
+    // whole. (The same spot twice is one place named twice, not a cover.)
     return {
-      args: { path: "t1[5|1],t1[5|1]", length: "1bar" },
-      keptArgs: { path: "t1[5|1]", length: "1bar" },
+      args: { path: "t1[5|1],t1[4|1]", length: "1bar,3bar" },
+      keptArgs: { path: "t1[4|1]", length: "3bar" },
       replaced: [0],
-      by: ["t1[5|1]"],
-      expected: [{}, { id: expect.any(String), path: "t1[5|1]" }],
+      by: ["t1[4|1]"],
+      expected: [{}, { id: expect.any(String), path: "t1[4|1]" }],
     };
   },
 

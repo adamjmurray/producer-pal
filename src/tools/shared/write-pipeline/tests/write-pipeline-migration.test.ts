@@ -62,7 +62,7 @@ const ORIGINALLY_NOT_MIGRATED: ReadonlySet<string> = new Set([
  * holds it to ORIGINALLY_NOT_MIGRATED). Emptied, and deleted with the last of
  * them.
  */
-const NOT_MIGRATED = ["ppal-create-clip"];
+const NOT_MIGRATED: string[] = [];
 
 /** Tools that don't write to the Live Set, with why where it isn't obvious. */
 const READ_ONLY: Record<string, string | null> = {

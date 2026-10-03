@@ -19,7 +19,7 @@ import {
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
 import { handleArrangementOperations } from "../arrangement/arrangement-move.ts";
-import { type LandingLog } from "../arrangement/landing-log.ts";
+import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,

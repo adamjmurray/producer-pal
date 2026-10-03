@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clipOverwriteNote,
@@ -13,7 +14,10 @@ import {
   createMissingScenes,
   withCreatedScenes,
 } from "#src/tools/shared/clip/create-missing-scenes.ts";
-import { withScratchSlot } from "#src/tools/shared/clip/scratch-slot.ts";
+import {
+  type ScratchSlot,
+  withScratchSlot,
+} from "#src/tools/shared/clip/scratch-slot.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
@@ -131,6 +135,8 @@ export interface SlotWork {
   created: string | null;
   /** What the new clip replaced, or null when the slot was empty. */
   overwrote: string | null;
+  /** What Live wouldn't clear away after the clip landed (a scratch clip or scene) */
+  leftover?: string;
 }
 
 /** The clip a session create made, and what reaching its slot took. */
@@ -205,51 +211,107 @@ function fillSessionSlot(
     };
   }
 
-  const clip = withScratchSlot(trackIndex, sceneIndex, (scratch) =>
-    replaceFromScratch(scratch.slot, clipSlot, destPath, create, sampleFile),
-  );
+  // The copy can land and the scratch scene's removal still throw, which loses
+  // the copy's return value: keep it where the throw can't reach.
+  const done: { replaced?: Replaced } = {};
+  let sceneLeftover: string | undefined;
 
-  return { clip, overwrote: clipOverwriteNote(destPath) };
+  try {
+    withScratchSlot(trackIndex, sceneIndex, (scratch) => {
+      done.replaced = replaceFromScratch(
+        scratch,
+        clipSlot,
+        destPath,
+        create,
+        sampleFile,
+      );
+    });
+  } catch (error) {
+    if (done.replaced == null) {
+      throw error;
+    }
+
+    sceneLeftover = `couldn't remove the scratch scene: ${errorMessage(error)}`;
+  }
+
+  const { clip, leftover } = done.replaced as Replaced;
+  const left = joinDetails([leftover, sceneLeftover]);
+
+  return {
+    clip,
+    overwrote: clipOverwriteNote(destPath),
+    ...(left == null ? {} : { leftover: left }),
+  };
+}
+
+/** The clip a replace left at its destination, and any clean-up it couldn't do. */
+interface Replaced {
+  clip: LiveAPI;
+  leftover?: string;
 }
 
 /**
  * Build the clip in the scratch slot and copy it onto the occupied one. The
  * scratch slot is emptied afterwards whatever happened.
- * @param scratchSlot - An empty slot on the destination's track
+ * @param scratch - An empty slot on the destination's track
  * @param destSlot - The occupied destination
  * @param destPath - The destination, as a path
  * @param create - Makes the clip in the slot it's given
  * @param sampleFile - The file an audio create loads, or undefined
- * @returns The new clip at the destination
+ * @returns The new clip at the destination, and any scratch clip left behind
  * @throws When no clip landed, saying the one there was not touched
  */
 function replaceFromScratch(
-  scratchSlot: LiveAPI,
+  scratch: ScratchSlot,
   destSlot: LiveAPI,
   destPath: string,
   create: (clipSlot: LiveAPI) => void,
   sampleFile: string | undefined,
-): LiveAPI {
-  try {
-    create(scratchSlot);
-    requireCreatedSessionClip(scratchSlot, destPath, sampleFile);
+): Replaced {
+  let copy: LiveAPI | null = null;
+  let failure: unknown;
 
-    const copy = copyClipToSlot(scratchSlot, destSlot);
+  try {
+    create(scratch.slot);
+    requireCreatedSessionClip(scratch.slot, destPath, sampleFile);
+    copy = copyClipToSlot(scratch.slot, destSlot);
 
     if (copy == null) {
       throw new Error(`Live didn't copy the new clip onto ${destPath}`);
     }
-
-    return copy;
   } catch (error) {
+    failure = error;
+  }
+
+  // Whatever happened: a throw here must not hide a copy that landed.
+  const leftover = clearScratchClip(scratch);
+
+  if (copy == null) {
+    const also = leftover == null ? "" : `; ${leftover}`;
+
     throw new Error(
-      `${errorMessage(error)}; the clip at ${destPath} was not touched`,
-      { cause: error },
+      `${errorMessage(failure)}; the clip at ${destPath} was not touched${also}`,
+      { cause: failure },
     );
-  } finally {
-    if (scratchSlot.getProperty("has_clip")) {
-      scratchSlot.call("delete_clip");
+  }
+
+  return leftover == null ? { clip: copy } : { clip: copy, leftover };
+}
+
+/**
+ * Empty the scratch slot.
+ * @param scratch - The scratch slot
+ * @returns Why it couldn't be emptied, or undefined when it is
+ */
+function clearScratchClip(scratch: ScratchSlot): string | undefined {
+  try {
+    if (scratch.slot.getProperty("has_clip")) {
+      scratch.slot.call("delete_clip");
     }
+
+    return undefined;
+  } catch (error) {
+    return `couldn't clear the scratch clip at ${scratch.path}: ${errorMessage(error)}`;
   }
 }
 

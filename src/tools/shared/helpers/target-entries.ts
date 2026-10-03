@@ -83,14 +83,3 @@ export function entriesFrom(
 
   return entries;
 }
-
-/**
- * Unwraps a single-element array to its element, otherwise returns the array
- * Used for tool results that should return a single object when one item,
- * or an array when multiple items.
- * @param array - Array of results
- * @returns Single element if array has one item, otherwise the full array
- */
-export function unwrapSingleResult<T>(array: T[]): T | T[] {
-  return array.length === 1 ? (array[0] as T) : array;
-}

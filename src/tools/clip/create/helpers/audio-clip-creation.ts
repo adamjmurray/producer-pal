@@ -21,7 +21,7 @@ export interface AudioSessionClipResult extends SlotWork {
  * @param sceneIndex - Target scene index (0-based)
  * @param sampleFile - Absolute path to audio file
  * @param liveSet - LiveAPI liveSet object
- * @returns Object with clip, sceneIndex, the scenes created, and what it replaced
+ * @returns The clip, its scene, the scenes created, and what it replaced
  */
 export function createAudioSessionClip(
   trackIndex: number,
@@ -29,15 +29,16 @@ export function createAudioSessionClip(
   sampleFile: string,
   liveSet: LiveAPI,
 ): AudioSessionClipResult {
-  const { clip, created, overwrote } = createInSessionSlot(
-    trackIndex,
+  return {
+    ...createInSessionSlot(
+      trackIndex,
+      sceneIndex,
+      liveSet,
+      (clipSlot) => clipSlot.call("create_audio_clip", sampleFile),
+      sampleFile,
+    ),
     sceneIndex,
-    liveSet,
-    (clipSlot) => clipSlot.call("create_audio_clip", sampleFile),
-    sampleFile,
-  );
-
-  return { clip, sceneIndex, created, overwrote };
+  };
 }
 
 export interface AudioArrangementClipResult {

@@ -16,7 +16,7 @@ import {
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
-import { newLandingLog } from "#src/tools/clip/update/helpers/arrangement/landing-log.ts";
+import { newLandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 
 const SOURCE = "789";
 const MOVED = "999";

@@ -23,7 +23,7 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   type LandingLog,
   newLandingLog,
-} from "../../helpers/arrangement/landing-log.ts";
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 import {
   type ClipReasons,
   newClipReasons,

@@ -512,7 +512,7 @@ export function expectNotesWritten(
 /**
  * A clip holding more content than the target extends in place: end_marker is
  * left alone, loop_end moves to the target, and one clip comes back
- * (unwrapSingleResult hands a one-element array back as a single object).
+ * (a lone target comes back unwrapped).
  * @param clip - The clip mock
  * @param result - The updateClip response
  * @param clipId - The clip id the response should name

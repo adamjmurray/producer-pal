@@ -75,8 +75,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "src/skills/notation/barbeat-standard.ts": 28,
   "src/skills/skill-slots.ts": 34,
   "src/tools/actions/duplicate/duplicate.ts": 27,
-  "src/tools/clip/create/create-clip.ts": 30,
-  "src/tools/clip/create/helpers/clip-iteration.ts": 27,
   "src/tools/clip/update/update-clip.ts": 41,
   "src/tools/core/helpers/project-context-operations.ts": 68,
   "src/tools/shared/arrangement/arrangement-tiling-workaround.ts": 29,

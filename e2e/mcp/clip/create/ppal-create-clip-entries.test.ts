@@ -161,15 +161,65 @@ describe("ppal-create-clip result entries", () => {
     const entries = parseBatchResult<ClipEntry>(result, 2);
 
     expect(entries[0]).toStrictEqual({
-      ok: false,
       path: `t${EMPTY_MIDI_TRACK}/s0`,
-      detail: `not created: t${EMPTY_MIDI_TRACK}/s0 is named again later in this call`,
+      detail: `named again as "t${EMPTY_MIDI_TRACK}/s0" later in this call`,
     });
     expect(entries[1]?.ok).toBeUndefined();
 
     await sleep(100);
 
     expect(await readClipName(entries[1]!.id!)).toBe("Second");
+  });
+
+  // An arrangement spot is as much one place as a slot: writing it twice would
+  // erase the first clip, so only the last mention is written.
+  it("creates an arrangement spot named twice once, as the last naming asks", async () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+    const entries = parseBatchResult<ClipEntry>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}[901|1],${track}[901|1]`,
+          notes: "C3 1|1",
+          length: "1bar",
+          name: "First,Second",
+        },
+      }),
+      2,
+    );
+
+    expect(entries[0]).toStrictEqual({
+      path: `${track}[901|1]`,
+      detail: `named again as "${track}[901|1]" later in this call`,
+    });
+    expect(entries[1]?.path).toBe(`${track}[901|1]`);
+    expect(entries[1]?.ok).toBeUndefined();
+
+    await sleep(100);
+
+    expect(await readClipName(entries[1]!.id!)).toBe("Second");
+  });
+
+  // A later clip that lands across part of an earlier one cuts it short, and
+  // the earlier entry says so; the later one says what it cut.
+  it("says an earlier clip was shortened by a later one in the same call", async () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+    const entries = parseBatchResult<ClipEntry>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}[921|1],${track}[922|1]`,
+          notes: "C3 1|1",
+          length: "2bar,2bar",
+        },
+      }),
+      2,
+    );
+
+    expect(entries[0]?.detail).toBe(
+      `shortened by ${track}[922|1] later in this call`,
+    );
+    expect(entries[1]?.detail).toBe(`shortened the clip at ${track}[921|1]`);
   });
 
   // Writing into an occupied arrangement range is normal and goes ahead, but
@@ -219,13 +269,13 @@ describe("ppal-create-clip result entries", () => {
     );
 
     expect(entries.map((entry) => entry.detail)).toStrictEqual([
-      // Whole
-      `overwrote the clip at ${track}[809|1]`,
+      // The first position is named again by the fourth, so it is never
+      // written, and the fourth overwrites the clip that was already there.
+      `named again as "${track}[809|1]" later in this call`,
       // End: the new clip stops where the 2-bar clip does
       `shortened the clip at ${track}[801|1]`,
       // Middle
       `split the clip at ${track}[813|1] into ${track}[813|1] and ${track}[815|1]`,
-      // The first position's own clip, covered by the last
       `overwrote the clip at ${track}[809|1]`,
       // Front, from the clip's own start: Live re-creates the rest under a new id
       `shortened the clip at ${track}[822|1]`,

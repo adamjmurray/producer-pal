@@ -18,7 +18,6 @@
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { plural } from "#src/tools/shared/validation/lists/plural.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
@@ -28,6 +27,7 @@ import {
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type Call } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import {
   pathError,
@@ -96,11 +96,13 @@ type OrderedArrangementPosition = ArrangementPosition & { ordinal: number };
  * Resolves where a create-clip call's clips go.
  * @param params - The destination params as the tool received them
  * @param arrangementStart - Bar|beat position(s), comma-separated, as sent
+ * @param ignored - Says that a whole-call param did nothing
  * @returns Clip slots and arrangement positions, both possibly empty
  */
 export function resolveCreateClipDestinations(
   params: ClipDestinationParams,
-  arrangementStart?: string | null,
+  arrangementStart: string | null | undefined,
+  ignored: Call["ignored"],
 ): ClipDestinations {
   const { value: path, aliasValue: slot } = refuseDoubledSpelling({
     param: "path",
@@ -118,10 +120,10 @@ export function resolveCreateClipDestinations(
 
   const { clipSlots, slotOrdinals, tracks } =
     path != null
-      ? splitPathDestinations(path, params)
-      : legacyDestinations(slot, params, arrangementStarts.length > 0);
+      ? splitPathDestinations(path, params, ignored)
+      : legacyDestinations(slot, params, arrangementStarts.length > 0, ignored);
   const paired = pairTracksWithStarts(
-    applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length),
+    applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length, ignored),
     arrangementStarts,
     {
       // A comma makes a list even when it names one entry ("t0,", "1|1,"),
@@ -201,19 +203,19 @@ function clipCounter({
  * arrangement clip at the same time.
  * @param path - The raw path param, already known to name something
  * @param params - The destination params as the tool received them
+ * @param ignored - Says that a whole-call param did nothing
  * @returns Clip slots and arrangement tracks, in order
  */
 function splitPathDestinations(
   path: string,
   params: ClipDestinationParams,
+  ignored: Call["ignored"],
 ): SplitDestinations {
   // The aliases are a fallback for a caller that did not use path. One that did
   // is naming the destination twice, so honor the explicit param and say the
   // other went unused rather than guessing which was meant.
   if (params.trackIndex != null || params.sceneIndex != null) {
-    console.warn(
-      'trackIndex/sceneIndex ignored — "path" already names the destination',
-    );
+    ignored("trackIndex/sceneIndex", '"path" already names the destination');
   }
 
   const clipSlots: ClipSlotPosition[] = [];
@@ -300,12 +302,14 @@ function noTrack(position: string | null): never {
  * @param tracks - Arrangement destinations, in order
  * @param takeLane - The raw takeLane param
  * @param clipSlotCount - Number of clip slots in this request
+ * @param ignored - Says that a whole-call param did nothing
  * @returns The destinations, with the alias applied where a lane was unnamed
  */
 function applyTakeLaneAlias(
   tracks: ArrangementTrackTarget[],
   takeLane: number | string | null | undefined,
   clipSlotCount: number,
+  ignored: Call["ignored"],
 ): ArrangementTrackTarget[] {
   if (!isTakeLaneRequested(takeLane)) {
     return tracks;
@@ -313,18 +317,16 @@ function applyTakeLaneAlias(
 
   // Warn-and-ignore without validating the value: an LLM passing garbage on a
   // request with nowhere to put a lane shouldn't lose the whole call to it.
-  if (tracks.length === 0) {
-    console.warn("takeLane ignored for session clips (arrangement-only)");
+  if (tracks.length === 0 || clipSlotCount > 0) {
+    ignored("takeLane", "session clips have no take lanes");
+  }
 
+  if (tracks.length === 0) {
     return tracks;
   }
 
-  if (clipSlotCount > 0) {
-    console.warn("takeLane ignored for session clips (arrangement-only)");
-  }
-
   if (tracks.some((track) => track.takeLane != null)) {
-    console.warn('takeLane ignored — "path" already names the take lane');
+    ignored("takeLane", '"path" already names the take lane');
 
     return tracks;
   }
@@ -342,12 +344,14 @@ function applyTakeLaneAlias(
  * @param slot - The deprecated slot list, or undefined
  * @param params - The destination params as the tool received them
  * @param hasArrangementStarts - Whether arrangementStart named any position
+ * @param ignored - Says that a whole-call param did nothing
  * @returns Clip slots and arrangement tracks, in order
  */
 function legacyDestinations(
   slot: string | undefined,
   params: ClipDestinationParams,
   hasArrangementStarts: boolean,
+  ignored: Call["ignored"],
 ): SplitDestinations {
   const { trackIndex, sceneIndex } = params;
   const clipSlots = slot == null ? [] : parseSlotList(slot, "slot");
@@ -367,8 +371,9 @@ function legacyDestinations(
     // Both halves of a slot. A slot list already names the session
     // destinations, so the guess is the redundant one.
     if (slot != null) {
-      console.warn(
-        'trackIndex/sceneIndex ignored — "slot" already names the session destination',
+      ignored(
+        "trackIndex/sceneIndex",
+        '"slot" already names the session destination',
       );
 
       return sessionOnly(clipSlots);
@@ -380,8 +385,9 @@ function legacyDestinations(
   // trackIndex alone means the arrangement, but only a position says where on
   // it. Without one it named nothing the clip slots didn't already.
   if (!hasArrangementStarts && clipSlots.length > 0) {
-    console.warn(
-      `trackIndex ignored — an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
+    ignored(
+      "trackIndex",
+      `an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
     );
 
     return sessionOnly(clipSlots);

@@ -25,7 +25,7 @@ import {
   type AppliedTarget,
   type Step,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
-import { writtenOverBy } from "../arrangement/landing-log.ts";
+import { writtenOverBy } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { clipIsGone } from "../arrangement/moved-source.ts";
 import {
   type ProcessSingleClipUpdateParams,

@@ -9,9 +9,10 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  type ArrangementTrack,
+  type FittingTakeLaneTarget,
   resolveTakeLane,
   takeLaneLabel,
-  takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -151,52 +152,40 @@ export function validateArrangementPositions(
   }
 }
 
-/** The lanes a call's destinations resolved to, and the ones that didn't. */
-export interface CreateClipTakeLanes {
-  /** Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes */
-  lanes: Map<string, LiveAPI>;
-  /** Why each lane that doesn't fit was left out, by {@link takeLaneLabel} */
-  dropped: Map<string, string>;
-}
-
 /**
- * Resolve the take lane each arrangement destination names, auto-creating lanes
- * as needed. Like the main lane, creating over an existing clip
- * replaces/truncates it (no overlap guard). A destination whose lane doesn't
- * fit is left out with its reason, which the destination's own result entry
- * reports, so the clips around it still get made.
+ * Make the take lane each arrangement destination names, creating lanes as
+ * needed. Like the main lane, creating over an existing clip replaces or
+ * truncates it (no overlap guard). Lanes are permanent (Live has no delete), so
+ * the caller picks the whole call's destinations that fit before this creates a
+ * lane on any of them: a cap failure on the last destination would otherwise
+ * strand empty lanes on all the earlier ones.
  * @param takeLaneName - Deprecated: name for a newly created lane
- * @param arrangementPositions - Resolved arrangement destinations
- * @returns The resolved lanes, and why each dropped one didn't fit
+ * @param fitting - The destinations whose lane fits, from takeLaneTargetsThatFit
+ * @returns The lanes, keyed by {@link takeLaneLabel}
  */
-export function resolveCreateClipTakeLanes(
+export function createTakeLanes(
   takeLaneName: string | null,
-  arrangementPositions: ArrangementPosition[],
-): CreateClipTakeLanes {
+  fitting: Array<FittingTakeLaneTarget<ArrangementTrack>>,
+): Map<string, LiveAPI> {
   const lanes = new Map<string, LiveAPI>();
 
-  // Lanes are permanent (Live has no delete), so pick the whole call's
-  // destinations before creating a lane on any of it — otherwise a cap failure
-  // on the last destination strands empty lanes on all the earlier ones.
-  const { fitting, dropped } = takeLaneTargetsThatFit(arrangementPositions);
-
-  // Resolve once per destination rather than once per clip.
+  // Once per lane rather than once per clip.
   for (const position of fitting) {
-    const { takeLane: target } = position;
     const key = takeLaneLabel(position);
 
     if (lanes.has(key)) {
       continue;
     }
 
-    const { lane } = resolveTakeLane(trackFor(position), target, takeLaneName);
-
     // Which lane a clip landed on is its own entry's business, so nothing is
     // said here.
-    lanes.set(key, lane);
+    lanes.set(
+      key,
+      resolveTakeLane(trackFor(position), position.takeLane, takeLaneName).lane,
+    );
   }
 
-  return { lanes, dropped };
+  return lanes;
 }
 
 // --- Helpers below main exports ---
@@ -206,7 +195,7 @@ export function resolveCreateClipTakeLanes(
  * @param position - An arrangement destination
  * @returns The track LiveAPI
  */
-function trackFor(position: ArrangementPosition): LiveAPI {
+function trackFor(position: ArrangementTrack): LiveAPI {
   return LiveAPI.from(livePath.track(position.trackIndex));
 }
 

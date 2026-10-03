@@ -13,7 +13,7 @@ import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { handleArrangementOperations } from "../../helpers/arrangement/arrangement-move.ts";
-import { newLandingLog } from "#src/tools/clip/update/helpers/arrangement/landing-log.ts";
+import { newLandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import {
   newClipReasons,
   type ClipReasons,

@@ -128,6 +128,8 @@ export interface ClipResultObject {
   color?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
+  /** The span left on the arrangement, when a later clip of the call cut it short */
+  arrangementLength?: string;
   /** What the call asked for that the clip didn't get, or what it replaced */
   detail?: string;
 }

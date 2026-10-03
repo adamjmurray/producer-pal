@@ -47,6 +47,11 @@ follows the code; when it disagrees with a tool, the tool wins.
   `createScene` also refuses `count` with `capture`, a tempo out of range, and a
   `timeSignature` that isn't `N/D` (or `disabled`) with a power-of-two
   denominator, since Live would change it.
+- **`createClip` refuses a `path` entry it can't parse** before anything is
+  made, as well as an arrangement position that won't parse or is past Live's
+  last, a list that doesn't pair, and an unknown `auto`. A destination that
+  parses but can't take its clip (no such track, the wrong kind of track, a take
+  lane past the cap) skips only its own target.
 - **Three tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the

@@ -41,7 +41,7 @@ import {
   recordFailedLanding,
   recordLandedClip,
   recordResize,
-} from "./landing-log.ts";
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 
 interface HandleArrangementStartArgs {
   clip: LiveAPI;

@@ -11,7 +11,7 @@ import { prepareClipData } from "../../helpers/clip-data-preparation.ts";
 import { createClip } from "../../create-clip.ts";
 import { setupSessionMocks } from "../create-clip-test-helpers.ts";
 
-// Mock the scale-mask read so we can assert exactly when createClips reads it
+// Mock the scale-mask read so we can assert exactly when createClip reads it
 // (the transformString != null ? readLiveSetScaleMask() : undefined ternary).
 vi.mock(import("#src/tools/clip/helpers/scale-mask.ts"), () => ({
   readLiveSetScaleMask: vi.fn(),
@@ -219,7 +219,7 @@ describe("createClip - code execution wiring (createClipAtIndex)", () => {
   });
 });
 
-describe("createClip - scale mask wiring (createClips)", () => {
+describe("createClip - scale mask wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

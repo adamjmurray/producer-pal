@@ -9,7 +9,10 @@
 // per call and dies with it: never hold a LiveAPI past the request.
 
 import { type SplitRun } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { type LandingLog, newLandingLog } from "../arrangement/landing-log.ts";
+import {
+  type LandingLog,
+  newLandingLog,
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 import { type ClipReasons, newClipReasons } from "../entries/clip-reasons.ts";
 
 /** One call's shared state. */

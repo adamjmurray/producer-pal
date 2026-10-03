@@ -42,11 +42,31 @@ with a tool, the tool wins.
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer
   every clip slot first and the arrangement after. A destination that got no
-  clip holds its slot as a skip: a track that won't take the clip, a create Live
-  declined, a take lane past the cap, one the deadline never reached. A
-  `firstStart` the call can't use — it only lands alongside `looping: true` — is
-  a `detail` on that clip's entry rather than a warning, and no `ok`: the clip
-  exists.
+  clip holds its slot as a skip: a track that isn't there or won't take the
+  clip, a transform its meter can't read, a create Live declined, a take lane
+  past the cap, one the deadline never reached. A `firstStart` the call can't
+  use — it only lands alongside `looping: true` — is a `detail` on that clip's
+  entry rather than a warning, and no `ok`: the clip exists.
+- **create-clip: a place named twice** (the same slot or arrangement spot) is
+  written once, by its last mention. The earlier one is
+  `{ path, detail: 'named again as "<where>" later in this call' }` with no
+  `ok`, and fails with the later one if it does (`not written: …`). A later
+  arrangement clip that covers an earlier one is the same: the earlier is left
+  unwritten (`overwritten later in this call by <where>`) when the later covers
+  all of it, and written then noted `shortened by <where> later in this call`
+  when it covers part. The later entry says what it overwrote, naming only clips
+  that were written. An audio clip is as long as its sample, which Live reads
+  once the clip exists, so a later clip over one is found out afterwards: the
+  earlier entry drops its `id` and says it was overwritten, or names what is
+  left of it.
+- **create-clip: Live fails partway** keeps the clip's normal entry (`id`,
+  `path`) plus `<error>; already changed: <what landed>`: the scenes made, the
+  clip, the clip it replaced or the arrangement clips it went over, its
+  properties, its notes. Only a failure before the clip exists is a skip, and
+  scenes made to reach the slot are named in its `detail`. A scratch clip or
+  scene Live won't clear after the replacement landed is a `detail` on the new
+  clip's entry, not a failure. `auto` that launched nothing (no clip slot got a
+  clip) is a whole-call warning, `auto ignored: …`.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry

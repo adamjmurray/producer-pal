@@ -26,7 +26,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
-import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
+import { createTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
@@ -230,7 +230,7 @@ describe("createClip take lanes", () => {
     await createClip({ slot: "0/0", notes: "C3", takeLane: 1 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 
@@ -247,7 +247,7 @@ describe("createClip take lanes", () => {
 
     expect(result).toBeDefined();
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 
@@ -267,7 +267,7 @@ describe("createClip take lanes", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 });
@@ -377,7 +377,7 @@ describe("createClip take lane paths", () => {
 
     expectTakeLaneMidiClip(2, 0);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('takeLane ignored — "path" already names'),
+      'takeLane ignored: "path" already names the take lane',
     );
   });
 
@@ -402,7 +402,7 @@ describe("createClip take lane paths", () => {
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(mainTrack.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('takeLane ignored — "path" already names'),
+      'takeLane ignored: "path" already names the take lane',
     );
   });
 
@@ -536,30 +536,15 @@ describe("createClip take lane paths", () => {
   });
 });
 
-describe("resolveCreateClipTakeLanes (unit)", () => {
+describe("createTakeLanes (unit)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("resolves no lanes for destinations that named none", () => {
-    // A track is registered so that, if the null check were skipped, the mutant
-    // path would resolve a real lane instead of returning an empty map.
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: null },
-    ]);
-
-    expect(lanes.size).toBe(0);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   it("resolves a lane per destination and reports it as a path", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-    ]);
+    const lanes = createTakeLanes(null, [{ trackIndex: 0, takeLane: 0 }]);
 
     expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
     // Which lane a clip landed on rides on that clip's entry, not a warning.
@@ -572,10 +557,10 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     const track0 = registerTakeLaneTrack({ initialLanes: 0 });
     const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-      { trackIndex: 1, arrangementStart: "2|1", takeLane: 0 },
-      { trackIndex: 0, arrangementStart: "3|1", takeLane: 0 },
+    const lanes = createTakeLanes(null, [
+      { trackIndex: 0, takeLane: 0 },
+      { trackIndex: 1, takeLane: 0 },
+      { trackIndex: 0, takeLane: 0 },
     ]);
 
     expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
@@ -590,9 +575,9 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("creates one lane when the path names it twice", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-      { trackIndex: 0, arrangementStart: "5|1", takeLane: 0 },
+    const lanes = createTakeLanes(null, [
+      { trackIndex: 0, takeLane: 0 },
+      { trackIndex: 0, takeLane: 0 },
     ]);
 
     expect([...lanes.keys()]).toStrictEqual(["t0/l0"]);
@@ -603,33 +588,13 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("keeps distinct lanes on the same track apart", () => {
     registerTakeLaneTrack({ initialLanes: 3 });
 
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-      { trackIndex: 0, arrangementStart: "2|1", takeLane: 2 },
+    const lanes = createTakeLanes(null, [
+      { trackIndex: 0, takeLane: 0 },
+      { trackIndex: 0, takeLane: 2 },
     ]);
 
     expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
     expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
     expect(lanes.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
-  });
-
-  // A destination past the cap is dropped, and the ones alongside it still
-  // resolve — a throw would strand the permanent lanes they already made.
-  it("skips the destination past the cap and keeps the others", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const { lanes, dropped } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: MAX_TAKE_LANES - 1 },
-      { trackIndex: 0, arrangementStart: "2|1", takeLane: MAX_TAKE_LANES },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES - 1}`]);
-    // Handed back rather than warned: the destination's own entry reports it.
-    expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toStrictEqual(
-      expect.stringContaining(`${MAX_TAKE_LANES}`),
-    );
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining("skipping"),
-    );
   });
 });
