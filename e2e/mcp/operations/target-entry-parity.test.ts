@@ -117,10 +117,9 @@ describe("a write answers the same by path and by id", () => {
       ],
     );
 
+    // Nothing was written, so the lane gets the plain skip entry.
     expect(entry).toStrictEqual({
-      id: lane.id,
       path: lane.path,
-      name: "Take A",
       ok: false,
       detail: "a take lane takes only name; ignored color",
     });
