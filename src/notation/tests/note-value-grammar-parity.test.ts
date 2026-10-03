@@ -107,7 +107,7 @@ function durationViaStep(token: string, num: number, den: number): number {
   });
   const beat = els[0]?.beat;
 
-  if (els.length !== 1 || typeof beat !== "object") {
+  if (els.length !== 1 || typeof beat !== "object" || beat.step == null) {
     throw new Error(`barbeat did not parse "@${token}" as a repeat step`);
   }
 
