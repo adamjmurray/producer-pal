@@ -78,7 +78,8 @@ The site is built two ways, both with `npm run docs:build`:
 The custom domain `producer-pal.org` is configured via:
 
 1. **CNAME file**: `docs/public/CNAME` contains `producer-pal.org`
-2. **DNS configuration**: CNAME record points `producer-pal.org` to
+2. **DNS configuration**: the apex `producer-pal.org` has A and AAAA records for
+   GitHub Pages' addresses (an apex can't be a CNAME), and `www` is a CNAME to
    `adamjmurray.github.io`
 3. **GitHub Pages settings**: Repository settings → Pages → Custom domain set to
    `producer-pal.org`
