@@ -12,8 +12,8 @@
  * This grades the rename landing, whichever spelling the model reaches for.
  */
 
-import { type EvalScenario } from "../../types.ts";
-import { arrangementRenameScenario } from "../helpers/arrangement-rename-scenario.ts";
+import { type EvalScenario } from "../../../types.ts";
+import { arrangementRenameScenario } from "../../helpers/arrangement-rename-scenario.ts";
 
 const CLIP_NAME = "Verse Lead";
 
