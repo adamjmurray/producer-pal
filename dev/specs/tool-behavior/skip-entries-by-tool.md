@@ -67,6 +67,21 @@ with a tool, the tool wins.
   entry plus `<error>; already changed: name, color, tempo, time signature`;
   later scenes still run, and the deadline skips the ones it never reached.
   `focus` selects the last scene written.
+- **update-track answers per target named.** Its targets, tracks and take lanes,
+  resolve up front. A path that can't be parsed refuses the call (a lane on a
+  return or main track included); one that parses but names no track holds its
+  slot as a skip. The `name`, `color`, routing and `sendReturn` lists pair by
+  the target's place, so a skip doesn't slide them. A track named twice (id and
+  path, or an id repeated) and a take lane named twice (by id and by path) are
+  written as their last mention asks: the earlier keeps `{ id | path, detail }`
+  with no `ok`, and becomes `ok: false` when the last one lands nothing. Two
+  `l+` entries are two new lanes, not one. A throw after part of a target landed
+  keeps its normal entry plus
+  `<error>; already changed: name, color, gainDb, send A-Reverb, take lane l0 made`;
+  later targets still run, and the deadline skips the ones it never reached. A
+  `sends` entry a later one replaced is `{ return, returnId, detail }` with no
+  `ok`, the same for a rack chain's sends in update-device; `ok: false` stays
+  for a send that really failed.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

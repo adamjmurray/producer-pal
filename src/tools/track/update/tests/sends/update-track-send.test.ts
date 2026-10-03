@@ -12,7 +12,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { registerReturnTracks } from "./send-return-fixtures.ts";
-import { updateTrack } from "../update-track.ts";
+import { updateTrack } from "../../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -433,9 +433,8 @@ describe("updateTrack - send properties", () => {
       });
     });
 
-    it("skips the replaced entry on a track whose write was refused", () => {
-      // A rack macro owns the colliding send on track 1 only; its own entry
-      // already says why, so the replaced one adds nothing there.
+    it("fails the replaced entry on a track whose write was refused", () => {
+      // A rack macro owns the colliding send on track 1 only.
       registerMockObject("send_2", { properties: { is_enabled: 0 } });
 
       const result = updateTrack({
@@ -457,9 +456,16 @@ describe("updateTrack - send properties", () => {
 
       expect(capturedWarnings()).toStrictEqual([]);
       expect(replaced(ok)).toHaveLength(1);
-      // The refused track's own entry says why; it adds nothing about the pair.
+      // The later send was refused, so it replaced nothing: the earlier one is
+      // not written, and says so beside the refusal that says why.
       expect(replaced(refused)).toStrictEqual([]);
       expect(sendsOf(refused as ReturnType<typeof updateTrack>)).toStrictEqual([
+        {
+          return: "B-Delay",
+          returnId: "return_B",
+          ok: false,
+          detail: 'not written: "B-Delay" was meant to replace it, but failed',
+        },
         {
           return: "B-Delay",
           returnId: "return_B",
@@ -733,7 +739,6 @@ function expectSendRefused(
 const REPLACED = {
   return: "A-Reverb",
   returnId: "return_A",
-  ok: false,
   detail: "named again later in this call",
 };
 

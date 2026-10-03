@@ -4,21 +4,24 @@ Where each tool applies the [refusal rules](README.md#refusals). This list
 follows the code; when it disagrees with a tool, the tool wins.
 
 - **Whole-call params are checked before any target is touched.** The send pair
-  in `updateTrack`/`updateDevice`, the tempo range in
-  `updateScene`/`createScene`/`updateLiveSet`, `quantizePitch` in `updateClip`,
-  `mappedPitch` in `updateDevice`, and the three malformed `params` entries in
-  `updateDevice`/`createDevice`.
+  and `monitoringState` in `updateTrack`, the send pair in `updateDevice`, the
+  tempo range in `updateScene`/`createScene`/`updateLiveSet`, `quantizePitch` in
+  `updateClip`, `mappedPitch` in `updateDevice`, and the three malformed
+  `params` entries in `updateDevice`/`createDevice`.
 - **`updateTrack`, `updateScene` and `updateClip` refuse a call naming no
   target.** They warned and returned `[]`, which reads as "there was nothing to
   do" — every other tool already threw. They had applied their own warn-and-skip
   rule to a call with no items rather than to an item.
-- **`updateScene` refuses a call that asks nothing of its targets** (an `id` or
-  `path` and no other param). Answering with the targets read as if something
-  had been written. Any other param counts, `focus` included. `refuseNoWrite`
-  builds the message, so every update tool can share it:
+- **`updateTrack` and `updateScene` refuse a call that asks nothing of their
+  targets** (an `id` or `path` and no other param). Answering with the targets
+  read as if something had been written. Any other param counts, `focus`
+  included, and so does a take lane path that adds a lane (`t0/l+`).
+  `refuseNoWrite` builds the message, so every update tool can share it:
   `nothing to update: id and path only name the scenes; also send a param to change`.
-- **`updateScene` refuses a `path` entry it can't parse** before anything is
-  written; an entry that parses but names no scene skips only its own target.
+- **`updateTrack` and `updateScene` refuse a `path` entry they can't parse**
+  before anything is written; an entry that parses but names no track or scene
+  skips only its own target. `rt0/l0` is such an entry: only regular tracks have
+  take lanes.
 - **`updateClip` refuses a `path` entry it can't parse** before anything is
   written; an entry that parses but names no clip skips only its own target. One
   slot, or one track with a single position, can't cover several clips and is

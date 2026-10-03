@@ -5,6 +5,7 @@
 
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -156,6 +157,7 @@ function setRouting(
   }
 
   track.setProperty(property, { identifier });
+  noteLanded(notes, ROUTING_PARAM[property] as string);
 }
 
 /**

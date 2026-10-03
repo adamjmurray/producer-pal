@@ -8,6 +8,7 @@ import {
   type TargetNotes,
   isParamSent,
   newTargetNotes,
+  noteLanded,
   noteTarget,
   refuseIfNoneLanded,
   refuseTargetWork,
@@ -30,6 +31,7 @@ import {
   roundPan,
 } from "#src/tools/shared/helpers/rounding.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import { replacementFailedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   type MixerApplied,
   PARAM_DISABLED_REASON,
@@ -169,7 +171,7 @@ export function applyChainMixer(
     applied.pan = pan;
   }
 
-  const { sends, clashes } = applyChainSends(chain, mixer, params);
+  const { sends, clashes } = applyChainSends(chain, mixer, params, notes);
 
   refuseIfNoneLanded(notes, SEND_PARAMS, "send", sends, (send) => send.return);
 
@@ -230,6 +232,7 @@ export function rackPath(chain: LiveAPI): string {
  * @param mixer - The chain's mixer device
  * @param send - The send to write, with the return spelled as the caller wrote it
  * @param refused - Entries for the sends nothing was written to, added to
+ * @param notes - Told "send <return>" once the level is written
  * @returns The send and the return it went to, or null when nothing was written
  */
 function applyChainSend(
@@ -237,6 +240,7 @@ function applyChainSend(
   mixer: LiveAPI,
   send: ChainSend,
   refused: SendResult[],
+  notes: TargetNotes,
 ): WrittenChainSend | null {
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
@@ -299,6 +303,7 @@ function applyChainSend(
   }
 
   param.set("display_value", send.gainDb);
+  noteLanded(notes, `send ${info.name}`);
 
   return {
     ...send,
@@ -316,6 +321,7 @@ function applyChainSend(
  * @param chain - Chain or DrumChain LiveAPI object
  * @param mixer - The chain's mixer device
  * @param params - Mixer values to set
+ * @param notes - What the chain's entry has to say, told what lands
  * @returns One entry per return that landed, plus one per send that didn't,
  *   and the clashes of the sends that landed
  */
@@ -323,6 +329,7 @@ function applyChainSends(
   chain: LiveAPI,
   mixer: LiveAPI,
   params: ChainMixerParams,
+  notes: TargetNotes,
 ): Pick<Required<ChainMixerApplied>, "sends" | "clashes"> {
   const { sendGainDb, sendReturn } = params;
   const refused: SendResult[] = [];
@@ -335,6 +342,7 @@ function applyChainSends(
           mixer,
           { return: sendReturn, gainDb: sendGainDb },
           refused,
+          notes,
         )
       : null;
 
@@ -343,7 +351,7 @@ function applyChainSends(
   const list: WrittenChainSend[] = [];
 
   for (const send of params.sends ?? []) {
-    const written = applyChainSend(chain, mixer, send, refused);
+    const written = applyChainSend(chain, mixer, send, refused, notes);
 
     if (written != null) {
       list.push(written);
@@ -364,7 +372,7 @@ function applyChainSends(
   return {
     sends: [
       ...withSupersededSends(landed, collisions),
-      ...lastPerReturn(refused),
+      ...replacedRefusals(refused),
     ],
     clashes: winners.flatMap((send) =>
       send.clash == null ? [] : [{ return: send.name, clash: send.clash }],
@@ -373,20 +381,30 @@ function applyChainSends(
 }
 
 /**
- * Keep one refused send per return chain, the last one named: a send holds one
- * value, so a return named twice is one write that didn't land. A send that
- * matched no return has no id and keeps its own entry.
+ * A send holds one value, so a return named twice is one write: an earlier
+ * refused send was replaced by the later one that failed too, and says so. A
+ * send that matched no return has no id and keeps its own entry.
  * @param refused - The refused sends, in the order they were named
- * @returns The same entries, one per return chain
+ * @returns The same entries, each replaced one saying it wasn't written
  */
-function lastPerReturn(refused: SendResult[]): SendResult[] {
-  return refused.filter(
-    (send, index) =>
-      send.returnId == null ||
-      !refused
-        .slice(index + 1)
-        .some((later) => later.returnId === send.returnId),
-  );
+function replacedRefusals(refused: SendResult[]): SendResult[] {
+  return refused.map((send, index) => {
+    const later =
+      send.returnId == null
+        ? undefined
+        : refused
+            .slice(index + 1)
+            .findLast((other) => other.returnId === send.returnId);
+
+    return later == null
+      ? send
+      : {
+          return: send.return,
+          returnId: send.returnId,
+          ok: false,
+          detail: replacementFailedDetail(`"${later.return}"`),
+        };
+  });
 }
 
 /**

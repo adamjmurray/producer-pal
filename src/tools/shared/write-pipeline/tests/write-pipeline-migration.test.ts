@@ -67,7 +67,6 @@ const NOT_MIGRATED = [
   "ppal-create-clip",
   "ppal-create-track",
   "ppal-create-scene",
-  "ppal-update-track",
   "ppal-update-live-set",
   "ppal-playback",
   "ppal-select",

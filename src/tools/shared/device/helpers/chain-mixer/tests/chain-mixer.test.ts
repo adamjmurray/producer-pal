@@ -334,7 +334,6 @@ describe("applyChainMixer", () => {
       expect(applied.sends?.[0]).toStrictEqual({
         return: "b Reverb",
         returnId: "rc-1",
-        ok: false,
         detail: expect.stringMatching(
           /; matched by id; "rc-1" is also the name of "rc-1"$/,
         ),
@@ -450,9 +449,10 @@ describe("applyChainMixer", () => {
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    // A send holds one value, so a return named twice is refused once, where
-    // the later mention names it — as update-track does.
-    it("refuses a macro-mapped send named twice only once", () => {
+    // A send holds one value, so a return named twice is one write: the later
+    // mention is refused, and the earlier one was not written either — as
+    // update-track does.
+    it("refuses a macro-mapped send named twice, the earlier one unwritten", () => {
       registerChainWithSends();
       registerMockObject("send-1", {
         type: "DeviceParameter",
@@ -469,6 +469,12 @@ describe("applyChainMixer", () => {
       });
 
       expect(applied.sends?.filter((send) => send.ok === false)).toStrictEqual([
+        {
+          return: "b Reverb",
+          returnId: "rc-1",
+          ok: false,
+          detail: 'not written: "b Reverb" was meant to replace it, but failed',
+        },
         {
           return: "b Reverb",
           returnId: "rc-1",
@@ -559,7 +565,6 @@ describe("applyChainMixer", () => {
       const REPLACED = {
         return: "a Delay",
         returnId: "rc-0",
-        ok: false,
         detail: "named again later in this call",
       };
 

@@ -56,6 +56,7 @@ const TOOLS: Array<{
     },
     call: (targets) => updateTrack({ ...targets, name: "A" }),
     refused: (targets) => updateTrack({ ...targets, sendGainDb: -6 }),
+    pipeline: true,
   },
   {
     tool: "update-scene",

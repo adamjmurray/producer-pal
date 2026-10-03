@@ -135,19 +135,28 @@ export function resolveTrackSends(
  * Write every resolved send on one track and read them back.
  * @param track - Track object
  * @param sends - The winners from {@link resolveTrackSends}
+ * @param landed - Told "send <return>" as each level lands, for a throw later
+ *   in the target's write to say what already changed
  * @returns What each send now reads, or why it was refused, by its position
  */
 export function applyTrackSends(
   track: LiveAPI,
   sends: ResolvedSend[],
+  landed: (phrase: string) => void,
 ): Map<number, SendResult> {
-  const landed = new Map<number, SendResult>();
+  const results = new Map<number, SendResult>();
 
   for (const send of sends) {
-    landed.set(send.index, applyTrackSend(track, send));
+    const result = applyTrackSend(track, send);
+
+    results.set(send.index, result);
+
+    if (result.ok !== false) {
+      landed(`send ${send.name}`);
+    }
   }
 
-  return landed;
+  return results;
 }
 
 /**

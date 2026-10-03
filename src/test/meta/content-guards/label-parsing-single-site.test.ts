@@ -38,7 +38,7 @@ describe("name and color parsing has one call site", () => {
     throwOnFileViolations(
       violations,
       "Found parseNames/parseColors called outside the shared preamble",
-      `Call resolveLabeledTargets, labelNewTargets, or pairLabels from ${CALLER} instead.`,
+      `Call labelNewTargets or pairLabels from ${CALLER} instead.`,
     );
 
     expect(violations).toHaveLength(0);

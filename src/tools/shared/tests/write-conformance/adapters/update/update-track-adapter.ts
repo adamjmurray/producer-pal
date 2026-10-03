@@ -26,14 +26,6 @@ function named(count: number): { ids: string; expected: object[] } {
 export const updateTrackAdapter: WriteToolAdapter = {
   tool: "ppal-update-track",
   run: (args) => updateTrack(args),
-  skip: {
-    unparsable:
-      "a path it can't parse becomes an ok:false entry, and the other targets are still written",
-    namedTwice:
-      "writes the track at every mention; the earlier entry is a plain id and path, with no detail",
-    afterChange:
-      "the entry is the skip for the throw alone; it doesn't say the name had already been set",
-  },
   na: {
     newTwice: "updates existing tracks only",
     replacedLater: "no destination: nothing is created or moved",

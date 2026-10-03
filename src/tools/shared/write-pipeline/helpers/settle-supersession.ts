@@ -5,6 +5,7 @@
 
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
+  replacementFailedDetail,
   skipEntry,
   spelledAs,
   unreachedDetail,
@@ -53,7 +54,7 @@ export function settleSupersession<P, E extends object>(
           (targets[index] as Target<P>).named,
           failed.unreached
             ? unreachedDetail(rerun)
-            : `not written: ${failed.by} was meant to replace it, but failed`,
+            : replacementFailedDetail(failed.by),
         ),
         pieces: [],
         outcome: "skipped",

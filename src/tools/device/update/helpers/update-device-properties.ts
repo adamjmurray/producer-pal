@@ -15,7 +15,6 @@ import {
 import { applyChainSampleParams } from "./chain/chain-sample-params.ts";
 import {
   applyChainMixer,
-  type ChainMixerApplied,
   type ChainSend,
 } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer.ts";
 import {
@@ -260,13 +259,10 @@ export function updateNonDeviceProperties(
     }
 
     if (hasChainMixerParams(options)) {
-      const applied = applyChainMixer(target, options, notes);
-
-      if (mixerLanded(applied)) {
-        noteLanded(notes, "mixer");
-      }
-
-      mixer = chainMixerReport(applied, options);
+      mixer = chainMixerReport(
+        applyChainMixer(target, options, notes),
+        options,
+      );
     }
   } else {
     noteIfSet(ignored, "color", options.color);
@@ -310,19 +306,6 @@ function updateDrumChainProperties(
     target.set("out_note", noteNameToMidi(options.mappedPitch));
     noteLanded(notes, "mappedPitch");
   }
-}
-
-/**
- * Whether a mixer write changed anything.
- * @param applied - What applyChainMixer reports
- * @returns True when a gain, a pan or a send landed
- */
-function mixerLanded(applied: ChainMixerApplied): boolean {
-  return (
-    applied.gainDb != null ||
-    applied.pan != null ||
-    (applied.sends ?? []).some((send) => send.ok !== false)
-  );
 }
 
 /**

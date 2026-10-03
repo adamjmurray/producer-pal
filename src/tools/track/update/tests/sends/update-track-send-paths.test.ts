@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { registerReturnTracks } from "./send-return-fixtures.ts";
-import { updateTrack } from "../update-track.ts";
+import { updateTrack } from "../../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 

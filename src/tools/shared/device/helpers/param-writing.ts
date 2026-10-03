@@ -5,6 +5,7 @@
 
 import {
   type TargetNotes,
+  noteLanded,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
@@ -76,6 +77,7 @@ export function setParamAndReadBack(
   }
 
   param.set(property, value);
+  noteLanded(notes, field);
 
   return publishedReadBack(param.getProperty(property), round);
 }

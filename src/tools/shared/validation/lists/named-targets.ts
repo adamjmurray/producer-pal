@@ -129,6 +129,16 @@ export function namedLaterReason(later: NamedTarget): string {
 }
 
 /**
+ * How an entry says the later one meant to replace it failed, so nothing of it
+ * was written: the one wording for every tool.
+ * @param by - The later mention, as the caller spelled it ("t0", id 12)
+ * @returns The reason
+ */
+export function replacementFailedDetail(by: string): string {
+  return `not written: ${by} was meant to replace it, but failed`;
+}
+
+/**
  * A target in the caller's own words: `id 12` or `"t0/s1"`.
  * @param target - The target, as the caller named it
  * @returns How an entry says which target it means

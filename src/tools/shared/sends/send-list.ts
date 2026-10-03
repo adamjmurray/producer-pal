@@ -9,7 +9,10 @@ import {
   readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
-import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  namedAgain,
+  replacementFailedDetail,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
 
@@ -154,6 +157,8 @@ export interface SendCollision<T extends IndexedSend> {
   index: number;
   /** The earlier entries the winner replaced, in the order they were named */
   superseded: T[];
+  /** The winner's return, as the caller spelled it */
+  by: string;
 }
 
 /**
@@ -201,15 +206,16 @@ export function dedupeSendsByReturn<T extends IndexedSend>(
     collisions: [...superseded].map(([index, replaced]) => ({
       index,
       superseded: replaced,
+      by: (byReturn.get(index) as T).return,
     })),
   };
 }
 
 /**
- * Every send's entry, each preceded by the entries it replaced: a send named
- * again later wasn't written, so it is `ok: false` and says so. A winner whose
- * own write was refused already explains why nothing landed, so it brings no
- * extra entries.
+ * Every send's entry, each preceded by the entries it replaced. A send named
+ * again later wasn't written, and says so in its `detail` with no `ok`, since
+ * the later send did the work. If the later send's own write was refused,
+ * nothing replaced it after all: the earlier ones are `ok: false` and say so.
  * @param landed - What each send that was written now reads, by its position
  * @param collisions - From {@link dedupeSendsByReturn}
  * @returns The entries in the order the sends were named
@@ -221,18 +227,23 @@ export function withSupersededSends<T extends IndexedSend>(
   const entries: SendResult[] = [];
 
   for (const [index, entry] of landed) {
-    const replaced =
-      entry.ok === false
-        ? []
-        : (collisions.find((c) => c.index === index)?.superseded ?? []);
+    const collision = collisions.find((c) => c.index === index);
 
-    for (const send of replaced) {
-      entries.push({
-        return: send.name,
-        returnId: send.returnId,
-        ok: false,
-        detail: joinDetails([namedAgain(), send.clash]),
-      });
+    for (const send of collision?.superseded ?? []) {
+      const base = { return: send.name, returnId: send.returnId };
+
+      entries.push(
+        entry.ok === false
+          ? {
+              ...base,
+              ok: false,
+              detail: joinDetails([
+                replacementFailedDetail(`"${collision?.by}"`),
+                send.clash,
+              ]),
+            }
+          : { ...base, detail: joinDetails([namedAgain(), send.clash]) },
+      );
     }
 
     entries.push(entry);

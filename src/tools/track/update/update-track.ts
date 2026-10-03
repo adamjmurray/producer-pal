@@ -3,180 +3,32 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
-  type TargetNotes,
-  newTargetNotes,
-  refuseIfNoneLanded,
-  refuseTargetWork,
-  reportTargetNotes,
-} from "#src/tools/shared/helpers/target-notes.ts";
+  type Call,
+  type Done,
+  type PipelineResult,
+  type WriteSpec,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
-  LIVE_API_MONITORING_STATE_AUTO,
-  LIVE_API_MONITORING_STATE_IN,
-  LIVE_API_MONITORING_STATE_OFF,
-  MONITORING_STATE,
-} from "#src/tools/constants.ts";
-import { returnTrackRename } from "../helpers/return-track-rename.ts";
+  type TrackChecked,
+  checkTrackCall,
+} from "./helpers/call/check-track-call.ts";
 import {
-  type PanningMode,
-  type TrackMixerApplied,
-  applyMixerProperties,
-} from "./helpers/track-mixer-updates.ts";
+  type TrackCall,
+  type UpdateTrackArgs,
+  parseTrackCall,
+  trackListArgs,
+} from "./helpers/call/parse-track-call.ts";
 import {
-  ROUTING_PARAMS,
-  type RoutingParams,
-  applyRoutingProperties,
-  routingValuesAt,
-} from "./helpers/track-routing-updates.ts";
-import {
-  applyTrackSwitches,
-  canBeArmed,
-} from "./helpers/track-switch-updates.ts";
-import {
-  paramsTakeLanesIgnore,
-  planTakeLaneTargets,
-  updateTakeLane,
-  type UpdateTakeLaneResult,
-} from "./helpers/track-take-lanes.ts";
-import { applyTrackSends, trackSendsAt } from "./helpers/track-send-updates.ts";
-import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
-import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
-import {
-  SEND_PARAMS,
-  type SendResult,
-  withSupersededSends,
-} from "#src/tools/shared/sends/send-list.ts";
-import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
-import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
-import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import {
-  writeFanOut,
-  type WriteResult,
-} from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import {
-  type NamedTarget,
-  targetObject,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
-import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+  type TrackPayload,
+  trackTargets,
+} from "./helpers/call/resolve-track-targets.ts";
+import { type TrackEntry, writeTrack } from "./helpers/call/write-track.ts";
 
-/** Params that name a track rather than asking anything of it, plus the
- * deprecated routing aliases the current names already stand in for. */
-const NOT_TRACK_WORK = new Set([
-  "id",
-  "ids",
-  "path",
-  "paths",
-  "inputRoutingTypeId",
-  "inputRoutingChannelId",
-  "outputRoutingTypeId",
-  "outputRoutingChannelId",
-]);
-
-/** The mixer values one track takes from the call. */
-interface MixerParams {
-  gainDb?: number;
-  pan?: number;
-  panningMode?: PanningMode;
-  leftPan?: number;
-  rightPan?: number;
-}
-
-interface UpdateTrackArgs {
-  id?: string;
-  /** Hidden alias for id */
-  ids?: string;
-  path?: string;
-  /** Hidden alias for path */
-  paths?: string;
-  name?: string;
-  color?: string;
-  gainDb?: number;
-  pan?: number;
-  panningMode?: PanningMode;
-  leftPan?: number;
-  rightPan?: number;
-  mute?: boolean;
-  solo?: boolean;
-  arm?: boolean;
-  inputRoutingType?: string;
-  inputRoutingChannel?: string;
-  outputRoutingType?: string;
-  outputRoutingChannel?: string;
-  /** Deprecated: use inputRoutingType */
-  inputRoutingTypeId?: string;
-  /** Deprecated: use inputRoutingChannel */
-  inputRoutingChannelId?: string;
-  /** Deprecated: use outputRoutingType */
-  outputRoutingTypeId?: string;
-  /** Deprecated: use outputRoutingChannel */
-  outputRoutingChannelId?: string;
-  monitoringState?: string;
-  sendGainDb?: number;
-  sendReturn?: string;
-  sends?: SendEntry[];
-}
-
-interface UpdateTrackResult extends TrackMixerApplied {
-  id: string;
-  path?: string;
-  /**
-   * The name the track ended up with, when it isn't the one asked for. `detail`
-   * says why, and there is no `ok` — the rename happened.
-   */
-  name?: string;
-  /** The palette color Live settled on, when it isn't the one asked for */
-  color?: string;
-  detail?: string;
-  /** Every send the call wrote, read back off the track */
-  sends?: SendResult[];
-}
-
-/**
- * Apply monitoring state to a track. Monitoring exists only on armable tracks,
- * so it is refused on the rest.
- * @param track - Track object
- * @param monitoringState - Monitoring state value (in, auto, off)
- * @param notes - What the track's entry has to say, added to
- */
-function applyMonitoringState(
-  track: LiveAPI,
-  monitoringState: string | undefined,
-  notes: TargetNotes,
-): void {
-  if (monitoringState == null) {
-    return;
-  }
-
-  if (!canBeArmed(track)) {
-    refuseTargetWork(
-      notes,
-      ["monitoringState"],
-      "monitoringState had no effect: return, main and group tracks have no monitoring",
-    );
-
-    return;
-  }
-
-  const monitoringValue: number | undefined = {
-    [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
-    [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
-    [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
-  }[monitoringState];
-
-  if (monitoringValue == null) {
-    console.warn(
-      `invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
-    );
-
-    return;
-  }
-
-  track.set("current_monitoring_state", monitoringValue);
-}
+/** What update-track answers: the lone entry, or one entry per target. */
+export type UpdateTrackAnswer = PipelineResult<TrackEntry>;
 
 /**
  * Updates properties of existing tracks, and the take lanes on them
@@ -207,176 +59,49 @@ function applyMonitoringState(
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param args.sends - Optional [{return, gainDb}] list, to set several at once
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object, for the request deadline
  * @returns The target when one was named, otherwise one entry per target
  */
 export function updateTrack(
   args: UpdateTrackArgs,
-  _context: Partial<ToolContext> = {},
-): WriteResult<UpdateTrackResult | UpdateTakeLaneResult> {
-  const {
-    id,
-    ids,
-    path,
-    paths,
-    name,
-    color,
-    gainDb,
-    pan,
-    panningMode,
-    leftPan,
-    rightPan,
-    mute,
-    solo,
-    arm,
-    monitoringState,
-    sendGainDb,
-    sendReturn,
-    sends,
-  } = args;
-  const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
-    noun: "track",
-    targets: { id, ids, path, paths },
-    name,
-    color,
-    extraLists: [...ROUTING_PARAMS, "sendReturn" as const].map((param) => ({
-      param,
-      value: args[param],
-    })),
-  });
-  const routingAt = routingValuesAt(args, targets.length);
-
-  validateSendPair(sendGainDb, sendReturn);
-
-  // Lanes are planned before anything runs: a plan over the cap is refused
-  // whole, because a lane an earlier entry created can't be taken back.
-  const laneTargets = planTakeLaneTargets(targets);
-  const laneIgnores = laneTargets.size === 0 ? [] : paramsTakeLanesIgnore(args);
-
-  // The return tracks belong to the Live Set, so only the sendReturn a track
-  // was given decides what its sends resolve to.
-  const sendsAt = trackSendsAt(sendGainDb, sendReturn, sends, targets.length);
-
-  const writeOne = (target: NamedTarget, i: number) => {
-    const trackName = getNameForIndex(name, i, parsedNames);
-    const lane = laneTargets.get(i);
-
-    if (lane != null) {
-      return updateTakeLane(lane, trackName, laneIgnores);
-    }
-
-    const track = targetObject(target, "track", trackIdAtPath);
-    const trackColor = getColorForIndex(color, i, parsedColors);
-    const notes = newTargetNotes();
-
-    const rename = returnTrackRename(track.path, trackName);
-
-    track.setAll({ name: rename.write, color: trackColor });
-    applyTrackSwitches(track, { mute, solo, arm }, notes);
-
-    const colorLanded =
-      trackColor == null ? {} : landedColor(track, trackColor);
-
-    const mixer = trackMixer(
-      track,
-      { gainDb, pan, panningMode, leftPan, rightPan },
-      notes,
-    );
-
-    const routing = routingAt(i);
-
-    applyRoutingProperties(track, routing, notes);
-
-    // Handle monitoring state
-    applyMonitoringState(track, monitoringState, notes);
-
-    const resolvedSends = sendsAt(i);
-    const landed = applyTrackSends(track, resolvedSends.winners);
-
-    const sendEntries = withSupersededSends(landed, resolvedSends.collisions);
-
-    refuseIfNoneLanded(
-      notes,
-      SEND_PARAMS,
-      "send",
-      [...landed.values(), ...resolvedSends.unresolved],
-      (send) => send.return,
-    );
-
-    // A send that took the level asked for has nothing to say — the caller
-    // named the return and knows the level — so only the rest report. The ones
-    // that named no return track follow, in the order the call named them.
-    const changedSends = [
-      ...sendEntries.filter((send) => send.detail != null),
-      ...resolvedSends.unresolved,
-    ];
-
-    // Optimistic except for the color, mixer and sends, read back off the
-    // track. Each of those can have its own say, so the details are joined
-    // rather than spread over one another.
-    const detail = joinDetails([
-      rename.landed.detail,
-      colorLanded.detail,
-      mixer.detail,
-    ]);
-
-    const result: UpdateTrackResult = {
-      id: track.id,
-      ...pathField(track),
-      ...rename.landed,
-      ...colorLanded,
-      ...mixer,
-      ...(detail == null ? {} : { detail }),
-      ...(changedSends.length > 0 ? { sends: changedSends } : {}),
-    };
-
-    return reportTargetNotes(
-      result,
-      notes,
-      trackWorkAsked(args, trackName, trackColor, routing),
-    );
-  };
-
-  return writeFanOut(targets, writeOne, {
-    targets: { id, ids, path, paths },
-    objects: "tracks",
-  });
+  context: Partial<ToolContext> = {},
+): UpdateTrackAnswer {
+  // No hook awaits, so the answer is never a promise.
+  return runWrite(TRACK_WRITE, args, context) as UpdateTrackAnswer;
 }
 
-/**
- * Write a track's mixer, when the call asked for any of it.
- * @param track - Track object
- * @param params - The mixer values, as the call sent them
- * @param notes - What the track's entry has to say, added to
- * @returns What the write landed, read back; empty when none was asked for
- */
-function trackMixer(
-  track: LiveAPI,
-  params: MixerParams,
-  notes: TargetNotes,
-): TrackMixerApplied {
-  return Object.values(params).some((value) => value != null)
-    ? applyMixerProperties(track, params, notes)
-    : {};
-}
+const TRACK_WRITE: WriteSpec<
+  UpdateTrackArgs,
+  TrackCall,
+  TrackPayload,
+  TrackChecked,
+  TrackEntry
+> = {
+  tool: "ppal-update-track",
+  words: { rerun: "track" },
+  parse: (args) => parseTrackCall(args),
+  lists: trackListArgs,
+  targets: trackTargets,
+  check: checkTrackCall,
+  write: writeTrack,
+  settle: settleTrackUpdate,
+};
+
+// --- Helpers below main export ---
 
 /**
- * What the call asked of one track. The addressing params and the deprecated
- * routing aliases are left out: only work decides whether a refusal leaves the
- * track with nothing, and an alias would count its own refused param twice.
- * @param args - The call's parameters
- * @param name - The name this target takes from the list
- * @param color - The color this target takes from the list
- * @param routing - The routing values, under their current param names
- * @returns The work asked, keyed by param name
+ * Once every target has had its turn: say what the call dropped.
+ * @param done - What the call did
+ * @param call - The call's shared state
  */
-function trackWorkAsked(
-  args: UpdateTrackArgs,
-  name: string | undefined,
-  color: string | undefined,
-  routing: RoutingParams,
-): object {
-  const work = Object.entries(args).filter(([key]) => !NOT_TRACK_WORK.has(key));
+function settleTrackUpdate(
+  done: Done<TrackPayload, TrackChecked, TrackEntry>,
+  call: Call,
+): void {
+  const { sent, named } = done.checked;
 
-  return { ...Object.fromEntries(work), name, color, ...routing };
+  // Said once the writes are done: it claims what the call did.
+  for (const { param, why } of blankTargetIgnores(sent, "tracks", named)) {
+    call.ignored(param, why);
+  }
 }

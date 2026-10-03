@@ -158,9 +158,10 @@ A target the call couldn't carry out keeps its slot as a skip entry:
 - `ok` appears only on a skip. A hit says so by having a result, and a key per
   hit is paid for in the caller's context again and again.
 - **A skip is never also a warning.** Anything about a target goes on that
-  target's entry. `writeFanOut` runs each target's body in a try/catch and turns
-  a throw into that target's skip entry, sharing the shape with `readFanOut`, so
-  a per-target body throws where it would once have warned and continued.
+  target's entry. The write pipeline runs each target's write in a try/catch and
+  turns a throw into that target's skip entry, sharing the shape with
+  `readFanOut`, so a per-target write throws where it would once have warned and
+  continued.
 - **A path lookup reports a miss instead of raising it** (`existingId` returns
   the reason). A resolver throws only for a path naming the wrong kind of thing,
   which is how `delete` tells "nothing is there" (a no-op) from "that isn't a

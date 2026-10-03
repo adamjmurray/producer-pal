@@ -90,7 +90,6 @@ async function expectSendReplaced(
   expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual({
     return: expect.any(String),
     returnId,
-    ok: false,
     detail: "named again later in this call",
   });
 
@@ -147,7 +146,8 @@ describe("ppal-update-track", () => {
       ).name;
     const before = await readName();
 
-    parseToolResult(await updateTrack({ path: "t0", name: null }));
+    // Another real param rides along: a call that asks nothing is refused.
+    parseToolResult(await updateTrack({ path: "t0", name: null, mute: false }));
     await sleep(100);
 
     expect(await readName()).toBe(before);
@@ -162,7 +162,7 @@ describe("ppal-update-track", () => {
 
     expect(data.path).toBe("t0");
     expect(warnings).toStrictEqual([
-      'WARNING: blank id ignored — "path" names the tracks',
+      'WARNING: blank id ignored: "path" names the tracks',
     ]);
   });
 
@@ -782,6 +782,42 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       }),
     );
     expect(entries[1]).not.toHaveProperty("ok");
+  });
+});
+
+describe("ppal-update-track over tracks named twice and calls it refuses", () => {
+  it("writes a track named by id and by path once, as the last mention asks", async () => {
+    const trackId = (await readTracks()).tracks![0]!.id;
+    const entries = parseBatchResult<UpdateTrackResult>(
+      await updateTrack({ id: trackId, path: "t0", name: "First,Second" }),
+      2,
+    );
+
+    // No `ok`: the earlier mention's work happened through the later one.
+    expect(entries).toStrictEqual([
+      { id: trackId, detail: 'named again as "t0" later in this call' },
+      { id: trackId, path: "t0" },
+    ]);
+    expect((await readTrackMixer(trackId)).name).toBe("Second");
+  });
+
+  it("refuses a path it can't parse, writing nothing", async () => {
+    const trackId = (await readTracks()).tracks![0]!.id;
+    const before = (await readTrackMixer(trackId)).name;
+    const result = await updateTrack({
+      path: "t0,not-a-path",
+      name: "Refused,Refused",
+    });
+
+    expect(getToolErrorMessage(result)).toContain('invalid path "not-a-path"');
+    expect((await readTrackMixer(trackId)).name).toBe(before);
+  });
+
+  it("refuses a call that names tracks and asks nothing of them", async () => {
+    const trackId = (await readTracks()).tracks![0]!.id;
+    const result = await updateTrack({ id: trackId });
+
+    expect(getToolErrorMessage(result)).toContain("nothing to update");
   });
 });
 

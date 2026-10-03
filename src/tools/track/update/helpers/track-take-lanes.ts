@@ -29,6 +29,10 @@ export interface TakeLaneTargetSpec {
   trackIndex: number;
   /** The lane to name, or null to append one (`l+`) */
   laneIndex: number | null;
+  /** Whether the target is work in itself: it adds a lane, or its track can't
+   * hold one and the write says why. Set by the plan, once the lanes are
+   * counted. */
+  work: boolean;
 }
 
 /** What update-track reports about a take lane it wrote to. */
@@ -67,7 +71,7 @@ export function planTakeLaneTargets(
     }
   }
 
-  assertTakeLanePlanFits([...lanes.values()]);
+  planTakeLaneGrowth([...lanes.values()]);
 
   return lanes;
 }
@@ -92,6 +96,7 @@ export function paramsTakeLanesIgnore(args: object): string[] {
  * @param spec - The lane target
  * @param name - The name for it, or undefined to leave it alone
  * @param ignored - The params this lane can't use, from {@link paramsTakeLanesIgnore}
+ * @param landed - Told what has changed as it does, for a throw to say so
  * @returns The lane's entry in the result
  * @throws Error when the path names no track, or one with no take lanes, or
  *   when the call asked nothing of the lane that it can take
@@ -100,6 +105,7 @@ export function updateTakeLane(
   spec: TakeLaneTargetSpec,
   name: string | undefined,
   ignored: string[],
+  landed: (phrase: string, partial?: Record<string, unknown>) => void,
 ): UpdateTakeLaneResult {
   const track = laneTrack(spec);
   const before = track.getChildCount("take_lanes");
@@ -117,11 +123,16 @@ export function updateTakeLane(
     throw new Error(ignoredParamsDetail(ignored));
   }
 
-  lane.setAll({ name });
+  const address = { id: lane.id, ...pathField(lane) };
+
+  if (created != null) {
+    landed(`take lane ${created} made`, { ...address, created });
+  }
+
+  lane.setAll({ name }, () => landed("name", address));
 
   return {
-    id: lane.id,
-    ...pathField(lane),
+    ...address,
     // A lane is only ever its name, so the entry says what it is now: the name
     // just written, or the one it kept.
     name: name ?? lane.getName(),
@@ -157,6 +168,7 @@ function lanePathSpec(entry: string): TakeLaneTargetSpec | null {
     entry,
     trackIndex: path.trackIndex,
     laneIndex: path.kind === "take-lane" ? path.laneIndex : null,
+    work: false,
   };
 }
 
@@ -178,17 +190,19 @@ function laneIdSpec(entry: string): TakeLaneTargetSpec | null {
     entry,
     trackIndex: lane.trackIndex as number,
     laneIndex: lane.takeLaneIndex as number,
+    work: false,
   };
 }
 
 /**
- * Refuses a call whose lane entries would put a track over the cap, before any
- * lane exists. Lanes can't be deleted, so a call that created some and then hit
- * the cap would strand them.
- * @param specs - Every lane target in the call, in the order named
+ * Marks the lane targets that are work, and refuses a call whose lane entries
+ * would put a track over the cap, before any lane exists. Lanes can't be
+ * deleted, so a call that created some and then hit the cap would strand them.
+ * @param specs - Every lane target in the call, in the order named; each one
+ *   that is work is marked in place
  * @throws Error when a track would end up over MAX_TAKE_LANES
  */
-function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
+function planTakeLaneGrowth(specs: TakeLaneTargetSpec[]): void {
   // null for a track that can hold no lanes: those entries are skipped one by
   // one, so they add nothing to count.
   const counts = new Map<number, number | null>();
@@ -200,6 +214,8 @@ function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
       : startingLaneCount(spec);
 
     if (before == null) {
+      // Skipped one by one when the call runs, with the real reason.
+      spec.work = true;
       counts.set(trackIndex, null);
       continue;
     }
@@ -218,6 +234,7 @@ function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
       );
     }
 
+    spec.work = total > before;
     counts.set(trackIndex, total);
   }
 }
