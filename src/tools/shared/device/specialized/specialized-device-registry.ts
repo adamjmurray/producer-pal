@@ -23,6 +23,7 @@ import {
   type WrittenPseudoParam,
   skippedParam,
 } from "../helpers/param-reading.ts";
+import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
 import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
@@ -207,7 +208,7 @@ export function applySpecializedActions(
 
   return actions.map((raw, index): ActionResult => {
     if (overridden.has(index)) {
-      return { action: raw, detail: namedAgain() };
+      return markSuperseded({ action: raw, detail: namedAgain() });
     }
 
     const parsed = parseAction(raw);

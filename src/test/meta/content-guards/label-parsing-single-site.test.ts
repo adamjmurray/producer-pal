@@ -12,10 +12,9 @@ import {
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
-// Every create and update tool used to paste the same preamble: check the
-// call's lists against each other, work out what it acts on, then pair the name
-// and color lists with it. That lives in labeled-targets.ts now, and a tool
-// reaching past it for the parsers is the next copy starting.
+// Every create and update tool used to paste the same preamble to pair the name
+// and color lists with its targets. That lives in labeled-targets.ts now, and a
+// tool reaching past it for the parsers is the next copy starting.
 const PARSER_CALL = /\b(?:parseNames|parseColors)\(/;
 
 const TOOLS_DIR = path.join(projectRoot, "src/tools");
@@ -38,7 +37,7 @@ describe("name and color parsing has one call site", () => {
     throwOnFileViolations(
       violations,
       "Found parseNames/parseColors called outside the shared preamble",
-      `Call labelNewTargets or pairLabels from ${CALLER} instead.`,
+      `Call pairLabels from ${CALLER} instead.`,
     );
 
     expect(violations).toHaveLength(0);

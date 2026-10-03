@@ -18,7 +18,7 @@ import {
   duplicateScene,
   duplicateSceneToArrangement,
 } from "../sources/duplicate-scene.ts";
-import { calculateSceneLength } from "../sources/scene-clips.ts";
+import { readSceneClips } from "../sources/scene-clips.ts";
 
 // Mock updateClip to avoid complex internal logic
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -73,7 +73,7 @@ describe("duplicate-scene", () => {
     registerLiveSetWithThreeTracks();
   });
 
-  describe("calculateSceneLength", () => {
+  describe("readSceneClips length", () => {
     it("should return default minimum length when scene has no clips", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
@@ -81,7 +81,7 @@ describe("duplicate-scene", () => {
       });
       registerClipSlot(0, 0, false);
 
-      const length = calculateSceneLength(0);
+      const length = readSceneClips(0).length;
 
       expect(length).toBe(4);
     });
@@ -94,7 +94,7 @@ describe("duplicate-scene", () => {
       registerClipSlot(0, 0, true, { length: 8 });
       registerClipSlot(1, 0, true, { length: 12 });
 
-      const length = calculateSceneLength(0);
+      const length = readSceneClips(0).length;
 
       expect(length).toBe(12);
     });
@@ -346,7 +346,7 @@ describe("duplicate-scene", () => {
       });
     });
 
-    it("should use calculateSceneLength when arrangementLength is not provided", async () => {
+    it("should use the scene length when arrangementLength is not provided", async () => {
       setupSceneToArrangementClipMocks(8, {
         signature_numerator: 4,
         signature_denominator: 4,

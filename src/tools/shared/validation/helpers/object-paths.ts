@@ -275,21 +275,6 @@ export function requireClipSlotPath(
 }
 
 /**
- * Parses a comma-separated list of clip slots.
- * @param input - Comma-separated paths (e.g., "t0/s1" or "t0/s1,t2/s3")
- * @param label - Param name for error messages
- * @returns One track/scene pair per path, in order
- */
-export function parseClipSlotPathList(
-  input: string | null | undefined,
-  label = "path",
-): Array<{ trackIndex: number; sceneIndex: number }> {
-  return parseObjectPathList(input, label).map((path) =>
-    requireClipSlotPath(path, label),
-  );
-}
-
-/**
  * Narrows a path to something that can hold a device — a track, or a spot down
  * its device chain.
  * @param path - Parsed path

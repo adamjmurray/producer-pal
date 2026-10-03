@@ -24,11 +24,8 @@
 //  8. `count` with a list of destinations is refused up front.
 //  9. A lone target that is skipped makes the call throw with its detail.
 //
-// A tool that fails a case today is listed under `skip` in its adapter, with
-// what it does instead. Those skips are the to-do list for moving every write
-// tool onto one shared pipeline. A skipped case still runs and has to keep
-// failing, so a tool that gets fixed turns its case red until the skip is
-// dropped.
+// A case that can't apply to a tool is listed under `na` in its adapter, with
+// why.
 
 import { describe, expect, it } from "vitest";
 import { ADAPTERS } from "./write-conformance-adapters.ts";
@@ -41,19 +38,14 @@ import {
 
 describe.each(ADAPTERS)("write conformance: $tool", (adapter) => {
   it("accounts for every case exactly once", () => {
-    // A case that applies, or is skipped, has a hook to run; one that doesn't
-    // apply has none of its own; none is both n/a and skipped.
+    // A case that applies has a hook to run; one that doesn't apply has none
+    // of its own.
     const problems = CASE_IDS.flatMap((id) => {
       const notApplicable = adapter.na?.[id] != null;
 
-      return [
-        notApplicable && adapter.skip?.[id] != null
-          ? `${id} is both n/a and skipped`
-          : null,
-        hasOwnHook(adapter, id) === notApplicable
-          ? `${id} ${notApplicable ? "is n/a but has a hook" : "has no hook"}`
-          : null,
-      ].filter((problem) => problem != null);
+      return hasOwnHook(adapter, id) === notApplicable
+        ? [`${id} ${notApplicable ? "is n/a but has a hook" : "has no hook"}`]
+        : [];
     });
 
     expect(problems).toStrictEqual([]);
@@ -70,20 +62,15 @@ describe.each(ADAPTERS)("write conformance: $tool", (adapter) => {
 });
 
 /**
- * What a case's title says about why it doesn't pass.
+ * What a case's title says about why it doesn't apply.
  * @param adapter - The tool
  * @param id - The case
- * @returns " — n/a: ...", " — skipped (fails today): ...", or nothing
+ * @returns " — n/a: ...", or nothing
  */
 function noteFor(adapter: WriteToolAdapter, id: CaseId): string {
   const notApplicable = adapter.na?.[id];
-  const skipped = adapter.skip?.[id];
 
-  if (notApplicable != null) {
-    return ` — n/a: ${notApplicable}`;
-  }
-
-  return skipped == null ? "" : ` — skipped (fails today): ${skipped}`;
+  return notApplicable == null ? "" : ` — n/a: ${notApplicable}`;
 }
 
 /**

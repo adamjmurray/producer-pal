@@ -6,7 +6,10 @@
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
 // Import from there directly instead of through this file
 
-import { isNamedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  isSuperseded,
+  markSuperseded,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import {
   looseLabelKey,
   parseLabel,
@@ -457,9 +460,7 @@ export function paramWritten(outcome: ParamOutcome): outcome is WrittenParam {
  * @returns True when the write landed
  */
 export function paramResultLanded(result: ParamResult): boolean {
-  return (
-    !("ok" in result) && !("detail" in result && isNamedAgain(result.detail))
-  );
+  return !("ok" in result) && !isSuperseded(result);
 }
 
 /**
@@ -484,7 +485,7 @@ export function supersededParam(
   byId: boolean,
   detail: string,
 ): SupersededParam {
-  return byId ? { id: key, detail } : { name: key, detail };
+  return markSuperseded(byId ? { id: key, detail } : { name: key, detail });
 }
 
 /** What create-device and update-device report for a param whose value isn't

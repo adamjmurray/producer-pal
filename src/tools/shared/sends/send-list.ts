@@ -8,7 +8,10 @@ import {
   publishedReadBack,
   readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
-import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  joinDetails,
+  markSuperseded,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import {
   namedAgain,
   replacementFailedDetail,
@@ -242,7 +245,10 @@ export function withSupersededSends<T extends IndexedSend>(
                 send.clash,
               ]),
             }
-          : { ...base, detail: joinDetails([namedAgain(), send.clash]) },
+          : markSuperseded({
+              ...base,
+              detail: joinDetails([namedAgain(), send.clash]),
+            }),
       );
     }
 

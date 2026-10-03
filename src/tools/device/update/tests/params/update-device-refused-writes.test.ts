@@ -176,6 +176,16 @@ describe("updateDevice - every action failed", () => {
     );
   });
 
+  it("counts an action named again as not landed", () => {
+    registerSimplerDevice();
+
+    expect(() =>
+      updateDevice({ id: "simpler-1", actions: ["nope", "nope"] }),
+    ).toThrow(
+      'no action landed — "nope": named again later in this call; "nope": unknown action for this device',
+    );
+  });
+
   it("keeps the hit when one action ran", () => {
     registerSimplerDevice();
 

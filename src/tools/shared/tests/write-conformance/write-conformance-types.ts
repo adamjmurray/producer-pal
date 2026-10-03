@@ -89,16 +89,14 @@ export interface LoneScenario {
 /**
  * What the suite needs to know about one write tool. Every hook sets up its
  * own mock objects and returns the call to make; the suite clears the mock
- * between hooks. A case that doesn't apply, or that the tool fails today, is
- * listed in `na` or `skip` with a reason instead of getting a hook.
+ * between hooks. A case that doesn't apply is listed in `na` with a reason
+ * instead of getting a hook.
  */
 export interface WriteToolAdapter {
   tool: string;
   run: (args: ToolArgs) => unknown;
   /** Cases that can't apply to this tool, and why */
   na?: Partial<Record<CaseId, string>>;
-  /** Cases this tool fails today, and what it does instead */
-  skip?: Partial<Record<CaseId, string>>;
 
   /** `n` targets named out of order, so the order of the entries means something */
   many?: (n: number) => Scenario;

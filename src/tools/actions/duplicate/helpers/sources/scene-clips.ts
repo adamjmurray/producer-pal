@@ -111,12 +111,3 @@ export function readSceneClips(sceneIndex: number): ScenePass {
 export function readScene(sceneId: string): ScenePass {
   return readSceneClips(sceneIndexOf(sceneId));
 }
-
-/**
- * Calculate the length of a scene (longest clip in the scene)
- * @param sceneIndex - Scene index
- * @returns Length in Ableton beats
- */
-export function calculateSceneLength(sceneIndex: number): number {
-  return readSceneClips(sceneIndex).length;
-}

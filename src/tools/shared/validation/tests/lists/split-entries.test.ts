@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { nameEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
   everyEntry,
   splitList,
@@ -31,11 +31,10 @@ const LABELS = {
 const READERS: Array<[string, (value: string) => unknown]> = [
   // name, on every create and update tool
   [
-    "labelNewTargets",
+    "pairLabels",
     (value) => {
-      const { parsedNames } = labelNewTargets({
+      const { parsedNames } = pairLabels({
         noun: "clip",
-        param: "path",
         count: 2,
         name: value,
       });

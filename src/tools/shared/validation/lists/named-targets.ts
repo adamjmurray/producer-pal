@@ -152,9 +152,6 @@ export function spelledAs(target: NamedTarget): string {
   return target.param === "id" ? `id ${target.value}` : `"${target.value}"`;
 }
 
-/** What every named-again detail looks like, whoever wrote it. */
-const NAMED_AGAIN = /^named again( as .+)? later in this call$/s;
-
 /** Why a target got nothing: there was no time left to reach it. */
 export const REQUEST_OUT_OF_TIME = "the request ran out of time";
 
@@ -181,16 +178,6 @@ export function namedAgain(address?: string): string {
   return address == null
     ? "named again later in this call"
     : `named again as ${address} later in this call`;
-}
-
-/**
- * Whether a detail says its entry was named again later: a write left undone
- * for the later mention, which an entry list counts as nothing landing.
- * @param detail - An entry's detail, if it has one
- * @returns True for the named-again wording
- */
-export function isNamedAgain(detail: string | undefined): boolean {
-  return detail != null && NAMED_AGAIN.test(detail);
 }
 
 // --- Helpers below main exports ---

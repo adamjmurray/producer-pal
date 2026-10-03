@@ -38,8 +38,7 @@ export const writeConformanceCases: Record<
 };
 
 /**
- * Run one case against one tool. A case the adapter lists under `skip` passes
- * only while the tool still fails it.
+ * Run one case against one tool.
  * @param adapter - The tool
  * @param id - The case
  */
@@ -47,35 +46,11 @@ export async function expectCase(
   adapter: WriteToolAdapter,
   id: CaseId,
 ): Promise<void> {
-  let failure: unknown;
-
-  try {
-    await writeConformanceCases[id](adapter);
-  } catch (error) {
-    failure = error;
-  }
-
-  // A skipped case has to keep failing: once the tool passes it, the skip is
-  // stale and has to go.
-  if (adapter.skip?.[id] != null) {
-    expect(
-      failure == null
-        ? `${adapter.tool} now passes ${id}: drop its skip`
-        : "fails",
-    ).toBe("fails");
-
-    return;
-  }
-
-  if (failure != null) {
-    throw failure instanceof Error
-      ? failure
-      : new Error(JSON.stringify(failure));
-  }
+  await writeConformanceCases[id](adapter);
 }
 
 /**
- * A hook the adapter has to supply for a case it doesn't mark as skipped.
+ * A hook the adapter has to supply for a case it doesn't list under `na`.
  * @param adapter - The tool
  * @param hook - Which hook
  * @returns The hook

@@ -9,10 +9,10 @@
 // goes to the Max console instead.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isNamedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   type EntryWithDetail,
   appendDetail,
+  isSuperseded,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
 
@@ -132,8 +132,7 @@ export function refuseIfNoneLanded<T extends object>(
 ): void {
   // An entry a later one overrides wrote nothing either.
   const failed = (entry: T): boolean =>
-    (entry as NestedEntry).ok === false ||
-    isNamedAgain((entry as NestedEntry).detail);
+    (entry as NestedEntry).ok === false || isSuperseded(entry);
 
   if (entries.length === 0 || !entries.every(failed)) {
     return;

@@ -16,37 +16,8 @@ import { requireClipSourcePath } from "#src/tools/shared/validation/helpers/clip
 import {
   existingId,
   type IdLookup,
-  idPerPath,
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
-
-/**
- * Resolves clip path(s) to the ids of the clips sitting there.
- * A malformed entry or a location with no clip warns and contributes nothing,
- * matching how these tools skip an id that doesn't resolve — one bad entry
- * costs its own clip, not the whole batch. A hole in the list itself throws.
- * @param paths - Comma-separated clip locations (e.g. "t0/s1,t2[5|1]")
- * @param label - Param name the paths came from, for warnings
- * @returns The clip ids, in path order
- */
-export function clipIdsAtPaths(paths: string, label = "path"): string[] {
-  return clipIdPerPath(paths, label).filter((id) => id != null);
-}
-
-/**
- * The same lookup, keeping one entry per path with null where a path named no
- * clip. Callers that line paths up against another list — move destinations —
- * need the positions to hold even when an entry resolves to nothing.
- * @param paths - Comma-separated clip locations (e.g. "t0/s1,t2[5|1]")
- * @param label - Param name the paths came from, for warnings
- * @returns One clip id per path entry, in path order
- */
-export function clipIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (entry) => clipIdAtPath(entry, label));
-}
 
 /**
  * The id of the clip one location holds, or the reason it holds none.

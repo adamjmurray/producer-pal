@@ -20,8 +20,8 @@ import {
   stopPipelineProbe,
 } from "#src/tools/shared/write-pipeline/pipeline-probe.ts";
 
-// Every write tool runs through the shared pipeline, which is how
-// the rules it enforces reach all of them. This holds the migration to its list.
+// Every write tool runs through the shared pipeline, which is how the rules it
+// enforces reach all of them. This holds every tool to that.
 
 /** The tools that write to the Live Set. Every other tool has to be read-only. */
 const WRITE_TOOLS = [
@@ -39,30 +39,6 @@ const WRITE_TOOLS = [
   "ppal-playback",
   "ppal-select",
 ];
-
-/** The write tools that were off the pipeline when the migration started. */
-const ORIGINALLY_NOT_MIGRATED: ReadonlySet<string> = new Set([
-  "ppal-update-clip",
-  "ppal-duplicate",
-  "ppal-create-device",
-  "ppal-create-clip",
-  "ppal-delete",
-  "ppal-create-track",
-  "ppal-create-scene",
-  "ppal-update-track",
-  "ppal-update-scene",
-  "ppal-update-live-set",
-  "ppal-playback",
-  "ppal-select",
-]);
-
-/**
- * Write tools not yet on the pipeline. A ratchet: a tool leaves this list in
- * the commit that moves it over, and none is ever added back (a test below
- * holds it to ORIGINALLY_NOT_MIGRATED). Emptied, and deleted with the last of
- * them.
- */
-const NOT_MIGRATED: string[] = [];
 
 /** Tools that don't write to the Live Set, with why where it isn't obvious. */
 const READ_ONLY: Record<string, string | null> = {
@@ -86,27 +62,14 @@ const CALL_THAT_WRITES: Record<string, object> = {
 
 const WRITE_PIPELINE = "src/tools/shared/write-pipeline";
 
-describe("write pipeline migration", () => {
+describe("write tools use the pipeline", () => {
   it("names every tool as a write tool or a read-only one", () => {
     const named = [...WRITE_TOOLS, ...Object.keys(READ_ONLY)].toSorted();
 
     expect(named).toStrictEqual([...DISPATCH_TOOL_NAMES].toSorted());
   });
 
-  it("only lists as not migrated tools that write", () => {
-    expect(
-      NOT_MIGRATED.filter((tool) => !WRITE_TOOLS.includes(tool)),
-    ).toStrictEqual([]);
-    expect(new Set(NOT_MIGRATED).size).toBe(NOT_MIGRATED.length);
-  });
-
-  it("only ever removes tools from the not-migrated list", () => {
-    expect(
-      NOT_MIGRATED.filter((tool) => !ORIGINALLY_NOT_MIGRATED.has(tool)),
-    ).toStrictEqual([]);
-  });
-
-  it("runs every migrated write tool through the pipeline, and no other", async () => {
+  it("runs every write tool through the pipeline, and no other", async () => {
     startPipelineProbe();
 
     for (const tool of [...WRITE_TOOLS, ...Object.keys(READ_ONLY)]) {
@@ -114,10 +77,10 @@ describe("write pipeline migration", () => {
     }
 
     const ran = new Set(stopPipelineProbe());
-    const expected = WRITE_TOOLS.filter((tool) => !NOT_MIGRATED.includes(tool));
 
-    // A tool that already runs through it must leave NOT_MIGRATED.
-    expect(WRITE_TOOLS.filter((tool) => ran.has(tool))).toStrictEqual(expected);
+    expect(WRITE_TOOLS.filter((tool) => ran.has(tool))).toStrictEqual(
+      WRITE_TOOLS,
+    );
     expect(
       [...ran].filter((tool) => !WRITE_TOOLS.includes(tool)),
     ).toStrictEqual([]);
