@@ -37,7 +37,9 @@ with a tool, the tool wins.
   per-call collector keyed by the clip id; a step that writes under a new id
   hands what it reports back to the id the caller named. Moves are written in an
   order that clears nobody's way, and one that can't be ordered is refused with
-  the clip it would land on named.
+  the clip it would land on named. Known gap: if Live fails while a lengthened
+  clip's last partial tile is in the holding area past the track's clips, that
+  holding copy can be left there unreported.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer
@@ -66,7 +68,9 @@ with a tool, the tool wins.
   scenes made to reach the slot are named in its `detail`. A scratch clip or
   scene Live won't clear after the replacement landed is a `detail` on the new
   clip's entry, not a failure. `auto` that launched nothing (no clip slot got a
-  clip) is a whole-call warning, `auto ignored: …`.
+  clip) is a whole-call warning, `auto ignored: …`. A clip meter Live changed (a
+  numerator it clamps) is reported as read back, but the clip's region is still
+  laid out in the meter asked for.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry

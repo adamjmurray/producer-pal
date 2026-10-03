@@ -93,6 +93,9 @@ All decided before the first write (`plans/`), so the loop never has to undo:
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.
 
+Each target looks its objects up again, so splitting costs about 5.7 id lookups
+per clip, up from 4 before the pipeline. That cost is accepted.
+
 ## Sync until a hook returns a promise
 
 `runWrite()` is synchronous and returns a plain result. It becomes a promise

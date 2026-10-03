@@ -182,7 +182,8 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   made on the way count as landed and are not undone: the `detail` says what was
   left (`left an empty Simpler on pad ...`). The exception is wrapping an
   instrument in a rack: it removes the rack it made, restores the instrument,
-  then throws.
+  then throws, because the temporary track it uses isn't something the caller
+  asked for.
 - **A write the tool can't do** is refused on the target's entry: a track's
   `pan` in split mode, `leftPan`/`rightPan` in stereo, a gain Live has disabled,
   `mute`/`solo` on the main track, `arm` on a track that can't be armed, a rack
