@@ -5,7 +5,7 @@
 
 // Input paths resolve either spelling of a drum chain; only the warning
 // depends on which one the caller used. See
-// dev/tools/object-paths/results-and-errors.md.
+// dev/specs/tool-behavior/object-paths/results-and-errors.md.
 
 import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";

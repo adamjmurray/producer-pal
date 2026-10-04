@@ -41,6 +41,8 @@ export interface SkillSlotView {
   splitStale: SplitStale | null;
   /** Producer Pal version the override was forked from (null when none). */
   forkedFromVersion: string | null;
+  /** Why the slot's file couldn't be read (null when it could). Not editable. */
+  readError: string | null;
 }
 
 /** A pre-split override's overlap with the `-write` sibling it duplicates. */
@@ -184,6 +186,8 @@ interface RawSkillSlot {
   canDisable?: boolean;
   /** Absent on an older server, and legitimately null for the drivers. */
   gate?: unknown;
+  /** Absent on an older server, and null whenever the file was readable. */
+  readError?: string | null;
 }
 
 /** The fields a per-slot PUT may carry; either alone is a valid write. */
@@ -315,6 +319,7 @@ function toView(raw: RawSkillSlot): SkillSlotView {
     drifted: raw.drifted,
     splitStale: raw.splitStale ?? null,
     forkedFromVersion: raw.provenance?.producerPalVersion ?? null,
+    readError: raw.readError ?? null,
   };
 }
 

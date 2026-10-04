@@ -105,7 +105,7 @@ describe("duplicate take lane to a main lane", () => {
     expect(result[0]?.clips.map((clip) => clip.path)).toStrictEqual([
       "t1[1|1]",
     ]);
-    expect(result[1]?.created).toBe(true);
+    expect(result[1]?.created).toBe("l0");
     expect(result[1]?.clips.map((clip) => clip.path)).toStrictEqual([
       "t1/l0[3|1]",
     ]);
@@ -140,7 +140,7 @@ describe("duplicate take lane to a main lane", () => {
     expect(result.detail).toContain("warp markers reset");
   });
 
-  it("marks the copy a second destination landed on top of", async () => {
+  it("leaves a copy a second destination goes over whole unwritten", async () => {
     registerLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
@@ -149,14 +149,11 @@ describe("duplicate take lane to a main lane", () => {
       toPath: "t1,t1",
     });
 
-    // Both entries name t1, so the second create cleared the first's clip.
-    expect(result[0]?.clips).toStrictEqual([
-      {
-        path: "t1[1|1]",
-        deleted: true,
-        detail: "a later copy in this call landed on it",
-      },
-    ]);
+    // Both entries name t1, so the second covers the first's clip whole.
+    expect(result[0]).toStrictEqual({
+      path: "t1",
+      detail: "overwritten later in this call by t1[1|1]",
+    });
     expect(result[1]?.clips[0]).toHaveProperty("id");
   });
 

@@ -119,17 +119,23 @@ UI.
   vocabulary, spelling, efficiency. Read it before changing a tool's inputs,
   outputs, or failure behavior. Anything about a target goes in that target's
   result entry; a warning is only for what no result can carry, and is appended
-  to the response as a `WARNING:` block the model reads. See ADR-0035 for the
-  calls that are refused up front instead. Never cite a principle by number
-  outside that file — numbering shifts as principles merge and split; state the
-  idea instead.
+  to the response as a `WARNING:` block the model reads.
+  `dev/specs/tool-behavior/` states how every tool answers a call, including the
+  calls refused up front. Never cite a principle by number outside that file —
+  numbering shifts as principles merge and split; state the idea instead.
 
 - **Fix the class, not the instance.** When a review finds a tool breaking a
   rule in `dev/PRINCIPLES.md`, check every tool that applies that rule before
   fixing. Fix them together, in shared code where you can, with a test that
   covers all of them. Changing how a tool answers (refuse, skip or warn; which
-  of two entries wins) is a rule change, not a fix: ask before making it, record
-  the decision in an ADR, then apply it to every tool at once.
+  of two entries wins) is a rule change, not a fix: ask before making it, update
+  the spec in `dev/specs/tool-behavior/`, then apply it to every tool at once.
+
+- **Every write tool runs through the shared write pipeline** (`runWrite`). A
+  tool never hand-rolls its own refuse, skip, entry, last-wins or deadline
+  logic: add a hook to the pipeline instead. The meta test
+  (`write-tools-use-pipeline.test.ts`) and the write conformance suite enforce
+  it. See `dev/tools/write-pipeline.md`.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
@@ -174,9 +180,10 @@ UI.
   GitHub issues) will be deleted someday, and that not every contributor can
   read it. A ticket is a to-do, not a record. Anything worth keeping goes in the
   repo: code comments for local reasoning, `dev/` docs for how a system works,
-  `dev/decisions/` ADRs for why a settled choice went that way, and user-facing
-  docs when it changes what users see. A commit or PR that only points at a
-  ticket has lost the information.
+  `dev/specs/` and the owning doc for how things work now, `dev/decisions/` ADRs
+  only for a rejected alternative, and user-facing docs when it changes what
+  users see. A commit or PR that only points at a ticket has lost the
+  information.
 
 - **No Linear ticket references anywhere in the repo** — this is a public repo
   with private ticket numbers. Never write `AJM-NNN` in a tracked file or a
@@ -329,9 +336,11 @@ Internal docs live in `dev/`, grouped by topic (`tools/`, `live-api/`,
 main ones: `dev/PRINCIPLES.md` (first principles for tool design — read first),
 `dev/architecture/` (system design), `dev/coding-standards/` (full style guide +
 Live API reference), `dev/quality/testing.md`, `dev/tools/tool-schemas.md`,
-`dev/quality/linting.md`, `dev/specs/` (bar|beat and transform grammars),
-`dev/quality/development-tools/`, and `dev/decisions/` (ADRs — why settled
-choices went the way they did, especially the rejections).
+`dev/quality/linting.md`, `dev/specs/` (bar|beat and transform grammars, and
+`tool-behavior/` for how every tool answers a call),
+`dev/quality/development-tools/`, and `dev/decisions/` (ADRs — rejected
+alternatives and choices expensive to reconstruct; current rules go in the specs
+and docs).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
 

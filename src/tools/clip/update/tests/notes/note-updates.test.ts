@@ -245,6 +245,17 @@ describe("note-updates", () => {
       });
     }
 
+    it("has no result to count on when the double is skipped", () => {
+      // The caller sends only MIDI clips; an audio one refuses the double.
+      registerMockObject("100", {
+        path: "live_set tracks 0 clip_slots 0 clip",
+        type: "Clip",
+        properties: { is_midi_clip: 0 },
+      });
+
+      expect(callWithEdits()).toBeNull();
+    });
+
     it("skips the pre-double stage entirely when preTransforms is absent", () => {
       // Stage 1 only runs when preTransformString != null. With no edits at all
       // the function just doubles; forcing the guard true would flush the
@@ -424,7 +435,8 @@ describe("muted notes in an edit", () => {
         4,
       );
 
-      expect(result.transformed).toBe(2);
+      expect(result.deletedNotes).toBe(2);
+      expect(result.transformed).toBe(0);
       expect(addedNotes).toStrictEqual([MUTED_WRITTEN]);
     });
 

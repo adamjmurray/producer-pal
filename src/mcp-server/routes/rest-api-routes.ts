@@ -23,6 +23,7 @@ import {
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
+  isLiveApiToolActive,
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "../create-mcp-server.ts";
@@ -44,15 +45,16 @@ interface RestApiConfig {
 
 /**
  * The tool defs available to one request. The raw Live API is opt-in — via the
- * device Setup tab, or per-request via LIVE_API_HEADER; when off, it is fully
- * absent (not in the catalog, not callable). When on it flows through the same
+ * device Setup tab, or per-request via LIVE_API_HEADER, and small-model mode
+ * drops it (as MCP does); when off, it is fully absent (not in the catalog,
+ * not callable). When on it flows through the same
  * tools whitelist as every other tool.
  *
  * @param profile - The resolved settings for this request
  * @returns The tool defs this request may see
  */
 function activeToolDefs(profile: RequestProfile): ToolDefFunction[] {
-  return profile.liveApiEnabled
+  return isLiveApiToolActive(profile.liveApiEnabled, profile.smallModelMode)
     ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
     : [...STANDARD_TOOL_DEFS];
 }

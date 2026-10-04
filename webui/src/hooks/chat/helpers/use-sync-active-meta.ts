@@ -15,6 +15,9 @@ export type SyncActiveMetaParams = {
   [
     K in keyof ConversationLockedSettings as `active${Capitalize<K>}`
   ]: ConversationLockedSettings[K];
+} & {
+  /** The active conversation was imported, so its saves keep the flag. */
+  activeImported?: boolean;
 };
 
 /**
@@ -38,6 +41,7 @@ export function useSyncActiveMeta(
     activeSystemInstruction,
     activeNotation,
     activeEnabledTools,
+    activeImported,
   } = props;
 
   useEffect(() => {
@@ -71,6 +75,10 @@ export function useSyncActiveMeta(
     if (activeEnabledTools != null) {
       meta.enabledTools = activeEnabledTools;
     }
+
+    if (activeImported === true) {
+      meta.imported = true;
+    }
   }, [
     activeMetaRef,
     activeModel,
@@ -80,5 +88,6 @@ export function useSyncActiveMeta(
     activeSystemInstruction,
     activeNotation,
     activeEnabledTools,
+    activeImported,
   ]);
 }

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
 
 interface McpTool {
   name: string;
@@ -131,16 +133,13 @@ async function handleToolsCall(
   }
 }
 
-// Default URL for the MCP server running in Ableton Live
-const DEFAULT_URL = "http://localhost:3350/mcp";
-
 /**
  * Parse command line arguments
  * @returns Parsed arguments
  */
 function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
-  let url = DEFAULT_URL;
+  let url = DEFAULT_MCP_URL;
   let command: string | null = null;
   let toolName: string | null = null;
   let toolArgs: Record<string, unknown> | null = null;

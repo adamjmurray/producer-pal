@@ -9,6 +9,7 @@ import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import {
   requireDeviceContainer,
   trackSegmentPath,
@@ -57,6 +58,10 @@ export interface InsertionPathResolution {
   /** The rack chains the path had to make first ("c2-c3"), when it made any.
    * Numbered within the rack the path names. */
   createdChains?: string;
+  /** Every chain the path made, including the one a `c+` appended, which
+   * `createdChains` leaves out because `containerPath` already names it. For a
+   * failure to say what it left behind. */
+  madeChains?: string;
 }
 
 /**
@@ -106,9 +111,24 @@ export function resolveInsertionPath(
   // name the wrong thing — echo what the call wrote instead.
   const spelled = resolved ? above : held(segments);
   const created: CreatedChains = [];
-  const container = resolved
-    ? resolveContainer(root, above, path, appendsChain, created)
-    : null;
+  let container: LiveAPI | null;
+
+  try {
+    container = resolved
+      ? resolveContainer(root, above, path, appendsChain, created)
+      : null;
+  } catch (error) {
+    // Chains made on the way down stay in the Set, so the refusal names them.
+    throw errorWithChainsLeft(error, created.join(", "));
+  }
+
+  // The chain a `c+` made has an index only now that it exists, and the
+  // result has to name it rather than the `c+` the call wrote.
+  const appendedPath =
+    appendsChain && container != null ? objectPathForApi(container) : undefined;
+  const made = [...created, appendedPath?.split("/").at(-1) ?? ""].filter(
+    (range) => range !== "",
+  );
 
   return {
     container,
@@ -116,12 +136,9 @@ export function resolveInsertionPath(
     ...(appendsDevice ? { appendsDevice } : {}),
     ...(resolved ? {} : { namesNothing }),
     ...(created.length > 0 ? { createdChains: created.join(", ") } : {}),
-    // The chain a `c+` made has an index only now that it exists, and the
-    // result has to name it rather than the `c+` the call wrote.
+    ...(made.length > 0 ? { madeChains: made.join(", ") } : {}),
     containerPath:
-      (appendsChain && container != null
-        ? objectPathForApi(container)
-        : null) ??
+      appendedPath ??
       formatObjectPath({ kind: "device", root, segments: spelled }),
   };
 }
@@ -237,4 +254,25 @@ function appendChainTo(rack: LiveAPI, path: string): LiveAPI {
   }
 
   return created;
+}
+
+/**
+ * Why a device can't go at this index, when it can't. Live takes 0 through the
+ * container's device count (the count itself appends) and ignores anything
+ * higher without a word, so every tool that places a device refuses it.
+ * @param position - The index aimed at, or null to insert at the top
+ * @param deviceCount - How many devices the container holds
+ * @param reportPath - How to spell the destination back to the caller
+ * @returns The reason, or null when the index is in range
+ */
+export function pastTheEndReason(
+  position: number | null,
+  deviceCount: number,
+  reportPath: string,
+): string | null {
+  if (position == null || position <= deviceCount) {
+    return null;
+  }
+
+  return `"${reportPath}" is past the end of a container holding ${deviceCount} device${deviceCount === 1 ? "" : "s"}`;
 }

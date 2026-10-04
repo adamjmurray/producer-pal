@@ -82,7 +82,6 @@ describe("readOneClip", () => {
         name: "Test Clip",
         type: "midi",
         path: "t1/s1",
-        view: "session",
         timeSignature: timeSig,
         looping: false,
         start: expectedStart,
@@ -333,7 +332,6 @@ describe("readOneClip", () => {
       name: "Audio Sample",
       type: "audio",
       path: "t0/s0",
-      view: "session",
       timeSignature: "4/4",
       looping: true,
       start: "1|2", // loop_start
@@ -459,7 +457,6 @@ describe("readOneClip", () => {
 
     expect(result.id).toBe("session_clip_id");
     expect(result.path).toBe("t2/s4");
-    expect(result.view).toBe("session");
     expect(result).toHaveLength("1bar");
     expect(result.start).toBe("1|2");
   });
@@ -495,7 +492,6 @@ describe("readOneClip", () => {
     });
 
     expect(result.id).toBe("arrangement_clip_id");
-    expect(result.view).toBe("arrangement");
     // The path's position uses the song time signature (4/4), so 16 Ableton
     // beats is bar 5 beat 1
     expect(result.path).toBe("t3[5|1]");
@@ -548,7 +544,6 @@ describe("readOneClip", () => {
     // take_lanes 0 is the first take lane (the main lane is excluded from the
     // collection); start_time 0 is bar 1 beat 1
     expect(result.path).toBe("t3/l0[1|1]");
-    expect(result.view).toBe("arrangement");
   });
 
   it("omits takeLane for arrangement clips on the main lane", () => {
@@ -561,7 +556,6 @@ describe("readOneClip", () => {
 
     // The main lane has no segment of its own, so the track carries the position
     expect(result.path).toBe("t3[1|1]");
-    expect(result.view).toBe("arrangement");
   });
 
   it("includes pitchShift for audio clips with non-zero pitch", () => {

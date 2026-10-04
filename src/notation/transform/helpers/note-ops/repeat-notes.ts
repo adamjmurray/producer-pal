@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isSameSlot } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "../../transform-warning-label.ts";
 import {
@@ -15,7 +14,12 @@ import {
   evaluateExpression,
 } from "../transform-evaluation.ts";
 import { MAX_NOTE_PIECES } from "./note-cuts.ts";
-import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
+import {
+  madeFrom,
+  type NoteOpResult,
+  type NoteParents,
+  skippedNoteOp,
+} from "./note-op-result.ts";
 import { numericOpArg } from "./numeric-op-arg.ts";
 
 /**
@@ -28,10 +32,12 @@ import { numericOpArg } from "./numeric-op-arg.ts";
  *   - repeat(n/8)     → original + 1 echo an eighth note later
  *   - repeat(n/8, 2)  → original + 2 copies at +1 and +2 eighth notes
  *   - repeat(1bar, 3) → original + 3 copies, each a further bar on
- * `offset` (first arg, required) is a note value (n/X) or bar duration (<count>bar),
+ * `offset` (first arg) is a note value (n/X) or bar duration (<count>bar),
  * greater than 0. `copies` (second arg, optional, default 1) is the number of
- * echoes (>= 1, clamped to MAX_NOTE_PIECES). Invalid args warn-and-skip (notes
- * pass through unchanged), consistent with update-tool error handling.
+ * echoes (>= 1, clamped to MAX_NOTE_PIECES). checkTransformArgs has already
+ * refused a wrong offset or a count it can judge up front; a count it couldn't
+ * (it uses a variable or a random function) that turns out unusable warns and
+ * the notes pass through unchanged.
  * @param matched - Notes selected by the op
  * @param op - The repeat operation (args: offset duration, optional copy count)
  * @param numerator - Time signature numerator
@@ -45,29 +51,9 @@ export function repeatNotes(
   denominator: number,
 ): NoteOpResult {
   // repeat args are always expressions (bar|beat points only reach `split`).
-  const offsetArg = op.args[0] as ExpressionNode | undefined;
+  const offsetArg = op.args[0] as ExpressionNode;
   const copiesArg = op.args[1] as ExpressionNode | undefined;
-
-  if (op.args.length === 0 || offsetArg == null) {
-    console.warn(
-      "repeat() needs an offset, e.g. repeat(n/8) or repeat(1bar); skipping",
-    );
-
-    return skippedNoteOp(matched);
-  }
-
-  if (op.args.length > 2) {
-    console.warn(
-      "repeat() takes an offset and an optional copy count; using the first two arguments",
-    );
-  }
-
-  const offset = resolveRepeatOffset(offsetArg, numerator, denominator);
-
-  if (offset == null) {
-    return skippedNoteOp(matched); // offset invalid — warn already emitted, pass through
-  }
-
+  const offset = repeatOffset(offsetArg, numerator, denominator);
   const copies = resolveRepeatCopies(copiesArg, numerator, denominator);
 
   if (copies == null) {
@@ -75,89 +61,43 @@ export function repeatNotes(
   }
 
   const out: NoteEvent[] = [...matched];
-  let collisions = 0;
+  const parents: NoteParents = new Map();
 
   for (const note of matched) {
     for (let k = 1; k <= copies; k++) {
       const copy = { ...note, start_time: note.start_time + k * offset };
 
       // A copy landing on an existing note's exact onset+pitch is collapsed
-      // keep-last by the write path's dedupe — deterministic, but it silently
-      // replaces a note (with its own velocity/probability). Count it so we can
-      // warn, consistent with the project's warn-and-skip convention.
-      if (collidesWithPlacedNote(copy, out)) {
-        collisions++;
-      }
-
-      out.push(copy);
+      // keep-last by the write path's dedupe, which says so on the clip's entry.
+      out.push(...madeFrom(parents, note, [copy]));
     }
   }
 
-  if (collisions > 0) {
-    console.warn(
-      `repeat collapsed ${collisions} same-pitch onset ${
-        collisions === 1 ? "collision" : "collisions"
-      } (keeping the last copy at each spot)`,
-    );
-  }
-
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /**
- * Whether a generated copy lands on a slot ({@link isSameSlot}) already taken in
- * the output — i.e. a collision the write-path dedupe will collapse keep-last.
- * Shares the predicate with dedupeNotesKeepingLast, so the warning count always
- * matches what gets dropped.
- * @param copy - The candidate copy about to be pushed
- * @param placed - Notes already in the output (originals plus earlier copies)
- * @returns True when `copy` collides with an already-placed note
- */
-function collidesWithPlacedNote(copy: NoteEvent, placed: NoteEvent[]): boolean {
-  return placed.some((existing) => isSameSlot(existing, copy));
-}
-
-/**
- * Resolve the repeat offset argument (a note value or bar duration) to an
- * onset-to-onset (start-to-start) displacement in Ableton beats — each copy is
- * shifted by k × offset from the original note's start, keeping its duration.
- * Any other argument warns and returns null so the caller skips the repeat.
- * @param arg - The (already-parsed) offset argument node
+ * The repeat offset (a note value or bar duration, already checked to be above
+ * 0) as an onset-to-onset (start-to-start) displacement in Ableton beats — each
+ * copy is shifted by k × offset from the original note's start, keeping its
+ * duration.
+ * @param arg - The offset argument node
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The per-copy offset in Ableton beats, or null to skip
+ * @returns The per-copy offset in Ableton beats
  */
-function resolveRepeatOffset(
+function repeatOffset(
   arg: ExpressionNode,
   numerator: number,
   denominator: number,
-): number | null {
-  const isDuration =
-    typeof arg === "object" &&
-    (arg.type === "nDuration" || arg.type === "barDuration");
-
-  if (!isDuration) {
-    console.warn(
-      "repeat() offset must be a note value like n/8 or a bar duration like 1bar; skipping",
-    );
-
-    return null;
-  }
-
+): number {
   // A note value / bar duration is a pure constant — evaluates to musical beats.
   const musicalBeats = evaluateExpression(
     arg,
     constantEvalContext(numerator, denominator),
   );
-  const abletonBeats = musicalBeats * (4 / denominator); // musical -> Ableton
 
-  if (abletonBeats <= 0) {
-    console.warn("repeat() offset must be greater than 0; skipping");
-
-    return null;
-  }
-
-  return abletonBeats;
+  return musicalBeats * (4 / denominator); // musical -> Ableton
 }
 
 /**
@@ -178,16 +118,12 @@ function resolveRepeatCopies(
     return 1; // default — a single echo
   }
 
-  // A non-finite count (e.g. Infinity - Infinity = NaN) would slip past both
-  // guards below — NaN < 1 and NaN > MAX are both false — and the caller's
-  // `k <= NaN` loop would silently emit zero copies.
-  const value = numericOpArg(arg, numerator, denominator, {
-    pitchLiteral: (name) =>
-      `pitch name "${name}" isn't a valid repeat copy count; use a number like repeat(n/8, 3). Skipping repeat.`,
-    unevaluable: (reason) =>
-      `repeat() copy count could not be evaluated (${reason}); skipping`,
-    notFinite: "repeat() copy count must be a finite number; skipping",
-  });
+  const value = numericOpArg(
+    arg,
+    numerator,
+    denominator,
+    "repeat() copy count",
+  );
 
   if (value == null) {
     return null;
@@ -204,7 +140,9 @@ function resolveRepeatCopies(
   }
 
   if (copies > MAX_NOTE_PIECES) {
-    console.warn(`repeat: copy count clamped to the max of ${MAX_NOTE_PIECES}`);
+    console.clipDetail(
+      `repeat: copy count clamped to the max of ${MAX_NOTE_PIECES}`,
+    );
 
     return MAX_NOTE_PIECES;
   }

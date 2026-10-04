@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
   capturedWarnings,
@@ -49,30 +48,22 @@ describe("context - project scope (default)", () => {
   }
 
   /**
-   * Write `incoming` over `existing` and assert the clobber guard skipped it:
-   * the document stands and the warning is relayed to the model.
+   * Write `incoming` over `existing` and assert the clobber guard refused it:
+   * the call throws and the document stands.
    * @param existing - The document as it stands
    * @param incoming - The content the write attempts
    */
-  async function expectWriteSkipped(
+  async function expectWriteRefused(
     existing: string,
     incoming: string,
   ): Promise<void> {
-    const warnSpy = vi.spyOn(v8Console, "warn");
-
     toolContext.projectContext!.content = existing;
 
-    const result = await context(
-      { action: "write", content: incoming },
-      toolContext,
-    );
+    await expect(
+      context({ action: "write", content: incoming }, toolContext),
+    ).rejects.toThrow('write refused for scope "project"');
 
-    expect(result).toStrictEqual({ content: existing });
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("scope:project write SKIPPED"),
-    );
-
-    warnSpy.mockRestore();
+    expect(toolContext.projectContext!.content).toBe(existing);
   }
 
   describe("read action", () => {
@@ -170,10 +161,12 @@ describe("context - project scope (default)", () => {
       expect(mockBackup).toHaveBeenCalledExactlyOnceWith("");
     });
 
-    it("does not back up a write the clobber guard skipped", async () => {
+    it("does not back up a write the clobber guard refused", async () => {
       toolContext.projectContext!.content = "a long-accumulated document";
 
-      await context({ action: "write", content: "hi" }, toolContext);
+      await expect(
+        context({ action: "write", content: "hi" }, toolContext),
+      ).rejects.toThrow("force:true");
 
       expect(mockBackup).not.toHaveBeenCalled();
     });
@@ -208,36 +201,22 @@ describe("context - project scope (default)", () => {
       .concat("\n");
     const TABLE = "| a | b |\n| --- | --- |\n| Genre | deep house |";
 
-    it("skips the write and warns when the new content keeps none of the document", async () => {
-      const warnSpy = vi.spyOn(v8Console, "warn");
-
+    it("refuses the write when the new content keeps none of the document", async () => {
       toolContext.projectContext!.content = EXISTING;
 
-      const result = await context(
-        { action: "write", content: "- Key: A minor." },
-        toolContext,
-      );
+      // Thrown, not returned beside a warning: that reply looks like a
+      // successful write. The message names the escape hatch, since the skills
+      // deliberately don't.
+      await expect(
+        context({ action: "write", content: "- Key: A minor." }, toolContext),
+      ).rejects.toThrow(/write refused for scope "project".*force:true/);
 
-      // No-op: the document stands, and the result hands the model exactly what
-      // it needs to re-send a merged write.
       expect(toolContext.projectContext!.content).toBe(EXISTING);
-      expect(result).toStrictEqual({ content: EXISTING });
-      // The warning still reaches the model on the response. Only the
-      // project-context update on outlet 0 must not fire.
       expect(outlet).not.toHaveBeenCalledWith(
         0,
         "update_project_context",
         expect.anything(),
       );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("scope:project write SKIPPED"),
-      );
-      // Names the escape hatch, since the skills deliberately don't.
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("force:true"),
-      );
-
-      warnSpy.mockRestore();
     });
 
     it("writes when force is true", async () => {
@@ -282,7 +261,7 @@ describe("context - project scope (default)", () => {
       const HEADINGS = "# Genres\n# Artists\n# Reference tracks";
 
       it("guards a document that is nothing but headings", async () => {
-        await expectWriteSkipped(HEADINGS, "# Something else entirely");
+        await expectWriteRefused(HEADINGS, "# Something else entirely");
       });
 
       it("allows a write that keeps one of the headings", async () => {
@@ -302,7 +281,7 @@ describe("context - project scope (default)", () => {
       // strength of its `---` and an unrelated write destroyed the heading
       // silently.
       it("guards headings whose only body is structure", async () => {
-        await expectWriteSkipped("# Song Ideas\n---", "- Key: A minor.");
+        await expectWriteRefused("# Song Ideas\n---", "- Key: A minor.");
       });
 
       it("allows a write that keeps a heading over structure", async () => {
@@ -315,7 +294,7 @@ describe("context - project scope (default)", () => {
     // The reason headings are held out while a body exists: keeping the shell
     // and dropping everything under it is the clobber, not an edit.
     it("still guards a write that keeps only the heading", async () => {
-      await expectWriteSkipped(EXISTING, "# Notes\n- Key: A minor.");
+      await expectWriteRefused(EXISTING, "# Notes\n- Key: A minor.");
     });
 
     // Both sides are normalized before the containment test, so an ordinary
@@ -354,7 +333,7 @@ describe("context - project scope (default)", () => {
     // design, and the model recovers by re-sending a merged write. Pinned so a
     // change to normalizeForContainment can't move this boundary unnoticed.
     it("fires when a reformat splits one line into several", async () => {
-      await expectWriteSkipped(
+      await expectWriteRefused(
         "Working title: Nightshade. Deep house, 124 BPM.",
         [
           "- Working title: Nightshade",
@@ -367,7 +346,7 @@ describe("context - project scope (default)", () => {
     // Structural boilerplate must not vouch for a write: it appears in almost
     // any markdown, so a document containing one would otherwise be unguarded.
     it("still fires when only a horizontal rule survives", async () => {
-      await expectWriteSkipped(
+      await expectWriteRefused(
         "---\n\nGenre: deep house.\nDrop at bar 33.",
         "---\n\nKey: A minor.",
       );
@@ -377,7 +356,7 @@ describe("context - project scope (default)", () => {
     // 9 non-whitespace characters but zero letters or digits, so reusing the
     // same column count must not vouch for replacing the rows around it.
     it("still fires when only a table separator row survives", async () => {
-      await expectWriteSkipped(
+      await expectWriteRefused(
         TABLE,
         "| x | y |\n| --- | --- |\n| Key | A minor |",
       );
@@ -407,7 +386,7 @@ describe("context - project scope (default)", () => {
     ].join("\n");
 
     it("fires when a shorthand roster would be discarded whole", async () => {
-      await expectWriteSkipped(SHORTHAND, "- Genre: melodic techno.");
+      await expectWriteRefused(SHORTHAND, "- Genre: melodic techno.");
     });
 
     it("allows a shorthand roster's write that keeps its lines", async () => {
@@ -449,10 +428,10 @@ describe("context - project scope (default)", () => {
     );
   });
 
-  it("fails safe: delete (a memory-only verb) with no scope errors instead of touching project context", async () => {
+  it("fails safe: delete (a memory-only verb) with no scope refuses instead of touching project context", async () => {
     await expect(
       context({ action: "delete", name: "x" }, toolContext),
-    ).rejects.toThrow("Unknown action for scope:project: delete");
+    ).rejects.toThrow('action "delete" is only for scope "memory"');
     expect(outlet).not.toHaveBeenCalled();
     expect(capturedWarnings()).toHaveLength(0);
   });

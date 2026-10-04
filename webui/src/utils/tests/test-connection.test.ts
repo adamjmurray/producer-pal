@@ -40,6 +40,7 @@ describe("testConnection", () => {
         "openai",
         "mistral",
         "openrouter",
+        "vercel",
       ] as const) {
         const result = await testConnection(provider, "");
 
@@ -129,6 +130,16 @@ describe("testConnection", () => {
 
       expect(url).toBe("https://openrouter.ai/api/v1/auth/key");
       expect(options.headers).toStrictEqual({ Authorization: "Bearer or-key" });
+    });
+
+    it("uses the credits endpoint for vercel", async () => {
+      mockFetch.mockResolvedValue(okResponse());
+      await testConnection("vercel", "vc-key");
+
+      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+
+      expect(url).toBe("https://ai-gateway.vercel.sh/v1/credits");
+      expect(options.headers).toStrictEqual({ Authorization: "Bearer vc-key" });
     });
 
     it("uses default ollama URL", async () => {

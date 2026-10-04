@@ -11,7 +11,7 @@ import { prepareClipData } from "../../helpers/clip-data-preparation.ts";
 import { createClip } from "../../create-clip.ts";
 import { setupSessionMocks } from "../create-clip-test-helpers.ts";
 
-// Mock the scale-mask read so we can assert exactly when createClips reads it
+// Mock the scale-mask read so we can assert exactly when createClip reads it
 // (the transformString != null ? readLiveSetScaleMask() : undefined ternary).
 vi.mock(import("#src/tools/clip/helpers/scale-mask.ts"), () => ({
   readLiveSetScaleMask: vi.fn(),
@@ -28,6 +28,22 @@ import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const FOUR_FOUR = { signature_numerator: 4, signature_denominator: 4 };
+
+/** A 4/4 Set whose track 0 refuses every arrangement create. */
+function registerFailingArrangementTrack(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: FOUR_FOUR,
+  });
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: {
+      create_midi_clip: () => {
+        throw new Error("boom");
+      },
+    },
+  });
+}
 
 describe("prepareClipData", () => {
   beforeEach(() => {
@@ -57,28 +73,60 @@ describe("prepareClipData", () => {
     expect(result.clipLength).toBe(4); // 1 bar in 4/4
   });
 
-  it("does not warn when interpreted notes have no same-pitch collisions", () => {
-    prepareClipData(null, "C3 1|1 D3 1|1", null, 4, 4, undefined, null);
+  it("reports no dropped duplicates when there are no same-pitch collisions", () => {
+    const result = prepareClipData(
+      null,
+      "C3 1|1 D3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      null,
+    );
 
+    expect(result.droppedDuplicates).toBe(0);
+  });
+
+  it("counts dropped duplicates without warning", () => {
+    const one = prepareClipData(
+      null,
+      "C3 1|1 C3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      null,
+    );
+    const two = prepareClipData(
+      null,
+      "C3 1|1 C3 1|1 C3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      null,
+    );
+
+    expect(one.droppedDuplicates).toBe(1);
+    expect(two.droppedDuplicates).toBe(2);
     expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("Dropped"),
+      expect.stringContaining("uplicate"),
     );
   });
 
-  it("warns with singular wording for exactly one dropped duplicate", () => {
-    prepareClipData(null, "C3 1|1 C3 1|1", null, 4, 4, undefined, null);
-
-    expect(capturedWarnings()).toContain(
-      "Dropped 1 duplicate note at the same pitch and start",
+  it("keeps duplicates for the transform to settle when one will run", () => {
+    const result = prepareClipData(
+      null,
+      "C3 1|1 C3 1|1",
+      null,
+      4,
+      4,
+      undefined,
+      "velocity = 100",
     );
-  });
 
-  it("warns with plural wording for multiple dropped duplicates", () => {
-    prepareClipData(null, "C3 1|1 C3 1|1 C3 1|1", null, 4, 4, undefined, null);
-
-    expect(capturedWarnings()).toContain(
-      "Dropped 2 duplicate notes at the same pitch and start",
-    );
+    expect(result.notes).toHaveLength(2);
+    expect(result.droppedDuplicates).toBe(0);
   });
 });
 
@@ -117,18 +165,7 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
   });
 
   it("addresses a failed arrangement clip by its position", async () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: FOUR_FOUR,
-    });
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      methods: {
-        create_midi_clip: () => {
-          throw new Error("boom");
-        },
-      },
-    });
+    registerFailingArrangementTrack();
 
     const result = await createClip({
       trackIndex: 0,
@@ -142,20 +179,9 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
     ]);
   });
 
-  // A lone destination has no list for an entry to hold a place in (ADR-0042).
+  // A lone destination has no list for an entry to hold a place in.
   it("throws when the call named one destination and it got no clip", async () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: FOUR_FOUR,
-    });
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      methods: {
-        create_midi_clip: () => {
-          throw new Error("boom");
-        },
-      },
-    });
+    registerFailingArrangementTrack();
 
     await expect(
       createClip({ trackIndex: 0, arrangementStart: "1|1", notes: "C3 1|1" }),
@@ -193,7 +219,7 @@ describe("createClip - code execution wiring (createClipAtIndex)", () => {
   });
 });
 
-describe("createClip - scale mask wiring (createClips)", () => {
+describe("createClip - scale mask wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

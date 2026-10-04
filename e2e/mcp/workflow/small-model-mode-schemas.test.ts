@@ -13,7 +13,7 @@ import { describe, expect, it, afterAll, beforeAll } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
-import { MCP_URL } from "../mcp-test-helpers";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 /** Connect with small model mode enabled */
 let connection: McpConnection | null = null;
@@ -66,7 +66,6 @@ function getParamDescription(
 describe("small model mode schema filtering", () => {
   // Both routing values go, not just available-routings: small mode hides every
   // routing write param, so reading the state it cannot change is dead weight.
-  // See ADR-0026.
   it("read-track excludes both routing values and warp from include", () => {
     const includeValues = getIncludeEnum("ppal-read-track");
 

@@ -298,16 +298,21 @@ def _track_named(song, name):
 
 def _parse_track_index(value):
     """A 0-based track index, or None when absent."""
+    return parse_index(value, "track_index")
+
+
+def parse_index(value, name):
+    """A whole number >= 0, or None when absent. Anything else is a 400."""
     if value is None or value == "":
         return None
     if isinstance(value, bool):
-        raise RouteError(400, "track_index must be a whole number, got %r" % value)
+        raise RouteError(400, "%s must be a whole number, got %r" % (name, value))
     try:
         index = int(str(value).strip())
     except ValueError:
-        raise RouteError(400, "track_index must be a whole number, got %r" % value)
+        raise RouteError(400, "%s must be a whole number, got %r" % (name, value))
     if index < 0:
-        raise RouteError(400, "track_index must be 0 or more, got %s" % index)
+        raise RouteError(400, "%s must be 0 or more, got %s" % (name, index))
     return index
 
 
@@ -326,5 +331,9 @@ ROUTES = {
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
 # <img> tag), so these refuse GET.
-POST_ONLY = ("/load", "/hotswap")
+POST_ONLY = ("/load", "/hotswap", "/envelope/write", "/envelope/clear")
 
+# Imported after ROUTES so envelopes.py can import RouteError from here.
+from .envelopes import ROUTES as _ENVELOPE_ROUTES  # noqa: E402
+
+ROUTES.update(_ENVELOPE_ROUTES)

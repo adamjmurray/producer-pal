@@ -15,7 +15,7 @@ import {
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
   description:
-    "Create track(s). Params with no list form apply to every track.",
+    "Create track(s). Inserting shifts later tracks down, so a result path is where the track sits after the call. Params with no list form apply to every track.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

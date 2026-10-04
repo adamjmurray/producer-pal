@@ -15,6 +15,7 @@ import {
   resetWarningCapture,
   resumeWarningCapture,
   suspendWarningCapture,
+  suspensionCount,
 } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("v8-warning-capture", () => {
@@ -67,6 +68,20 @@ describe("v8-warning-capture", () => {
     expect(sent.at(-1)).toBe(
       `3 more warning(s) dropped (limit ${MAX_CAPTURED_WARNINGS})`,
     );
+  });
+
+  describe("suspensionCount", () => {
+    it("rises each time a request parks, so a cache can tell another may have run", async () => {
+      const before = suspensionCount();
+
+      await suspendWarningCapture(Promise.resolve());
+
+      expect(suspensionCount()).toBe(before + 1);
+    });
+
+    it("stays put when nothing parks", () => {
+      expect(suspensionCount()).toBe(suspensionCount());
+    });
   });
 
   describe("suspendWarningCapture", () => {

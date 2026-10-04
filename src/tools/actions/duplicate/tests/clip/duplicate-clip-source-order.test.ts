@@ -297,6 +297,40 @@ describe("duplicate clip fan-out order", () => {
     expect(opOrder).toStrictEqual(["t1", "t0/l0"]);
   });
 
+  // The copy at bar 2 trims the source, so it goes last; the copy at bar 5
+  // cuts the bar-2 copy short, so it has to go after it. Neither can go first,
+  // so nothing is written.
+  it("refuses copies that can't be ordered around the source", async () => {
+    setupSource(true);
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        toPath: "t0",
+        arrangementStart: "2|1,5|1",
+      }),
+    ).rejects.toThrow(
+      'the copy to "t0[2|1]" lands on the source clip itself, so it has to be made after the others, but the copy to "t0[5|1]" lands over part of it and has to be made after it. Split them into two calls.',
+    );
+    expect(opOrder).toStrictEqual([]);
+  });
+
+  it("writes a copy before the later copy that cuts it short", async () => {
+    // Neither copy touches the source, so the order named stands, which puts the
+    // cut-short copy first.
+    setupSource(true, SOURCE_AT_BAR_9);
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0",
+      arrangementStart: "1|1,2|1",
+    });
+
+    expect(opOrder).toStrictEqual(["t0", "t0"]);
+  });
+
   it("leaves the order alone for a session source", async () => {
     // A session clip isn't on the arrangement timeline the copies clear, so no
     // destination can overwrite it.

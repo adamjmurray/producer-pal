@@ -25,15 +25,17 @@ Per-file scores after triage:
 | ------------------------------------------------------------ | ------- | -------- | -------------------------------- |
 | `focus-if-requested.ts`                                      | 100.00% | 0        | determineTargetView fully pinned |
 | `duplicate-destinations.ts`                                  | 99.38%  | 1        | direct unit tests (81% → 99%)    |
-| `duplicate-take-lanes.ts`                                    | 96.30%  | 2        | setAll/message/color-fallback    |
 | `delete.ts`                                                  | 94.22%  | 15       | 2-digit indices + comparator     |
 | `duplicate-routing.ts`                                       | 94.12%  | 6        | mock fix exposed routing branch  |
 | `duplicate-track.ts` / `duplicate-scene.ts`                  | 91.62%  | 11       |                                  |
-| `duplicate-clip-with-positions.ts`                           | 90.70%  | 4        |                                  |
 | `duplicate.ts`                                               | 87.60%  | 15       |                                  |
 | `apply-clip-transforms.ts`                                   | 86.67%  | 4        | edge/optional-chain (bucket 2)   |
 | `duplicate-device.ts`                                        | 85.54%  | 10       | 2-digit track regexes            |
 | `arrangement-length.ts` / `duplicate-clip-to-arrangement.ts` | 81.65%  | 25       | heavy tiling paths — see below   |
+
+`duplicate-take-lanes.ts` (96.30%) and `duplicate-clip-with-positions.ts`
+(90.70%) were scored here and no longer exist: duplicate moved onto the shared
+write pipeline.
 
 `arrangement-length.ts` / `duplicate-clip-to-arrangement.ts` are the low
 outliers, and their survivors are mostly bucket-2/3: the `createClipsForLength`

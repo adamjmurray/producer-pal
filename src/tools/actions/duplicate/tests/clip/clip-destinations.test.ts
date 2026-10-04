@@ -9,7 +9,6 @@ import {
   type ClipDestinations,
   resolveClipDestinations,
   warnInapplicableClipParams,
-  warnUnusedDestination,
 } from "#src/tools/actions/duplicate/helpers/clip/clip-destinations.ts";
 
 /**
@@ -239,7 +238,7 @@ describe("resolveClipDestinations", () => {
       );
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          "arrangementStart ignored — toSlot names a clip slot",
+          "arrangementStart ignored: toSlot names a clip slot",
         ),
       );
     });
@@ -257,11 +256,11 @@ describe("resolveClipDestinations", () => {
     });
   });
 
-  it("refuses when toPath and toSlot both name a destination", () => {
+  it("refuses toPath sent with the deprecated toSlot", () => {
     // Honoring one and dropping the other is the silent-destination bug toPath
     // exists to end, so neither wins.
     expect(() => resolveClipDestinations("t2/s1", "3/0", false)).toThrow(
-      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath names the destination on its own - don't send toSlot with it (toSlot is deprecated)",
     );
   });
 
@@ -291,32 +290,10 @@ describe("warnInapplicableClipParams", () => {
   const session = resolveClipDestinations("t2/s1", undefined, false);
   const arrangement = resolveClipDestinations("t2", undefined, true);
 
-  it("warns that a clip copy ignores count", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnInapplicableClipParams(arrangement, 3, undefined);
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("count ignored for clips"),
-    );
-  });
-
-  // Several sources take one destination each, so "list more in toPath" would
-  // lead straight to a refusal.
-  it("points several sources at one call each for more copies", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnInapplicableClipParams(arrangement, 3, undefined, 2);
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      "count ignored for clips: one copy per destination — for more copies, send one call per source",
-    );
-  });
-
   it("warns that a session copy ignores arrangementLength", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnInapplicableClipParams(session, 1, "4bar");
+    warnInapplicableClipParams(session, "4bar");
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("arrangementLength ignored"),
@@ -326,37 +303,8 @@ describe("warnInapplicableClipParams", () => {
   it("says nothing for params the copy actually uses", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
-    warnInapplicableClipParams(arrangement, 1, "4bar");
-    warnInapplicableClipParams(session, 1, undefined);
-
-    expect(warnSpy).not.toHaveBeenCalled();
-  });
-});
-
-describe("warnUnusedDestination", () => {
-  it("says nothing for clips, which take toSlot", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnUnusedDestination("clip", "2/1");
-
-    expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it("warns when any other type is given a toSlot", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnUnusedDestination("scene", "2/1");
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      'toSlot ignored: only supported for clips (type "scene")',
-    );
-  });
-
-  // toSlot is deprecated, so a caller dropping it may send the key as null.
-  it("says nothing about a toSlot sent as null", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
-    warnUnusedDestination("scene", "null");
+    warnInapplicableClipParams(arrangement, "4bar");
+    warnInapplicableClipParams(session, undefined);
 
     expect(warnSpy).not.toHaveBeenCalled();
   });

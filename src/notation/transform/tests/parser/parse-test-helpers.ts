@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect } from "vitest";
 import {
   type NoteOp,
@@ -11,6 +13,7 @@ import {
   type TransformAssignment,
   type TransformStatement,
 } from "#src/notation/transform/parser/transform-parser.ts";
+import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 
 /**
  * Parse a transform string and narrow the result to assignments.
@@ -78,4 +81,30 @@ export function expectTimeRangeBounds(
   expect(range?.startBeat).toBeCloseTo(bounds[1]);
   expect(range?.endBar).toBe(bounds[2]);
   expect(range?.endBeat).toBeCloseTo(bounds[3]);
+}
+
+/** @returns The transform grammar source */
+export function readTransformGrammar(): string {
+  return readFileSync(
+    join(projectRoot, "src/notation/transform/parser/transform-grammar.peggy"),
+    "utf8",
+  );
+}
+
+/**
+ * Read the quoted alternatives out of one grammar rule.
+ *
+ * @param grammar - The grammar source
+ * @param rule - Rule name to read
+ * @returns The names that rule accepts
+ */
+export function ruleAlternatives(grammar: string, rule: string): string[] {
+  const body = new RegExp(
+    `^${rule}(?: "[^"]*")?\\n((?:\\s+[=/].*\\n)+)`,
+    "m",
+  ).exec(grammar)?.[1];
+
+  return [...(body ?? "").matchAll(/"(\w+)"/g)].map(
+    (match) => match[1] as string,
+  );
 }

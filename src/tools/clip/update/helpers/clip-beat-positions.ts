@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
   durationToAbletonBeats,
   validateBarBeatPosition,
@@ -34,7 +35,7 @@ interface CalculateBeatPositionsArgs {
   reasons: ClipReasons;
 }
 
-interface TimeSignature {
+export interface TimeSignature {
   timeSigNumerator: number;
   timeSigDenominator: number;
 }
@@ -148,12 +149,33 @@ export function calculateBeatPositions({
     // end and grows backward, which is what `length` means there.
     startBeats ??= wasLooping ? currentStart : currentEnd - lengthBeats;
 
+    refuseEmptyLength(length, lengthBeats);
+
     endBeats = startBeats + lengthBeats;
+  }
+
+  // A looping clip's `start` is its loop start. With no `length`, the loop end
+  // holds, and Live refuses a loop start at or past it and keeps the old one.
+  // Turning looping on restates the region that was playing as the loop (below),
+  // so its end is the loop end too. An unlooped clip's start is read from the
+  // markers instead, so a start past them is reported by the read-back, not
+  // refused.
+  const heldLoopEnd = endBeats ?? currentEnd;
+
+  if (
+    isLooping &&
+    start != null &&
+    startBeats != null &&
+    startBeats >= heldLoopEnd
+  ) {
+    throw new Error(
+      `start "${start}" is not before the loop end at ${abletonBeatsToBarBeat(heldLoopEnd, timeSigNumerator, timeSigDenominator)}: send a length too, or an earlier start`,
+    );
   }
 
   // A loop toggle swaps which pair plays, and Live reveals the other pair's old
   // values instead of carrying the region over. Restate the region that was
-  // playing, so `looping` changes the loop flag and nothing else (ADR-0020).
+  // playing, so `looping` changes the loop flag and nothing else.
   if (isLooping !== wasLooping) {
     startBeats ??= currentStart;
     endBeats ??= currentEnd;
@@ -181,6 +203,18 @@ export function calculateBeatPositions({
   );
 
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
+}
+
+/**
+ * Refuse a length that spans nothing. Live keeps the region it had.
+ * @param length - The length as the caller wrote it
+ * @param lengthBeats - What it comes to in the clip's meter
+ * @throws Error when the length is zero or less
+ */
+export function refuseEmptyLength(length: string, lengthBeats: number): void {
+  if (lengthBeats <= 0) {
+    throw new Error(`length "${length}" must be longer than zero`);
+  }
 }
 
 /**

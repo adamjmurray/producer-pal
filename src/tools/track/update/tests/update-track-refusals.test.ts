@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
@@ -334,6 +335,48 @@ describe("updateTrack - every send failed", () => {
         },
       ],
     });
+  });
+});
+
+describe("updateTrack - a call refused up front", () => {
+  let track123: RegisteredMockObject;
+  let track456: RegisteredMockObject;
+
+  beforeEach(() => {
+    track123 = registerMockObject("123", { path: livePath.track(0) });
+    track456 = registerMockObject("456", { path: livePath.track(1) });
+  });
+
+  it.each([
+    { id: "123" },
+    { path: "t0,t1" },
+    { id: "123", sends: [] },
+    { id: "123", gainDb: undefined },
+  ])("refuses %j, which asks nothing of the tracks", (args) => {
+    expect(() => updateTrack(args)).toThrow(
+      "nothing to update: id and path only name the tracks; also send a param to change",
+    );
+  });
+
+  it("refuses a path it can't parse, writing nothing", () => {
+    expect(() =>
+      updateTrack({ path: "t0,not-a-path,t1", name: "A,B,C" }),
+    ).toThrow('invalid path "not-a-path"');
+    expect(track123.set).not.toHaveBeenCalled();
+    expect(track456.set).not.toHaveBeenCalled();
+  });
+
+  it("still skips only its own target for a path that parses but names nothing", () => {
+    mockNonExistentObjects();
+
+    expect(updateTrack({ path: "t0,t9", name: "A,B" })).toStrictEqual([
+      { id: "123", path: "t0" },
+      {
+        path: "t9",
+        ok: false,
+        detail: 'no track at path "t9"; ppal-create-track adds tracks',
+      },
+    ]);
   });
 });
 

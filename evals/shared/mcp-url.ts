@@ -11,4 +11,6 @@
  * every path instead of only whichever one happened to check the env var.
  */
 
-export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
+
+export const MCP_URL = process.env.MCP_URL ?? DEFAULT_MCP_URL;

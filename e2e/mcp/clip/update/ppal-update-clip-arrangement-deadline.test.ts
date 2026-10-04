@@ -16,9 +16,9 @@
  * Run with: npm run e2e:mcp -- ppal-update-clip-arrangement-deadline
  */
 import { describe, expect, it } from "vitest";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import {
   type CreateClipResult,
-  MCP_URL,
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,

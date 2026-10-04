@@ -10,6 +10,7 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -73,6 +74,7 @@ export function moveDrumChainToPath(
 
   for (const moving of chains) {
     moving.set("in_note", targetInNote);
+    noteLanded(notes, "move");
   }
 }
 

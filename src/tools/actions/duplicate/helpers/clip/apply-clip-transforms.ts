@@ -3,11 +3,42 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { refuseNoteEditsByMeter } from "#src/tools/clip/update/helpers/notes/note-edit-parsing.ts";
+import { getTimeSignature } from "#src/tools/clip/update/helpers/clip-beat-positions.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
-import { collectClipResults } from "./overwritten-copies.ts";
+import { collectClipResults } from "./overwrites/overwritten-copies.ts";
+
+/**
+ * Refuse transforms the copies can't read, before any copy is made: one onto an
+ * arrangement clip replaces it. A copy keeps its source's meter, and a
+ * transform's time range depends on it, so each source is read in its own. Audio sources are read as audio clips are.
+ * @param type - What the call duplicates; only clips take transforms
+ * @param sources - The sources, in call order
+ * @param transforms - Transform expressions, if sent
+ */
+export function refuseUnreadableCopyTransforms(
+  type: string,
+  sources: Array<{ id: string }>,
+  transforms: string | undefined,
+): void {
+  if (type !== "clip" || !transforms?.trim()) {
+    return;
+  }
+
+  const clips = sources
+    .map((source) => LiveAPI.from(source.id))
+    .filter((clip) => clip.exists());
+
+  refuseNoteEditsByMeter(
+    clips,
+    { transformString: transforms, context: {} },
+    (clip) => getTimeSignature(undefined, clip),
+    () => true,
+  );
+}
 
 /**
  * Apply transforms and/or code to the clips produced by a duplicate operation.
@@ -17,7 +48,7 @@ import { collectClipResults } from "./overwritten-copies.ts";
  * broadcast across every duplicated clip — per-copy variation is expressed with
  * clip.index arithmetic and clipseq() inside the string. The
  * single updateClip call also keeps clip.index/clip.count spanning the whole
- * batch. Resulting noteCount and transformed counts are merged back into the
+ * batch. Resulting noteCount, transformed and deletedNotes counts are merged back into the
  * duplicate result objects.
  *
  * @param createdObjects - Result objects from clip duplication (mutated in place)
@@ -67,6 +98,10 @@ export async function applyTransformsToDuplicatedClips(
 
     if (stats?.transformed != null) {
       clip.transformed = stats.transformed;
+    }
+
+    if (stats?.deletedNotes != null) {
+      clip.deletedNotes = stats.deletedNotes;
     }
 
     // A copy the update couldn't edit has a detail of its own to carry.

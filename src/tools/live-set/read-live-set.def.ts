@@ -35,7 +35,7 @@ export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
         default:
           'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). locators = arrangement markers. "*" = all',
         // `routings` propagates to the nested track reads, so it goes for the
-        // same reason it goes on read-track. See ADR-0026.
+        // same reason it goes on read-track.
         smallModel: {
           description:
             "tracks, scenes = lists. mixer, color = detail (use with tracks/scenes)",

@@ -12,6 +12,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   expectTakeLaneMidiClip,
@@ -20,9 +21,9 @@ import {
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
-  moveGroupKey,
-  type MoveGroup,
-} from "../../helpers/arrangement/update-clip-move-groups.ts";
+  type LandingLog,
+  newLandingLog,
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 import {
   type ClipReasons,
   newClipReasons,
@@ -60,15 +61,20 @@ const DEST_MAIN_LANE: ArrangementTrack = {
 /**
  * How many copies are confirmed landed on a lane at the position every move
  * here aims at.
- * @param groups - The tally a batch of moves shared
+ * @param log - What a batch of moves wrote
  * @param landing - The lane to read, defaulting to the destination's main one
  * @returns The number of landings, or 0 when nothing landed there
  */
 function landedCount(
-  groups: Map<string, MoveGroup>,
+  log: LandingLog,
   landing: ArrangementTrack = DEST_MAIN_LANE,
 ): number {
-  return groups.get(moveGroupKey(landing, 32))?.landed.size ?? 0;
+  const lane = arrangementLaneOf(landing);
+
+  return [...log.landed.values()].filter(
+    (span) =>
+      JSON.stringify(span.lane) === JSON.stringify(lane) && span.start === 32,
+  ).length;
 }
 
 const TAKE_LANE_SOURCE = livePath
@@ -138,7 +144,7 @@ interface MoveOptions {
   arrangementStartBeats?: number | null;
   destination?: ArrangementTrack | null;
   /** Shared across calls, to see what a batch counted on one track */
-  movedClipGroups?: Map<string, MoveGroup>;
+  landings?: LandingLog;
   /** Answer the duplicate with an id that doesn't exist, as Live can */
   duplicateFails?: boolean;
   /** Every create_midi_clip/create_audio_clip call answers with no clip, as Live can */
@@ -225,6 +231,7 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
     registerMockObject(DUPLICATED_ID, {
       path: livePath.track(DEST_TRACK).arrangementClip(0),
       type: "Clip",
+      properties: { start_time: 32, end_time: 40 },
     });
 
     return ["id", DUPLICATED_ID];
@@ -245,7 +252,7 @@ function takeLane(laneIndex: number): ArrangementTrack {
  * @param opts - What this test varies
  * @returns The clip id the operation resolved to
  */
-function runMove(opts: MoveOptions = {}): string | null {
+function runMove(opts: MoveOptions = {}): string {
   const {
     isMidi = 1,
     arrangementStartBeats = 32,
@@ -259,11 +266,9 @@ function runMove(opts: MoveOptions = {}): string | null {
     clip: LiveAPI.from(`id ${SOURCE_ID}`),
     arrangementStartBeats,
     destination,
-    movedClipGroups: opts.movedClipGroups ?? new Map(),
+    landings: opts.landings ?? newLandingLog(),
     isMidiClip: isMidi === 1,
     context: mockContext,
-    updatedClips: [],
-    noteResult: null,
     reasons,
   });
 }
@@ -295,7 +300,7 @@ describe("a lane move whose resize can't run", () => {
     expect(result.id).not.toBe(SOURCE_ID);
     expect(result.detail).toBe(
       `re-created on t${DEST_TRACK}/l0; ` +
-        "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
+        "arrangementLength ignored: this is a take-lane clip; adjust it in Live's UI",
     );
   });
 });
@@ -306,8 +311,8 @@ describe("moving an arrangement clip to another lane", () => {
   });
 
   it("duplicates onto the destination track and deletes the original", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
-    const result = runMove({ movedClipGroups });
+    const landings = newLandingLog();
+    const result = runMove({ landings });
 
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
@@ -321,7 +326,7 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(DUPLICATED_ID);
-    expect(landedCount(movedClipGroups)).toBe(1);
+    expect(landedCount(landings)).toBe(1);
   });
 
   // Omitting arrangementStart means "same place, other lane".
@@ -404,6 +409,7 @@ describe("moving an arrangement clip to another lane", () => {
   it("does not report success when the re-created clip doesn't exist", () => {
     vi.mocked(recreateClip).mockReturnValueOnce({
       exists: () => false,
+      id: "0",
     } as unknown as LiveAPI);
 
     const result = runMove({
@@ -462,8 +468,8 @@ describe("moving an arrangement clip to another lane", () => {
   // Every refusal keeps the clip where it is, so the rest of the update still
   // lands and nothing is deleted without a copy in place.
   it.each(REFUSALS)("refuses %s", (_label, opts, expected) => {
-    const movedClipGroups = new Map<string, MoveGroup>();
-    const result = runMove({ ...opts, movedClipGroups });
+    const landings = newLandingLog();
+    const result = runMove({ ...opts, landings });
 
     expect(movedReason()).toContain(`not moved: ${expected}`);
     expect(
@@ -471,7 +477,7 @@ describe("moving an arrangement clip to another lane", () => {
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(SOURCE_ID);
     // These all return before the placement writes anything, so nothing landed.
-    expect(landedCount(movedClipGroups)).toBe(0);
+    expect(landedCount(landings)).toBe(0);
   });
 
   // A refused clip must not leave a landing behind for a sibling of the same
@@ -479,14 +485,14 @@ describe("moving an arrangement clip to another lane", () => {
   it.each(REFUSALS)(
     "records one landing when a sibling was refused with %s",
     (_label, opts) => {
-      const movedClipGroups = new Map<string, MoveGroup>();
+      const landings = newLandingLog();
 
       // The refusal first: the second call re-registers the destination track,
       // so the landing move gets one that takes it.
-      runMove({ ...opts, movedClipGroups });
-      runMove({ movedClipGroups });
+      runMove({ ...opts, landings });
+      runMove({ landings });
 
-      expect(landedCount(movedClipGroups)).toBe(1);
+      expect(landedCount(landings)).toBe(1);
     },
   );
 
@@ -494,8 +500,8 @@ describe("moving an arrangement clip to another lane", () => {
   // declines, so the clip that "wasn't moved" has already destroyed whatever
   // stood there — and nothing landed to replace it.
   it("reports a placement that cleared the target and then failed", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
-    const result = runMove({ duplicateFails: true, movedClipGroups });
+    const landings = newLandingLog();
+    const result = runMove({ duplicateFails: true, landings });
 
     expect(movedReason()).toContain(
       "not moved: Live made no copy at the destination, so the original was kept",
@@ -505,29 +511,29 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
-    expect(landedCount(movedClipGroups)).toBe(0);
+    expect(landedCount(landings)).toBe(0);
   });
 
   // A take lane is a lane of its own, so two clips at one position on
   // different ones sit side by side and each keeps its own landing.
   it("records a landing per take lane", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
+    const landings = newLandingLog();
 
-    runMove({ destination: takeLane(0), movedClipGroups });
-    runMove({ destination: takeLane(1), movedClipGroups });
+    runMove({ destination: takeLane(0), landings });
+    runMove({ destination: takeLane(1), landings });
 
-    expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
-    expect(landedCount(movedClipGroups, takeLane(1))).toBe(1);
+    expect(landedCount(landings, takeLane(0))).toBe(1);
+    expect(landedCount(landings, takeLane(1))).toBe(1);
   });
 
   it("keeps a take-lane landing apart from a main-lane one", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
+    const landings = newLandingLog();
 
-    runMove({ movedClipGroups });
-    runMove({ destination: takeLane(0), movedClipGroups });
+    runMove({ landings });
+    runMove({ destination: takeLane(0), landings });
 
-    expect(landedCount(movedClipGroups)).toBe(1);
-    expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
+    expect(landedCount(landings)).toBe(1);
+    expect(landedCount(landings, takeLane(0))).toBe(1);
   });
 });
 

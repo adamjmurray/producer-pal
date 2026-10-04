@@ -12,14 +12,13 @@ import {
   type ArrangementTrack,
   warnUnusedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
+import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type ClipDestinations,
   type DuplicateArrangementTarget,
   warnInapplicableClipParams,
-  warnUnusedArrangementParams,
-  warnUnusedDestination,
 } from "./clip/clip-destinations.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
@@ -72,6 +71,51 @@ export function arrangementPositionToBeats(
   validateBarBeatPosition(position);
 
   return barBeatToAbletonBeats(position, timeSigNumerator, timeSigDenominator);
+}
+
+/**
+ * Refuses a call that names an arrangement position Live won't take, before the
+ * first copy or take lane exists. Live declines such a position without saying
+ * why, and a take lane made for it is left behind empty.
+ *
+ * Only the positions the call writes out are checked: copies laid end to end
+ * from one scene position are placed from lengths read as the scene is copied.
+ * @param arrangementStart - Bar|beat position list, as settled for the call
+ * @param startParam - The param the caller wrote that list in
+ * @param clipDestinations - Each clip source's destinations, or null
+ * @throws When a named position is past the last one Live allows
+ */
+export function refuseDuplicatePositionsPastCap(
+  arrangementStart: string | undefined,
+  startParam: string,
+  clipDestinations: ClipDestinations[] | null,
+): void {
+  const named = [
+    ...(hasArrangementPosition(arrangementStart)
+      ? parseArrangementStartList(arrangementStart).map((position) => ({
+          position,
+          param: startParam,
+        }))
+      : []),
+    ...(clipDestinations ?? []).flatMap(({ arrangementPositions }) =>
+      arrangementPositions.flatMap((position) =>
+        position == null ? [] : [{ position, param: "toPath" }],
+      ),
+    ),
+  ];
+
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const numerator = liveSet.getProperty("signature_numerator") as number;
+  const denominator = liveSet.getProperty("signature_denominator") as number;
+
+  for (const { position, param } of named) {
+    refuseArrangementPositionPastCap(
+      arrangementPositionToBeats(position, numerator, denominator),
+      numerator,
+      denominator,
+      param,
+    );
+  }
 }
 
 /**
@@ -205,28 +249,20 @@ function copyBlockedToTrack(
 interface DestinationParams {
   type: string;
   clipDestinations: ClipDestinations | null;
-  count: number;
   toPath: string | undefined;
-  toSlot: string | undefined;
   arrangementStart: string | undefined;
   arrangementLength: string | undefined;
   takeLane: number | string | undefined;
   takeLaneName: string | undefined;
-  transforms: string | undefined;
-  code: string | undefined;
   /** Whether this call copies clips lane to lane rather than making a track. */
   laneCopy: boolean;
   /** Whether a destination names a take lane, which the call may create. */
   toTakeLane: boolean;
-  /** How many sources the call names. */
-  sourceCount: number;
 }
 
 /**
- * Settle where the copies go, warning for every param the chosen type and
- * destination have no use for. Grouped here so the tool's one rule — an
- * inapplicable param is warned about, never silently dropped — has one place
- * to hold.
+ * Settle where the copies go, warning for every param the chosen destination
+ * has no use for (a param the type has no use for was refused up front).
  * @param params - The destination and position params as the tool received them
  * @returns The destination, or undefined when the type has none
  */
@@ -236,16 +272,8 @@ export function resolveDestinationAndWarn(
   const { type, clipDestinations, arrangementStart } = params;
   const { arrangementLength, takeLane, takeLaneName } = params;
 
-  warnUnusedDestination(type, params.toSlot);
-  warnUnusedArrangementParams(type, arrangementStart, arrangementLength);
-
   if (clipDestinations != null) {
-    warnInapplicableClipParams(
-      clipDestinations,
-      params.count,
-      arrangementLength,
-      params.sourceCount,
-    );
+    warnInapplicableClipParams(clipDestinations, arrangementLength);
   }
 
   const destination =
@@ -254,22 +282,15 @@ export function resolveDestinationAndWarn(
   validateDestinationParameter(type, destination, params.laneCopy);
   warnUnusedArrangementLength(type, destination, arrangementLength);
 
-  if (type !== "clip" && (params.transforms != null || params.code != null)) {
-    console.warn(
-      `transforms/code ignored: only supported when duplicating clips (type "${type}")`,
-    );
-  }
-
-  // takeLane and takeLaneName only apply to arrangement-destination clips; the
-  // helper warns for non-clip types and session destinations so a malformed
-  // value doesn't throw before the warn-and-ignore path. Where they do apply,
-  // the destination resolver folded takeLane onto the paths already, and the
-  // lane resolver warns if it had no new lane to name.
+  // takeLane and takeLaneName only apply to arrangement-destination clips (and
+  // takeLaneName to a track copied onto a lane); the helper warns for the
+  // rest so a malformed value doesn't throw before the warn-and-ignore path.
+  // Where they do apply, the destination resolver folded takeLane onto the
+  // paths already, and the lane resolver warns if it had no new lane to name.
   warnUnusedTakeLane(
     type,
     destination,
     takeLane,
-    console.warn,
     takeLaneName,
     params.toTakeLane,
   );
@@ -292,8 +313,8 @@ export function readsArrangementLength(
 }
 
 /**
- * Warns once when a track or scene call sends an arrangementLength no copy
- * reads. Every other type warns for it elsewhere.
+ * Warns once when a scene call sends an arrangementLength no copy reads. A type
+ * that never reads it was refused up front.
  * @param type - Type of object being duplicated
  * @param destination - Where the call's copies go
  * @param arrangementLength - Requested arrangement length
@@ -305,13 +326,14 @@ function warnUnusedArrangementLength(
 ): void {
   if (
     arrangementLength == null ||
-    (type !== "track" && type !== "scene") ||
+    type !== "scene" ||
     readsArrangementLength(type, destination)
   ) {
     return;
   }
 
-  console.warn(
-    `arrangementLength ignored: only clip and scene copies to the arrangement use it (type "${type}")`,
+  warnIgnored(
+    "arrangementLength",
+    `only clip and scene copies to the arrangement use it (type "${type}")`,
   );
 }

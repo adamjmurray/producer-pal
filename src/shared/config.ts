@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.4.0";
+export const VERSION = "2.5.0-rc1";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
@@ -27,6 +27,12 @@ export const VERSION = "2.4.0";
 declare const process: { env: Record<string, string | undefined> };
 
 export const BUILD_SHA = process.env.BUILD_SHA ?? "";
+
+// The MCP server's default port: the device's Server Port starts at this value
+// (max-for-live-device/tab-setup.maxpat) and every client falls back to it.
+export const DEFAULT_MCP_PORT = 3350;
+export const DEFAULT_MCP_ORIGIN = `http://localhost:${DEFAULT_MCP_PORT}`;
+export const DEFAULT_MCP_URL = `${DEFAULT_MCP_ORIGIN}/mcp`;
 
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";

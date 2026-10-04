@@ -5,26 +5,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  children,
-  livePath,
   noParamLanded,
   paramsOf,
   registerContinuousParam,
-  registerMockObject,
   updateDevice,
 } from "../../update-device-test-helpers.ts";
-
-/**
- * Register the device under test at t0/d0, holding the given params.
- * @param paramIds - Parameter mock ids, in the device's parameter order
- */
-function registerDevice(...paramIds: string[]): void {
-  registerMockObject("123", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children(...paramIds) },
-  });
-}
+import { registerDevice } from "./param-addressing-fixtures.ts";
 
 describe("updateDevice - param names Live pads with spaces", () => {
   // Operator's "A Fix On " carries a trailing space in Live's own name.

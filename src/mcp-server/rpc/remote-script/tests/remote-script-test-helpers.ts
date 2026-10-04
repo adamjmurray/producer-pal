@@ -3,11 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach } from "vitest";
+import { clearNodeRoutes } from "../../node-request-protocol.ts";
 
 /**
  * Make a throwaway directory to stand in for the User Library.
@@ -92,6 +94,31 @@ export async function startFakeRemoteScript(
 }
 
 /**
+ * Register the routes under test before each test; after it, clear them and
+ * close the stand-in remote script.
+ * @param register - Registers the routes under test
+ * @returns Starts a stand-in that gives every request the same answer
+ */
+export function useFakeRemoteScriptRoutes(
+  register: () => void,
+): (answer: FakeAnswer) => Promise<FakeRemoteScript> {
+  let fake: FakeRemoteScript | undefined;
+
+  beforeEach(register);
+  afterEach(async () => {
+    clearNodeRoutes();
+    await fake?.close();
+    fake = undefined;
+  });
+
+  return async (answer) => {
+    fake = await startFakeRemoteScript(() => answer);
+
+    return fake;
+  };
+}
+
+/**
  * Send a stand-in answer.
  * @param res - The response
  * @param answer - What to send, or null to leave the request hanging
@@ -122,4 +149,25 @@ function respond(res: http.ServerResponse, answer: FakeAnswer): void {
 
   res.writeHead(answer.status ?? 200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(answer.body));
+}
+
+/** What a reader that takes only .py files should return for the tree below. */
+export const PY_ONLY_SOURCE = {
+  "__init__.py": "top",
+  "nested/deep.py": "deep",
+};
+
+/**
+ * Write a remote-script tree: two .py files among local junk a reader must skip.
+ * @param dir - Existing directory to fill
+ */
+export function writeScriptTreeWithJunk(dir: string): void {
+  mkdirSync(join(dir, "__pycache__"));
+  mkdirSync(join(dir, "nested"));
+  writeFileSync(join(dir, "__init__.py"), "top", "utf8");
+  writeFileSync(join(dir, ".DS_Store"), "finder", "utf8");
+  writeFileSync(join(dir, "nested/notes.txt"), "scratch", "utf8");
+  writeFileSync(join(dir, "stale.pyc"), "bytecode", "utf8");
+  writeFileSync(join(dir, "__pycache__/a.pyc"), "bytecode", "utf8");
+  writeFileSync(join(dir, "nested/deep.py"), "deep", "utf8");
 }

@@ -62,12 +62,6 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     throw new Error("id or path is required");
   }
 
-  if (path != null && (trackId != null || trackIndex != null)) {
-    throw new Error(
-      "path names the track on its own - don't send id or trackIndex with it",
-    );
-  }
-
   if (trackId != null || path != null) {
     // An id has to be checked; a path already said what kind of thing it names
     const track =

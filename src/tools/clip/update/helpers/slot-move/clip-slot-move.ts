@@ -37,6 +37,7 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   noteClipOverwrite,
   noteClipReason,
+  noteLanded,
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
@@ -156,12 +157,16 @@ export function handleClipSlotMove({
     return;
   }
 
+  // The copy is in the slot from here: a throw below still has it to report.
+  const destPath = slotPath(toSlot.trackIndex, toSlot.sceneIndex);
+
+  noteLanded(reasons, `copy at ${destPath}`, {
+    id: newClip.id,
+    path: destPath,
+  });
+
   if (destinationWasOccupied) {
-    noteClipOverwrite(
-      reasons,
-      clip.id,
-      slotPath(toSlot.trackIndex, toSlot.sceneIndex),
-    );
+    noteClipOverwrite(reasons, clip.id, destPath);
   }
 
   deleteMovedSource({
@@ -240,6 +245,11 @@ export function handleArrangementToSlotMove({
   }
 
   const newClip = recreated.clip;
+
+  noteLanded(reasons, `copy at ${destPath}`, {
+    id: newClip.id,
+    path: destPath,
+  });
 
   if (recreated.overwrote) {
     noteClipOverwrite(reasons, clip.id, destPath);
@@ -337,7 +347,7 @@ function deleteMovedSource({
  * @param toSlot - Destination slot position
  * @returns The reason, worded for a warning, or null
  */
-function arrangementToSlotBlocker(
+export function arrangementToSlotBlocker(
   clip: LiveAPI,
   toSlot: ClipSlotPosition,
 ): string | null {
@@ -371,7 +381,7 @@ function arrangementToSlotBlocker(
  * @param tracks - Tracks the batch has already resolved, added to
  * @returns The destination track
  */
-function destinationTrack(
+export function destinationTrack(
   trackIndex: number,
   tracks: Map<number, LiveAPI> | undefined,
 ): LiveAPI {

@@ -12,12 +12,25 @@ import {
   createRegistration,
   refreshHolders,
   setKeepAllMockWrites,
-} from "./mock-registry-helpers.ts";
+  setMockIdAtPath,
+} from "./registry/mock-registry-helpers.ts";
+import {
+  type MockRegistryAccess,
+  applyMockInsert,
+  applyMockMove,
+  applyMockRemoval,
+  newMockId,
+  resetMockCreatedIds,
+} from "./registry/mock-live-set-edits.ts";
+import { clearMockWrites } from "./registry/mock-write-log.ts";
 
 export type { RegisteredMockObject, RegisteredMockObjectOptions };
 
 const registryById = new Map<string, RegisteredMockObject>();
 const registryByPath = new Map<string, RegisteredMockObject>();
+const pendingByPath = new Map<string, RegisteredMockObject>();
+
+setMockIdAtPath((path) => registryByPath.get(path)?.id);
 
 /**
  * Normalize "id X" format to bare numeric ID.
@@ -77,6 +90,62 @@ export function registerMockObject(
 }
 
 /**
+ * Prepare an object that exists only once something creates it at its path:
+ * the track a `duplicate_track` call makes, the scene a `create_scene` makes.
+ * The returned mock is the handle to assert on, but nothing can reach it until
+ * a creating call lands on its path, and the model uses it instead of making an
+ * object with an id of its own. Register it up front with
+ * {@link registerMockObject} and the insert would move it along, as it should
+ * any object that was already there.
+ * @param idOrPath - Object ID (bare or "id X" format)
+ * @param options - Mock configuration, with the path it will appear at
+ * @returns The mock, not yet part of the Live Set
+ */
+export function registerPendingMockObject(
+  idOrPath: PathLike,
+  options: RegisteredMockObjectOptions = {},
+): RegisteredMockObject {
+  const mock = createRegistration(
+    normalizeId(String(idOrPath)),
+    options,
+    defaultMockCall,
+  );
+
+  pendingByPath.set(mock.path, mock);
+
+  return mock;
+}
+
+/**
+ * Put the pending objects at a path and under it into the Live Set, and make a
+ * new object with an id of its own if none was pending at the path itself.
+ *
+ * A pending object stays pending, so it appears again for the next thing
+ * created at its path. One that is still in the Live Set is left where it is.
+ * @param path - Where it lands
+ * @returns The object now at that path
+ */
+function createMockObject(path: string): RegisteredMockObject {
+  for (const [pendingPath, mock] of pendingByPath) {
+    const here = pendingPath === path || pendingPath.startsWith(`${path} `);
+
+    if (here && (mock.deleted || registryById.get(mock.id) !== mock)) {
+      mock.deleted = false;
+      mock.path = pendingPath;
+      registryById.set(mock.id, mock);
+      registryByPath.set(pendingPath, mock);
+      deletedIds.delete(mock.id);
+      deletedIds.delete(pendingPath.replaceAll(/\s+/g, "/"));
+      refreshHolders(mock);
+    }
+  }
+
+  clearLiveApiMemo();
+
+  return registryByPath.get(path) ?? registerMockObject(newMockId(), { path });
+}
+
+/**
  * Make a parameter keep something other than the value written to it, the way
  * Live clamps and snaps a DeviceParameter.
  *
@@ -122,6 +191,7 @@ export function lookupMockObject(
 }
 
 let _simulateDeletes = false;
+let _simulateMoves = false;
 const deletedIds = new Set<string>();
 
 /**
@@ -135,6 +205,17 @@ const deletedIds = new Set<string>();
  */
 export function simulateMockDeletes(): void {
   _simulateDeletes = true;
+}
+
+/**
+ * Make `move_device` calls move their device, so what is moved reads from its
+ * new place and the devices around both places shift the way they do in Live.
+ *
+ * Off by default: most tests that move a device register where it lands by
+ * hand, and a mock that moved it as well would shift what they placed.
+ */
+export function simulateMockMoves(): void {
+  _simulateMoves = true;
 }
 
 /**
@@ -189,55 +270,69 @@ export function defaultMockCall(
     // every fractional one.
     case "str_for_value":
       return Number(Number(args[0]).toPrecision(6));
-    // Live returns ["id", N] from these on success. A blanket null here would
-    // put every uncovered test on the failure branch by accident.
-    case "create_scene":
-    case "insert_chain":
-    case "create_midi_clip":
-      return ["id", "999"];
     case "guess_playback_length":
       return 4;
-    case "duplicate_track":
-      insertMockTrackCopy(path, Number(args[0]));
-
-      return null;
     default:
-      if (_simulateDeletes) {
-        applyMockDelete(method, args, path);
-      }
-
-      return null;
+      return structuralCall(method, args, path);
   }
 }
-
-let mockTrackCopies = 0;
 
 /**
- * Add a track id right after the duplicated one, the way Live does for a track
- * that isn't a group. A test that lists fewer tracks gets filler ids up to the
- * source, so the copy still lands at index + 1.
+ * A call that inserts, duplicates, or deletes. Inserts always take effect;
+ * deletes only when a test asked for them (see simulateMockDeletes).
+ * @param method - Live API method name
+ * @param args - Call arguments
  * @param path - The calling object's path
- * @param index - The duplicated track's index
+ * @returns The mocked return value
  */
-function insertMockTrackCopy(path: string, index: number): void {
-  const liveSet = lookupMockObject(undefined, path);
-  const tracks = liveSet?.properties.tracks ?? [];
+function structuralCall(
+  method: string,
+  args: unknown[],
+  path: string,
+): unknown {
+  // Live returns ["id", N] from the creating calls on success. A blanket null
+  // would put every uncovered test on the failure branch by accident.
+  const inserted = applyMockInsert(registryAccess, method, args, path);
 
-  if (liveSet == null || !Array.isArray(tracks)) {
-    return;
+  if (inserted) {
+    return inserted.value;
   }
 
-  // children() interleaves "id" with each child ID.
-  const ids = tracks.filter((_, i) => i % 2 === 1).map(String);
-
-  while (ids.length <= index) {
-    ids.push(`mock-track-${ids.length}`);
+  if (_simulateDeletes) {
+    applyMockDelete(method, args, path);
   }
 
-  mockTrackCopies++;
-  ids.splice(index + 1, 0, `mock-track-copy-${mockTrackCopies}`);
-  liveSet.properties.tracks = ids.flatMap((id) => ["id", id]);
+  if (_simulateMoves && method === "move_device") {
+    applyMockMove(registryAccess, args);
+  }
+
+  return null;
 }
+
+/** The registry as the structural edits see it. */
+const registryAccess: MockRegistryAccess = {
+  all: () =>
+    [...new Set(registryById.values())].filter((mock) => !mock.deleted),
+  lookup: (idOrPath) => lookupMockObject(idOrPath, idOrPath),
+  create: createMockObject,
+  relocate(moves) {
+    for (const [mock] of moves) {
+      if (registryByPath.get(mock.path) === mock) {
+        registryByPath.delete(mock.path);
+      }
+    }
+
+    for (const [mock, path] of moves) {
+      mock.path = path;
+      registryByPath.set(path, mock);
+      deletedIds.delete(path.replaceAll(/\s+/g, "/"));
+      refreshHolders(mock);
+    }
+  },
+  markGone: (path) => {
+    deletedIds.add(path.replaceAll(/\s+/g, "/"));
+  },
+};
 
 /** Collection each `delete_*` method removes from, relative to the caller. */
 const DELETE_COLLECTIONS: Record<string, string> = {
@@ -259,9 +354,11 @@ function applyMockDelete(method: string, args: unknown[], path: string): void {
   if (collection) {
     deleteMockObject(`${path} ${collection} ${String(args[0])}`);
   } else if (method === "delete_clip") {
-    // Track.delete_clip takes "id N". ClipSlot.delete_clip takes nothing, and
-    // nothing is registered at the path that builds, so it misses harmlessly.
-    deleteMockObject(String(args[0]).replace(/^id /, ""));
+    // Track.delete_clip takes "id N". ClipSlot.delete_clip takes nothing and
+    // deletes the clip in the slot.
+    deleteMockObject(
+      args.length === 0 ? `${path} clip` : String(args[0]).replace(/^id /, ""),
+    );
   } else if (method === "delete_all_chains") {
     deleteChainsOnPad(path);
   }
@@ -317,7 +414,7 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
  *
  * A fresh lookup misses it, but anything already holding it keeps the stale id
  * — only its path clears and its property reads dry up. `confirmDeleted` in
- * `tools/actions/delete/delete.ts` depends on that split.
+ * `tools/actions/delete/helpers/delete-object-by-type.ts` depends on that split.
  *
  * Exported for the fixtures whose own `call` implementations destroy something
  * — an arrangement create clears the range it writes to — since those never
@@ -328,9 +425,36 @@ export function deleteMockObject(idOrPath: string): void {
   const mock = lookupMockObject(idOrPath, idOrPath);
 
   if (!mock) {
+    dropPendingMockObject(idOrPath);
+
     return;
   }
 
+  const path = mock.path;
+
+  killMockObject(mock);
+  applyMockRemoval(registryAccess, path, killMockObject);
+}
+
+/**
+ * A pending object that is deleted before anything creates it never arrives.
+ * @param idOrPath - The object's ID or path
+ */
+function dropPendingMockObject(idOrPath: string): void {
+  for (const [path, mock] of pendingByPath) {
+    if (path === idOrPath || mock.id === idOrPath) {
+      pendingByPath.delete(path);
+      deletedIds.add(mock.id);
+      deletedIds.add(path.replaceAll(/\s+/g, "/"));
+    }
+  }
+}
+
+/**
+ * Mark one object dead and drop it from the registry's lookups.
+ * @param mock - The object to kill
+ */
+function killMockObject(mock: RegisteredMockObject): void {
   mock.deleted = true;
   refreshHolders(mock);
 
@@ -372,9 +496,12 @@ export function clearMockRegistry(): void {
   clearLiveApiMemo();
   registryById.clear();
   registryByPath.clear();
+  pendingByPath.clear();
   deletedIds.clear();
   _simulateDeletes = false;
+  _simulateMoves = false;
   setKeepAllMockWrites(false);
   _nonExistentByDefault = false;
-  mockTrackCopies = 0;
+  resetMockCreatedIds();
+  clearMockWrites();
 }

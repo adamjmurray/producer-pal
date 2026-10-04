@@ -9,17 +9,21 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   destinationLane,
+  loneToPath,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   pathEntries,
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { refuseEmptyLength } from "./clip-beat-positions.ts";
 import { requireDestinationPerSource } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 /** The update-clip params read before any clip is touched. */
@@ -32,7 +36,18 @@ export interface UpfrontArgs {
   toPath?: string;
   toSlot?: string;
   arrangementStart?: string;
+  warpOp?: string;
+  warpBeatTime?: number;
+  warpSampleTime?: number;
+  warpDistance?: number;
 }
+
+// The warp marker operations that read each param. Debug builds only.
+const WARP_PARAM_HOMES = {
+  warpBeatTime: { warpOp: ["add", "move", "remove"] },
+  warpSampleTime: { warpOp: ["add"] },
+  warpDistance: { warpOp: ["move"] },
+};
 
 /**
  * Refuses a call there is no reading of, before any clip is touched: a param
@@ -46,24 +61,57 @@ export function refuseUnreadableCall(
   targetCount: number,
 ): void {
   validateValueParams(args, targetCount);
+  refuseParamsOutsideAction(
+    { warpOp: args.warpOp },
+    { ...args },
+    WARP_PARAM_HOMES,
+  );
   refuseDoubledPosition(args.toPath, args.arrangementStart, "toPath");
-  refuseSharedClipDestination(args.toPath, args.toSlot, targetCount);
+  refuseSharedClipDestination(
+    args.toPath,
+    args.toSlot,
+    targetCount,
+    args.arrangementStart,
+  );
+}
+
+/**
+ * Whether one track or take lane is the whole toPath and arrangementStart names
+ * a position per clip: the positions keep the clips apart, so the lane covers
+ * them all. One position would stack them on one spot.
+ * @param toPath - Destination path(s), if sent
+ * @param arrangementStart - Position(s), if sent
+ * @returns True when a lone lane takes one position per clip
+ */
+export function laneWithPositionPerClip(
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): boolean {
+  return (
+    paramNamesSomething(toPath) &&
+    paramNamesSomething(arrangementStart) &&
+    loneToPath(pathEntries(toPath, "toPath")).trackOrLane &&
+    targetEntries(arrangementStart, "arrangementStart").length > 1
+  );
 }
 
 /**
  * Refuse one destination for several clips. A lane or slot (`t0`, `t0/s1`,
  * `t0[5|1]`) holds one clip, so it has to be named once per clip. A bare
- * `[5|1]` is fine: each clip stays on its own lane.
+ * `[5|1]` is fine: each clip stays on its own lane. So is one track or take
+ * lane with a position per clip in arrangementStart.
  * @param toPath - Destination path(s), if sent
  * @param toSlot - Deprecated destination slot(s), if sent
  * @param targetCount - How many ids the call named
+ * @param arrangementStart - Position(s), if sent
  */
 function refuseSharedClipDestination(
   toPath: string | undefined,
   toSlot: string | undefined,
   targetCount: number,
+  arrangementStart: string | undefined,
 ): void {
-  if (targetCount <= 1) {
+  if (targetCount <= 1 || laneWithPositionPerClip(toPath, arrangementStart)) {
     return;
   }
 
@@ -96,7 +144,7 @@ function refuseSharedClipDestination(
  * Refuse start/length next to duplicateLoop. They set the loop region, which is
  * exactly what duplicate_loop copies, so the call reads two ways - "the region
  * to double" or "the length to end up at" - and both look like success, since
- * the note count doubles either way. Two calls say which (ADR-0040). firstStart
+ * the note count doubles either way. Two calls say which. firstStart
  * still composes: it moves the playback marker, not the region.
  * @param start - Loop region start, if sent
  * @param length - Loop region length, if sent
@@ -248,7 +296,7 @@ function validateValueParams(
   targetCount: number,
 ): void {
   for (const meter of everyEntry(timeSignature, targetCount, "timeSignature")) {
-    parseTimeSignature(meter);
+    parseKeptTimeSignature(meter);
   }
 
   for (const pitch of everyEntry(quantizePitch, targetCount, "quantizePitch")) {
@@ -267,6 +315,10 @@ function validateValueParams(
 
   for (const duration of everyEntry(length, targetCount, "length")) {
     durationToAbletonBeats(duration, 4, 4);
+    // A bar only grows with the meter, so a length that spans nothing in the
+    // widest meter spans nothing in any. A meter-dependent one is refused per
+    // clip, in its own meter.
+    refuseEmptyLength(duration, durationToAbletonBeats(duration, 99, 1));
   }
 }
 

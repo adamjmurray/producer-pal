@@ -7,8 +7,10 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
+import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import {
   createAudioClipInSession,
+  removeSessionClip,
   type CreatedClip,
   EPSILON,
   type TilingContext,
@@ -22,12 +24,15 @@ import {
 import {
   clipReporterFor,
   noteClipReason,
+  noteLanded,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 
 export interface ArrangementContext {
   silenceWavPath?: string;
+  /** What is on the arrangement lanes, shared with every write in the call. */
+  lanes?: LaneView;
 }
 
 export interface ClipIdResult {
@@ -96,11 +101,13 @@ export function handleArrangementLengthening({
   const tilingContext: TilingContext = {
     ...(context as TilingContext),
     reportClip: clipReporterFor(reasons),
+    // A scratch clip Live won't remove is this clip's to report.
+    reportScratch: (message) => noteClipReason(reasons, clip.id, message),
   };
 
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
-    return handleUnloopedLengthening({
+    const grown = handleUnloopedLengthening({
       clip,
       isAudioClip,
       arrangementLengthBeats,
@@ -110,6 +117,13 @@ export function handleArrangementLengthening({
       track,
       reasons,
     });
+
+    // It returns the clip only when it grew.
+    if (grown.length > 0) {
+      noteLanded(reasons, "lengthened", { id: clip.id });
+    }
+
+    return grown;
   }
 
   // Tiles land one at a time, so a throw partway leaves some in the Set.
@@ -157,6 +171,7 @@ export function handleArrangementLengthening({
         track,
         context: tilingContext,
         placed,
+        reasons,
       });
     }
   } catch (error) {
@@ -170,6 +185,11 @@ export function handleArrangementLengthening({
       `arrangementLength didn't finish: ${errorMessage(error)}`,
     );
     tiledClips = placed;
+  }
+
+  // A pass whose every tile was refused changed nothing.
+  if (tiledClips.length > 0) {
+    noteLanded(reasons, "lengthened", { id: clip.id });
   }
 
   updatedClips.push({ id: clip.id });
@@ -191,6 +211,8 @@ interface CreateLoopedClipTilesArgs {
   context: TilingContext;
   /** Collects each tile as it lands */
   placed: CreatedClip[];
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 /**
@@ -207,6 +229,7 @@ interface CreateLoopedClipTilesArgs {
  * @param options.track - The LiveAPI track object
  * @param options.context - Tool execution context
  * @param options.placed - Collects each tile as it lands
+ * @param options.reasons - What each clip has to say beyond its result
  * @returns Array of tiled clip info
  */
 function createLoopedClipTiles({
@@ -221,6 +244,7 @@ function createLoopedClipTiles({
   track,
   context,
   placed,
+  reasons,
 }: CreateLoopedClipTilesArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
@@ -259,7 +283,11 @@ function createLoopedClipTiles({
       position: newEndTime,
       length: tempClipLength,
       silenceWavPath: context.silenceWavPath,
+      lanes: context.lanes,
+      reportScratch: context.reportScratch,
     });
+    // The clip is shorter from here, whatever the tiles after it do.
+    noteLanded(reasons, "shortened", { id: clip.id });
 
     newEndTime = currentStartTime + totalContentLength;
     const firstTileLength = newEndTime - currentStartTime;
@@ -312,6 +340,8 @@ interface HandleArrangementShorteningArgs {
   currentStartTime: number;
   currentEndTime: number;
   context: ArrangementContext;
+  /** Where to say a scratch clip or scene couldn't be removed */
+  reportScratch?: (message: string) => void;
 }
 
 /**
@@ -323,6 +353,8 @@ interface HandleArrangementShorteningArgs {
  * @param options.currentStartTime - Current start time in beats
  * @param options.currentEndTime - Current end time in beats
  * @param options.context - Tool execution context
+ * @param options.reportScratch - Where to say a scratch clip or scene couldn't
+ *   be removed
  */
 export function handleArrangementShortening({
   clip,
@@ -331,6 +363,7 @@ export function handleArrangementShortening({
   currentStartTime,
   currentEndTime,
   context,
+  reportScratch,
 }: HandleArrangementShorteningArgs): void {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
@@ -351,6 +384,8 @@ export function handleArrangementShortening({
     position: newEndTime,
     length: tempClipLength,
     silenceWavPath: context.silenceWavPath as string,
+    lanes: context.lanes,
+    reportScratch,
     setupAudioClip: (tempClip: LiveAPI) => {
       // Re-apply warping and looping to arrangement clip
       tempClip.set("warping", 1);
@@ -366,6 +401,8 @@ interface TruncateWithTempClipArgs {
   position: number;
   length: number;
   silenceWavPath: string;
+  lanes?: LaneView;
+  reportScratch?: (message: string) => void;
   setupAudioClip?: ((tempClip: LiveAPI) => void) | null;
 }
 
@@ -377,6 +414,8 @@ interface TruncateWithTempClipArgs {
  * @param options.position - Position for temp clip
  * @param options.length - Length of temp clip
  * @param options.silenceWavPath - Path to silence WAV (for audio clips)
+ * @param options.lanes - The call's lanes, told what the temp clip cut into
+ * @param options.reportScratch - Where to say a scratch clip or scene stayed
  * @param options.setupAudioClip - Optional callback to setup audio temp clip
  */
 function truncateWithTempClip({
@@ -385,27 +424,35 @@ function truncateWithTempClip({
   position,
   length,
   silenceWavPath,
+  lanes,
+  reportScratch,
   setupAudioClip = null,
 }: TruncateWithTempClipArgs): void {
-  if (isAudioClip) {
-    const { clip: sessionClip, slot } = createAudioClipInSession(
-      track,
-      length,
-      silenceWavPath,
-    );
-    const tempClip = clipFromDuplicateResult(
-      track.call(
-        "duplicate_clip_to_arrangement",
-        toLiveApiId(sessionClip.id),
-        position,
-      ),
-    );
+  // The temp clip is gone by the time anything looks, so say what it trimmed.
+  lanes?.wroteOnTrack(track, position, position + length);
 
-    if (setupAudioClip) {
-      setupAudioClip(tempClip);
+  if (isAudioClip) {
+    const session = createAudioClipInSession(track, length, silenceWavPath);
+    let tempClip: LiveAPI;
+
+    // The scratch clip goes whether or not the copy landed: a throw would
+    // otherwise leave it, and its scene, in the Set with nothing to say so.
+    try {
+      tempClip = clipFromDuplicateResult(
+        track.call(
+          "duplicate_clip_to_arrangement",
+          toLiveApiId(session.clip.id),
+          position,
+        ),
+      );
+
+      if (setupAudioClip) {
+        setupAudioClip(tempClip);
+      }
+    } finally {
+      removeSessionClip(session, reportScratch);
     }
 
-    slot.call("delete_clip");
     track.call("delete_clip", toLiveApiId(tempClip.id));
   } else {
     const tempClipResult = track.call(

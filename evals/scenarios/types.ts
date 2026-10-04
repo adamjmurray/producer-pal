@@ -27,7 +27,8 @@ export type EvalProvider =
   | "google"
   | "local"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "vercel";
 
 /**
  * A test scenario that runs against Ableton Live
@@ -270,6 +271,11 @@ export interface CustomAssertion {
   /** Callback receiving all turn results. Return true for pass, false for fail.
    *  Throw to fail with message. */
   assert: (turns: EvalTurnResult[]) => boolean;
+  /** When true, the check reports but never gates, like `response_contains`.
+   *  For the ROUTE a model took when the docs teach several that end in the
+   *  same state: a state assertion gates the outcome and this reports which
+   *  route it was. See `isSignalAssertion`. */
+  signal?: boolean;
 }
 
 /**

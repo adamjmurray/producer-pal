@@ -133,7 +133,7 @@ describe("createDevice build budget", () => {
     // One rack-wide scan for validation (4 chains), on top of whatever the
     // actual inserts already cost — not another 4 x 4 = 16 chain builds for
     // validation alone, which is what a rescan per pad would add.
-    expect(resolves("id kitchain*")).toBe(21);
+    expect(resolves("id kitchain*")).toBe(20);
   });
 
   it("reads an 8-pad kit's chains once for order validation, not once per pad", async () => {
@@ -146,6 +146,6 @@ describe("createDevice build budget", () => {
 
     // Same shape as the 4-pad case, scaled up: one rack-wide scan of 8 chains
     // for validation, not 8 x 8 = 64 chain builds for validation alone.
-    expect(resolves("id bigkitchain*")).toBe(76);
+    expect(resolves("id bigkitchain*")).toBe(72);
   });
 });

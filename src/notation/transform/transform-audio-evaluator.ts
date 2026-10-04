@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
@@ -11,17 +12,14 @@ import {
   type ClipContext,
   type NoteProperties,
 } from "./helpers/transform-context.ts";
-import {
-  applyBinaryOp,
-  isNoteOp,
-  operatorDisplay,
-} from "./helpers/transform-evaluation.ts";
+import { applyBinaryOp, isNoteOp } from "./helpers/transform-evaluation.ts";
 import {
   type ExpressionNode,
   type TransformAssignment,
   type TransformStatement,
 } from "./parser/transform-parser.ts";
-import * as parser from "./parser/transform-parser.ts";
+import { wrongClipTypeStatements } from "./transform-clip-type.ts";
+import { tryParseTransform } from "./transform-evaluator.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 
 // Constants for gain clamping
@@ -31,16 +29,6 @@ const MAX_GAIN_DB = 24;
 // Constants for pitch shift clamping
 const MIN_PITCH_SHIFT = -48;
 const MAX_PITCH_SHIFT = 48;
-
-// MIDI-only parameters that should be skipped for audio clips
-const MIDI_PARAMETERS = new Set([
-  "velocity",
-  "timing",
-  "duration",
-  "probability",
-  "deviation",
-  "pitch",
-]);
 
 export interface AudioProperties {
   gain: number;
@@ -70,18 +58,10 @@ export function applyAudioTransform(
     return { gain: null, pitchShift: null };
   }
 
-  let ast: TransformStatement[];
-
-  try {
-    // Audio transforms operate on whole-clip gain/pitchShift and never apply a
-    // timeRange, so the meter is irrelevant here; pass denominator 4 to satisfy
-    // the now meter-aware grammar (matches this evaluator's hardcoded-4 convention).
-    ast = parser.parse(transformString, { timeSigDenominator: 4 });
-  } catch (error) {
-    console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
-
-    return { gain: null, pitchShift: null };
-  }
+  // Audio transforms operate on whole-clip gain/pitchShift and never apply a
+  // timeRange, so the meter is irrelevant here; pass 4 to satisfy the
+  // meter-aware grammar. A syntax error throws, as it does for a MIDI clip.
+  const ast = tryParseTransform(transformString, 4, 4, "audio");
 
   warnIncompatibleAudioSelectors(ast);
 
@@ -107,20 +87,6 @@ export function applyAudioTransform(
   let pitchShiftModified = false;
 
   for (const assignment of audioAssignments) {
-    // A duplicate selector segment is warned-and-skipped, consistent with the
-    // MIDI evaluator: relay the parser's message and skip just this line.
-    if (assignment.selectorWarning != null) {
-      console.warn(assignment.selectorWarning);
-      continue;
-    }
-
-    // A bare top-level pitch literal (`gain = C3`) is nonsensical for audio and
-    // is warned-and-skipped here (a nested pitch literal is still resolved to
-    // its MIDI number in evaluateAudioExpression).
-    if (warnAndSkipBarePitchLiteral(assignment)) {
-      continue;
-    }
-
     try {
       const value = evaluateAudioExpression(
         assignment.expression,
@@ -144,8 +110,8 @@ export function applyAudioTransform(
         pitchShiftModified = true;
       }
     } catch (error) {
-      console.warn(
-        `Failed to evaluate ${assignment.parameter} transform: ${errorMessage(error)}`,
+      console.clipDetail(
+        `${assignment.parameter} transform failed: ${errorMessage(error)}`,
       );
     }
   }
@@ -177,33 +143,6 @@ function nextAudioValue(
 }
 
 /**
- * Detect a bare top-level pitch literal assigned to an audio parameter
- * (`gain = C3`, `pitchShift = C3`) and warn-and-skip it. Audio clips have no
- * pitch, and gain/pitchShift are plain numbers; assigning a pitch literal would
- * silently coerce to a MIDI number (`C3` → 60, clamped to the parameter max).
- * Mirrors the note evaluator's pitch-as-value guard. A pitch literal nested in
- * arithmetic or a function arg is NOT caught here — it is still resolved to its
- * MIDI number in evaluateAudioExpression.
- * @param assignment - The audio transform assignment to check
- * @returns true if the assignment was a bare pitch literal (warned + skip), else false
- */
-function warnAndSkipBarePitchLiteral(assignment: TransformAssignment): boolean {
-  const expr = assignment.expression;
-
-  if (typeof expr !== "object" || expr.type !== "pitchLiteral") {
-    return false;
-  }
-
-  const example = assignment.parameter === "gain" ? "-6" : "12";
-
-  console.warn(
-    `pitch name "${expr.name}" isn't a valid value for ${assignment.parameter}; audio clips have no pitch — gain and pitchShift take numbers (e.g. ${assignment.parameter} = ${example}). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
-  );
-
-  return true;
-}
-
-/**
  * Warn about transform selectors/parameters that have no effect on audio clips.
  * MIDI-only parameters and timeRange selectors are dropped (audio transforms
  * apply to the whole clip), so warn rather than silently ignoring them.
@@ -212,10 +151,8 @@ function warnAndSkipBarePitchLiteral(assignment: TransformAssignment): boolean {
 function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   const assignments = ast.filter((a): a is TransformAssignment => !isNoteOp(a));
 
-  if (assignments.some((a) => MIDI_PARAMETERS.has(a.parameter))) {
-    console.warn(
-      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
-    );
+  for (const reason of wrongClipTypeStatements(ast, true).reasons) {
+    console.clipDetail(reason);
   }
 
   const hasAudioTimeRange = assignments.some(
@@ -225,8 +162,11 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioTimeRange) {
-    console.warn(
-      "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+    console.clipDetail(
+      ignoredText(
+        "timeRange selector",
+        "audio transforms apply to the whole clip",
+      ),
     );
   }
 
@@ -237,8 +177,8 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPitchRange) {
-    console.warn(
-      "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+    console.clipDetail(
+      ignoredText("pitch selector", "audio clips have no pitch"),
     );
   }
 
@@ -249,14 +189,11 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPredicate) {
-    console.warn(
-      "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
-    );
-  }
-
-  if (ast.some(isNoteOp)) {
-    console.warn(
-      "Note-count operations (ratchet, repeat, merge, split) ignored for audio clips",
+    console.clipDetail(
+      ignoredText(
+        "where() predicate",
+        "audio transforms apply to the whole clip",
+      ),
     );
   }
 }
@@ -304,8 +241,8 @@ function evaluateAudioExpression(
 
   // Pitch literal (`C3`) nested in an expression (arithmetic operand or function
   // arg, e.g. `gain = C3 + 0`) — its MIDI number, mirroring the note evaluator.
-  // A bare top-level `gain = C3` never reaches here: applyAudioTransform catches
-  // and warns it. This branch only stops a nested pitch literal from falling
+  // A bare top-level `gain = C3` never reaches here: checkTransformArgs refuses
+  // it. This branch only stops a nested pitch literal from falling
   // through to the function-call branch below and throwing a cryptic
   // "args is undefined" internal error.
   if (node.type === "pitchLiteral") {
@@ -408,7 +345,9 @@ function resolveAudioVariable(
   if (node.name === "position" && clipContext.arrangementStart == null) {
     // Session clips have no arrangement origin; 0 is the neutral position so
     // the transform keeps running instead of failing the clip.
-    console.warn(`clip.position is not available for session clips; using 0`);
+    console.clipDetail(
+      "clip.position isn't available on a session clip; used 0",
+    );
 
     return 0;
   }

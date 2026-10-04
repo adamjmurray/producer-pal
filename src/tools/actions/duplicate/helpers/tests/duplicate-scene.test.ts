@@ -12,12 +12,13 @@ import {
   registerClipSlot,
   registerLiveSetWithThreeTracks,
   registerMockObject,
+  registerPendingMockObject,
 } from "../duplicate-test-helpers.ts";
 import {
-  calculateSceneLength,
   duplicateScene,
   duplicateSceneToArrangement,
 } from "../sources/duplicate-scene.ts";
+import { readSceneClips } from "../sources/scene-clips.ts";
 
 // Mock updateClip to avoid complex internal logic
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -72,7 +73,7 @@ describe("duplicate-scene", () => {
     registerLiveSetWithThreeTracks();
   });
 
-  describe("calculateSceneLength", () => {
+  describe("readSceneClips length", () => {
     it("should return default minimum length when scene has no clips", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
@@ -80,7 +81,7 @@ describe("duplicate-scene", () => {
       });
       registerClipSlot(0, 0, false);
 
-      const length = calculateSceneLength(0);
+      const length = readSceneClips(0).length;
 
       expect(length).toBe(4);
     });
@@ -93,7 +94,7 @@ describe("duplicate-scene", () => {
       registerClipSlot(0, 0, true, { length: 8 });
       registerClipSlot(1, 0, true, { length: 12 });
 
-      const length = calculateSceneLength(0);
+      const length = readSceneClips(0).length;
 
       expect(length).toBe(12);
     });
@@ -109,7 +110,7 @@ describe("duplicate-scene", () => {
   } {
     const liveSet = registerMockObject("live_set", {
       path: livePath.liveSet,
-      properties: { tracks: children("track0") },
+      properties: { tracks: children("track0"), scenes: children("scene0") },
     });
 
     registerClipSlot(0, 1, false);
@@ -137,6 +138,22 @@ describe("duplicate-scene", () => {
       expect(scene.set).not.toHaveBeenCalledWith("name", expect.anything());
     });
 
+    // The scene exists by then, so a skip would hide it from the caller.
+    it("keeps a scene that exists when naming it throws", () => {
+      const { scene } = setupDuplicateSceneMocks();
+
+      scene.set.mockImplementation(() => {
+        throw new Error("name refused");
+      });
+
+      expect(duplicateScene(0, "New Scene")).toStrictEqual({
+        path: "s1",
+        id: "live_set/scenes/1",
+        clips: [],
+        detail: "the scene was made, but name refused",
+      });
+    });
+
     it("should set name when provided", () => {
       const { scene } = setupDuplicateSceneMocks();
 
@@ -157,7 +174,10 @@ describe("duplicate-scene", () => {
     it("should delete clips when withoutClips is true", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
-        properties: { tracks: children("track0", "track1") },
+        properties: {
+          tracks: children("track0", "track1"),
+          scenes: children("scene0"),
+        },
       });
       const slot0 = registerClipSlot(0, 1, true);
 
@@ -169,7 +189,9 @@ describe("duplicate-scene", () => {
       registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
         path: livePath.track(1).clipSlot(1).clip(),
       });
-      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+      registerPendingMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
+      });
 
       const result = duplicateScene(0, undefined, undefined, true);
 
@@ -182,14 +204,16 @@ describe("duplicate-scene", () => {
     it("should collect clips when withoutClips is not true", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
-        properties: { tracks: children("track0") },
+        properties: { tracks: children("track0"), scenes: children("scene0") },
       });
       registerClipSlot(0, 1, true);
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
         path: livePath.track(0).clipSlot(1).clip(),
         properties: { is_arrangement_clip: 0 },
       });
-      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+      registerPendingMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
+      });
 
       const result = duplicateScene(0);
 
@@ -299,54 +323,51 @@ describe("duplicate-scene", () => {
       expect(result).toStrictEqual({ clips: [] });
     });
 
-    it.each([
-      {
-        desc: "should use provided arrangementLength",
-        clipLength: 4,
-        liveSetExtra: {},
-        sceneName: undefined as string | undefined,
-        arrangementLength: "2bar" as string | undefined,
-        // Lengthening runs through updateClip, which these mocks stop short of,
-        // so the batch collects no clip.
-        expectedClipPath: undefined as string | undefined,
-      },
-      {
-        desc: "should use calculateSceneLength when arrangementLength is not provided",
-        clipLength: 8,
-        liveSetExtra: { signature_numerator: 4, signature_denominator: 4 },
-        sceneName: "Scene Name",
-        arrangementLength: undefined,
-        // start_time 16 in 4/4 is bar 5 beat 1.
-        expectedClipPath: "t0[5|1]",
-      },
-    ])(
-      "$desc",
-      async ({
-        clipLength,
-        liveSetExtra,
-        sceneName,
-        arrangementLength,
-        expectedClipPath,
-      }) => {
-        setupSceneToArrangementClipMocks(clipLength, liveSetExtra);
+    // Lengthening runs through updateClip, which these mocks stop short of, so
+    // no clip lands and the position is a skip.
+    it("skips the position when a lengthened copy lands no clip", async () => {
+      setupSceneToArrangementClipMocks(4, {});
 
-        const result = await duplicateSceneToArrangement(
-          "scene1",
-          16,
-          sceneName,
-          undefined,
-          false,
-          arrangementLength,
-          4,
-          4,
-        );
+      const result = await duplicateSceneToArrangement(
+        "scene1",
+        16,
+        undefined,
+        undefined,
+        false,
+        "2bar",
+        4,
+        4,
+      );
 
-        // The clip's own path is the only place the copy's position is
-        // reported; the batch carries none of its own.
-        expect(result).toHaveProperty("clips");
-        expect(result.clips[0]?.path).toBe(expectedClipPath);
-      },
-    );
+      expect(result).toStrictEqual({
+        path: "[5|1]",
+        ok: false,
+        detail: "no clip landed: Live made no copy on t0",
+      });
+    });
+
+    it("should use the scene length when arrangementLength is not provided", async () => {
+      setupSceneToArrangementClipMocks(8, {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      });
+
+      const result = (await duplicateSceneToArrangement(
+        "scene1",
+        16,
+        "Scene Name",
+        undefined,
+        false,
+        undefined,
+        4,
+        4,
+      )) as { clips: { path?: string }[] };
+
+      // The clip's own path is the only place the copy's position is
+      // reported; the batch carries none of its own. Start 16 in 4/4 is bar 5
+      // beat 1.
+      expect(result.clips[0]?.path).toBe("t0[5|1]");
+    });
 
     it("reports each clip as id and path, never the requested name", async () => {
       // The name lands on the clip itself, so reporting it back would echo an
@@ -367,7 +388,7 @@ describe("duplicate-scene", () => {
         4,
       );
 
-      expect(result.clips).toStrictEqual([
+      expect((result as { clips: object[] }).clips).toStrictEqual([
         { id: expect.any(String), path: "t0[5|1]" },
       ]);
     });

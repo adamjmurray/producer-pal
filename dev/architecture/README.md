@@ -9,6 +9,10 @@ Detail lives in these parts:
 
 - [runtime-boundary.md](runtime-boundary.md) — V8 vs Node filesystem split, the
   embedded remote script, per-request headers, and subagent briefings.
+- [user-content-overrides.md](user-content-overrides.md) — what
+  `~/.producer-pal` holds, and the rules for override slots.
+- [skills.md](skills.md) — how the Skills text is cut into fragments, gated by
+  tool, and split into read and write halves.
 - [build-system.md](build-system.md) — entry, output, and target for each of the
   four bundles.
 

@@ -233,7 +233,7 @@ export function assembleSkills(
  * — the AI gets no instructions at all, and nothing on screen says why. The
  * editor hides that toggle and the REST route refuses to store it, but
  * hand-editing `enabled: false` into `~/.producer-pal/skills/standard.md` is a
- * supported path (ADR-0010) that reaches here directly.
+ * supported path that reaches here directly.
  *
  * Unknown names pass through: a fork may include fragments of its own, and
  * switching one of those off is exactly what the flag is for.

@@ -5,7 +5,7 @@
 
 import { type Notation } from "#src/shared/notation";
 import { type ChatImage, type UserMessage } from "#webui/chat/sdk/types";
-import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
+import { type RestoredSettings } from "#webui/lib/conversations/conversation-store";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -144,6 +144,8 @@ export interface UseChatReturn {
   activeEnabledTools: Record<string, boolean> | null;
   /** The per-turn tool-step budget pinned for the active conversation. */
   activeMaxToolSteps: number | null;
+  /** The active conversation was imported from a file. */
+  activeImported: boolean;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: EnqueueMessageHandler;
@@ -175,7 +177,7 @@ export interface UseChatReturn {
   getChatHistory: () => unknown[];
   restoreChatHistory: (
     chatHistory: unknown[],
-    lockedSettings?: ConversationLockedSettings,
+    lockedSettings?: RestoredSettings,
   ) => void;
 }
 

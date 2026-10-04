@@ -79,7 +79,7 @@ describe("buildSkills - composition", () => {
       "## Generate notes",
       "Melody (a quarter note per beat)",
       "Chords (multiple pitches share one position",
-      "Drums (re-set n per lane",
+      "Drums (n carries over",
       "The beat can be a comma-separated list",
     ]) {
       expect(barbeatBasic, `lost "${marker}"`).toContain(marker);

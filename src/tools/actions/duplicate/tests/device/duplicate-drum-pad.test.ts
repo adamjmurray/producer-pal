@@ -8,6 +8,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  LIVE_FAILURE,
+  failOnSet,
+  hookCalls,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
+import {
   lookupMockObject,
   mockNonExistentObjects,
   registerMockObject,
@@ -79,6 +84,18 @@ function registerDrumRack(
 }
 
 /**
+ * Register a Drum Rack with a kick on C1, a snare on D1 and an empty E1 pad.
+ * @returns The registered rack mock
+ */
+function registerKickSnareRack(): RegisteredMockObject {
+  return registerDrumRack([
+    { note: 36, chainIds: ["kick"] },
+    { note: 38, chainIds: ["snare"] },
+    { note: 40, chainIds: [] },
+  ]);
+}
+
+/**
  * Make copy_pad land: afterward the destination pad reports the chains listed
  * for its note. A note with no entry is left alone, standing in for a no-op.
  * @param rack - The rack mock
@@ -127,6 +144,25 @@ function registerCopyReadyRack(
   ]);
 
   whenCopied(rack, { 38: destinationChainIds });
+
+  return rack;
+}
+
+/**
+ * A kick on C1 and two empty pads, D1 and E1, that a copy fills.
+ * @param chainsByNote - Chain ids each destination pad ends up with, by note
+ * @returns The rack mock
+ */
+function registerKickWithTwoEmptyPads(
+  chainsByNote: Record<number, string[]>,
+): RegisteredMockObject {
+  const rack = registerDrumRack([
+    { note: 36, chainIds: ["kick"] },
+    { note: 38, chainIds: [] },
+    { note: 40, chainIds: [] },
+  ]);
+
+  whenCopied(rack, chainsByNote);
 
   return rack;
 }
@@ -247,6 +283,39 @@ describe("duplicate - drum pad", () => {
     );
   });
 
+  // The pad is copied by then, so a name that won't take is on its entry, and
+  // the pad after it still copies.
+  it("keeps a pad copy whose chains won't take their name", async () => {
+    const rack = registerKickWithTwoEmptyPads({
+      38: ["copyD1"],
+      40: ["copyE1"],
+    });
+
+    hookCalls(rack, /^copy_pad$/, {
+      after: () => {
+        for (const id of ["copyD1", "copyE1"]) {
+          const chain = lookupMockObject(id);
+
+          if (chain != null) {
+            failOnSet(chain, "name");
+          }
+        }
+      },
+    });
+
+    const result = await copyC1ToD1({
+      toPath: "t0/d0/pD1,t0/d0/pE1",
+      name: "A,B",
+    });
+
+    const detail = `the pad was copied, but naming its chains failed: ${LIVE_FAILURE}`;
+
+    expect(result).toStrictEqual([
+      { id: "pad38", path: "t0/d0/pD1", detail },
+      { id: "pad40", path: "t0/d0/pE1", detail },
+    ]);
+  });
+
   it("refuses a destination in a different rack", async () => {
     const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 
@@ -291,21 +360,15 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
-  it("keeps a malformed destination's slot rather than throwing", async () => {
-    // One bad destination in a list must not take the others down with it.
+  it("refuses the whole call for a destination that doesn't parse", async () => {
+    // A destination written wrong refuses the call before any pad is copied,
+    // the ones that would have worked included.
     const rack = registerCopyReadyRack();
-    const result = await copyC1ToD1({ toPath: "nonsense,t0/d0/pD1" });
 
-    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
-    expect(result).toStrictEqual([
-      {
-        path: "nonsense",
-        ok: false,
-        detail: expect.stringContaining("nonsense"),
-      },
-      { id: "pad38", path: "t0/d0/pD1" },
-    ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    await expect(copyC1ToD1({ toPath: "nonsense,t0/d0/pD1" })).rejects.toThrow(
+      'invalid toPath "nonsense"',
+    );
+    expectNoCopy(rack);
   });
 
   it("refuses a path that names something inside the pad", async () => {
@@ -377,13 +440,10 @@ describe("duplicate - drum pad", () => {
   });
 
   it("copies to several pads from one call", async () => {
-    const rack = registerDrumRack([
-      { note: 36, chainIds: ["kick"] },
-      { note: 38, chainIds: [] },
-      { note: 40, chainIds: [] },
-    ]);
-
-    whenCopied(rack, { 38: ["copy38"], 40: ["copy40"] });
+    const rack = registerKickWithTwoEmptyPads({
+      38: ["copy38"],
+      40: ["copy40"],
+    });
 
     const result = await copyC1ToD1({ toPath: "t0/d0/pD1,t0/d0/pE1" });
 
@@ -397,11 +457,7 @@ describe("duplicate - drum pad", () => {
 
   // copy_pad layers, so D1's own turn would copy C1's chains along with its own.
   it("refuses a copy onto another source pad before any copy", async () => {
-    const rack = registerDrumRack([
-      { note: 36, chainIds: ["kick"] },
-      { note: 38, chainIds: ["snare"] },
-      { note: 40, chainIds: [] },
-    ]);
+    const rack = registerKickSnareRack();
 
     await expect(
       duplicate({
@@ -419,11 +475,7 @@ describe("duplicate - drum pad", () => {
   });
 
   it("copies onto an earlier source pad once its turn has run", async () => {
-    const rack = registerDrumRack([
-      { note: 36, chainIds: ["kick"] },
-      { note: 38, chainIds: ["snare"] },
-      { note: 40, chainIds: [] },
-    ]);
+    const rack = registerKickSnareRack();
 
     await duplicate({
       type: "drum-pad",
@@ -480,7 +532,7 @@ describe("duplicate - drum pad", () => {
     expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
   });
 
-  // The warning says what the path named; the refusal says the call is off.
+  // The skip says what the path named, in the words a lone source throws.
   it("blames the source path, not toPath, when the source is the bad one", async () => {
     const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 
@@ -490,12 +542,9 @@ describe("duplicate - drum pad", () => {
         path: "t0/d0/pC1/d0",
         toPath: "t0/d0/pD1",
       }),
-    ).rejects.toThrow('nothing to duplicate at path "t0/d0/pC1/d0"');
+    ).rejects.toThrow('path "t0/d0/pC1/d0" names something inside');
 
     expectNoCopy(rack);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('path "t0/d0/pC1/d0" names something inside'),
-    );
   });
 
   it("copies from an id and a path together, which name different pads", async () => {
@@ -541,14 +590,13 @@ describe("duplicate - drum pad", () => {
     },
   );
 
-  it("warns that count does not apply", async () => {
-    registerCopyReadyRack();
+  it("refuses a count, since a pad copy goes one per toPath", async () => {
+    const rack = registerCopyReadyRack();
 
-    await copyC1ToD1({ count: 3 });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("count 3 ignored"),
+    await expect(copyC1ToD1({ count: 3 })).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "drum-pad".',
     );
+    expectNoCopy(rack);
   });
 
   it("refuses a chain id, which would copy the pad's other chains too", async () => {

@@ -20,9 +20,10 @@ import type { ParseOptions } from "../../peggy-parser-types.ts";
 /** Repeat pattern for beats */
 export interface RepeatPattern {
   start: number;
-  end: number;
+  /** Number of repetitions */
+  times: number;
   /** Step as a fraction of a whole note (null when `@step` is omitted) */
-  step: number;
+  step: number | null;
   /** Meter-aware bar component of the step (present only for `@Nbar` forms) */
   stepBars?: number;
 }

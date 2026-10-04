@@ -10,6 +10,8 @@ import {
   namedParam,
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
+import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   pathError,
@@ -142,7 +144,7 @@ export function resolveIdParam(id: string): ResolveIdResult {
     return { clipId: id, detectedType: "clip" };
   }
 
-  if (type.endsWith("Device")) {
+  if (isDeviceClass(type)) {
     return { deviceId: id, detectedType: "device" };
   }
 
@@ -150,11 +152,17 @@ export function resolveIdParam(id: string): ResolveIdResult {
     return { rackTargetId: id, detectedType: "rack-target" };
   }
 
-  throw new Error(`id "${id}" has unsupported type "${type}"`);
+  const word = publishedType(type);
+
+  throw new Error(
+    word == null
+      ? `id "${id}" has an unsupported type`
+      : `id "${id}" has unsupported type "${word}"`,
+  );
 }
 
 /**
- * Parse a clipSlot string into trackIndex and sceneIndex
+ * Parse a slot string into trackIndex and sceneIndex
  * @param input - Slot string (e.g. "0/3")
  * @returns Parsed slot position
  */
@@ -162,7 +170,7 @@ export function parseClipSlot(input: string): {
   trackIndex: number;
   sceneIndex: number;
 } {
-  return parseSlot(input);
+  return parseSlot(input, "slot");
 }
 
 interface AutoDetailViewOptions {

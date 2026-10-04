@@ -37,7 +37,7 @@ const HEADER = "# Producer Pal Skills";
  *
  * The notation head takes two adjacent lines so the guide stays contiguous: the
  * base head, then its `-write` sibling carrying the syntax only the clip writers
- * can act on (ADR-0019). bar|beat and stark are split; midi-json resolves that
+ * can act on. bar|beat and stark are split; midi-json resolves that
  * second ref to nothing.
  *
  * `object-paths` goes after the transforms block, not before it. Sitting
@@ -81,6 +81,8 @@ export const standardDriver = `${HEADER}
 @include "./arrangement.md"
 
 @include "./arrangement-write.md"
+
+@include "./automation.md"
 
 @include "./working-with-live.md"
 

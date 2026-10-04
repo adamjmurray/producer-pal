@@ -73,7 +73,7 @@ export function installFakeLom(lom: FakeLom): FakeLomCalls {
 
   const runOp = (op: FakeOp): unknown => {
     switch (op.type) {
-      case "set_path": {
+      case "set-path": {
         const asked = String(op.value);
         const resolved = lom.aliases?.[asked] ?? asked;
 
@@ -83,7 +83,7 @@ export function installFakeLom(lom: FakeLom): FakeLomCalls {
         return currentPath;
       }
 
-      case "get_property":
+      case "get-field":
         return readWrapperProperty(current, currentPath, op.property);
 
       case "info": {
@@ -115,21 +115,35 @@ export function installFakeLom(lom: FakeLom): FakeLomCalls {
 
     calls.requests.push(operations.length);
 
-    let results: { result: unknown }[];
+    const results: unknown[] = [];
+    let failed: { index: number; detail: string } | undefined;
 
-    try {
-      results = operations.map((op) => ({ result: runOp(op) }));
-    } catch (error) {
-      // The real tool aborts the whole array on the first operation that
-      // throws, which is what makes the halving retry necessary.
-      return Promise.resolve(
-        fakeResponse({ result: String(error), isError: true }),
-      );
+    for (const [index, op] of operations.entries()) {
+      try {
+        results.push(runOp(op));
+      } catch (error) {
+        // The real tool stops at the first operation that throws, which is
+        // what makes the halving retry necessary. A throw on the first one
+        // is an error with no results.
+        if (index === 0) {
+          return Promise.resolve(
+            fakeResponse({ result: String(error), isError: true }),
+          );
+        }
+
+        failed = { index, detail: String(error) };
+        break;
+      }
     }
 
     return Promise.resolve(
       fakeResponse({
-        result: { path: currentPath, id: current?.id ?? "0", results },
+        result: {
+          path: currentPath,
+          id: current?.id ?? "0",
+          results,
+          ...(failed ? { failed } : {}),
+        },
         isError: false,
       }),
     );

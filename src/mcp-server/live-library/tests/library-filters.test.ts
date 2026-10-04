@@ -193,8 +193,8 @@ describe("folderKindsForSource", () => {
     expect(folderKindsForSource("plugin")).toStrictEqual([10]);
   });
 
-  it("returns [] for the synthetic 'sampleFolder' source (no DB encoding)", () => {
-    expect(folderKindsForSource("sampleFolder")).toStrictEqual([]);
+  it("returns [] for the synthetic 'sample-folder' source (no DB encoding)", () => {
+    expect(folderKindsForSource("sample-folder")).toStrictEqual([]);
   });
 });
 

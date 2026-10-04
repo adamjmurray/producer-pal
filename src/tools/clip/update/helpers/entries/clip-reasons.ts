@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // What a clip's own entry says when its update didn't go as asked. Anything
-// about a clip the call named belongs there, never in a warning (ADR-0042), so
+// about a clip the call named belongs there, never in a warning, so
 // the helpers that find out collect it here and the update loop puts it on the
 // entry they wrote.
 //
@@ -17,6 +17,7 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { type LandedColor } from "#src/tools/shared/helpers/landed-color.ts";
 
@@ -32,6 +33,16 @@ export interface ClipReasons {
   ignoredParams: Map<string, Set<string>>;
   /** The color a clip ended up with, when it isn't the one asked for. */
   colors: Map<string, string>;
+  /** The take lanes a clip's move made on the way ("l1-l3"), and their track. */
+  created: Map<string, { lanes: string; trackIndex: number }>;
+  /** The values Live kept in place of the ones asked for, by the entry field
+   * that reports them (`start`, `gainDb`, ...). */
+  readBacks: Map<string, Record<string, number | string>>;
+  /**
+   * Where the target being written says what has landed, so a throw later in
+   * its update keeps the entry for what exists by then. Set per target.
+   */
+  journal?: (phrase: string, partial?: Record<string, unknown>) => void;
 }
 
 /** Shared empty answer for a clip that ignored nothing. */
@@ -48,7 +59,44 @@ export function newClipReasons(): ClipReasons {
     landed: new Set(),
     ignoredParams: new Map(),
     colors: new Map(),
+    created: new Map(),
+    readBacks: new Map(),
   };
+}
+
+/**
+ * Say that something of the target being written has changed Live. A throw
+ * after this keeps the target's entry, with a detail naming what landed.
+ * @param reasons - What each clip has to say, which carries the journal
+ * @param phrase - What landed, in a few words
+ * @param partial - Entry fields known now (the id and path of what exists)
+ */
+export function noteLanded(
+  reasons: ClipReasons,
+  phrase: string,
+  partial?: Record<string, unknown>,
+): void {
+  reasons.journal?.(phrase, partial);
+}
+
+/**
+ * Say that a clip's move made take lanes. Lanes can't be deleted, so they are
+ * reported whatever the move then does, and the clip's entry stays a real one
+ * even when the move itself is refused.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param created - The lanes made ("l1-l3")
+ * @param trackIndex - The track they are on
+ */
+export function noteTakeLanesMade(
+  reasons: ClipReasons,
+  clipId: string,
+  created: string,
+  trackIndex: number,
+): void {
+  reasons.created.set(clipId, { lanes: created, trackIndex });
+  markClipLanded(reasons, clipId);
+  noteLanded(reasons, `take lane ${created} made`, { id: clipId, created });
 }
 
 /**
@@ -63,6 +111,27 @@ export function noteClipReason(
   reason: string,
 ): void {
   reasons.said.set(clipId, [...(reasons.said.get(clipId) ?? []), reason]);
+}
+
+/**
+ * Note the values Live kept in place of the ones this clip was asked for. They
+ * go on the entry under the field they were asked in, and one detail names them
+ * all, however many writes found one.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param shown - The kept values, by entry field; nothing to do when empty
+ */
+export function noteClipReadBack(
+  reasons: ClipReasons,
+  clipId: string,
+  shown: Record<string, number | string>,
+): void {
+  if (Object.keys(shown).length > 0) {
+    reasons.readBacks.set(clipId, {
+      ...reasons.readBacks.get(clipId),
+      ...shown,
+    });
+  }
 }
 
 /**
@@ -240,6 +309,20 @@ export function moveClipReasons(
     reasons.colors.delete(fromId);
   }
 
+  const created = reasons.created.get(fromId);
+
+  if (created != null) {
+    reasons.created.set(toId, created);
+    reasons.created.delete(fromId);
+  }
+
+  const readBack = reasons.readBacks.get(fromId);
+
+  if (readBack != null) {
+    reasons.readBacks.set(toId, readBack);
+    reasons.readBacks.delete(fromId);
+  }
+
   // `landed` needs no move: the loop marks it against the clip the caller named.
   if (reasons.refused.delete(fromId)) {
     reasons.refused.add(toId);
@@ -252,26 +335,58 @@ export function moveClipReasons(
  * target named.
  * @param reasons - What each clip has to say
  * @param clipId - The clip, by the id the call found it at
- * @param results - The entries that clip's turn wrote
+ * @param entry - The first entry that clip's turn wrote
  */
 export function reportClipReasons(
   reasons: ClipReasons,
   clipId: string,
-  results: ClipResult[],
+  entry: ClipResult,
 ): void {
-  const entry = results[0];
-
-  if (entry == null) {
-    return;
-  }
-
   const color = reasons.colors.get(clipId);
 
   if (color != null) {
     entry.color = color;
   }
 
+  const kept = reasons.readBacks.get(clipId) ?? {};
+
+  Object.assign(entry, kept);
+
   for (const reason of reasons.said.get(clipId) ?? []) {
     appendDetail(entry, reason);
   }
+
+  const made = reasons.created.get(clipId);
+
+  if (made != null) {
+    entry.created = made.lanes;
+
+    // A move that didn't happen leaves the clip's own path on the entry, which
+    // would read as lanes on that track. A path into the lanes' own track
+    // already says where they are, so only the other case gets the words.
+    if (!(entry.path ?? "").startsWith(`t${made.trackIndex}/l`)) {
+      appendDetail(
+        entry,
+        `take ${made.lanes.includes("-") ? "lanes" : "lane"} ${made.lanes} made on t${made.trackIndex}`,
+      );
+    }
+  }
+
+  const detail = readBackDetail(
+    READ_BACK_FIELDS.filter((field) => field in kept),
+  );
+
+  if (detail != null) {
+    appendDetail(entry, detail);
+  }
 }
+
+/** The fields a read-back can report, in the order the detail names them. */
+const READ_BACK_FIELDS = [
+  "start",
+  "length",
+  "timeSignature",
+  "gainDb",
+  "pitchShift",
+  "warpMode",
+];

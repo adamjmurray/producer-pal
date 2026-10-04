@@ -27,6 +27,7 @@ import { deleteTrackObject } from "./delete-track-object.ts";
  * @param id - The object ID
  * @param object - The object to delete
  * @param tracks - Tracks already resolved this call, keyed by index
+ * @param landed - Says that something changed before the delete was done
  * @returns null if deleted, else why it wasn't
  */
 export function deleteObjectByType(
@@ -34,6 +35,7 @@ export function deleteObjectByType(
   id: string,
   object: LiveAPI,
   tracks: Map<number, LiveAPI>,
+  landed: (phrase: string) => void,
 ): string | null {
   // Tracks have their own check below, by index — it names the track, which is
   // what the user asked for. Everything else routes through here.
@@ -61,7 +63,7 @@ export function deleteObjectByType(
     return deleteDrumPadObject(object);
   }
 
-  return deleteDrumChain(id, object);
+  return deleteDrumChain(id, object, landed);
 }
 
 /**

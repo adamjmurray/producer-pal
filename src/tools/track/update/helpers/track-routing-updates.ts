@@ -5,6 +5,7 @@
 
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -156,6 +157,7 @@ function setRouting(
   }
 
   track.setProperty(property, { identifier });
+  noteLanded(notes, ROUTING_PARAM[property] as string);
 }
 
 /**
@@ -191,7 +193,7 @@ function resolveRoutingIdentifier(
 
       noteTarget(
         notes,
-        `${matches.length} ${property} options are named "${value}"; used the first — send the identifier (${ids}) to pick another`,
+        `${matches.length} ${ROUTING_PARAM[property]} options are named "${value}"; used the first — send the identifier (${ids}) to pick another`,
       );
     }
 
@@ -209,7 +211,7 @@ function resolveRoutingIdentifier(
   refuseTargetWork(
     notes,
     [ROUTING_PARAM[property] as string],
-    `the track has no ${property} named "${value}"; available: ${names || "none"}`,
+    `the track has no ${ROUTING_PARAM[property]} named "${value}"; available: ${names || "none"}`,
   );
 
   return null;

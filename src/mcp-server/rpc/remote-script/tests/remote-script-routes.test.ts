@@ -3,16 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
-import {
-  type FakeAnswer,
-  type FakeRemoteScript,
-  startFakeRemoteScript,
-} from "./remote-script-test-helpers.ts";
+import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
 
 const LOAD_ARGS = {
   type: "plugin",
@@ -30,42 +25,87 @@ const HOTSWAP_ARGS = {
   expiresInMs: 5000,
 };
 
-let fake: FakeRemoteScript | undefined;
+const answerWith = useFakeRemoteScriptRoutes(registerRemoteScriptRoutes);
 
-beforeEach(() => {
-  registerRemoteScriptRoutes();
-});
-
-afterEach(async () => {
-  clearNodeRoutes();
-  await fake?.close();
-  fake = undefined;
-});
-
-/**
- * Start a stand-in remote script that gives every request the same answer.
- * @param answer - The answer
- * @returns The stand-in
- */
-async function answerWith(answer: FakeAnswer): Promise<FakeRemoteScript> {
-  fake = await startFakeRemoteScript(() => answer);
-
-  return fake;
-}
+/** An answer from the remote script that Live skipped, or gave up on mid-run. */
+const SKIPPED = {
+  status: 504,
+  body: { error: "the request expired before Live ran it; nothing changed" },
+};
+const ABANDONED = {
+  status: 504,
+  body: {
+    error: "Live started the request but didn't finish it",
+    started: true,
+  },
+};
 
 describe("remoteScript.resolve", () => {
   it("looks the name up in Live's browser", async () => {
     await answerWith({ body: { items: [{ name: "Reverb", path: "Reverb" }] } });
 
     expect(
-      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, { name: "Reverb" }),
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, {
+        name: "Reverb",
+        expiresInMs: 5000,
+      }),
     ).toHaveProperty("result.available", true);
   });
 
   it("needs a name", async () => {
     expect(
-      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, {}),
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, {
+        expiresInMs: 5000,
+      }),
     ).toStrictEqual({ success: false, error: "name must be a string" });
+  });
+
+  it("gives every search what is left of the expiry", async () => {
+    const remote = await answerWith({ body: { items: [] } });
+
+    await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, {
+      name: "Reverb",
+      expiresInMs: 8000,
+    });
+
+    expect(remote.requests).toHaveLength(5);
+
+    for (const { query } of remote.requests) {
+      expect(Number(query.expires_in_ms)).toBeGreaterThan(7000);
+      expect(Number(query.expires_in_ms)).toBeLessThanOrEqual(8000);
+    }
+  });
+
+  it.each([
+    ["Live skips a search", SKIPPED],
+    ["Live gives up on one", ABANDONED],
+  ])("answers out of time when %s", async (_name, answer) => {
+    await answerWith(answer);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, {
+        name: "Reverb",
+        expiresInMs: 5000,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: answer.body.error,
+        outOfTime: true,
+      },
+    });
+  });
+
+  it("answers out of time when the remote script doesn't answer in time", async () => {
+    await answerWith(null);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolve, {
+        name: "Reverb",
+        expiresInMs: 100,
+      }),
+    ).toHaveProperty("result.outOfTime", true);
   });
 });
 
@@ -109,6 +149,68 @@ describe("remoteScript.load", () => {
     ).toStrictEqual({ success: true, result: { available: false } });
   });
 
+  it("doesn't mark a load Live skipped as unfinished", async () => {
+    await answerWith(SKIPPED);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: SKIPPED.body.error },
+    });
+  });
+
+  it("marks a load Live started but didn't finish as unfinished", async () => {
+    await answerWith(ABANDONED);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: ABANDONED.body.error,
+        unfinished: true,
+      },
+    });
+  });
+
+  it("marks a load the remote script never answered as unfinished", async () => {
+    await answerWith(null);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
+        ...LOAD_ARGS,
+        expiresInMs: 100,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: expect.stringContaining("did not answer within"),
+        unfinished: true,
+      },
+    });
+  });
+
+  it("sends nothing once the expiry is 0", async () => {
+    const remote = await answerWith({ body: { loaded: {} } });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
+        ...LOAD_ARGS,
+        expiresInMs: 0,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: "ran out of time before the request left",
+      },
+    });
+    expect(remote.requests).toStrictEqual([]);
+  });
+
   it("needs a track index", async () => {
     expect(
       await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
@@ -139,6 +241,7 @@ describe("remoteScript.resolvePreset", () => {
     expect(
       await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
         name: "Warm Pad",
+        expiresInMs: 5000,
         scope: { type: "instrument", path: "Wavetable", device: "Wavetable" },
       }),
     ).toHaveProperty("result.item.path", "Wavetable/Warm Pad.adv");
@@ -147,6 +250,7 @@ describe("remoteScript.resolvePreset", () => {
       presets: "true",
       q: "warm pad",
       path: "Wavetable",
+      expires_in_ms: expect.stringMatching(/^[1-5]\d{3}$/),
     });
   });
 
@@ -155,6 +259,7 @@ describe("remoteScript.resolvePreset", () => {
 
     await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
       name: "Warm Pad",
+      expiresInMs: 5000,
     });
 
     expect(remote.requests.every((request) => request.query.path == null)).toBe(
@@ -166,6 +271,7 @@ describe("remoteScript.resolvePreset", () => {
     expect(
       await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
         name: "Warm Pad",
+        expiresInMs: 5000,
         scope: { type: "instrument", path: "Wavetable" },
       }),
     ).toStrictEqual({ success: false, error: "device must be a string" });
@@ -223,6 +329,32 @@ describe("remoteScript.hotswap", () => {
     ).toStrictEqual({ success: true, result: { available: false } });
   });
 
+  it("marks a hotswap Live started but didn't finish as unfinished", async () => {
+    await answerWith(ABANDONED);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: ABANDONED.body.error,
+        unfinished: true,
+      },
+    });
+  });
+
+  it("doesn't mark a hotswap Live skipped as unfinished", async () => {
+    await answerWith(SKIPPED);
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: SKIPPED.body.error },
+    });
+  });
+
   it("needs the device's name", async () => {
     expect(
       await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, {
@@ -234,6 +366,8 @@ describe("remoteScript.hotswap", () => {
 });
 
 describe.each([
+  ["resolve", REMOTE_SCRIPT_ROUTES.resolve, { name: "Reverb" }],
+  ["resolvePreset", REMOTE_SCRIPT_ROUTES.resolvePreset, { name: "Warm Pad" }],
   ["load", REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS],
   ["hotswap", REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS],
 ])("remoteScript.%s's expiry", (_name, route, args) => {

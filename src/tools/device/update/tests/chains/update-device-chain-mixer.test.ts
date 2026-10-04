@@ -240,7 +240,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
 
   // A chain's mixer params have no entry of their own on a device — `params`
   // reports per param, these don't go through it — so they ride on the
-  // target's entry, and a target they were the whole of throws (ADR-0042).
+  // target's entry, and a target they were the whole of throws.
   it("refuses the chain mixer params sent to a device", () => {
     registerMockObject("target-1", { type: "SimplerDevice" });
 
@@ -254,7 +254,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         sends: [{ return: "a", gainDb: -6 }],
       }),
     ).toThrow(
-      "gainDb, pan, sendGainDb, sendReturn, sends not applicable to a device",
+      "gainDb, pan, sendGainDb, sendReturn, sends ignored: can't be set on a device",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -271,7 +271,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       path: "t0/d0/c0",
       gainDb: -15.02,
       detail:
-        "gainDb read back as shown, not as sent; macroCount not applicable to a drum pad chain",
+        "gainDb read back as shown, not as sent; macroCount ignored: can't be set on a drum pad chain",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -287,7 +287,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(result[0]).toStrictEqual({
       id: "target-1",
       ok: false,
-      detail: "gainDb not applicable to a device",
+      detail: "gainDb ignored: can't be set on a device",
     });
     expect(result[1].id).toBe("chain-0");
     expect(capturedWarnings()).toStrictEqual([]);
@@ -371,12 +371,16 @@ describe("updateDevice - return chain rename mid-request", () => {
   });
 });
 
-describe("updateDevice - rack moved mid-request", () => {
-  it("sends against the rack now at a path, not the one that moved away", () => {
+describe("updateDevice - rack replaced mid-request", () => {
+  it("sends against the rack that owns the chain now, not the one it named before", () => {
     const rackPath = livePath.track(0).device(0);
     const chainPath = rackPath.chain(0);
 
-    registerMockObject("chain", { path: chainPath, type: "Chain" });
+    const chain = registerMockObject("chain", {
+      path: chainPath,
+      type: "Chain",
+    });
+
     registerMockObject("mixer", {
       path: `${chainPath} mixer_device`,
       properties: { sends: children("send") },
@@ -388,9 +392,14 @@ describe("updateDevice - rack moved mid-request", () => {
       properties: { name: "Delay" },
     });
     registerMockObject("rc-b", { type: "Chain", properties: { name: "Verb" } });
-    const rack = registerMockObject("rack-a", {
+    registerMockObject("rack-a", {
       path: rackPath,
       properties: { return_chains: children("rc-a") },
+    });
+    // Registered before the scope opens: registering clears the request memo.
+    registerMockObject("rack-b", {
+      path: livePath.track(1).device(0),
+      properties: { return_chains: children("rc-b") },
     });
 
     beginLiveApiScope();
@@ -400,10 +409,8 @@ describe("updateDevice - rack moved mid-request", () => {
     try {
       updateDevice({ id: "chain", sends: [{ return: "Delay", gainDb: -12 }] });
 
-      // Rack A moves away and rack B slides into its path. Mutated in place:
-      // registering B would clear the memo this test is about.
-      rack.id = "rack-b";
-      rack.properties.return_chains = children("rc-b");
+      // The chain's owner is now rack B, with the first rack's memo still held.
+      chain.properties.canonical_parent = ["id", "rack-b"];
 
       result = updateDevice({
         id: "chain",

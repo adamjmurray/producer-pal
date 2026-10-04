@@ -19,10 +19,8 @@ import {
   nothingAtPath,
   type ResolvedPath,
 } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type IdLookup,
-  idPerPath,
   nothingThere,
   type PathResolution,
   resolvePathEntry,
@@ -41,15 +39,6 @@ const SET_LOOKUPS: Record<string, IdAtPath> = {
   scene: sceneIdAtPath,
   clip: clipIdAtPath,
 };
-
-/**
- * The path-to-id lookup a type is addressed by.
- * @param type - Object type ("track", "scene", "clip", "device", "drum-pad", or "chain")
- * @returns A lookup giving one id per path entry, null where a path named none
- */
-export function idPerPathForType(type: string): IdPerPath {
-  return (paths) => idPerPath(paths, "path", idAtPathForType(type));
-}
 
 /**
  * The same lookup for one path, for a caller that reports a miss instead of

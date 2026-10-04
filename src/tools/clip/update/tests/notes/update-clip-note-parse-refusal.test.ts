@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
+  expectClipUntouched,
   mockMergeNoteTracking,
   note,
   setupAudioClipMock,
@@ -13,23 +13,9 @@ import {
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { type TimeSignature } from "#src/tools/clip/update/helpers/clip-beat-positions.ts";
+import { refuseNoteEditsByMeter } from "#src/tools/clip/update/helpers/notes/note-edit-parsing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-type ClipMock = UpdateClipMocks[keyof UpdateClipMocks];
-
-/**
- * Assert a clip got no writes.
- * @param clip - The clip mock to check
- */
-function expectUntouched(clip: ClipMock): void {
-  expect(clip.set).not.toHaveBeenCalled();
-
-  const calls = clip.call.mock.calls.map(([method]) => method);
-
-  expect(
-    calls.filter((method) => method !== "get_notes_extended"),
-  ).toStrictEqual([]);
-}
 
 describe("updateClip - unreadable note edits refused before the clip is touched", () => {
   let mocks: UpdateClipMocks;
@@ -42,18 +28,11 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    const result = await updateClip({
-      id: "123,456",
-      name: "X,Y",
-      notes: "C3 1|1 ((",
-    });
-
-    expect(result).toStrictEqual([
-      expect.objectContaining({ id: "123", ok: false }),
-      expect.objectContaining({ id: "456", ok: false }),
-    ]);
-    expectUntouched(mocks.clip123);
-    expectUntouched(mocks.clip456);
+    await expect(
+      updateClip({ id: "123,456", name: "X,Y", notes: "C3 1|1 ((" }),
+    ).rejects.toThrow("syntax error");
+    expectClipUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip456);
   });
 
   // 1|5 is the next bar's downbeat in 4/4, so the range is a point there; in
@@ -84,7 +63,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       ok: false,
       detail: expect.stringContaining("Invalid time range"),
     });
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip456);
   });
 
   it("doubles nothing when the transforms can't be parsed", async () => {
@@ -99,7 +78,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       }),
     ).rejects.toThrow("transform syntax error");
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it.each([
@@ -113,7 +92,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       updateClip({ id: "123", name: "X", preTransforms: "velocity = = 1" }),
     ).rejects.toThrow("transform syntax error");
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it("refuses bad transforms even when the notes leave none to act on", async () => {
@@ -128,7 +107,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       }),
     ).rejects.toThrow("transform syntax error");
 
-    expectUntouched(mocks.clip123);
+    expectClipUntouched(mocks.clip123);
   });
 
   it.each([
@@ -143,7 +122,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
         updateClip({ id: "123", name: "X", notes }, { notation }),
       ).rejects.toThrow(error);
 
-      expectUntouched(mocks.clip123);
+      expectClipUntouched(mocks.clip123);
     },
   );
 
@@ -165,7 +144,7 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
     await expect(
       updateClip({ id: "456", timeSignature: "3/4", transforms }),
     ).rejects.toThrow("Invalid time range");
-    expectUntouched(mocks.clip456);
+    expectClipUntouched(mocks.clip456);
   });
 });
 
@@ -176,14 +155,13 @@ describe("updateClip - note edits the clip ignores", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("still only warns on an audio clip's unparseable transforms", async () => {
+  it("ignores notes on an audio clip, even ones it can't parse", async () => {
     setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
       id: "123",
       name: "X",
       notes: "C3 1|1 ((",
-      transforms: "gain = = 1",
     });
 
     expect(result).toStrictEqual({
@@ -192,9 +170,15 @@ describe("updateClip - note edits the clip ignores", () => {
       detail: "notes ignored: the clip is audio",
     });
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "X");
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to parse transform string"),
-    );
+  });
+
+  it("refuses an audio clip's unparseable transforms, touching nothing", async () => {
+    setupAudioClipMock(mocks.clip123);
+
+    await expect(
+      updateClip({ id: "123", name: "X", transforms: "gain = = 1" }),
+    ).rejects.toThrow("transform syntax error");
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
   });
 
   it("still ignores valid transforms on a MIDI clip with no notes", async () => {
@@ -213,5 +197,94 @@ describe("updateClip - note edits the clip ignores", () => {
       }),
     );
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "X");
+  });
+});
+
+describe("refuseNoteEditsByMeter - which clips refuse the call", () => {
+  const rangeEdits = {
+    transformString: "1|6-2|1: velocity = 10",
+    context: {},
+  };
+
+  function clipIn(numerator: number, denominator: number): LiveAPI {
+    return {
+      getProperty: (name: string) => (name === "is_audio_clip" ? 0 : 1),
+      meter: { timeSigNumerator: numerator, timeSigDenominator: denominator },
+    } as unknown as LiveAPI;
+  }
+
+  const meterOf = (clip: LiveAPI) =>
+    (clip as unknown as { meter: TimeSignature }).meter;
+
+  it("leaves a clip that fails alone when it is not the one being cut", () => {
+    const clips = [clipIn(6, 8), clipIn(4, 4)];
+
+    expect(() =>
+      refuseNoteEditsByMeter(clips, rangeEdits, meterOf, (c) => c === clips[0]),
+    ).not.toThrow();
+  });
+
+  it("refuses when the clip being cut is the one that fails", () => {
+    const clips = [clipIn(6, 8), clipIn(4, 4)];
+
+    expect(() =>
+      refuseNoteEditsByMeter(clips, rangeEdits, meterOf, (c) => c === clips[1]),
+    ).toThrow("Invalid time range");
+  });
+});
+
+// A bar is 4 beats in 4/4 and 6 in 6/4, so this has no copies in 4/4 only.
+const METER_DEPENDENT = "repeat(n/8, 1bar - 4)";
+
+describe("updateClip - a constant that depends on the meter", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456, {
+      signature_numerator: 6,
+      signature_denominator: 4,
+    });
+    mockMergeNoteTracking(mocks.clip123, [note(60, 4)]);
+    mockMergeNoteTracking(mocks.clip456, [note(60, 6)]);
+  });
+
+  it("fails only the clip whose meter makes it bad, leaving its notes alone", async () => {
+    const result = (await updateClip({
+      id: "123,456",
+      name: "X,Y",
+      transforms: METER_DEPENDENT,
+    })) as object[];
+
+    expect(result[0]).toStrictEqual({
+      id: "123",
+      ok: false,
+      detail: "repeat() needs a copy count of 1 or more",
+    });
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+    expect(result[1]).not.toHaveProperty("ok");
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Y");
+    expect(mocks.clip456.call).toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+  });
+
+  it("refuses the call when every clip's meter makes it bad", async () => {
+    await expect(
+      updateClip({ id: "123", transforms: METER_DEPENDENT }),
+    ).rejects.toThrow("repeat() needs a copy count of 1 or more");
+  });
+
+  it("still refuses a mistake that holds in every meter, whatever the meters", async () => {
+    await expect(
+      updateClip({ id: "123,456", transforms: "repeat(n/8, 0)" }),
+    ).rejects.toThrow("repeat() needs a copy count of 1 or more");
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
   });
 });

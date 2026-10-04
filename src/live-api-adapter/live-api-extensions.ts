@@ -304,10 +304,13 @@ if (typeof LiveAPI !== "undefined") {
   /**
    * Set multiple properties at once
    * @param properties - Properties to set
+   * @param landed - Told after each property is written, so a caller whose
+   *   later write throws knows which ones stuck
    */
   LiveAPI.prototype.setAll = function (
     this: LiveAPI,
     properties: Record<string, unknown>,
+    landed?: (property: string) => void,
   ): void {
     for (const [property, value] of Object.entries(properties)) {
       if (value != null) {
@@ -316,6 +319,8 @@ if (typeof LiveAPI !== "undefined") {
         } else {
           this.set(property, value);
         }
+
+        landed?.(property);
       }
     }
   };

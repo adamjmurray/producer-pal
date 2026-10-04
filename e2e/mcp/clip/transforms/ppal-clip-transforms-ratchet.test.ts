@@ -85,22 +85,23 @@ describe("ppal-clip-transforms (ratchet round-trip)", () => {
   it("keeps earlier lines' notes in the count when a note op follows", async () => {
     const clipId = await createMidiClip(92, "v100 n/4 Gb1 1|1 Gb1 1|2 D1 1|3");
 
-    // ratchet(1) is skipped, so it must not wipe the tally of the lines above.
+    // A note-dependent bad count is skipped at run time (a constant one is
+    // refused up front), so it must not wipe the tally of the lines above.
     const skipped = parseToolResultWithWarnings<UpdateClipResult>(
       await applyTransform(
         clipId,
-        "Gb1: velocity += 0\nD1: velocity += 0\nGb1: ratchet(1)",
+        "Gb1: velocity += 10\nD1: velocity += 10\nGb1: ratchet(rand(0, 0))",
       ),
     );
 
     expect(skipped.warnings).toStrictEqual([
-      expect.stringContaining("ratchet(1) needs a count of 2 or more"),
+      expect.stringContaining("ratchet(0) needs a count of 2 or more"),
     ]);
     expect(skipped.data.transformed).toBe(3);
 
     // A working op on other notes keeps them too: 2 Gb1 + 2 D1 pieces.
     const worked = parseToolResult<UpdateClipResult>(
-      await applyTransform(clipId, "Gb1: velocity += 0\nD1: ratchet(2)"),
+      await applyTransform(clipId, "Gb1: velocity += 10\nD1: ratchet(2)"),
     );
 
     expect(worked.transformed).toBe(4);

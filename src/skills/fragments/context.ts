@@ -27,12 +27,13 @@ Three layers, chosen by \`scope\`:
 - **project** — THIS Live Set: its genre, structure, the goals for this track. Always in your context.
 - **memory** — durable facts and rules that only matter in CERTAIN situations (e.g. the sample folder they raid for jungle). Yours to manage freely. Only the INDEX (each entry's name + description) stays in context; load a full body on demand with action:read, name:<name>.
 
-If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write. But FIRST check the memory index: if an entry already covers the fact, it is an update to THAT entry, not a context write.
+If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write.
+
+Before ANY write, check the memory index: if an entry covers the fact, UPDATE it (reuse its name) — never write it to context or add a duplicate. This beats the layer rules; two layers disagreeing is worse than either being wrong.
 
 Whichever layer you write, write for a stranger: they have none of this conversation. Capture the whole structure a fact sits in, not the isolated detail in front of you — so they can act on it without re-deriving what you worked out here.
 
 Writing project/global (the user's own documents — an action:write REPLACES the whole document):
-- **Already in the memory index?** If an entry covers this fact, UPDATE that entry instead — do not write it to context and leave the memory contradicting it. An existing entry beats the layer rules above; two layers disagreeing is worse than either one being wrong.
 - **Only what the USER told you, here.** Facts you already hold about them — from your own memory, another tool, an earlier project — are NOT yours to install. Offer: list exactly what you'd add, and write only on a yes.
 - **Document empty?** Write what they tell you, unasked, and say what you saved. There is nothing to destroy, so it needs no permission. Past the opening exchange, action:read the scope first to confirm it is still empty — the copy you saw on connect goes stale.
 - **Document has content?** If they merely MENTIONED the fact, don't save it on that turn, even when it's obviously worth keeping: say what you'd add, and wait for a yes. "Always", "never", "for everything I make" tell you WHICH layer, not that you may write — a durable-sounding preference is still a mention. But once they ASK you to save it — or say yes — WRITE IT IMMEDIATELY: don't ask twice, and never quietly settle for memory instead.
@@ -40,7 +41,7 @@ Writing project/global (the user's own documents — an action:write REPLACES th
 
 Managing memory:
 - The description is all you see until you read an entry — make it a precise recall hook (what's inside, when it's relevant), not a vague label.
-- Before writing, check the index for an entry that already covers it and reuse its name to UPDATE, not duplicate. One fact per memory.
+- One fact per memory.
 - **delete** (scope:memory) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
 - Save MEMORIES quietly as facts emerge; don't announce each one.`;
 

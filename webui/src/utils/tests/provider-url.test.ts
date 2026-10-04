@@ -66,6 +66,14 @@ describe("getBaseUrl", () => {
     );
   });
 
+  it.each([
+    ["lmstudio", "http://localhost:1234/v1"],
+    ["ollama", "http://localhost:11434/v1"],
+  ])("falls back to the default URL for a blank %s URL", (provider, url) => {
+    expect(getBaseUrl(provider, "")).toBe(url);
+    expect(getBaseUrl(provider, "  ")).toBe(url);
+  });
+
   it("returns known base URL for openai", () => {
     expect(getBaseUrl("openai", undefined)).toBe("https://api.openai.com/v1");
   });

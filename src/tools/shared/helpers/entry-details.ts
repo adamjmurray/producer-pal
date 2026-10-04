@@ -3,6 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+// A nested entry (a param, send or action) a later one overrides is marked with
+// a hidden symbol, so "did anything land" reads the mark and never the detail's
+// wording. The mark is non-enumerable, so JSON, equality checks and a spread
+// ignore it, and a copy of the entry loses it: read it before copying.
+const SUPERSEDED = Symbol("superseded");
+
 /** Any result entry that can carry a detail. */
 export interface EntryWithDetail {
   detail?: string;
@@ -29,4 +35,24 @@ export function joinDetails(
   const said = details.filter((detail) => detail != null);
 
   return said.length === 0 ? undefined : said.join("; ");
+}
+
+/**
+ * Mark an entry as overridden by a later one.
+ * @param entry - The entry to mark, changed in place
+ * @returns The same entry
+ */
+export function markSuperseded<T extends object>(entry: T): T {
+  Object.defineProperty(entry, SUPERSEDED, { value: true });
+
+  return entry;
+}
+
+/**
+ * Whether an entry was marked as overridden by a later one.
+ * @param entry - Any nested entry
+ * @returns True for a marked entry
+ */
+export function isSuperseded(entry: object): boolean {
+  return (entry as { [SUPERSEDED]?: true })[SUPERSEDED] === true;
 }

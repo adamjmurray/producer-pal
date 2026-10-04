@@ -13,7 +13,7 @@ import {
   configureRouting,
   findRoutingOptionForDuplicateNames,
   type RoutingType,
-} from "../duplicate-routing.ts";
+} from "../sources/duplicate-routing.ts";
 
 /**
  * Build a routing option named "Bass" with a position-tagged identifier so a

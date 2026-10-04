@@ -488,23 +488,16 @@ describe("updateDevice with path parameter", () => {
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("reports a malformed entry of a list in its own slot", () => {
+    it("refuses a list with a malformed entry, writing nothing", () => {
       const device = registerMockObject("device-456", {
         path: livePath.track(1).device(0),
         type: "Device",
       });
 
-      const result = updateDevice({ path: "zzz,t1/d0", name: "A,B" });
-
-      expect(device.set).toHaveBeenCalledWith("name", "B");
-      expect(result).toStrictEqual([
-        {
-          path: "zzz",
-          ok: false,
-          detail: expect.stringContaining('invalid path "zzz"'),
-        },
-        { id: "device-456", path: "t1/d0" },
-      ]);
+      expect(() => updateDevice({ path: "zzz,t1/d0", name: "A,B" })).toThrow(
+        /invalid path "zzz"/,
+      );
+      expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toStrictEqual([]);
     });
   });

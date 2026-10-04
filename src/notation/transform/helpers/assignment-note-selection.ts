@@ -129,9 +129,7 @@ function noteMatchesPredicate(
   try {
     return evaluatePredicate(predicate, ctx);
   } catch (error) {
-    console.warn(
-      `Failed to evaluate where() predicate: ${errorMessage(error)}`,
-    );
+    console.clipDetail(`where() failed: ${errorMessage(error)}`);
 
     return false;
   }

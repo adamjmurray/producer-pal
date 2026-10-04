@@ -19,10 +19,7 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("scene ID(s) to read, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("scene id(s), comma-separated"),
 
     ...addressingAliases({ idAlias: "sceneId" }),
     path: z.coerce

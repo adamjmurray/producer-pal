@@ -122,9 +122,7 @@ describe("updateLiveSet - locator operations", () => {
         expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
         expect(existing?.set).not.toHaveBeenCalled();
         expect(result.locator).toStrictEqual({
-          operation: "skipped",
           time: "5|1",
-          name: "New Locator",
           ok: false,
           detail: "not created: a locator is already at 5|1; rename it instead",
         });
@@ -335,7 +333,6 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
       expect(result.locator).toStrictEqual({
-        operation: "skipped",
         ok: false,
         detail: 'no locator with id "99"',
         id: "99",
@@ -418,7 +415,7 @@ describe("updateLiveSet - locator operations", () => {
       ["locatorId", { locatorId: "26" }],
     ])("refuses a call sending only %s", async (param, args) => {
       await expect(updateLiveSet(args)).rejects.toThrow(
-        `${param} require locatorOperation`,
+        `${param} is only for locatorOperation`,
       );
     });
 
@@ -426,14 +423,28 @@ describe("updateLiveSet - locator operations", () => {
       await expect(
         updateLiveSet({ locatorTime: "45|1", locatorName: "Chorus" }),
       ).rejects.toThrow(
-        'locatorTime, locatorName require locatorOperation ("create", "delete", or "rename")',
+        'locatorTime, locatorName are only for locatorOperation "create", "delete" or "rename"; this call has no locatorOperation. Set the locatorOperation or drop locatorTime, locatorName.',
       );
     });
 
     it("refuses before writing anything else the call asked for", async () => {
       await expect(
         updateLiveSet({ tempo: 140, locatorTime: "45|1" }),
-      ).rejects.toThrow("locatorTime require locatorOperation");
+      ).rejects.toThrow("locatorTime is only for locatorOperation");
+
+      expect(liveSet.set).not.toHaveBeenCalled();
+    });
+
+    it("refuses locatorId on create, which makes a locator and has no id to name", async () => {
+      await expect(
+        updateLiveSet({
+          locatorOperation: "create",
+          locatorId: "26",
+          locatorTime: "45|1",
+        }),
+      ).rejects.toThrow(
+        'locatorId is only for locatorOperation "delete" or "rename"; this call has locatorOperation "create". Change the locatorOperation or drop locatorId.',
+      );
 
       expect(liveSet.set).not.toHaveBeenCalled();
     });

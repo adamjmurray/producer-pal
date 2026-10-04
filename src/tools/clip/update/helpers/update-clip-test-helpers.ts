@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import { type ClipReasons } from "./entries/clip-reasons.ts";
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -10,7 +11,6 @@ import {
   createNoteTrackingMethods,
   requireMockTrack,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
-import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   lookupMockObject,
   type RegisteredMockObject,
@@ -299,20 +299,17 @@ export function setupMidiClipMock(
   opts: MidiClipMockOptions = {},
 ): void {
   clip.get.mockImplementation(
-    createPropertyGetImpl(
-      {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        // A real clip always has one, and duplicateLoop reports it. Without a
-        // default the result reads back "0bar" and looks like a bug in the code
-        // under test rather than a gap in the fixture.
-        length: 8,
-        ...opts,
-      },
-      storedPropertyGet(clip),
-    ),
+    clipGet(clip, {
+      is_arrangement_clip: 0,
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      // A real clip always has one, and duplicateLoop reports it. Without a
+      // default the result reads back "0bar" and looks like a bug in the code
+      // under test rather than a gap in the fixture.
+      length: 8,
+      ...opts,
+    }),
   );
 }
 
@@ -327,20 +324,17 @@ export function setupAudioClipMock(
   opts: Record<string, unknown> = {},
 ): void {
   clip.get.mockImplementation(
-    createPropertyGetImpl(
-      {
-        is_arrangement_clip: 0,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        // Warped by default: markers are beats, like every other clip type.
-        // Override to 0 for the seconds-valued markers of an unwarped clip.
-        warping: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        ...opts,
-      },
-      storedPropertyGet(clip),
-    ),
+    clipGet(clip, {
+      is_arrangement_clip: 0,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+      // Warped by default: markers are beats, like every other clip type.
+      // Override to 0 for the seconds-valued markers of an unwarped clip.
+      warping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      ...opts,
+    }),
   );
 }
 
@@ -389,6 +383,28 @@ export function setupMockProperties(
   mock.get.mockImplementation(
     createPropertyGetImpl(props, fallbackGet ?? undefined),
   );
+}
+
+/**
+ * A clip's `get`: what the code under test wrote to it, as Live answers when it
+ * takes a write as asked, then the fixture's pinned properties, then what the
+ * registration kept.
+ * @param clip - Registered mock clip
+ * @param pinned - Properties the fixture pins
+ * @returns Mock implementation function for clip.get
+ */
+function clipGet(
+  clip: RegisteredMockObject,
+  pinned: Record<string, unknown>,
+): (prop: string) => unknown[] {
+  const written = new Map<string, unknown>();
+  const get = createPropertyGetImpl(pinned, storedPropertyGet(clip));
+
+  clip.set.mockImplementation((prop: string, value: unknown) => {
+    written.set(prop, value);
+  });
+
+  return (prop) => (written.has(prop) ? [written.get(prop)] : get(prop));
 }
 
 /**
@@ -512,7 +528,7 @@ export function expectNotesWritten(
 /**
  * A clip holding more content than the target extends in place: end_marker is
  * left alone, loop_end moves to the target, and one clip comes back
- * (unwrapSingleResult hands a one-element array back as a single object).
+ * (a lone target comes back unwrapped).
  * @param clip - The clip mock
  * @param result - The updateClip response
  * @param clipId - The clip id the response should name
@@ -568,4 +584,20 @@ export function stubSplitRescan(freshClipId: string): void {
  */
 export function joinedClipReason(reasons: ClipReasons, clipId: string): string {
   return (reasons.said.get(clipId) ?? []).join("; ");
+}
+
+/**
+ * Assert a clip got no writes.
+ * @param clip - The clip mock to check
+ */
+export function expectClipUntouched(
+  clip: UpdateClipMocks[keyof UpdateClipMocks],
+): void {
+  expect(clip.set).not.toHaveBeenCalled();
+
+  const calls = clip.call.mock.calls.map(([method]) => method);
+
+  expect(
+    calls.filter((method) => method !== "get_notes_extended"),
+  ).toStrictEqual([]);
 }

@@ -150,7 +150,7 @@ async function audioClipId(): Promise<string> {
 }
 
 interface LiveApiResult {
-  results: Array<{ result: unknown }>;
+  results: unknown[];
 }
 
 /**
@@ -165,8 +165,7 @@ async function hasEnvelopes(clipId: string): Promise<boolean> {
     operations: [{ type: "get", property: "has_envelopes" }],
   });
 
-  const [value] = parseToolResult<LiveApiResult>(result).results[0]!
-    .result as number[];
+  const [value] = parseToolResult<LiveApiResult>(result).results[0] as number[];
 
   return value === 1;
 }

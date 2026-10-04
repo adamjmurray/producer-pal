@@ -153,7 +153,23 @@ describe("the comma hint", () => {
     ).toThrow(HINT);
   });
 
-  // Target and path lists split at every comma, so `\,` wouldn't help them.
+  // A position list can hold a locator name, which is where a comma gets meant
+  // as text.
+  it("teaches \\, when a position list names a locator", () => {
+    expect(() =>
+      validateListLengths([
+        {
+          param: "arrangementStart",
+          value: "loc:Verse, part 2,loc:Drop,3|1",
+          target: true,
+        },
+        { param: "name", value: "A,B" },
+      ]),
+    ).toThrow(HINT);
+  });
+
+  // Plain id and position lists have no text to hold a comma, and a path has
+  // its own bracket rule, so `\,` wouldn't help them.
   it.each([
     [
       "two target lists",
@@ -290,12 +306,16 @@ describe("countListEntries", () => {
     ).not.toThrow();
   });
 
-  // Target lists split at every comma, so the count must too.
-  it("counts every comma in a target list", () => {
-    expect(countListEntries("123\\,456")).toBe(2);
+  // A locator name can hold a comma, so a target list splits like a value list.
+  it("counts a target list by its unescaped commas", () => {
+    expect(countListEntries("loc:Verse\\, part 2,loc:Drop")).toBe(2);
     expect(() =>
       validateListLengths([
-        { param: "arrangementStart", value: "1|1\\,2|1", target: true },
+        {
+          param: "arrangementStart",
+          value: "loc:Verse\\, part 2,loc:Drop",
+          target: true,
+        },
         { param: "name", value: "A,B,C" },
       ]),
     ).toThrow("arrangementStart names 2 entries but name names 3 entries");

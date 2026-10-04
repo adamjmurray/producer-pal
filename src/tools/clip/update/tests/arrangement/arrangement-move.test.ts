@@ -15,9 +15,9 @@ import {
   handleArrangementStartOperation,
 } from "../../helpers/arrangement/arrangement-move.ts";
 import {
-  moveGroupKey,
-  type MoveGroup,
-} from "../../helpers/arrangement/update-clip-move-groups.ts";
+  type LandingLog,
+  newLandingLog,
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 import {
   type ClipReasons,
   newClipReasons,
@@ -36,18 +36,22 @@ const clipReason = (clipId: string): string =>
 
 /**
  * How many copies are confirmed landed on one lane at one position.
- * @param groups - The tally
+ * @param log - What the call has written
  * @param trackIndex - The lane's track
  * @param startBeats - The position
- * @returns The number of landings, or undefined when the group is absent
+ * @returns The number of landings
  */
-function groupCount(
-  groups: Map<string, MoveGroup>,
+function landedCount(
+  log: LandingLog,
   trackIndex: number,
   startBeats: number,
-): number | undefined {
-  return groups.get(moveGroupKey({ trackIndex, takeLane: null }, startBeats))
-    ?.landed.size;
+): number {
+  return [...log.landed.values()].filter(
+    ({ lane, start }) =>
+      lane.kind === "track" &&
+      lane.trackIndex === trackIndex &&
+      start === startBeats,
+  ).length;
 }
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
@@ -79,14 +83,14 @@ function clipStub(
  * Run handleArrangementStartOperation with the fixed context every case shares.
  * @param clip - The clip stub under test
  * @param arrangementStartBeats - Requested arrangement start
- * @param movedClipGroups - Move tally, for cases that assert on it
+ * @param landings - What the call has written, for cases that assert on it
  * @param destination - Where the clip moves, or null for its own lane
  * @returns The clip id the operation resolved to
  */
 function runStartOperation(
   clip: LiveAPI,
   arrangementStartBeats: number | null,
-  movedClipGroups = new Map<string, MoveGroup>(),
+  landings = newLandingLog(),
   destination: ArrangementTrack | null = null,
 ) {
   reasons = newClipReasons();
@@ -95,11 +99,9 @@ function runStartOperation(
     clip,
     arrangementStartBeats,
     destination,
-    movedClipGroups,
+    landings,
     isMidiClip: true,
     context: mockContext,
-    updatedClips: [],
-    noteResult: null,
     reasons,
   });
 }
@@ -135,14 +137,15 @@ describe("arrangement-move", () => {
       // Register new clip that will be created by duplication
       registerMockObject(newClipId, {
         path: livePath.track(trackIndex).arrangementClip(0),
+        properties: { start_time: 32, end_time: 36 },
       });
 
-      const movedClipGroups = new Map<string, MoveGroup>();
+      const landings = newLandingLog();
       // LiveAPI.id returns just the number
       const result = runStartOperation(
         clipStub("789", 1, trackIndex),
         32,
-        movedClipGroups,
+        landings,
       );
 
       // Code now formats ID with "id " prefix for Live API calls
@@ -153,7 +156,7 @@ describe("arrangement-move", () => {
       );
       expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 789");
       expect(result).toBe(newClipId);
-      expect(groupCount(movedClipGroups, trackIndex, 32)).toBe(1);
+      expect(landedCount(landings, trackIndex, 32)).toBe(1);
     });
 
     it("routes a self-overlapping move through the holding area and deletes the original", () => {
@@ -208,13 +211,7 @@ describe("arrangement-move", () => {
         exists: () => true,
       };
 
-      const movedClipGroups = new Map<string, MoveGroup>();
-
-      const result = runStartOperation(
-        mockClip as unknown as LiveAPI,
-        4,
-        movedClipGroups,
-      );
+      const result = runStartOperation(mockClip as unknown as LiveAPI, 4);
 
       // Holding round-trip: copy source to holding (120), place full copy at 4.
       expect(trackMock.call).toHaveBeenCalledWith(
@@ -256,12 +253,7 @@ describe("arrangement-move", () => {
         trackIndex: 0,
       };
 
-      const movedClipGroups = new Map<string, MoveGroup>();
-      const result = runStartOperation(
-        mockClip as unknown as LiveAPI,
-        8,
-        movedClipGroups,
-      );
+      const result = runStartOperation(mockClip as unknown as LiveAPI, 8);
 
       // Should report the failure on the clip's entry and return its id
       expect(clipReason("100")).toBe(
@@ -290,6 +282,7 @@ describe("arrangement-move", () => {
       // Register new clip mock
       registerMockObject(newClipId, {
         path: livePath.track(trackIndex).arrangementClip(0),
+        properties: { start_time: 64, end_time: 68 },
       });
 
       const mockClip = {
@@ -306,48 +299,18 @@ describe("arrangement-move", () => {
       };
 
       // Simulate previous moves onto the same lane at the same position
-      const movedClipGroups = new Map<string, MoveGroup>([
-        [
-          moveGroupKey({ trackIndex, takeLane: null }, 64),
-          {
-            landing: { trackIndex, takeLane: null },
-            startBeats: 64,
-            landed: new Map([["earlier", { id: "earlier-copy", span: null }]]),
-            deferred: [],
-            cleared: [],
-          },
-        ],
-      ]);
+      const landings = newLandingLog();
 
-      runStartOperation(mockClip as unknown as LiveAPI, 64, movedClipGroups);
+      landings.landed.set("earlier-copy", {
+        lane: { kind: "track", trackIndex },
+        start: 64,
+        end: 72,
+        order: 0,
+      });
 
-      expect(groupCount(movedClipGroups, trackIndex, 64)).toBe(2);
-    });
+      runStartOperation(mockClip as unknown as LiveAPI, 64, landings);
 
-    // Nothing about the clip is touched here: only a confirmed landing, later
-    // in the call, decides whether it is cleared at all.
-    it("holds a non-survivor back rather than clearing it", () => {
-      const { trackMock, result, movedClipGroups, updatedClips } =
-        callWithNonSurvivorClip();
-
-      expect(result).toBeNull();
-      expect(trackMock.call).not.toHaveBeenCalledWith(
-        "delete_clip",
-        expect.anything(),
-      );
-      expect(trackMock.call).not.toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        expect.anything(),
-        expect.anything(),
-      );
-      // Nothing has landed on it yet either.
-      expect(groupCount(movedClipGroups, 0, 16)).toBe(0);
-      expect(
-        movedClipGroups.get(moveGroupKey({ trackIndex: 0, takeLane: null }, 16))
-          ?.deferred,
-      ).toHaveLength(1);
-      // The clip still gets its place in the response, in call order.
-      expect(updatedClips).toStrictEqual([{ id: "200" }]);
+      expect(landedCount(landings, trackIndex, 64)).toBe(2);
     });
 
     it("does not re-delete the original when the move was unsafe and the clip is already gone", () => {
@@ -428,7 +391,7 @@ describe("arrangement-move", () => {
         isAudioClip: true,
         arrangementStartBeats: 16,
         arrangementLengthBeats: null,
-        movedClipGroups: new Map(),
+        landings: newLandingLog(),
         context: mockContext,
         updatedClips,
         noteResult: null,
@@ -446,44 +409,6 @@ describe("arrangement-move", () => {
       );
 
       clearSpy.mockRestore();
-    });
-
-    it("returns early without recording a result for a deleted non-survivor", () => {
-      const trackIndex = 0;
-      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
-        path: `live_set tracks ${trackIndex}`,
-      });
-
-      const mockClip = {
-        id: "200",
-        getProperty: vi.fn((prop) =>
-          prop === "is_arrangement_clip" ? 1 : null,
-        ),
-        trackIndex,
-        exists: () => true,
-      };
-
-      const updatedClips: ClipResult[] = [];
-
-      handleArrangementOperations({
-        clip: mockClip as unknown as LiveAPI,
-        isAudioClip: false,
-        arrangementStartBeats: 16,
-        arrangementLengthBeats: null,
-        movedClipGroups: new Map(),
-        context: mockContext,
-        updatedClips,
-        noteResult: null,
-        reasons: newClipReasons(),
-        isNonSurvivor: true,
-      });
-
-      // The start op recorded the entry itself, so the length branch skips it.
-      expect(trackMock.call).not.toHaveBeenCalledWith(
-        "delete_clip",
-        expect.anything(),
-      );
-      expect(updatedClips).toStrictEqual([{ id: "200" }]);
     });
   });
 });
@@ -526,86 +451,6 @@ describe("moving a clip onto part of its own span", () => {
     expect(stackedLaneClips()).toContain(entry.id);
   });
 });
-
-/**
- * Sets up a non-survivor clip scenario and calls handleArrangementStartOperation.
- * @returns The result of handleArrangementStartOperation
- */
-function callWithNonSurvivorClip() {
-  const trackIndex = 0;
-
-  const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
-    path: `live_set tracks ${trackIndex}`,
-  });
-
-  const { result, movedClipGroups, updatedClips } = callArrangementStart({
-    clipId: "200",
-    trackIndex,
-    isNonSurvivor: true,
-    exists: () => true,
-  });
-
-  return { trackMock, result, movedClipGroups, updatedClips };
-}
-
-interface CallArrangementStartOptions {
-  clipId: string;
-  trackIndex: number;
-  path?: string;
-  exists?: () => boolean;
-  isNonSurvivor?: boolean;
-}
-
-/**
- * Build a mock arrangement clip and invoke handleArrangementStartOperation.
- * Shared between the non-survivor and take-lane scenarios.
- *
- * @param opts - Options describing the mock clip and call shape
- * @returns The result and the shared move tally
- */
-function callArrangementStart(opts: CallArrangementStartOptions): {
-  result: string | null;
-  movedClipGroups: Map<string, MoveGroup>;
-  updatedClips: ClipResult[];
-} {
-  const mockClip: Record<string, unknown> = {
-    id: opts.clipId,
-    getProperty: vi.fn((prop) => {
-      if (prop === "is_arrangement_clip") {
-        return 1;
-      }
-
-      return null;
-    }),
-    trackIndex: opts.trackIndex,
-  };
-
-  if (opts.path != null) {
-    mockClip.path = opts.path;
-  }
-
-  if (opts.exists != null) {
-    mockClip.exists = opts.exists;
-  }
-
-  const movedClipGroups = new Map<string, MoveGroup>();
-  const updatedClips: ClipResult[] = [];
-
-  const result = handleArrangementStartOperation({
-    clip: mockClip as unknown as LiveAPI,
-    arrangementStartBeats: 16,
-    destination: null,
-    movedClipGroups,
-    isMidiClip: true,
-    context: mockContext,
-    updatedClips,
-    noteResult: null,
-    reasons: newClipReasons(),
-    isNonSurvivor: opts.isNonSurvivor,
-  });
-
-  return { result, movedClipGroups, updatedClips };
-}
 
 /**
  * Lay out a 1-bar clip then a 4-bar clip at beat 8, and move the 4-bar one.

@@ -25,10 +25,10 @@ export type TreeLimits = Record<CommentTree, number>;
  * Each cap sits within 0.005 of its tree's density.
  */
 export const COMMENT_DENSITY_LIMITS: TreeLimits = {
-  src: 0.53,
+  src: 0.515,
   scripts: 0.325,
   webui: 0.46,
-  evals: 0.485,
+  evals: 0.47,
   e2e: 0.585,
 };
 
@@ -75,11 +75,8 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "src/skills/notation/barbeat-standard.ts": 28,
   "src/skills/skill-slots.ts": 34,
   "src/tools/actions/duplicate/duplicate.ts": 27,
-  "src/tools/clip/create/create-clip.ts": 30,
-  "src/tools/clip/create/helpers/clip-iteration.ts": 27,
   "src/tools/clip/update/update-clip.ts": 41,
   "src/tools/core/helpers/project-context-operations.ts": 68,
-  "src/tools/device/update/update-device.ts": 32,
   "src/tools/shared/arrangement/arrangement-tiling-workaround.ts": 29,
   "src/tools/shared/arrangement/helpers/take-lanes.ts": 26,
   "src/tools/shared/device/helpers/nested-param-target.ts": 29,

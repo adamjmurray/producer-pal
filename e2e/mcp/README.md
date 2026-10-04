@@ -55,6 +55,10 @@ That script is `e2e:mcp` with `E2E_REMOTE_SCRIPT=true`. Without the variable a
 suite skips itself. With it, a remote script that doesn't answer `/ping` fails
 the suite instead of skipping it.
 
+`POST /config { "remoteScriptEnabled": false }` makes a running script look
+uninstalled (a dev switch, debug builds only; `resetConfig()` turns it back on).
+`control/ppal-remote-script-switch` covers it.
+
 ### The direct Live API tool is off during e2e
 
 `ppal-live-api` is **not** available to an e2e test unless the test asks for it.

@@ -15,9 +15,7 @@
  *
  * Take lanes are append-only — Live exposes no API to delete a lane or a
  * take-lane clip — so every test depends on setupMcpTestContext() reopening the
- * Live Set between tests to reset state (no `once`). Resolving a lane emits a
- * "expand the take-lanes arrow" hint warning even on success, so those calls are
- * parsed with parseToolResultWithWarnings().
+ * Live Set between tests to reset state (no `once`).
  *
  * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track; t1/t9/return/master
  * exercise the omission rules. See: e2e/live-sets/e2e-test-set-spec.md
@@ -71,6 +69,8 @@ interface LiveSetTracksResult {
 interface DuplicateClipResult {
   id: string;
   path?: string;
+  /** The take lanes the copy made on the way ("l0-l2"), when it made any */
+  created?: string;
   detail?: string;
 }
 
@@ -442,8 +442,8 @@ describe("take lanes", () => {
     expect(copy.name).toBe("Original Take");
     expect(copy.notes).toContain("C3");
 
-    // arrangementLength is meaningless on a take-lane duplicate: warn + ignore,
-    // but the clip is still created
+    // arrangementLength is meaningless on a take-lane duplicate: the copy's
+    // entry says it was ignored, and the clip is still created
     const lengthDup = parseToolResultWithWarnings<DuplicateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
@@ -456,10 +456,30 @@ describe("take lanes", () => {
       }),
     );
 
-    expect(lengthDup.warnings.join(" ")).toContain(
-      "arrangementLength ignored for the re-created copies",
+    expect(lengthDup.data.detail).toContain(
+      "arrangementLength ignored: the copy keeps the source's arrangement length",
     );
+    expect(lengthDup.warnings).toStrictEqual([]);
     expect(lengthDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[9|1]`);
+
+    // A mixed toPath: only the lane copy is re-created, so only its entry says
+    // arrangementLength was ignored; the main-lane copy honors it.
+    const mixed = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${EMPTY_MIDI_TRACK}[21|1],t${EMPTY_MIDI_TRACK}/l1[25|1]`,
+          arrangementLength: "2bar",
+        },
+      }),
+    );
+
+    expect(mixed.data).toHaveLength(2);
+    expect(mixed.data[0]!.detail ?? "").not.toContain("arrangementLength");
+    expect(mixed.data[1]!.detail).toContain("arrangementLength ignored");
+    expect(mixed.warnings).toStrictEqual([]);
 
     // An audio source is re-created from its sample. Warped on purpose, so the
     // warp-marker warning doesn't depend on the sample's own analysis file.
@@ -514,6 +534,33 @@ describe("take lanes", () => {
     expect(audioCopy.name).toBe("Original Sample");
     expect(audioCopy.sampleFile).toBe(SAMPLE_FILE);
     expect(audioCopy.warping).toBe(true);
+
+    // An audio copy takes the sample's length, so whether it matches the
+    // source depends on the sample. The entry gives exactly one length fact:
+    // the loss's "length is X, not Y", or "keeps the source's arrangement
+    // length" when it matched.
+    const audioLengthDup = parseToolResultWithWarnings<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: audioSource.id,
+          toPath: `t${audioTrackIndex}/l0[9|1]`,
+          arrangementLength: "2bar",
+        },
+      }),
+    );
+    const lengthDetail = audioLengthDup.data.detail ?? "";
+
+    expect(lengthDetail).toContain("arrangementLength ignored");
+    expect(lengthDetail).not.toContain(
+      "keeps the source clip's arrangement length",
+    );
+    expect(
+      lengthDetail.includes("length is ") !==
+        lengthDetail.includes("keeps the source's arrangement length"),
+    ).toBe(true);
+    expect(audioLengthDup.warnings).toStrictEqual([]);
   });
 
   // Live's duplicate_clip_to_arrangement no-ops on a take-lane SOURCE, so this
@@ -710,7 +757,7 @@ describe("take lanes", () => {
 
     expect(isToolError(plus)).toBe(true);
     expect(getToolErrorMessage(plus)).toContain(
-      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+      '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"',
     );
   });
 
@@ -741,6 +788,52 @@ describe("take lanes", () => {
       expect(detail.takeLanes).toHaveLength(1);
       expect(detail.takeLanes![0]!.clips).toHaveLength(1);
     }
+  });
+});
+
+// A path past the last lane makes the lanes up to it, and Live can't remove a
+// lane, so every clip tool says which lanes it made.
+describe("take lanes made on the way", () => {
+  it("names them on a created clip", async () => {
+    const clip = await createOnLane({
+      path: `t${EMPTY_MIDI_TRACK}/l2[1|1]`,
+      notes: "C3 1|1",
+    });
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/l2[1|1]`);
+    expect(clip.created).toBe("l0-l2");
+  });
+
+  it("names them on a duplicate, once for a stack on the new lane", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Gap Source");
+
+    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${RACKS_TRACK}/l1[5|1],t${RACKS_TRACK}/l1[9|1]`,
+        },
+      }),
+    ).data;
+
+    expect(dup[0]!.created).toBe("l0-l1");
+    expect(dup[1]).not.toHaveProperty("created");
+  });
+
+  it("names them on a clip moved onto a new lane", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Gap Mover");
+
+    const moved = parseToolResultWithWarnings<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: source.id, toPath: `t${RACKS_TRACK}/l2[5|1]` },
+      }),
+    ).data;
+
+    expect(moved.path).toBe(`t${RACKS_TRACK}/l2[5|1]`);
+    expect(moved.created).toBe("l0-l2");
   });
 });
 

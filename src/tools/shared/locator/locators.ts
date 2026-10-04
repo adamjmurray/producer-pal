@@ -6,7 +6,6 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
 export interface LocatorInfo {
   id: string;
@@ -27,11 +26,6 @@ export interface LocatorMatchWithTime extends LocatorMatch {
 interface FindLocatorOptions {
   locatorId?: string;
   timeInBeats?: number;
-}
-
-interface ResolveLocatorOptions {
-  locatorId?: string;
-  locatorName?: string;
 }
 
 /**
@@ -140,94 +134,6 @@ export function findLocatorsByName(
   return matches;
 }
 
-/**
- * Resolve a locator by ID or name to its time in beats
- * @param liveSet - The live_set LiveAPI object
- * @param options - Locator identifier options
- * @param options.locatorId - Locator ID to find
- * @param options.locatorName - Locator name to find
- * @param context - Optional context for error messages (e.g., "for start")
- * @returns Time in beats
- * @throws If locator is not found
- */
-export function resolveLocatorToBeats(
-  liveSet: LiveAPI,
-  { locatorId, locatorName }: ResolveLocatorOptions,
-  context?: string,
-): number {
-  const contextSuffix = context ? ` ${context}` : "";
-
-  if (locatorId != null) {
-    const found = findLocator(liveSet, { locatorId });
-
-    if (!found) {
-      throw new Error(`locator not found: ${locatorId}`);
-    }
-
-    return found.locator.getProperty("time") as number;
-  }
-
-  if (locatorName != null) {
-    const matches = findLocatorsByName(liveSet, locatorName);
-
-    if (matches.length === 0) {
-      throw new Error(
-        `no locator found with name "${locatorName}"${contextSuffix}`,
-      );
-    }
-
-    // Use the first matching locator
-    return assertDefined(matches[0], "first matching locator").time;
-  }
-
-  throw new Error("locatorId or locatorName is required");
-}
-
-/**
- * Resolve one or more locators by ID(s) or name(s) to their times in beats.
- * Supports comma-separated values for both locatorId and locatorName.
- * @param liveSet - The live_set LiveAPI object
- * @param options - Locator identifier options
- * @param options.locatorId - Comma-separated locator ID(s) to find
- * @param options.locatorName - Comma-separated locator name(s) to find
- * @returns Array of times in beats
- * @throws If any locator is not found
- */
-export function resolveLocatorListToBeats(
-  liveSet: LiveAPI,
-  { locatorId, locatorName }: ResolveLocatorOptions,
-): number[] {
-  if (locatorId != null) {
-    const ids = targetEntries(locatorId, "locatorId");
-
-    return ids.map((id) => {
-      const found = findLocator(liveSet, { locatorId: id });
-
-      if (!found) {
-        throw new Error(`locator not found: ${id}`);
-      }
-
-      return found.locator.getProperty("time") as number;
-    });
-  }
-
-  if (locatorName != null) {
-    const names = targetEntries(locatorName, "locatorName");
-
-    return names.map((name) => {
-      const matches = findLocatorsByName(liveSet, name);
-
-      if (matches.length === 0) {
-        throw new Error(`no locator found with name "${name}"`);
-      }
-
-      return assertDefined(matches[0], "first matching locator").time;
-    });
-  }
-
-  throw new Error("locatorId or locatorName is required");
-}
-
 const LOCATOR_ID_PATTERN = /^\d+$/;
 
 /**
@@ -253,8 +159,18 @@ export function resolveLocatorRefToBeats(
   locatorRef: string,
   context?: string,
 ): number {
+  const contextSuffix = context ? ` ${context}` : "";
+
   if (!isLocatorId(locatorRef)) {
-    return resolveLocatorToBeats(liveSet, { locatorName: locatorRef }, context);
+    const [match] = findLocatorsByName(liveSet, locatorRef);
+
+    if (match == null) {
+      throw new Error(
+        `no locator found with name "${locatorRef}"${contextSuffix}`,
+      );
+    }
+
+    return match.time;
   }
 
   const byId = findLocator(liveSet, { locatorId: locatorRef });
@@ -266,8 +182,6 @@ export function resolveLocatorRefToBeats(
   const [byName] = findLocatorsByName(liveSet, locatorRef);
 
   if (byName == null) {
-    const contextSuffix = context ? ` ${context}` : "";
-
     throw new Error(`locator not found: ${locatorRef}${contextSuffix}`);
   }
 

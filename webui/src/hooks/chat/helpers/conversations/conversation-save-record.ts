@@ -6,7 +6,7 @@
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import {
-  type ConversationLockedSettings,
+  type RestoredSettings,
   type ActiveMeta,
 } from "#webui/lib/conversations/conversation-store";
 import { getModelName } from "#webui/lib/config";
@@ -25,11 +25,11 @@ export interface ActiveRefs extends ActiveMeta {
 /**
  * Build locked settings from a conversation record for restoring.
  * @param record - Conversation record to extract settings from
- * @returns Locked settings for restoreChatHistory
+ * @returns Locked settings (and whether it was imported) for restoreChatHistory
  */
 export function buildLockedSettings(
   record: ConversationRecord,
-): ConversationLockedSettings {
+): RestoredSettings {
   return {
     model: record.model,
     provider: record.provider as Provider | null,
@@ -38,6 +38,7 @@ export function buildLockedSettings(
     systemInstruction: record.systemInstruction ?? null,
     notation: record.notation ?? null,
     enabledTools: record.enabledTools ?? null,
+    ...(record.imported === true && { imported: true }),
   };
 }
 
@@ -75,6 +76,11 @@ export function buildSaveRecord(
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
     ...snapshotFields(refs, existing),
+    // Imported stays imported: later saves must not drop the flag that makes
+    // the chat warn about the file's system prompt.
+    ...((existing?.imported === true || refs.imported === true) && {
+      imported: true,
+    }),
     // Carry branch linkage across updates. A fork's later saves (e.g. the
     // post-response autosave) route through here too; without this they would
     // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
@@ -197,6 +203,7 @@ export async function buildConversationSaveRecord(args: {
         systemInstruction: source.systemInstruction,
       }),
       ...(source?.notation != null && { notation: source.notation }),
+      ...(source?.imported === true && { imported: true }),
     };
   }
 

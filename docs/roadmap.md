@@ -2,8 +2,8 @@
 
 ## Next
 
-- Automation: read and draw automation envelopes, so the AI can shape filter
-  sweeps, volume fades, and other changes over time.
+- Arrangement automation: read and draw automation on the track's timeline, so
+  the AI can shape filter sweeps, volume fades, and other changes across a song.
 - Copy all parameters from one device to another (e.g. apply the EQ curve from
   track A to tracks B and C)
 - Improved undo/redo support
@@ -56,7 +56,7 @@ them.
   `1/16`, `-1.68 st`. A value in the wrong unit or out of range is refused
   instead of quietly written wrong. Dozens of parameters across Live's devices
   were being read in the wrong units, or not at all
-- An arrangement clip is named by where it starts: `t0[5|1]`, or
+- An arrangement clip is named by a position it covers: `t0[5|1]`, or
   `t0[loc:Chorus]`. A locator name works anywhere a bar|beat position does
 - Arrangement clips move and copy across tracks and onto take lanes, audio
   included, even where Live's API has no way to do it directly

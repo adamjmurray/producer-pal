@@ -44,6 +44,7 @@ interface MessageListProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  importedPromptDiffers?: boolean;
   /** Opens the Instructions tab from that notice; omitted in voice/demo. */
   onOpenInstructions?: () => void;
 }
@@ -82,6 +83,7 @@ export function MessageList({
   requestedModel,
   branchNav,
   systemInstruction,
+  importedPromptDiffers,
   onOpenInstructions,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -144,6 +146,7 @@ export function MessageList({
       {systemInstruction != null && (
         <SystemPromptNotice
           systemInstruction={systemInstruction}
+          importedPromptDiffers={importedPromptDiffers}
           onOpenInstructions={onOpenInstructions}
         />
       )}

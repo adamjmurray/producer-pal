@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
+import { RemoteScriptTimeout } from "../remote-script-client.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
@@ -90,6 +91,18 @@ function found(type: string, path: string): unknown {
 }
 
 /**
+ * What the stand-in was asked, without the expiry each request carries.
+ * @returns Each request's query
+ */
+function queriesAsked(): Array<Record<string, string>> {
+  return (fake?.requests ?? []).map(({ query }) =>
+    Object.fromEntries(
+      Object.entries(query).filter(([key]) => key !== "expires_in_ms"),
+    ),
+  );
+}
+
+/**
  * Look a preset up in a stand-in browser.
  * @param preset - The preset arg
  * @param scope - The device to search under
@@ -101,7 +114,7 @@ async function lookUp(
 ): Promise<Awaited<ReturnType<typeof lookUpBrowserPreset>>> {
   fake ??= await startFakeRemoteScript((request) => listing(BROWSER, request));
 
-  return await lookUpBrowserPreset(preset, scope);
+  return await lookUpBrowserPreset(preset, scope, Date.now() + 60_000);
 }
 
 describe("lookUpBrowserPreset — a name", () => {
@@ -115,7 +128,7 @@ describe("lookUpBrowserPreset — a name", () => {
       },
     });
     // Every section but Plug-Ins, which lists no presets.
-    expect(fake?.requests.map(({ query }) => query)).toStrictEqual(
+    expect(queriesAsked()).toStrictEqual(
       ["mfl-device", "instrument", "audio-effect", "midi-effect"].map(
         (type) => ({ type, presets: "true", q: "concert hall" }),
       ),
@@ -132,7 +145,7 @@ describe("lookUpBrowserPreset — a name", () => {
       },
     });
     expect(fake?.requests).toHaveLength(1);
-    expect(fake?.requests[0]?.query).toStrictEqual({
+    expect(queriesAsked()[0]).toStrictEqual({
       type: "instrument",
       presets: "true",
       q: "warm pad",
@@ -234,9 +247,54 @@ describe("lookUpBrowserPreset — a name", () => {
   });
 
   it("answers unavailable when nothing is listening", async () => {
-    expect(await lookUpBrowserPreset("Warm Pad")).toStrictEqual({
+    expect(
+      await lookUpBrowserPreset("Warm Pad", undefined, Date.now() + 60_000),
+    ).toStrictEqual({
       available: false,
     });
+  });
+});
+
+describe("lookUpBrowserPreset — time", () => {
+  it("shares one deadline between the scoped and the anywhere search", async () => {
+    // Nothing under Wavetable matches, so the second search runs: both draw on
+    // the same deadline, not a fresh one each.
+    const remote = await startFakeRemoteScript(() => ({ body: { items: [] } }));
+
+    fake = remote;
+
+    await lookUpBrowserPreset(
+      "Warm Pad",
+      { ...WAVETABLE, orAnywhere: true },
+      Date.now() + 20_000,
+    );
+
+    const expiries = remote.requests.map(({ query }) =>
+      Number(query.expires_in_ms),
+    );
+
+    expect(expiries.length).toBeGreaterThan(1);
+    expect(expiries.every((ms) => ms > 19_000 && ms <= 20_000)).toBe(true);
+  });
+
+  it("asks nothing once the deadline has passed", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { items: [] } }));
+
+    fake = remote;
+
+    await expect(
+      lookUpBrowserPreset("Warm Pad", undefined, Date.now() - 1),
+    ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+    expect(remote.requests).toStrictEqual([]);
+  });
+
+  it("times out when the remote script skips a search", async () => {
+    fake = await startFakeRemoteScript(() => ({
+      status: 504,
+      body: { error: "the request expired before Live ran it" },
+    }));
+
+    await expect(lookUp("Warm Pad")).rejects.toThrow("expired before Live");
   });
 });
 
@@ -279,26 +337,32 @@ describe("lookUpBrowserPreset — a browser path", () => {
 
 describe("lookUpBrowserPreset — a file", () => {
   it("passes a preset file through for the remote script to find", async () => {
-    expect(await lookUpBrowserPreset("/Packs/Drums/808 Kit.adg")).toStrictEqual(
-      {
-        available: true,
-        item: {
-          type: "file",
-          path: "/Packs/Drums/808 Kit.adg",
-          name: "808 Kit.adg",
-        },
+    expect(
+      await lookUpBrowserPreset(
+        "/Packs/Drums/808 Kit.adg",
+        undefined,
+        Date.now(),
+      ),
+    ).toStrictEqual({
+      available: true,
+      item: {
+        type: "file",
+        path: "/Packs/Drums/808 Kit.adg",
+        name: "808 Kit.adg",
       },
-    );
+    });
   });
 
   it("takes a Windows path", async () => {
-    expect(await lookUpBrowserPreset("C:\\Packs\\Pad.adv")).toStrictEqual(
-      found("file", "C:\\Packs\\Pad.adv"),
-    );
+    expect(
+      await lookUpBrowserPreset("C:\\Packs\\Pad.adv", undefined, Date.now()),
+    ).toStrictEqual(found("file", "C:\\Packs\\Pad.adv"));
   });
 
   it("refuses a file that isn't a preset", async () => {
-    expect(await lookUpBrowserPreset("/Samples/kick.wav")).toStrictEqual({
+    expect(
+      await lookUpBrowserPreset("/Samples/kick.wav", undefined, Date.now()),
+    ).toStrictEqual({
       available: true,
       error: 'preset "/Samples/kick.wav" is not a preset file (.adv or .adg)',
     });

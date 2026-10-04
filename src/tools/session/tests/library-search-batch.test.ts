@@ -311,15 +311,44 @@ describe("library tool — searches fan-out", () => {
     warnSpy.mockRestore();
   });
 
-  // An empty array names no search at all, so running the top-level filters
-  // instead would just hide the mistake.
+  // An empty array names no search at all, so running a plain search instead
+  // would just hide the mistake.
   it("refuses an empty searches before searching anything", async () => {
     mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
 
-    await expect(
-      library({ action: "search", searches: [], tags: "Kick" }),
-    ).rejects.toThrow("searches must name at least one search");
+    await expect(library({ action: "search", searches: [] })).rejects.toThrow(
+      "searches must name at least one search",
+    );
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  // Each search takes its own filters, so a top-level one is ambiguous: it
+  // could be meant for every search, or for none.
+  it("refuses top-level filters beside searches", async () => {
+    mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
+
+    await expect(
+      library({
+        action: "search",
+        searches: [{ tags: "Kick" }],
+        tags: "Snare",
+        limit: 5,
+      }),
+    ).rejects.toThrow(
+      "tags, limit can't be sent beside searches: each entry of searches takes its own filters. Put them in the entries, or drop searches.",
+    );
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("names the old queries spelling, and lets the default kind through", async () => {
+    mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
+
+    await expect(
+      library({ queries: [{ tags: "Kick" }], sort: "name" }),
+    ).rejects.toThrow("sort can't be sent beside queries");
+    await expect(
+      library({ searches: [{ tags: "Kick" }], kind: "audio" }),
+    ).resolves.toBeDefined();
   });
 
   it("answers a lone search the way a plain search does", async () => {
@@ -330,25 +359,13 @@ describe("library tool — searches fan-out", () => {
     ).toStrictEqual({ dbAvailable: true, items: [dbItem("kick.wav")] });
   });
 
-  it("warns and ignores searches on an action that has no use for it", async () => {
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
-    vi.mocked(protocolMock.requestNode).mockResolvedValue({
-      success: true,
-      result: { tags: [] },
-    });
-
-    await library({ action: "listTags", searches: [{ tags: "Kick" }] });
-
-    expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('searches does not apply to action "listTags"'),
+  it("refuses searches on an action that has no use for it", async () => {
+    await expect(
+      library({ action: "list-tags", searches: [{ tags: "Kick" }] }),
+    ).rejects.toThrow(
+      'searches is only for action "search"; this call has action "list-tags"',
     );
-
-    warnSpy.mockRestore();
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
   // The spellings the fan-out shipped under before it folded into search +
@@ -360,12 +377,12 @@ describe("library tool — searches fan-out", () => {
       { action: "search", queries: [{ label: "Kick", tags: "Kick" }] },
     ],
     [
-      "the searchBatch action",
-      { action: "searchBatch", searches: [{ label: "Kick", tags: "Kick" }] },
+      "the search-batch action",
+      { action: "search-batch", searches: [{ label: "Kick", tags: "Kick" }] },
     ],
     [
       "both old names at once",
-      { action: "searchBatch", queries: [{ label: "Kick", tags: "Kick" }] },
+      { action: "search-batch", queries: [{ label: "Kick", tags: "Kick" }] },
     ],
   ])("runs the fan-out for a caller still on %s", async (_label, args) => {
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
@@ -376,18 +393,18 @@ describe("library tool — searches fan-out", () => {
     });
   });
 
-  it("warns when a caller still sends the searchBatch action", async () => {
+  it("warns when a caller still sends the search-batch action", async () => {
     const warnSpy = await spyOnMaxWarn();
 
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 
     await library({
-      action: "searchBatch",
+      action: "search-batch",
       searches: [{ label: "Kick", tags: "Kick" }],
     });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      'action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+      'action "search-batch" is deprecated and will be removed; use action "search" with searches instead',
     );
 
     warnSpy.mockRestore();
@@ -454,7 +471,7 @@ describe("library tool — searches fan-out", () => {
     const result = await library(
       {
         action: "search",
-        searches: [{ source: "sampleFolder" }, { source: "sampleFolder" }],
+        searches: [{ source: "sample-folder" }, { source: "sample-folder" }],
       },
       { sampleFolder: "/samples/" },
     );

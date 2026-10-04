@@ -4,8 +4,39 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { applySpecializedParamWrite } from "../specialized-device-registry.ts";
+import {
+  applySpecializedParamWrite,
+  readSpecializedParams,
+} from "../specialized-device-registry.ts";
 import { expectWriteRefused } from "./refused-write-assertions.ts";
+
+/**
+ * Register the `reads monoPoly` cases for a device that exposes the shared
+ * mono/poly pseudo-param.
+ *
+ * @param registerDevice - Registers the device mock and returns its LiveAPI
+ */
+export function registerMonoPolyReadTests(
+  registerDevice: (properties?: Record<string, unknown>) => LiveAPI,
+): void {
+  it("reads monoPoly as mono when mono_poly is 0", () => {
+    const device = registerDevice({ mono_poly: 0 });
+
+    expect(readSpecializedParams(device)).toContainEqual({
+      name: "monoPoly",
+      value: "mono",
+    });
+  });
+
+  it("reads monoPoly as poly when mono_poly is 1", () => {
+    const device = registerDevice({ mono_poly: 1 });
+
+    expect(readSpecializedParams(device)).toContainEqual({
+      name: "monoPoly",
+      value: "poly",
+    });
+  });
+}
 
 /**
  * Register the `write monoPoly` suite for a device that exposes the shared

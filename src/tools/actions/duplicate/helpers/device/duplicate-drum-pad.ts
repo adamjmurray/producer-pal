@@ -8,7 +8,9 @@
 // and copy_pad brings all of it. A device-level duplicate can't: it moves the
 // device out of its chain and leaves the chain (and its fader) behind.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   findDrumPadByNote,
   invalidateRackChains,
@@ -217,24 +219,34 @@ function finishPadCopy(
     throw new Error(`copying onto drum pad "${toPath}" had no effect`);
   }
 
+  // The copy has landed, so a name that won't take is on its entry.
+  let naming: string | undefined;
+
   if (name != null) {
-    // Only the chains the copy added, and only when there's a name to set —
-    // the rest never need building.
-    for (const chainId of chainIds.slice(chainsBefore)) {
-      LiveAPI.from(chainId).set("name", name);
+    try {
+      // Only the chains the copy added, and only when there's a name to set —
+      // the rest never need building.
+      for (const chainId of chainIds.slice(chainsBefore)) {
+        LiveAPI.from(chainId).set("name", name);
+      }
+    } catch (error) {
+      naming = `the pad was copied, but naming its chains failed: ${errorMessage(error)}`;
     }
   }
 
   const devicePath = extractDevicePath(rack.path);
   const noteName = midiToNoteName(destination.midi) as string;
+  // Live layers rather than replaces, matching a device-based pad move onto an
+  // occupied pad. Say so, because the pad now plays both.
+  const layered =
+    chainsBefore > 0
+      ? `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`
+      : undefined;
+  const detail = joinDetails([layered, naming]);
 
   return {
     id: pad.id,
     path: devicePath == null ? toPath : buildDrumPadPath(devicePath, noteName),
-    // Live layers rather than replaces, matching a device-based pad move onto
-    // an occupied pad. Say so, because the pad now plays both.
-    ...(chainsBefore > 0 && {
-      detail: `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
-    }),
+    ...(detail != null && { detail }),
   };
 }

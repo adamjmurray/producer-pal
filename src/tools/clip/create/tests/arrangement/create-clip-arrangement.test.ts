@@ -6,58 +6,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  lookupMockObject,
   mockNonExistentObjects,
   registerMockObject,
+  type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { createClip } from "../../create-clip.ts";
-import { processClipIteration } from "../../helpers/clip-iteration.ts";
 import {
   setupArrangementClipMocks,
   setupAudioArrangementClipMocks,
 } from "../create-clip-test-helpers.ts";
-
-/**
- * Call processClipIteration for a single arrangement position with sensible
- * defaults, overriding only the fields a test cares about.
- * @param opts - Overrides for the iteration
- * @param opts.sampleFile - Audio file path (audio clip) or null for MIDI
- * @param opts.clipName - Clip name to apply
- * @param opts.color - Clip color to apply
- * @returns The clip result object from processClipIteration
- */
-function callArrangementIteration(opts: {
-  sampleFile?: string | null;
-  clipName?: string | undefined;
-  color?: string | null;
-}): object {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  return processClipIteration(
-    "arrangement", // view
-    0, // trackIndex
-    null, // sceneIndex
-    0, // arrangementStartBeats
-    4, // clipLength
-    liveSet,
-    null, // startBeats
-    null, // endBeats
-    null, // firstStartBeats
-    null, // looping
-    opts.clipName, // clipName
-    opts.color ?? null, // color
-    4, // timeSigNumerator
-    4, // timeSigDenominator
-    null, // notationString
-    [], // notes
-    null, // length
-    opts.sampleFile ?? null, // sampleFile
-    undefined, // transformedCount
-    null, // takeLane
-  );
-}
+import { setupDisplacingTrack } from "../entries/create-clip-lane-mocks.ts";
 
 describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", async () => {
@@ -141,7 +102,7 @@ describe("createClip - arrangement view", () => {
     track.properties.is_frozen = 1;
 
     // One destination, so the refusal goes back as the error it would have been
-    // all along rather than an entry with nothing around it (ADR-0042).
+    // all along rather than an entry with nothing around it.
     await expect(
       createClip({
         trackIndex: 0,
@@ -181,13 +142,13 @@ describe("createClip - arrangement view", () => {
         length: "1bar",
       },
       {
-        id: "arrangement_clip",
+        id: "arrangement_clip_2",
         path: "t0[4|1]",
         noteCount: 2,
         length: "1bar",
       },
       {
-        id: "arrangement_clip",
+        id: "arrangement_clip_3",
         path: "t0[5|1]",
         noteCount: 2,
         length: "1bar",
@@ -253,7 +214,7 @@ describe("createClip - arrangement view", () => {
   });
 
   it("cycles clipseq() by clip.index across arrangement positions", async () => {
-    const { track, clip } = setupArrangementClipMocks();
+    const { track } = setupArrangementClipMocks();
 
     await createClip({
       trackIndex: 0,
@@ -262,11 +223,17 @@ describe("createClip - arrangement view", () => {
       transforms: "velocity = clipseq(11, 22, 33)",
     });
 
-    // All three positions resolve to the same mock clip, so inspect each
-    // add_new_notes payload: the velocity cycles by clip.index per position.
-    const addNotesPayloads = clip.call.mock.calls
-      .filter((call: unknown[]) => call[0] === "add_new_notes")
-      .map((call: unknown[]) => call[1]);
+    // Inspect each clip's add_new_notes payload: the velocity cycles by
+    // clip.index per position.
+    const addNotesPayloads = [
+      "arrangement_clip",
+      "arrangement_clip_2",
+      "arrangement_clip_3",
+    ].flatMap((id) =>
+      (lookupMockObject(id) as RegisteredMockObject).call.mock.calls
+        .filter((call: unknown[]) => call[0] === "add_new_notes")
+        .map((call: unknown[]) => call[1]),
+    );
 
     expect(addNotesPayloads).toStrictEqual([
       { notes: [createNote({ velocity: 11 })] },
@@ -295,10 +262,14 @@ describe("createClip - arrangement view", () => {
       color: "#FF0000,#00FF00",
     });
 
+    const second = lookupMockObject(
+      "arrangement_clip_2",
+    ) as RegisteredMockObject;
+
     expect(clip.set).toHaveBeenCalledWith("name", "Alpha");
-    expect(clip.set).toHaveBeenCalledWith("name", "Beta");
+    expect(second.set).toHaveBeenCalledWith("name", "Beta");
     expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-    expect(clip.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(second.set).toHaveBeenCalledWith("color", 65280); // #00FF00
   });
 
   it("refuses more names than positions, naming both counts", async () => {
@@ -416,7 +387,7 @@ describe("createClip - loc: on arrangementStart", () => {
   });
 });
 
-describe("processClipIteration (unit)", () => {
+describe("createClip - arrangement clip Live does not make", () => {
   /**
    * Register the Live Set plus a track whose create_midi_clip answers with the
    * given ref instead of a clip.
@@ -429,121 +400,57 @@ describe("processClipIteration (unit)", () => {
     });
     registerMockObject("track-0", {
       path: livePath.track(0),
+      properties: { has_midi_input: 1 },
       methods: { create_midi_clip: () => createResult },
     });
   }
 
-  it("throws when Live creates no MIDI arrangement clip", () => {
+  it("throws when Live creates no MIDI arrangement clip", async () => {
     // create_midi_clip returns the "no object" ref, so nothing was created.
     registerTrackReturning(["id", "0"]);
 
-    expect(() => callArrangementIteration({})).toThrow(
-      "Live created no clip at t0",
+    await expect(createClip({ path: "t0[1|1]" })).rejects.toThrow(
+      "Live created no clip at t0[1|1]",
     );
   });
 
-  it("throws when create_midi_clip answers with something that is not a clip", () => {
+  it("throws when create_midi_clip answers with something that is not a clip", async () => {
     // On an audio track Live declines the create and hands back the Live Set
     // (id 1), which exists. Reported as created, that id poisoned every
     // follow-up call.
     registerTrackReturning(["id", "live-set"]);
 
-    expect(() => callArrangementIteration({})).toThrow(
-      "Live created no clip at t0",
+    await expect(createClip({ path: "t0[1|1]" })).rejects.toThrow(
+      "Live created no clip at t0[1|1]",
     );
   });
 
-  it("does NOT set an empty name on an audio clip", () => {
-    // clipName "" is falsy, so `if (clipName)` skips it. The → true mutant would
-    // add name:"" and setAll (which keeps "") would write it.
+  it("does NOT set an empty name on an audio clip", async () => {
+    // name "" is falsy, so `if (name)` skips it. The → true mutant would add
+    // name:"" and setAll (which keeps "") would write it.
     const { clip } = setupAudioArrangementClipMocks();
 
-    callArrangementIteration({
+    await createClip({
+      path: "t0[1|1]",
       sampleFile: "/samples/loop.wav",
-      clipName: "",
+      name: "",
       color: "#FF0000",
     });
 
     expect(clip.set).not.toHaveBeenCalledWith("name", expect.anything());
   });
 
-  it("does NOT call setAll on an audio clip with no name or color", () => {
-    // Empty propsToSet → the `length > 0` guard skips setAll. The → true and
-    // > → >= mutants would call setAll({}).
+  it("does NOT call setAll on an audio clip with no name or color", async () => {
+    // Empty props → the `length > 0` guard skips setAll. The → true and > → >=
+    // mutants would call setAll({}).
     setupAudioArrangementClipMocks();
     const setAllSpy = vi.spyOn(LiveAPI.prototype, "setAll");
 
-    callArrangementIteration({ sampleFile: "/samples/loop.wav" });
+    await createClip({ path: "t0[1|1]", sampleFile: "/samples/loop.wav" });
 
     expect(setAllSpy).not.toHaveBeenCalled();
   });
 });
-
-/** One clip on the lane, as the registry answers for it. */
-interface Span {
-  id: string;
-  start: number;
-  end: number;
-}
-
-/**
- * A track whose arrangement lane changes the moment Live makes the new clip,
- * the way a create over an occupied range really behaves. Each clip keeps one
- * props object, because the create moves the clips already there rather than
- * leaving them where the registry first put them.
- * @param before - The clips on the lane before the create
- * @param after - The clips on it once the create has run, new clip included
- */
-function setupDisplacingTrack(before: Span[], after: Span[]): void {
-  registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
-
-  const propsById = new Map<string, Record<string, unknown>>();
-
-  const place = (spans: Span[]): void => {
-    for (const { id, start, end } of spans) {
-      Object.assign(propsById.get(id) as Record<string, unknown>, {
-        start_time: start,
-        end_time: end,
-        length: end - start,
-      });
-    }
-  };
-
-  for (const [index, { id }] of [...before, ...after].entries()) {
-    const props = propsById.get(id) ?? {};
-
-    propsById.set(id, props);
-    registerMockObject(id, {
-      path: livePath.track(0).arrangementClip(index),
-      type: "Clip",
-      properties: props,
-    });
-  }
-
-  place(before);
-
-  const trackProps: Record<string, unknown> = {
-    arrangement_clips: children(...before.map((span) => span.id)),
-  };
-
-  registerMockObject("track-0", {
-    path: livePath.track(0),
-    properties: trackProps,
-    methods: {
-      create_midi_clip: () => {
-        place(after);
-        trackProps.arrangement_clips = children(
-          ...after.map((span) => span.id),
-        );
-
-        return ["id", "made"];
-      },
-    },
-  });
-}
 
 // Writing into an occupied range is normal, so the create goes ahead — but a
 // caller can't see what it cost unless the new clip's entry says so.
@@ -597,6 +504,33 @@ describe("createClip - what an arrangement create displaced", () => {
     expect(result.detail).toBe(
       "split the clip at t0[1|1] into t0[1|1] and t0[5|1]",
     );
+  });
+
+  // One call shares what it learned about the lane: a later position sees the
+  // clips an earlier one made, and the earlier entry says it was cut short.
+  it("reports each position's own effect, including on a clip the call made", async () => {
+    setupDisplacingTrack(
+      [{ id: "old", start: 0, end: 20 }],
+      [
+        { id: "old", start: 0, end: 12 },
+        { id: "made", start: 12, end: 20 },
+      ],
+      [
+        { id: "old", start: 0, end: 12 },
+        { id: "made", start: 12, end: 16 },
+        { id: "made2", start: 16, end: 20 },
+      ],
+    );
+
+    const result = (await createClip({
+      path: "t0[4|1],t0[5|1]",
+      length: "2bar,1bar",
+    })) as Array<{ detail?: string }>;
+
+    expect(result.map((entry) => entry.detail)).toStrictEqual([
+      "shortened the clip at t0[1|1]; shortened by t0[5|1] later in this call",
+      "shortened the clip at t0[4|1]",
+    ]);
   });
 
   it("says nothing when the range was empty", async () => {

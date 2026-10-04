@@ -13,10 +13,15 @@ import {
   splitNotes,
 } from "./helpers/note-ops/note-cuts.ts";
 import {
+  madeFrom,
   type NoteOpResult,
+  type NoteParents,
   skippedNoteOp,
 } from "./helpers/note-ops/note-op-result.ts";
-import { numericOpArg } from "./helpers/note-ops/numeric-op-arg.ts";
+import {
+  isDurationNode,
+  numericOpArg,
+} from "./helpers/note-ops/numeric-op-arg.ts";
 import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
 import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
 import {
@@ -40,8 +45,8 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param timeSigDenominator - Time signature denominator
  * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
- * @returns The op's output for the matched notes (kept originals included), or
- *   an empty list when the op was skipped
+ * @returns The op's output for the matched notes (kept originals included) and
+ *   where the notes it made came from; both empty when the op was skipped
  */
 export function applyNoteOp(
   op: NoteOp,
@@ -49,7 +54,7 @@ export function applyNoteOp(
   timeSigNumerator: number,
   timeSigDenominator: number,
   arrangementOrigin?: number,
-): NoteEvent[] {
+): Pick<NoteOpResult, "notes" | "parents"> {
   const beatScale = timeSigDenominator / 4; // Ableton beats -> musical beats
 
   // Partition by the op's selector (pitch range + time range).
@@ -80,7 +85,9 @@ export function applyNoteOp(
   notes.length = 0;
   notes.push(...rebuilt);
 
-  return result.skipped ? [] : result.notes;
+  return result.skipped
+    ? { notes: [], parents: new Map() }
+    : { notes: result.notes, parents: result.parents };
 }
 
 /**
@@ -121,9 +128,10 @@ function noteMatchesSelector(
  *   - note value (`ratchet(n/16)`) → cut on the ABSOLUTE 16th-note grid, so the
  *     pieces line up with bar positions. The first/last piece can be a partial
  *     sliver when the note doesn't start/end on a grid line; a note that spans no
- *     grid line is left unchanged (with a warning).
- * Invalid args warn-and-skip (notes pass through unchanged), consistent with
- * update-tool error handling.
+ *     grid line is left unchanged (with a detail).
+ * checkTransformArgs has already refused a bad argument it can judge up front;
+ * one it couldn't (it uses a variable or a random function) that turns out
+ * unusable warns and the notes pass through unchanged.
  * @param matched - Notes selected by the op
  * @param op - The ratchet operation
  * @param numerator - Time signature numerator
@@ -138,21 +146,7 @@ function ratchetNotes(
   denominator: number,
 ): NoteOpResult {
   // ratchet args are always expressions (bar|beat points only reach `split`).
-  const arg = op.args[0] as ExpressionNode | undefined;
-
-  if (op.args.length === 0 || arg == null) {
-    console.warn(
-      "ratchet() needs a count or note value, e.g. ratchet(2) or ratchet(n/16); skipping",
-    );
-
-    return skippedNoteOp(matched);
-  }
-
-  if (op.args.length > 1) {
-    console.warn(
-      "ratchet() takes a single count or note value; using the first argument",
-    );
-  }
+  const arg = op.args[0] as ExpressionNode;
 
   const plan = resolveRatchetPlan(arg, numerator, denominator);
 
@@ -161,6 +155,7 @@ function ratchetNotes(
   }
 
   const out: NoteEvent[] = [];
+  const parents: NoteParents = new Map();
   let shortNotes = 0;
   let clamped = 0;
 
@@ -188,7 +183,7 @@ function ratchetNotes(
         clamped++;
       }
 
-      out.push(...splitNoteAtCuts(note, cuts));
+      out.push(...madeFrom(parents, note, splitNoteAtCuts(note, cuts)));
       continue;
     }
 
@@ -199,22 +194,22 @@ function ratchetNotes(
       clamped++;
     }
 
-    out.push(...splitNoteEqually(note, count));
+    out.push(...madeFrom(parents, note, splitNoteEqually(note, count)));
   }
 
   if (shortNotes > 0) {
-    console.warn(
-      `ratchet: ${shortNotes} note(s) spanned no grid line and were left unchanged`,
+    console.clipDetail(
+      `ratchet: ${shortNotes} note(s) spanned no grid line, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.warn(
+    console.clipDetail(
       `ratchet: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /** Resolved ratchet plan: a fixed `count`, or a `grid` size in Ableton beats. */
@@ -226,7 +221,7 @@ interface RatchetPlan {
 /**
  * Resolve the ratchet argument to a plan. A note-value/bar-duration arg becomes
  * a per-note grid; any other expression becomes a fixed count. Returns null and
- * warns when the arg is unusable.
+ * warns when a count the up-front checks couldn't judge is unusable.
  * @param arg - The (already-parsed) ratchet argument node
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
@@ -237,32 +232,17 @@ function resolveRatchetPlan(
   numerator: number,
   denominator: number,
 ): RatchetPlan | null {
-  const isGrid =
-    typeof arg === "object" &&
-    (arg.type === "nDuration" || arg.type === "barDuration");
+  const isGrid = isDurationNode(arg);
 
-  const value = numericOpArg(arg, numerator, denominator, {
-    pitchLiteral: (name) =>
-      `pitch name "${name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${name}).`,
-    unevaluable: (reason) =>
-      `ratchet() argument could not be evaluated (${reason}); skipping`,
-    notFinite: "ratchet() argument is not a number; skipping",
-  });
+  const value = numericOpArg(arg, numerator, denominator, "ratchet() argument");
 
   if (value == null) {
     return null;
   }
 
   if (isGrid) {
-    const gridAbletonBeats = value * (4 / denominator); // musical -> Ableton
-
-    if (gridAbletonBeats <= 0) {
-      console.warn("ratchet() grid must be greater than 0; skipping");
-
-      return null;
-    }
-
-    return { count: 0, grid: gridAbletonBeats };
+    // A note value / bar duration is always a constant, already checked above 0.
+    return { count: 0, grid: value * (4 / denominator) }; // musical -> Ableton
   }
 
   const count = Math.round(value);
@@ -321,11 +301,6 @@ function gridCutsWithin(start: number, end: number, grid: number): number[] {
   return cuts;
 }
 
-// Message for an unusable merge() gap-tolerance argument (anything other than a
-// note value or literal 0). Shown once, then the merge is skipped.
-const MERGE_TOLERANCE_SKIP_MESSAGE =
-  "merge() gap tolerance must be a note value like n/16, or 0 for touching notes (<count>bar and other numbers are not accepted); skipping";
-
 /**
  * Merge matched notes: collapse same-pitch notes into sustained notes. The
  * optional gap tolerance sets how far apart (edge to edge) two same-pitch notes
@@ -336,8 +311,7 @@ const MERGE_TOLERANCE_SKIP_MESSAGE =
  *     a new run
  * Within each merged run, dynamics (velocity/probability/deviation) come from
  * its earliest note. Different pitches stay independent (scope by selector to
- * narrow). An unusable tolerance argument warns and the notes pass through
- * unchanged.
+ * narrow).
  * @param matched - Notes selected by the op
  * @param op - The merge operation (may carry a gap-tolerance argument)
  * @param numerator - Time signature numerator
@@ -353,10 +327,6 @@ function mergeNotes(
 ): NoteOpResult {
   const tolerance = resolveMergeTolerance(op, numerator, denominator);
 
-  if (tolerance == null) {
-    return skippedNoteOp(matched); // unusable tolerance — warn already emitted, pass through
-  }
-
   const byPitch = new Map<number, NoteEvent[]>();
 
   for (const note of matched) {
@@ -370,66 +340,48 @@ function mergeNotes(
   }
 
   const out: NoteEvent[] = [];
+  const parents: NoteParents = new Map();
 
   for (const group of byPitch.values()) {
-    out.push(...mergeRuns(group, tolerance));
+    out.push(...mergeRuns(group, tolerance, parents));
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /**
  * Resolve the optional merge gap-tolerance argument to an edge-to-edge gap in
- * Ableton beats: no arg spans all (Infinity), literal `0` merges only touching/
- * overlapping notes, and a note value becomes that many Ableton beats. Any other
- * argument (a non-zero bare number, `<count>bar`, a pitch literal, an expression)
- * warns and returns null so the caller skips the merge.
+ * Ableton beats: no arg spans all (Infinity), a note value becomes that many
+ * Ableton beats, and the only other argument checkTransformArgs lets through,
+ * literal `0`, merges only touching/overlapping notes.
  * @param op - The merge operation
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
- * @returns The gap tolerance in Ableton beats, or null to skip
+ * @returns The gap tolerance in Ableton beats
  */
 function resolveMergeTolerance(
   op: NoteOp,
   numerator: number,
   denominator: number,
-): number | null {
+): number {
   if (op.args.length === 0) {
     return Infinity; // no argument — span all (the default)
-  }
-
-  if (op.args.length > 1) {
-    console.warn(
-      "merge() takes a single gap tolerance; using the first argument",
-    );
   }
 
   // merge args are always expressions (bar|beat points only reach `split`).
   const arg = op.args[0] as ExpressionNode;
 
   if (typeof arg === "number") {
-    if (arg === 0) {
-      return 0; // touching/overlapping notes only
-    }
-
-    console.warn(MERGE_TOLERANCE_SKIP_MESSAGE);
-
-    return null;
+    return 0; // touching/overlapping notes only
   }
 
-  if (typeof arg === "object" && arg.type === "nDuration") {
-    // A note value is a pure constant — evaluates to musical beats, total.
-    const musicalBeats = evaluateExpression(
-      arg,
-      constantEvalContext(numerator, denominator),
-    );
+  // A note value is a pure constant — evaluates to musical beats, total.
+  const musicalBeats = evaluateExpression(
+    arg,
+    constantEvalContext(numerator, denominator),
+  );
 
-    return musicalBeats * (4 / denominator); // musical -> Ableton beats
-  }
-
-  console.warn(MERGE_TOLERANCE_SKIP_MESSAGE);
-
-  return null;
+  return musicalBeats * (4 / denominator); // musical -> Ableton beats
 }
 
 /**
@@ -440,34 +392,63 @@ function resolveMergeTolerance(
  * @param group - Same-pitch notes (one merged group, non-empty)
  * @param tolerance - Max edge-to-edge gap (Ableton beats) that still merges;
  *   Infinity spans the whole group, 0 merges only touching/overlapping notes
+ * @param parents - Records which notes each merged note came from
  * @returns One sustained note per run
  */
-function mergeRuns(group: NoteEvent[], tolerance: number): NoteEvent[] {
+function mergeRuns(
+  group: NoteEvent[],
+  tolerance: number,
+  parents: NoteParents,
+): NoteEvent[] {
   const sorted = group.toSorted((a, b) => a.start_time - b.start_time);
   const out: NoteEvent[] = [];
 
   // group is non-empty by construction, so index 0 is always present.
-  let runStart = sorted[0] as NoteEvent;
-  let runEnd = runStart.start_time + runStart.duration;
+  const first = sorted[0] as NoteEvent;
+  let run = [first];
+  let runEnd = first.start_time + first.duration;
 
   for (let i = 1; i < sorted.length; i++) {
     const note = sorted[i] as NoteEvent; // i < length, always present
     const gap = note.start_time - runEnd;
 
     if (gap <= tolerance) {
-      const end = note.start_time + note.duration;
-
-      if (end > runEnd) {
-        runEnd = end; // extend the run to the later offset
-      }
+      runEnd = Math.max(runEnd, note.start_time + note.duration); // extend the run
+      run.push(note);
     } else {
-      out.push({ ...runStart, duration: runEnd - runStart.start_time });
-      runStart = note;
+      out.push(finishRun(run, runEnd, parents));
+      run = [note];
       runEnd = note.start_time + note.duration;
     }
   }
 
-  out.push({ ...runStart, duration: runEnd - runStart.start_time });
+  out.push(finishRun(run, runEnd, parents));
 
   return out;
+}
+
+/**
+ * The note a merge run becomes. A run of one is the note itself, so a lone
+ * note a merge leaves alone isn't counted as changed.
+ * @param run - The run's notes, earliest first
+ * @param runEnd - Where the run ends
+ * @param parents - Records which notes the merged note came from
+ * @returns The merged note
+ */
+function finishRun(
+  run: NoteEvent[],
+  runEnd: number,
+  parents: NoteParents,
+): NoteEvent {
+  const first = run[0] as NoteEvent;
+
+  if (run.length === 1) {
+    return first;
+  }
+
+  const [merged] = madeFrom(parents, run, [
+    { ...first, duration: runEnd - first.start_time },
+  ]);
+
+  return merged as NoteEvent;
 }

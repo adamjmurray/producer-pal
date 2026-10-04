@@ -170,6 +170,8 @@ describe("updateClip - Properties and ID handling", () => {
      */
     function clipReadsColor(colorValue: number): void {
       setupMidiClipMock(mocks.clip123, { color: colorValue });
+      // Live picks the color, so what was written isn't what it answers with.
+      mocks.clip123.set.mockImplementation(() => undefined);
     }
 
     it("reports the palette color Live snapped to on the clip's entry", async () => {
@@ -262,6 +264,7 @@ describe("buildClipPropertiesToSet", () => {
     startMarkerBeats: null,
     looping: undefined,
     isLooping: false,
+    wasLooping: false,
     startBeats: null,
     endBeats: null,
     currentLoopEnd: 4,
@@ -282,6 +285,17 @@ describe("buildClipPropertiesToSet", () => {
       signature_denominator: null,
       ...fields,
     }) as ClipPropsToSet;
+
+  // The keys every case writes first, ahead of the loop/marker fields.
+  const expectKeyOrder = (result: ClipPropsToSet, tail: string[]): void => {
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      ...tail,
+    ]);
+  };
 
   it("sets signature numerator/denominator from the time sig when timeSignature is present", () => {
     const result = build({
@@ -327,15 +341,7 @@ describe("buildClipPropertiesToSet", () => {
       }),
     );
     // Order matters: loop_end is set first when expanding.
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "looping",
-      "loop_end",
-      "loop_start",
-    ]);
+    expectKeyOrder(result, ["looping", "loop_end", "loop_start"]);
   });
 
   it("sets loop_start before loop_end when not expanding (startBeats < both ends)", () => {
@@ -355,15 +361,7 @@ describe("buildClipPropertiesToSet", () => {
         loop_end: 16,
       }),
     );
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "looping",
-      "loop_start",
-      "loop_end",
-    ]);
+    expectKeyOrder(result, ["looping", "loop_start", "loop_end"]);
   });
 
   it("expands (loop_end first) when startBeats exactly equals an end", () => {
@@ -377,15 +375,7 @@ describe("buildClipPropertiesToSet", () => {
     });
 
     // Boundary: >= means equal still counts as expanding.
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "looping",
-      "loop_end",
-      "loop_start",
-    ]);
+    expectKeyOrder(result, ["looping", "loop_end", "loop_start"]);
     expect(result).toStrictEqual(
       expected({
         looping: true,
@@ -409,11 +399,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 2,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "looping",
       "end_marker",
       "loop_start",
@@ -437,11 +423,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 4,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "looping",
       "loop_end",
       "end_marker",
@@ -472,11 +454,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 5,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
+    expectKeyOrder(result, [
       "looping",
       "loop_end",
       "end_marker",
@@ -499,7 +477,8 @@ describe("buildClipPropertiesToSet", () => {
     // land while the clip is still looping. end_marker goes first on top of
     // that, because the preserved brace sits past the current one.
     const result = build({
-      isLooping: true,
+      isLooping: false,
+      wasLooping: true,
       looping: false,
       startMarkerBeats: 8,
       startBeats: 8,
@@ -508,15 +487,7 @@ describe("buildClipPropertiesToSet", () => {
       currentEndMarker: 4,
     });
 
-    expect(Object.keys(result)).toStrictEqual([
-      "name",
-      "color",
-      "signature_numerator",
-      "signature_denominator",
-      "end_marker",
-      "start_marker",
-      "looping",
-    ]);
+    expectKeyOrder(result, ["end_marker", "start_marker", "looping"]);
     expect(result).toStrictEqual(
       expected({
         looping: false,
@@ -528,7 +499,8 @@ describe("buildClipPropertiesToSet", () => {
 
   it("sets only end_marker (no loop props) when turning looping off, non-expanding case", () => {
     const result = build({
-      isLooping: true,
+      isLooping: false,
+      wasLooping: true,
       looping: false,
       startBeats: 2,
       endBeats: 16,
@@ -579,6 +551,58 @@ describe("buildClipPropertiesToSet", () => {
         start_marker: 8,
       }),
     );
+  });
+
+  it("moves an unlooped clip through loop_start when looping: false changes nothing", () => {
+    // Live ignores start_marker while looping is off, so the start has to go
+    // through loop_start, exactly as when `looping` is unset.
+    const region = {
+      isLooping: false,
+      startMarkerBeats: 4,
+      startBeats: 4,
+      endBeats: 8,
+      currentLoopEnd: 4,
+      currentEndMarker: 4,
+    };
+    const result = build({ ...region, looping: false });
+    const unset = build({ ...region, looping: undefined });
+
+    // Same region writes, with the no-op flag written last as before.
+    expect(Object.keys(result)).toStrictEqual([
+      ...Object.keys(unset).filter((key) => key !== "looping"),
+      "looping",
+    ]);
+    expectKeyOrder(result, [
+      "loop_end",
+      "end_marker",
+      "loop_start",
+      "start_marker",
+      "looping",
+    ]);
+    expect(result).toStrictEqual(
+      expected({
+        looping: false,
+        loop_start: 4,
+        loop_end: 8,
+        start_marker: 4,
+        end_marker: 8,
+      }),
+    );
+  });
+
+  it("still writes the markers first when looping: false turns a looping clip off", () => {
+    const result = build({
+      isLooping: false,
+      wasLooping: true,
+      looping: false,
+      startMarkerBeats: 2,
+      startBeats: 2,
+      endBeats: 3,
+      currentLoopEnd: 4,
+      currentEndMarker: 4,
+    });
+
+    expectKeyOrder(result, ["start_marker", "end_marker", "looping"]);
   });
 
   it("does not set loop_end when endBeats is null for a looping clip", () => {

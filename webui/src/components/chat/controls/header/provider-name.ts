@@ -31,6 +31,7 @@ const BRAND_NAMES: Record<Provider, string> = {
   openai: "OpenAI",
   mistral: "Mistral",
   openrouter: "OpenRouter",
+  vercel: "Vercel",
   lmstudio: "Bionic",
   ollama: "Ollama",
   custom: "Custom",

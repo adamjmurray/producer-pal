@@ -35,7 +35,7 @@ update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s)
 stop-session-clips: by id(s) or path(s)
-(both answer with one clips entry per id/path named, in order: {id, path}, or {id|path, ok:false, detail} for one that couldn't be reached)
+(both answer with clip: {id, path} for one id/path, an array of them for several, in order; {id|path, ok:false, detail} for one that couldn't be reached)
 stop-all-session-clips: all
 stop: session and arrangement; takes startTime to park the next play`,
       ),
@@ -69,7 +69,7 @@ stop: session and arrangement; takes startTime to park the next play`,
       .string()
       .optional()
       .describe(
-        "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
+        "clip id(s), comma-separated; for play-scene, a scene id (or a clip id in that scene)",
       ),
 
     ...addressingAliases(),

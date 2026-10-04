@@ -10,7 +10,6 @@ import {
   namedHiddenPath,
   parseObjectPathList,
   pathEntries,
-  parseClipSlotPathList,
   pathNamesSomething,
   requireClipPath,
   requireDeviceContainer,
@@ -171,21 +170,6 @@ describe("requireClipSlotPath", () => {
   it("rejects a non-clip path in clip terms", () => {
     expect(() => requireClipSlotPath(parseObjectPath("t1/d0"))).toThrow(
       /device paths hold no clips/,
-    );
-  });
-});
-
-describe("parseClipSlotPathList", () => {
-  it("parses a comma-separated list of slots", () => {
-    expect(parseClipSlotPathList("t0/s1,t2/s3")).toStrictEqual([
-      { trackIndex: 0, sceneIndex: 1 },
-      { trackIndex: 2, sceneIndex: 3 },
-    ]);
-  });
-
-  it("throws on the first entry that isn't a slot", () => {
-    expect(() => parseClipSlotPathList("t0/s1,t2")).toThrow(
-      /a track has no one clip/,
     );
   });
 });

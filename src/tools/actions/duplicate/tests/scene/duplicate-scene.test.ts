@@ -12,10 +12,15 @@ import {
   children,
   registerClipSlot,
   registerMockObject,
+  registerPendingMockObject,
   setupArrangementSceneMocks,
   setupSessionSceneMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { deleteMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  LIVE_FAILURE,
+  hookCalls,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface DuplicateClipResult {
@@ -29,6 +34,13 @@ interface DuplicateSceneResult {
   arrangementStart?: string;
   clips: DuplicateClipResult[];
 }
+
+/** What a scene copy the deadline never reached answers with. */
+const OUT_OF_TIME_SKIP = {
+  id: "scene1",
+  ok: false,
+  detail: "the request ran out of time; re-run for this copy",
+};
 
 describe("duplicate - scene duplication", () => {
   // has_clip can still be set on a slot Live hands back nothing for, so the
@@ -77,14 +89,14 @@ describe("duplicate - scene duplication", () => {
     const liveSet = setupSessionSceneMocks({ registerNewScene: false });
 
     // Register additional clip slots and mocks for second duplicated scene
-    registerClipSlot(0, 2, true);
-    registerClipSlot(1, 2, true);
-    registerClipMocks(2, 2);
+    registerClipSlot(0, 2, true, undefined, registerPendingMockObject);
+    registerClipSlot(1, 2, true, undefined, registerPendingMockObject);
+    registerClipMocks(2, 2, registerPendingMockObject);
 
-    const scene1 = registerMockObject("live_set/scenes/1", {
+    const scene1 = registerPendingMockObject("live_set/scenes/1", {
       path: livePath.scene(1),
     });
-    const scene2 = registerMockObject("live_set/scenes/2", {
+    const scene2 = registerPendingMockObject("live_set/scenes/2", {
       path: livePath.scene(2),
     });
 
@@ -136,12 +148,24 @@ describe("duplicate - scene duplication", () => {
   it("should duplicate a scene without clips when withoutClips is true", async () => {
     const liveSet = setupArrangementSceneMocks();
 
-    const slot0 = registerClipSlot(0, 1, true);
-    const slot1 = registerClipSlot(1, 1, true);
+    const slot0 = registerClipSlot(
+      0,
+      1,
+      true,
+      undefined,
+      registerPendingMockObject,
+    );
+    const slot1 = registerClipSlot(
+      1,
+      1,
+      true,
+      undefined,
+      registerPendingMockObject,
+    );
 
-    registerClipSlot(2, 1, false);
-    registerClipMocks(2, 1);
-    registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+    registerClipSlot(2, 1, false, undefined, registerPendingMockObject);
+    registerClipMocks(2, 1, registerPendingMockObject);
+    registerPendingMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
     const result = (await duplicate({
       type: "scene",
@@ -171,17 +195,29 @@ describe("duplicate - scene duplication", () => {
     expect(slot0DeleteCalls + slot1DeleteCalls).toBe(2);
   });
 
-  it("should apply color when duplicating a scene", async () => {
+  /**
+   * A one-scene Set with no tracks, and the pending copy the next copy makes.
+   * @returns The Live Set and the new scene
+   */
+  function registerSceneToColor(): {
+    liveSet: ReturnType<typeof registerMockObject>;
+    newScene: ReturnType<typeof registerPendingMockObject>;
+  } {
     registerMockObject("scene1", { path: livePath.scene(0) });
 
     const liveSet = registerMockObject("live_set", {
       path: livePath.liveSet,
-      properties: { tracks: [] },
+      properties: { tracks: [], scenes: children("scene1") },
     });
-
-    const newScene = registerMockObject("live_set/scenes/1", {
+    const newScene = registerPendingMockObject("live_set/scenes/1", {
       path: livePath.scene(1),
     });
+
+    return { liveSet, newScene };
+  }
+
+  it("should apply color when duplicating a scene", async () => {
+    const { liveSet, newScene } = registerSceneToColor();
 
     const result = (await duplicate({
       type: "scene",
@@ -195,6 +231,24 @@ describe("duplicate - scene duplication", () => {
     expect(result.path).toBe("s1");
   });
 
+  it("reports the palette color Live snapped a scene copy's color to", async () => {
+    const { newScene } = registerSceneToColor();
+
+    newScene.get.mockImplementation((prop: string) =>
+      prop === "color" ? [16725558] : [0],
+    );
+
+    expect(
+      await duplicate({ type: "scene", id: "scene1", color: "#FF0000" }),
+    ).toStrictEqual({
+      id: "live_set/scenes/1",
+      path: "s1",
+      color: "#FF3636",
+      clips: [],
+      detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+  });
+
   it("stops session scene copies at the request deadline", async () => {
     const liveSet = setupSessionSceneMocks();
 
@@ -203,11 +257,36 @@ describe("duplicate - scene duplication", () => {
       { deadline: Date.now() - 1 },
     );
 
-    expect(result).toStrictEqual([]);
-    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_scene", 0);
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after duplicating 0 of 2 scenes. Re-run for the rest.",
+    // Every copy it never made keeps its slot.
+    expect(result).toStrictEqual(
+      Array.from({ length: 2 }, () => ({ ...OUT_OF_TIME_SKIP })),
     );
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_scene", 0);
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
+    );
+  });
+
+  it("keeps each session scene copy it never reached, after the ones it made", async () => {
+    const context = { deadline: Date.now() + 60_000 };
+    const liveSet = setupSessionSceneMocks();
+
+    hookCalls(liveSet, /^duplicate_scene$/, {
+      after: () => {
+        context.deadline = Date.now() - 1;
+      },
+    });
+
+    const result = (await duplicate(
+      { type: "scene", id: "scene1", count: 3 },
+      context,
+    )) as object[];
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ id: "live_set/scenes/1", path: "s1" }),
+      OUT_OF_TIME_SKIP,
+      OUT_OF_TIME_SKIP,
+    ]);
   });
 });
 
@@ -219,28 +298,21 @@ describe("duplicate - several session scenes", () => {
     registerMockObject("sceneB", { path: livePath.scene(1) });
     registerMockObject("live_set", {
       path: livePath.liveSet,
-      properties: { tracks: children("track0") },
-      methods: {
-        // Copying scene 0 inserts at 1, pushing sceneB's copy from 2 to 3.
-        duplicate_scene: (index: unknown) => {
-          if (index === 0) {
-            registerMockObject("sceneCopyOfB", { path: livePath.scene(3) });
-            registerMockObject("copyOfB", {
-              path: livePath.track(0).clipSlot(3).clip(),
-            });
-          }
-        },
+      properties: {
+        tracks: children("track0"),
+        scenes: children("sceneA", "sceneB"),
       },
     });
-    registerClipSlot(0, 1, true);
-    registerClipSlot(0, 2, true);
-    registerMockObject("sceneCopyOfA", { path: livePath.scene(1) });
-    registerMockObject("sceneCopyOfB", { path: livePath.scene(2) });
-    registerMockObject("copyOfA", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-    registerMockObject("copyOfB", {
+    registerClipSlot(0, 0, true, undefined, registerPendingMockObject);
+    registerClipSlot(0, 1, true, undefined, registerPendingMockObject);
+    registerClipSlot(0, 2, true, undefined, registerPendingMockObject);
+    registerPendingMockObject("sceneCopyOfB", { path: livePath.scene(2) });
+    registerPendingMockObject("copyOfB", {
       path: livePath.track(0).clipSlot(2).clip(),
+    });
+    registerPendingMockObject("sceneCopyOfA", { path: livePath.scene(1) });
+    registerPendingMockObject("copyOfA", {
+      path: livePath.track(0).clipSlot(1).clip(),
     });
 
     const result = (await duplicate({
@@ -248,6 +320,7 @@ describe("duplicate - several session scenes", () => {
       id: "sceneB,sceneA",
     })) as DuplicateSceneResult[];
 
+    // B's copy landed at s2, and A's copy then went in ahead of it.
     expect(result).toStrictEqual([
       {
         id: "sceneCopyOfB",
@@ -265,37 +338,39 @@ describe("duplicate - several session scenes", () => {
 
 /**
  * One scene with no tracks, whose copies land at s1 and s2, and whose listed
- * calls to duplicate_scene throw.
+ * calls to duplicate_scene throw before anything is copied.
  * @param failing - Which duplicate_scene calls throw, counting from 1
- * @returns The live_set mock
+ * @returns The live_set mock, and the scenes the copies become
  */
-function sceneCopiesFailingAt(
-  failing: number[],
-): ReturnType<typeof registerMockObject> {
-  let calls = 0;
-
+function sceneCopiesFailingAt(failing: number[]): {
+  liveSet: ReturnType<typeof registerMockObject>;
+  copyA: ReturnType<typeof registerPendingMockObject>;
+} {
   registerMockObject("scene1", { path: livePath.scene(0) });
-  registerMockObject("copyA", { path: livePath.scene(1) });
-  registerMockObject("copyB", { path: livePath.scene(2) });
 
-  return registerMockObject("live_set", {
+  const copyA = registerPendingMockObject("copyA", { path: livePath.scene(1) });
+
+  registerPendingMockObject("copyB", { path: livePath.scene(2) });
+
+  const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children() },
-    methods: {
-      duplicate_scene: () => {
-        calls++;
+    properties: { tracks: children(), scenes: children("scene1") },
+  });
 
-        if (failing.includes(calls)) {
-          throw new Error("Live refused the copy");
-        }
-      },
+  hookCalls(liveSet, /^duplicate_scene$/, {
+    before: (nth) => {
+      if (failing.includes(nth)) {
+        throw new Error("Live refused the copy");
+      }
     },
   });
+
+  return { liveSet, copyA };
 }
 
 describe("duplicate - a session scene copy that fails", () => {
   it("keeps the copies around it", async () => {
-    const liveSet = sceneCopiesFailingAt([2]);
+    const { liveSet } = sceneCopiesFailingAt([2]);
 
     const result = await duplicate({ type: "scene", id: "scene1", count: 3 });
 
@@ -308,6 +383,76 @@ describe("duplicate - a session scene copy that fails", () => {
     expect(liveSet.call).toHaveBeenLastCalledWith("duplicate_scene", 1);
   });
 
+  // The scene is in the Set by then, so the next copy has to count it.
+  it("keeps a copy that exists when naming it fails, and counts it", async () => {
+    const { liveSet, copyA } = sceneCopiesFailingAt([]);
+
+    copyA.set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    const result = await duplicate({
+      type: "scene",
+      id: "scene1",
+      count: 2,
+      name: "A,B",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "copyA",
+        path: "s1",
+        clips: [],
+        detail: "the scene was made, but name refused",
+      },
+      { id: "copyB", path: "s2", clips: [] },
+    ]);
+    expect(liveSet.call).toHaveBeenLastCalledWith("duplicate_scene", 1);
+  });
+
+  // The copy exists, so a throw that comes back from the call itself must not
+  // make it a skip.
+  it("keeps a copy Live made even when the call that made it threw", async () => {
+    const { liveSet } = sceneCopiesFailingAt([]);
+
+    hookCalls(liveSet, /^duplicate_scene$/, {
+      after: () => {
+        throw new Error(LIVE_FAILURE);
+      },
+    });
+
+    const result = await duplicate({ type: "scene", id: "scene1" });
+
+    expect(result).toStrictEqual({
+      id: "copyA",
+      path: "s1",
+      clips: [],
+      detail: `the scene was made, but Live said: ${LIVE_FAILURE}`,
+    });
+  });
+
+  // Live decides where the copy goes, so the entry names where it went.
+  it("reads where the copy landed instead of assuming it follows the source", async () => {
+    registerMockObject("scene1", { path: livePath.scene(0) });
+    registerMockObject("scene2", { path: livePath.scene(1) });
+    registerMockObject("copyA", { path: livePath.scene(2) });
+
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: children(), scenes: children("scene1", "scene2") },
+      methods: {
+        // This Live puts the copy after the last scene.
+        duplicate_scene: () => {
+          liveSet.properties.scenes = children("scene1", "scene2", "copyA");
+        },
+      },
+    });
+
+    const result = await duplicate({ type: "scene", id: "scene1" });
+
+    expect(result).toStrictEqual({ id: "copyA", path: "s2", clips: [] });
+  });
+
   it("reports every copy when none landed", async () => {
     sceneCopiesFailingAt([1, 2]);
 
@@ -317,5 +462,18 @@ describe("duplicate - a session scene copy that fails", () => {
       { id: "scene1", ok: false, detail: "Live refused the copy" },
       { id: "scene1", ok: false, detail: "Live refused the copy" },
     ]);
+  });
+
+  it("says so when Live answers without making a copy", async () => {
+    registerMockObject("scene1", { path: livePath.scene(0) });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: children(), scenes: children("scene1") },
+      methods: { duplicate_scene: () => null },
+    });
+
+    await expect(duplicate({ type: "scene", id: "scene1" })).rejects.toThrow(
+      "Live made no copy of s0",
+    );
   });
 });

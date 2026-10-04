@@ -15,10 +15,6 @@ import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-const scaleChangeNote =
-  "Scale applied to selected clips and defaults for new clips.";
-const scaleDisabledNote =
-  "Scale disabled for selected clips and defaults for new clips.";
 const scaleRespellReason =
   "scale roots are spelled with flats, so F# comes back as Gb — " +
   "same scale, set correctly";
@@ -27,7 +23,6 @@ const scaleRespellReason =
 const D_MAJOR_RESULT = {
   id: "live_set_id",
   scalePitches: "D,E,Gb,G,A,B,Db",
-  $meta: [scaleChangeNote],
 };
 
 describe("updateLiveSet", () => {
@@ -139,6 +134,7 @@ describe("updateLiveSet", () => {
     expect(await updateLiveSet({ tempo: 140 })).toStrictEqual({
       id: "live_set_id",
       tempo: 140.5,
+      detail: "tempo read back as shown, not as sent",
     });
   });
 
@@ -162,7 +158,32 @@ describe("updateLiveSet", () => {
     expect(await updateLiveSet({ timeSignature: "7/8" })).toStrictEqual({
       id: "live_set_id",
       timeSignature: "4/4",
+      detail: "timeSignature read back as shown, not as sent",
     });
+  });
+
+  it("names every field Live changed in one detail", async () => {
+    kept.tempo = 140.5;
+    kept.signature_numerator = 4;
+    kept.signature_denominator = 4;
+
+    liveSet.set.mockImplementation(() => undefined);
+
+    expect(
+      await updateLiveSet({ tempo: 140, timeSignature: "7/8" }),
+    ).toStrictEqual({
+      id: "live_set_id",
+      tempo: 140.5,
+      timeSignature: "4/4",
+      detail: "tempo, timeSignature read back as shown, not as sent",
+    });
+  });
+
+  it("refuses a denominator that isn't a power of two, writing nothing", async () => {
+    await expect(
+      updateLiveSet({ tempo: 120, timeSignature: "4/3" }),
+    ).rejects.toThrow('timeSignature "4/3" has a denominator Live can\'t keep');
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
   it("should throw error for invalid time signature format", async () => {
@@ -233,7 +254,6 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scalePitches: "C,D,E,F,G,A,B",
-      $meta: [scaleChangeNote],
     });
   });
 
@@ -262,22 +282,18 @@ describe("updateLiveSet", () => {
     const sharp = await updateLiveSet({ scale: "F# Dorian" });
 
     expect(sharp.detail).toBe(scaleRespellReason);
-    expect(sharp.$meta).toStrictEqual([scaleChangeNote]);
 
     const flat = await updateLiveSet({ scale: "Db Major" });
 
     expect(flat.detail).toBeUndefined();
-    expect(flat.$meta).toStrictEqual([scaleChangeNote]);
 
     const natural = await updateLiveSet({ scale: "C Major" });
 
     expect(natural.detail).toBeUndefined();
-    expect(natural.$meta).toStrictEqual([scaleChangeNote]);
 
     const disabled = await updateLiveSet({ scale: "" });
 
     expect(disabled.detail).toBeUndefined();
-    expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
   });
 
   it("says how a tolerated spelling is stored", async () => {
@@ -308,20 +324,7 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 0);
     expect(result).toStrictEqual({
       id: "live_set_id",
-      $meta: [scaleDisabledNote],
     });
-  });
-
-  it("uses a distinct note for scale-disable vs scale-apply", async () => {
-    // Disabling the scale (scale: "") must not claim a scale was "applied" —
-    // the note describes the actual operation so the LLM isn't misled.
-    const disabled = await updateLiveSet({ scale: "" });
-
-    expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
-
-    const applied = await updateLiveSet({ scale: "C Major" });
-
-    expect(applied.$meta).toStrictEqual([scaleChangeNote]);
   });
 
   it("should update complex scale names", async () => {
@@ -332,7 +335,6 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scalePitches: "D,E,Gb,G,A,B,Db",
-      $meta: [scaleChangeNote],
     });
   });
 
@@ -352,18 +354,27 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scalePitches: "G,A,B,C,D,E,Gb",
-      $meta: [scaleChangeNote],
     });
   });
 
-  it("should return only song ID when no properties are updated", async () => {
-    const result = await updateLiveSet({});
-
+  // A call that asks for nothing changes nothing, and an answer would read as
+  // if it had.
+  it.each([
+    ["no params", {}],
+    ["only blank params", { tempo: undefined }],
+  ])("refuses a call with %s, writing nothing", async (_name, args) => {
+    await expect(updateLiveSet(args)).rejects.toThrow(
+      "nothing to update: send a param to change",
+    );
     expect(liveSet.set).not.toHaveBeenCalled();
     expect(liveSet.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-    });
+  });
+
+  it("counts a scale that disables the scale as asked", async () => {
+    const result = await updateLiveSet({ scale: "" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 0);
+    expect(result.id).toBe("live_set_id");
   });
 
   it("should return scalePitches when scale is set", async () => {
@@ -375,7 +386,6 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scalePitches: "C,D,E,F,G,A,B",
-      $meta: [scaleChangeNote],
     });
 
     // The pitches use the root the call wrote, so the only read of it is the
@@ -404,7 +414,6 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scalePitches: "A,B,Db,D,E,Gb,Ab",
-      $meta: [scaleChangeNote],
     });
   });
 
@@ -421,7 +430,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.get).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      $meta: [scaleDisabledNote],
     });
   });
 });

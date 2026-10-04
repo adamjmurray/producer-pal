@@ -33,6 +33,7 @@ import {
 } from "../helpers/audio-warp-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
+import { readArrangementClips } from "../helpers/arrangement-clip-query-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -59,7 +60,6 @@ describe("ppal-create-clip", () => {
     const minimalClip = parseToolResult<ReadClipResult>(verifyMinimal);
 
     expect(minimalClip.type).toBe("midi");
-    expect(minimalClip.view).toBe("session");
     expect(minimalClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
 
     // Test 2: Create session clip with notes
@@ -202,6 +202,81 @@ describe("ppal-create-clip", () => {
     );
   });
 
+  it("refuses a path sent with trackIndex or sceneIndex, creating nothing", async () => {
+    // A clip past the last scene makes scenes up to its index, so a created
+    // clip would show as a longer scene list.
+    const sceneCount = async (): Promise<number> =>
+      parseToolResult<{ sceneCount: number }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-live-set",
+          arguments: {},
+        }),
+      ).sceneCount;
+    const before = await sceneCount();
+    const path = `t${EMPTY_MIDI_TRACK}/s${before + 1}`;
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path,
+        trackIndex: EMPTY_MIDI_TRACK,
+        sceneIndex: before + 1,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the destination on its own - don't send trackIndex or sceneIndex with it",
+    );
+
+    await sleep(100);
+    expect(await sceneCount()).toBe(before);
+  });
+
+  it("refuses takeLane beside a path that names a lane, creating nothing", async () => {
+    const clipCount = async (): Promise<number> =>
+      parseToolResult<{ arrangementClipCount?: number }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: {
+            path: `t${EMPTY_MIDI_TRACK}`,
+            include: ["arrangement-clips"],
+          },
+        }),
+      ).arrangementClipCount ?? 0;
+    const before = await clipCount();
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/l1[41|1]`,
+        takeLane: "2",
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+
+    await sleep(100);
+    expect(await clipCount()).toBe(before);
+  });
+
+  it("refuses the deprecated slot sent with trackIndex and sceneIndex", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${EMPTY_MIDI_TRACK}/9`,
+        trackIndex: EMPTY_MIDI_TRACK,
+        sceneIndex: 9,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "slot names the destination on its own - don't send trackIndex or sceneIndex with it",
+    );
+  });
+
   it("creates arrangement MIDI clips", async () => {
     // Test: Create arrangement clip
     const arrangementResult = await ctx.client!.callTool({
@@ -221,8 +296,52 @@ describe("ppal-create-clip", () => {
     });
     const arrangementClip = parseToolResult<ReadClipResult>(verifyArrangement);
 
-    expect(arrangementClip.view).toBe("arrangement");
+    expect(arrangementClip.path).toMatch(/^t\d+(\/l\d+)?\[/);
     expect(arrangementStartOf(arrangementClip)).toBe("41|1");
+  });
+
+  it("refuses a multi-destination call whose last position is past the last Live allows, leaving no clips or take lanes", async () => {
+    const pastTheEnd =
+      "arrangementStart is past the last position Live allows (";
+
+    // Main lane: the clip at 1|1 must not exist once the second is refused.
+    const mainLanes = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}[1|1],t${EMPTY_MIDI_TRACK}[999999|1]`,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(isToolError(mainLanes)).toBe(true);
+    expect(getToolErrorMessage(mainLanes)).toContain(pastTheEnd);
+
+    // Take lanes can't be deleted, so one made for the first destination would
+    // outlive the refusal.
+    const takeLanes = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/l0[1|1],t${EMPTY_MIDI_TRACK}/l1[999999|1]`,
+        notes: "C3 1|1",
+      },
+    });
+
+    expect(isToolError(takeLanes)).toBe(true);
+    expect(getToolErrorMessage(takeLanes)).toContain(pastTheEnd);
+
+    await sleep(100);
+    expect(
+      await readArrangementClips(ctx.client!, EMPTY_MIDI_TRACK),
+    ).toStrictEqual([]);
+
+    const track = parseToolResult<{ takeLaneCount?: number }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}` },
+      }),
+    );
+
+    expect(track.takeLaneCount ?? 0).toBe(0);
   });
 
   it("accepts n<count>bar as an alias for <count>bar in the length field", async () => {
@@ -284,7 +403,7 @@ describe("ppal-create-clip", () => {
 
   it("counts a deleted note once when a bar copy duplicates it", async () => {
     // The same bar copy as above makes 88 hats, of which 64 are distinct. A
-    // transform that zeroes them deletes 64 notes, so the count must say 64
+    // transform that zeroes them deletes 64 notes, so `deletedNotes` must say 64
     // (and the duration warning too), not 88.
     const notes =
       "v45 n/16 Gb1 1|1x8@n/8 v60 B1 1|2.5 @2-8=1 v95 C1 5|1,2,3,4 @6-8=5 v60 D1 8|3.5x6@n/16";
@@ -299,7 +418,10 @@ describe("ppal-create-clip", () => {
       },
     });
 
-    expect(parseToolResult<CreateClipResult>(byVelocity).transformed).toBe(64);
+    expect(
+      parseToolResult<CreateClipResult & { deletedNotes?: number }>(byVelocity)
+        .deletedNotes,
+    ).toBe(64);
 
     const byDuration = await ctx.client!.callTool({
       name: "ppal-create-clip",
@@ -310,15 +432,16 @@ describe("ppal-create-clip", () => {
         transforms: "Gb1: duration = 0",
       },
     });
-    const { data, warnings } =
-      parseToolResultWithWarnings<CreateClipResult>(byDuration);
+    const { data, warnings } = parseToolResultWithWarnings<
+      CreateClipResult & { deletedNotes?: number }
+    >(byDuration);
 
-    expect(data.transformed).toBe(64);
-    expect(warnings).toStrictEqual([
-      expect.stringContaining(
-        "64 note(s) deleted: transform drove duration to 0 or below",
-      ),
-    ]);
+    expect(data.deletedNotes).toBe(64);
+    expect(data.transformed).toBe(0);
+    expect(data.detail).toContain(
+      "64 note(s) deleted: duration went to 0 or below",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 
   it("refuses a clip the track cannot hold", async () => {
@@ -326,7 +449,7 @@ describe("ppal-create-clip", () => {
     // create calls answer with another object — the Live Set (id 1). Reported
     // as created, that id aimed every follow-up call at the Live Set. So the
     // track is checked before the create. One destination, so the refusal comes
-    // back as the call's error rather than an entry (ADR-0042).
+    // back as the call's error rather than an entry.
     const midiOnAudio = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: { path: `t${AUDIO_TRACK}[61|1]`, name: "empty" },
@@ -477,7 +600,7 @@ describe("ppal-create-clip", () => {
       parseToolResult<ReadClipResult>(verifyAudioSession);
 
     expect(audioSessionClip.type).toBe("audio");
-    expect(audioSessionClip.view).toBe("session");
+    expect(audioSessionClip.path).toMatch(/^t\d+\/s\d+$/);
 
     // Test 2: Create audio clip in arrangement view
     const audioArrangementResult = await ctx.client!.callTool({
@@ -503,7 +626,7 @@ describe("ppal-create-clip", () => {
     );
 
     expect(audioArrangementClip.type).toBe("audio");
-    expect(audioArrangementClip.view).toBe("arrangement");
+    expect(audioArrangementClip.path).toMatch(/^t\d+(\/l\d+)?\[/);
     expect(arrangementStartOf(audioArrangementClip)).toBe("17|1");
 
     // Test 3: Create audio clip with name and color

@@ -55,7 +55,7 @@ function mockSearchRoute(items: unknown[]): void {
  * Build a minimal DB library item with the given name and useCount.
  *
  * @param name - Item name (also its leaf path)
- * @param useCount - Usage count driving the default (use_count desc) sort
+ * @param useCount - Usage count driving the default (use-count desc) sort
  * @returns A LibraryItem-shaped object sourced from the DB ("user")
  */
 function dbItem(name: string, useCount: number): Record<string, unknown> {
@@ -77,7 +77,7 @@ function dbItem(name: string, useCount: number): Record<string, unknown> {
  *
  *   upstream: b(1), a(3), c(2)
  *   name:     a, b, c
- *   use_count desc (default): a(3), c(2), b(1)
+ *   use-count desc (default): a(3), c(2), b(1)
  *   mod_date (DB upstream order preserved): b, a, c
  */
 function mockDiscriminatingSortRoute(): void {
@@ -115,7 +115,9 @@ async function expectFolderScanSkipped(
 
   assertItems(result);
 
-  expect(result.items.find((i) => i.source === "sampleFolder")).toBeUndefined();
+  expect(
+    result.items.find((i) => i.source === "sample-folder"),
+  ).toBeUndefined();
   expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
 }
 
@@ -213,13 +215,13 @@ describe("library tool — action dispatch", () => {
     expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
   });
 
-  it("dispatches listTags action to library.listTags route", async () => {
+  it("dispatches list-tags action to library.listTags route", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
       result: { dbAvailable: true, tags: [] },
     });
 
-    await library({ action: "listTags", limit: 50 });
+    await library({ action: "list-tags", limit: 50 });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listTags",
@@ -227,13 +229,13 @@ describe("library tool — action dispatch", () => {
     );
   });
 
-  it("dispatches listCategories action, forwarding category + limit", async () => {
+  it("dispatches list-categories action, forwarding category + limit", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
       result: { dbAvailable: true, category: "Drums", tags: [] },
     });
 
-    await library({ action: "listCategories", category: "Drums", limit: 5 });
+    await library({ action: "list-categories", category: "Drums", limit: 5 });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listCategories",
@@ -248,7 +250,7 @@ describe("library tool — action dispatch", () => {
     });
 
     await expect(library({ query: "kick" })).rejects.toThrow(
-      "library.search failed: Live database not found",
+      "Live database not found",
     );
   });
 
@@ -269,8 +271,8 @@ describe("library tool — action dispatch", () => {
     // missing result must still throw, not resolve to an undefined payload.
     vi.mocked(protocolMock.requestNode).mockResolvedValue({ success: true });
 
-    await expect(library({ action: "listTags" })).rejects.toThrow(
-      "library.listTags failed",
+    await expect(library({ action: "list-tags" })).rejects.toThrow(
+      "unknown error",
     );
   });
 });
@@ -306,11 +308,11 @@ describe("library tool — folder scan integration", () => {
     expect(names).toContain("kick.wav");
     expect(names).toContain("snare.wav");
     expect(names).toContain("clap.wav");
-    // Folder items get source: "sampleFolder", kind: "audio", and empty tags
+    // Folder items get source: "sample-folder", kind: "audio", and empty tags
     // (the folder scan only surfaces audio and carries no tag metadata).
     const kick = result.items.find((i) => i.name === "kick.wav");
 
-    expect(kick?.source).toBe("sampleFolder");
+    expect(kick?.source).toBe("sample-folder");
     expect(kick?.kind).toBe("audio");
     expect(kick?.tags).toStrictEqual([]);
   });
@@ -326,7 +328,7 @@ describe("library tool — folder scan integration", () => {
 
     assertItems(result);
 
-    const kick = result.items.find((i) => i.source === "sampleFolder");
+    const kick = result.items.find((i) => i.source === "sample-folder");
 
     // Folder-scan items came from a live filesystem enumeration, so they're
     // reported as existing without a redundant re-stat.
@@ -354,7 +356,7 @@ describe("library tool — folder scan integration", () => {
 
     expect(kicks).toHaveLength(1);
     // Folder wins (it's user-explicit)
-    expect(kicks[0]?.source).toBe("sampleFolder");
+    expect(kicks[0]?.source).toBe("sample-folder");
   });
 
   it("skips folder scan when source is a DB-only category", async () => {
@@ -369,15 +371,15 @@ describe("library tool — folder scan integration", () => {
     assertItems(result);
 
     expect(
-      result.items.find((i) => i.source === "sampleFolder"),
+      result.items.find((i) => i.source === "sample-folder"),
     ).toBeUndefined();
   });
 
-  it("source: 'sampleFolder' returns folder items only and skips DB call", async () => {
+  it("source: 'sample-folder' returns folder items only and skips DB call", async () => {
     mockSampleFolder("kick.wav");
 
     const result = await library(
-      { source: "sampleFolder" },
+      { source: "sample-folder" },
       { sampleFolder: "/samples/" },
     );
 
@@ -604,7 +606,7 @@ describe("library tool — folder scan integration", () => {
     ]);
 
     const result = await library(
-      { sort: "mod_date" },
+      { sort: "mod-date" },
       { sampleFolder: "/samples/" },
     );
 
@@ -634,11 +636,11 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
 
-  it("surfaces a reason when source=sampleFolder is requested with no sampleFolder", async () => {
+  it("surfaces a reason when source=sample-folder is requested with no sampleFolder", async () => {
     // Regression vs the old ppal-context search: silently returning [] makes
     // the LLM tell the user "no samples found"; the reason field lets it say
     // "you need to configure a sample folder".
-    const result = await library({ source: "sampleFolder" }, {});
+    const result = await library({ source: "sample-folder" }, {});
 
     assertItems(result);
 
@@ -727,7 +729,7 @@ describe("library tool — sort ordering (DB partition)", () => {
     vi.clearAllMocks();
   });
 
-  it("default sort orders the DB partition by use_count desc (name tiebreak)", async () => {
+  it("default sort orders the DB partition by use-count desc (name tiebreak)", async () => {
     mockDiscriminatingSortRoute();
 
     const result = await library({}, {});
@@ -758,7 +760,7 @@ describe("library tool — sort ordering (DB partition)", () => {
   it("sort=mod_date preserves the DB's upstream order for mixed-source items", async () => {
     mockDiscriminatingSortRoute();
 
-    const result = await library({ sort: "mod_date" }, {});
+    const result = await library({ sort: "mod-date" }, {});
 
     assertItems(result);
 

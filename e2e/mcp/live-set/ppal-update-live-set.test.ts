@@ -96,6 +96,19 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  // Live would turn 4/3 into 4/2, so the call is refused before it writes.
+  it("refuses a time signature with a denominator Live would change", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { timeSignature: "4/3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'timeSignature "4/3" has a denominator Live can\'t keep',
+    );
+  });
+
   it("reads back a noisy tempo rounded to Live's 2dp display precision", async () => {
     const { originalTempo } = await readLiveSetOriginals();
 
@@ -152,10 +165,7 @@ describe("ppal-update-live-set", () => {
     });
     const disableResult = parseToolResult<UpdateResult>(disableScale);
 
-    expect(disableResult.scale).toBeUndefined();
-    expect(disableResult.$meta).toContain(
-      "Scale disabled for selected clips and defaults for new clips.",
-    );
+    expect(disableResult).toStrictEqual({ id: expect.any(String) });
 
     // Test 3: Update multiple parameters at once
     const multiUpdate = await ctx.client!.callTool({
@@ -251,6 +261,18 @@ describe("ppal-update-live-set", () => {
     });
 
     expect(parseToolResult<ReadResult>(after).tempo).toBe(originalTempo);
+  });
+
+  it("refuses a call that asks for nothing", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {},
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "nothing to update: send a param to change",
+    );
   });
 
   it("creates, renames, and deletes locators", async () => {
@@ -487,7 +509,6 @@ describe("ppal-update-live-set", () => {
 
     expect(deleted.locator).toStrictEqual([
       {
-        operation: "delete",
         id: soloId,
         detail: 'named again as "6|1" later in this call',
       },
@@ -557,9 +578,7 @@ describe("ppal-update-live-set", () => {
         locatorName: "E2E Other",
       }),
     ).toStrictEqual({
-      operation: "skipped",
       time: "5|1",
-      name: "E2E Other",
       ok: false,
       detail: "not created: a locator is already at 5|1; rename it instead",
     });
@@ -605,22 +624,34 @@ describe("ppal-update-live-set", () => {
     expect(await readLocatorList()).toStrictEqual(before);
   });
 
-  it('refuses a null locator name instead of naming a locator "null"', async () => {
-    // The MCP SDK validates before our handler runs, so only a real call
-    // proves the schema the server registered doesn't coerce it.
-    const before = await readLocatorList();
+  it('drops a null locator name instead of naming a locator "null"', async () => {
+    // The MCP SDK coerces args before our handler runs, so only a real call
+    // proves a null reaches it as unsent.
+    const created = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "4|1",
+          locatorName: null,
+        },
+      }),
+    );
+    const id = created.locator?.id;
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-live-set",
-      arguments: {
-        locatorOperation: "create",
-        locatorTime: "4|1",
-        locatorName: null,
-      },
-    });
+    await sleep(100);
 
-    expect(isToolError(result)).toBe(true);
-    expect(await readLocatorList()).toStrictEqual(before);
+    try {
+      const locator = (await readLocatorList()).find((l) => l.id === id);
+
+      expect(locator).toBeDefined();
+      expect(locator?.name).not.toBe("null");
+    } finally {
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorId: id },
+      });
+    }
   });
 
   it("takes a locator name made of digits", async () => {
@@ -673,7 +704,7 @@ describe("ppal-update-live-set", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "locatorTime, locatorName require locatorOperation",
+      "locatorTime, locatorName are only for locatorOperation",
     );
 
     const after = await ctx.client!.callTool({
@@ -684,6 +715,25 @@ describe("ppal-update-live-set", () => {
     expect(parseToolResult<ReadResult>(after).locators ?? []).toStrictEqual(
       locatorsBefore,
     );
+  });
+
+  it("refuses locatorId on create and adds no locator", async () => {
+    const before = await readLocatorList();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorId: "1",
+        locatorTime: "45|1",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toBe(
+      'Error: locatorId is only for locatorOperation "delete" or "rename"; this call has locatorOperation "create". Change the locatorOperation or drop locatorId.',
+    );
+    expect(await readLocatorList()).toStrictEqual(before);
   });
 });
 
@@ -715,7 +765,7 @@ interface ReadResult {
 /** A call naming several locators answers with one entry each, in order. */
 interface UpdateLocatorListResult {
   locator?: Array<{
-    operation: string;
+    operation?: string;
     id?: string;
     name?: string;
     time?: string;
@@ -731,9 +781,8 @@ interface UpdateResult {
   scale?: string;
   scalePitches?: string;
   detail?: string;
-  $meta?: string[];
   locator?: {
-    operation: string;
+    operation?: string;
     id?: string;
     name?: string;
     time?: string;

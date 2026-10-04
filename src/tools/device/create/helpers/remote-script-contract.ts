@@ -15,16 +15,15 @@ export const REMOTE_SCRIPT_ROUTES = {
   hotswap: "remoteScript.hotswap",
 } as const;
 
-// Node's waits outlast the remote script's 30s. V8's does too unless the
-// request's deadline is nearer, so each change V8 asks for carries an expiry a
-// bit under V8's wait. Live skips a job it hasn't started by then, rather than
-// make a change V8 already reported as failed.
+// One deadline covers the lookup and the load of a create-device call. V8 waits
+// until the request's deadline, and hands each step an expiry a bit under its
+// wait. Node derives every HTTP wait from that expiry, so the steps don't stack
+// their own limits, and the remote script skips a job it hasn't started by then
+// rather than make a change V8 already reported as failed. The fixed waits
+// below are for calls that carry no expiry.
 
-/** Node's wait for one HTTP reply. Longer than the remote script's own 30s. */
+/** Node's wait for one HTTP reply that carries no expiry. */
 export const REMOTE_SCRIPT_HTTP_TIMEOUT_MS = 35_000;
-
-/** How long Node lets a remote-script route run. */
-export const REMOTE_SCRIPT_ROUTE_TIMEOUT_MS = 40_000;
 
 /**
  * How long V8 waits for a remote-script route. Cut short to fit the request's
@@ -34,12 +33,25 @@ export const REMOTE_SCRIPT_ROUTE_TIMEOUT_MS = 40_000;
 export const REMOTE_SCRIPT_REQUEST_TIMEOUT_MS = 45_000;
 
 /**
+ * How long Node lets a remote-script route run. A backstop: the route's own
+ * waits end sooner.
+ */
+export const REMOTE_SCRIPT_ROUTE_TIMEOUT_MS = REMOTE_SCRIPT_REQUEST_TIMEOUT_MS;
+
+/**
  * How much sooner than V8's wait a change expires. Covers the trip to the
  * remote script and back, where Max and Node can each stall under load, plus a
  * typical load. A job that starts in time but runs past V8's wait still lands
  * after V8 reported it failed.
  */
 export const REMOTE_SCRIPT_EXPIRY_MARGIN_MS = 2000;
+
+/**
+ * The most Node waits past a request's expiry for the reply to a job Live
+ * started in time. Never more than half the expiry, so Node answers before V8
+ * stops waiting.
+ */
+export const REMOTE_SCRIPT_REPLY_GRACE_MS = 1000;
 
 /** Something in Live's browser the remote script can load. */
 export interface BrowserItem {
@@ -68,22 +80,30 @@ export interface PresetScope {
   orAnywhere?: boolean;
 }
 
-/** What remoteScript.resolve answers. `error` is worded for the model. */
+/**
+ * What remoteScript.resolve answers. `error` is worded for the model;
+ * `outOfTime` marks a search that ran out of its time, not one that found a
+ * problem.
+ */
 export type BrowserItemResolution =
   | { available: false }
   | { available: true; item: BrowserItem }
-  | { available: true; error: string };
+  | { available: true; error: string; outOfTime?: true };
 
-/** What remoteScript.load answers. `error` is worded for the model. */
+/**
+ * What remoteScript.load answers. `error` is worded for the model; `unfinished`
+ * marks a load that timed out after Live may have started it.
+ */
 export type BrowserItemLoad =
   | { available: false }
-  | { available: true; error?: string };
+  | { available: true; error?: string; unfinished?: true };
 
 /**
  * What remoteScript.hotswap answers: whether Live put a new device in place of
- * the old one. `error` is worded for the model.
+ * the old one. `error` is worded for the model; `unfinished` marks a load that
+ * timed out after Live may have started it.
  */
 export type BrowserItemHotswap =
   | { available: false }
   | { available: true; replaced: boolean }
-  | { available: true; error: string };
+  | { available: true; error: string; unfinished?: true };

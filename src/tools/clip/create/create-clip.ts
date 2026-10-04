@@ -3,522 +3,73 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
-import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
-import {
-  type PairedLabels,
-  pairLabels,
-} from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
-import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import {
-  type ArrangementPosition,
-  type ClipDestinations,
-  resolveCreateClipDestinations,
-  type DestinationRef,
-} from "./helpers/create-clip-destinations.ts";
-import { buildClipPlans, type ClipPlan } from "./helpers/clip-plans.ts";
-import {
-  createClipBlocker,
-  createClips,
-  type CreatedClipEntry,
-} from "./helpers/create-clips-loop.ts";
+import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
+import { type WriteSpec } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type ClipResultObject } from "./helpers/created-clip-result.ts";
+import { type CreateClipArgs } from "./helpers/call/create-clip-args.ts";
 import {
-  readSongMeter,
-  resolveCreateClipTakeLanes,
-  validateArrangementPositions,
-} from "./helpers/clip-timing-context.ts";
+  type CreatePayload,
+  createClipTargets,
+} from "./helpers/call/create-clip-targets.ts";
+import { type CreateRun, newCreateRun } from "./helpers/call/create-run.ts";
 import {
-  handleAutoPlayback,
-  validateCreateClipParams,
-  validateDestinationTracks,
-  validatePositions,
-  warnAudioOnlyMidiParams,
-  warnMidiOnlyAudioParams,
-} from "./helpers/create-clip-validation.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-
-export interface CreateClipArgs {
-  /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
-  path?: string | null;
-  /** Deprecated session clip slot(s), trackIndex/sceneIndex comma-separated */
-  slot?: string | null;
-  /** Hidden alias for path: track index (0-based) */
-  trackIndex?: number | null;
-  /** Hidden alias for path: scene index (0-based), with trackIndex */
-  sceneIndex?: number | null;
-  /** Song position(s), bar|beat or `loc:<locator>`, comma-separated */
-  arrangementStart?: string | null;
-  /** Musical notation string (MIDI clips only) */
-  notes?: string | null;
-  /** Transform expressions */
-  transforms?: string | null;
-  /** Absolute path to audio file (audio clips only) */
-  sampleFile?: string | null;
-  /** Base name for the clips */
-  name?: string | null;
-  /** Color in #RRGGBB hex format */
-  color?: string | null;
-  /** Time signature in format "4/4" */
-  timeSignature?: string | null;
-  /** Bar|beat position where loop/clip region begins */
-  start?: string | null;
-  /** Clip length: <count>bar, n<fraction> note value, or <count>bar+n<fraction> */
-  length?: string | null;
-  /** Bar|beat position for initial playback start */
-  firstStart?: string | null;
-  /** Enable looping for the clip */
-  looping?: boolean | null;
-  /** Audio clips only: warp state, or null to keep Live's own choice */
-  warping?: boolean | null;
-  /** Audio clip gain in decibels (-70 to 24) */
-  gainDb?: number | null;
-  /** Audio clip pitch shift in semitones (-48 to 48) */
-  pitchShift?: number | null;
-  /** Audio clip warp mode */
-  warpMode?: string | null;
-  /** Automatic playback action */
-  auto?: string | null;
-  /** Select the created clip and show clip detail view */
-  focus?: boolean;
-  /** JavaScript code to generate notes (MIDI clips only) */
-  code?: string | null;
-  /** Arrangement take lane target: 0/omitted = main lane, 1+ = that lane */
-  takeLane?: number | string | null;
-  /** Deprecated: name for a take lane newly created by this call */
-  takeLaneName?: string | null;
-}
+  type CreateClipCall,
+  parseCreateCall,
+} from "./helpers/call/parse-create-call.ts";
+import { settleCreatedClips } from "./helpers/call/settle-created-clips.ts";
+import { writeCreatedClip } from "./helpers/call/write-created-clip.ts";
 
 /**
- * Creates MIDI or audio clips in Session or Arrangement view
- * @param args - The clip parameters
- * @param args.path - Where the clip(s) go, comma-separated for multiple
- * @param args.slot - Deprecated session clip slot(s), trackIndex/sceneIndex
- * @param args.trackIndex - Hidden alias for path: track index
- * @param args.sceneIndex - Hidden alias for path: scene index, with trackIndex
- * @param args.arrangementStart - Song position(s), bar|beat or `loc:`, comma-separated
- * @param args.notes - Musical notation string (MIDI clips only)
- * @param args.transforms - Transform expressions
- * @param args.sampleFile - Absolute path to audio file (audio clips only)
- * @param args.name - Base name for the clips
- * @param args.color - Color in #RRGGBB hex format
- * @param args.timeSignature - Time signature in format "4/4"
- * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Clip length: <count>bar, n<fraction> note value, or <count>bar+n<fraction>
- * @param args.firstStart - Bar|beat position for initial playback start
- * @param args.looping - Enable looping for the clip
- * @param args.warping - Audio warp state, or null to keep Live's own choice
- * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
- * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
- * @param args.warpMode - Audio clip warp mode
- * @param args.auto - Automatic playback action
- * @param args.focus - Select the created clip and show clip detail view
- * @param args.code - JavaScript code to generate notes (MIDI clips only)
- * @param args.takeLane - Arrangement take lane target (0/omitted = main, 1+ = lane)
- * @param args.takeLaneName - Deprecated: name for a lane this call creates
- * @param _context - Tool execution context (timeout, notation, smallModelMode)
- * @returns Single clip object when one position, array when multiple positions
+ * Creates MIDI or audio clips in Session or Arrangement view, one per
+ * destination named. A destination that got no clip keeps its place in the
+ * result as a skip entry.
+ * @param args - The clip params (see CreateClipArgs); `path` says where the
+ *   clips go, comma-separated for several
+ * @param context - Per-request context: the deadline, the notation
+ * @returns The clip when one destination was named, otherwise one entry per
+ *   destination
  */
 export async function createClip(
-  {
-    // No `= null` defaults: these four only get forwarded to the destination
-    // resolver, which already reads an absent one as unset.
-    path,
-    slot,
-    trackIndex,
-    sceneIndex,
-    arrangementStart = null,
-    notes: notationString = null,
-    transforms: transformString = null,
-    sampleFile = null,
-    name = null,
-    color = null,
-    timeSignature = null,
-    start = null,
-    length = null,
-    firstStart = null,
-    looping = null,
-    warping = null,
-    gainDb,
-    pitchShift,
-    warpMode,
-    auto = null,
-    focus,
-    code = null,
-    takeLane = null,
-    takeLaneName = null,
-  }: CreateClipArgs,
-  _context: Partial<ToolContext> = {},
+  args: CreateClipArgs,
+  context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
-  const audio = { warping, gainDb, pitchShift, warpMode };
-
-  // Treat a blank/whitespace-only transforms string as "no transform".
-  transformString = normalizeTransforms(transformString);
-
-  // A "[...]" in path and arrangementStart are two spellings of one position,
-  // so there is no combined reading.
-  refuseDoubledPosition(path, arrangementStart, "path");
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  // Rewrite every `loc:` position as the bar|beat it names, once, before the
-  // list is split. Everything downstream sees bar|beat and needs no Live Set.
-  arrangementStart = resolveArrangementLocators(liveSet, arrangementStart);
-
-  // Resolve where the clips go before touching Live, so a bad destination fails
-  // instead of creating half of them somewhere else.
-  const destinations = resolveCreateClipDestinations(
-    { path, slot, trackIndex, sceneIndex, takeLane },
-    arrangementStart,
+  // Every arrangement write in the call shares the one lane view the context
+  // carries meanwhile.
+  return await sharingLaneView(
+    context,
+    async () =>
+      await runWrite(createClipSpec(newCreateRun(context)), args, context),
   );
-  const { clipSlots, arrangementPositions, order } = destinations;
-
-  validatePositions(destinations);
-  refuseListsOffCount(
-    destinations,
-    { path, slot, arrangementStart },
-    {
-      name,
-      color,
-      sampleFile,
-      timeSignature,
-      start,
-      length,
-      firstStart,
-    },
-  );
-
-  // Validate parameters
-  validateCreateClipParams(notationString, sampleFile);
-  warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
-  warnAudioOnlyMidiParams(sampleFile, audio);
-  const tracks = validateDestinationTracks(destinations);
-
-  const song = readSongMeter(liveSet);
-
-  // sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
-  // positions, so each clip gets its own sample, meter and region.
-  const plans = buildClipPlans({
-    count: order.length,
-    song,
-    sampleFile,
-    timeSignature,
-    start,
-    length,
-    firstStart,
-    looping,
-    notationString,
-    transformString,
-    notation: _context.notation,
-  });
-
-  const { parsedNames, parsedColors } = clipLabels(name, color, order.length);
-
-  // Before any clip or take lane exists: a position that won't parse has to
-  // stop the call while there is still nothing to report.
-  validateArrangementPositions(
-    arrangementPositions,
-    song.songTimeSigNumerator,
-    song.songTimeSigDenominator,
-  );
-
-  // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap
-  // replaces existing clips, like the main lane. Live can't delete a lane, so a
-  // destination whose track will refuse the clip gets none; its entry says why.
-  const { lanes: takeLanes, dropped: droppedTakeLanes } =
-    resolveCreateClipTakeLanes(
-      takeLaneName,
-      positionsTracksTake(destinations, plans, tracks),
-    );
-
-  const createdClips = await createClips({
-    order,
-    takeLanes,
-    droppedTakeLanes,
-    tracks,
-    clipSlots,
-    arrangementPositions,
-    baseName: name,
-    parsedNames,
-    parsedColors,
-    plans,
-    liveSet,
-    looping,
-    color,
-    notationString,
-    transformString,
-    songTimeSigNumerator: song.songTimeSigNumerator,
-    songTimeSigDenominator: song.songTimeSigDenominator,
-    // Set once per request by the V8 adapter (see buildRequestContext).
-    deadline: _context.deadline,
-    code,
-    ...audio,
-  });
-
-  noteIgnoredFirstStart(createdClips, plans);
-
-  return finalizeCreatedClips({
-    entries: createdClips,
-    order,
-    auto,
-    clipSlots,
-    focus,
-  });
 }
 
 /**
- * Refuse a per-clip list that doesn't name one entry per clip, before any clip
- * is created.
- *
- * Checked against the clips the destinations make, not the raw path: one track
- * takes every arrangementStart position, so `"t0/s0,t1"` with two positions
- * makes three clips. A single clip is checked against the raw destination
- * params instead: a count of 1 is never a list, so a trailing comma
- * (`path: "t0/s0,"`) would otherwise hide a mismatch.
- * @param destinations - Where the clips go, already resolved
- * @param raw - The destination params as sent
- * @param lists - The call's per-clip list params
+ * The hooks of one create-clip call. Built per call: the targets share what
+ * the run keeps, and nothing of it outlives the request.
+ * @param run - The call's shared state
+ * @returns The spec to run the call with
  */
-function refuseListsOffCount(
-  destinations: ClipDestinations,
-  raw: Pick<CreateClipArgs, "path" | "slot" | "arrangementStart">,
-  lists: Pick<
-    CreateClipArgs,
-    | "name"
-    | "color"
-    | "sampleFile"
-    | "timeSignature"
-    | "start"
-    | "length"
-    | "firstStart"
-  >,
-): void {
-  const { countedBy, order } = destinations;
-  const counted =
-    order.length > 1
-      ? [{ ...countedBy, count: order.length }]
-      : [
-          {
-            param: raw.path != null ? "path" : "slot",
-            value: raw.path ?? raw.slot,
-            isPath: true,
-            target: true,
-          },
-          {
-            param: "arrangementStart",
-            value: raw.arrangementStart,
-            target: true,
-          },
-        ];
+function createClipSpec(
+  run: CreateRun,
+): WriteSpec<
+  CreateClipArgs,
+  CreateClipCall,
+  CreatePayload,
+  CreateClipCall,
+  ClipResultObject
+> {
+  return {
+    tool: "ppal-create-clip",
+    words: { rerun: "clip" },
 
-  validateListLengths([
-    ...counted,
-    ...Object.entries(lists).map(([param, value]) => ({ param, value })),
-  ]);
-}
+    parse: parseCreateCall,
+    targets: createClipTargets,
+    // Nothing to look up: take lanes are made when a target first needs one,
+    // so a target the call never reaches (the deadline, say) makes none.
+    check: (call) => call,
 
-/**
- * The arrangement destinations whose track can take the clip planned there.
- * @param destinations - Every destination, in call order
- * @param destinations.order - Which bucket each destination is in
- * @param destinations.arrangementPositions - The arrangement destinations
- * @param plans - What each destination is built from, in call order
- * @param tracks - Every destination track, keyed by track index
- * @returns The arrangement positions the track won't refuse
- */
-function positionsTracksTake(
-  { order, arrangementPositions }: ClipDestinations,
-  plans: ClipPlan[],
-  tracks: Map<number, LiveAPI>,
-): ArrangementPosition[] {
-  return order.flatMap((ref, index) => {
-    if (ref.view !== "arrangement") {
-      return [];
-    }
+    write: (target, step) => writeCreatedClip(run, target, step),
 
-    const position = arrangementPositions[ref.index] as ArrangementPosition;
-    // Truthiness, like the create loop: an empty sampleFile makes a MIDI clip.
-    const blocker = createClipBlocker(
-      !plans[index]?.sampleFile,
-      position,
-      tracks.get(position.trackIndex),
-    );
-
-    return blocker == null ? [position] : [];
-  });
-}
-
-/**
- * Resolve any `loc:` entry in arrangementStart to the bar|beat it names.
- * @param liveSet - The live_set LiveAPI object, for the locator lookups
- * @param arrangementStart - The position list as the caller wrote it, or null
- * @returns The list with every locator resolved, unchanged when there are none
- */
-function resolveArrangementLocators(
-  liveSet: LiveAPI,
-  arrangementStart: string | null,
-): string | null {
-  if (arrangementStart == null) {
-    return null;
-  }
-
-  return resolveLocatorPositions(liveSet, arrangementStart, {
-    paramName: "arrangementStart",
-  });
-}
-
-/**
- * Normalize a blank/whitespace-only transforms string to null so both the
- * dedupe-warning path (prepareClipData) and per-clip resolveClipTransform treat
- * it as "no transform". An LLM-supplied `transforms: ""` otherwise skips the
- * "Dropped N duplicate note(s)" warning while applyTransforms no-ops on "", and
- * a whitespace-only string would reach applyTransforms and throw a parse error.
- * @param transformString - Raw transforms param, or null
- * @returns The original string when it has non-whitespace content, else null
- */
-function normalizeTransforms(transformString: string | null): string | null {
-  return transformString?.trim() ? transformString : null;
-}
-
-interface FinalizeArgs {
-  /** One entry per destination, in call order */
-  entries: CreatedClipEntry[];
-  order: DestinationRef[];
-  auto: string | null;
-  clipSlots: ClipSlotPosition[];
-  focus: boolean | undefined;
-}
-
-/**
- * Handle auto-playback and focus for the created clips, then unwrap the result.
- * @param args - The call's entries and the params that act on them
- * @param args.entries - One entry per destination, in call order
- * @param args.order - Every destination, in the order the call named it
- * @param args.auto - Automatic playback action
- * @param args.clipSlots - Parsed clip slot positions
- * @param args.focus - Whether to select the last created clip
- * @returns Single clip object when one, array when multiple
- * @throws Error when the call named one destination and it got no clip
- */
-function finalizeCreatedClips({
-  entries,
-  order,
-  auto,
-  clipSlots,
-  focus,
-}: FinalizeArgs): CreatedClipEntry | CreatedClipEntry[] {
-  // A lone destination that got no clip has no list for an entry to hold a
-  // place in, so its reason goes back as the error it would have been.
-  const refusal = loneRefusal(entries);
-
-  if (refusal != null) {
-    throw new Error(refusal);
-  }
-
-  // Launch only the slots that got a clip: firing an empty slot stops its
-  // track, and play-scene should fire a scene holding something new.
-  handleAutoPlayback(
-    auto,
-    "session",
-    slotsWithClips(entries, order, clipSlots),
-  );
-
-  // Focus one clip: arrangement gets priority over the session whatever order
-  // the call named them in (the arrangement is where the final song lives).
-  const lastClip =
-    lastClipInView(entries, order, "arrangement") ??
-    lastClipInView(entries, order, "session");
-
-  if (focus && lastClip != null) {
-    focusSelect({ id: lastClip.id, detailView: "clip" });
-  }
-
-  return unwrapSingleResult(entries);
-}
-
-/**
- * The clip slots that got a clip, in call order.
- * @param entries - One entry per destination, in call order
- * @param order - Every destination, in the order the call named it
- * @param clipSlots - Parsed clip slot positions
- * @returns The slots whose destination made a clip
- */
-function slotsWithClips(
-  entries: CreatedClipEntry[],
-  order: DestinationRef[],
-  clipSlots: ClipSlotPosition[],
-): ClipSlotPosition[] {
-  return order.flatMap((ref, i) => {
-    const entry = entries[i] as CreatedClipEntry;
-
-    return ref.view === "session" && !("ok" in entry)
-      ? [clipSlots[ref.index] as ClipSlotPosition]
-      : [];
-  });
-}
-
-/**
- * The last clip the call made in one view.
- * @param entries - One entry per destination, in call order
- * @param order - Every destination, in the order the call named it
- * @param view - "session" or "arrangement"
- * @returns The clip, or null when the call made none there
- */
-function lastClipInView(
-  entries: CreatedClipEntry[],
-  order: DestinationRef[],
-  view: "session" | "arrangement",
-): ClipResultObject | null {
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i] as CreatedClipEntry;
-
-    if (order[i]?.view === view && !("ok" in entry)) {
-      return entry;
-    }
-  }
-
-  return null;
-}
-
-/**
- * The names and colors for the positions this call fills
- * @param name - The raw name param
- * @param color - The raw color param
- * @param count - How many positions the call fills
- * @returns The call's name and color lists
- */
-function clipLabels(
-  name: string | null,
-  color: string | null,
-  count: number,
-): PairedLabels {
-  return pairLabels({
-    noun: "clip",
-    count,
-    name: name ?? undefined,
-    color: color ?? undefined,
-  });
-}
-
-/**
- * Say on each clip's own entry that firstStart did nothing: it sets where a
- * looping clip starts playing, and these clips don't loop.
- * @param createdClips - The clips the call made
- * @param plans - What each destination was built from, in call order
- */
-function noteIgnoredFirstStart(
-  createdClips: CreatedClipEntry[],
-  plans: ClipPlan[],
-): void {
-  for (const [index, clip] of createdClips.entries()) {
-    // A destination that got no clip already says why in its own reason.
-    if (plans[index]?.timing.firstStartIgnored && !("ok" in clip)) {
-      appendDetail(clip, "firstStart ignored: set looping: true to use it");
-    }
-  }
+    settle: (done, call) => settleCreatedClips(run, done, call),
+  };
 }

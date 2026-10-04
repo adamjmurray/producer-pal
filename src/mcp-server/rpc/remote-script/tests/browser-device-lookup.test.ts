@@ -8,6 +8,7 @@ import {
   lookUpBrowserDevice,
   normalizedName,
 } from "../browser-device-lookup.ts";
+import { RemoteScriptTimeout } from "../remote-script-client.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
@@ -19,6 +20,23 @@ import {
 type Browser = Partial<Record<string, string[]>>;
 
 let fake: FakeRemoteScript | undefined;
+
+/** A deadline far enough off that no test hits it by accident. */
+function inAMinute(): number {
+  return Date.now() + 60_000;
+}
+
+/**
+ * What the stand-in was asked, without the expiry each request carries.
+ * @returns Each request's query
+ */
+function queriesAsked(): Array<Record<string, string>> {
+  return (fake?.requests ?? []).map(({ query }) =>
+    Object.fromEntries(
+      Object.entries(query).filter(([key]) => key !== "expires_in_ms"),
+    ),
+  );
+}
 
 afterEach(async () => {
   await fake?.close();
@@ -78,7 +96,7 @@ async function lookUpIn(
 ): Promise<Awaited<ReturnType<typeof lookUpBrowserDevice>>> {
   fake = await startFakeRemoteScript((request) => listing(browser, request));
 
-  return await lookUpBrowserDevice(deviceName);
+  return await lookUpBrowserDevice(deviceName, inAMinute());
 }
 
 describe("lookUpBrowserDevice", () => {
@@ -248,7 +266,7 @@ describe("lookUpBrowserDevice", () => {
       body: { items: query.type === "plugin" ? [{ name: "Reverb" }] : "none" },
     }));
 
-    expect(await lookUpBrowserDevice("Reverb")).toHaveProperty(
+    expect(await lookUpBrowserDevice("Reverb", inAMinute())).toHaveProperty(
       "error",
       expect.stringContaining("invalid device"),
     );
@@ -256,22 +274,79 @@ describe("lookUpBrowserDevice", () => {
 
   it("reports a search the remote script failed", async () => {
     fake = await startFakeRemoteScript(() => ({
-      status: 504,
-      body: {
-        error:
-          "Live did not run the request within 30.0s; nothing changed, re-run it",
-      },
+      status: 500,
+      body: { error: "boom" },
     }));
 
-    expect(await lookUpBrowserDevice("Reverb")).toStrictEqual({
+    expect(await lookUpBrowserDevice("Reverb", inAMinute())).toStrictEqual({
       available: true,
-      error:
-        'could not search Live\'s browser for "Reverb": Live did not run the request within 30.0s; nothing changed, re-run it',
+      error: 'could not search Live\'s browser for "Reverb": boom',
     });
   });
 
+  it("gives every section's search the one deadline", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { items: [] } }));
+
+    fake = remote;
+
+    const endsAt = Date.now() + 20_000;
+
+    await lookUpBrowserDevice("Reverb", endsAt);
+
+    const expiries = remote.requests.map(({ query }) =>
+      Number(query.expires_in_ms),
+    );
+
+    expect(expiries).toHaveLength(5);
+
+    for (const expiry of expiries) {
+      expect(expiry).toBeGreaterThan(19_000);
+      expect(expiry).toBeLessThanOrEqual(20_000);
+    }
+  });
+
+  it("asks nothing once the deadline has passed", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { items: [] } }));
+
+    fake = remote;
+
+    await expect(
+      lookUpBrowserDevice("Reverb", Date.now() - 1),
+    ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+    await expect(
+      lookUpBrowserDevice("Plug-Ins/VST3/X", Date.now() - 1),
+    ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+    expect(remote.requests).toStrictEqual([]);
+  });
+
+  it("times out when the remote script skips or abandons a listing", async () => {
+    for (const error of [
+      "the request expired before Live ran it; nothing changed, re-run it",
+      "Live started the request but didn't finish it within 30.0s",
+    ]) {
+      fake = await startFakeRemoteScript(() => ({
+        status: 504,
+        body: { error },
+      }));
+
+      await expect(lookUpBrowserDevice("Reverb", inAMinute())).rejects.toThrow(
+        error,
+      );
+
+      await fake.close();
+    }
+  });
+
+  it("times out when the remote script doesn't answer in time", async () => {
+    fake = await startFakeRemoteScript(() => null);
+
+    await expect(
+      lookUpBrowserDevice("Reverb", Date.now() + 100),
+    ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+  });
+
   it("says so when the remote script isn't running", async () => {
-    expect(await lookUpBrowserDevice("Reverb")).toStrictEqual({
+    expect(await lookUpBrowserDevice("Reverb", inAMinute())).toStrictEqual({
       available: false,
     });
   });
@@ -290,7 +365,7 @@ describe("lookUpBrowserDevice", () => {
           name: "Pro-Q 4",
         },
       });
-      expect(fake?.requests.map(({ query }) => query)).toStrictEqual([
+      expect(queriesAsked()).toStrictEqual([
         { type: "plugin", recursive: "false", path: "VST/FabFilter" },
       ]);
     });
@@ -302,7 +377,7 @@ describe("lookUpBrowserDevice", () => {
         available: true,
         item: { type: "audio-effect", path: "Reverb", name: "Reverb" },
       });
-      expect(fake?.requests.map(({ query }) => query)).toStrictEqual([
+      expect(queriesAsked()).toStrictEqual([
         { type: "audio-effect", recursive: "false" },
       ]);
     });
@@ -328,14 +403,18 @@ describe("lookUpBrowserDevice", () => {
         body: { error: "boom" },
       }));
 
-      expect(await lookUpBrowserDevice("Plug-Ins/VST3/X")).toStrictEqual({
+      expect(
+        await lookUpBrowserDevice("Plug-Ins/VST3/X", inAMinute()),
+      ).toStrictEqual({
         available: true,
         error: 'could not search Live\'s browser for "Plug-Ins/VST3/X": boom',
       });
     });
 
     it("says so when the remote script isn't running", async () => {
-      expect(await lookUpBrowserDevice("Plug-Ins/VST3/X")).toStrictEqual({
+      expect(
+        await lookUpBrowserDevice("Plug-Ins/VST3/X", inAMinute()),
+      ).toStrictEqual({
         available: false,
       });
     });

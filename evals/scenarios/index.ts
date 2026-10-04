@@ -32,7 +32,10 @@ import {
   type RunContext,
 } from "./helpers/trials/run-trials.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
-import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
+import {
+  liveSetLeftOpen,
+  parseRepeatCount,
+} from "./helpers/trials/multi-trial-runs.ts";
 import {
   describeRunAbort,
   neverStartedRuns,
@@ -414,8 +417,11 @@ async function runAllScenarios(
         );
         // The run just mutated the Set, so the next model only inherits it
         // when the scenario resets what it writes. Same rule as trials 2+.
-        liveSetOpened = scenario.reuseLiveSet === true;
-        lastOpenedLiveSet = scenario.liveSet;
+        // A run that errored may have failed the open, so nothing is inherited.
+        const leftOpen = liveSetLeftOpen(results);
+
+        liveSetOpened = leftOpen && scenario.reuseLiveSet === true;
+        lastOpenedLiveSet = leftOpen ? scenario.liveSet : null;
       }
 
       modelResults.set(modelKey, new Map([[label, results]]));

@@ -9,9 +9,10 @@ import {
   codeNoteToNoteEvent,
   noteEventToCodeNote,
 } from "#src/notation/midi-json/midi-json-note.ts";
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import {
+  type CopiedNote,
   rawNotesToCopiedNotes,
   rawNotesToNoteEvents,
   readClipNotes,
@@ -37,14 +38,29 @@ export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
   return notes.map((note) => noteEventToCodeNote(note, timeSigDenominator));
 }
 
+/** What a code write put in the clip, for saying what it did to muted notes. */
+export interface AppliedNotes {
+  /** How many same-pitch+start duplicates were dropped */
+  collisions: number;
+  /** Every note written, the muted ones kept included */
+  written: NoteEvent[];
+  /** The clip's muted notes as they were before the write */
+  muted: CopiedNote[];
+}
+
 /**
  * Apply notes to a clip, replacing all its visible notes. Muted notes are
- * hidden from user code, so they stay in the clip as they were.
+ * hidden from user code, so they stay in the clip as they were, unless a user
+ * note lands on the same pitch and start.
  *
  * @param clip - LiveAPI clip object
  * @param notes - Array of notes in code-facing format
+ * @returns What was written, and the muted notes it was written beside
  */
-export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
+export function applyNotesToClip(
+  clip: LiveAPI,
+  notes: CodeNote[],
+): AppliedNotes {
   const { muted } = readClipNotes(clip);
 
   // Remove all existing notes (same window readClipNotes/read-clip use, so a
@@ -52,7 +68,7 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
   removeAllClipNotes(clip);
 
   if (notes.length === 0 && muted.length === 0) {
-    return;
+    return { collisions: 0, written: [], muted: [] };
   }
 
   // Convert musical beats back to Ableton beats, then dedupe same-pitch+start
@@ -64,23 +80,16 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const userNotes = dedupeNotesKeepingLast(
+  // Muted notes go under, so a user note at the same pitch+start replaces one.
+  const mutedNotes = rawNotesToCopiedNotes(muted);
+  const { notes: noteEvents, collisions } = dedupeAndSortNotes(
     notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
-  );
-  const collisions = notes.length - userNotes.length;
-
-  if (collisions > 0) {
-    console.warn(
-      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
-    );
-  }
-
-  // Muted notes go first, so a user note at the same pitch+start replaces one.
-  const noteEvents = sortNotes(
-    dedupeNotesKeepingLast([...rawNotesToCopiedNotes(muted), ...userNotes]),
+    mutedNotes,
   );
 
   clip.call("add_new_notes", { notes: noteEvents });
+
+  return { collisions, written: noteEvents, muted: mutedNotes };
 }
 
 /** @see getClipNoteCount - re-exported for code-exec API compatibility */

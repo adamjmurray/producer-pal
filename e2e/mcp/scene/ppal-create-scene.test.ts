@@ -306,6 +306,55 @@ describe("ppal-create-scene", () => {
     });
   });
 
+  it("refuses a path sent with sceneIndex, creating nothing", async () => {
+    const before = (await allScenes()).length;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { path: "s+", sceneIndex: 0 },
+    });
+
+    expect(getToolErrorMessage(result)).toContain(
+      "path names the destination on its own - don't send sceneIndex with it",
+    );
+
+    await sleep(100);
+    expect((await allScenes()).length).toBe(before);
+  });
+
+  it("refuses count with capture, before anything is captured", async () => {
+    const before = (await allScenes()).length;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { capture: true, count: 2, name: "Counted Capture" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "count can't be used with capture",
+    );
+
+    await sleep(100);
+    expect((await allScenes()).length).toBe(before);
+  });
+
+  // Live rounds a denominator that isn't a power of two (4/3 would become 4/2),
+  // so the call is refused before a scene is made.
+  it("refuses a time signature Live can't keep", async () => {
+    const before = (await allScenes()).length;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { path: "s+", timeSignature: "4/3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'timeSignature "4/3" has a denominator Live can\'t keep',
+    );
+
+    await sleep(100);
+    expect((await allScenes()).length).toBe(before);
+  });
+
   /**
    * The Set's scenes in order.
    * @returns The scenes, first to last

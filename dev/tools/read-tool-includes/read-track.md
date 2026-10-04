@@ -9,30 +9,30 @@ Returns track overview by default. Use `include` to add detail.
 
 ## Default response (no includes)
 
-| Field                  | Type     | Description                                                   |
-| ---------------------- | -------- | ------------------------------------------------------------- |
-| `id`                   | `string` | Track ID                                                      |
-| `path`                 | `string` | Where the track is: `"t0"`, `"rt1"`, `"mt"`                   |
-| `name`                 | `string` | Track name                                                    |
-| `type`                 | `string` | `"midi"` or `"audio"`; omitted on a return or the main track  |
-| `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
-| `groupId`              | `string` | Parent group track ID (only when grouped)                     |
-| `isArmed`              | `true`   | Only present when armed                                       |
-| `isGroup`              | `true`   | Only present for group tracks                                 |
-| `isGroupMember`        | `true`   | Only present when inside a group                              |
-| `playingSlotIndex`     | `number` | 0-based playing clip slot (only when >= 0)                    |
-| `firedSlotIndex`       | `number` | 0-based triggered clip slot (only when >= 0)                  |
-| `state`                | `string` | Only present when not "ACTIVE" (e.g., muted, soloed)          |
-| `sessionClipCount`     | `number` | Number of session clips (replaced by array when included)     |
-| `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included) |
-| `takeLaneCount`        | `number` | Number of take lanes (only when the track has any)            |
-| `deviceCount`          | `number` | Number of devices (replaced by array when included)           |
-| `hasProducerPalDevice` | `true`   | Only present on the Producer Pal host track                   |
+| Field                  | Type     | Description                                                                                            |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `id`                   | `string` | Track ID                                                                                               |
+| `path`                 | `string` | Where the track is: `"t0"`, `"rt1"`, `"mt"`                                                            |
+| `name`                 | `string` | Track name                                                                                             |
+| `type`                 | `string` | `"midi"` or `"audio"`; omitted on a return or the main track                                           |
+| `instrument`           | `string` | Instrument class name (omitted if no instrument)                                                       |
+| `groupId`              | `string` | Parent group track ID (only when grouped)                                                              |
+| `isArmed`              | `true`   | Only present when armed                                                                                |
+| `isGroup`              | `true`   | Only present for group tracks                                                                          |
+| `isGroupMember`        | `true`   | Only present when inside a group                                                                       |
+| `playingSlotIndex`     | `number` | 0-based playing clip slot (only when >= 0)                                                             |
+| `firedSlotIndex`       | `number` | 0-based triggered clip slot (only when >= 0)                                                           |
+| `state`                | `string` | Only present when not "ACTIVE" (e.g., muted, soloed)                                                   |
+| `sessionClipCount`     | `number` | Number of session clips (replaced by array when included); absent on return, main and group tracks     |
+| `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included); absent on return, main and group tracks |
+| `takeLaneCount`        | `number` | Number of take lanes (only when the track has any)                                                     |
+| `deviceCount`          | `number` | Number of devices (replaced by array when included)                                                    |
+| `hasProducerPalDevice` | `true`   | Only present on the Producer Pal host track                                                            |
 
 ## Include: `"session-clips"`, `"arrangement-clips"`
 
 Replaces `sessionClipCount` / `arrangementClipCount` with full clip arrays. Each
-clip is read via `readClip()`. Nested clips have `view` and `type` stripped (see
+clip is read via `readClip()`. Nested clips have `type` stripped (see
 [Redundant field stripping](README.md#redundant-field-stripping)).
 
 `arrangement-clips` also replaces `takeLaneCount` with `takeLanes`: one entry

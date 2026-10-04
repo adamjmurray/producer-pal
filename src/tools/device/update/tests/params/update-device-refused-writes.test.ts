@@ -161,7 +161,7 @@ describe("updateDevice - every param failed", () => {
 
     expect(() =>
       updateDevice({ id: "chain-0", params: [{ name: "Volume", value: "1" }] }),
-    ).toThrow(/^no param landed — "Volume": 'params' not applicable/);
+    ).toThrow(/^no param landed — "Volume": params ignored: can't be set on/);
   });
 });
 
@@ -173,6 +173,16 @@ describe("updateDevice - every action failed", () => {
       updateDevice({ id: "simpler-1", actions: ["nope", "warpAs(x)"] }),
     ).toThrow(
       'no action landed — "nope": unknown action for this device; "warpAs(x)": requires a numeric beats argument',
+    );
+  });
+
+  it("counts an action named again as not landed", () => {
+    registerSimplerDevice();
+
+    expect(() =>
+      updateDevice({ id: "simpler-1", actions: ["nope", "nope"] }),
+    ).toThrow(
+      'no action landed — "nope": named again later in this call; "nope": unknown action for this device',
     );
   });
 

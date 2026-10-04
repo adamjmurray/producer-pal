@@ -78,9 +78,10 @@ The bump script writes the version to:
 
 1. `src/shared/config.ts` — the version the runtime reports (Max for Live device
    UI / MCP server), and the one the build itself uses
-2. `npm/package.json` — the `producer-pal` npm module's version
-3. `package.json` and `claude-desktop-extension/package.json`
-4. The `version` **and** `packages[""].version` fields of all three lockfiles
+2. `remote-script/Producer_Pal/version.py` — the remote script's version
+3. `npm/package.json` — the `producer-pal` npm module's version
+4. `package.json` and `claude-desktop-extension/package.json`
+5. The `version` **and** `packages[""].version` fields of all three lockfiles
    (npm keeps it twice per lockfile, and a hand-edit reliably misses one)
 
 `claude-desktop-extension/manifest.json` also carries a version — the one Claude
@@ -219,6 +220,10 @@ tester already had took a second GitHub request to resolve the release's tag to
 a commit — twice the rate-limit cost, to answer something the version number now
 answers by itself.
 
+It's also why dismissing an update can be keyed on the version number alone
+(`dismissedUpdateVersion` in the global settings): a re-cut has a new version,
+so it shows up again even after the last one was dismissed.
+
 The commit SHA is still baked into the artifacts and shown next to the version
 in the device UI, but it's diagnostic only: it says which commit produced these
 bytes when a bug report and a version number disagree. Nothing branches on it.
@@ -352,15 +357,27 @@ After testing succeeds:
    Create a new GitHub release for `vX.Y.Z` (not a pre-release) and upload the
    fresh files. This is the release everyone gets prompted to install.
 
-4. Publish to npm — the first and only publish of this version:
+4. Publish to npm — the first and only publish of this version. Pack the
+   `npm run release` build, test that tarball as in Step 4, then publish that
+   same file:
 
    ```sh
    npm login
-   cd npm && npm publish && cd ..
+   cd npm
+   npm run guard:no-prerelease
+   npm pack                              # → producer-pal-X.Y.Z.tgz; test it
+   npm publish ./producer-pal-X.Y.Z.tgz
+   rm producer-pal-X.Y.Z.tgz
+   cd ..
    ```
 
-   No `--tag next` dance: what's being published has already been tested as a
-   tarball, and the version is a GA version, so `latest` is where it belongs.
+   Publish the tarball, not the folder: publishing the folder runs
+   `prepublishOnly`, which rebuilds without the release's `BUILD_SHA`, so the
+   bytes differ from the ones tested. Publishing a tarball skips
+   `prepublishOnly`, guard included, which is why the guard runs by hand.
+
+   No `--tag next` dance: the version is a GA version, so `latest` is where it
+   belongs.
 
 ## Fixing Issues During Pre-Release
 
@@ -442,15 +459,15 @@ can run `npx producer-pal` to connect any MCP client to Producer Pal.
 **Prerequisites:**
 
 - npm account with publish access to `producer-pal` package
-- A GA version — `prepublishOnly` refuses to publish anything with a `-` in it
+- A GA version — `guard:no-prerelease` refuses anything with a `-` in it
 - Version numbers already updated everywhere (`npm run version:bump:*` does
   this; `npm run check` asserts it)
 
 **Publishing Process:**
 
 ```sh
-# Build everything (including npm/ folder)
-npm run build
+# Build everything (including npm/ folder), as the release does
+npm run release
 
 # Change to npm directory
 cd npm
@@ -464,8 +481,10 @@ npm install -g ./producer-pal-X.Y.Z.tgz
 npx producer-pal # actually use this with an MCP Client, running it on the command line does nothing visible
 npm uninstall -g producer-pal
 
-# When ready to publish
-npm publish
+# When ready, publish the tested tarball (not the folder)
+npm run guard:no-prerelease
+npm publish ./producer-pal-X.Y.Z.tgz
+rm producer-pal-X.Y.Z.tgz
 
 # Return to root directory
 cd ..
@@ -473,9 +492,10 @@ cd ..
 
 **Notes:**
 
-- The `prepublishOnly` hook in `npm/package.json` runs `guard:no-prerelease`
-  (which fails on an `-rcN` version) and then `npm run build`, so a publish
-  always ships fresh artifacts of a releasable version
+- Publishing the folder runs the `prepublishOnly` hook in `npm/package.json`:
+  `guard:no-prerelease` (which fails on an `-rcN` version), then `npm run build`
+  without the release's `BUILD_SHA` — different bytes from the tested tarball.
+  Publishing the tarball skips the hook, so run the guard by hand
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
   - `LICENSE` (GPL 3.0 license)

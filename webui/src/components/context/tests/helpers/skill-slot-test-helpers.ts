@@ -23,6 +23,7 @@ export function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
     drifted: false,
     splitStale: null,
     forkedFromVersion: null,
+    readError: null,
     ...over,
   };
 }

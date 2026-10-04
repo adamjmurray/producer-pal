@@ -23,13 +23,16 @@ import {
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { refuseLibraryParamsOutsideAction } from "./helpers/library-action-params.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
 
-// deviceKind doubles as the plugin category filter for listPlugins. Only the
+// The source that bypasses Live's DB for the user's sample folder.
+const SAMPLE_FOLDER = "sample-folder";
+
+// deviceKind doubles as the plugin category filter for list-plugins. Only the
 // values plugins can actually be (instrument/audiofx) map through; midifx has
-// no plugin-category equivalent and is dropped (with a warning at the call
-// site so the caller sees why the result wasn't narrowed).
+// no plugin-category equivalent, so list-plugins refuses it.
 const PLUGIN_CATEGORIES = new Set<LibraryDeviceKind>(["instrument", "audiofx"]);
 
 // Shares the search-filter fields (query/tags/kind/…/verifyPaths) with
@@ -39,19 +42,19 @@ interface LibraryArgs extends LibrarySearchArgs {
   // guard below — defense against the V8 adapter forwarding unvalidated
   // input — remains reachable.
   action?: string;
-  /** listCategories only: top-level category to drill into. */
+  /** list-categories only: top-level category to drill into. */
   category?: string;
-  /** findSimilar only: absolute path of the seed sample to rank others against. */
+  /** find-similar only: absolute path of the seed sample to rank others against. */
   similarTo?: string;
   /** search only: per-query filter sets to fan out over (see runSearchBatch). */
   searches?: LibraryBatchQuery[];
   /** Hidden alias for searches: the name the fan-out shipped under. */
   queries?: LibraryBatchQuery[];
-  /** listPlugins only: vendor/manufacturer substring filter. */
+  /** list-plugins only: vendor/manufacturer substring filter. */
   vendor?: string;
-  /** listPlugins only: restrict to a single plugin format. */
+  /** list-plugins only: restrict to a single plugin format. */
   format?: PluginFormat;
-  /** listPlugins only: subcategory substring filter (case-insensitive). */
+  /** list-plugins only: subcategory substring filter (case-insensitive). */
   subcategory?: string;
 }
 
@@ -85,40 +88,36 @@ export async function library(
   const action = resolveAction(args.action);
   const searches = args.searches ?? args.queries;
 
-  if (searches != null && action !== "search") {
-    console.warn(`searches does not apply to action "${action}"; ignoring it`);
-  } else if (searches?.length === 0) {
+  refuseLibraryParamsOutsideAction(action, args);
+
+  if (searches?.length === 0) {
     // An empty list names no search at all, so there is nothing to guess at.
     throw new Error("searches must name at least one search");
   }
 
-  if (action === "listTags") {
+  if (action === "list-tags") {
     return await callRoute<LibraryListTagsResult>("library.listTags", {
       limit: args.limit,
     });
   }
 
-  if (action === "listCategories") {
+  if (action === "list-categories") {
     return await callRoute<LibraryListCategoriesResult>(
       "library.listCategories",
       { category: args.category, limit: args.limit },
     );
   }
 
-  if (action === "listPlugins") {
-    // Plugins are classified as instrument or audiofx only — Live's plugin DB
-    // doesn't tag MIDI effects as a separate category. Warn instead of silently
-    // dropping the filter so the caller sees why the result wasn't narrowed.
+  if (action === "list-plugins") {
+    // Plugins are classified as instrument or audiofx only: Live's plugin DB
+    // has no MIDI effect category, so that filter could only match nothing.
     if (args.deviceKind != null && !PLUGIN_CATEGORIES.has(args.deviceKind)) {
-      console.warn(
-        `listPlugins: deviceKind "${args.deviceKind}" is not a plugin category (instrument | audiofx); ignoring the filter`,
+      throw new Error(
+        `deviceKind "${args.deviceKind}" doesn't apply to action "list-plugins": plugins are "instrument" or "audiofx". Use one of those or drop deviceKind.`,
       );
     }
 
-    const category =
-      args.deviceKind != null && PLUGIN_CATEGORIES.has(args.deviceKind)
-        ? (args.deviceKind as PluginCategory)
-        : undefined;
+    const category = args.deviceKind as PluginCategory | undefined;
 
     return await callRoute<ListPluginsResult>("library.listPlugins", {
       query: args.query,
@@ -130,14 +129,14 @@ export async function library(
     });
   }
 
-  if (action === "findSimilar") {
+  if (action === "find-similar") {
     return await callRoute<LibraryFindSimilarResult>("library.findSimilar", {
       similarTo: args.similarTo,
       ...candidateFilters(args),
     });
   }
 
-  if (action === "findDuplicates") {
+  if (action === "find-duplicates") {
     return await callRoute<LibraryFindDuplicatesResult>(
       "library.findDuplicates",
       candidateFilters(args),
@@ -171,10 +170,10 @@ export async function runSearch(
   ctx: Partial<ToolContext>,
 ): Promise<LibrarySearchResult> {
   const folderScan = scanFolderItems(args, ctx);
-  // source=sampleFolder bypasses the DB entirely; the response omits dbAvailable
+  // source=sample-folder bypasses the DB entirely; the response omits dbAvailable
   // to signal "did not consult the DB" instead of lying with `true`.
   const dbResult =
-    args.source === "sampleFolder"
+    args.source === SAMPLE_FOLDER
       ? null
       : await callRoute<LibrarySearchResult>("library.search", {
           query: args.query,
@@ -220,17 +219,17 @@ export async function runSearch(
 }
 
 /**
- * The action to dispatch on. searchBatch is what the fan-out shipped as before
+ * The action to dispatch on. search-batch is what the fan-out shipped as before
  * it folded into search + `searches`; still honored so a caller on the old
  * spelling gets the fan-out instead of an error, but warned since it's retired.
  *
- * @param action - The action as the caller sent it
+ * @param action - The action as validated (old spellings already rewritten)
  * @returns The action to run
  */
 function resolveAction(action: string | undefined): string {
-  if (action === "searchBatch") {
+  if (action === "search-batch") {
     console.warn(
-      'action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+      'action "search-batch" is deprecated and will be removed; use action "search" with searches instead',
     );
 
     return "search";
@@ -262,7 +261,7 @@ function scanFolderItems(
   const sampleFolder = ctx.sampleFolder;
 
   if (!sampleFolder) {
-    if (args.source === "sampleFolder") {
+    if (args.source === SAMPLE_FOLDER) {
       return {
         items: [],
         detail:
@@ -275,7 +274,7 @@ function scanFolderItems(
 
   // The folder scan can only satisfy: name substring + (implicit) audio kind.
   // Any DB-only filter means the user is not asking for sampleFolder content.
-  if (args.source && args.source !== "sampleFolder") {
+  if (args.source && args.source !== SAMPLE_FOLDER) {
     return { items: [] };
   }
 
@@ -317,7 +316,7 @@ function scanFolderItems(
     kind: "audio",
     tags: [],
     useCount: 0,
-    source: "sampleFolder",
+    source: SAMPLE_FOLDER,
     folder: parentFolder(rel, result.sampleFolder),
     // These came from a live filesystem scan, so they exist by construction —
     // mark them without a redundant re-stat when the caller wants pathExists.
@@ -365,15 +364,15 @@ function parentFolder(rel: string, sampleFolder: string): string {
  * surface ahead of generic DB hits regardless of sort or useCount.
  *
  * @param items - Combined list of sampleFolder + DB items
- * @param sort - Sort enum (defaults to use_count)
+ * @param sort - Sort enum (defaults to use-count)
  * @returns Sorted copy of items, sampleFolder partition first
  */
 function sortItems(
   items: LibraryItem[],
   sort: LibrarySort | undefined,
 ): LibraryItem[] {
-  const folder = items.filter((i) => i.source === "sampleFolder");
-  const db = items.filter((i) => i.source !== "sampleFolder");
+  const folder = items.filter((i) => i.source === SAMPLE_FOLDER);
+  const db = items.filter((i) => i.source !== SAMPLE_FOLDER);
 
   return [...sortPartition(folder, sort), ...sortPartition(db, sort)];
 }
@@ -381,7 +380,7 @@ function sortItems(
 /**
  * Sort a homogeneous partition (all folder or all DB items) by the
  * requested order. The DB partition trusts upstream ordering for
- * mod_date since LibraryItem has no mod_date field to re-sort by.
+ * mod-date since LibraryItem has no mod_date field to re-sort by.
  *
  * Mirrors the SQL side in `orderByClause` (library-search.ts). When
  * adding a new LibrarySort variant, update BOTH sites — there is no
@@ -399,10 +398,10 @@ function sortPartition(
     return items.toSorted((a, b) => a.name.localeCompare(b.name));
   }
 
-  if (sort === "mod_date") {
-    // sampleFolder items have no mod_date metadata; fall back to name order.
+  if (sort === "mod-date") {
+    // sample-folder items have no mod_date metadata; fall back to name order.
     // DB items keep their upstream order (already mod_date-sorted by SQL).
-    return items.every((i) => i.source === "sampleFolder")
+    return items.every((i) => i.source === SAMPLE_FOLDER)
       ? items.toSorted((a, b) => a.name.localeCompare(b.name))
       : [...items];
   }
@@ -455,7 +454,7 @@ async function callRoute<T>(route: string, routeArgs: object): Promise<T> {
   const response = await requestNode<T>(route, { ...routeArgs, liveVersion });
 
   if (!response.success || !response.result) {
-    throw new Error(`${route} failed: ${response.error ?? "unknown error"}`);
+    throw new Error(response.error ?? "unknown error");
   }
 
   return response.result;

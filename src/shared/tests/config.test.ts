@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   BUILD_SHA,
+  DEFAULT_MCP_PORT,
   DISABLED_TOOLS_HEADER,
   MIN_LIVE_VERSION,
   SAME_TIME_EPSILON,
@@ -134,5 +136,30 @@ describe("resolveEnabledTools", () => {
     expect(resolveEnabledTools(CONFIGURED.join(","), CONFIGURED)).toStrictEqual(
       [],
     );
+  });
+});
+
+describe("default MCP port", () => {
+  it("matches the Server Port the Max device starts with", () => {
+    // The port lives in the patch, which TS can't import, so pin it here.
+    const patch = readFileSync(
+      new URL("../../../max-for-live-device/tab-setup.maxpat", import.meta.url),
+      "utf8",
+    );
+    const initial = (
+      JSON.parse(patch) as { patcher: { boxes: unknown[] } }
+    ).patcher.boxes
+      .map((entry) => (entry as { box: Record<string, unknown> }).box)
+      .find((box) => box.varname === "port") as
+      | {
+          saved_attribute_attributes: {
+            valueof: { parameter_initial: number[] };
+          };
+        }
+      | undefined;
+
+    expect(
+      initial?.saved_attribute_attributes.valueof.parameter_initial,
+    ).toStrictEqual([DEFAULT_MCP_PORT]);
   });
 });

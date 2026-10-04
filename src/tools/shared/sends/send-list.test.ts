@@ -6,7 +6,13 @@
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import { readSendBack, readSendGainDb, refusedSend } from "./send-list.ts";
+import {
+  type IndexedSend,
+  readSendBack,
+  readSendGainDb,
+  refusedSend,
+  withSupersededSends,
+} from "./send-list.ts";
 
 /**
  * Register a send DeviceParameter and return a fresh LiveAPI pointed at it.
@@ -108,5 +114,47 @@ describe("readSendGainDb", () => {
       return: "Reverb",
       gainDb: -6.33,
     });
+  });
+});
+
+describe("withSupersededSends", () => {
+  const replaced: IndexedSend = {
+    return: "A",
+    gainDb: -6,
+    index: 0,
+    name: "A-Reverb",
+    returnId: "return-1",
+  };
+  const collisions = [{ index: 0, superseded: [replaced], by: "A-Reverb" }];
+
+  it("says an earlier send was named again, with no ok, when the later one landed", () => {
+    const landed = new Map([
+      [0, { return: "A-Reverb", returnId: "return-1", gainDb: -12 }],
+    ]);
+
+    expect(withSupersededSends(landed, collisions)).toStrictEqual([
+      {
+        return: "A-Reverb",
+        returnId: "return-1",
+        detail: "named again later in this call",
+      },
+      { return: "A-Reverb", returnId: "return-1", gainDb: -12 },
+    ]);
+  });
+
+  it("fails the earlier send too when the later one was refused", () => {
+    const refused = refusedSend("A-Reverb", "return-1", "gainDb is disabled");
+
+    expect(
+      withSupersededSends(new Map([[0, refused]]), collisions),
+    ).toStrictEqual([
+      {
+        return: "A-Reverb",
+        returnId: "return-1",
+        ok: false,
+        detail: 'not written: "A-Reverb" was meant to replace it, but failed',
+      },
+      refused,
+    ]);
   });
 });

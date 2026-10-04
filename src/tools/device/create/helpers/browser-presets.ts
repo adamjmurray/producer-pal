@@ -17,10 +17,14 @@ import {
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import {
-  REMOTE_SCRIPT_SETUP,
   remoteScriptExpiry,
   remoteScriptWait,
-} from "./browser-devices.ts";
+} from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import {
+  REQUEST_OUT_OF_TIME,
+  unreachedDetail,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
+import { REMOTE_SCRIPT_SETUP, lookupOutOfTime } from "./browser-devices.ts";
 
 /** Why nothing loads when the remote script isn't answering. */
 export const PRESET_NEEDS_REMOTE_SCRIPT = `loading a preset needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`;
@@ -38,6 +42,10 @@ const DEVICE_TYPE_SECTIONS: Record<number, string> = {
   2: "audio-effect",
   4: "midi-effect",
 };
+
+/** A hotswap that timed out may still have happened in Live. */
+const HOTSWAP_UNFINISHED =
+  "Live may have loaded it anyway, so check the device before re-running";
 
 /** What loading a preset onto a device did: the device there now, or why not. */
 export type PresetHotswap =
@@ -64,14 +72,24 @@ export async function resolveBrowserPreset(
 
   // Every lookup runs before anything is loaded, so nothing changed yet.
   if (waitMs == null) {
-    throw lookUpFailed("the request ran out of time; nothing changed");
+    throw lookUpFailed(`${REQUEST_OUT_OF_TIME}; nothing changed`);
   }
 
+  const started = Date.now();
   const response = await requestNode<BrowserItemResolution>(
     REMOTE_SCRIPT_ROUTES.resolvePreset,
-    { name: preset, ...(scope == null ? {} : { scope }) },
+    {
+      name: preset,
+      expiresInMs: remoteScriptExpiry(waitMs),
+      ...(scope == null ? {} : { scope }),
+    },
     waitMs,
   );
+
+  // Whoever ran out of time, nothing was loaded yet.
+  if (!response.success && Date.now() - started >= waitMs) {
+    throw lookUpFailed(lookupOutOfTime("nothing changed"));
+  }
 
   if (!response.success || response.result == null) {
     throw lookUpFailed(response.error ?? "no answer");
@@ -84,7 +102,9 @@ export async function resolveBrowserPreset(
   }
 
   if ("error" in resolution) {
-    throw new Error(resolution.error);
+    throw "outOfTime" in resolution
+      ? lookUpFailed(lookupOutOfTime("nothing changed"))
+      : new Error(resolution.error);
   }
 
   return resolution.item;
@@ -146,10 +166,11 @@ export async function hotswapPreset(
   const waitMs = remoteScriptWait(deadline);
 
   if (waitMs == null) {
-    return { error: "the request ran out of time; re-run for this target" };
+    return { error: unreachedDetail("target") };
   }
 
   const devicePath = device.path;
+  const started = Date.now();
   const response = await requestNode<BrowserItemHotswap>(
     REMOTE_SCRIPT_ROUTES.hotswap,
     {
@@ -163,7 +184,15 @@ export async function hotswapPreset(
   );
 
   if (!response.success || response.result == null) {
-    return { error: response.error ?? "the remote script returned nothing" };
+    const error = response.error ?? "the remote script returned nothing";
+
+    // Past V8's wait, Live may still be loading it.
+    return {
+      error:
+        !response.success && Date.now() - started >= waitMs
+          ? `${error}; ${HOTSWAP_UNFINISHED}`
+          : error,
+    };
   }
 
   const result = response.result;
@@ -173,7 +202,12 @@ export async function hotswapPreset(
   }
 
   if ("error" in result) {
-    return { error: result.error };
+    return {
+      error:
+        result.unfinished === true
+          ? `${result.error}; ${HOTSWAP_UNFINISHED}`
+          : result.error,
+    };
   }
 
   return { replaced: result.replaced, device: LiveAPI.from(devicePath) };

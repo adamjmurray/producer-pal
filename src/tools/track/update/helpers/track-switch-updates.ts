@@ -5,6 +5,7 @@
 
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -48,11 +49,14 @@ export function applyTrackSwitches(
     );
   }
 
-  track.setAll({
-    mute: isMain ? undefined : mute,
-    solo: isMain ? undefined : solo,
-    arm: armable ? arm : undefined,
-  });
+  track.setAll(
+    {
+      mute: isMain ? undefined : mute,
+      solo: isMain ? undefined : solo,
+      arm: armable ? arm : undefined,
+    },
+    (property) => noteLanded(notes, property),
+  );
 }
 
 /**

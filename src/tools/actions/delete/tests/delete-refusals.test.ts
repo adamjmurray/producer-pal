@@ -140,7 +140,6 @@ describe("deleteObject when Live refuses the delete", () => {
     ).toStrictEqual([
       {
         id: "scene_0",
-        path: "s0",
         ok: false,
         detail: "scene s0 (id scene_0) still exists, so Live did not delete it",
       },

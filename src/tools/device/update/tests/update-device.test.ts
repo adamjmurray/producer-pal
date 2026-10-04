@@ -16,6 +16,10 @@ import {
   updateDevice,
 } from "./update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  MIXER_TYPES,
+  registerMixer,
+} from "#src/tools/device/tests/helpers/non-device-fixtures.ts";
 
 describe("updateDevice", () => {
   let device123: RegisteredMockObject;
@@ -113,12 +117,8 @@ describe("updateDevice", () => {
   });
 
   it("should not call set when no properties provided", () => {
-    const result = updateDevice({
-      id: "123",
-    });
-
+    expect(() => updateDevice({ id: "123" })).toThrow("nothing to update");
     expect(device123.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   describe("params - numeric values", () => {
@@ -423,7 +423,7 @@ describe("updateDevice", () => {
 
     it("should reject non-rack devices with error", () => {
       expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
-        "macroCount not applicable to a device",
+        "macroCount ignored: can't be set on a device",
       );
       expect(device456.call).not.toHaveBeenCalled();
       expect(capturedWarnings()).toStrictEqual([]);
@@ -745,6 +745,19 @@ describe("updateDevice", () => {
       expect(() => updateDevice({ id: "999", name: "Nope" })).toThrow(
         "cannot update a track: t3 (id 999)",
       );
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it.each(MIXER_TYPES)("refuses a %s, which is not a device", (type) => {
+      registerMixer(type);
+
+      expect(() => updateDevice({ id: "mix-1", name: "Nope" })).toThrow(
+        "cannot update a mixer: id mix-1",
+      );
+      expect(updateDevice({ id: "mix-1,123", name: "Nope" })).toStrictEqual([
+        { id: "mix-1", ok: false, detail: "cannot update a mixer: id mix-1" },
+        { id: "123", path: "t0/d0" },
+      ]);
       expect(capturedWarnings()).toStrictEqual([]);
     });
 

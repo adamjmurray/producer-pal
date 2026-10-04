@@ -22,6 +22,8 @@ export interface ConfigOptions {
   jsonOutput?: boolean;
   sampleFolder?: string;
   liveApiEnabled?: boolean;
+  /** False makes the remote script look uninstalled. Debug builds only; a release build ignores it. */
+  remoteScriptEnabled?: boolean;
   tools?: string[];
   notation?: Notation;
 }
@@ -99,6 +101,8 @@ export async function resetConfig(): Promise<void> {
     projectContext: "",
     jsonOutput: true,
     sampleFolder: "",
+    // A release build ignores this, so the reset works on either build.
+    remoteScriptEnabled: true,
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });

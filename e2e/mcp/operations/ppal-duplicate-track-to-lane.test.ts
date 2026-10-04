@@ -45,7 +45,7 @@ const GROUP_TRACK = 9;
 interface LaneCopyResult {
   id: string;
   path: string;
-  created?: true;
+  created?: string;
   clips: Array<{
     id?: string;
     path?: string;
@@ -148,7 +148,7 @@ async function expectBothClipsOnNewLane(
   sourceNotes: string,
 ): Promise<void> {
   expect(result.path).toBe(`${DESTINATION}/l0`);
-  expect(result.created).toBe(true);
+  expect(result.created).toBe("l0");
   expect(result.clips.map((clip) => clip.path)).toStrictEqual([
     `${DESTINATION}/l0[1|1]`,
     `${DESTINATION}/l0[5|1]`,
@@ -210,6 +210,27 @@ describe("ppal-duplicate track to a take lane", () => {
     expect(after.tracks.length).toBe(before.tracks.length);
   });
 
+  // The second copy lands exactly on the first, so each clip it makes says it
+  // overwrote the one before it, and the lane's entry says nothing of it.
+  it("says on each clip what it overwrote when copied onto a lane again", async () => {
+    await createSourceClips();
+    await copyToLanes<LaneCopyResult>({ path: SOURCE }, `${DESTINATION}/l0`);
+    await sleep(100);
+
+    const again = await copyToLanes<LaneCopyResult>(
+      { path: SOURCE },
+      `${DESTINATION}/l0`,
+    );
+
+    expect(again.clips[0]!.detail).toContain(
+      `overwrote the clip at ${DESTINATION}/l0[1|1]`,
+    );
+    expect(again.clips[1]!.detail).toContain(
+      `overwrote the clip at ${DESTINATION}/l0[5|1]`,
+    );
+    expect(again.detail).not.toContain("overwrote");
+  });
+
   it("appends a lane with l+, and refuses a group track beside it", async () => {
     await createSourceClips();
 
@@ -220,7 +241,7 @@ describe("ppal-duplicate track to a take lane", () => {
 
     // l+ appends: the destination had no lanes, so the copy made l0.
     expect(result[0]!.path).toBe(`${DESTINATION}/l0`);
-    expect(result[0]!.created).toBe(true);
+    expect(result[0]!.created).toBe("l0");
     expect(result[1]).toStrictEqual({
       path: `t${GROUP_TRACK}/l0`,
       ok: false,
@@ -424,7 +445,7 @@ describe("ppal-duplicate take lane to a main lane", () => {
     ]);
   });
 
-  it("marks the copy a second destination in the same call landed on", async () => {
+  it("leaves the copy a second destination in the same call covers unwritten", async () => {
     await stackOnSourceLane();
 
     const result = await copyToLanes<LaneCopyResult[]>(
@@ -432,20 +453,12 @@ describe("ppal-duplicate take lane to a main lane", () => {
       `${DESTINATION},${DESTINATION}`,
     );
 
-    // Both entries name the same main lane, so the second create cleared what
-    // the first put there — and the first entry says so, id gone.
-    expect(result[0]!.clips).toStrictEqual([
-      {
-        path: `${DESTINATION}[1|1]`,
-        deleted: true,
-        detail: "a later copy in this call landed on it",
-      },
-      {
-        path: `${DESTINATION}[5|1]`,
-        deleted: true,
-        detail: "a later copy in this call landed on it",
-      },
-    ]);
+    // Both entries name the same main lane, and the second covers every clip
+    // of the first — which is therefore never written.
+    expect(result[0]).toStrictEqual({
+      path: DESTINATION,
+      detail: `overwritten later in this call by ${DESTINATION}[1|1]`,
+    });
     expect(result[1]!.clips.map((clip) => clip.path)).toStrictEqual([
       `${DESTINATION}[1|1]`,
       `${DESTINATION}[5|1]`,

@@ -52,7 +52,7 @@ describe("duplicate track to take lane", () => {
 
     expect(destination.call).toHaveBeenCalledWith("create_take_lane");
     expect(result.path).toBe("t1/l0");
-    expect(result.created).toBe(true);
+    expect(result.created).toBe("l0");
     expect(result.clips.map((clip) => clip.path)).toStrictEqual([
       "t1/l0[1|1]",
       "t1/l0[5|1]",
@@ -60,6 +60,16 @@ describe("duplicate track to take lane", () => {
     // Copying a track onto a lane leaves everything but the clips behind, and
     // this source loses nothing else.
     expect(result.detail).toBe(CLIPS_ONLY);
+  });
+
+  it("names every lane it made when the destination is past the end", async () => {
+    registerMainLaneSource([0]);
+    registerTakeLaneTrack({ trackIndex: 1 });
+
+    const result = await copyToLanes<LaneCopyEntry>({ toPath: "t1/l2" });
+
+    expect(result.path).toBe("t1/l2");
+    expect(result.created).toBe("l0-l2");
   });
 
   it("names the copies and reports what re-creating them lost", async () => {
@@ -139,36 +149,32 @@ describe("duplicate track to take lane", () => {
     expect(again).not.toHaveProperty("created");
   });
 
-  it("warns for the params a lane copy can't use", async () => {
+  // A lane takes clips and nothing else, so the params that shape a new track
+  // have nothing to act on.
+  it.each([
+    [{ withoutClips: true }, "withoutClips"],
+    [{ withoutDevices: true }, "withoutDevices"],
+    [{ routeToSource: true }, "routeToSource"],
+    [{ count: 2 }, "count"],
+  ])("refuses %j, which a lane copy can't use", async (extra, param) => {
     registerMainLaneSource([0]);
-    registerTakeLaneTrack({ trackIndex: 1 });
 
-    await copyToLanes({
-      toPath: "t1/l0",
-      count: 2,
-      withoutClips: true,
-      withoutDevices: true,
-    });
+    const destination = registerTakeLaneTrack({ trackIndex: 1 });
 
-    expect(capturedWarnings().join("\n")).toContain(
-      "count 2 ignored: a track's clips go once to each lane toPath names",
+    await expect(copyToLanes({ toPath: "t1/l0", ...extra })).rejects.toThrow(
+      `${param} is only for destination "new track"; this call has destination "lane"`,
     );
-    expect(capturedWarnings().join("\n")).toContain(
-      `withoutClips/withoutDevices ignored: ${CLIPS_ONLY}`,
-    );
+    expect(destination.call).not.toHaveBeenCalled();
   });
 
-  it("warns that routeToSource has nothing to route", async () => {
+  it("refuses count beside a list of lanes with the one wording the create tools use", async () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    await copyToLanes({
-      toPath: "t1/l0",
-      routeToSource: true,
-    });
-
-    expect(capturedWarnings().join("\n")).toContain(
-      `routeToSource ignored: ${CLIPS_ONLY}`,
+    await expect(
+      copyToLanes({ toPath: "t1/l0,t1/l1", count: 2 }),
+    ).rejects.toThrow(
+      'count repeats one path, but toPath names 2. Drop count and let toPath name each take lane (e.g. toPath: "t2/l0,t2/l1").',
     );
   });
 
@@ -277,13 +283,12 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     });
   });
 
-  it("refuses a destination that names no lane at all", async () => {
+  it("skips a destination that parses but names no lane", async () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    // "zz9" doesn't parse at all, and still gets its own entry.
     const result = await copyToLanes<LaneCopyEntry[]>({
-      toPath: "t1/l0,t2,zz9",
+      toPath: "t1/l0,t2",
     });
 
     expect(result.slice(1)).toStrictEqual([
@@ -293,13 +298,18 @@ describe("duplicate track to take lane - destinations it can't use", () => {
         detail:
           'toPath "t2" names no take lane; a track\'s clips copy onto one, as "t2/l0" or "t2/l+"',
       },
-      {
-        path: "zz9",
-        ok: false,
-        detail:
-          'toPath "zz9" names no take lane; a track\'s clips copy onto one, as "t2/l0" or "t2/l+"',
-      },
     ]);
+  });
+
+  it("refuses the call, making no lane, for a destination that doesn't parse", async () => {
+    registerMainLaneSource([0]);
+
+    const destination = registerTakeLaneTrack({ trackIndex: 1 });
+
+    await expect(copyToLanes({ toPath: "t1/l0,zz9" })).rejects.toThrow(
+      'invalid toPath "zz9"',
+    );
+    expect(destination.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
   it("creates no lane at all when one destination is past the cap", async () => {

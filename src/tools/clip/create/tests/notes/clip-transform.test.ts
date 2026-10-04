@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
+import { buildClipContext } from "#src/tools/clip/update/helpers/notes/note-transforms.ts";
 import {
   type ClipTransformInputs,
   resolveClipTransform,
@@ -19,7 +20,8 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal()),
     applyTransforms: vi.fn(() => ({
-      touched: new Set<NoteEvent>(),
+      changed: new Set<NoteEvent>(),
+      original: new Map<NoteEvent, NoteEvent>(),
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,
@@ -49,6 +51,7 @@ function makeInputs(
   return {
     notes,
     clipLength: 4,
+    droppedDuplicates: 0,
     transformString: "velocity = 100",
     isAudio: false,
     endBeats: null,
@@ -72,7 +75,8 @@ describe("resolveClipTransform", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(applyTransforms).mockReturnValue({
-      touched: new Set<NoteEvent>(),
+      changed: new Set<NoteEvent>(),
+      original: new Map<NoteEvent, NoteEvent>(),
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,
@@ -94,7 +98,7 @@ describe("resolveClipTransform", () => {
 
       const result = resolveClipTransform(inputs, 0, 1, null);
 
-      expect(result.transformedCount).toBeUndefined();
+      expect(result.transformCounts).toStrictEqual({});
       // The early return hands back the exact shared array, not a sorted clone.
       expect(result.notes).toBe(inputs.notes);
       expect(applyTransforms).not.toHaveBeenCalled();
@@ -122,7 +126,10 @@ describe("resolveClipTransform", () => {
       const result = resolveClipTransform(inputs, 0, 1, null);
 
       expect(applyTransforms).toHaveBeenCalledOnce();
-      expect(result.transformedCount).toBe(3);
+      expect(result.transformCounts).toStrictEqual({
+        transformed: 0,
+        deletedNotes: 3,
+      });
       // A fresh sorted clone is returned, not the shared input array.
       expect(result.notes).not.toBe(inputs.notes);
     });
@@ -174,6 +181,48 @@ describe("resolveClipTransform", () => {
       resolveClipTransform(makeInputs(), 0, 1, null);
 
       expect(capturedContext()?.startMarker).toBe(0);
+    });
+
+    it("makes clip.duration the region length, not its end", () => {
+      // `start: "5|1"`, `length: "1bar"` in 4/4: 4 beats, not 20.
+      const inputs = makeInputs({ startBeats: 16, clipLength: 20 });
+
+      resolveClipTransform(inputs, 0, 1, null);
+
+      expect(capturedContext()?.clipDuration).toBe(4);
+    });
+
+    it("agrees with update-clip's context for the same offset-region clip", () => {
+      const inputs = makeInputs({
+        timeSigDenominator: 8,
+        startBeats: 16,
+        clipLength: 20,
+        scaleMask: 0, // what update reads from an unmocked Live Set
+      });
+
+      resolveClipTransform(inputs, 0, 1, null);
+
+      // The clip create would make: region 16-20, non-looping.
+      const liveClip = {
+        getProperty: (prop: string) =>
+          ({
+            is_midi_clip: 1,
+            is_arrangement_clip: 0,
+            looping: 0,
+            length: 4,
+            start_marker: 16,
+            end_marker: 20,
+          })[prop] ?? 0,
+      };
+      const updated = buildClipContext(
+        liveClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        8,
+      );
+
+      expect(capturedContext()).toStrictEqual(updated);
     });
   });
 });

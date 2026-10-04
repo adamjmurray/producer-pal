@@ -93,7 +93,7 @@ describe("select - plugin editor window", () => {
 
     expect(result.selectedDevice).toBeUndefined();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("requires a plug-in device"),
+      "openPluginWindow ignored: it needs a plug-in device; specify id or path",
     );
   });
 });

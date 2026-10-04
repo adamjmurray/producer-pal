@@ -12,11 +12,12 @@
 //     1. durationToAbletonBeats        (regex, barbeat-time.ts)
 //     2. barbeat `duration` rule       (barbeat-grammar.peggy)
 //     3. transform nDuration/barDuration (transform-grammar.peggy)
+//     4. barbeat `stepInterval` rule     (barbeat-grammar.peggy, `1|1x4@n/8`)
 //
 //   `±n` beat-offset sites (a `bar|beat` beat field → absolute musical beats)
-//     4. parseBeatValue / barBeatToMusicalBeats (regex, barbeat-time.ts)
-//     5. barbeat `beatValue` rule        (barbeat-grammar.peggy)
-//     6. transform `beatValue` rule      (transform-grammar.peggy, in timeRange)
+//     5. parseBeatValue / barBeatToMusicalBeats (regex, barbeat-time.ts)
+//     6. barbeat `beatValue` rule        (barbeat-grammar.peggy)
+//     7. transform `beatValue` rule      (transform-grammar.peggy, in timeRange)
 //
 // This test feeds one corpus through every site and asserts they accept/reject
 // the same language and compute matching values where they overlap. It is the
@@ -98,10 +99,28 @@ function durationViaTransform(token: string, num: number, den: number): number {
   return musicalBeats * (4 / den); // musical beats → Ableton beats
 }
 
+// A repeat step (`1|1x2@<token>`) is the duration grammar behind an `@`.
+function durationViaStep(token: string, num: number, den: number): number {
+  const els = parseBarbeat(`1|1x2@${token}`, {
+    beatsPerBar: num,
+    timeSigDenominator: den,
+  });
+  const beat = els[0]?.beat;
+
+  if (els.length !== 1 || typeof beat !== "object" || beat.step == null) {
+    throw new Error(`barbeat did not parse "@${token}" as a repeat step`);
+  }
+
+  return (
+    (beat.stepBars ?? 0) * timeSigToAbletonBeatsPerBar(num, den) + beat.step * 4
+  );
+}
+
 const DURATION_SITES = [
   { name: "durationToAbletonBeats", fn: durationViaRegex },
   { name: "barbeat duration rule", fn: durationViaBarbeat },
   { name: "transform nDuration/barDuration", fn: durationViaTransform },
+  { name: "barbeat stepInterval rule", fn: durationViaStep },
 ] as const;
 
 // Does the transform duration expression contain a note-value node (nDuration /
@@ -180,7 +199,7 @@ const OFFSET_SITES = [
 // point — asserting this pattern keeps a rejection test from passing on that
 // guard instead of on the grammar.
 const REJECTION =
-  /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|beat (offsets|positions)|use note names|positions use a pipe)/;
+  /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|step intervals use|beat (offsets|positions)|use note names|positions use a pipe)/;
 
 // Registers one test per token: no duration site accepts it.
 function itRejectsDurations(tokens: string[]): void {
@@ -326,6 +345,7 @@ describe("note-value grammar parity across all parse sites", () => {
       it(`"${token}" is rejected by the authoring duration sites`, () => {
         expect(() => durationViaRegex(token, 4, 4)).toThrow(REJECTION);
         expect(() => durationViaBarbeat(token, 4, 4)).toThrow(REJECTION);
+        expect(() => durationViaStep(token, 4, 4)).toThrow(REJECTION);
         // The transform grammar parses it only as arithmetic, never as a note
         // value — the `n`/`bar` sigils are what mark a note value.
         expect(transformIsNoteValueDuration(token, 4, 4)).toBe(false);
@@ -388,6 +408,7 @@ describe("note-value grammar parity across all parse sites", () => {
       expect(durationViaRegex("0bar", 4, 4)).toBe(0);
       expect(() => durationViaBarbeat("0bar", 4, 4)).toThrow('but "b" found');
       expect(() => durationViaTransform("0bar", 4, 4)).toThrow('but "b" found');
+      expect(() => durationViaStep("0bar", 4, 4)).toThrow(REJECTION);
     });
   });
 
@@ -447,5 +468,36 @@ describe("note-value grammar parity across all parse sites", () => {
     itRejectsDurations(["n/4dt", "n/4dd", "n/4td", "n/4tt"]);
 
     itRejectsOffsets(["1+n/4dt", "1+n/8tt", "1-n/8td"]);
+  });
+
+  describe("a trailing dot is a valid number on every site", () => {
+    // `3.` means 3, as in most programming languages.
+    for (const [token, plain] of [
+      ["n3./4", "n3/4"],
+      ["n1./8t", "n1/8t"],
+      ["1bar+n3./8", "1bar+n3/8"],
+    ] as const) {
+      it(`duration "${token}" ≡ "${plain}" on every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(site.fn(token, 4, 4)).toBeCloseTo(site.fn(plain, 4, 4), 9);
+        }
+      });
+    }
+
+    for (const [beat, plain] of [
+      ["3.", "3"],
+      ["2.+n/12", "2+n/12"],
+      ["2-n1./24", "2-n1/24"],
+    ] as const) {
+      it(`offset "1|${beat}" ≡ "1|${plain}" on every offset site`, () => {
+        for (const site of OFFSET_SITES) {
+          expect(site.fn(beat, 6, 8)).toBeCloseTo(site.fn(plain, 6, 8), 9);
+        }
+      });
+    }
+
+    // A dot with no digits on either side is still not a number.
+    itRejectsDurations(["n./4", "n.5/4"]);
+    itRejectsOffsets(["1+n./4", "1.."]);
   });
 });

@@ -98,6 +98,12 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToMusicalBeats("2|1.5", 4)).toBe(4.5);
     });
 
+    it("accepts a trailing dot, as the notes grammar does", () => {
+      expect(barBeatToMusicalBeats("2|3.", 4)).toBe(6);
+      expect(barBeatToMusicalBeats("1|2.+n/4", 4)).toBe(2);
+      expect(barBeatToMusicalBeats("1|1+n1./4", 4)).toBe(1);
+    });
+
     it("works with different time signatures", () => {
       // 3/4 time
       expect(barBeatToMusicalBeats("1|1", 3)).toBe(0);

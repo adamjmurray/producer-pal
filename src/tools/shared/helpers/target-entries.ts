@@ -8,7 +8,8 @@ import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.t
 /**
  * Splits a target list — a param naming objects or places (`id`, `path`,
  * `toPath`, `arrangementStart`, `locator`) — into its entries, refusing a list
- * it can't read cleanly.
+ * it can't read cleanly. `\,` is a comma inside an entry, as in every other
+ * list, so a locator name can hold one.
  *
  * One trailing comma is not an entry, the way most languages read a list
  * literal. Any other empty entry is a hole, and a hole is refused rather than
@@ -28,20 +29,6 @@ export function targetEntries(
   raw: string | null | undefined,
   label: string,
 ): string[] {
-  return entriesFrom(raw, (value) => value.split(","), label);
-}
-
-/**
- * {@link targetEntries} for a list of names, where `\,` is a comma inside a
- * name, as in every other text list.
- * @param raw - The param as the caller sent it
- * @param label - Param name for error messages
- * @returns One trimmed name per target, in order
- */
-export function nameEntries(
-  raw: string | null | undefined,
-  label: string,
-): string[] {
   return entriesFrom(raw, splitEntries, label);
 }
 
@@ -58,7 +45,7 @@ export function entriesFrom(
   split: (value: string) => string[],
   label: string,
 ): string[] {
-  // A blank value is an unsent param (ADR-0029), not a list that names nothing.
+  // A blank value is an unsent param, not a list that names nothing.
   // A lone comma is something the caller typed, and that is the error below.
   if (raw == null || raw.trim() === "") {
     return [];
@@ -82,15 +69,4 @@ export function entriesFrom(
   }
 
   return entries;
-}
-
-/**
- * Unwraps a single-element array to its element, otherwise returns the array
- * Used for tool results that should return a single object when one item,
- * or an array when multiple items.
- * @param array - Array of results
- * @returns Single element if array has one item, otherwise the full array
- */
-export function unwrapSingleResult<T>(array: T[]): T | T[] {
-  return array.length === 1 ? (array[0] as T) : array;
 }

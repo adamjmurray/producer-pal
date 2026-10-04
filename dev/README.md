@@ -11,17 +11,21 @@ part is a file beside it.
 
 - [PRINCIPLES.md](PRINCIPLES.md) — first principles for tool design. Read before
   changing a tool's inputs, outputs, or failure behavior.
-- [architecture/](architecture/README.md) — how the pieces fit together.
+- [architecture/](architecture/README.md) — how the pieces fit together, the
+  Skills fragments, and the `~/.producer-pal` override layer.
 - [coding-standards/](coding-standards/README.md) — style guide and Live API
   reference.
 
 ## Tools
 
 - [tools/adding-a-tool.md](tools/adding-a-tool.md) — checklist for a new tool.
+- [tools/write-pipeline.md](tools/write-pipeline.md) — the shared pipeline every
+  write tool runs through, and how to add one.
 - [tools/tool-schemas.md](tools/tool-schemas.md) — shaping input schemas and
   per-mode param text.
-- [tools/object-paths/](tools/object-paths/README.md) — the path grammar every
-  tool uses to say where.
+- [specs/tool-behavior/](specs/tool-behavior/README.md) — how every tool answers
+  a call: the path grammar, lists, refusals, skips, result entries, and the
+  per-tool catalogs.
 - [tools/read-tool-includes/](tools/read-tool-includes/README.md) — what the
   read tools return, and their `include` param.
 - [tools/memory-system/](tools/memory-system/README.md) — the LLM-managed memory
@@ -38,7 +42,11 @@ part is a file beside it.
 - [live-api/device-param-labels.md](live-api/device-param-labels.md) — reading
   units and ranges off device parameters.
 - [live-api/specialized-devices/](live-api/specialized-devices/README.md) —
-  native devices with their own LOM class.
+  native devices with their own LOM class, and how Drum Racks are modeled.
+- [live-api/python-remote-script-api/](live-api/python-remote-script-api/README.md)
+  — what only the Python API can do, and how to probe it.
+- [live-api/rack-macro-mappings.md](live-api/rack-macro-mappings.md) — what can
+  be learned about rack macro mappings.
 
 ## Clients
 
@@ -67,7 +75,8 @@ part is a file beside it.
 
 ## Reference
 
-- [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark.
-- [decisions/](decisions/README.md) — ADRs: why settled choices went the way
-  they did.
+- [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark,
+  and how every tool answers a call (`specs/tool-behavior/`).
+- [decisions/](decisions/README.md) — ADRs for rejected alternatives and choices
+  expensive to reconstruct. Current rules live in specs and docs.
 - [plans/](plans/README.md) — improvement plans not on the roadmap.

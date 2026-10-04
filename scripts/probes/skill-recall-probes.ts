@@ -190,7 +190,7 @@ export const SKILL_RECALL_PROBES: SkillRecallProbe[] = [
     source: "getting-help",
     tier: "standard",
     question:
-      "The user asks how to record automation in Live, which Producer Pal cannot drive. Give them the resource you would link.",
+      "The user asks how to comp take lanes in Live, which Producer Pal cannot drive. Give them the resource you would link.",
     expect: [/ableton\.com|producer-pal\.org/i],
   },
 

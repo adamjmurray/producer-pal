@@ -206,12 +206,13 @@ describe("updateClip - a toPath coordinate", () => {
     expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
   });
 
-  // An entry that doesn't parse costs its own move and keeps its turn, so the
-  // locator beside it still resolves against the right clip.
-  it("resolves a locator beside an entry that won't parse", async () => {
+  // An entry that parses but names no place a clip can go (a scene) costs its
+  // own move and keeps its turn, so the locator beside it still resolves
+  // against the right clip.
+  it("resolves a locator beside an entry that names no place for a clip", async () => {
     seedChorusLocator();
 
-    await updateClip({ id: "100,101", toPath: "tX,t2[loc:Chorus]" });
+    await updateClip({ id: "100,101", toPath: "s3,t2[loc:Chorus]" });
 
     expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
     expect(movedTo(tracks[0] as RegisteredMockObject)).toBeNull();
@@ -219,30 +220,15 @@ describe("updateClip - a toPath coordinate", () => {
 
   // A clip goes on a lane that exists; ppal-update-track is what adds one. The
   // retired "l=" named the lane an "l+" before it appended, and never shipped.
-  // create-clip and duplicate throw for both, because a lone destination is all
-  // they have; here each one is the entry's own miss.
-  it("reports the retired l= and an l+ on the clip's entry", async () => {
-    const result = await updateClip({
-      id: "100,101",
-      toPath: "t2/l=[5|1],t3/l+[5|1]",
-    });
-
-    expect(result).toStrictEqual([
-      {
-        id: "100",
-        ok: false,
-        detail:
-          'not moved: invalid toPath "t2/l=" - "l=" is not a device, chain, ' +
-          'or drum pad; expected "d<index>", "c<index>", "rc<index>", or "p<note>"',
-      },
-      {
-        id: "101",
-        ok: false,
-        detail:
-          'not moved: invalid toPath "t3/l+[5|1]" - "l+" takes no song ' +
-          'position; name the lane by index, as "t<track>/l<lane>"',
-      },
-    ]);
+  // Neither parses as a destination, so each refuses the whole call, as it does
+  // in create-clip and duplicate.
+  it.each([
+    ["t2/l=[5|1]", '"l=" is not a device, chain, or drum pad'],
+    ["t3/l+[5|1]", '"l+" takes no song position'],
+  ])("refuses the call for %s, moving nothing", async (entry, message) => {
+    await expect(
+      updateClip({ id: "100,101", toPath: `t0[9|1],${entry}`, name: "A,B" }),
+    ).rejects.toThrow(message);
     expect(capturedWarnings()).toStrictEqual([]);
     expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);
   });
@@ -298,8 +284,7 @@ describe("updateClip - a toPath coordinate", () => {
     await expect(
       updateClip({ id: "100", toPath: "t1[5|1]", arrangementStart: "9|1" }),
     ).rejects.toThrow(
-      'toPath "t1[5|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "toPath names the song position on its own - don't send arrangementStart with it",
     );
 
     expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);

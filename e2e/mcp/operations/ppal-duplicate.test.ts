@@ -258,6 +258,20 @@ describe("ppal-duplicate", () => {
     },
   );
 
+  it("reads a null count as left out, and makes one copy", async () => {
+    const before = await readScenes();
+    const dup = parseToolResult<DuplicateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "scene", path: "s0", count: null },
+      }),
+    );
+
+    expect(dup.path).toBe("s1");
+    await sleep(100);
+    expect((await readScenes()).scenes).toHaveLength(before.scenes!.length + 1);
+  });
+
   // Color, like name, lands on every clip the copy lands — s7 starts empty,
   // so the clip created here is the whole scene.
   it("puts color on a scene's arrangement copies", async () => {
@@ -284,6 +298,29 @@ describe("ppal-duplicate", () => {
     expect(parseToolResult<ReadClipResult>(readCopy).color).toBeDefined();
   });
 
+  // s6 starts empty, so the clip created here is the whole scene. Copying it
+  // twice to one position lands the second copy exactly on the first.
+  it("says what a scene's arrangement copy overwrote, on the clip that did", async () => {
+    await createSceneClip(6);
+
+    const sceneId = (await readScenes()).scenes![6]!.id;
+    const first = parseToolResult<{ clips: Array<{ detail?: string }> }>(
+      await duplicateScene(sceneId, { toPath: "[57|1]" }),
+    );
+
+    expect(first.clips[0]!.detail).toBeUndefined();
+
+    await sleep(100);
+
+    const second = parseToolResult<{ clips: Array<{ detail?: string }> }>(
+      await duplicateScene(sceneId, { toPath: "[57|1]" }),
+    );
+
+    expect(second.clips[0]!.detail).toBe(
+      `overwrote the clip at t${EMPTY_MIDI_TRACK}[57|1]`,
+    );
+  });
+
   it("refuses a scene duplicate whose toPath names no arrangement position", async () => {
     const scenes = await readScenes();
     const initialSceneCount = scenes.scenes!.length;
@@ -301,18 +338,18 @@ describe("ppal-duplicate", () => {
     expect((await readScenes()).scenes!.length).toBe(initialSceneCount);
   });
 
-  it("warns and ignores count when a scene duplicate names several arrangement positions", async () => {
+  it("refuses count when a scene duplicate names several arrangement positions", async () => {
     const scenes = await readScenes();
     const dupResult = await duplicateScene(scenes.scenes![7]!.id, {
       toPath: "[49|1],[53|1]",
       count: 2,
     });
-    const { data: dup, warnings } =
-      parseToolResultWithWarnings<Array<{ clips: unknown[] }>>(dupResult);
 
-    // Two positions named, one copy each — count added nothing.
-    expect(dup).toHaveLength(2);
-    expect(warnings.join(" ")).toContain("count ignored");
+    // Two positions already say two copies, so count says it twice.
+    expect(isToolError(dupResult)).toBe(true);
+    expect(getToolErrorMessage(dupResult)).toBe(
+      'Error: count repeats one path, but toPath names 2. Drop count and let toPath name each scene (e.g. toPath: "[5|1],[9|1]").',
+    );
   });
 
   it("duplicates clips", async () => {

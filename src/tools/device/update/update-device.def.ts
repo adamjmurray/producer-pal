@@ -14,7 +14,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
   description:
     "Update device(s), chain(s), or drum pad(s). Params with no list form " +
-    "apply to every target.",
+    "apply to every target. A target named twice is written once, at its last " +
+    "mention.",
 
   annotations: {
     readOnlyHint: false,
@@ -25,9 +26,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     id: z.coerce
       .string()
       .optional()
-      .describe(
-        "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
-      ),
+      .describe("device, chain or drum pad id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
@@ -42,8 +41,9 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
-      default: "name, or comma-separated one per target (not drum pads)",
-      smallModel: "display name (not drum pads)",
+      default:
+        "name, or comma-separated one per target (not a multi-layer pad)",
+      smallModel: "display name (not a multi-layer pad)",
     }),
 
     // Needs the remote script, which small-model mode never uses.
@@ -56,7 +56,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. A param named twice is written once, at its last entry; the earlier one comes back with only a `detail`. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
@@ -66,7 +66,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     // The escape hatch for the drum-pad instrument-swap guard
     // (nested-param-target.ts), and deliberately NOT taught in the skills: the
-    // model learns of it from the warning, at the moment it is relevant, so it
+    // model learns of it from the skipped entry, at the moment it is relevant, so it
     // never reaches for it casually. Scoped to drum pads — a `sample` write to
     // an explicit device path never creates or replaces anything, so it has no
     // guard to unlock. Declared in EVERY mode — including small-model, whose
@@ -84,7 +84,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // a delimited string would be ambiguous. One action string per element.
     actions: param(z.array(z.string()).optional(), {
       default:
-        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a `detail` when there was nothing to do, or `ok:false` and why nothing happened',
+        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a `detail` when there was nothing to do, or `ok:false` and why nothing happened. An action named twice runs once, at its last mention',
       smallModel: null,
     }),
     macroVariation: param(
@@ -140,7 +140,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     sends: param(sendsInputSchema, {
       default:
-        "set several of a chain's sends at once: [{return, gainDb}], where return is a rack return chain's id, exact name, or letter — the `return`/`returnId` read-device reports. Use instead of sendGainDb + sendReturn, which set one",
+        "several of a chain's sends at once: [{return, gainDb}], return as for sendReturn. Use instead of sendGainDb + sendReturn",
       smallModel: null,
     }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {

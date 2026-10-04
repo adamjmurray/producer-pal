@@ -8,7 +8,9 @@
 // which every caller here shares, so the track-index bookkeeping lives in one
 // place.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   landTrackCopy,
   type LandedTrackCopy,
@@ -28,15 +30,24 @@ export interface TempTrackCopy extends LandedTrackCopy {
  * Duplicate the track holding `sourcePath`, hand the copy to `body`, and delete
  * it however `body` ends. Everything after the track prefix is carried over
  * unchanged, so `tempPath` names the same object on the copy.
+ *
+ * A temp track that can't be deleted is left behind, and said so: after `body`
+ * threw, in its error; after it returned, to `leftBehind`, since what `body`
+ * moved out has already landed.
  * @param sourcePath - Live API path of the object being copied
  * @param what - Singular noun for what is being copied ("device"), for errors
  * @param body - Runs while the temp track exists
+ * @param leftBehind - Told when the temp track couldn't be deleted after `body`
+ *   succeeded; without it that is thrown
  * @returns Whatever body returns
+ * @throws Error when no temp track can be made, `body` throws, or the temp
+ *   track can't be deleted and nobody takes it
  */
 export function withTempTrackCopy<T>(
   sourcePath: string,
   what: string,
   body: (copy: TempTrackCopy) => T,
+  leftBehind?: (note: string) => void,
 ): T {
   const sourceTrackIndex = extractRegularTrackIndex(sourcePath);
 
@@ -47,20 +58,40 @@ export function withTempTrackCopy<T>(
   const withinTrack = extractPathWithinTrack(sourcePath, what);
 
   const landing = landTrackCopy(sourceTrackIndex);
+  let result: T | undefined;
+  let failure: unknown;
 
   // From here a full copy of the source track — devices, clips and all — is
   // parked at landing.index, so every exit deletes it. Anything that throws in
   // between (a bad destination path, an unreachable chain) used to strand it.
   try {
-    return body({
+    result = body({
       ...landing,
       tempPath: `${livePath.track(landing.index)} ${withinTrack}`,
     });
-  } finally {
-    // Moving a device creates and deletes no tracks, so the temp track is still
-    // where duplicate_track put it. Deleting a group deletes its members too.
-    LiveAPI.from(livePath.liveSet).call("delete_track", landing.index);
+  } catch (error) {
+    failure = error;
   }
+
+  const stranded = deleteTempTrack(landing.index);
+
+  if (failure != null) {
+    throw stranded == null && failure instanceof Error
+      ? failure
+      : new Error(joinDetails([errorMessage(failure), stranded]), {
+          cause: failure,
+        });
+  }
+
+  if (stranded != null) {
+    if (leftBehind == null) {
+      throw new Error(stranded);
+    }
+
+    leftBehind(stranded);
+  }
+
+  return result as T;
 }
 
 /**
@@ -93,17 +124,13 @@ export function extractPathWithinTrack(path: string, what: string): string {
 }
 
 /**
- * The canonical spelling of a path, or the path unchanged when it doesn't
- * parse — the mover names the bad one in the reason it hands back.
+ * The canonical spelling of a path. A destination the caller wrote was already
+ * refused if it doesn't parse, and the default one is built from a real device.
  * @param path - The destination path as the caller wrote it
  * @returns The canonical spelling
  */
 export function canonicalPath(path: string): string {
-  try {
-    return formatObjectPath(parseObjectPath(path, "toPath"));
-  } catch {
-    return path;
-  }
+  return formatObjectPath(parseObjectPath(path, "toPath"));
 }
 
 /**
@@ -129,4 +156,21 @@ export function adjustTrackIndicesForTempTrack(
   return destTrackIndex >= landing.index
     ? toPath.replace(/^t\d+/, `t${destTrackIndex + landing.added}`)
     : toPath;
+}
+
+/**
+ * Delete the temp track. Moving a device creates and deletes no tracks, so it
+ * is still where duplicate_track put it. Deleting a group deletes its members
+ * too.
+ * @param index - Where the temp track landed
+ * @returns What to say when it couldn't be deleted, or undefined when it was
+ */
+function deleteTempTrack(index: number): string | undefined {
+  try {
+    LiveAPI.from(livePath.liveSet).call("delete_track", index);
+
+    return undefined;
+  } catch (error) {
+    return `the temporary track copy at ${formatObjectPath({ kind: "track", trackIndex: index })} couldn't be deleted: ${errorMessage(error)}`;
+  }
 }

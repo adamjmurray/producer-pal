@@ -6,7 +6,7 @@
 /**
  * E2E inventory of the `WARNING:` blocks the tools still raise, and of the
  * calls that raise none. Anything about one target belongs on that target's own
- * entry (ADR-0042), so this suite pins down what is left: a per-target warning
+ * entry, so this suite pins down what is left: a per-target warning
  * slipping back in fails here instead of going unnoticed.
  *
  * Each probe asserts the exact warnings, in order — not "contains", and not
@@ -38,10 +38,6 @@ const SCRATCH = `t${EMPTY_MIDI_TRACK}`;
 /** A colour Live's palette does not hold, so every write of it snaps. */
 const OFF_PALETTE = "#123456";
 
-/** What a track's take-lane copy says it left behind. */
-const CLIPS_ONLY =
-  "clips only: a take lane takes no devices, routing, mixer settings or session clips";
-
 /** One send of a write result: only what these probes read off it. */
 interface SendEntry {
   return?: string;
@@ -62,40 +58,26 @@ interface TargetEntry {
 }
 
 describe("warnings the tools still raise", () => {
-  it("says count was ignored by the types that copy once", async () => {
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "device",
-        path: "t2/d2",
-        count: 2,
-      }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: device copies go one per toPath",
-    ]);
-
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "chain",
-        path: "t6/d0/c0",
-        count: 2,
-      }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: chain copies go one per toPath",
-    ]);
-
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "drum-pad",
-        path: "t0/d0/pC1",
-        toPath: "t0/d0/pC2",
-        count: 2,
-      }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: drum pad copies go one per toPath",
-    ]);
+  it("refuses count on the types that copy once, copying nothing", async () => {
+    for (const [type, path] of [
+      ["device", "t2/d2"],
+      ["chain", "t6/d0/c0"],
+      ["drum-pad", "t0/d0/pC1"],
+    ] as const) {
+      expect(
+        await errorFrom("ppal-duplicate", {
+          type,
+          path,
+          ...(type === "drum-pad" ? { toPath: "t0/d0/pC2" } : {}),
+          count: 2,
+        }),
+      ).toBe(
+        `Error: count is only for type "track" or "scene"; this call has type "${type}". Change the type or drop count.`,
+      );
+    }
   });
 
-  it("says what a track's take-lane copy has no use for", async () => {
+  it("refuses what a track's take-lane copy has no use for, copying nothing", async () => {
     parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
@@ -110,30 +92,40 @@ describe("warnings the tools still raise", () => {
       toPath: "t10/l0",
     };
 
-    expect(
-      await warningsFrom("ppal-duplicate", { ...laneCopy, count: 2 }),
-    ).toStrictEqual([
-      "WARNING: count 2 ignored: a track's clips go once to each lane toPath names",
-    ]);
+    expect(await errorFrom("ppal-duplicate", { ...laneCopy, count: 2 })).toBe(
+      'Error: count is only for destination "new track"; this call has destination "lane". Change the destination or drop count.',
+    );
 
     expect(
-      await warningsFrom("ppal-duplicate", {
+      await errorFrom("ppal-duplicate", {
         ...laneCopy,
         toPath: "t10/l1",
         withoutClips: true,
         withoutDevices: true,
       }),
-    ).toStrictEqual([
-      `WARNING: withoutClips/withoutDevices ignored: ${CLIPS_ONLY}`,
-    ]);
+    ).toBe(
+      'Error: withoutClips, withoutDevices are only for destination "new track"; this call has destination "lane". Change the destination or drop withoutClips, withoutDevices.',
+    );
 
     expect(
-      await warningsFrom("ppal-duplicate", {
+      await errorFrom("ppal-duplicate", {
         ...laneCopy,
         toPath: "t10/l2",
         routeToSource: true,
       }),
-    ).toStrictEqual([`WARNING: routeToSource ignored: ${CLIPS_ONLY}`]);
+    ).toBe(
+      'Error: routeToSource is only for destination "new track"; this call has destination "lane". Change the destination or drop routeToSource.',
+    );
+
+    expect(
+      await errorFrom("ppal-duplicate", {
+        ...laneCopy,
+        toPath: "t10/l0,t10/l1",
+        count: 2,
+      }),
+    ).toBe(
+      'Error: count repeats one path, but toPath names 2. Drop count and let toPath name each take lane (e.g. toPath: "t2/l0,t2/l1").',
+    );
   });
 
   // A retired index says nothing about how to spell the path that replaces it,
@@ -152,15 +144,19 @@ describe("warnings the tools still raise", () => {
     ).toStrictEqual(["WARNING: ignored unexpected argument(s): bogusArg"]);
 
     expect(
-      await warningsFrom("ppal-update-clip", { path: "t0/s0", toPath: "   " }),
-    ).toStrictEqual(["WARNING: blank toPath ignored — leave it out instead"]);
+      await warningsFrom("ppal-update-clip", {
+        path: "t0/s0",
+        name: "Blank Destination",
+        toPath: "   ",
+      }),
+    ).toStrictEqual(["WARNING: blank toPath ignored: leave it out instead"]);
   });
 });
 
 describe("calls that report on the entry and warn about nothing", () => {
   // This used to be a whole-call warning naming the lane and a count. The
-  // clip that was buried carries the news itself now.
-  it("marks the clip two moves onto one spot buried, and warns nothing", async () => {
+  // clip that was left unwritten carries the news itself now.
+  it("says the first of two moves onto one spot was overwritten, and warns nothing", async () => {
     for (const bar of ["1|1", "5|1"]) {
       parseToolResult<CreateClipResult>(
         await ctx.client!.callTool({
@@ -182,8 +178,7 @@ describe("calls that report on the entry and warn about nothing", () => {
 
     expect(entries[0]).toStrictEqual(
       expect.objectContaining({
-        deleted: true,
-        detail: "another clip in this call was moved onto it",
+        detail: `overwritten later in this call by ${SCRATCH}[21|1]`,
       }),
     );
     expect(entries[1]?.path).toBe(`${SCRATCH}[21|1]`);
@@ -267,7 +262,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(ignoredArg[0]).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      detail: "gainDb not applicable to a device",
+      detail: "gainDb ignored: can't be set on a device",
     });
     // The chain it was sent alongside takes it, and keeps its own slot.
     expect(ignoredArg[1]?.path).toBe("t0/d0/pC1/c0");
@@ -298,9 +293,8 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
   });
 
-  // Live hides a take lane until the track's arrow is expanded, so a clip on
-  // one looks missing. It's about that clip, so its own entry says it.
-  it("says on the clip's entry that it landed on a take lane", async () => {
+  // The take-lanes arrow is taught in the tool descriptions, not on each entry.
+  it("puts only the lane path on a take-lane clip's entry", async () => {
     const onLane = await entryFrom("ppal-create-clip", {
       path: `${SCRATCH}/l0[13|1]`,
       notes: "C3 1|1",
@@ -308,9 +302,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     });
 
     expect(onLane.path).toBe(`${SCRATCH}/l0[13|1]`);
-    expect(onLane.detail).toBe(
-      "expand the take-lanes arrow on the track header in Live to see it",
-    );
+    expect(onLane.detail).toBeUndefined();
 
     const copied = await entryFrom("ppal-duplicate", {
       type: "clip",
@@ -318,10 +310,7 @@ describe("calls that report on the entry and warn about nothing", () => {
       toPath: `${SCRATCH}/l0[17|1]`,
     });
 
-    expect(copied.detail).toBe(
-      "re-created on the take lane; expand the take-lanes arrow on the track " +
-        "header in Live to see it",
-    );
+    expect(copied.detail).toBe("re-created on the take lane");
   });
 
   // openPluginWindow is about the one device the call selected, so its entry

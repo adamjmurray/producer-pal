@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Node-side store for the user's built-in skills-fragment overrides under
-// ~/.producer-pal/skills/<slot>.md (ADR-0010, "the first true replace of
-// release-tuned content"). Each file replaces one buildSkills fragment; an
-// empty folder means every slot tracks the latest built-in. The filesystem
-// lives on the Node-for-Max side, so V8's buildSkills is assembled here (see
-// skills-inject.ts) and the webui editor round-trips through a REST route.
+// ~/.producer-pal/skills/<slot>.md. Each file replaces one buildSkills
+// fragment; an empty folder means every slot tracks the latest built-in. The
+// filesystem lives on the Node-for-Max side, so V8's buildSkills is assembled
+// here (see skills-inject.ts) and the webui editor round-trips through a REST
+// route.
 //
 // A saved override carries fork-time PROVENANCE in frontmatter (the Producer
 // Pal version and a hash of the built-in it forked from) so we can later flag
@@ -22,6 +22,7 @@
 // so a file may hold a body, a flag, or both — and "reset to default" clears the
 // body while leaving the switch alone.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
   fragmentGate,
@@ -39,6 +40,7 @@ import {
   deleteConfigMarkdown,
   listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
+  skipIfUnreadable,
   writeConfigMarkdown,
 } from "./config-store/config-markdown-store.ts";
 import {
@@ -119,6 +121,12 @@ export interface SkillSlotState {
   splitStale: SplitStaleness | null;
   /** Fork-time provenance (null when there is no override). */
   provenance: OverrideProvenance | null;
+  /**
+   * Why the slot's file couldn't be read, or null. Set only by the list: the
+   * slot is then not editable, and an unreadable file never reads as empty (a
+   * save would overwrite it).
+   */
+  readError: string | null;
 }
 
 /**
@@ -139,10 +147,13 @@ export interface SkillSlotWrite {
  * the curated slots: a fork may override a driver, a notation head, or include a
  * fragment of the user's own. `resolveIncludes` only pulls the names its graph
  * references, and the readdir scope here plus the resolver's ref validation keep
- * resolution inside the dir. Empty or whitespace-only bodies are dropped so that
- * name falls back to the built-in — a file that carries only `enabled: false`
- * therefore contributes a switch-off and no body, which is the whole point of
- * storing the flag separately.
+ * resolution inside the dir. Empty or whitespace-only bodies are dropped so
+ * that name falls back to the built-in — a file that carries only
+ * `enabled: false` therefore contributes a switch-off and no body, which is the
+ * whole point of storing the flag separately.
+ *
+ * An unreadable file is skipped with a warning and fails open: the built-in
+ * applies, even if the file held `enabled: false`.
  *
  * @returns The override bodies and the disabled fragment names
  */
@@ -157,7 +168,15 @@ export function readSkillOverrides(): SkillOverrides {
   // and its ref validation + this readdir scope keep resolution inside the dir.
   for (const file of listConfigMarkdownFilesRecursive("skills")) {
     const name = file.slice(0, -".md".length);
-    const { data, body } = readSlotFile(`skills/${file}`);
+    const parsed = skipIfUnreadable(`skills/${file}`, () =>
+      readSlotFile(`skills/${file}`),
+    );
+
+    if (parsed == null) {
+      continue;
+    }
+
+    const { data, body } = parsed;
     const override = body.trim();
 
     if (override) {
@@ -174,12 +193,19 @@ export function readSkillOverrides(): SkillOverrides {
 
 /**
  * Full state of every override slot (built-in default, current override, on/off
- * flag, and drift), for the webui editor's list + diff.
+ * flag, and drift), for the webui editor's list + diff. A slot whose file can't
+ * be read comes back with `readError` set, so the rest still load.
  *
  * @returns One state entry per registered slot, in registry order
  */
 export function listSkillSlotStates(): SkillSlotState[] {
-  return SKILL_SLOT_NAMES.map(readSkillSlotState);
+  return SKILL_SLOT_NAMES.map((name) => {
+    try {
+      return readSkillSlotState(name);
+    } catch (error) {
+      return unreadableSlotState(name, errorMessage(error));
+    }
+  });
 }
 
 /**
@@ -206,6 +232,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
     drifted: isDrifted(provenance, BUILT_IN_HASHES[name]),
     splitStale: splitStaleness(name, override),
     provenance,
+    readError: null,
   };
 }
 
@@ -265,6 +292,36 @@ export function deleteSkillOverride(name: SkillSlotName): SkillSlotState {
 // --- Helpers below main exports ---
 
 /**
+ * A slot whose file couldn't be read. Its fields are placeholders; `readError`
+ * tells the editor not to show or save them.
+ *
+ * @param name - The slot
+ * @param readError - Why the read failed
+ * @returns The slot's state with the error set
+ */
+function unreadableSlotState(
+  name: SkillSlotName,
+  readError: string,
+): SkillSlotState {
+  const slot = SKILL_SLOTS[name];
+
+  return {
+    name,
+    title: slot.title,
+    description: slot.description,
+    builtIn: slot.builtIn,
+    override: "",
+    enabled: true,
+    canDisable: false,
+    gate: fragmentGate(name),
+    drifted: false,
+    splitStale: null,
+    provenance: null,
+    readError,
+  };
+}
+
+/**
  * Whether a slot's override predates its `-write` split and still holds the
  * sibling's text — the same check buildSkills warns about (warnSplitOverrides),
  * reported per slot so the editor can say it where the editing happens. An
@@ -289,7 +346,16 @@ function splitStaleness(
     return null;
   }
 
-  const { data, body } = readSlotFile(filenameFor(sibling));
+  // An unreadable sibling is that slot's own error to report, not this one's.
+  const siblingFile = skipIfUnreadable(filenameFor(sibling), () =>
+    readSlotFile(filenameFor(sibling)),
+  );
+
+  if (siblingFile == null) {
+    return null;
+  }
+
+  const { data, body } = siblingFile;
 
   if (body.trim() || !isEnabled(data)) {
     return null;

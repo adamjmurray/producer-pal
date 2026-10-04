@@ -88,6 +88,29 @@ export function readConfigMarkdown(filename: string): string {
 }
 
 /**
+ * Run one file's read inside a directory listing so a bad file can't take the
+ * rest down. On any error (permissions, I/O) it warns and returns null; the
+ * caller skips that file. Single-file readers and the editor's GET/PUT still
+ * throw via {@link readConfigMarkdown}, so a file we can't read is never
+ * mistaken for an empty one and overwritten.
+ *
+ * @param filename - Config-relative path being read (for the warning)
+ * @param read - Performs the read
+ * @returns The read result, or null when it threw
+ */
+export function skipIfUnreadable<T>(filename: string, read: () => T): T | null {
+  try {
+    return read();
+  } catch (error) {
+    console.warn(
+      `Skipping unreadable ${resolveConfigPath(filename)}: ${errorMessage(error)}`,
+    );
+
+    return null;
+  }
+}
+
+/**
  * Overwrite a config markdown slot with the given content, creating
  * ~/.producer-pal if needed. Writes to a temp file and renames it into place
  * so a crash mid-write can't leave a half-written file.
@@ -149,27 +172,38 @@ export function listConfigMarkdownFiles(subdir: string): string[] {
  * {@link listConfigMarkdownFiles} this DESCENDS into nested folders, so a skills
  * override can live at `skills/drums/backbeat.md` and be pulled in with
  * `@include "./drums/backbeat.md"`. Directories are skipped (only files are
- * returned); a missing subdir yields [].
+ * returned); a missing subdir yields []. An unreadable nested folder is skipped
+ * with a warning.
  *
  * @param subdir - Subdirectory under the config dir (e.g. "skills")
  * @returns Sorted POSIX relative paths (e.g. ["core.md", "drums/backbeat.md"])
  */
 export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
   const base = join(configDir(), subdir);
+  // Walk by hand (not readdirSync's `recursive`) so one unreadable subfolder is
+  // skipped with a warning instead of failing the whole listing. Only the root
+  // dir's own error propagates.
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
 
-  return safeReaddir(() =>
-    readdirSync(base, { recursive: true, withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-      .map((entry) =>
-        relative(base, join(entry.parentPath, entry.name)).split(sep).join("/"),
-      )
-      .toSorted(),
-  );
+      if (entry.isDirectory()) {
+        return (
+          skipIfUnreadable(relative(configDir(), path), () => walk(path)) ?? []
+        );
+      }
+
+      return entry.isFile() && entry.name.endsWith(".md")
+        ? [relative(base, path).split(sep).join("/")]
+        : [];
+    });
+
+  return safeReaddir(() => walk(base).toSorted());
 }
 
 /**
  * Delete a config markdown slot, if it exists. Used to reset an override back
- * to the built-in default (empty folder ⇒ latest built-ins, per ADR-0010). A
+ * to the built-in default (empty folder ⇒ latest built-ins). A
  * missing file is treated as already-reset, not an error.
  *
  * @param filename - Slot filename (e.g. "skills/barbeat-standard.md")

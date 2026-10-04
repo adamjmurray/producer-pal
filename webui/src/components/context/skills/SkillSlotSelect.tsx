@@ -63,14 +63,14 @@ export function SkillSlotSelect(
  * editor says which it is. Being switched off outranks both: a fragment that
  * isn't sent at all makes any problem in it moot.
  * @param slot - The slot to mark
- * @returns "✕ " when off, "⚠ " when it wants attention, "✎ " when customized, else ""
+ * @returns "✕ " when off, "⚠ " when it wants attention (or can't be read), "✎ " when customized, else ""
  */
 function slotGlyph(slot: SkillSlotView): string {
   if (!slot.enabled) {
     return "✕ ";
   }
 
-  if (slot.drifted || slot.splitStale) {
+  if (slot.readError != null || slot.drifted || slot.splitStale) {
     return "⚠ ";
   }
 

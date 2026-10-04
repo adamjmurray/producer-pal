@@ -14,7 +14,10 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMockObject,
+  registerPendingMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { registerCarryLiveSet } from "./chain-copy-fixtures.ts";
 
@@ -38,15 +41,20 @@ type RackKind = "instrument" | "drum";
  * @param trimmed - Whether the faders sit off their defaults
  * @returns The volume and panning mocks
  */
-function registerMixer(prefix: string, chainPath: string, trimmed: boolean) {
-  registerMockObject(`${prefix}-mixer`, { path: `${chainPath} mixer_device` });
+function registerMixer(
+  prefix: string,
+  chainPath: string,
+  trimmed: boolean,
+  register = registerMockObject,
+) {
+  register(`${prefix}-mixer`, { path: `${chainPath} mixer_device` });
 
   return {
-    volume: registerMockObject(`${prefix}-volume`, {
+    volume: register(`${prefix}-volume`, {
       path: `${chainPath} mixer_device volume`,
       properties: trimmed ? { display_value: GAIN_DB } : {},
     }),
-    panning: registerMockObject(`${prefix}-panning`, {
+    panning: register(`${prefix}-panning`, {
       path: `${chainPath} mixer_device panning`,
       properties: trimmed ? { value: PAN } : {},
     }),
@@ -131,13 +139,13 @@ function setupTrimmedChain(kind: RackKind) {
 
   // The temp track's copy of the source chain, trim and all: the chain a move
   // reading a source off the temp device would find, and name.
-  registerMockObject("temp-chain", {
+  registerPendingMockObject("temp-chain", {
     path: TEMP_CHAIN,
     type: chainType,
     properties: { name: "Chain", ...pad, devices: children("temp-dev") },
   });
-  registerMixer("temp", TEMP_CHAIN, true);
-  registerMockObject("temp-dev", { path: `${TEMP_CHAIN} devices 0` });
+  registerMixer("temp", TEMP_CHAIN, true, registerPendingMockObject);
+  registerPendingMockObject("temp-dev", { path: `${TEMP_CHAIN} devices 0` });
 
   return { liveSet, copy: registerMixer("copy", COPY_CHAIN, false) };
 }

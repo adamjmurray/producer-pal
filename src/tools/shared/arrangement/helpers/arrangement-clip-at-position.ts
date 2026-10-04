@@ -6,11 +6,11 @@
 // Finding the clip a complete arrangement path names. `t0[5|1]` means the clip
 // COVERING 5|1 on that lane, so dragging a clip in Live doesn't strand a path
 // that used to reach it. A clip ending exactly at 5|1 loses a tie to one
-// starting there (ADR-0037).
+// starting there.
 
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 import {
   type CompleteArrangementPosition,
@@ -18,6 +18,12 @@ import {
 } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  insideBeats,
+  laneObject,
+  type LaneView,
+  startsAtBeats,
+} from "./arrangement-lane-view.ts";
 import { isTakeLaneClip } from "./take-lanes.ts";
 
 /** Where a complete path lands, and what is there. */
@@ -32,13 +38,15 @@ export interface ArrangementPositionTarget {
  * The arrangement clip covering a complete path's position.
  * @param path - A song position and the lane it sits on
  * @param paramName - The param the path came from, for its own errors
+ * @param lanes - The call's lanes, for a caller looking up several paths
  * @returns The clip covering that position, or null when none does
  */
 export function arrangementClipAtPosition(
   path: CompleteArrangementPosition,
   paramName: string,
+  lanes?: LaneView,
 ): LiveAPI | null {
-  return arrangementPositionTarget(path, paramName).clip;
+  return arrangementPositionTarget(path, paramName, lanes).clip;
 }
 
 /**
@@ -46,14 +54,27 @@ export function arrangementClipAtPosition(
  * also needs the spot itself, not only the clip sitting on it.
  * @param path - A song position and the lane it sits on
  * @param paramName - The param the path came from, for its own errors
+ * @param lanes - The call's lanes, for a caller looking up several paths: the
+ *   lane is read once for all of them. Without it the lane is read for this
+ *   lookup alone, and no further than the clip it finds.
  * @returns The position in beats and the clip covering it
  */
 export function arrangementPositionTarget(
   path: CompleteArrangementPosition,
   paramName: string,
+  lanes?: LaneView,
 ): ArrangementPositionTarget {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const beats = positionBeats(liveSet, path, paramName);
+
+  if (lanes != null) {
+    const found = lanes.covering(path.lane, beats);
+
+    return {
+      beats,
+      clip: found == null ? null : LiveAPI.from(toLiveApiId(found.id)),
+    };
+  }
 
   return {
     beats,
@@ -61,19 +82,6 @@ export function arrangementPositionTarget(
       clipsOnLane(path.lane).find((clip) => coversPosition(clip, beats)) ??
       null,
   };
-}
-
-/**
- * The Track or TakeLane a lane coordinate names.
- * @param lane - The lane
- * @returns The object holding that lane's arrangement clips
- */
-export function laneObject(lane: ArrangementLane): LiveAPI {
-  return LiveAPI.from(
-    lane.kind === "take-lane"
-      ? livePath.track(lane.trackIndex).takeLane(lane.laneIndex)
-      : livePath.track(lane.trackIndex),
-  );
 }
 
 /**
@@ -109,13 +117,11 @@ export function clipsOnLane(
 function coversPosition(clip: LiveAPI, posBeats: number): boolean {
   const start = clip.getProperty("start_time") as number;
 
-  if (Math.abs(start - posBeats) < SAME_TIME_EPSILON) {
+  if (startsAtBeats(start, posBeats)) {
     return true;
   }
 
-  const end = clip.getProperty("end_time") as number;
-
-  return start < posBeats && posBeats < end - SAME_TIME_EPSILON;
+  return insideBeats(start, clip.getProperty("end_time") as number, posBeats);
 }
 
 // --- Helpers below main exports ---

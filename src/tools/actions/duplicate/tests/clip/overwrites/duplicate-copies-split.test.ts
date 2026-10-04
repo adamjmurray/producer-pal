@@ -110,8 +110,9 @@ describe("a copy another copy split", () => {
     registerSources(lengths);
     registerSplittingTrack(lengths);
 
-    // The 16 lands, the 4 takes its front, the 12 buries the rest, and the 2
-    // splits the 12: the tail at 3|3 is the 12's, and the 16 has nothing left.
+    // The 4 and the 12 between them cover the 16 whole, so it is never
+    // written. The 2 splits the 12: the tail at 3|3 is the 12's, and its head
+    // stays, so its entry says it was shortened.
     const result = await duplicate({
       type: "clip",
       id: "s16,s4,s12,s2",
@@ -121,12 +122,15 @@ describe("a copy another copy split", () => {
     expect(result).toStrictEqual([
       {
         path: "t1[1|1]",
-        deleted: true,
-        detail: "a later copy in this call landed on it",
+        detail: "overwritten later in this call by t1[3|1]",
       },
-      { id: "copy-1", path: "t1[1|1]" },
-      { id: "copy-2", path: "t1[2|1]" },
-      { id: "copy-3", path: "t1[3|1]" },
+      { id: "copy-0", path: "t1[1|1]" },
+      {
+        id: "copy-1",
+        path: "t1[2|1]",
+        detail: "shortened by t1[3|1] later in this call",
+      },
+      { id: "copy-2", path: "t1[3|1]" },
     ]);
   });
 });

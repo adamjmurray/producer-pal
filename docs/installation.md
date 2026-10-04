@@ -71,7 +71,7 @@ provider:
 - **[Chat UI overview](./installation/chat-ui)** — supported providers and setup
 - **[Gemini](./installation/gemini)**, **[OpenAI](./installation/openai)**,
   **[Ollama](./installation/ollama)** (offline), or
-  **[Anthropic, OpenRouter, Mistral & more](./installation/chat-ui-other-providers)**
+  **[Anthropic, OpenRouter, Vercel AI Gateway, Mistral & more](./installation/chat-ui-other-providers)**
 
 ### Command Line
 

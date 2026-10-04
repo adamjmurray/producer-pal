@@ -288,3 +288,101 @@ describe("useChat step budget locking", () => {
     expect(result.current.activeMaxToolSteps).toBe(60);
   });
 });
+
+describe("useChat imported flag", () => {
+  /**
+   * Render useChat and restore a one-message imported conversation.
+   * @param over - Locked-settings overrides
+   * @returns The hook result
+   */
+  async function restoreImported(
+    over: Parameters<typeof lockedSettings>[0] = {},
+  ) {
+    const { result } = renderHook(() => useChat(defaultProps));
+
+    await act(async () => {
+      result.current.restoreChatHistory([{ role: "user", content: "hi" }], {
+        ...lockedSettings(over),
+        imported: true,
+      });
+    });
+
+    return result;
+  }
+
+  it("reports a restored imported conversation until it is cleared", async () => {
+    const result = await restoreImported();
+
+    expect(result.current.activeImported).toBe(true);
+
+    await act(async () => {
+      result.current.clearConversation();
+    });
+
+    expect(result.current.activeImported).toBe(false);
+  });
+
+  it("does not flag a restored local conversation", async () => {
+    const { result } = renderHook(() => useChat(defaultProps));
+
+    expect(result.current.activeImported).toBe(false);
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings(),
+      );
+    });
+
+    expect(result.current.activeImported).toBe(false);
+  });
+
+  it("keeps the flag after a send re-locks the restored conversation", async () => {
+    // The send re-locks the settings and keeps running the imported prompt, so
+    // the warning must not go away with it.
+    const result = await restoreImported({ systemInstruction: "From a file." });
+
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(result.current.activeSystemInstruction).toBe("From a file.");
+    expect(result.current.activeImported).toBe(true);
+  });
+
+  it("keeps the flag through a retry and an edit", async () => {
+    const result = await restoreImported();
+
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
+
+    await act(async () => {
+      await result.current.handleRetry(userIdx);
+    });
+
+    expect(result.current.activeImported).toBe(true);
+
+    await act(async () => {
+      await result.current.handleEdit(userIdx, "edited");
+    });
+
+    expect(result.current.activeImported).toBe(true);
+  });
+
+  it("does not leak into a new conversation after a clear", async () => {
+    const result = await restoreImported();
+
+    await act(async () => {
+      result.current.clearConversation();
+    });
+
+    await act(async () => {
+      await result.current.handleSend("fresh chat");
+    });
+
+    expect(result.current.activeImported).toBe(false);
+  });
+});

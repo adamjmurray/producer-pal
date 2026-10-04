@@ -25,9 +25,6 @@ import {
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
-import { resolveClipTargets } from "#src/tools/clip/update/helpers/entries/clip-targets.ts";
-import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
-import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import * as processModule from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
@@ -77,23 +74,21 @@ describe("updateClip - splitting smoke tests", () => {
     expect(callState.trackMock.call).not.toHaveBeenCalled();
   });
 
-  it("splits nothing when both split params are given", async () => {
+  it("refuses both split params, before touching anything", async () => {
     const clipId = "clip_1";
-    const consoleSpy = vi.spyOn(console, "warn");
-
     const { callState } = setupClipSplittingMocks(clipId);
 
     // They read positions on different timelines, so there is no safe guess.
-    await updateClip({ id: clipId, arrangementSplit: "2|1", split: "3|1" }, {});
-
-    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
+    await expect(
+      updateClip(
+        { id: clipId, arrangementSplit: "2|1", split: "3|1", name: "Renamed" },
+        {},
+      ),
+    ).rejects.toThrow(
+      "arrangementSplit names the split positions on its own - don't send split with it (split is deprecated)",
     );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit and split both name split"),
-    );
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+    expect(lookupMockObject(clipId)?.set).not.toHaveBeenCalled();
   });
 
   it("splits for arrangementSplit when split is sent blank", async () => {
@@ -109,7 +104,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     expectDuplicateCalled(callState.trackMock);
     expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit and split both name split"),
+      expect.stringContaining("arrangementSplit names the split positions"),
     );
   });
 
@@ -119,7 +114,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    await updateClip({ id: clipId, arrangementSplit: "" }, {});
+    await updateClip({ id: clipId, arrangementSplit: "", name: "A" }, {});
 
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
@@ -130,7 +125,7 @@ describe("updateClip - splitting smoke tests", () => {
     // format of a param that named nothing sends the model looking for a
     // problem with a value it never meant to send.
     expect(consoleSpy).toHaveBeenCalledExactlyOnceWith(
-      "blank arrangementSplit ignored — leave it out instead",
+      "blank arrangementSplit ignored: leave it out instead",
     );
   });
 
@@ -259,7 +254,7 @@ describe("updateClip - splitting smoke tests", () => {
     await expect(
       updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
     ).rejects.toThrow(
-      "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
+      "arrangementSplit ignored: this is a take-lane clip; split it in Live's UI",
     );
   });
 
@@ -282,8 +277,9 @@ describe("updateClip - splitting smoke tests", () => {
   });
 
   // A cut whose pieces the rescan can't find leaves the target with no clip at
-  // all. One target never comes back as no entries — and a lone one throws.
-  it("refuses a target whose split left no clip behind", async () => {
+  // all. One target never comes back as no entries: the cut landed, so it keeps
+  // an entry that says so rather than being refused.
+  it("keeps an entry for a target whose split left no clip behind", async () => {
     const clipId = "clip_1";
 
     setupClipSplittingMocks(clipId);
@@ -307,13 +303,16 @@ describe("updateClip - splitting smoke tests", () => {
 
     await expect(
       updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
-    ).rejects.toThrow("not updated: no clip was left to update");
+    ).resolves.toStrictEqual({
+      id: clipId,
+      path: "t0[1|1]",
+      detail: "not updated: no clip was left to update; already changed: split",
+    });
   });
 
   // A split answers with several clips under one target. A piece whose own
-  // update fails used to vanish, because a sibling with results spoke for the
-  // target: the failure has to show up on the target's entry.
-  it("says so on the target's entry when one split piece fails", async () => {
+  // update fails keeps an entry of its own, and its sibling is still updated.
+  it("gives the piece that failed an entry saying so, beside the one that didn't", async () => {
     const clipId = "clip_1";
 
     setupClipSplittingMocks(clipId);
@@ -336,14 +335,19 @@ describe("updateClip - splitting smoke tests", () => {
       {},
     );
 
-    // The piece that did answer carries what the one that didn't had to say.
-    expect(result).toStrictEqual({
-      id: "dup_2",
-      noteCount: 0,
-      path: "t0[2|1]",
-      detail:
-        "transforms ignored: the clip has no notes; Live refused the note read",
-    });
+    expect(result).toStrictEqual([
+      {
+        id: clipId,
+        path: "t0[1|1]",
+        detail: "update stopped partway: Live refused the note read",
+      },
+      {
+        id: "dup_2",
+        noteCount: 0,
+        path: "t0[2|1]",
+        detail: "transforms ignored: the clip has no notes",
+      },
+    ]);
   });
 
   // The same call with a name to write: the rename lands, so the clip keeps a
@@ -362,7 +366,7 @@ describe("updateClip - splitting smoke tests", () => {
       expect.objectContaining({
         id: clipId,
         detail:
-          "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
+          "arrangementSplit ignored: this is a take-lane clip; split it in Live's UI",
       }),
     );
   });
@@ -458,7 +462,7 @@ describe("updateClip - splitting smoke tests", () => {
     await updateClip({ id: clipId, name: "renamed" }, {});
 
     expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("ignored for take-lane clip"),
+      expect.stringContaining("ignored: this is a take-lane clip"),
     );
   });
 });
@@ -528,9 +532,10 @@ describe("updateClip - loc: song positions", () => {
   it("does not read loc: on split, which is clip-relative", async () => {
     setupWithLocators();
 
+    // Read as a clip-relative position, so it is not a position at all.
     await expect(
       updateClip({ id: CLIP_ID, split: "loc:Chorus" }, {}),
-    ).resolves.toBeDefined();
+    ).rejects.toThrow('Invalid split format: "loc:Chorus"');
   });
 });
 
@@ -652,25 +657,92 @@ describe("updateClip - arrangementSplit next to a move", () => {
   });
 });
 
-describe("planClipUpdate - the pieces a split makes", () => {
-  it("gives the piece on a new id nothing a list could have paired with", () => {
-    setupClipSplittingMocks("clip_1");
+// A split can't be undone, so a call that can't be read must refuse before it.
+describe("updateClip - a split with a value it can't read", () => {
+  it.each([
+    ["transforms", { transforms: "velocity = = 1" }, "transform syntax error"],
+    [
+      "preTransforms",
+      { preTransforms: "velocity = = 1" },
+      "transform syntax error",
+    ],
+    ["notes", { notes: "C3 1|1 ((" }, "syntax error"],
+  ])("refuses bad %s and cuts nothing", async (_param, bad, message) => {
+    const { callState } = setupClipSplittingMocks("clip_1");
 
-    const plan = planClipUpdate({
-      targets: resolveClipTargets({ id: "clip_1" }),
+    await expect(
+      updateClip({ id: "clip_1", arrangementSplit: "2|1", ...bad }),
+    ).rejects.toThrow(message);
+
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ["an unreadable list", "nope", "Invalid arrangementSplit format"],
+    ["one bad point in a list", "2|1, nope", "Invalid arrangementSplit format"],
+    [
+      "no position at all",
+      ",",
+      'invalid arrangementSplit "," - it names nothing',
+    ],
+    ["a hole in the list", "2|1,,3|1", "it has an empty entry"],
+    [
+      "too many points",
+      Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(","),
+      "Too many arrangementSplit points",
+    ],
+    ["only the song start", "1|1", "No valid arrangementSplit points"],
+  ])(
+    "refuses %s and cuts nothing",
+    async (_label, arrangementSplit, message) => {
+      const { callState } = setupClipSplittingMocks("clip_1");
+
+      await expect(
+        updateClip({ id: "clip_1", name: "X", arrangementSplit }),
+      ).rejects.toThrow(message);
+
+      expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+    },
+  );
+
+  // 1|6-2|1 is a backwards range in 4/4 and a valid one in 6/8, so the meter
+  // the clip will have decides whether the cut may go ahead.
+  it("reads the transforms in the meter the clip will have", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+    const transforms = "1|6-2|1: velocity = 10";
+
+    await expect(
+      updateClip({
+        id: "clip_1",
+        arrangementSplit: "2|1",
+        timeSignature: "4/4",
+        transforms,
+      }),
+    ).rejects.toThrow("Invalid time range");
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+
+    await updateClip({
+      id: "clip_1",
       arrangementSplit: "2|1",
-      reasons: newClipReasons(),
-      context: {},
+      timeSignature: "6/8",
+      transforms,
     });
-
-    // Why every position and length is refused above: the second piece is on
-    // an id the call never named, so a list has no entry to pair with it and
-    // a single value would reach it whether or not that made sense.
-    expect(
-      plan.clips.map((clip) => [clip.id, plan.lengthBeatsFor(clip)]),
-    ).toStrictEqual([
-      ["clip_1", null],
-      ["dup_2", null],
-    ]);
+    expectDuplicateCalled(callState.trackMock);
   });
 });

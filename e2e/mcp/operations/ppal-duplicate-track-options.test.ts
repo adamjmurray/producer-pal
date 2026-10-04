@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDeviceAt,
+  getToolErrorMessage,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -204,7 +205,7 @@ describe("ppal-duplicate track options", () => {
     // One warning for the pair, not one each: it is about the call's params,
     // which no copy's entry can speak for.
     expect(warnings).toStrictEqual([
-      "WARNING: withoutClips/withoutDevices ignored: routeToSource always " +
+      "WARNING: withoutClips, withoutDevices ignored: routeToSource always " +
         "copies without clips and devices",
     ]);
   });
@@ -215,9 +216,23 @@ describe("ppal-duplicate track options", () => {
       arguments: { type: "scene", id: "0", routeToSource: true },
     });
 
-    expect(JSON.stringify(result)).toContain(
-      "routeToSource is only supported for type 'track'",
+    expect(getToolErrorMessage(result)).toBe(
+      'Error: routeToSource is only for type "track"; this call has type "scene". Change the type or drop routeToSource.',
     );
+  });
+
+  it("refuses a param the type doesn't read and copies nothing", async () => {
+    const before = (await readTracks()).tracks.length;
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "track", path: "t1", transforms: "velocity = 80" },
+    });
+
+    expect(getToolErrorMessage(refused)).toBe(
+      'Error: transforms is only for type "clip"; this call has type "track". Change the type or drop transforms.',
+    );
+    expect((await readTracks()).tracks.length).toBe(before);
   });
 });
 

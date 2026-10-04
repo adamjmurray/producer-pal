@@ -9,12 +9,17 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
+  registerPendingMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 const NEW_TRACK_ID = "live_set/tracks/1";
 
 export { children };
-export { type RegisteredMockObject, registerMockObject };
+export {
+  type RegisteredMockObject,
+  registerMockObject,
+  registerPendingMockObject,
+};
 
 /**
  * Register the freshly duplicated track (index 1) together with one clip slot
@@ -30,7 +35,7 @@ export function registerDuplicatedTrackSlots(
 ): { newTrack: RegisteredMockObject; slots: RegisteredMockObject[] } {
   const slotIds = hasClip.map((_, index) => `slot${index}`);
 
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       devices: [],
@@ -41,7 +46,7 @@ export function registerDuplicatedTrackSlots(
   });
 
   const slots = hasClip.map((has, index) =>
-    registerMockObject(slotIds[index] as string, {
+    registerPendingMockObject(slotIds[index] as string, {
       path: livePath.track(1).clipSlot(index),
       properties: { has_clip: has ? 1 : 0 },
     }),
@@ -56,6 +61,8 @@ export function registerDuplicatedTrackSlots(
  * @param sceneIndex - Scene index
  * @param hasClip - Whether the clip slot has a clip
  * @param clipProperties - Optional clip properties (registered only if hasClip)
+ * @param register - How to add them: registerMockObject, or registerPendingMockObject for
+ *   slots that a later call creates
  * @returns The clip handle if hasClip and clipProperties, otherwise the slot handle
  */
 export function registerClipSlot(
@@ -63,8 +70,9 @@ export function registerClipSlot(
   sceneIndex: number,
   hasClip: boolean,
   clipProperties?: Record<string, unknown>,
+  register: typeof registerMockObject = registerMockObject,
 ): RegisteredMockObject {
-  const slot = registerMockObject(
+  const slot = register(
     `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
     {
       path: livePath.track(trackIndex).clipSlot(sceneIndex),
@@ -73,7 +81,7 @@ export function registerClipSlot(
   );
 
   if (hasClip && clipProperties) {
-    return registerMockObject(
+    return register(
       `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}/clip`,
       {
         path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
@@ -231,13 +239,16 @@ export function expectDeleteDeviceCalls(
  * Register clip mock objects for each track at a given scene index.
  * @param trackCount - Number of tracks
  * @param sceneIndex - Scene index for the clip slot
+ * @param register - registerMockObject, or registerPendingMockObject for clips that a
+ *   later call creates
  */
 export function registerClipMocks(
   trackCount: number,
   sceneIndex: number,
+  register: typeof registerMockObject = registerMockObject,
 ): void {
   for (let i = 0; i < trackCount; i++) {
-    registerMockObject(`live_set/tracks/${i}/clip_slots/${sceneIndex}/clip`, {
+    register(`live_set/tracks/${i}/clip_slots/${sceneIndex}/clip`, {
       path: livePath.track(i).clipSlot(sceneIndex).clip(),
     });
   }
@@ -271,17 +282,23 @@ export function setupSessionSceneMocks(
   const trackIds = Array.from({ length: trackCount }, (_, i) => `track${i}`);
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children(...trackIds) },
+    properties: { tracks: children(...trackIds), scenes: children("scene1") },
   });
 
   for (let i = 0; i < trackCount; i++) {
-    registerClipSlot(i, targetSceneIndex, true);
+    registerClipSlot(
+      i,
+      targetSceneIndex,
+      true,
+      undefined,
+      registerPendingMockObject,
+    );
   }
 
-  registerClipMocks(trackCount, targetSceneIndex);
+  registerClipMocks(trackCount, targetSceneIndex, registerPendingMockObject);
 
   if (registerNewScene) {
-    registerMockObject(`live_set/scenes/${targetSceneIndex}`, {
+    registerPendingMockObject(`live_set/scenes/${targetSceneIndex}`, {
       path: livePath.scene(targetSceneIndex),
     });
   }
@@ -304,7 +321,7 @@ export function setupArrangementSceneMocks(
 
   return registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children(...trackIds) },
+    properties: { tracks: children(...trackIds), scenes: children("scene1") },
   });
 }
 
@@ -365,6 +382,7 @@ export function registerSessionClipDuplication(
  */
 export function setupDeviceDuplicationMocks(deviceIndex = 0): {
   liveSet: RegisteredMockObject;
+  tempDevice: RegisteredMockObject;
 } {
   registerMockObject("device1", {
     path: livePath.track(0).device(deviceIndex),
@@ -372,11 +390,12 @@ export function setupDeviceDuplicationMocks(deviceIndex = 0): {
   });
   const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-  registerMockObject(`live_set/tracks/1/devices/${deviceIndex}`, {
-    path: livePath.track(1).device(deviceIndex),
-  });
+  const tempDevice = registerPendingMockObject(
+    `live_set/tracks/1/devices/${deviceIndex}`,
+    { path: livePath.track(1).device(deviceIndex) },
+  );
 
-  return { liveSet };
+  return { liveSet, tempDevice };
 }
 
 /**
@@ -394,7 +413,7 @@ export function setupProducerPalDeviceMocks(): {
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
   });
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       devices: children("device0", "device1", "device2"),
@@ -423,7 +442,7 @@ export function setupRoutingMocks(
     path: livePath.track(0),
     properties: mockData[String(livePath.track(0))] as Record<string, unknown>,
   });
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       ...(mockData[String(livePath.track(1))] as Record<string, unknown>),
@@ -448,7 +467,7 @@ export function registerBareTrackDuplication(): {
   registerMockObject("track1", { path: livePath.track(0) });
 
   const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: { devices: [], clip_slots: [], arrangement_clips: [] },
   });

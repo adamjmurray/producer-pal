@@ -323,7 +323,7 @@ function buildClipInfo(
 function readSelectedDeviceInfo(
   track: LiveAPI,
 ): SelectResult["selectedDevice"] | undefined {
-  const trackView = LiveAPI.from(`${track.path} view`);
+  const trackView = track.child("view");
 
   if (!trackView.exists()) {
     return undefined;

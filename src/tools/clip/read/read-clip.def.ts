@@ -15,23 +15,20 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
   description:
-    "Read clip settings, MIDI notes, and audio properties. Returns overview by default. Use include to add detail. An arrangement clip reports its path as where it starts - 't0[5|1]', or 't0/l0[5|1]' on a take lane; read one by id.",
+    "Read clip settings, MIDI notes, and audio properties. Returns overview by default. Use include to add detail. An arrangement clip reports its path as where it starts - 't0[5|1]', or 't0/l0[5|1]' on a take lane; read one by id or by any path covering it.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("clip ID(s) to read, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("clip id(s), comma-separated"),
 
     ...addressingAliases({ idAlias: "clipId" }),
     path: z.coerce
       .string()
       .optional()
       .describe(
-        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip by where it starts, 't<track>[<position>]' (e.g., 't0[5|1]')",
+        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip covering a position, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {
@@ -49,15 +46,25 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     }),
     include: param(
       z
-        .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
+        .array(
+          z.enum([
+            "sample",
+            "notes",
+            "color",
+            "timing",
+            "warp",
+            "envelopes",
+            "*",
+          ]),
+        )
         .default([]),
       {
         default:
-          'notes = MIDI data (muted notes are hidden and counted in mutedNotes; edits leave them alone). timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. "*" = all',
+          'notes = MIDI data (muted notes are hidden and counted in mutedNotes; edits leave them alone). timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. envelopes = clip automation, session clips only; needs the Producer Pal remote script and a round trip per parameter, so ask for it by name - "*" leaves it out. "*" = all the rest',
         smallModel: {
           description:
             "notes = MIDI data (muted notes hidden, counted in mutedNotes). timing = loop/start/end markers. sample = audio file info. color",
-          excludeEnumValues: ["warp", "*"],
+          excludeEnumValues: ["warp", "envelopes", "*"],
         },
       },
     ),

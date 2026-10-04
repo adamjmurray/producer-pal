@@ -12,6 +12,7 @@ import {
   type ParamOutcome,
   skippedParam,
   skippedParamById,
+  supersededParam,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   isDrumPadSampleShortcut,
@@ -48,7 +49,7 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * own entry is where the caller reads what happened to it.
  *
  * When entries reach one param, only the last is written; each earlier one
- * comes back skipped, naming the entry that overrides it.
+ * comes back with a detail naming the entry that overrides it, and no `ok`.
  * @param device - LiveAPI device object to update
  * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
@@ -77,9 +78,7 @@ export function setParamValues(
     const skip = skips.get(index);
 
     if (skip != null) {
-      results.push(
-        byId ? skippedParamById(key, skip) : skippedParam(key, skip),
-      );
+      results.push(supersededParam(key, byId, skip));
       continue;
     }
 

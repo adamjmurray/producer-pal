@@ -12,6 +12,10 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMainLaneClip,
+  registerTakeLaneClip,
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
 import { arrangementClipAtPosition } from "../arrangement-clip-at-position.ts";
 import {
   type CompleteArrangementPosition,
@@ -37,41 +41,6 @@ function at(
   position: string,
 ): CompleteArrangementPosition {
   return { kind: "arrangement-position", lane, position };
-}
-
-/**
- * Registers a clip on the track's main lane.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- * @param index - Its index in the track's arrangement clips
- * @param endTime - Where it ends, in Ableton beats
- */
-function registerMainLaneClip(
-  id: string,
-  startTime: number,
-  index = 0,
-  endTime = startTime + 4,
-): void {
-  registerMockObject(id, {
-    path: livePath.track(0).arrangementClip(index),
-    properties: { start_time: startTime, end_time: endTime },
-  });
-}
-
-/**
- * Registers a clip on take lane 1 of track 0.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- */
-function registerTakeLaneClip(id: string, startTime: number): void {
-  registerMockObject(id, {
-    path: livePath.track(0).takeLane(1).arrangementClip(0),
-    properties: { start_time: startTime, end_time: startTime + 4 },
-  });
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(id) },
-  });
 }
 
 /**
@@ -137,7 +106,7 @@ describe("arrangementClipAtPosition", () => {
   });
 
   // A path is an address, not a "starts at": a clip running from bar 3 through
-  // bar 6 is the clip at 5|1 (ADR-0037).
+  // bar 6 is the clip at 5|1.
   it("finds a clip that only spans the position, not starts there", () => {
     registerMockObject("clip_long", {
       path: livePath.track(0).arrangementClip(0),

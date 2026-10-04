@@ -266,7 +266,15 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     ).rejects.toThrow("Live created no clip at t0");
   });
 
-  it("should call createAudioClipInSession with correct arguments when shortening audio clip", async () => {
+  /**
+   * Shortens an audio clip to 2 bars, with the scratch session clip stubbed.
+   * @param slotCall - What the scratch clip's slot does when called
+   * @returns The update's result, and the spy on the scratch clip's creation
+   */
+  async function shortenAudioClip(slotCall: () => void): Promise<{
+    result: unknown;
+    mockCreateAudioClip: ReturnType<typeof vi.spyOn>;
+  }> {
     const trackIndex = 0;
     const silenceWavPath = "/path/to/silence.wav";
     const tempClipId = "temp-session-clip";
@@ -325,10 +333,10 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       .spyOn(arrangementTilingHelpers, "createAudioClipInSession")
       .mockReturnValue({
         clip: { id: tempClipId } as unknown as LiveAPI,
-        slot: { call: vi.fn() } as unknown as LiveAPI,
+        slot: { call: slotCall } as unknown as LiveAPI,
       });
 
-    await updateClip(
+    const result = await updateClip(
       {
         id: "789",
         arrangementLength: "2bar", // Shorten to 2 bars (8 beats)
@@ -336,14 +344,37 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       { silenceWavPath },
     );
 
+    return { result, mockCreateAudioClip };
+  }
+
+  it("should call createAudioClipInSession with correct arguments when shortening audio clip", async () => {
+    const { mockCreateAudioClip } = await shortenAudioClip(vi.fn());
+
     // Verify createAudioClipInSession was called with correct 3 arguments:
     // 1. track object
     // 2. tempClipLength (8.0 beats)
     // 3. silenceWavPath from context
     expect(mockCreateAudioClip).toHaveBeenCalledWith(
-      expect.objectContaining({ _path: String(livePath.track(trackIndex)) }),
+      expect.objectContaining({ _path: String(livePath.track(0)) }),
       8.0, // tempClipLength = originalEnd (16) - newEnd (8)
-      silenceWavPath,
+      "/path/to/silence.wav",
+    );
+
+    mockCreateAudioClip.mockRestore();
+  });
+
+  // The scratch clip is Live's to refuse; the shortening still landed, and the
+  // clip's own entry says what stayed behind.
+  it("says on the clip's entry when the scratch clip can't be removed", async () => {
+    const { result, mockCreateAudioClip } = await shortenAudioClip(() => {
+      throw new Error("Live says no");
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "789",
+        detail: "couldn't remove the scratch session clip (Live says no)",
+      }),
     );
 
     mockCreateAudioClip.mockRestore();

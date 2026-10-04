@@ -7,7 +7,7 @@ presets, and load a preset in place of a device already in the Set. Prototype.
 Producer Pal's `ppal-create-device` uses it to load plug-ins, Max for Live
 devices and presets, and `ppal-update-device` to swap a preset onto a device.
 Without it, only native Live devices load. The model finds plug-ins with
-`ppal-library`'s `listPlugins` action, and Max devices by searching with
+`ppal-library`'s `list-plugins` action, and Max devices by searching with
 `kind: m4l-device`.
 
 To open or create a Set with Producer Pal in it, use the
@@ -29,6 +29,10 @@ npm run remote-script:install
 Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
 Live** (it only scans Remote Scripts at startup), then pick **Producer Pal**
 under Settings → Tempo & MIDI → Control Surface. Leave Input and Output as None.
+
+`npm run remote-script:install -- --probe` also adds a dev-only `/probe` route
+that runs posted Python. See
+[dev/live-api/python-remote-script-api/](../dev/live-api/python-remote-script-api/README.md).
 
 The folder name must be a valid Python name: Live runs `import <folder>`, so a
 space breaks it.
@@ -107,9 +111,11 @@ Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
-skipped with a 504. Producer Pal sends one with every `/load` and `/hotswap`, a
-bit under how long it waits, so a change it stopped waiting for isn't made
-later.
+skipped with a 504 (a re-run is safe). Producer Pal sends one with every
+`/list`, `/load` and `/hotswap` of a device call, a bit under the time it has
+left, so one deadline covers the lookup and the load, and a change it stopped
+waiting for isn't made later. A job Live started but didn't finish in 30s is
+also a 504, with `started: true`: Live may have made the change.
 
 ### `GET /ping`
 
@@ -182,14 +188,45 @@ Returns the device's name afterwards and whether Live `replaced` it.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
 
+### `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`
+
+Clip automation envelopes, which Max for Live's LOM can't reach. **Session clips
+only**: Live refuses envelope writes on Arrangement clips and reads them as
+empty, so write in Session and duplicate to the Arrangement. That copies the
+envelope into the track's automation lane, which stays after the clip is deleted
+but can't be read back.
+
+Common params: `track` (`t0`, `t1`.. a regular track; return and master tracks
+have no clips), `slot` (0-based Session slot) or `arrangement_index`, and a
+parameter: `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device`
+(`d0`, `d0/c1/d0` into rack chains) plus `parameter` as an exact name or 0-based
+index.
+
+| Route    | Params                                 | Returns                                                                                                                   |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/list`  | clip                                   | every automated parameter on the clip with its event count                                                                |
+| `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range (default: all, even past the clip end): `time`, `value` (raw), `display` (Hz/dB), `display_str` |
+| `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?}]`, raw values                                              |
+| `/clear` | clip, optional parameter               | removes one envelope, or all of them                                                                                      |
+
+Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
+device params are `0..1`); `display` is what Live shows. Each point ramps to the
+next; a point with `jump: true` holds the previous value until its time, then
+jumps (two events at one time, which is how Live stores a step). A quantized
+parameter holds each value until the next anyway. A read returns at most 1000
+events (`limit`, a positive whole number); a write takes at most 1000 points.
+Indexes must be whole numbers >= 0.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
 other thread. So the HTTP server runs on its own thread and only queues jobs;
 `update_display()`, which Live calls about 10x/sec on the main thread, drains
-the queue and runs them. The HTTP thread waits up to 30s for the reply, or until
-`expires_in_ms` if that's sooner. A job still queued by then is skipped; one
-already running is waited for.
+the queue and runs them. With `expires_in_ms`, the HTTP thread waits for Live to
+start the job until then (a job still queued is skipped), and a started job gets
+its own 30s to finish, so time queued behind other jobs doesn't count against
+it. Without it, the thread waits 30s for the reply, and 30s more if the job
+started in that time.
 
 - `http_server.py`: the HTTP server; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control
@@ -197,11 +234,12 @@ already running is waited for.
 - `routes.py`: what each route does; main thread only
 - `browser.py`: browser tree walking, name matching, and finding a file
 - `hotswap.py`: walking a device path, and loading in place of a device
+- `envelopes.py`: clip automation envelopes
 
 ## Notes
 
-- **First plugin listing is slow**: Live scans the plugin folders. That's why
-  the timeout is 30s.
+- **First plugin listing is slow**: Live scans the plugin folders. That's why a
+  running job gets 30s.
 - **Async load**: plugins and Max devices finish loading after `load_item()`
   returns, so the `devices` list in the response can lag.
 - **Debugging**: `bridge.log()` writes to Live's `Log.txt`

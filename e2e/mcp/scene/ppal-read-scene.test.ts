@@ -206,6 +206,16 @@ describe("ppal-read-scene over a list of targets", () => {
     ]);
   });
 
+  it("refuses a path sent with sceneIndex, even for a list", async () => {
+    for (const path of ["s0", "s0,s1"]) {
+      const refused = await readScenes({ path, sceneIndex: 0 });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the scene on its own - don't send sceneIndex with it",
+      );
+    }
+  });
+
   it("unwraps a single target", async () => {
     const scene = parseToolResult<ReadSceneResult>(
       await readScenes({ path: "s0" }),

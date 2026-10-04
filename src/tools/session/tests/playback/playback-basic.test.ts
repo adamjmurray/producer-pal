@@ -251,7 +251,7 @@ describe("transport", () => {
 
     expect(result).toStrictEqual({
       playing: true,
-      clips: [{ id: "clip1", path: "t0/s0" }],
+      clip: { id: "clip1", path: "t0/s0" },
     });
   });
 
@@ -373,24 +373,7 @@ describe("transport", () => {
   });
 
   it("should handle stop-session-clips action with single clip", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-    const track0 = registerMockObject(livePath.track(0), {
-      path: livePath.track(0),
-    });
-
-    const result = playback({
-      action: "stop-session-clips",
-      id: "clip1",
-    });
-
-    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
-    expect(result).toStrictEqual({
-      playing: true, // transport/arrangement can still be playing
-      clips: [{ id: "clip1", path: "t0/s0" }],
-    });
+    expectStopsClip1({ id: "clip1" });
   });
 
   it("should handle stop-session-clips action with multiple clips", () => {
@@ -617,7 +600,7 @@ describe("transport", () => {
     // The caller spelled it "0/1", and the entry answers in the taught path.
     expect(result).toStrictEqual({
       playing: true,
-      clips: [{ id: "clip1", path: "t0/s1" }],
+      clip: { id: "clip1", path: "t0/s1" },
     });
   });
 
@@ -638,24 +621,7 @@ describe("transport", () => {
   });
 
   it("should handle stop-session-clips via slots", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-    const track0 = registerMockObject(livePath.track(0), {
-      path: livePath.track(0),
-    });
-
-    const result = playback({
-      action: "stop-session-clips",
-      slots: "0/0",
-    });
-
-    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
-    expect(result).toStrictEqual({
-      playing: true,
-      clips: [{ id: "clip1", path: "t0/s0" }],
-    });
+    expectStopsClip1({ slots: "0/0" });
   });
 
   it("should deduplicate tracks when stopping via slots on same track", () => {
@@ -697,3 +663,27 @@ describe("transport", () => {
     ).toThrow("no clip slot at t99/s0");
   });
 });
+
+/**
+ * Stops the one clip on t0/s0 by the given target and checks the track was
+ * told to stop and the clip is reported.
+ * @param target - How the call names the clip: its id or its slot
+ */
+function expectStopsClip1(target: { id?: string; slots?: string }): void {
+  setupPlaybackLiveSet({ is_playing: 1 });
+  registerMockObject("clip1", {
+    path: livePath.track(0).clipSlot(0).clip(),
+  });
+  const track0 = registerMockObject(livePath.track(0), {
+    path: livePath.track(0),
+  });
+
+  const result = playback({ action: "stop-session-clips", ...target });
+
+  expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
+  // Transport/arrangement can still be playing
+  expect(result).toStrictEqual({
+    playing: true,
+    clip: { id: "clip1", path: "t0/s0" },
+  });
+}

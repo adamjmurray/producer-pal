@@ -15,7 +15,10 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
-import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
+import {
+  registerMonoPolyReadTests,
+  registerMonoPolyWriteTests,
+} from "../mono-poly-test-helpers.ts";
 import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 const registerMeld = specializedDeviceMock("meld-1", "MeldDevice", {
@@ -27,23 +30,7 @@ const registerMeld = specializedDeviceMock("meld-1", "MeldDevice", {
 
 describe("Meld pseudo-params", () => {
   describe("read", () => {
-    it("reads monoPoly as mono when mono_poly is 0", () => {
-      const device = registerMeld({ mono_poly: 0 });
-
-      expect(readSpecializedParams(device)).toContainEqual({
-        name: "monoPoly",
-        value: "mono",
-      });
-    });
-
-    it("reads monoPoly as poly when mono_poly is 1", () => {
-      const device = registerMeld({ mono_poly: 1 });
-
-      expect(readSpecializedParams(device)).toContainEqual({
-        name: "monoPoly",
-        value: "poly",
-      });
-    });
+    registerMonoPolyReadTests(registerMeld);
 
     it("reads polyVoices as a numeric value", () => {
       const device = registerMeld({ poly_voices: 4 });

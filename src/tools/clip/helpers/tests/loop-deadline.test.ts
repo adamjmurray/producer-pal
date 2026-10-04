@@ -4,14 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { CODE_EXEC_TIMEOUT_MS } from "#src/tools/clip/code-exec/code-exec-types.ts";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import {
   computeLoopDeadline,
-  isDeadlineExceeded,
   LOOP_DEADLINE_BUFFER_MS,
-  stopForDeadline,
 } from "../loop-deadline.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("LOOP_DEADLINE_BUFFER_MS", () => {
   it("is exactly twice the per-clip code execution timeout", () => {
@@ -66,50 +64,5 @@ describe("computeLoopDeadline", () => {
 
     expect(deadline).toBeGreaterThanOrEqual(before + 500);
     expect(deadline).toBeLessThanOrEqual(after + 500);
-  });
-});
-
-describe("isDeadlineExceeded", () => {
-  it("should return false for null deadline", () => {
-    expect(isDeadlineExceeded(null)).toBe(false);
-  });
-
-  it("should return false when deadline is in the future", () => {
-    expect(isDeadlineExceeded(Date.now() + 10_000)).toBe(false);
-  });
-
-  it("should return true when deadline is in the past", () => {
-    expect(isDeadlineExceeded(Date.now() - 1)).toBe(true);
-  });
-
-  it("should return true when deadline equals current time", () => {
-    vi.useFakeTimers({ now: 1000 });
-
-    try {
-      expect(isDeadlineExceeded(1000)).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-describe("stopForDeadline", () => {
-  it("warns with what is left undone once time is up", () => {
-    expect(stopForDeadline(Date.now() - 1, () => "nope: 3|1")).toBe(true);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("nope: 3|1"),
-    );
-  });
-
-  it("builds no warning while there is time left", () => {
-    const describeRemaining = vi.fn(() => "unused");
-
-    expect(stopForDeadline(Date.now() + 10_000, describeRemaining)).toBe(false);
-    expect(describeRemaining).not.toHaveBeenCalled();
-  });
-
-  it("never stops a request that has no deadline", () => {
-    expect(stopForDeadline(null, () => "unused")).toBe(false);
-    expect(stopForDeadline(undefined, () => "unused")).toBe(false);
   });
 });

@@ -11,6 +11,8 @@ import {
   type ArrangementTrack,
   isTakeLaneClip,
   resolveTakeLane,
+  type ResolvedTakeLane,
+  takeLanesMadeBy,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
@@ -24,6 +26,7 @@ import {
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   noteClipReason,
+  noteTakeLanesMade,
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
@@ -137,20 +140,31 @@ function recreateOnTakeLane(
 
   // Lanes are permanent — Live has no delete — but resolveTakeLane checks the
   // cap before creating any, so a refusal strands nothing.
-  let laneIndex: number;
-  let lane: LiveAPI;
+  let resolved: ResolvedTakeLane;
 
   try {
-    const resolved = resolveTakeLane(
+    resolved = resolveTakeLane(
       LiveAPI.from(livePath.track(destTrackIndex)),
       takeLane,
     );
-
-    ({ lane, laneIndex } = resolved);
   } catch (error) {
+    // Live may have stopped after making some of the lanes. They stay, so the
+    // clip's entry says so even though the move is refused.
+    const made = takeLanesMadeBy(error);
+
+    if (made != null) {
+      noteTakeLanesMade(reasons, clip.id, made, destTrackIndex);
+    }
+
     refuseClipWork(reasons, clip.id, `not moved: ${errorMessage(error)}`);
 
     return null;
+  }
+
+  const { lane, laneIndex, created } = resolved;
+
+  if (created != null) {
+    noteTakeLanesMade(reasons, clip.id, created, destTrackIndex);
   }
 
   try {

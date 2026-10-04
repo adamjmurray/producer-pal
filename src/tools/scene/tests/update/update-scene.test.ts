@@ -1,0 +1,382 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TEMPO_REFUSAL } from "#src/tools/constants.ts";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
+import {
+  type RegisteredMockObject,
+  mockNonExistentObjects,
+} from "#src/test/mocks/mock-registry.ts";
+import { updateScene } from "../../update-scene.ts";
+import { registerThreeScenes } from "../scene-fixtures.ts";
+import { expectSceneSetToRed34 } from "../scene-assertions.ts";
+
+vi.mock(import("#src/tools/session/select.ts"), () => ({
+  select: vi.fn(),
+}));
+import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+describe("updateScene", () => {
+  let scene1: RegisteredMockObject;
+  let scene2: RegisteredMockObject;
+  let scene3: RegisteredMockObject;
+
+  beforeEach(() => {
+    [scene1, scene2, scene3] = registerThreeScenes();
+  });
+
+  it("should update a single scene by ID", () => {
+    const result = updateScene({
+      id: "123",
+      name: "Updated Scene",
+      color: "#FF0000",
+      tempo: 140,
+      timeSignature: "3/4",
+    });
+
+    expectSceneSetToRed34(scene1, "Updated Scene", 140);
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
+  });
+
+  it("should update multiple scenes by comma-separated IDs", () => {
+    const result = updateScene({
+      id: "123, 456",
+      color: "#00FF00",
+      tempo: 120,
+    });
+
+    expect(scene1.set).toHaveBeenCalledTimes(3);
+    expect(scene2.set).toHaveBeenCalledTimes(3);
+    expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+    expect(scene1.set).toHaveBeenCalledWith("tempo", 120);
+    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
+    expect(scene2.set).toHaveBeenCalledWith("color", 65280);
+    expect(scene2.set).toHaveBeenCalledWith("tempo", 120);
+    expect(scene2.set).toHaveBeenCalledWith("tempo_enabled", true);
+
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+    ]);
+  });
+
+  it("should handle 'id ' prefixed scene IDs", () => {
+    const result = updateScene({
+      id: "id 123",
+      name: "Prefixed ID Scene",
+    });
+
+    expect(scene1.set).toHaveBeenCalledWith("name", "Prefixed ID Scene");
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
+  });
+
+  it("should not update properties when not provided", () => {
+    const result = updateScene({
+      id: "123",
+      name: "Only Name Update",
+    });
+
+    expect(scene1.set).toHaveBeenCalledWith("name", "Only Name Update");
+    expect(scene1.set).toHaveBeenCalledTimes(1);
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
+  });
+
+  it("should disable tempo when -1 is passed", () => {
+    const result = updateScene({
+      id: "123",
+      tempo: -1,
+    });
+
+    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", false);
+    expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
+  });
+
+  // One value for every scene in the call, so a per-scene skip repeated the
+  // same message and still let the names land. Refused before any scene is
+  // touched instead.
+  it.each([0, 1000])("refuses an out-of-range tempo of %i", (tempo) => {
+    expect(() => updateScene({ id: "123", tempo })).toThrow(
+      `${TEMPO_REFUSAL} Pass -1 to disable it.`,
+    );
+    expect(scene1.set).not.toHaveBeenCalled();
+  });
+
+  it("accepts boundary tempos of exactly 20 and 999", () => {
+    // Boundaries: 20 and 999 are valid (< 20 / > 999 are the reject bounds).
+    updateScene({ id: "123", tempo: 20 });
+    expect(scene1.set).toHaveBeenCalledWith("tempo", 20);
+
+    updateScene({ id: "456", tempo: 999 });
+    expect(scene2.set).toHaveBeenCalledWith("tempo", 999);
+  });
+
+  it("refuses more names than scenes, naming both counts", () => {
+    expect(() => updateScene({ id: "123,456", name: "A,B,C,D" })).toThrow(
+      "id names 2 entries but name names 4 entries.",
+    );
+  });
+
+  it("should disable time signature when 'disabled' is passed", () => {
+    const result = updateScene({
+      id: "123",
+      timeSignature: "disabled",
+    });
+
+    expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(scene1.set).not.toHaveBeenCalledWith(
+      "time_signature_numerator",
+      expect.any(Number),
+    );
+    expect(scene1.set).not.toHaveBeenCalledWith(
+      "time_signature_denominator",
+      expect.any(Number),
+    );
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
+  });
+
+  it("should refuse the call when id is missing", () => {
+    expect(() => updateScene({})).toThrow("id or path is required");
+    expect(() => updateScene({ name: "Test" })).toThrow(
+      "id or path is required",
+    );
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still updates by the ids alias", () => {
+    expect(updateScene({ ids: "123", name: "Renamed" })).toStrictEqual({
+      id: "123",
+      path: "s0",
+    });
+    expect(scene1.set).toHaveBeenCalledWith("name", "Renamed");
+  });
+
+  it("throws when the one scene ID it was given doesn't exist", () => {
+    mockNonExistentObjects();
+
+    expect(() => updateScene({ id: "nonexistent", name: "Test" })).toThrow(
+      'id "nonexistent" does not exist',
+    );
+  });
+
+  it("reports a dead id in its own slot and updates the rest", () => {
+    mockNonExistentObjects();
+
+    const result = updateScene({ id: "123, nonexistent", name: "Test" });
+
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        detail: 'id "nonexistent" does not exist',
+      },
+    ]);
+    // The entry carries it, so the response doesn't say it twice.
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(scene1.set).toHaveBeenCalledWith("name", "Test");
+  });
+
+  it("keeps positional name/color aligned to original ids when one is skipped", () => {
+    mockNonExistentObjects();
+
+    // ids[0] is invalid and skipped, but the positional name/color lists must
+    // still line up with the ORIGINAL id positions: id "123" is position 1 → B,
+    // id "456" is position 2 → C. Before the fix they shifted to A/B.
+    const result = updateScene({
+      id: "nonexistent,123,456",
+      name: "A,B,C",
+      color: "#FF0000,#00FF00,#0000FF",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "nonexistent",
+        ok: false,
+        detail: 'id "nonexistent" does not exist',
+      },
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+    ]);
+    expect(scene1.set).toHaveBeenCalledWith("name", "B");
+    expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(scene2.set).toHaveBeenCalledWith("name", "C");
+    expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
+  });
+
+  it("should throw error for invalid time signature format", () => {
+    expect(() => updateScene({ id: "123", timeSignature: "invalid" })).toThrow(
+      "Time signature must be in format",
+    );
+    expect(() => updateScene({ id: "123", timeSignature: "3-4" })).toThrow(
+      "Time signature must be in format",
+    );
+  });
+
+  it("validates timeSignature before mutating any scene (fail-fast)", () => {
+    // A malformed timeSignature must throw before any scene is touched, so a
+    // multi-scene update can't leave a partial mix of mutated/untouched scenes.
+    expect(() =>
+      updateScene({ id: "123, 456", name: "Nope", timeSignature: "5" }),
+    ).toThrow("Time signature must be in format");
+
+    expect(scene1.set).not.toHaveBeenCalled();
+    expect(scene2.set).not.toHaveBeenCalled();
+  });
+
+  it("should return single object for single ID and array for comma-separated IDs", () => {
+    const singleResult = updateScene({ id: "123", name: "Single" });
+    const arrayResult = updateScene({ id: "123, 456", name: "Multiple" });
+
+    expect(singleResult).toStrictEqual({ id: "123", path: "s0" });
+    expect(arrayResult).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+    ]);
+  });
+
+  it("should handle whitespace in comma-separated IDs", () => {
+    const result = updateScene({
+      id: " 123 , 456 , 789 ",
+      color: "#0000FF",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+      { id: "789", path: "s2" },
+    ]);
+  });
+
+  // Refusing is atomic: nothing has been set, so the caller retries with the
+  // stray comma removed and loses no work.
+  it("should refuse an empty ID in a comma-separated list", () => {
+    expect(() =>
+      updateScene({
+        id: "123,,456,  ,789",
+        name: "Filtered",
+      }),
+    ).toThrow('invalid id "123,,456,  ,789" - it has an empty entry.');
+
+    expect(scene1.set).not.toHaveBeenCalled();
+    expect(scene2.set).not.toHaveBeenCalled();
+    expect(scene3.set).not.toHaveBeenCalled();
+  });
+
+  describe("color", () => {
+    /**
+     * Read the scene's color back as Live would after quantizing it.
+     * @param value - The color Live answers with, as its packed integer
+     */
+    function sceneReadsColor(value: number): void {
+      scene1.get.mockImplementation((prop: string) =>
+        prop === "color" ? [value] : [0],
+      );
+    }
+
+    it("reports the palette color Live snapped to on the scene's entry", () => {
+      sceneReadsColor(16725558); // #FF3636
+
+      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says nothing when the color lands as asked", () => {
+      sceneReadsColor(16711680); // #FF0000
+
+      expect(updateScene({ id: "123", color: "#ff0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+      });
+    });
+
+    it("says nothing about color when the call sent none", () => {
+      sceneReadsColor(16725558);
+
+      expect(updateScene({ id: "123", name: "No color" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+      });
+    });
+
+    it("reports a color it set but could not read back", () => {
+      scene1.get.mockImplementation((prop: string) => {
+        if (prop === "color") {
+          throw new Error("gone");
+        }
+
+        return [0];
+      });
+
+      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+        detail: "color #FF0000 was set but could not be read back: gone",
+      });
+    });
+  });
+
+  describe("focus functionality", () => {
+    const selectMockRef = setupSelectMock();
+
+    it("should select scene in session view when focus=true", () => {
+      updateScene({ id: "123", name: "Test", focus: true });
+
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
+        view: "session",
+        id: "123",
+      });
+    });
+
+    it("should select last scene when focus=true with multiple scenes", () => {
+      updateScene({ id: "123,456", name: "Test", focus: true });
+
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
+        view: "session",
+        id: "456",
+      });
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not call select when focus=false", () => {
+      updateScene({ id: "123", name: "Test", focus: false });
+
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
+    it("does not focus when every scene was skipped", () => {
+      mockNonExistentObjects();
+
+      // Nothing was written, so nothing is selected: the focus block is
+      // guarded on a scene having been reached at all.
+      const result = updateScene({
+        id: "nonexistent,also-gone",
+        focus: true,
+      });
+
+      expect(result).toStrictEqual([
+        {
+          id: "nonexistent",
+          ok: false,
+          detail: 'id "nonexistent" does not exist',
+        },
+        {
+          id: "also-gone",
+          ok: false,
+          detail: 'id "also-gone" does not exist',
+        },
+      ]);
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+  });
+});

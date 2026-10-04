@@ -5,6 +5,10 @@
 
 import { z, type ZodType } from "zod";
 import {
+  aliasedEnum,
+  getEnumAliases,
+} from "#src/tools/shared/tool-framework/enum-aliases.ts";
+import {
   carrySchemaTags,
   describeWithTags,
 } from "#src/tools/shared/tool-framework/schema-tags.ts";
@@ -178,7 +182,12 @@ function enumFacts(
   isArray: boolean,
   isOptional: boolean,
 ): Pick<UnwrappedEnum, "values" | "isArray" | "isOptional"> {
-  return { values: enumSchema.options as string[], isArray, isOptional };
+  // An aliased enum's own options include its old spellings; only the
+  // canonical values are ever offered or trimmed.
+  const values =
+    getEnumAliases(enumSchema)?.canonical ?? (enumSchema.options as string[]);
+
+  return { values: [...values], isArray, isOptional };
 }
 
 /**
@@ -207,19 +216,42 @@ function keptValues(values: string[], valuesToRemove: string[]): string[] {
  * @returns Rebuilt schema with excluded values removed
  */
 function filterEnumValues(schema: ZodType, valuesToExclude: string[]): ZodType {
-  const { values, defaultValue, description, isArray, isOptional } =
-    unwrapEnum(schema);
-  const rebuiltEnum = z.enum(
-    keptValues(values, valuesToExclude) as [string, ...string[]],
+  const unwrapped = unwrapEnum(schema);
+  const kept = keptValues(unwrapped.values, valuesToExclude) as [
+    string,
+    ...string[],
+  ];
+
+  return rewrap(
+    schema,
+    unwrapped,
+    rebuildEnum(unwrapped.enumSchema, kept, valuesToExclude),
   );
+}
+
+/**
+ * Puts a rebuilt enum back inside the wrappers it came out of.
+ * @param schema - The original param schema
+ * @param unwrapped - What unwrapEnum found in it
+ * @param rebuiltEnum - The enum to put in
+ * @returns A new schema with the original's description and tags
+ */
+function rewrap(
+  schema: ZodType,
+  unwrapped: UnwrappedEnum,
+  rebuiltEnum: ZodType,
+): ZodType {
+  const { defaultValue, description, isArray, isOptional } = unwrapped;
   let rebuilt: ZodType;
 
   if (isArray) {
     rebuilt = z.array(rebuiltEnum).default(defaultValue as string[]);
   } else if (isOptional) {
-    rebuilt = rebuiltEnum.optional().default(defaultValue as string);
+    rebuilt = (rebuiltEnum as z.ZodEnum)
+      .optional()
+      .default(defaultValue as string);
   } else {
-    rebuilt = rebuiltEnum.default(defaultValue as string);
+    rebuilt = (rebuiltEnum as z.ZodEnum).default(defaultValue as string);
   }
 
   if (description) {
@@ -233,15 +265,58 @@ function filterEnumValues(schema: ZodType, valuesToExclude: string[]): ZodType {
 }
 
 /**
+ * The enum with the excluded values taken out. An aliased enum keeps the
+ * aliases of what stays, so an old spelling of an excluded value is refused
+ * along with it.
+ * @param enumSchema - The enum being trimmed
+ * @param kept - The canonical values that stay
+ * @param excluded - The values being taken away
+ * @returns A new enum
+ */
+function rebuildEnum(
+  enumSchema: z.ZodEnum,
+  kept: [string, ...string[]],
+  excluded: string[],
+): ZodType {
+  const info = getEnumAliases(enumSchema);
+
+  if (info == null) {
+    return z.enum(kept);
+  }
+
+  const keptAliases = Object.fromEntries(
+    Object.entries(info.aliases).filter(
+      ([alias, target]) => kept.includes(target) && !excluded.includes(alias),
+    ),
+  );
+
+  return aliasedEnum(kept, keptAliases, info.hidden);
+}
+
+/**
  * Narrows what a param's enum advertises without narrowing what it accepts.
  * @param schema - Zod schema wrapping an enum (must have .default at the top)
  * @param valuesToHide - Enum values to keep out of the JSON Schema
  * @returns The schema, advertising only the values that stay
  */
 function hideEnumValues(schema: ZodType, valuesToHide: string[]): ZodType {
-  const { enumSchema, values, defaultValue, description, isArray } =
-    unwrapEnum(schema);
+  const unwrapped = unwrapEnum(schema);
+  const { enumSchema, values, defaultValue, description, isArray } = unwrapped;
   const kept = keptValues(values, valuesToHide);
+  const aliases = getEnumAliases(enumSchema);
+
+  // An aliased enum rebuilds so its refusal lists only what stays published.
+  if (aliases != null) {
+    return rewrap(
+      schema,
+      unwrapped,
+      aliasedEnum(
+        aliases.canonical as [string, ...string[]],
+        aliases.aliases,
+        valuesToHide,
+      ),
+    );
+  }
 
   // A scalar param is the enum, so the override goes straight on it and the
   // instance (tags and all) is kept.

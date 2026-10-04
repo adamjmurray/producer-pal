@@ -134,6 +134,18 @@ describe("drum-pads-from-chains", () => {
       state?: string;
     }
 
+    // A chain's child accessors when it holds exactly one device.
+    const oneDeviceChildren = (deviceId: string) => ({
+      getChildren: vi.fn((child: string) =>
+        child === "devices" ? [{ id: deviceId }] : [],
+      ),
+      getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
+      someChild: vi.fn(
+        (child: string, predicate: (device: unknown) => boolean) =>
+          child === "devices" && predicate({ id: deviceId }),
+      ),
+    });
+
     // Helper to create mock chain.
     const createMockChain = (
       inNote: number,
@@ -164,14 +176,7 @@ describe("drum-pads-from-chains", () => {
         }),
         getName: vi.fn(() => String(name)),
         // One device, so instrument detection has something to inspect
-        getChildren: vi.fn((child: string) =>
-          child === "devices" ? [{ id: `device-${inNote}` }] : [],
-        ),
-        getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
-        someChild: vi.fn(
-          (child: string, predicate: (device: unknown) => boolean) =>
-            child === "devices" && predicate({ id: `device-${inNote}` }),
-        ),
+        ...oneDeviceChildren(`device-${inNote}`),
       }) as Record<string, unknown>;
 
     // Helper to create mock device. padsByNote is the rack's own drum_pads,
@@ -395,14 +400,7 @@ describe("drum-pads-from-chains", () => {
           return null;
         }),
         getName: vi.fn(() => "Layer"),
-        getChildren: vi.fn((child: string) =>
-          child === "devices" ? [{ id: "nested" }] : [],
-        ),
-        getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
-        someChild: vi.fn(
-          (child: string, predicate: (device: unknown) => boolean) =>
-            child === "devices" && predicate({ id: "nested" }),
-        ),
+        ...oneDeviceChildren("nested"),
       }) as Record<string, unknown>;
 
     /**

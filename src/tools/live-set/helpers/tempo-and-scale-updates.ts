@@ -14,7 +14,9 @@ import {
   differsAtPublishedResolution,
   publishedReadBack,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { round2dp } from "#src/tools/shared/helpers/rounding.ts";
+import { keptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 
 // Create lowercase versions for case-insensitive comparison
 const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>
@@ -75,10 +77,14 @@ export function applyTimeSignature(
   liveSet.set("signature_numerator", signature.numerator);
   liveSet.set("signature_denominator", signature.denominator);
 
-  const landed = `${String(liveSet.getProperty("signature_numerator"))}/${String(liveSet.getProperty("signature_denominator"))}`;
+  const kept = keptTimeSignature(
+    signature,
+    liveSet.getProperty("signature_numerator"),
+    liveSet.getProperty("signature_denominator"),
+  );
 
-  if (landed !== `${signature.numerator}/${signature.denominator}`) {
-    result.timeSignature = landed;
+  if (kept != null) {
+    result.timeSignature = kept;
   }
 }
 
@@ -123,10 +129,12 @@ export function applyScale(
   result.scale = landed;
   // Without the detail, a model that asked for F# sees Gb come back and
   // retries, thinking the write failed.
-  result.detail =
+  appendDetail(
+    result,
     storedRoot === scaleRoot
       ? `scale ${requested.trim()} is spelled ${landed} — same scale, set correctly`
-      : `scale roots are spelled with flats, so ${scaleRoot} comes back as ${storedRoot} — same scale, set correctly`;
+      : `scale roots are spelled with flats, so ${scaleRoot} comes back as ${storedRoot} — same scale, set correctly`,
+  );
 }
 
 /**

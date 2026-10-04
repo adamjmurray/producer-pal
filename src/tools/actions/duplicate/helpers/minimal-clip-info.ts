@@ -5,11 +5,18 @@
 
 // The clip shape every duplicate result reports a copy with.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type LandedSpan,
   nextLandingOrder,
   wholeLaneWrite,
 } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
+import {
+  appendDetail,
+  type EntryWithDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
+import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -25,6 +32,9 @@ import {
 const copySpans = new WeakMap<object, LandedSpan>();
 // A copy whose span couldn't be read still cleared something on its lane.
 const unknownWrites = new WeakMap<object, LandedSpan>();
+// What each copy did to the clips already on its lane. It stays true when a
+// later copy buries the copy itself, so the entry that replaces it keeps it.
+const copyEffects = new WeakMap<object, string>();
 
 export interface MinimalClipInfo {
   id: string;
@@ -33,8 +43,13 @@ export interface MinimalClipInfo {
   path?: string;
   noteCount?: number;
   transformed?: number;
-  /** The scenes the destination had to make ("s8-s9"), when it made any. */
+  /** Notes the copy's transforms removed. */
+  deletedNotes?: number;
+  /** The scenes ("s8-s9") or take lanes ("l1-l3") the destination had to make,
+   * when it made any. */
   created?: string;
+  /** The palette color Live snapped the color to, when it isn't the one asked */
+  color?: string;
   /** Why the copy isn't quite what was asked for, when it isn't. */
   detail?: string;
 }
@@ -86,6 +101,89 @@ export function getMinimalClipInfo(
 }
 
 /**
+ * Names, colors and reports a copy that already exists. A failure here can't
+ * unmake the copy, so it goes in the copy's own entry instead of being thrown.
+ * @param copy - The copy Live made
+ * @param name - Name for it, if any
+ * @param color - Color for it, if any
+ * @returns The copy's entry, with what failed in its detail, and the palette
+ *   color Live snapped a color to
+ */
+export function finishCopy(
+  copy: LiveAPI,
+  name: string | undefined,
+  color: string | undefined,
+): MinimalClipInfo {
+  const failures: string[] = [];
+
+  try {
+    copy.setAll({ name, color });
+  } catch (error) {
+    failures.push(`name and color not applied: ${errorMessage(error)}`);
+  }
+
+  return withLandedColor(
+    copy,
+    failures.length > 0 ? undefined : color,
+    (said) => joinDetails([...failures, said]),
+  );
+}
+
+/**
+ * The entry for a copy whose color was asked for, saying which palette color
+ * Live snapped it to when that isn't the one asked for.
+ * @param copy - The copy Live made
+ * @param color - The color asked for, if any
+ * @param detail - What to say about the copy, given what the color said
+ * @returns The copy's entry
+ */
+export function withLandedColor(
+  copy: LiveAPI,
+  color: string | undefined,
+  detail: (colorDetail: string | undefined) => string | undefined,
+): MinimalClipInfo {
+  const landed = color == null ? {} : landedColor(copy, color);
+  const entry = readCopyBack(copy, () => detail(landed.detail));
+
+  // Set on the entry itself: a copy would lose the span recorded for it.
+  if (landed.color != null) {
+    entry.color = landed.color;
+  }
+
+  return entry;
+}
+
+/**
+ * The entry for a copy that already exists. A failure reading it back can't
+ * unmake it, so the entry keeps its id and says what failed instead of the
+ * copy being reported as refused.
+ * @param copy - The copy Live made
+ * @param detail - What to say about the copy, built once it is known to exist
+ * @returns The copy's entry
+ */
+export function readCopyBack(
+  copy: LiveAPI,
+  detail: () => string | undefined,
+): MinimalClipInfo {
+  let said: string | undefined;
+
+  try {
+    said = detail();
+
+    return getMinimalClipInfo(copy, said);
+  } catch (error) {
+    // The id is all that can still be read.
+    return {
+      id: copy.id,
+      detail: joinDetails([
+        said,
+        `couldn't read the copy back: ${errorMessage(error)}`,
+      ]),
+    };
+  }
+}
+
+/**
  * Where an arrangement copy sat when it landed.
  * @param entry - The copy's result entry
  * @returns Its lane, span and landing order, or undefined for a session copy
@@ -105,14 +203,54 @@ export function copyWrite(entry: object): LandedSpan | undefined {
 }
 
 /**
+ * Say on a copy's entry what it did to the clips already on its lane.
+ * @param entry - The copy's result entry
+ * @param effects - What it overwrote, shortened or split
+ */
+export function noteCopyEffects(entry: EntryWithDetail, effects: string): void {
+  appendDetail(entry, effects);
+  copyEffects.set(entry, effects);
+}
+
+/**
+ * What a copy did to the clips already on its lane, as it said so.
+ * @param entry - The copy's result entry
+ * @returns The effects, or undefined when it had none
+ */
+export function copyEffectsOf(entry: object): string | undefined {
+  return copyEffects.get(entry);
+}
+
+/**
  * The entry a destination no copy landed at keeps in the result, so a call
- * naming N destinations still answers with N entries (ADR-0042).
+ * naming N destinations still answers with N entries.
  * @param path - The destination, as the path a copy there would report
  * @param detail - Why no copy landed, in the words a single one would throw
  * @returns The skip entry
  */
 export function skippedCopy(path: string, detail: string): TargetSkip {
   return { path, ok: false, detail };
+}
+
+/** A destination Live made no copy at, after its landing cleared clips. */
+export interface ClearedCopy {
+  path?: string;
+  detail: string;
+}
+
+/**
+ * The entry a destination keeps when Live made no copy but its landing had
+ * already cleared clips: the Set changed, so it is not a skip (no `ok: false`),
+ * and the detail says what was cleared.
+ * @param path - The destination, as the path a copy there would report
+ * @param detail - Why no copy landed, and what the landing cleared
+ * @returns The entry
+ */
+export function clearedCopy(
+  path: string | undefined,
+  detail: string,
+): ClearedCopy {
+  return { path, detail };
 }
 
 /**

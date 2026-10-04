@@ -17,12 +17,19 @@ built generic so a second collection is a thin binding, not a rewrite:
   primitives in `config-markdown-store.ts` (`configDir()` —
   `PRODUCER_PAL_CONFIG_DIR` override else `~/.producer-pal`; atomic temp+rename
   writes; `listConfigMarkdownFiles`; `isConfigDirInert` — a Vitest-only guard so
-  unit tests never touch a real `~/.producer-pal`).
+  unit tests never touch a real `~/.producer-pal`). A listing (collection
+  `list()`, `readSkillOverrides`) reads each file through `skipIfUnreadable`: an
+  unreadable file is skipped with a console warning, so one bad file can't drop
+  the rest. Single-file reads still throw, so an unreadable file is never taken
+  for an empty one and overwritten. The skills editor's list
+  (`GET /skill-overrides`) instead returns an unreadable slot with `readError`
+  set, which the editor shows as unreadable and not editable; writes still
+  throw.
 - **REST**: `src/mcp-server/routes/collection-route.ts`
   (`registerCollectionRoutes`) is a generic GET list / PUT create-or-update
   (with a create-only 409 guard) / DELETE per collection, origin-gated on writes
   exactly like `POST /config`.
-- **Webui**: `webui/src/hooks/context/use-doc-collection.ts`
+- **Webui**: `webui/src/hooks/context/helpers/use-doc-collection.ts`
   (`useDocCollection`) and `webui/src/components/context/collection/` (
   `CollectionScreen` + editor/list parts) are the generic two-pane manager
   (list + per-item editor + polling + save/refresh race guard); a collection's

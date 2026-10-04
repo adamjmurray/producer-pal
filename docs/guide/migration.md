@@ -1,8 +1,8 @@
 ---
 title: Migration Guide
 description:
-  Upgrading a script that drives Producer Pal. What changed in 2.3 and 2.4, what
-  is deprecated, and an adapter script that rewrites the old arguments.
+  Upgrading a script that drives Producer Pal. What changed in 2.3, 2.4 and 2.5,
+  what is deprecated, and an adapter script that rewrites the old arguments.
 head:
   - - meta
     - name: keywords
@@ -15,7 +15,7 @@ head:
   - - meta
     - property: og:description
       content:
-        What changed for scripts in Producer Pal 2.3 and 2.4, what is
+        What changed for scripts in Producer Pal 2.3, 2.4 and 2.5, what is
         deprecated, and how to rewrite the old arguments.
 ---
 
@@ -29,11 +29,11 @@ conversation and writes calls in the current spelling.
 
 There are three migrations here and they are not equally urgent:
 
-| What                        | When                           | Urgency                                                                       |
-| --------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
-| **Response fields** moved   | 2.3, and reshaped again in 2.4 | **Do this now.** No field kept a back-compat key.                             |
-| **Behavior** changed        | 2.4                            | **Do this now.** A few calls act on more targets, or refuse what 2.3 guessed. |
-| **Input params** deprecated | removed in a later release     | Forward notice. Everything still works, and warns, until then.                |
+| What                        | When                                   | Urgency                                                                       |
+| --------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| **Response fields** moved   | 2.3, and reshaped again in 2.4 and 2.5 | **Do this now.** No field kept a back-compat key.                             |
+| **Behavior** changed        | 2.4 and 2.5                            | **Do this now.** A few calls act on more targets, or refuse what 2.3 guessed. |
+| **Input params** deprecated | removed in a later release             | Forward notice. Everything still works, and warns, until then.                |
 
 Most upgrade guides lead with the deprecations. This one leads with the
 responses and behavior, because that is the half that breaks the moment you
@@ -536,6 +536,186 @@ raw Live path (`live_set return_tracks 0`) print the path you wrote instead.
 `ppal-update-device` says it that way on the target's own entry as well:
 `not applicable to a drum pad chain` and `cannot update a track` where they used
 to read `DrumChain` and `Track objects`.
+
+## Calls that act differently in 2.5
+
+**`ppal-update-clip` refuses more of what 2.4 guessed at.** `arrangementSplit`
+and the deprecated `split` sent together are refused, as is a `toPath` it can't
+read; 2.4 warned. A `slot` or `toSlot` with more than two parts (`"1/2/3"`) is
+refused instead of using the first two. A malformed `arrangementSplit` (bad
+format, too many points, no valid points) is refused before anything is cut; 2.4
+warned.
+
+**`ppal-duplicate` and `ppal-update-device` refuse a `toPath` entry they can't
+read.** 2.4 skipped just that destination and copied or moved the rest, with a
+`detail` such as `not moved: invalid toPath`. The whole call is now refused
+before anything changes. An entry that reads but can't be applied (no rack
+there, a move Live turned down) still skips only its own destination.
+
+**`ppal-create-clip` writes a slot or arrangement spot named twice once, at the
+last mention.** 2.4 gave the earlier mention `{path, ok: false, detail}`. It is
+now `{path, detail: 'named again as "t8/s0" later in this call'}` with no `ok`,
+as for the other tools that work this way, and only the last mention is written.
+
+**A call that names its target twice is refused.** Every tool that takes both
+refuses the pair with one message, even when they agree:
+`path names the clip on its own - don't send trackIndex or sceneIndex with it`.
+Send one.
+
+- `path`, `slot` or `devicePath` with `trackIndex` or `sceneIndex`:
+  `ppal-read-clip`, `ppal-create-clip`, `ppal-select`. `ppal-read-clip` and
+  `ppal-create-clip` used to warn and use the path; `ppal-select` refused only
+  when the two disagreed.
+- `slots` or `path` with `sceneIndex` on `ppal-playback`'s `play-scene`: refused
+  only when they disagreed.
+- `slot` with both `trackIndex` and `sceneIndex` on `ppal-create-clip` used to
+  warn. A `slot` list with a bare `trackIndex` still works.
+- `takeLane` with a path that already names a lane (`t0/l2`) on
+  `ppal-create-clip` and `ppal-duplicate` used to warn and use the path.
+- `ppal-read-track`, `ppal-read-scene`, `ppal-create-track` and
+  `ppal-create-scene` already refused; only the wording changed.
+- A published param sent with the deprecated spelling it replaced was already
+  refused. It now reads the same way, for example
+  `path names the clip on its own - don't send slot with it (slot is deprecated)`:
+  `path` and `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`,
+  `startTime` and `startLocator` (and the loop pair), `arrangementStart` and
+  `locator`, `device` and `deviceName` on `ppal-create-device`, and a `toPath`
+  with a position in it beside `arrangementStart`. 2.4 quietly used `device`.
+- `id` beside `ids` (or a tool's own spelling such as `clipId`), and `path`
+  beside `paths`. 2.4 used the first and warned about the other when the values
+  differed, and said nothing when they matched; every tool that takes them now
+  refuses, whatever the values, including the update, delete and duplicate
+  tools, before anything changes.
+
+**A read of several targets can run out of time.** `ppal-read-track`,
+`ppal-read-scene`, `ppal-read-clip` and `ppal-read-device` now return
+`{id or path, ok: false, detail: "the request ran out of time; re-run for this clip"}`
+for each target they didn't reach.
+
+A `transforms` or `preTransforms` mistake that is the same for every clip is now
+refused up front, before any clip changes, by `ppal-create-clip`,
+`ppal-update-clip` and `ppal-duplicate`: a duplicate selector, a note name used
+as a number (`velocity = C3`), a function with the wrong number of arguments
+(`rand(0, 100, 50)`), `ratchet`, `repeat`, `merge` or `split` with the wrong
+arguments, or a `curve()` exponent of 0 or less. 2.4 warned and skipped that
+line.
+
+## Every target gets its own entry in 2.5
+
+**`ppal-duplicate` skips a source that isn't there, and refuses what it used to
+ignore.** A source whose id or path names nothing used to refuse the whole call
+before any copy was made. Now it holds its slot as a skip
+(`{id or path, ok: false, detail}`, one per copy it was to make) and the other
+sources still copy. A skip for a clip, device, chain or drum pad, or for a scene
+copied to an arrangement position, is named by its destination path (`t1[5|1]`,
+`t2/d0`, `[5|1]`) when the call names one, not by the source. A path that can't
+be parsed still refuses the call. `count` beside a list of destinations (several
+scene positions, several take lanes) was ignored with a warning and is now
+refused, the way create-track and create-scene refuse it, so the
+`count ignored: <what> copies go one per toPath` warning is gone. A copy of a
+track onto a take lane with `count`, `withoutClips`, `withoutDevices` or
+`routeToSource` is refused too: a lane takes clips and nothing else. A track
+copy's entries come back in the order the copies sit, so the one that failed
+holds its own place instead of coming last.
+
+**`ppal-duplicate` keeps every target when one fails.** A failure at one
+position, track, lane or slot no longer aborts the call or loses the copies that
+landed. A scene copied to the arrangement where no clip landed is
+`{path: "[5|1]", ok: false, detail}` (a lone one throws), and where only some
+tracks landed, the position's `detail` names each that didn't. A scene with no
+clips answers `{clips: [], detail: "the scene has no clips"}` instead of a bare
+`{clips: []}`. A copy that exists but couldn't be finished (say, its name didn't
+apply) keeps its entry with a `detail` rather than becoming a skip.
+
+**`ppal-playback`'s clip actions answer in `clip`, not `clips`.** One entry per
+`id` or `path` you named, in order; a single target comes back unwrapped,
+several as an array. The earlier entry for a slot you named twice is spelled the
+way you wrote it. If Live throws on one slot, that slot gets `ok: false` with
+the reason and the later slots still run.
+
+**A locator skip is `{id, ok: false, detail}`**, or `time` or `name` in place of
+`id` for a locator you named that way, with no `operation`. 2.4 answered
+`operation: "skipped"`.
+
+## Write results say less in 2.5
+
+**A copy a later copy lands on is left unwritten.** 2.4 reported a copy the
+later one covered whole as `{path, deleted: true, detail}`. It is now left
+unwritten, as `ppal-update-clip` leaves a move another goes over:
+`{path, detail: "overwritten later in this call by <where>"}`, with no `ok`. One
+that loses only part of itself is still written first, so its entry says
+`shortened by <where> later in this call`, and names the piece that is left, a
+new `id` and `path`. Nothing is `deleted: true`. Read `detail`, not `deleted`.
+
+**More per-target facts moved onto entries.** These used to be warnings; each is
+now `detail` on the target's entry, and `ok: false` where it was everything
+asked of that target:
+
+- `ppal-create-device` refuses an index past the end of the chain (`t0/d9` on a
+  two-device track), as `ppal-update-device` does, instead of appending.
+- A `sends` entry a later one replaced.
+- An `arrangementLength` ignored for a re-created `ppal-duplicate` copy.
+- A failed `code` on `ppal-update-clip`.
+- Transforms for the other kind of clip (`gain` on MIDI, `velocity` on audio).
+  `ppal-create-clip` says the same, and which params the new clip can't use, on
+  the created clip, never as `ok: false`.
+
+An audio clip's unparseable `transforms` now refuses the clip, so no other param
+lands, like a MIDI clip's.
+
+**`ppal-update-track` take lane entries don't repeat `name`.** A lane named as
+asked gets `{id, path}`; `name` comes back only when Live kept a different one,
+or picked one for a lane you made without naming it.
+
+**A clip that lands on a take lane no longer says how to see it.** The
+`expand the take-lanes arrow on the track header in Live to see it` detail is
+gone from `ppal-create-clip` and `ppal-duplicate` entries; a copy
+`ppal-duplicate` had to re-create still says where it landed and what that cost.
+
+**`ppal-update-live-set` scale writes no longer return `$meta`.** The
+"applied"/"disabled" line said the same thing every time.
+
+### Results name the take lanes they made
+
+Take lanes are named the same way by every tool that writes to one:
+`ppal-create-clip`, `ppal-update-clip` (a move) and `ppal-duplicate` (a clip, or
+a track copied onto a lane) put `created: "l0-l2"` on the entry when they filled
+in lanes below the one you named. `ppal-duplicate` of a track onto a lane used
+to say `created: true`; it now names the lanes like the rest. A lane can't be
+removed, so the entry keeps `created` when a later step fails.
+
+### Ignored params read `X ignored: reason`
+
+Whole-call warnings and per-entry details name what they ignored the same way:
+the params joined with `, `, never `/`, then `ignored:` and the reason.
+`ppal-update-device`'s `gainDb, pan not applicable to a device` is now
+`gainDb, pan ignored: can't be set on a device`, and
+`not applicable to a drum pad chain` is
+`ignored: can't be set on a drum pad chain`. The `routeToSource` warning reads
+`withoutClips, withoutDevices ignored: routeToSource always copies without clips and devices`.
+Params a take lane or a clip can't use read
+`a, b ignored: a take lane takes only name` and
+`a, b ignored: the clip is MIDI`. A script matching on the old text needs the
+new.
+
+## Reads changed in 2.5
+
+- **Return, main and group tracks carry no clip counts.** `ppal-read-track` and
+  `ppal-read-live-set` leave out `sessionClipCount` and `arrangementClipCount`
+  for them; both were always 0.
+- **`ppal-read-clip` has no `view`.** `path` says it: `t0/s3` is a session slot,
+  `t0[5|1]` an arrangement position.
+
+## Enum values are kebab-case in 2.5
+
+The values we define for `ppal-library`'s `action`, `source` and `sort`, and for
+`ppal-live-api` operation types, are kebab-case: `list-tags` (was `listTags`),
+`find-similar` (was `findSimilar`), `sample-folder` (was `sampleFolder`),
+`use-count` (was `use_count`). The old spellings still work as input, without a
+warning, but results echo the new ones, so a script comparing a result's
+`source` or an operation's `type` needs them. `ppal-live-api`'s `getProperty` is
+now `get-property` and `get_property` is `get-field`. Values Live owns (scales,
+views, quantize grids, device names) keep Live's spelling.
 
 ## Deprecated params
 

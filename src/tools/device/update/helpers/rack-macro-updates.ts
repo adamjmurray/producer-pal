@@ -3,8 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -45,35 +47,31 @@ export function updateMacroVariation(
     return;
   }
 
-  executeMacroVariationAction(device, action);
+  executeMacroVariationAction(device, action, notes);
 }
 
 /**
- * The reason a macroVariation/macroVariationIndex pair can't be read at all.
+ * Refuses a macroVariation/macroVariationIndex pair that can't be read at all.
  * Nothing about a device decides it, so the call is refused before any of its
- * targets is touched (ADR-0035).
+ * targets is touched.
  * @param action - Variation action
  * @param index - Variation index
- * @returns The reason, or null when the pair is usable
+ * @throws Error when load/delete has no index, or an index sits beside another
+ *   action
  */
-export function macroVariationParamsReason(
+export function refuseMacroVariationParams(
   action: string | undefined,
   index: number | undefined,
-): string | null {
-  if (index == null) {
-    return action === "load" || action === "delete"
-      ? `macroVariation '${action}' requires macroVariationIndex`
-      : null;
+): void {
+  if (index == null && (action === "load" || action === "delete")) {
+    throw new Error(`macroVariation '${action}' requires macroVariationIndex`);
   }
 
-  if (action == null) {
-    return "macroVariationIndex requires macroVariation 'load' or 'delete'";
-  }
-
-  return action === "load" || action === "delete"
-    ? null
-    : `macroVariationIndex does nothing for macroVariation '${action}' — ` +
-        "only 'load' and 'delete' take one";
+  refuseParamsOutsideAction(
+    { macroVariation: action },
+    { macroVariationIndex: index },
+    { macroVariationIndex: { macroVariation: ["load", "delete"] } },
+  );
 }
 
 /**
@@ -107,6 +105,7 @@ function setVariationIndex(
   }
 
   device.set("selected_variation_index", index);
+  noteLanded(notes, "variation index");
 
   return true;
 }
@@ -115,10 +114,12 @@ function setVariationIndex(
  * Execute the macro variation action on device
  * @param device - Rack device
  * @param action - Action to execute
+ * @param notes - What this device's entry has to say, told what lands
  */
 function executeMacroVariationAction(
   device: LiveAPI,
   action: string | undefined,
+  notes: TargetNotes,
 ): void {
   switch (action) {
     case "create":
@@ -137,6 +138,8 @@ function executeMacroVariationAction(
       device.call("randomize_macros");
       break;
   }
+
+  noteLanded(notes, `macroVariation ${action}`);
 }
 
 // ============================================================================
@@ -179,6 +182,7 @@ export function updateMacroCount(
 
   for (let i = 0; i < Math.abs(target - before) / 2; i++) {
     device.call(method);
+    noteLanded(notes, "macroCount");
   }
 
   reportMacroCount(device, { before, target, hadMappings }, notes);
@@ -282,4 +286,6 @@ export function updateABCompare(
       device.call("save_preset_to_compare_ab_slot");
       break;
   }
+
+  noteLanded(notes, "abCompare");
 }

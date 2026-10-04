@@ -7,7 +7,6 @@ import {
   type TrackPath,
   livePath,
 } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
@@ -15,6 +14,7 @@ import {
   toLiveApiView,
 } from "#src/tools/shared/helpers/live-api-values.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { type Call } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
 
@@ -222,16 +222,19 @@ function resolveDeviceFromPath(
  * other device this skips rather than throwing.
  * @param device - The resolved target device, or undefined if none was targeted
  * @param open - true to open the editor window, false to close it
+ * @param call - The call, to warn through when there is no device
  * @returns Whether the property was written, and what the device's entry should
  *   say when it wasn't; with no device there is no entry, so that warns
  */
 export function applyPluginEditorWindow(
   device: LiveAPI | undefined,
   open: boolean,
+  call: Call,
 ): { applied: boolean; detail?: string } {
   if (device == null) {
-    console.warn(
-      "openPluginWindow requires a plug-in device — specify id or path",
+    call.ignored(
+      "openPluginWindow",
+      "it needs a plug-in device; specify id or path",
     );
 
     return { applied: false };
@@ -302,7 +305,7 @@ export function updateClipSlotSelection({
     return false;
   }
 
-  const clipInSlot = LiveAPI.from(`${clipSlotAPI.path} clip`);
+  const clipInSlot = clipSlotAPI.child("clip");
 
   if (clipInSlot.exists()) {
     songView.setProperty("detail_clip", toLiveApiId(clipInSlot.id));

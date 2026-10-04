@@ -9,7 +9,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMockObject,
+  registerPendingMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { registerLayeredDrumRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
@@ -155,7 +158,7 @@ function registerSourceDevice(): void {
 function mockMovesInto(chain: number, copies: number): void {
   const landed = livePath.track(0).device(0).chain(chain);
 
-  registerMockObject("copy-0", { path: livePath.track(1).device(1) });
+  registerPendingMockObject("copy-0", { path: livePath.track(1).device(1) });
 
   for (let move = 0; move < copies; move++) {
     vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
@@ -165,7 +168,7 @@ function mockMovesInto(chain: number, copies: number): void {
         });
       }
 
-      registerMockObject(`copy-${String(move + 1)}`, {
+      registerPendingMockObject(`copy-${String(move + 1)}`, {
         path: livePath.track(1).device(1),
       });
 

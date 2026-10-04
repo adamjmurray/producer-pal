@@ -9,6 +9,7 @@ import {
   arrangementBasic,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
+import { automation } from "#src/skills/fragments/automation.ts";
 import {
   contextBasic,
   contextStandard,
@@ -60,7 +61,7 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 const DEVICES = "devices";
 const ARRANGEMENT = "arrangement";
 
-// The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
+// The user-facing override "slots" (~/.producer-pal skills overrides).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
 // fragment, so renaming one orphans that user's override.
 //
@@ -82,7 +83,7 @@ const ARRANGEMENT = "arrangement";
 //
 // A second, independent suffix axis is DIRECTION: a fragment may spin the half
 // only a writer can act on out into a `-write` sibling, gated on that subject's
-// write tools, so a read-only caller stops paying for it (ADR-0019). The base
+// write tools, so a read-only caller stops paying for it. The base
 // name keeps meaning what it meant — the whole, minus what only a writer can use
 // — which is why splitting one costs no rename and no retired slot. Split so
 // far: bar|beat and stark at BOTH depths (the axes are independent — direction
@@ -112,6 +113,7 @@ export const SKILL_SLOT_NAMES = [
   ARRANGEMENT,
   "arrangement-write",
   "arrangement-basic",
+  "automation",
   "object-paths",
   "object-paths-basic",
   "working-with-live",
@@ -316,6 +318,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Moving clips with toPath — along the arrangement timeline and between clip slots — plus splitting them and stacking take lanes. It's the only place toPath is explained. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
     builtIn: arrangementWrite,
+  },
+
+  automation: {
+    title: "Clip automation",
+    description:
+      "Reading and writing a clip's automation envelopes, and the session-to-arrangement round trip that puts one in a track's automation lane. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
+    builtIn: automation,
   },
 
   "arrangement-basic": {

@@ -65,6 +65,21 @@ export const MAX_CAPTURED_WARNINGS = 1000;
 let activeCapture: WarningCapture | null = null;
 
 /**
+ * How many times any request has parked on a suspendWarningCapture promise.
+ * Every such park lets Max run another request, so anything a request cached
+ * about the Live Set can be stale once this number has moved.
+ */
+let suspensions = 0;
+
+/**
+ * @returns A number that rises each time a request parks, so a cache can tell
+ *   that another request may have run since it last looked
+ */
+export function suspensionCount(): number {
+  return suspensions;
+}
+
+/**
  * Start collecting warnings for a request, making it the active capture.
  *
  * @returns The new capture, to pass to endWarningCapture
@@ -183,6 +198,7 @@ export async function suspendWarningCapture<T>(
 ): Promise<T> {
   const suspended = activeCapture;
 
+  suspensions++;
   activeCapture = null;
 
   try {

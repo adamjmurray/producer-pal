@@ -81,10 +81,16 @@ describe("parseObjectPath", () => {
     });
   });
 
+  it("sends a scene append under a track to ppal-create-scene", () => {
+    expect(() => parseObjectPath("t0/s+")).toThrow(
+      '"s+" adds a scene, which only ppal-create-scene does; a clip slot is "t<track>/s<scene>"',
+    );
+  });
+
   // A song position needs a lane that is already numbered.
   it("refuses l+ under a song position, and on a track that has no lanes", () => {
     expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
-      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+      '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"',
     );
     expect(() => parseObjectPath("rt0/l+")).toThrow(
       'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',

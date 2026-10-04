@@ -165,10 +165,10 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
+      created: "l0",
       detail:
         "re-created on the take lane (warp markers reset to the sample's " +
-        "defaults); expand the take-lanes arrow on the track header in Live " +
-        "to see it",
+        "defaults)",
     });
   });
 
@@ -245,10 +245,7 @@ describe("duplicate an audio clip to a take lane", () => {
   it("names no loss for an unwarped source with no envelopes", async () => {
     const result = await duplicateSourceToNewLane({ warping: 0 });
 
-    expect(reasonOf(result)).toBe(
-      "re-created on the take lane; expand the take-lanes arrow on the " +
-        "track header in Live to see it",
-    );
+    expect(reasonOf(result)).toBe("re-created on the take lane");
   });
 
   // duplicate_clip_to_arrangement no-ops on a take-lane source, so a promote

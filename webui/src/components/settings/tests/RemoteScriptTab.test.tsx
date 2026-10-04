@@ -255,6 +255,56 @@ describe("RemoteScriptTab", () => {
     );
   });
 
+  it("offers a plain Install for a typed path the status doesn't describe", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.1.0",
+      updateAvailable: true,
+    });
+
+    const install = screen.getByTestId("remote-script-install");
+
+    expect(install.textContent).toBe("Update");
+
+    fireEvent.input(screen.getByTestId("remote-script-path"), {
+      target: { value: "/elsewhere" },
+    });
+
+    await waitForHookState(() => expect(install.textContent).toBe("Install"));
+  });
+
+  it("keeps a typed path when a Refresh finds a different User Library", async () => {
+    await renderTab({ userLibrary: null });
+
+    fireEvent.input(screen.getByTestId("remote-script-path"), {
+      target: { value: "/mine" },
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    fireEvent.click(screen.getByTestId("remote-script-refresh"));
+
+    await waitForHookState(() =>
+      expect(screen.getByText("Is this your User Library?")).toBeTruthy(),
+    );
+    expect(
+      (screen.getByTestId("remote-script-path") as HTMLInputElement).value,
+    ).toBe("/mine");
+  });
+
+  it('drops "Installed to" when the follow-up status read fails', async () => {
+    await renderTab();
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal` }),
+    );
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    fireEvent.click(screen.getByTestId("remote-script-install"));
+
+    await waitForHookState(() =>
+      screen.getByTestId("remote-script-load-error"),
+    );
+    expect(screen.queryByTestId("remote-script-installed-path")).toBeNull();
+  });
+
   it("fills in a User Library a later Refresh finds", async () => {
     await renderTab({ userLibrary: null });
 

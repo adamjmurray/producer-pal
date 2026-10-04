@@ -40,14 +40,13 @@ describe("deleteObject with a target named twice", () => {
     expect(liveSet.call).toHaveBeenCalledTimes(1);
   });
 
-  // The earlier mention resolved to an object, so it reports its id like every
-  // other entry, beside the path the caller wrote.
+  // The earlier mention is addressed the way the caller wrote it, not by what
+  // it resolved to.
   it("reports the repeat under the caller's own spelling", () => {
     setupTrackMocks({ track_1: String(livePath.track(0)) });
 
     expect(deleteObject({ path: "t0,t0", type: "track" })).toStrictEqual([
       {
-        id: "track_1",
         path: "t0",
         detail: 'named again as "t0" later in this call',
       },
@@ -76,5 +75,45 @@ describe("deleteObject with a target named twice", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_track", 1);
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_track", 0);
     expect(liveSet.call).toHaveBeenCalledTimes(2);
+  });
+
+  // Every earlier mention is addressed by how it was written. Naming it by what
+  // it resolved to would give a path that names whatever slid into the slot.
+  it("answers each earlier mention in its own spelling beside the deletes", () => {
+    setupTrackMocks({
+      track_0: String(livePath.track(0)),
+      track_1: String(livePath.track(1)),
+    });
+
+    expect(
+      deleteObject({ id: "track_0,track_1", path: "t1,t0", type: "track" }),
+    ).toStrictEqual([
+      { id: "track_0", detail: 'named again as "t0" later in this call' },
+      { id: "track_1", detail: 'named again as "t1" later in this call' },
+      { id: "track_1", deletedPath: "t1" },
+      { id: "track_0", deletedPath: "t0" },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+  });
+
+  // The later mention was meant to do the work, so when it fails the earlier one
+  // was not done through it after all.
+  it("fails the earlier mention when the last one fails", () => {
+    setupTrackMocks({ track_0: String(livePath.track(0)) });
+
+    liveSet.methods.delete_track = () => {
+      throw new Error("Live is busy");
+    };
+
+    expect(
+      deleteObject({ id: "track_0", path: "t0", type: "track" }),
+    ).toStrictEqual([
+      {
+        id: "track_0",
+        ok: false,
+        detail: 'not written: "t0" was meant to replace it, but failed',
+      },
+      { path: "t0", ok: false, detail: "Live is busy" },
+    ]);
   });
 });

@@ -25,9 +25,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     id: z.coerce
       .string()
       .optional()
-      .describe(
-        "track or take lane ID(s) to update, comma-separated for multiple",
-      ),
+      .describe("track or take lane id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
@@ -121,12 +119,12 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     sendReturn: param(z.coerce.string().optional(), {
       default:
-        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A"), or comma-separated one per target',
+        'return track, as read-track reports it (`return`/`returnId`): id, exact name (e.g., "A-Reverb"), path (e.g., "rt0"), or letter (e.g., "A"); or comma-separated one per target',
       smallModel: null,
     }),
     sends: param(sendsInputSchema, {
       default:
-        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, or letter — the `return`/`returnId` read-track reports. Use instead of sendGainDb + sendReturn, which set one",
+        "several sends at once: [{return, gainDb}], return as for sendReturn. Use instead of sendGainDb + sendReturn",
       smallModel: null,
     }),
   },

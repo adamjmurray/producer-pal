@@ -123,16 +123,20 @@ describe("readTrack over a list of targets", () => {
       id: "main",
       path: "mt",
       name: "Main",
-      sessionClipCount: 0,
-      arrangementClipCount: 0,
       deviceCount: 0,
     });
   });
 
-  it("refuses trackIndex beside a list", () => {
-    expect(() => readTrack({ path: "t0,t1", trackIndex: 0 })).toThrow(
+  it("refuses trackIndex beside a list of ids", () => {
+    expect(() => readTrack({ id: "10,11", trackIndex: 0 })).toThrow(
       "trackIndex names one track, but id and path name 2. " +
         "Name every track with id or path, or drop trackIndex.",
+    );
+  });
+
+  it("refuses trackIndex beside a path list", () => {
+    expect(() => readTrack({ path: "t0,t1", trackIndex: 0 })).toThrow(
+      "path names the track on its own - don't send trackIndex with it",
     );
   });
 

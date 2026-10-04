@@ -344,8 +344,8 @@ describe("readTrack on a take lane target", () => {
   it("refuses a lane path sent with a track index", () => {
     registerTrackWithTakeLanes();
 
-    expect(() => readOneTrack({ path: "t2/l0", trackIndex: 1 })).toThrow(
-      "path names the track on its own",
+    expect(() => readTrack({ path: "t2/l0", trackIndex: 1 })).toThrow(
+      "path names the track on its own - don't send trackIndex with it",
     );
   });
 

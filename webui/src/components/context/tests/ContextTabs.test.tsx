@@ -64,6 +64,7 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
           drifted: false,
           splitStale: null,
           forkedFromVersion: null,
+          readError: null,
         },
       ],
     },

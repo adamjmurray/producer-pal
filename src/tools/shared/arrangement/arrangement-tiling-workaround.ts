@@ -13,6 +13,12 @@
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
+  laneViewOf,
+  type LaneView,
+  trackLane,
+} from "./helpers/arrangement-lane-view.ts";
+import { type ClipSpan } from "./helpers/arrangement-write-effects.ts";
+import {
   createAndDeleteTempClip,
   EPSILON,
   type TilingContext,
@@ -133,13 +139,10 @@ export function clearClipAtDuplicateTarget(
  * outside it. One pass handles them all: arrangement clips on a track never
  * overlap each other, so clearing one can't resurrect another.
  *
- * Scanning the track is the expensive part — it builds a `LiveAPI` per clip, and
- * within a request the pool never refills, so a caller that scans once per
- * placement pays O(placements x clips) object builds and gets superlinear. Call
- * this for a whole span you are about to fill, not once per clip you put in it.
- * Clearing [a, c) in one pass is equivalent to clearing [a, b) then [b, c):
- * both leave the whole span empty and both preserve the same outside portions,
- * so the wider call is strictly less work.
+ * Which clips overlap comes from the call's lane view, so a clear reads no clip
+ * the range doesn't touch. Clearing [a, c) in one pass is equivalent to
+ * clearing [a, b) then [b, c): both leave the whole span empty and both
+ * preserve the same outside portions, so the wider call is strictly less work.
  *
  * @param track - LiveAPI track instance
  * @param rangeStart - Start of the range to clear (beats)
@@ -154,24 +157,22 @@ export function clearArrangementRange(
   isMidiClip: boolean,
   context: TilingContext,
 ): void {
-  const clipIds = track.getChildIds("arrangement_clips");
+  const inTheWay = laneViewOf(context).overlapping(
+    trackLane(track),
+    rangeStart,
+    rangeEnd,
+    track,
+  );
 
-  for (const clipId of clipIds) {
-    const clip = LiveAPI.from(clipId);
-    const clipStart = clip.getProperty("start_time") as number;
-    const clipEnd = clip.getProperty("end_time") as number;
-
-    if (clipStart < rangeEnd && clipEnd > rangeStart) {
-      clearOverlappingClip(
-        track,
-        clip,
-        rangeStart,
-        rangeEnd,
-        clipIds,
-        isMidiClip,
-        context,
-      );
-    }
+  for (const clip of inTheWay) {
+    clearOverlappingClip(
+      track,
+      clip,
+      rangeStart,
+      rangeEnd,
+      isMidiClip,
+      context,
+    );
   }
 }
 
@@ -355,9 +356,10 @@ export function duplicateSelfOverlappingClip(
   const sourceLength =
     (sourceClip.getProperty("end_time") as number) -
     (sourceClip.getProperty("start_time") as number);
-  const holdingStart = holdingAreaStartFromIds(
-    track.getChildIds("arrangement_clips"),
+  const holdingStart = holdingAreaStartOnTrack(
+    track,
     targetPosition + sourceLength,
+    context,
   );
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
@@ -396,22 +398,18 @@ export function duplicateSelfOverlappingClip(
  * @param overlappingClip - The clip that overlaps the target range
  * @param targetPosition - Start of the range to clear (beats)
  * @param targetEnd - End of the range to clear (beats)
- * @param allClipIds - All arrangement clip IDs on the track (for holding area calc)
  * @param isMidiClip - Whether the track is MIDI or audio
  * @param context - Context with silenceWavPath for audio clip operations
  */
 function clearOverlappingClip(
   track: LiveAPI,
-  overlappingClip: LiveAPI,
+  overlappingClip: ClipSpan,
   targetPosition: number,
   targetEnd: number,
-  allClipIds: string[],
   isMidiClip: boolean,
   context: TilingContext,
 ): void {
-  const clipStart = overlappingClip.getProperty("start_time") as number;
-  const clipEnd = overlappingClip.getProperty("end_time") as number;
-  const clipId = overlappingClip.id;
+  const { start: clipStart, end: clipEnd, id: clipId } = overlappingClip;
 
   const hasBefore = clipStart < targetPosition;
   const hasAfter = clipEnd > targetEnd;
@@ -436,7 +434,7 @@ function clearOverlappingClip(
   }
 
   // Has "after" portion — need dup-to-holding + left-trim + move
-  const holdingStart = holdingAreaStartFromIds(allClipIds);
+  const holdingStart = holdingAreaStartOnTrack(track, 0, context);
 
   // Step 1: Duplicate to holding area (safe: no clips there) and verify.
   // Order matters: the original clip must remain intact until the holding
@@ -491,28 +489,6 @@ function clearOverlappingClip(
 const HOLDING_AREA_GAP_BEATS = 100;
 
 /**
- * A holding-area start past both the last of `clipIds` and any planned target
- * placement, for a caller that already has the track's clip ids in hand. See
- * {@link holdingAreaStartOnTrack} for why this is recomputed, never cached.
- * @param clipIds - Arrangement clip IDs to consider
- * @param minStartBeats - Earliest beat the holding area must clear (default 0)
- * @returns Holding-area start position in beats
- */
-function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
-  let maxEnd = 0;
-
-  for (const id of clipIds) {
-    const end = LiveAPI.from(id).getProperty("end_time") as number;
-
-    if (end > maxEnd) {
-      maxEnd = end;
-    }
-  }
-
-  return Math.max(maxEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;
-}
-
-/**
  * The holding-area start that clears a block ending at `blockEnd`.
  *
  * For a caller that stages repeatedly on one track and knows how far its own
@@ -528,7 +504,7 @@ export function holdingAreaStartAfter(blockEnd: number): number {
 }
 
 /**
- * A holding-area start for `track`, read from the track as it is right now.
+ * A holding-area start for `track`, read from the call's lane view right now.
  *
  * Always recompute at the point of use. A holding area derived from anything
  * captured earlier in the request — `song_length`, or a start another clip was
@@ -538,8 +514,7 @@ export function holdingAreaStartAfter(blockEnd: number): number {
  * 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
  *
  * The one exception is a caller that tracks its own staging and advances past
- * it with {@link holdingAreaStartAfter}. That is not a cached start — it is a
- * larger one.
+ * it with {@link holdingAreaStartAfter}: a larger start, not a cached one.
  *
  * `minStartBeats` is for a caller that will place its copy at a target: pass
  * that placement's right edge so the holding area clears it. Without it, a copy
@@ -547,21 +522,22 @@ export function holdingAreaStartAfter(blockEnd: number): number {
  * clip — which moveClipFromHolding's clearClipAtDuplicateTarget then misreads
  * as a self-overlap, skips the clear, and re-triggers the same crash.
  *
- * Concurrent requests (parallel subagents) can derive the SAME start: nothing
- * reserves the range. That is safe only because every consumer stages, uses,
- * and clears its block synchronously — requests interleave at await points, so
- * their staged content never coexists. Put an await between staging and
- * clearing and two requests can overwrite each other there, silently.
+ * Concurrent requests can derive the SAME start: nothing reserves the range.
+ * That is safe only because every consumer stages, uses, and clears its block
+ * synchronously — requests interleave at await points, so their staged content
+ * never coexists. Put an await between staging and clearing and two requests
+ * can overwrite each other there, silently.
  * @param track - The track the holding area is on
  * @param minStartBeats - Earliest beat the holding area must clear (default 0)
+ * @param context - The call's context, which carries its lane view
  * @returns Holding-area start position in beats
  */
 export function holdingAreaStartOnTrack(
   track: LiveAPI,
   minStartBeats = 0,
+  context: { lanes?: LaneView } = {},
 ): number {
-  return holdingAreaStartFromIds(
-    track.getChildIds("arrangement_clips"),
-    minStartBeats,
-  );
+  const lastEnd = laneViewOf(context).lastEnd(trackLane(track), track);
+
+  return Math.max(lastEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;
 }

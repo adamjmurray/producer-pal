@@ -9,6 +9,7 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   registerMockObject,
+  registerPendingMockObject,
   registerSessionClipDuplication,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
@@ -68,12 +69,14 @@ describe("duplicate - the ids alias", () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("track2", { path: livePath.track(3) });
-    registerMockObject("live_set/tracks/1", {
+    registerPendingMockObject("live_set/tracks/1", {
       path: livePath.track(1),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
-    registerMockObject("live_set/tracks/4", {
-      path: livePath.track(4),
+    // The first copy lands at t1, which pushes the second source to t4 and its
+    // copy to t5.
+    registerPendingMockObject("live_set/tracks/5", {
+      path: livePath.track(5),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
 
@@ -81,22 +84,24 @@ describe("duplicate - the ids alias", () => {
 
     expect(result).toStrictEqual([
       expect.objectContaining({ path: "t1" }),
-      expect.objectContaining({ path: "t4" }),
+      expect.objectContaining({ id: "live_set/tracks/5", path: "t5" }),
     ]);
   });
 
-  // A source that doesn't exist is caught before the first copy is made, so a
-  // list can't leave half its copies behind.
-  it("refuses the whole list when one source is missing", async () => {
+  // A source that doesn't exist keeps its slot as a skip; the others still copy.
+  it("skips a missing source and copies the others", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
     mockNonExistentObjects();
 
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-    await expect(
-      duplicate({ type: "track", id: "track1,nope" }),
-    ).rejects.toThrow('id "nope" does not exist');
-    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
+    const result = await duplicate({ type: "track", id: "track1,nope" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t1" }),
+      { id: "nope", ok: false, detail: 'id "nope" does not exist' },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 });
 
@@ -128,24 +133,15 @@ describe("duplicate - clip session validation", () => {
     ).rejects.toThrow("clip requires toPath");
   });
 
-  // Every other inapplicable param on this tool warns; these two used to be
-  // dropped without a word, so the copy count / length silently didn't happen.
-  it("warns that a clip copy ignores count", async () => {
+  // A clip makes one copy per destination, so a count is refused rather than
+  // trimmed: the call can't say whether count or the clip type is the mistake.
+  it("refuses a count on a clip copy", async () => {
     registerSessionClipDuplication({ destClipProperties: {} });
 
-    const result = await duplicate({
-      type: "clip",
-      id: "clip1",
-      toPath: "t0/s1",
-      count: 3,
-    });
-
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/0/clip_slots/1/clip",
-      path: "t0/s1",
-    });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("count ignored for clips"),
+    await expect(
+      duplicate({ type: "clip", id: "clip1", toPath: "t0/s1", count: 3 }),
+    ).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "clip".',
     );
   });
 
@@ -268,16 +264,23 @@ describe("duplicate - track/scene index validation", () => {
     );
   });
 
-  it("refuses a return track in a source list before copying anything", async () => {
+  it("skips a return track in a source list and copies the others", async () => {
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("return1", { path: livePath.returnTrack(0) });
 
-    await expect(
-      duplicate({ type: "track", id: "track1,return1" }),
-    ).rejects.toThrow("is not a regular track");
-    expect(liveSet.call).not.toHaveBeenCalled();
+    const result = await duplicate({ type: "track", id: "track1,return1" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t1" }),
+      {
+        id: "return1",
+        ok: false,
+        detail: expect.stringContaining("is not a regular track"),
+      },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 
   describe("scene index validation", () => {

@@ -81,6 +81,18 @@ describe("useSkillOverrides", () => {
     return await renderAndWait(useSkillOverrides, "ready");
   }
 
+  it("carries a slot's readError through, and defaults it to null", async () => {
+    const result = await renderReady([
+      rawSlot({ readError: "EACCES: permission denied" }),
+      rawSlot({ name: "stark" }),
+    ]);
+    const { status } = result.current;
+    const errors =
+      status.kind === "ready" ? status.slots.map((s) => s.readError) : [];
+
+    expect(errors).toStrictEqual(["EACCES: permission denied", null]);
+  });
+
   it("loads and maps all slots on mount via a no-store GET", async () => {
     const result = await renderReady([
       rawSlot(),
@@ -108,6 +120,7 @@ describe("useSkillOverrides", () => {
         drifted: false,
         splitStale: null,
         forkedFromVersion: null,
+        readError: null,
       },
       {
         name: "stark",
@@ -121,6 +134,7 @@ describe("useSkillOverrides", () => {
         drifted: true,
         splitStale: null,
         forkedFromVersion: "1.4.0",
+        readError: null,
       },
     ]);
     expect(fetchMock).toHaveBeenCalledWith(LIST_URL, {
@@ -240,6 +254,7 @@ describe("useSkillOverrides", () => {
       name: "barbeat-standard",
       override: "MINE\n",
       forkedFromVersion: "1.5.0",
+      readError: null,
     });
     // The other slot is left untouched by the merge.
     expect(status.kind === "ready" && status.slots[1]).toStrictEqual({
@@ -249,6 +264,7 @@ describe("useSkillOverrides", () => {
       drifted: false,
       enabled: true,
       forkedFromVersion: null,
+      readError: null,
       gate: null,
       splitStale: null,
       title: "stark notation",
@@ -283,6 +299,7 @@ describe("useSkillOverrides", () => {
       description: "Slot description.",
       drifted: false,
       forkedFromVersion: null,
+      readError: null,
       gate: null,
       name: "barbeat-standard",
       splitStale: null,
@@ -313,6 +330,7 @@ describe("useSkillOverrides", () => {
       description: "Slot description.",
       drifted: false,
       forkedFromVersion: null,
+      readError: null,
       gate: null,
       name: "barbeat-standard",
       override: "",

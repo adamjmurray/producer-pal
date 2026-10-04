@@ -262,6 +262,36 @@ describe("applySpecializedActions", () => {
       },
     ]);
   });
+
+  it("runs an action named twice once, at its last mention", () => {
+    const device = registerDevice("Simpler");
+
+    const results = applySpecializedActions(device, [
+      "reverse",
+      "crop",
+      "Reverse ",
+    ]);
+
+    expect(device.call).toHaveBeenCalledTimes(2);
+    expect(results[0]).toStrictEqual({
+      action: "reverse",
+      detail: "named again later in this call",
+    });
+    expect(results[2]).toStrictEqual({ action: "Reverse " });
+  });
+
+  it("answers an unparseable action named twice once per mention", () => {
+    const device = registerDevice("Simpler");
+
+    expect(applySpecializedActions(device, ["1bad(", "1bad("])).toStrictEqual([
+      { action: "1bad(", detail: "named again later in this call" },
+      {
+        action: "1bad(",
+        ok: false,
+        detail: "could not parse: expected name or name(args)",
+      },
+    ]);
+  });
 });
 
 describe("readSpecializedActions", () => {

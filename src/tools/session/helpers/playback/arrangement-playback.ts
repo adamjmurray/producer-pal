@@ -4,8 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  paramNamesSomething,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { applyArrangementLoop } from "./arrangement-loop.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   locatorRef,
   songPositionToBeats,
@@ -52,45 +55,6 @@ const LOCATOR_PARAM_PAIRS = [
 
 /** The action that plays the arrangement, named in a few places. */
 export const PLAY_ARRANGEMENT = "play-arrangement";
-
-/** The actions that read the arrangement timeline. The rest work the session. */
-const ARRANGEMENT_ACTIONS = new Set([
-  PLAY_ARRANGEMENT,
-  "update-arrangement",
-  "stop",
-]);
-
-/**
- * Drop the arrangement-timeline params on an action that doesn't use them.
- *
- * They are written to the Live Set before the action runs, so without this
- * "play scene 3 from bar 5" fires the scene and silently moves the arrangement
- * start position — a change to the Set the caller never asked for.
- * @param action - The playback action, which decides whether they apply
- * @param params - The timeline params as the caller sent them
- * @returns The params, or none of them when the action works the session
- */
-export function resolveArrangementParams<
-  T extends ArrangementParams & LegacyLocatorParams,
->(action: string, params: T): Partial<T> {
-  if (ARRANGEMENT_ACTIONS.has(action)) {
-    return params;
-  }
-
-  const sent = (Object.keys(params) as Array<keyof T>).filter(
-    (key) => params[key] != null,
-  );
-
-  if (sent.length > 0) {
-    console.warn(
-      `${sent.join("/")} ignored: action "${action}" doesn't take arrangement ` +
-        `timeline params; use "play-arrangement" or "update-arrangement" for ` +
-        `the start position and loop`,
-    );
-  }
-
-  return {};
-}
 
 /**
  * The loop fields a playback result carries.
@@ -253,15 +217,20 @@ export function foldLocatorParams(
   for (const [position, legacy] of LOCATOR_PARAM_PAIRS) {
     const locator = params[legacy];
 
-    if (locator == null) {
+    // A blank, or the word "null", is a param left out.
+    if (!paramNamesSomething(locator)) {
       continue;
     }
 
     // Never pick one: the two params name the same position, so a caller who
     // sent both told us two different things about it.
-    if (folded[position] != null) {
-      throw new Error(`${position} cannot be used with ${legacy}`);
-    }
+    refuseNamedTwice({
+      param: position,
+      value: folded[position],
+      noun: "position",
+      also: { [legacy]: locator },
+      hint: `${legacy} is deprecated`,
+    });
 
     folded[position] = `loc:${locator}`;
   }

@@ -65,6 +65,87 @@ describe("duplicate - a copy that can't be lengthened", () => {
     expect(result).toStrictEqual(COPY);
   });
 
+  it("keeps a clip copy when reading it back after lengthening fails", async () => {
+    registerClipSource();
+
+    const track = registerTrackWithArrangementDup(0);
+    const makeCopy = track.methods
+      .duplicate_clip_to_arrangement as () => unknown;
+    let copied = false;
+
+    track.methods.duplicate_clip_to_arrangement = () => {
+      copied = true;
+
+      return makeCopy();
+    };
+
+    Object.defineProperty(track.properties, "arrangement_clips", {
+      get() {
+        if (copied) {
+          throw new Error("Live went away");
+        }
+
+        return children();
+      },
+    });
+    registerArrangementClip(0, 0, 16);
+    updateClipMock.mockResolvedValueOnce([{ id: COPY.id }]);
+
+    // The clip is on the track, so the failure goes on its entry.
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "5|1",
+        arrangementLength: "4bar",
+      }),
+    ).toStrictEqual({
+      id: COPY.id,
+      detail:
+        "couldn't finish reading the copy: Live went away; couldn't tell what it overwrote: Live went away",
+    });
+  });
+
+  it("reports every tile, giving the one that can't be read back its own entry", async () => {
+    const tile = (n: number): string => livePath.track(0).arrangementClip(n);
+
+    registerClipSource();
+    registerTrackWithArrangementDup(0, {
+      arrangement_clips: children(tile(0), "odd", tile(2)),
+    });
+    registerArrangementClip(0, 0, 16);
+    registerArrangementClip(0, 2, 24);
+    // An arrangement clip that names no track can't be read back.
+    registerMockObject("odd", {
+      path: livePath.liveSet,
+      properties: { is_arrangement_clip: 1 },
+    });
+    updateClipMock.mockResolvedValueOnce([
+      { id: tile(0) },
+      { id: "odd" },
+      { id: tile(2) },
+    ]);
+
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "5|1",
+        arrangementLength: "4bar",
+      }),
+    ).toStrictEqual({
+      path: "t0",
+      clips: [
+        { id: tile(0), path: "t0[5|1]" },
+        {
+          id: "odd",
+          detail: expect.stringContaining("couldn't read the copy back: "),
+        },
+        { id: tile(2), path: "t0[7|1]" },
+      ],
+    });
+  });
+
   it("keeps a scene's copy when updateClip refuses its lone target", async () => {
     setupArrangementSceneMocks(1);
     registerClipSlot(0, 0, true, createStandardMidiClipMock({ length: 4 }));

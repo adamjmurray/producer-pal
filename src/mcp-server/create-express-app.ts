@@ -17,15 +17,12 @@ import {
 } from "#src/shared/notation.ts";
 import { withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import {
-  TOOL_NAMES,
-  createMcpServer,
-  validateTools,
-} from "./create-mcp-server.ts";
+import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
+import { parseConfigBody } from "./helpers/http/config-body.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import {
@@ -42,6 +39,7 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
+import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -59,6 +57,10 @@ interface ProducerPalConfig {
   sampleFolder: string;
   liveApiEnabled: boolean;
   liveApiForcedOn: boolean;
+  // Debug builds only: false makes the remote script look uninstalled. POST
+  // /config only (evals and e2e); not a device setting, so it is never sent to
+  // Max. A release build neither lists nor accepts it.
+  remoteScriptEnabled?: boolean;
   tools: string[];
 }
 
@@ -81,6 +83,7 @@ const config: ProducerPalConfig = {
   sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
+  ...(liveApiForcedOn && { remoteScriptEnabled: true }),
   tools: liveApiForcedOn
     ? [...TOOL_NAMES, toolDefLiveApi.toolName]
     : [...TOOL_NAMES],
@@ -442,7 +445,21 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
   // /config is a benign no-op update instead of a TypeError → 500.
-  const incoming = requestBody(req) as Partial<ProducerPalConfig>;
+  // Check every field first: a bad one refuses the whole request, so a 400
+  // never leaves config half-applied (or Node and the device out of step).
+  const parsed = parseConfigBody(
+    requestBody(req),
+    config.liveApiEnabled,
+    liveApiForcedOn,
+  );
+
+  if (!parsed.ok) {
+    res.status(400).json(parsed.error);
+
+    return;
+  }
+
+  const incoming = parsed.value;
   const outlets: Array<() => Promise<void>> = [];
 
   if (incoming.projectContext !== undefined) {
@@ -453,19 +470,19 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   if (incoming.smallModelMode !== undefined) {
-    config.smallModelMode = Boolean(incoming.smallModelMode);
+    config.smallModelMode = incoming.smallModelMode;
     outlets.push(() =>
       Max.outlet("config", "smallModelMode", config.smallModelMode),
     );
   }
 
-  if (incoming.notation !== undefined && isNotation(incoming.notation)) {
+  if (incoming.notation !== undefined) {
     config.notation = incoming.notation;
     outlets.push(() => Max.outlet("config", "notation", config.notation));
   }
 
   if (incoming.jsonOutput !== undefined) {
-    config.jsonOutput = Boolean(incoming.jsonOutput);
+    config.jsonOutput = incoming.jsonOutput;
     outlets.push(() =>
       Max.outlet("config", "compactOutput", !config.jsonOutput),
     );
@@ -479,7 +496,7 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   if (incoming.liveApiEnabled !== undefined) {
-    applyLiveApiEnabled(Boolean(incoming.liveApiEnabled));
+    applyLiveApiEnabled(incoming.liveApiEnabled);
 
     // The whitelist is rebuilt either way, so it goes out with the flag.
     outlets.push(
@@ -488,19 +505,13 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     );
   }
 
+  if (incoming.remoteScriptEnabled !== undefined) {
+    config.remoteScriptEnabled = incoming.remoteScriptEnabled;
+    setRemoteScriptEnabled(incoming.remoteScriptEnabled);
+  }
+
   if (incoming.tools !== undefined) {
-    const validationError = validateTools(
-      incoming.tools,
-      config.liveApiEnabled,
-    );
-
-    if (validationError) {
-      res.status(400).json(validationError);
-
-      return;
-    }
-
-    config.tools = incoming.tools.map(String);
+    config.tools = incoming.tools;
     outlets.push(() =>
       Max.outlet("config", "tools", JSON.stringify(config.tools)),
     );

@@ -62,16 +62,30 @@ function narrowJob(index: number): Job {
   };
 }
 
+/**
+ * Read the first two tracks' narrow jobs through a fake LOM.
+ * @param lom - The fake LOM to install
+ * @returns The recorded requests, the batch context, and the results
+ */
+async function batchTwoTracks(lom: FakeLom): Promise<{
+  calls: ReturnType<typeof installFakeLom>;
+  ctx: ReturnType<typeof createBatchContext>;
+  results: Awaited<ReturnType<typeof liveApiBatch>>;
+}> {
+  const calls = installFakeLom(lom);
+  const ctx = createBatchContext("http://fake");
+  const results = await liveApiBatch(ctx, [narrowJob(0), narrowJob(1)]);
+
+  return { calls, ctx, results };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("liveApiBatch", () => {
   it("carries several objects in one request", async () => {
-    const calls = installFakeLom(fakeLom());
-    const ctx = createBatchContext("http://fake");
-
-    const results = await liveApiBatch(ctx, [narrowJob(0), narrowJob(1)]);
+    const { calls, results } = await batchTwoTracks(fakeLom());
 
     expect(results).toStrictEqual([
       [["Drums"], [16711680], [1]],
@@ -99,7 +113,7 @@ describe("liveApiBatch", () => {
     expect(results).toStrictEqual(
       Array.from({ length: WIDE_PROPERTY_COUNT }, (_unused, at) => [at]),
     );
-    // 49 reads plus a set_path fills a request; the rest follow in a second.
+    // 49 reads plus a set-path fills a request; the rest follow in a second.
     expect(calls.requests).toStrictEqual([50, 12]);
   });
 
@@ -108,10 +122,7 @@ describe("liveApiBatch", () => {
 
     lom.failing = new Set(["live_set tracks 1:color"]);
 
-    const calls = installFakeLom(lom);
-    const ctx = createBatchContext("http://fake");
-
-    const results = await liveApiBatch(ctx, [narrowJob(0), narrowJob(1)]);
+    const { calls, ctx, results } = await batchTwoTracks(lom);
 
     expect(results).toStrictEqual([
       [["Drums"], [16711680], [1]],
@@ -149,5 +160,24 @@ describe("runOperations", () => {
     await expect(
       runOperations(createBatchContext("http://fake"), [{ type: "info" }]),
     ).rejects.toThrow("HTTP 404 Not Found");
+  });
+
+  it("throws when the tool stopped at a failed operation", async () => {
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            result: { results: [1], failed: { index: 1, detail: "nope" } },
+          }),
+      } as Response),
+    );
+
+    await expect(
+      runOperations(createBatchContext("http://fake"), [
+        { type: "info" },
+        { type: "info" },
+      ]),
+    ).rejects.toThrow("operations[1]: nope");
   });
 });

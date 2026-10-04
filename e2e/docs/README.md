@@ -27,7 +27,7 @@ npm run docs:test:headed
 
 ## Test Configuration
 
-- **Config file**: `config/playwright.docs.config.mjs`
+- **Config file**: `config/playwright.docs.config.ts`
 - **Browser**: Chromium (headless)
 - **Workers**: Limited to 2 for stability
 - **Test files**: `e2e/docs/*.spec.ts`

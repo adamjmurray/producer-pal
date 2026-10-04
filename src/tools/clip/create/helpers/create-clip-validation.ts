@@ -6,13 +6,15 @@
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
-import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import {
-  CREATE_TRACK_ADVICE,
-  formatObjectPath,
-} from "#src/tools/shared/validation/object-path.ts";
+  type ArrangementTrack,
+  takeLanesBlocker,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type ClipDestinations } from "./create-clip-destinations.ts";
+
+const AUTO_ACTIONS = new Set(["play-scene", "play-clip"]);
 
 /**
  * Validates that the call named somewhere to put a clip
@@ -30,38 +32,6 @@ export function validatePositions(destinations: ClipDestinations): void {
 }
 
 /**
- * Validates that every track the call targets exists, and keeps the objects.
- * Creating a clip never moves a track, so the ones resolved here stay right for
- * the whole call — reuse them instead of rebuilding a track per clip.
- * @param destinations - Resolved clip slots and arrangement positions
- * @returns The resolved tracks, keyed by track index
- */
-export function validateDestinationTracks(
-  destinations: ClipDestinations,
-): Map<number, LiveAPI> {
-  const trackIndices = [
-    ...destinations.clipSlots.map((slot) => slot.trackIndex),
-    ...destinations.arrangementPositions.map((position) => position.trackIndex),
-  ];
-  const tracks = new Map<number, LiveAPI>();
-
-  for (const trackIndex of new Set(trackIndices)) {
-    const track = LiveAPI.from(livePath.track(trackIndex));
-
-    if (!track.exists()) {
-      throw new Error(
-        `no track at path "${formatObjectPath({ kind: "track", trackIndex })}"; ` +
-          CREATE_TRACK_ADVICE,
-      );
-    }
-
-    tracks.set(trackIndex, track);
-  }
-
-  return tracks;
-}
-
-/**
  * Validates createClip parameters
  * @param notes - MIDI notes notation string
  * @param sampleFile - Audio file path
@@ -76,40 +46,6 @@ export function validateCreateClipParams(
       "cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
     );
   }
-}
-
-/**
- * Warn about MIDI-only parameters supplied alongside a sampleFile. An audio
- * clip's region comes from the sample, so these are ignored rather than
- * applied — say so instead of silently dropping them.
- * @param sampleFile - Audio file path, or null for a MIDI clip
- * @param params - Candidate parameters, keyed by their tool argument name
- */
-export function warnMidiOnlyAudioParams(
-  sampleFile: string | null,
-  params: Record<string, unknown>,
-): void {
-  if (sampleFile == null) {
-    return;
-  }
-
-  warnIgnoredParams(params, "audio clips - the sample defines the clip region");
-}
-
-/**
- * Warn about audio-only parameters supplied without a sampleFile.
- * @param sampleFile - Audio file path, or null for a MIDI clip
- * @param params - Candidate parameters, keyed by their tool argument name
- */
-export function warnAudioOnlyMidiParams(
-  sampleFile: string | null,
-  params: Record<string, unknown>,
-): void {
-  if (sampleFile != null) {
-    return;
-  }
-
-  warnIgnoredParams(params, "MIDI clips");
 }
 
 /**
@@ -154,52 +90,64 @@ export function calculateClipLength(
 }
 
 /**
- * Handles automatic playback for session clips
- * @param auto - Auto playback mode (play-scene or play-clip)
- * @param view - View type
- * @param clipSlots - Array of clip slot positions
+ * Refuses an `auto` value this tool has no action for, before anything is made.
+ * @param auto - The auto param, or null
+ * @throws Error when the value isn't a known action
  */
-export function handleAutoPlayback(
-  auto: string | null,
-  view: string,
-  clipSlots: ClipSlotPosition[],
+export function refuseUnknownAuto(auto: string | null): void {
+  if (auto != null && auto !== "" && !AUTO_ACTIONS.has(auto)) {
+    throw new Error(
+      `unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
+    );
+  }
+}
+
+/**
+ * Says why a destination's track won't take the clip planned there.
+ * @param clipIsMidi - Whether the clip is MIDI
+ * @param destination - The track, and the take lane if one was named
+ * @param track - The destination track
+ * @returns The reason, or null when the track takes the clip
+ */
+export function createClipBlocker(
+  clipIsMidi: boolean,
+  destination: ArrangementTrack,
+  track: LiveAPI | undefined,
+): string | null {
+  const { trackIndex, takeLane } = destination;
+  const laneBlocker =
+    takeLane != null && track != null
+      ? takeLanesBlocker(track, trackIndex)
+      : null;
+
+  return laneBlocker ?? clipCopyBlocker(clipIsMidi, trackIndex, track);
+}
+
+/**
+ * Launches what the call made in the session, the way `auto` asks.
+ * @param auto - Auto playback mode (play-scene or play-clip)
+ * @param slots - The clip slots that got a clip, in call order, never empty
+ * @throws Error when the scene to launch isn't there
+ */
+export function launchCreatedClips(
+  auto: string,
+  slots: ClipSlotPosition[],
 ): void {
-  if (!auto || view !== "session" || clipSlots.length === 0) {
+  if (auto === "play-scene") {
+    // The first slot's scene launches, for synchronization
+    const { sceneIndex } = slots[0] as ClipSlotPosition;
+    const scene = LiveAPI.from(livePath.scene(sceneIndex));
+
+    if (!scene.exists()) {
+      throw new Error(`play-scene failed: no scene at "s${sceneIndex}"`);
+    }
+
+    scene.call("fire");
+
     return;
   }
 
-  switch (auto) {
-    case "play-scene": {
-      // Launch the first scene for synchronization
-      // Length checked above: clipSlots.length > 0
-      const firstSlot = clipSlots[0] as ClipSlotPosition;
-      const scene = LiveAPI.from(livePath.scene(firstSlot.sceneIndex));
-
-      if (!scene.exists()) {
-        throw new Error(
-          `auto="play-scene" failed: no scene at "s${firstSlot.sceneIndex}"`,
-        );
-      }
-
-      scene.call("fire");
-      break;
-    }
-
-    case "play-clip":
-      // Fire individual clips at each slot position
-      for (const slot of clipSlots) {
-        const clipSlot = LiveAPI.from(
-          livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex),
-        );
-
-        clipSlot.call("fire");
-      }
-
-      break;
-
-    default:
-      throw new Error(
-        `unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
-      );
+  for (const { trackIndex, sceneIndex } of slots) {
+    LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex)).call("fire");
   }
 }

@@ -88,6 +88,15 @@ describe("chatAdapter", () => {
       );
     });
 
+    it.each([
+      ["openrouter", "mistralai/mistral-large-2512"],
+      ["vercel", "mistral/pixtral-large-latest"],
+    ])("caps Mistral models on %s at Mistral's limit", (provider, model) => {
+      expect(
+        buildForProvider(provider, "Default", model).maxRequestImages,
+      ).toBe(MISTRAL_MAX_REQUEST_IMAGES);
+    });
+
     it("carries smallModelMode from extraParams onto the config", () => {
       const on = chatAdapter.buildConfig("gpt-4o", "default", {}, undefined, {
         ...extraParams,

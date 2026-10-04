@@ -50,7 +50,7 @@ describe("clip-reasons", () => {
 
     const entry: ClipResult = { id: "named_id" };
 
-    reportClipReasons(reasons, "named_id", [entry]);
+    reportClipReasons(reasons, "named_id", entry);
 
     expect(entry).toStrictEqual({
       id: "named_id",
@@ -67,7 +67,7 @@ describe("clip-reasons", () => {
 
     const entry: ClipResult = { id: "1" };
 
-    reportClipReasons(reasons, "1", [entry]);
+    reportClipReasons(reasons, "1", entry);
 
     expect(entry).toStrictEqual({ id: "1", detail: "could not be read back" });
   });
@@ -81,7 +81,7 @@ describe("clip-reasons", () => {
 
     const tiled: ClipResult = { id: "1" };
 
-    reportClipReasons(reasons, "1", [tiled]);
+    reportClipReasons(reasons, "1", tiled);
 
     expect(tiled).toStrictEqual({ id: "1", detail: "placed 2 of 8 tiles" });
     // A note leaves the clip a real entry; a refusal with nothing else landing

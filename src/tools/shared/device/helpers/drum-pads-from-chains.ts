@@ -98,6 +98,7 @@ export interface DrumChainOptions {
   ) => Record<string, unknown>;
   /** The pad's own path, or null when the rack has none to build from */
   padPath: string | null;
+  includeSample?: boolean;
 }
 
 export interface ProcessedChain {
@@ -160,8 +161,14 @@ function shownDrumChainInfo(
   chainPath: string | null,
   options: DrumChainOptions,
 ): Record<string, unknown> {
-  const { includeDrumPads, includeChains, depth, maxDepth, readDeviceFn } =
-    options;
+  const {
+    includeDrumPads,
+    includeChains,
+    includeSample = false,
+    depth,
+    maxDepth,
+    readDeviceFn,
+  } = options;
 
   // At the depth limit, count the devices rather than building them.
   if (depth >= maxDepth) {
@@ -182,6 +189,7 @@ function shownDrumChainInfo(
       readDeviceFn(chainDevice, {
         includeChains: includeDrumPads && includeChains,
         includeDrumPads: includeDrumPads && includeChains,
+        includeSample,
         depth: depth + 1,
         maxDepth,
         parentPath: chainPath ? `${chainPath}/d${deviceIndex}` : null,
@@ -329,6 +337,7 @@ export function updateDrumPadSoloStates(
  * @param maxDepth - Max depth
  * @param readDeviceFn - readDevice function
  * @param devicePath - The rack's own path in Producer Pal's grammar
+ * @param includeSample - Pass the sample include to nested devices
  */
 export function processDrumPads(
   device: LiveAPI,
@@ -339,6 +348,7 @@ export function processDrumPads(
   maxDepth: number,
   readDeviceFn: DrumChainOptions["readDeviceFn"],
   devicePath?: string,
+  includeSample = false,
 ): void {
   const chains = device.getChildren("chains");
   // Prefer the path the caller walked in on: a Live path spells a nested rack's
@@ -370,6 +380,7 @@ export function processDrumPads(
         maxDepth,
         readDeviceFn,
         padPath,
+        includeSample,
       }),
     );
 

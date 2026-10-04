@@ -10,6 +10,7 @@ import {
   children,
   type RegisteredMockObject,
   registerMockObject,
+  registerPendingMockObject,
   registerSessionClipDuplication,
   registerTrackCopySet,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
@@ -180,13 +181,13 @@ describe("duplicate - focus functionality", () => {
     registerMockObject("scene1", { path: livePath.scene(0) });
     registerMockObject("live_set", {
       path: livePath.liveSet,
-      properties: { tracks: children("track0") },
+      properties: { tracks: children("track0"), scenes: children("scene1") },
     });
     registerMockObject("live_set/tracks/0/clip_slots/1", {
       path: livePath.track(0).clipSlot(1),
       properties: { has_clip: 0 },
     });
-    registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+    registerPendingMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
     await duplicate({
       type: "scene",

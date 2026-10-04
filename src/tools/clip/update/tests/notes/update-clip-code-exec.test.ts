@@ -104,36 +104,25 @@ describe("updateClip - code execution", () => {
     ]);
   });
 
-  it("should warn and continue when code execution fails for a clip", async () => {
+  it("refuses a lone clip whose code fails, with no warning", async () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue(
       codeExecFailure("SyntaxError: Unexpected token"),
     );
 
-    const result = await updateClip({
-      id: "123",
-      code: "invalid code {{",
-    });
+    await expect(
+      updateClip({ id: "123", code: "invalid code {{" }),
+    ).rejects.toThrow("code failed: SyntaxError: Unexpected token");
 
-    // Should NOT call add_new_notes since execution failed
     expect(mocks.clip123.call).not.toHaveBeenCalledWith(
       "add_new_notes",
       expect.anything(),
     );
-
-    // Should emit a warning via console.warn (routed through outlet)
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Code execution failed for clip t0/s0 (id 123): SyntaxError: Unexpected token",
-      ),
-    );
-
-    // Should still return a result with current note count
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 0 });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should handle mixed success/failure across multiple clips", async () => {
+  it("puts a code failure on the clip's entry, keeping the others", async () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
     setupMidiClipMock(mocks.clip456, { length: 4 });
 
@@ -146,17 +135,47 @@ describe("updateClip - code execution", () => {
       code: "return notes",
     });
 
-    // First clip succeeds, second clip fails
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0", noteCount: 1 },
-      { id: "456", path: "t1/s1", noteCount: 0 },
+      {
+        id: "456",
+        ok: false,
+        detail: "code failed: Runtime error",
+      },
     ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Code execution failed for clip t1/s1 (id 456): Runtime error",
-      ),
+  it("puts dropped duplicate notes from code on the clip's entry", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0), codeNote(60, 0)]),
     );
+
+    const result = await updateClip({ id: "123", code: "return notes" });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 1,
+      detail: "dropped 1 duplicate note at the same pitch and start",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps the entry with a detail when code fails after another change landed", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockResolvedValue(codeExecFailure("Boom"));
+
+    const result = await updateClip({ id: "123", name: "Renamed", code: "x" });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: "code failed: Boom",
+    });
   });
 
   // The clip update already landed before the code ran, so the throw is a
@@ -174,7 +193,7 @@ describe("updateClip - code execution", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      detail: "update stopped partway: the code exec round trip died",
+      detail: "the code exec round trip died; already changed: name",
     });
   });
 

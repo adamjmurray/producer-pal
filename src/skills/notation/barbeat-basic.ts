@@ -5,7 +5,7 @@
 
 /**
  * bar|beat basic (small-model) notation head, in two halves — the same
- * read/write carve the standard head takes (ADR-0019). {@link barbeatBasic}
+ * read/write carve the standard head takes. {@link barbeatBasic}
  * keeps the base slot name and holds the format itself, which a caller needs to
  * parse what read-clip returns; {@link barbeatBasicWrite} is the worked examples,
  * gated on the two clip writers.
@@ -27,7 +27,7 @@
  */
 export const barbeatBasic = `## MIDI Notation
 
-Pitches: C0-G8, # or b for sharps/flats (C#3, Bb2). C3 = middle C = MIDI 60 (Ableton numbering; most other software calls this note C4).
+Pitches: C-2 to G8, # or b for sharps/flats (C#3, Bb2). C3 = middle C = MIDI 60 (Ableton numbering; most other software calls this note C4).
 Format: \`v<vel> n<dur> pitch(es) bar|beat\` — always state v and n explicitly (don't rely on defaults); set them *before* the pitches and they persist until you change them.
 - v: velocity 0-127 (louder = higher)
 - n: duration, and it REQUIRES a denominator: n/4 quarter, n/8 eighth, n/16 sixteenth, n/2 half, n/1 whole, n/12 eighth-triplet. Add \`d\` for dotted or \`t\` for triplet: n/4d = dotted quarter (= n3/8), n/8t = eighth triplet (= n/12). Bare numbers are invalid.
@@ -47,12 +47,12 @@ v100 n/4 C3 1|1 D3 1|2 E3 1|3 F#3 1|4
 G3 2|1 A3 2|2 G#3 2|3 E3 2|4
 \`\`\`
 
-Chords (multiple pitches share one position; n/1 = a whole bar):
+Chords (multiple pitches share one position; n/1 = a whole note, a bar in 4/4):
 \`\`\`
 v100 n/1 C3 E3 G3 1|1  D3 F3 A3 2|1
 \`\`\`
 
-Drums (re-set n per lane so it doesn't carry over):
+Drums (n carries over, so the snare reuses n/8; re-set it where it changes):
 \`\`\`
 v100 n/8 C1 1|1,3          # kick
 v100 D1 1|2,4              # snare

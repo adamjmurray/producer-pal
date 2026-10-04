@@ -44,8 +44,10 @@ function targetFor(action: string): Record<string, unknown> {
   return {};
 }
 
-// These are written to the Live Set before the action runs, so a session action
-// used to apply them anyway — firing a scene *and* moving the playhead, silently.
+// They are written to the Live Set before the action runs, so a session action
+// that took them would fire a scene *and* move the playhead. It is refused
+// instead, before anything is written, since the action or the param is the
+// mistake and nothing says which.
 describe("playback arrangement params on a session action", () => {
   let liveSet: RegisteredMockObject;
 
@@ -53,89 +55,20 @@ describe("playback arrangement params on a session action", () => {
     liveSet = setupPlaybackLiveSet();
   });
 
-  it.each(SESSION_ACTIONS)("does not move the playhead for %s", (action) => {
-    registerTargets();
-    playback({ ...targetFor(action), action, startTime: "5|1" });
-
-    expect(liveSet.set).not.toHaveBeenCalledWith("start_time", 16);
-  });
-
-  it.each(SESSION_ACTIONS)("says it ignored startTime on %s", (action) => {
-    const warn = vi.spyOn(console, "warn");
-
-    registerTargets();
-    playback({ ...targetFor(action), action, startTime: "5|1" });
-
-    expect(warn).toHaveBeenCalledWith(
-      `startTime ignored: action "${action}" doesn't take arrangement ` +
-        `timeline params; use "play-arrangement" or "update-arrangement" for ` +
-        `the start position and loop`,
-    );
-  });
-
-  // loopEnd is here too because it writes loop_length, not loop_start — a
-  // separate write that has to be dropped on its own.
-  it("does not touch the arrangement loop either", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    registerTargets();
-    playback({
-      action: "play-scene",
-      sceneIndex: 3,
-      loop: true,
-      loopStart: "5|1",
-      loopEnd: "9|1",
-    });
-
-    expect(liveSet.set).not.toHaveBeenCalledWith("loop", true);
-    expect(liveSet.set).not.toHaveBeenCalledWith("loop_start", 16);
-    expect(liveSet.set).not.toHaveBeenCalledWith(
-      "loop_length",
-      expect.anything(),
-    );
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("loop/loopStart/loopEnd ignored"),
-    );
-  });
-
-  // The result reports the loop the Live Set actually has. Echoing the param
-  // would claim a loop the call refused to set.
-  it("reports the Live Set's own loop, not the param it dropped", () => {
-    liveSet = setupPlaybackLiveSet({ loop: 0 });
+  it.each(SESSION_ACTIONS)("refuses startTime on %s", (action) => {
     registerTargets();
 
-    const result = playback({
-      action: "play-scene",
-      sceneIndex: 3,
-      loop: true,
-    });
-
-    expect(result.loop).toBeUndefined();
+    expect(() =>
+      playback({ ...targetFor(action), action, startTime: "5|1" }),
+    ).toThrow(
+      'startTime is only for action "play-arrangement", "update-arrangement" ' +
+        `or "stop"; this call has action "${action}". Change the action or ` +
+        "drop startTime.",
+    );
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
-  // A locator resolves against the arrangement too, so it goes the same way.
-  it("drops startLocator without looking it up", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    registerTargets();
-    playback({
-      action: "play-scene",
-      sceneIndex: 3,
-      startLocator: "no-such-locator",
-    });
-
-    expect(liveSet.set).not.toHaveBeenCalledWith(
-      "start_time",
-      expect.anything(),
-    );
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("startLocator ignored"),
-    );
-  });
-
-  // The two params can't be used together, but neither one applies here, so
-  // there is nothing to refuse.
-  it("does not refuse startTime with startLocator once both are dropped", () => {
+  it("names every timeline param it refused, in one message", () => {
     registerTargets();
 
     expect(() =>
@@ -143,25 +76,40 @@ describe("playback arrangement params on a session action", () => {
         action: "play-scene",
         sceneIndex: 3,
         startTime: "5|1",
-        startLocator: "26",
+        loop: false,
+        loopEnd: "9|1",
       }),
-    ).not.toThrow();
+    ).toThrow(/startTime, loop, loopEnd are only for action/);
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
-  it("names every param it dropped, in one warning", () => {
-    const warn = vi.spyOn(console, "warn");
-
+  // The caller's own spelling, not the one it folds into.
+  it("names the retired locator param as it was sent", () => {
     registerTargets();
-    playback({
-      action: "play-scene",
-      sceneIndex: 3,
-      startTime: "5|1",
-      loop: false,
-      loopEnd: "9|1",
-    });
 
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("startTime/loop/loopEnd ignored"),
+    expect(() =>
+      playback({
+        action: "play-scene",
+        sceneIndex: 3,
+        startLocator: "no-such-locator",
+      }),
+    ).toThrow(/^startLocator is only for action/);
+  });
+
+  it("counts a blank as not sent", () => {
+    registerTargets();
+
+    expect(() =>
+      playback({
+        action: "play-scene",
+        sceneIndex: 3,
+        startTime: "",
+        loopStart: "null",
+      }),
+    ).not.toThrow();
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "start_time",
+      expect.anything(),
     );
   });
 

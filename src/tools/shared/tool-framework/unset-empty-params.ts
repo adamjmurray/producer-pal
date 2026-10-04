@@ -77,10 +77,11 @@ export function blankParamMessage(name: string): string {
 }
 
 /**
- * Gives every param in a nested schema's shape the same reading of an empty
- * value as {@link unsetEmptyParams}: a null is unset, and a blank on a param
- * with no blank value is refused. Only for a shape the args-level pass cannot
- * reach, a level down from the args.
+ * Gives every param in a shape the same reading of an empty value as
+ * {@link unsetEmptyParams}: a null is unset, and a blank on a param with no
+ * blank value is refused. For where the args-level pass can't run first: a
+ * shape nested below the args, and the schema the MCP SDK parses before our
+ * handler. The JSON Schema is unchanged.
  * @param shape - The params, keyed by name
  * @returns The same params, each reading an empty value the same way
  */

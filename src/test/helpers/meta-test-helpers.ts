@@ -373,6 +373,28 @@ export function findSourceFiles(
 }
 
 /**
+ * Visit every source file under some trees, except one
+ * @param trees - Project-relative directories to scan
+ * @param skip - Project-relative path to leave out (the calling test)
+ * @param visit - Called with each file's absolute path, project-relative path and lines
+ */
+export function forEachSourceFile(
+  trees: string[],
+  skip: string,
+  visit: (file: string, rel: string, lines: string[]) => void,
+): void {
+  for (const tree of trees) {
+    for (const file of findSourceFiles(path.join(projectRoot, tree))) {
+      const rel = path.relative(projectRoot, file);
+
+      if (rel !== skip) {
+        visit(file, rel, fs.readFileSync(file, "utf8").split("\n"));
+      }
+    }
+  }
+}
+
+/**
  * Source files under a directory whose text matches a pattern. For the content
  * guards: a concept with one home should match in exactly one file.
  * @param dir - Project-relative directory, e.g. "src/tools"

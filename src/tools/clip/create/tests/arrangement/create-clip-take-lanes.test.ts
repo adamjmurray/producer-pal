@@ -26,7 +26,6 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
-import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
@@ -79,10 +78,7 @@ describe("createClip take lanes", () => {
     expect(result.id).toMatch(/^tl_clip_/);
     // result surfaces the lane the clip landed on and where it starts
     expect(result.path).toBe("t0/l0[1|1]");
-    // Live hides take lanes behind an arrow, so the entry says where to look.
-    expect(result.detail).toBe(
-      "expand the take-lanes arrow on the track header in Live to see it",
-    );
+    expect(result.detail).toBeUndefined();
   });
 
   // A clip on the main lane is visible, so nothing is added to its entry.
@@ -230,7 +226,7 @@ describe("createClip take lanes", () => {
     await createClip({ slot: "0/0", notes: "C3", takeLane: 1 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 
@@ -247,7 +243,7 @@ describe("createClip take lanes", () => {
 
     expect(result).toBeDefined();
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 
@@ -267,7 +263,7 @@ describe("createClip take lanes", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 });
@@ -326,7 +322,7 @@ describe("createClip take lane paths", () => {
     await expect(
       createClip({ path: "t0/l+[1|1]", notes: "C3" }),
     ).rejects.toThrow(
-      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+      '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"',
     );
     await expect(createClip({ path: "t0/l+", notes: "C3" })).rejects.toThrow(
       '"l+" appends a take lane, which only ppal-update-track and ppal-duplicate type "track" do',
@@ -364,45 +360,64 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(2, 4);
   });
 
-  it("ignores the takeLane alias when the path already names a lane", async () => {
+  it("refuses the takeLane alias when the path already names a lane", async () => {
     registerLiveSet();
-    registerTakeLaneTrack({ initialLanes: 3 });
+    const track = registerTakeLaneTrack({ initialLanes: 3 });
 
-    await createClip({
-      path: "t0/l2",
-      arrangementStart: "1|1",
-      notes: "C3",
-      takeLane: "1",
-    });
-
-    expectTakeLaneMidiClip(2, 0);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('takeLane ignored — "path" already names'),
+    await expect(
+      createClip({
+        path: "t0/l2",
+        arrangementStart: "1|1",
+        notes: "C3",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
     );
   });
 
   // One destination can't tell the guard apart from its opposite: `some` and
-  // `every` agree on a one-item list. With two, the alias names a lane for a
-  // destination that never asked for one, which is the thing being refused.
-  it("ignores the takeLane alias when any destination's path names a lane", async () => {
+  // `every` agree on a one-item list. With two, one path naming a lane is
+  // enough, even though the other names none.
+  it("refuses the takeLane alias when any destination's path names a lane", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 3 });
 
     const mainTrack = registerArrangementTrack(1);
 
-    await createClip({
-      path: "t0/l2,t1",
-      arrangementStart: "1|1",
-      notes: "C3",
-      takeLane: "1",
-    });
+    await expect(
+      createClip({
+        path: "t0/l2,t1",
+        arrangementStart: "1|1",
+        notes: "C3",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+    expect(mainTrack.call).not.toHaveBeenCalled();
+  });
 
-    expectTakeLaneMidiClip(2, 0);
-    // t1 named no lane, so it stays on the main lane rather than inheriting one.
-    expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(mainTrack.call).not.toHaveBeenCalledWith("create_take_lane");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('takeLane ignored — "path" already names'),
+  it("refuses takeLane beside a lane path without first warning about session clips", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    await expect(
+      createClip({
+        path: "t0/s0,t0/l2[1|1]",
+        notes: "C3",
+        takeLane: "1",
+      }),
+    ).rejects.toThrow(
+      "path names the take lane on its own - don't send takeLane with it",
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      "takeLane ignored: session clips have no take lanes",
     );
   });
 
@@ -421,7 +436,7 @@ describe("createClip take lane paths", () => {
 
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     // The lane that didn't fit keeps its place, and says why there instead of
-    // in a warning (ADR-0042).
+    // in a warning.
     expect(result[0]).toStrictEqual({
       path: `t0/l${MAX_TAKE_LANES}[1|1]`,
       ok: false,
@@ -533,103 +548,5 @@ describe("createClip take lane paths", () => {
     });
 
     expectTakeLaneMidiClip(1, 0);
-  });
-});
-
-describe("resolveCreateClipTakeLanes (unit)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("resolves no lanes for destinations that named none", () => {
-    // A track is registered so that, if the null check were skipped, the mutant
-    // path would resolve a real lane instead of returning an empty map.
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: null },
-    ]);
-
-    expect(lanes.size).toBe(0);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
-  });
-
-  it("resolves a lane per destination and reports it as a path", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-    ]);
-
-    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    // Which lane a clip landed on rides on that clip's entry, not a warning.
-    expect(consoleMock.warn).not.toHaveBeenCalled();
-  });
-
-  // One lane named twice keys the same, so both its positions land on the one
-  // lane instead of resolving it twice.
-  it("resolves one lane per destination, not per position", () => {
-    const track0 = registerTakeLaneTrack({ initialLanes: 0 });
-    const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
-
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-      { trackIndex: 1, arrangementStart: "2|1", takeLane: 0 },
-      { trackIndex: 0, arrangementStart: "3|1", takeLane: 0 },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
-    // The keys alone can't catch a lost dedup — Map.set on a key that's already
-    // there adds no key. The append count is what proves t0's second position
-    // reused the lane its first one made.
-    expect(track0.call).toHaveBeenCalledTimes(1);
-    expect(track1.call).toHaveBeenCalledTimes(1);
-  });
-
-  // The same lane written twice is one resolve, and each position lands on it.
-  it("creates one lane when the path names it twice", () => {
-    const track = registerTakeLaneTrack({ initialLanes: 0 });
-
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-      { trackIndex: 0, arrangementStart: "5|1", takeLane: 0 },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual(["t0/l0"]);
-    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-  });
-
-  // Two destinations naming different lanes on one track each get their own.
-  it("keeps distinct lanes on the same track apart", () => {
-    registerTakeLaneTrack({ initialLanes: 3 });
-
-    const { lanes } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
-      { trackIndex: 0, arrangementStart: "2|1", takeLane: 2 },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
-    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    expect(lanes.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
-  });
-
-  // A destination past the cap is dropped, and the ones alongside it still
-  // resolve — a throw would strand the permanent lanes they already made.
-  it("skips the destination past the cap and keeps the others", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const { lanes, dropped } = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: MAX_TAKE_LANES - 1 },
-      { trackIndex: 0, arrangementStart: "2|1", takeLane: MAX_TAKE_LANES },
-    ]);
-
-    expect([...lanes.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES - 1}`]);
-    // Handed back rather than warned: the destination's own entry reports it.
-    expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toStrictEqual(
-      expect.stringContaining(`${MAX_TAKE_LANES}`),
-    );
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining("skipping"),
-    );
   });
 });

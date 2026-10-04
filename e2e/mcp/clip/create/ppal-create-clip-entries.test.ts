@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-create-clip's multi-destination result: N destinations
  * named, N entries back, in the order named, each saying what its own
- * destination got — including a slot whose clip the call replaced (ADR-0042).
+ * destination got — including a slot whose clip the call replaced.
  * Uses: e2e-test-set (t8 is empty, session and arrangement alike)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -161,15 +161,65 @@ describe("ppal-create-clip result entries", () => {
     const entries = parseBatchResult<ClipEntry>(result, 2);
 
     expect(entries[0]).toStrictEqual({
-      ok: false,
       path: `t${EMPTY_MIDI_TRACK}/s0`,
-      detail: `not created: t${EMPTY_MIDI_TRACK}/s0 is named again later in this call`,
+      detail: `named again as "t${EMPTY_MIDI_TRACK}/s0" later in this call`,
     });
     expect(entries[1]?.ok).toBeUndefined();
 
     await sleep(100);
 
     expect(await readClipName(entries[1]!.id!)).toBe("Second");
+  });
+
+  // An arrangement spot is as much one place as a slot: writing it twice would
+  // erase the first clip, so only the last mention is written.
+  it("creates an arrangement spot named twice once, as the last naming asks", async () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+    const entries = parseBatchResult<ClipEntry>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}[901|1],${track}[901|1]`,
+          notes: "C3 1|1",
+          length: "1bar",
+          name: "First,Second",
+        },
+      }),
+      2,
+    );
+
+    expect(entries[0]).toStrictEqual({
+      path: `${track}[901|1]`,
+      detail: `named again as "${track}[901|1]" later in this call`,
+    });
+    expect(entries[1]?.path).toBe(`${track}[901|1]`);
+    expect(entries[1]?.ok).toBeUndefined();
+
+    await sleep(100);
+
+    expect(await readClipName(entries[1]!.id!)).toBe("Second");
+  });
+
+  // A later clip that lands across part of an earlier one cuts it short, and
+  // the earlier entry says so; the later one says what it cut.
+  it("says an earlier clip was shortened by a later one in the same call", async () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+    const entries = parseBatchResult<ClipEntry>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}[921|1],${track}[922|1]`,
+          notes: "C3 1|1",
+          length: "2bar,2bar",
+        },
+      }),
+      2,
+    );
+
+    expect(entries[0]?.detail).toBe(
+      `shortened by ${track}[922|1] later in this call`,
+    );
+    expect(entries[1]?.detail).toBe(`shortened the clip at ${track}[921|1]`);
   });
 
   // Writing into an occupied arrangement range is normal and goes ahead, but
@@ -195,6 +245,41 @@ describe("ppal-create-clip result entries", () => {
       `split the clip at t${EMPTY_MIDI_TRACK}[713|1] into ` +
         `t${EMPTY_MIDI_TRACK}[713|1] and t${EMPTY_MIDI_TRACK}[715|1]`,
     );
+  });
+
+  // One call keeps what it learned about the lane: each position reports its
+  // own effect, and a later one reports a clip an earlier one made.
+  it("says what each position of one call displaced", async () => {
+    await makeClipAt("801|1", "2bar");
+    await makeClipAt("809|1", "1bar");
+    await makeClipAt("813|1", "4bar");
+    await makeClipAt("821|1", "2bar");
+
+    const track = `t${EMPTY_MIDI_TRACK}`;
+    const entries = parseBatchResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}[809|1],${track}[802|1],${track}[814|1],${track}[809|1],${track}[821|1]`,
+          notes: "C3 1|1",
+          length: "1bar",
+        },
+      }),
+      5,
+    );
+
+    expect(entries.map((entry) => entry.detail)).toStrictEqual([
+      // The first position is named again by the fourth, so it is never
+      // written, and the fourth overwrites the clip that was already there.
+      `named again as "${track}[809|1]" later in this call`,
+      // End: the new clip stops where the 2-bar clip does
+      `shortened the clip at ${track}[801|1]`,
+      // Middle
+      `split the clip at ${track}[813|1] into ${track}[813|1] and ${track}[815|1]`,
+      `overwrote the clip at ${track}[809|1]`,
+      // Front, from the clip's own start: Live re-creates the rest under a new id
+      `shortened the clip at ${track}[822|1]`,
+    ]);
   });
 
   // Writing into a slot replaces what is there, the way duplicating into one

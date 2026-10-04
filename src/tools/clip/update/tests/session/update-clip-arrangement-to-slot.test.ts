@@ -29,7 +29,7 @@ const DEST_TRACK = 1;
 const DEST_SCENE = 2;
 const SOURCE_ID = "123";
 /**
- * How a warning names the source clip: both spellings, per ADR-0009. The clip
+ * How a warning names the source clip: by path and by id. The clip
  * starts at 0, which the song's 4/4 spells as bar 1 beat 1.
  */
 const SOURCE = `t${SOURCE_TRACK}[1|1] (id ${SOURCE_ID})`;

@@ -12,12 +12,14 @@
 // alphabetical-by-name index render.
 //
 // Unlike the fixed-slot skills overrides, memory has NO provenance/eject trap
-// (ADR-0010): entries are purely additive user content with nothing upstream to
-// drift from, so frontmatter here is plain structure (name/description). A
-// legacy file with a `type:` line (the now-removed grouping axis) still reads
-// fine — `type` stays in the recognized key set (an unrecognized key would make
-// the parser treat the whole file as body), and this store never looks at it. The filesystem lives on the Node-for-Max side; V8's
-// ppal-context round-trips through the memory.* RPC routes.
+// (a forked built-in drifting from upstream): entries are purely additive user
+// content with nothing upstream to drift from, so frontmatter here is plain
+// structure (name/description). A legacy file with a `type:` line (the
+// now-removed grouping axis) still reads fine — `type` stays in the recognized
+// key set (an unrecognized key would make the parser treat the whole file as
+// body), and this store never looks at it. The filesystem lives on the
+// Node-for-Max side; V8's ppal-context round-trips through the memory.* RPC
+// routes.
 
 import { parseFrontmatter } from "../config-store/frontmatter.ts";
 import {

@@ -3,11 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type RegisteredMockObject,
+  lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  LIVE_FAILURE,
+  failOnSet,
+  hookCalls,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { simulateLocators } from "#src/tools/live-set/tests/update-live-set-test-helpers.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import {
@@ -104,7 +110,6 @@ describe("locators when the playhead stalls", () => {
     expect(result.locator).toStrictEqual([
       { operation: "create", id: "26" },
       {
-        operation: "skipped",
         time: "5|1",
         ok: false,
         detail:
@@ -125,7 +130,6 @@ describe("locators when the playhead stalls", () => {
     expect(result.locator).toStrictEqual([
       { operation: "delete", id: "26" },
       {
-        operation: "skipped",
         time: "5|1",
         ok: false,
         detail:
@@ -209,9 +213,7 @@ describe("locators when the playhead stalls", () => {
     expect(result.locator).toStrictEqual([
       { operation: "create", id: "27" },
       {
-        operation: "skipped",
         time: "5|1",
-        name: "C",
         ok: false,
         detail: "not created: a locator is already at 5|1; rename it instead",
       },
@@ -242,7 +244,6 @@ describe("locators when the playhead stalls", () => {
 
     expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
     expect(result.locator).toStrictEqual({
-      operation: "skipped",
       time: "5|1",
       ok: false,
       detail: "Live didn't move the playhead to 5|1, so nothing changed there",
@@ -260,12 +261,130 @@ describe("locators when the playhead stalls", () => {
     });
 
     expect(result.locator).toStrictEqual({
-      operation: "skipped",
       time: "5|1",
-      name: "B",
       ok: false,
       detail: "Live made no locator at 5|1",
     });
     expect(set.locators()).toStrictEqual([]);
+  });
+});
+
+describe("locators when a later step fails", () => {
+  let liveSet: RegisteredMockObject;
+
+  beforeEach(() => {
+    liveSet = registerMockObject("live_set_id", { path: "live_set" });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("keeps a locator that was made when naming it fails", async () => {
+    simulateLocators(liveSet, []);
+    // The locator exists once the cue is toggled, and then refuses its name.
+    hookCalls(liveSet, /^set_or_delete_cue$/, {
+      after: () => {
+        failOnSet(lookupMockObject("26") as RegisteredMockObject);
+      },
+    });
+
+    const result = await updateLiveSet({
+      locatorOperation: "create",
+      locatorTime: "1|1",
+      locatorName: "Intro",
+    });
+
+    // Something landed, so it is no skip: the id is there to act on.
+    expect(result.locator).toStrictEqual({
+      operation: "create",
+      id: "26",
+      detail: `${LIVE_FAILURE}; already changed: created`,
+    });
+  });
+
+  it("leaves the locators the deadline never reached as skips", async () => {
+    const start = 1_000_000;
+    let now = start;
+
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    simulateLocators(liveSet, []);
+    // The first locator uses up the time.
+    hookCalls(liveSet, /^set_or_delete_cue$/, {
+      after: () => {
+        now = start + 5000;
+      },
+    });
+
+    const result = await updateLiveSet(
+      { locatorOperation: "create", locatorTime: "1|1,5|1,9|1" },
+      { deadline: start + 1000 },
+    );
+
+    const unreached = "the request ran out of time; re-run for this locator";
+
+    expect(result.locator).toStrictEqual([
+      { operation: "create", id: "26" },
+      { time: "5|1", ok: false, detail: unreached },
+      { time: "9|1", ok: false, detail: unreached },
+    ]);
+  });
+
+  it("fails an earlier mention with the later one that was to replace it", async () => {
+    simulateLocators(liveSet, [{ time: 16, name: "A" }], { stallAt: 16 });
+
+    const result = await updateLiveSet({
+      locatorOperation: "delete",
+      locatorId: "26",
+      locatorTime: "5|1",
+    });
+
+    expect(result.locator).toStrictEqual([
+      {
+        id: "26",
+        ok: false,
+        detail: 'not written: "5|1" was meant to replace it, but failed',
+      },
+      {
+        time: "5|1",
+        ok: false,
+        detail:
+          "Live didn't move the playhead to 5|1, so nothing changed there",
+      },
+    ]);
+  });
+
+  // A lone locator refusal throws only when it was the call's only work.
+  describe("a lone locator refusal", () => {
+    const RENAME_MISSING = {
+      locatorOperation: "rename",
+      locatorId: "99",
+      locatorName: "New",
+    };
+
+    it("throws when the call asks for nothing else", async () => {
+      simulateLocators(liveSet, [{ time: 0, name: "A" }]);
+
+      await expect(updateLiveSet(RENAME_MISSING)).rejects.toThrow(
+        'no locator with id "99"',
+      );
+    });
+
+    it.each([
+      ["tempo", { tempo: 140 }],
+      ["timeSignature", { timeSignature: "3/4" }],
+      ["scale", { scale: "C Major" }],
+      ["a scale that disables it", { scale: "" }],
+    ])("keeps its entry beside %s", async (_name, whole) => {
+      simulateLocators(liveSet, [{ time: 0, name: "A" }]);
+
+      const result = await updateLiveSet({ ...RENAME_MISSING, ...whole });
+
+      expect(result.locator).toStrictEqual({
+        id: "99",
+        ok: false,
+        detail: 'no locator with id "99"',
+      });
+    });
   });
 });

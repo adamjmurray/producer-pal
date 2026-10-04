@@ -9,7 +9,7 @@
  *
  * `color`, create-clip's `path` against `arrangementStart`, and duplicate's
  * `toPath` against it all used to cycle. These probes are what settled folding
- * them into the one rule (ADR-0031): asked to alternate colors, two of three
+ * them into the one rule: asked to alternate colors, two of three
  * models wrote the short form, and one said outright it did so because the
  * schema advertised cycling. Rewording that line stopped it. The two
  * destination sites were never leaned on at all.

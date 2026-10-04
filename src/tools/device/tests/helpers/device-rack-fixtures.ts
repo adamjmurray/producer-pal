@@ -10,6 +10,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  type RegisteredMockObject,
   type RegisteredMockObjectOptions,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -171,4 +172,37 @@ export function registerLayeredDrumRack(
       methods: fixture.chainMethods?.(index),
     });
   }
+}
+
+/**
+ * Register a Drum Rack at t0/d0 whose C1 pad (mock "pad-36") holds `layers`
+ * empty chains, "chain-0" onward.
+ * @param layers - How many chains sit on the pad
+ * @returns The pad's chains, in rack order
+ */
+export function registerC1PadRack(layers = 1): RegisteredMockObject[] {
+  const chainIds = Array.from({ length: layers }, (_, i) => `chain-${i}`);
+
+  registerMockObject("drum-rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: {
+      can_have_drum_pads: 1,
+      chains: children(...chainIds),
+      drum_pads: children("pad-36"),
+    },
+  });
+  registerMockObject("pad-36", {
+    path: livePath.track(0).device(0).drumPad(FIRST_PAD_NOTE),
+    type: "DrumPad",
+    properties: { note: FIRST_PAD_NOTE },
+  });
+
+  return chainIds.map((id, index) =>
+    registerMockObject(id, {
+      path: livePath.track(0).device(0).chain(index),
+      type: "DrumChain",
+      properties: { in_note: FIRST_PAD_NOTE, devices: children() },
+    }),
+  );
 }

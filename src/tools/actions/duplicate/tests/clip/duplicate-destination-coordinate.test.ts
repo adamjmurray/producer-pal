@@ -150,8 +150,7 @@ describe("duplicate - a toPath coordinate", () => {
         arrangementStart: "5|1",
       }),
     ).rejects.toThrow(
-      'toPath "t2[3|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "toPath names the song position on its own - don't send arrangementStart with it",
     );
   });
 

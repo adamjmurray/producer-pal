@@ -55,7 +55,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Single clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 
@@ -87,7 +87,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
     // Single clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 

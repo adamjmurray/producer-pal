@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import { countTransformed } from "#src/notation/transform/transformed-count.ts";
 import {
   createTestNote,
   createTestNotes,
@@ -86,7 +85,45 @@ describe("applyTransforms", () => {
 
       applyTransforms(notes, "velocity = 0.5", 4, 4);
       expect(notes).toHaveLength(1);
-      expect(notes[0]!.velocity).toBe(0.5);
+      expect(notes[0]!.velocity).toBe(1);
+    });
+
+    // Live drops a note under velocity 1, so only <= 0 may delete.
+    it.each([
+      ["velocity = 0.7", 100, 1, 2],
+      ["velocity *= 0.004", 100, 1, 2],
+      ["velocity = 0.5\nvelocity += 10", 100, 10.5, 2], // floored after all lines
+      ["velocity *= 0.5", 101, 50.5, 2], // not rounded
+      ["duration = 1", 64, 64, 0], // untouched, and the duration already was 1
+    ])(
+      "%j on velocity %d leaves %d",
+      (transform, velocity, expected, changed) => {
+        const notes = createTestNotes([
+          { start_time: 0, velocity },
+          { start_time: 1, velocity },
+        ]);
+
+        expect(applyTransforms(notes, transform, 4, 4)?.changed.size).toBe(
+          changed,
+        );
+        expect(notes.map((n) => n.velocity)).toStrictEqual([
+          expected,
+          expected,
+        ]);
+      },
+    );
+
+    it("deletes notes when a division by zero evaluates to 0", () => {
+      const notes = createTestNotes([{ start_time: 0 }, { start_time: 1 }]);
+      const clipContext = {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 2,
+        barDuration: 4,
+      };
+
+      applyTransforms(notes, "velocity = 100 / clip.index", 4, 4, clipContext);
+      expect(notes).toHaveLength(0);
     });
 
     it("clamps velocity to maximum 127 with = operator", () => {
@@ -118,7 +155,7 @@ describe("applyTransforms", () => {
 
       expect(notes).toHaveLength(0);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("transform drove duration to 0 or below"),
+        expect.stringContaining("duration went to 0 or below"),
       );
     });
 
@@ -647,133 +684,10 @@ probability += -0.2`;
 
       applyTransforms(notes, "gain = 0.5", 4, 4);
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        "Audio parameters (gain, pitchShift) ignored for MIDI clips",
-      );
+      expect(warnSpy).toHaveBeenCalledWith("gain ignored: the clip is MIDI");
       // Audio params should be skipped, velocity should be unchanged
       expect(notes[0]!.velocity).toBe(100);
       warnSpy.mockRestore();
-    });
-  });
-
-  describe("return value (transformed count)", () => {
-    it("returns undefined for null transform string", () => {
-      const notes = createTestNote();
-
-      expect(
-        applyTransforms(notes, null as unknown as string, 4, 4),
-      ).toBeUndefined();
-    });
-
-    it("returns undefined for empty transform string", () => {
-      const notes = createTestNote();
-
-      expect(applyTransforms(notes, "", 4, 4)).toBeUndefined();
-    });
-
-    it("returns undefined for empty notes array", () => {
-      const notes: NoteEvent[] = [];
-
-      expect(applyTransforms(notes, "velocity += 10", 4, 4)).toBeUndefined();
-    });
-
-    // C3=60, E3=64, G3=67 on beats 1-3: the selector reaches the first two.
-    const cMajorTriad = (): NoteEvent[] =>
-      createTestNotes([
-        { pitch: 60, start_time: 0 },
-        { pitch: 64, start_time: 1 },
-        { pitch: 67, start_time: 2 },
-      ]);
-
-    it("returns count of all notes when no selector is used", () => {
-      const notes = cMajorTriad();
-
-      expect(
-        countTransformed(applyTransforms(notes, "velocity += 10", 4, 4), notes),
-      ).toBe(3);
-    });
-
-    it("returns count of matched notes with pitch selector", () => {
-      const notes = cMajorTriad();
-
-      expect(
-        countTransformed(
-          applyTransforms(notes, "C3-E3: velocity += 10", 4, 4),
-          notes,
-        ),
-      ).toBe(2);
-    });
-
-    it("counts deleted notes as transformed", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, velocity: 100 },
-        { pitch: 64, start_time: 1, velocity: 100 },
-      ]);
-
-      // All notes match, velocity set to 0 deletes them
-      const result = applyTransforms(notes, "velocity = 0", 4, 4);
-
-      expect(countTransformed(result, notes)).toBe(2);
-      expect(notes).toHaveLength(0);
-    });
-
-    it("deduplicates across multiple transform lines", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0 },
-        { pitch: 64, start_time: 1 },
-        { pitch: 67, start_time: 2 },
-      ]);
-
-      // Both lines match all notes - should still count 3, not 6
-      const result = applyTransforms(
-        notes,
-        "velocity += 10\nprobability += -0.1",
-        4,
-        4,
-      );
-
-      expect(countTransformed(result, notes)).toBe(3);
-    });
-
-    describe("note ops", () => {
-      // C3, E3, G3 on beats 1-3
-      const countAfter = (transforms: string): number | undefined => {
-        const notes = cMajorTriad();
-
-        return countTransformed(
-          applyTransforms(notes, transforms, 4, 4),
-          notes,
-        );
-      };
-
-      it("keeps earlier lines' notes when a note op is skipped", () => {
-        expect(
-          countAfter("C3: velocity += 0\nE3: velocity += 0\nC3: ratchet(1)"),
-        ).toBe(2);
-      });
-
-      it("keeps earlier lines' notes when a note op works on other notes", () => {
-        // C3 touched, E3 replaced by two pieces
-        expect(countAfter("C3: velocity += 0\nE3: ratchet(2)")).toBe(3);
-      });
-
-      it("counts the notes a repeat kept and the copies it made", () => {
-        expect(countAfter("C3-E3: repeat(n/8)")).toBe(4);
-      });
-
-      it("counts nothing for a skipped op", () => {
-        expect(countAfter("C3: ratchet(1)")).toBe(0);
-      });
-
-      it("doesn't count notes a merge consumed", () => {
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0 },
-          { pitch: 60, start_time: 1 },
-        ]);
-        const result = applyTransforms(notes, "velocity += 0\nmerge()", 4, 4);
-
-        expect(countTransformed(result, notes)).toBe(1);
-      });
     });
   });
 

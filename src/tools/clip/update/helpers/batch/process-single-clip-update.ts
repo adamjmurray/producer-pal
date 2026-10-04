@@ -6,13 +6,9 @@
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import {
-  markerBeats,
-  markerBeatsPerUnit,
-  markerClampSeconds,
-} from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import { readBackAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
+import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
@@ -26,21 +22,27 @@ import {
   handleNoteUpdates,
   handleQuantization,
 } from "../notes/note-updates.ts";
-import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
 import {
   type ClipReasons,
   ignoreClipParams,
-  noteClipColor,
+  noteClipReadBack,
+  noteClipReason,
+  noteLanded,
 } from "../entries/clip-reasons.ts";
-import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
+import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import {
-  calculateBeatPositions,
-  getTimeSignature,
-} from "../clip-beat-positions.ts";
+import { writeClipMeter } from "./write-clip-meter.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
+import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
+import { writeClipProperties } from "./write-clip-properties.ts";
+import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
+import {
+  CLIP_IS_AUDIO,
+  CLIP_IS_MIDI,
+  ignoredText,
+} from "#src/shared/max/ignored-wording.ts";
 
 interface ClipResult {
   id: string;
@@ -84,12 +86,13 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
-  nonSurvivorClipIds?: Set<string> | null;
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
+  /** The call's shared scale mask reader; each clip reads the Set when absent. */
+  scaleMask?: ScaleMaskReader;
   updatedClips: ClipResult[];
-  movedClipGroups: Map<string, MoveGroup>;
+  landings: LandingLog;
   /** What each clip has to say beyond its result, for the clip's own entry. */
   reasons: ClipReasons;
 }
@@ -103,12 +106,34 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
 ): void {
+  // Its properties can resize it (looping, length, region), which no write
+  // below reports on its own, so the call's lane view reads it again.
+  params.context.lanes?.clipChanged(params.clip);
+
   // The transform evaluators warn per clip but have no LiveAPI to name it with,
   // so the label comes from here. Everything inside is synchronous, which is
   // what makes a scope safe to use instead of a parameter.
-  withClipWarningLabel(`clip ${targetLabel(params.clip)}`, () =>
-    updateOneClip(params),
+  //
+  // What a transform skips on this kind of clip goes to the clip's own entry.
+  withClipWarningLabel(
+    `clip ${targetLabel(params.clip)}`,
+    () => updateOneClip(checkTransformsForClipType(params)),
+    (reason) => noteTransformReason(params, reason),
   );
+}
+
+/**
+ * Put what a transform skipped on the clip's entry, once however often it fires.
+ * @param params - The clip's update params
+ * @param reason - What the transform skipped and why
+ */
+function noteTransformReason(
+  params: ProcessSingleClipUpdateParams,
+  reason: string,
+): void {
+  if (!params.reasons.said.get(params.clip.id)?.includes(reason)) {
+    noteClipReason(params.reasons, params.clip.id, reason);
+  }
 }
 
 /**
@@ -126,10 +151,6 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     timeSignature,
     firstStart,
     looping,
-    gainDb,
-    pitchShift,
-    warpMode,
-    warping,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -139,30 +160,20 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     quantizePitch,
     context,
     updatedClips,
-    movedClipGroups,
+    landings,
     reasons,
   } = params;
 
-  const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
-    timeSignature,
+  const { timeSigNumerator, timeSigDenominator } = writeClipMeter(
     clip,
+    timeSignature,
+    reasons,
   );
 
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
 
   if (isAudioClip) {
-    // Before the region write, because `warping` changes what the region write
-    // means: it picks the unit the markers are in, forces `looping` off, and
-    // switching it off resets end_marker to the whole file — which would erase
-    // a start/length requested in the same call.
-    setAudioParameters(clip, {
-      gainDb,
-      pitchShift,
-      warpMode,
-      warping,
-      looping,
-    });
-    forceWarpForLooping(clip, reasons, looping, warping);
+    writeAudioParams(params);
   } else {
     parseNoteEdits(params, timeSigNumerator, timeSigDenominator);
     ignoreAudioParams(clip.id, reasons, params);
@@ -178,23 +189,27 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
       reasons,
       clip.id,
       ["firstStart"],
-      "firstStart ignored: the clip is not looping",
+      ignoredText("firstStart", "the clip is not looping"),
     );
   }
 
-  writeClipProperties(params, {
-    timeSigNumerator,
-    timeSigDenominator,
-    isLooping,
-    wasLooping,
-  });
+  // The meter is already written, so the rest of the properties leave it be.
+  writeClipProperties(
+    { ...params, timeSignature: undefined },
+    {
+      timeSigNumerator,
+      timeSigDenominator,
+      isLooping,
+      wasLooping,
+    },
+  );
 
   // Context for transform variables (clip.*, bar.*). Built only when the call
   // edits notes, because building it reads the Live Set's scale and nothing
   // else uses it — a batch of renames would otherwise read the scale per clip.
   // prettier-ignore
   const clipContext = hasNoteEdits(notationString, transformString, preTransformString)
-    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator)
+    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator, params.scaleMask)
     : undefined;
 
   if (isAudioClip) {
@@ -208,7 +223,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
         reasons,
         clip.id,
         ["notes"],
-        "notes ignored: the clip is audio",
+        ignoredText("notes", CLIP_IS_AUDIO),
       );
     }
   }
@@ -220,6 +235,12 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     timeSigDenominator,
     notation: context.notation,
   });
+
+  reportNotesOutsideRegion(params, isAudioClip);
+
+  if (noteResult != null) {
+    noteLanded(reasons, "notes", { id: clip.id });
+  }
 
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, reasons, {
@@ -249,101 +270,38 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     startParam: params.startParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
-    movedClipGroups,
+    landings,
     destinationTracks: params.destinationTracks,
     context,
     updatedClips,
     noteResult,
     reasons,
-    isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
 }
 
 /**
- * Write the clip's name, color, meter, and loop region.
- *
- * Runs BEFORE duplicateLoop (see the caller). start/length can't reach here
- * alongside it — they pick what gets doubled, so the combination is refused up
- * front (ADR-0040) — but firstStart can, and it sets the playback marker
- * without moving the region.
- *
+ * Write the audio params, ahead of the region write: `warping` changes what the
+ * region write means. It picks the unit the markers are in, forces `looping`
+ * off, and switching it off resets end_marker to the whole file — which would
+ * erase a start/length requested in the same call.
  * @param params - The full single-clip update params
- * @param resolved - Derived per-clip values not present on params
- * @param resolved.timeSigNumerator - Resolved time signature numerator
- * @param resolved.timeSigDenominator - Resolved time signature denominator
- * @param resolved.isLooping - The clip's looping state after this update
- * @param resolved.wasLooping - The clip's looping state before this update
  */
-function writeClipProperties(
-  params: ProcessSingleClipUpdateParams,
-  {
-    timeSigNumerator,
-    timeSigDenominator,
-    isLooping,
-    wasLooping,
-  }: {
-    timeSigNumerator: number;
-    timeSigDenominator: number;
-    isLooping: boolean;
-    wasLooping: boolean;
-  },
-): void {
-  const {
-    clip,
-    name,
-    color,
-    timeSignature,
-    start,
-    length,
-    firstStart,
-    looping,
-    reasons,
-  } = params;
-  const markerScale = {
-    beatsPerMarkerUnit: markerBeatsPerUnit(clip),
-    markerClampSeconds: markerClampSeconds(clip),
-  };
+function writeAudioParams(params: ProcessSingleClipUpdateParams): void {
+  const { clip, gainDb, pitchShift, warpMode, warping, looping, reasons } =
+    params;
 
-  // Includes the end_marker bounds check for start_marker
-  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
-    start,
-    length,
-    firstStart,
-    reasons,
-    timeSigNumerator,
-    timeSigDenominator,
-    clip,
-    isLooping,
-    wasLooping,
-    ...markerScale,
-  });
+  setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping, looping });
+  forceWarpForLooping(clip, reasons, looping, warping);
 
-  // Both ends: loop_start and start_marker are bounded by different properties,
-  // and one call can write both.
-  const readMarker = (property: string) =>
-    markerBeats(clip, property, markerScale);
-
-  clip.setAll(
-    buildClipPropertiesToSet({
-      name,
-      color,
-      timeSignature,
-      timeSigNumerator,
-      timeSigDenominator,
-      startMarkerBeats,
-      looping,
-      isLooping,
-      startBeats,
-      endBeats,
-      currentLoopEnd: readMarker("loop_end"),
-      currentEndMarker: readMarker("end_marker"),
-      beatsPerMarkerUnit: markerScale.beatsPerMarkerUnit,
-    }),
-  );
-
-  if (color != null) {
-    noteClipColor(reasons, clip.id, landedColor(clip, color));
+  if ([gainDb, pitchShift, warpMode, warping, looping].some((v) => v != null)) {
+    noteLanded(reasons, "audio params", { id: clip.id });
   }
+
+  noteClipReadBack(
+    reasons,
+    clip.id,
+    readBackAudioClipProperties(clip, { gainDb, pitchShift, warpMode }),
+  );
 }
 
 /**
@@ -401,6 +359,7 @@ function resolveNoteResult(
       clipIndex,
       clipCount,
       notation,
+      scaleMask: params.scaleMask,
     });
   }
 
@@ -441,7 +400,7 @@ function handleAudioClipUpdate(
       params.reasons,
       clip.id,
       ["preTransforms"],
-      "preTransforms ignored: the clip is audio",
+      ignoredText("preTransforms", CLIP_IS_AUDIO),
     );
   }
 }
@@ -480,10 +439,5 @@ function ignoreAudioParams(
     return;
   }
 
-  ignoreClipParams(
-    reasons,
-    clipId,
-    sent,
-    `${sent.join("/")} ignored: the clip is MIDI`,
-  );
+  ignoreClipParams(reasons, clipId, sent, ignoredText(sent, CLIP_IS_MIDI));
 }

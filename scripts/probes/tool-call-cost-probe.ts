@@ -46,8 +46,8 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
 
-const DEFAULT_URL = "http://localhost:3350/mcp";
 const DEFAULT_CALLS = 10;
 
 const STATS_PATTERN =
@@ -209,7 +209,7 @@ if (toolName == null) {
 const args = toolArgs(argsJson);
 const calls = callCount(callsArg, DEFAULT_CALLS);
 
-const transport = new StreamableHTTPClientTransport(new URL(DEFAULT_URL));
+const transport = new StreamableHTTPClientTransport(new URL(DEFAULT_MCP_URL));
 const client = new Client(
   { name: "tool-call-cost-probe", version: "1.0.0" },
   { capabilities: {} },

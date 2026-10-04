@@ -72,4 +72,60 @@ describe("SystemPromptNotice", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByText(/Second line only shown/)).toBeNull();
   });
+
+  it("warns and shows the whole prompt when an imported prompt differs", () => {
+    render(
+      <SystemPromptNotice systemInstruction={PROMPT} importedPromptDiffers />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("Imported");
+    expect(screen.getByRole("alert").textContent).toContain("differs");
+    expect(
+      screen.getByText(/Second line only shown when expanded/),
+    ).toBeTruthy();
+  });
+
+  it("shows no warning when the prompt is not flagged", () => {
+    render(
+      <SystemPromptNotice
+        systemInstruction={PROMPT}
+        importedPromptDiffers={false}
+      />,
+    );
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("expands the prompt when the warning turns on after mount", () => {
+    const { rerender } = render(
+      <SystemPromptNotice systemInstruction={PROMPT} />,
+    );
+
+    expect(screen.queryByText(/Second line only shown/)).toBeNull();
+
+    rerender(
+      <SystemPromptNotice systemInstruction={PROMPT} importedPromptDiffers />,
+    );
+
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText(/Second line only shown/)).toBeTruthy();
+  });
+
+  it("expands again for another imported prompt after the user collapsed one", () => {
+    const { rerender } = render(
+      <SystemPromptNotice systemInstruction={PROMPT} importedPromptDiffers />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { expanded: true }));
+    expect(screen.queryByText(/Second line only shown/)).toBeNull();
+
+    rerender(
+      <SystemPromptNotice
+        systemInstruction={"Other prompt.\nOther second line."}
+        importedPromptDiffers
+      />,
+    );
+
+    expect(screen.getByText(/Other second line/)).toBeTruthy();
+  });
 });

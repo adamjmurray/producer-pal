@@ -68,15 +68,20 @@ describe("createClip - audio properties", () => {
     expect(clip.set).not.toHaveBeenCalledWith("warp_mode", expect.anything());
   });
 
-  it("should warn and skip audio properties on a MIDI clip", async () => {
+  it("should say on the entry that audio properties were skipped on a MIDI clip", async () => {
     const warnSpy = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
 
     setupSessionMocks();
 
-    await createClip({ slot: "0/0", gainDb: -6, warpMode: "texture" });
+    const result = (await createClip({
+      slot: "0/0",
+      gainDb: -6,
+      warpMode: "texture",
+    })) as { detail?: string };
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("gainDb, warpMode ignored for MIDI clips"),
+    expect(result.detail).toContain(
+      "gainDb, warpMode ignored: the clip is MIDI",
     );
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

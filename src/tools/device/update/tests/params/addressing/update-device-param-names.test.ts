@@ -15,19 +15,8 @@ import {
   registerMockObject,
   updateDevice,
 } from "../../update-device-test-helpers.ts";
+import { registerDevice } from "./param-addressing-fixtures.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-
-/**
- * Register the device under test at t0/d0, holding the given params.
- * @param paramIds - Parameter mock ids, in the device's parameter order
- */
-function registerDevice(...paramIds: string[]): void {
-  registerMockObject("123", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children(...paramIds) },
-  });
-}
 
 describe("updateDevice - params by name", () => {
   let paramFreq: RegisteredMockObject;
@@ -208,7 +197,7 @@ describe("updateDevice - a name that matches more than one param", () => {
     );
 
     expect(message).toMatch(
-      /^no param landed — "Width": set again by "width" later in the list; "width": names 2 params /,
+      /^no param landed — "Width": named again as "width" later in this call; "width": names 2 params /,
     );
     expect(bandwidth.set).not.toHaveBeenCalled();
     expect(stereoWidth.set).not.toHaveBeenCalled();
@@ -469,8 +458,7 @@ describe("updateDevice - one param named twice", () => {
     expect(paramsOf(result)).toStrictEqual([
       {
         name: "Threshold",
-        ok: false,
-        detail: 'set again by "threshold" later in the list',
+        detail: 'named again as "threshold" later in this call',
       },
       { id: "789", name: "Threshold" },
     ]);
@@ -491,13 +479,11 @@ describe("updateDevice - one param named twice", () => {
     expect(paramsOf(result).slice(0, 2)).toStrictEqual([
       {
         name: "Threshold",
-        ok: false,
-        detail: 'set again by "threshold" later in the list',
+        detail: 'named again as "threshold" later in this call',
       },
       {
         name: "789",
-        ok: false,
-        detail: 'set again by "threshold" later in the list',
+        detail: 'named again as "threshold" later in this call',
       },
     ]);
   });
@@ -516,8 +502,7 @@ describe("updateDevice - one param named twice", () => {
 
     expect(paramsOf(result)[0]).toStrictEqual({
       name: "Reverb",
-      ok: false,
-      detail: 'set again by "Reverb (Macro 1)" later in the list',
+      detail: 'named again as "Reverb (Macro 1)" later in this call',
     });
     expect(paramMacro1.set).toHaveBeenCalledTimes(1);
     expect(paramMacro1.set).toHaveBeenCalledWith("value", 0.8);
@@ -537,7 +522,7 @@ describe("updateDevice - one param named twice", () => {
     );
 
     expect(message).toMatch(
-      /^no param landed — "Nope": set again by "nope" later in the list; "nope": not found/,
+      /^no param landed — "Nope": named again as "nope" later in this call; "nope": not found/,
     );
   });
 

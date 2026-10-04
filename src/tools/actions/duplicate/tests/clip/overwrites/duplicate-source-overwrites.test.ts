@@ -90,6 +90,34 @@ function registerArrangementClip(
 }
 
 /**
+ * Source clips A and B, back to back on track 0's arrangement.
+ * @param a - A's [start, end, loop length] in beats
+ * @param b - B's [start, end] in beats
+ */
+function registerClipsAAndB(
+  a: [number, number, number?],
+  b: [number, number],
+): void {
+  registerArrangementClip("clipA", livePath.track(0).arrangementClip(0), ...a);
+  registerArrangementClip("clipB", livePath.track(0).arrangementClip(1), ...b);
+}
+
+/**
+ * Track 0 with two overlapping lanes to copy, and an empty track 1.
+ * @returns Track 1's mock
+ */
+function registerTwoLaneSourcesAndTrack1(): RegisteredMockObject {
+  registerLiveSet();
+  registerTakeLaneTrack({
+    trackIndex: 0,
+    initialLanes: 2,
+    initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
+  });
+
+  return registerTakeLaneTrack({ trackIndex: 1 });
+}
+
+/**
  * Track 0, a MIDI track whose arrangement duplicate lands a fresh clip, and
  * the 4/4 song the positions are read in.
  * @returns Track 0's mock
@@ -176,18 +204,7 @@ describe("duplicate - a copy onto another source", () => {
   describe("arrangement", () => {
     // The natural "shift a row" call: A's copy clears B before B's turn.
     it("refuses a copy over a later source's span", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        16,
-        32,
-      );
+      registerClipsAAndB([0, 16], [16, 32]);
 
       const track = registerTrack0();
 
@@ -203,18 +220,7 @@ describe("duplicate - a copy onto another source", () => {
     });
 
     it("copies over an earlier source's span once its turn has run", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        16,
-        32,
-      );
+      registerClipsAAndB([0, 16], [16, 32]);
 
       const track = registerTrack0();
 
@@ -237,18 +243,7 @@ describe("duplicate - a copy onto another source", () => {
     });
 
     it("copies when a copy only touches another source's start", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        32,
-        48,
-      );
+      registerClipsAAndB([0, 16], [32, 48]);
 
       const track = registerTrack0();
 
@@ -272,18 +267,7 @@ describe("duplicate - a copy onto another source", () => {
 
     // Without the length, A's copy would end at beat 8, well short of B.
     it("measures a copy by its arrangementLength", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        4,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        16,
-        32,
-      );
+      registerClipsAAndB([0, 4], [16, 32]);
 
       const track = registerTrack0();
 
@@ -302,19 +286,7 @@ describe("duplicate - a copy onto another source", () => {
     // A length at or past the loop lands the whole 4-bar clip first, so the
     // copy at bar 5 clears into B even though it ends up 2 bars long.
     it("measures a looped copy by its full extent when it lands whole", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-        4,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        24,
-        40,
-      );
+      registerClipsAAndB([0, 16, 4], [24, 40]);
 
       const track = registerTrack0();
 
@@ -384,14 +356,7 @@ describe("duplicate - a copy onto another source", () => {
 
   describe("lane copies", () => {
     it("refuses a lane copied over another source lane's clips", async () => {
-      registerLiveSet();
-      registerTakeLaneTrack({
-        trackIndex: 0,
-        initialLanes: 2,
-        initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
-      });
-
-      const track1 = registerTakeLaneTrack({ trackIndex: 1 });
+      const track1 = registerTwoLaneSourcesAndTrack1();
 
       await expect(
         duplicateToLanes({ path: "t0/l0,t0/l1", toPath: "t0/l1,t1/l0" }),
@@ -435,13 +400,7 @@ describe("duplicate - a copy onto another source", () => {
     });
 
     it("copies a lane over an earlier source lane once its turn has run", async () => {
-      registerLiveSet();
-      registerTakeLaneTrack({
-        trackIndex: 0,
-        initialLanes: 2,
-        initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
-      });
-      registerTakeLaneTrack({ trackIndex: 1 });
+      registerTwoLaneSourcesAndTrack1();
 
       const result = await duplicateToLanes<LaneCopyEntry[]>({
         path: "t0/l0,t0/l1",

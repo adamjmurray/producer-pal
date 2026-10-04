@@ -15,7 +15,6 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedIdParam,
   namedParam,
@@ -91,6 +90,8 @@ export function readScene(
       object: "scene",
       idAlias: "sceneId",
       oneTargetParams: ["sceneIndex"],
+      indexParams: ["sceneIndex"],
+      deadline: context.deadline,
     },
     (one) => readOneScene(one, context),
   );
@@ -118,12 +119,6 @@ export function readOneScene(
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
     throw new Error("id or path is required");
-  }
-
-  if (scenePath != null && (sceneId != null || sceneIndex != null)) {
-    throw new Error(
-      "path names the scene on its own - don't send id or sceneIndex with it",
-    );
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -189,9 +184,6 @@ export function readOneScene(
       expandWildcardIncludes(args.include, READ_SCENE_DEFAULTS),
       context.notation,
     );
-
-    // Strip fields redundant with parent scene context
-    stripFields(clips, "view");
 
     result.clips = clips;
   } else {

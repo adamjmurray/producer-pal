@@ -9,9 +9,27 @@
 
 import http from "node:http";
 import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 
 const HOST = "127.0.0.1";
 const DEFAULT_PORT = 3349;
+
+/**
+ * Dev switch (POST /config `remoteScriptEnabled`): off makes every request here
+ * answer `available: false` without touching the network, so each caller sees
+ * a Live with no remote script. Lets an eval or e2e test run that case against
+ * a Live that has it installed. Runtime only: it never reaches the device, and
+ * a restart of the server turns it back on.
+ */
+let remoteScriptEnabled = true;
+
+/**
+ * Turn the remote script on or off for this process.
+ * @param enabled - False to behave as if it isn't installed
+ */
+export function setRemoteScriptEnabled(enabled: boolean): void {
+  remoteScriptEnabled = enabled;
+}
 
 /** A remote script that hasn't taken the connection by now isn't running. */
 const CONNECT_TIMEOUT_MS = 1000;
@@ -30,6 +48,21 @@ export type RemoteScriptAnswer = Extract<
   { available: true }
 >;
 
+/** The remote script took the connection but didn't answer in time. */
+export class RemoteScriptTimeout extends Error {
+  /**
+   * Whether the request went out. If so, Live may have acted on it; if not,
+   * nothing was asked of it.
+   */
+  readonly sent: boolean;
+
+  constructor(message: string, sent: boolean) {
+    super(message);
+    this.name = "RemoteScriptTimeout";
+    this.sent = sent;
+  }
+}
+
 export interface RemoteScriptRequest {
   method?: "GET" | "POST";
   /** The remote script's route, e.g. "/list" */
@@ -37,6 +70,12 @@ export interface RemoteScriptRequest {
   query?: Record<string, string>;
   body?: object;
   timeoutMs?: number;
+  /**
+   * How long Live may leave the job queued before skipping it. Sent as
+   * `expires_in_ms`, and it sets the wait for the reply, so it replaces
+   * `timeoutMs`. Nothing is sent when it is 0 or less.
+   */
+  expiresInMs?: number;
 }
 
 /**
@@ -52,8 +91,11 @@ export interface RemoteScriptRequest {
  * @param request.query - Query string params
  * @param request.body - JSON body
  * @param request.timeoutMs - How long to wait for the answer
+ * @param request.expiresInMs - How long Live may leave the job queued; sets the
+ *   wait instead of `timeoutMs`
  * @returns The reply, or `available: false`
- * @throws Error when the remote script took the connection but didn't answer in time
+ * @throws RemoteScriptTimeout when the remote script took the connection but
+ *   didn't answer in time, or `expiresInMs` was used up before the request left
  */
 export function remoteScriptRequest({
   method = "GET",
@@ -61,7 +103,31 @@ export function remoteScriptRequest({
   query,
   body,
   timeoutMs = REMOTE_SCRIPT_HTTP_TIMEOUT_MS,
+  expiresInMs,
 }: RemoteScriptRequest): Promise<RemoteScriptReply> {
+  if (!remoteScriptEnabled) {
+    return Promise.resolve({ available: false });
+  }
+
+  if (expiresInMs != null) {
+    if (expiresInMs <= 0) {
+      return Promise.reject(
+        new RemoteScriptTimeout(
+          "ran out of time before the request left",
+          false,
+        ),
+      );
+    }
+
+    timeoutMs = remoteScriptReplyWait(expiresInMs);
+
+    if (body == null) {
+      query = { ...query, expires_in_ms: String(Math.floor(expiresInMs)) };
+    } else {
+      body = { ...body, expires_in_ms: expiresInMs };
+    }
+  }
+
   const payload = body == null ? undefined : JSON.stringify(body);
   const search = query == null ? "" : `?${new URLSearchParams(query)}`;
 
@@ -130,8 +196,9 @@ export function remoteScriptRequest({
       setTimeout(() => {
         settle(() =>
           reject(
-            new Error(
+            new RemoteScriptTimeout(
               `Live's browser did not answer within ${timeoutMs / 1000}s`,
+              true,
             ),
           ),
         );
@@ -229,7 +296,7 @@ function stringOrNull(value: unknown): string | null {
  * so a test can point it at its own server.
  * @returns The port
  */
-function remoteScriptPort(): number {
+export function remoteScriptPort(): number {
   const raw = process.env.PPAL_REMOTE_SCRIPT_PORT;
   const port = raw == null || raw.trim() === "" ? Number.NaN : Number(raw);
 

@@ -7,13 +7,8 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  resolveTakeLane,
-  takeLaneLabel,
-  takeLaneTargetsThatFit,
-} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
+import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
 
@@ -118,7 +113,8 @@ export function readSongMeter(liveSet: LiveAPI): SongMeter {
 }
 
 /**
- * Refuses the whole call when any arrangement position won't parse.
+ * Refuses the whole call when any arrangement position won't parse or is past
+ * the last one Live allows, MIDI and audio alike.
  *
  * Positions are converted per clip in the create loop, but a bad one has to be
  * caught before anything exists. Past the first clip — or the first take lane,
@@ -127,7 +123,7 @@ export function readSongMeter(liveSet: LiveAPI): SongMeter {
  * @param arrangementPositions - Resolved arrangement destinations
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
- * @throws When a position isn't a usable bar|beat
+ * @throws When a position isn't a usable bar|beat, or is past Live's last
  */
 export function validateArrangementPositions(
   arrangementPositions: ArrangementPosition[],
@@ -137,72 +133,19 @@ export function validateArrangementPositions(
   for (const { arrangementStart } of arrangementPositions) {
     // The 1-indexing steer first, then the format error the conversion raises.
     validateBarBeatPosition(arrangementStart);
-    barBeatToAbletonBeats(
-      arrangementStart,
+    refuseArrangementPositionPastCap(
+      barBeatToAbletonBeats(
+        arrangementStart,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      ),
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
   }
 }
 
-/** The lanes a call's destinations resolved to, and the ones that didn't. */
-export interface CreateClipTakeLanes {
-  /** Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes */
-  lanes: Map<string, LiveAPI>;
-  /** Why each lane that doesn't fit was left out, by {@link takeLaneLabel} */
-  dropped: Map<string, string>;
-}
-
-/**
- * Resolve the take lane each arrangement destination names, auto-creating lanes
- * as needed. Like the main lane, creating over an existing clip
- * replaces/truncates it (no overlap guard). A destination whose lane doesn't
- * fit is left out with its reason, which the destination's own result entry
- * reports, so the clips around it still get made.
- * @param takeLaneName - Deprecated: name for a newly created lane
- * @param arrangementPositions - Resolved arrangement destinations
- * @returns The resolved lanes, and why each dropped one didn't fit
- */
-export function resolveCreateClipTakeLanes(
-  takeLaneName: string | null,
-  arrangementPositions: ArrangementPosition[],
-): CreateClipTakeLanes {
-  const lanes = new Map<string, LiveAPI>();
-
-  // Lanes are permanent (Live has no delete), so pick the whole call's
-  // destinations before creating a lane on any of it — otherwise a cap failure
-  // on the last destination strands empty lanes on all the earlier ones.
-  const { fitting, dropped } = takeLaneTargetsThatFit(arrangementPositions);
-
-  // Resolve once per destination rather than once per clip.
-  for (const position of fitting) {
-    const { takeLane: target } = position;
-    const key = takeLaneLabel(position);
-
-    if (lanes.has(key)) {
-      continue;
-    }
-
-    const { lane } = resolveTakeLane(trackFor(position), target, takeLaneName);
-
-    // Which lane a clip landed on is its own entry's business, so nothing is
-    // said here.
-    lanes.set(key, lane);
-  }
-
-  return { lanes, dropped };
-}
-
 // --- Helpers below main exports ---
-
-/**
- * The Live API track an arrangement destination sits on.
- * @param position - An arrangement destination
- * @returns The track LiveAPI
- */
-function trackFor(position: ArrangementPosition): LiveAPI {
-  return LiveAPI.from(livePath.track(position.trackIndex));
-}
 
 /**
  * Resolve clip time signature from parameter or song defaults.
@@ -217,7 +160,7 @@ function resolveTimeSignature(
   songTimeSigDenominator: number,
 ): { timeSigNumerator: number; timeSigDenominator: number } {
   if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
+    const parsed = parseKeptTimeSignature(timeSignature);
 
     return {
       timeSigNumerator: parsed.numerator,

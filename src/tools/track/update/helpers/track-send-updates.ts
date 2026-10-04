@@ -18,16 +18,17 @@ import {
   dedupeSendsByReturn,
   readSendBack,
   refusedSend,
+  withClash,
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import {
+  findReturnIndex,
+  returnTrackPathIndex,
+} from "#src/tools/shared/helpers/send-validation.ts";
 import { pairParams } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
-export interface ResolvedSend extends IndexedSend {
-  /** The return track's id, for the result entry */
-  returnId: string;
-}
+export type ResolvedSend = IndexedSend;
 
 /** What a call's sends resolved to, for every track it names to report. */
 export interface TrackSends extends DedupedSends<ResolvedSend> {
@@ -82,14 +83,13 @@ export function trackSendsAt(
  *
  * The return tracks belong to the Live Set, not to any track being updated, so
  * only the sendReturn a track was given decides this. What matched nothing is
- * reported on that track's entry, so no track is left without an answer
- * (ADR-0042).
+ * reported on that track's entry, so no track is left without an answer.
  *
  * The scalar pair is resolved first, so a call using both honors both. They
  * only collide when they name the same return, and then the list is the later
  * word.
  * @param sendGainDb - Send level in dB, if given
- * @param sendReturn - Return track id, name, or letter prefix, if given
+ * @param sendReturn - Return track id, name, path (rt0), or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
  * @returns The sends to write, one per return, in the order they were named,
  *   the returns more than one of them named, and the ones that matched nothing
@@ -135,19 +135,28 @@ export function resolveTrackSends(
  * Write every resolved send on one track and read them back.
  * @param track - Track object
  * @param sends - The winners from {@link resolveTrackSends}
+ * @param landed - Told "send <return>" as each level lands, for a throw later
+ *   in the target's write to say what already changed
  * @returns What each send now reads, or why it was refused, by its position
  */
 export function applyTrackSends(
   track: LiveAPI,
   sends: ResolvedSend[],
+  landed: (phrase: string) => void,
 ): Map<number, SendResult> {
-  const landed = new Map<number, SendResult>();
+  const results = new Map<number, SendResult>();
 
   for (const send of sends) {
-    landed.set(send.index, applyTrackSend(track, send));
+    const result = applyTrackSend(track, send);
+
+    results.set(send.index, result);
+
+    if (result.ok !== false) {
+      landed(`send ${send.name}`);
+    }
   }
 
-  return landed;
+  return results;
 }
 
 /**
@@ -162,6 +171,16 @@ export function applyTrackSends(
  * @returns What the send now reads, or why nothing was written
  */
 function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
+  return withClash(writeTrackSend(track, send), send.clash);
+}
+
+/**
+ * Write one resolved send on one track, without its clash.
+ * @param track - Track object
+ * @param send - One send from {@link resolveTrackSends}
+ * @returns What the send now reads, or why nothing was written
+ */
+function writeTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
@@ -210,10 +229,11 @@ function matchReturn(
   unresolved: SendResult[],
 ): ResolvedSend | null {
   const names = returns.map((rt) => rt.name);
-  const index = findReturnIndex(
+  const { index, clash } = findReturnIndex(
     names,
     send.return,
     returns.map((rt) => rt.id),
+    returnTrackPathIndex(send.return),
   );
   const match = returns[index];
 
@@ -224,7 +244,7 @@ function matchReturn(
         : "the Live Set has no return tracks";
 
     // Nothing resolved, so there is no id to quote and nothing to write. Every
-    // track the call named reports it on its own entry (ADR-0042).
+    // track the call named reports it on its own entry.
     unresolved.push(
       refusedSend(
         send.return,
@@ -241,5 +261,6 @@ function matchReturn(
     index,
     name: match.name,
     returnId: match.id,
+    ...(clash == null ? {} : { clash }),
   };
 }

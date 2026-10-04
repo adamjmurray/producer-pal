@@ -81,9 +81,9 @@ export function buildChainInfo(
     chainInfo.state = chainState;
   }
 
-  if (devices !== undefined) {
+  if (devices != null) {
     chainInfo.devices = devices;
-  } else if (deviceCount !== undefined) {
+  } else if (deviceCount != null) {
     chainInfo.deviceCount = deviceCount;
   }
 

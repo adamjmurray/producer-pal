@@ -97,10 +97,10 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     // Nothing else was asked, so the lone target has nothing to report and
-    // throws instead (ADR-0042).
+    // throws instead.
     it("should refuse mute on a Device", () => {
       expect(() => updateDevice({ id: "123", mute: true })).toThrow(
-        "mute not applicable to a device",
+        "mute ignored: can't be set on a device",
       );
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -129,9 +129,21 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
+    it("reports the palette color Live snapped a chain's color to", () => {
+      chain.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(updateDevice({ id: "456", color: "#FF0000" })).toStrictEqual({
+        id: "456",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
     it("should refuse color on a Device", () => {
       expect(() => updateDevice({ id: "123", color: "#FF0000" })).toThrow(
-        "color not applicable to a device",
+        "color ignored: can't be set on a device",
       );
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -150,13 +162,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
     it("should refuse chokeGroup on a Chain", () => {
       expect(() => updateDevice({ id: "456", chokeGroup: 1 })).toThrow(
-        "chokeGroup not applicable to a chain",
+        "chokeGroup ignored: can't be set on a chain",
       );
     });
 
     it("should refuse chokeGroup on a Device", () => {
       expect(() => updateDevice({ id: "123", chokeGroup: 1 })).toThrow(
-        "chokeGroup not applicable to a device",
+        "chokeGroup ignored: can't be set on a device",
       );
     });
   });
@@ -192,7 +204,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
     it("should refuse mappedPitch on a Chain", () => {
       expect(() => updateDevice({ id: "456", mappedPitch: "C3" })).toThrow(
-        "mappedPitch not applicable to a chain",
+        "mappedPitch ignored: can't be set on a chain",
       );
     });
   });
@@ -204,16 +216,16 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(() =>
         updateDevice({ id: "456", params: [{ name: "789", value: "0.5" }] }),
       ).toThrow(
-        `no param landed — "789": 'params' not applicable to a chain id 456`,
+        `no param landed — "789": params ignored: can't be set on a chain id 456`,
       );
       expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("should not warn when params is an empty array on a Chain", () => {
-      const result = updateDevice({ id: "456", params: [] });
+      const result = updateDevice({ id: "456", params: [], name: "A" });
 
       expect(capturedWarnings()).not.toContain(
-        "'params' not applicable to a chain id 456",
+        "params ignored: can't be set on a chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -245,7 +257,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         // did nothing rides on it as a reason.
         expect(updateDevice({ id, name: "Named", ...args })).toStrictEqual(
           expect.objectContaining({
-            detail: `${label} not applicable to a device`,
+            detail: `${label} ignored: can't be set on a device`,
           }),
         );
         expect(capturedWarnings()).toStrictEqual([]);
@@ -267,7 +279,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
           updateDevice({ id: "456", name: "Named", ...args }),
         ).toStrictEqual(
           expect.objectContaining({
-            detail: `${label} not applicable to a chain`,
+            detail: `${label} ignored: can't be set on a chain`,
           }),
         );
         expect(capturedWarnings()).toStrictEqual([]);
@@ -298,7 +310,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(chain.set).not.toHaveBeenCalledWith("solo", expect.anything());
       // Unset (null) params must be treated as absent, not warned about.
       expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("not applicable"),
+        expect.stringContaining("ignored: can't be set on"),
       );
     });
 

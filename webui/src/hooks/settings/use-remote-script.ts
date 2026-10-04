@@ -87,6 +87,8 @@ export function useRemoteScript(): UseRemoteScriptReturn {
       }
 
       setLoadError(err instanceof Error ? err.message : String(err));
+      // The status is now out of step with an "Installed to X" message.
+      setInstalledPath(null);
     } finally {
       if (!signal.aborted) {
         setLoading(false);

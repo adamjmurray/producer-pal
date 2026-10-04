@@ -20,6 +20,7 @@ import {
   isNonExistentByDefault,
   lookupMockObject,
 } from "./mock-registry.ts";
+import { logMockWrites } from "./registry/mock-write-log.ts";
 
 export { MockSequence, children };
 
@@ -40,7 +41,7 @@ export interface MockLiveAPIContext {
  */
 function deriveId(path?: string): string | undefined {
   // An empty path reports "0" on Live 12.4.3, the same as any path that
-  // doesn't resolve — so exists() stays false after set_path "".
+  // doesn't resolve — so exists() stays false after set-path "".
   if (path === "") {
     return "0";
   }
@@ -101,12 +102,21 @@ export class LiveAPI {
         // register a backing property. See mock-registry.createGetMock.
         return getPropertyByType(this.type, prop, this.path) ?? [];
       }) as Mock;
-      this.set = vi.fn() as Mock;
-      this.call = vi
-        .fn()
-        .mockImplementation((method: string, ...args: unknown[]) =>
-          defaultMockCall(method, args, this.path),
-        ) as Mock;
+      const target = (): { id: string; path: string } => ({
+        id: this.id,
+        path: this.path,
+      });
+
+      this.set = logMockWrites(vi.fn() as Mock, "set", target);
+      this.call = logMockWrites(
+        vi
+          .fn()
+          .mockImplementation((method: string, ...args: unknown[]) =>
+            defaultMockCall(method, args, this.path),
+          ) as Mock,
+        "call",
+        target,
+      );
     }
   }
 
@@ -315,7 +325,10 @@ export class LiveAPI {
   declare getName: () => string;
   declare setColor: (cssColor: string) => void;
   declare setProperty: (property: string, value: unknown) => void;
-  declare setAll: (properties: Record<string, unknown>) => void;
+  declare setAll: (
+    properties: Record<string, unknown>,
+    landed?: (property: string) => void,
+  ) => void;
 }
 
 interface TrackOverrides {

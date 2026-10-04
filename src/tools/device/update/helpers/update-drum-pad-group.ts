@@ -26,6 +26,7 @@ import { pathTargetLabel } from "#src/tools/shared/validation/object-path-for-ap
 import {
   type TargetNotes,
   newTargetNotes,
+  noteLanded,
   noteSetAltered,
   refuseTargetWork,
   reportTargetNotes,
@@ -85,6 +86,7 @@ export interface DrumPadUpdateResult extends NonDeviceWrites {
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
+ * @param landed - Told what has changed as it does, for a throw to say so
  * @returns The pad's id and path, and the ids of the chains written to
  * @throws Error for a pad with no chains, which Live ignores every write to
  */
@@ -92,10 +94,11 @@ export function updateDrumPadGroup(
   group: DrumPadGroup,
   padPath: string,
   options: UpdateTargetOptions,
+  landed?: (phrase: string) => void,
 ): DrumPadUpdateResult {
   const { pad } = group;
   const padLabel = pathTargetLabel(pad, padPath);
-  const notes = newTargetNotes();
+  const notes = newTargetNotes(landed);
   // A sample write makes the pad's chain, exactly as the rack's `pC1/sample`
   // shortcut does — the pad is the address either way. The new chain then takes
   // the whole call: a one-layer pad is what the pad now is.
@@ -224,7 +227,7 @@ function createChainForSample(
   const chainsMade = createdCount(created);
 
   if (chainsMade > 0) {
-    noteSetAltered(notes);
+    noteSetAltered(notes, "pad chain made");
   }
 
   return { chains: chain?.exists() ? [chain] : [], chainsMade };
@@ -255,6 +258,7 @@ function applyToChains(
   // Only reachable on a single-chain pad; a stacked pad drops `name` above.
   if (options.name != null) {
     first.set("name", stripReturnChainLetter(first, options.name));
+    noteLanded(notes, "name");
   }
 
   let mixer: NonDeviceWrites = {};

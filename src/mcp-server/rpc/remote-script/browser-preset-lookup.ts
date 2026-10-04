@@ -20,12 +20,12 @@ import {
   candidateList,
   findAtPath,
   found,
+  listBrowser,
   listedItems,
   normalizedName,
   searchFailed,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
-import { remoteScriptRequest } from "./remote-script-client.ts";
 
 /** Sections that hold presets. Plug-ins list none. */
 const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
@@ -44,11 +44,14 @@ const PRESET_FILE = /\.(?:adv|adg)$/i;
  * @param preset - The preset as the call named it
  * @param scope - The device whose presets a name is searched among, if the call
  *   named one
+ * @param endsAt - When the whole lookup must be done, in epoch ms
  * @returns The item, an error worded for the model, or `available: false`
+ * @throws RemoteScriptTimeout when `endsAt` passes before the search is done
  */
 export async function lookUpBrowserPreset(
   preset: string,
-  scope?: PresetScope,
+  scope: PresetScope | undefined,
+  endsAt: number,
 ): Promise<BrowserItemResolution> {
   const wanted = preset.trim();
 
@@ -59,8 +62,11 @@ export async function lookUpBrowserPreset(
   const prefixed = sectionPrefixed(wanted);
 
   if (prefixed != null) {
-    const resolution = await findAtPath(preset, prefixed, () =>
-      nothingNamed(preset, scope),
+    const resolution = await findAtPath(
+      preset,
+      prefixed,
+      () => nothingNamed(preset, scope),
+      endsAt,
     );
 
     return scope != null &&
@@ -80,7 +86,7 @@ export async function lookUpBrowserPreset(
     return nothingNamed(preset, scope);
   }
 
-  const scoped = await searchPresets(preset, key, scope);
+  const scoped = await searchPresets(preset, key, scope, endsAt);
 
   if (!Array.isArray(scoped)) {
     return scoped;
@@ -93,7 +99,7 @@ export async function lookUpBrowserPreset(
     return pickPreset(preset, exact(scoped), scoped, scope);
   }
 
-  const anywhere = await searchPresets(preset, key, undefined);
+  const anywhere = await searchPresets(preset, key, undefined, endsAt);
 
   return Array.isArray(anywhere)
     ? pickPreset(preset, exact(anywhere), anywhere, undefined)
@@ -126,12 +132,14 @@ function presetFile(path: string): BrowserItemResolution {
  * @param preset - The preset as the call named it
  * @param key - The name, normalized
  * @param scope - The device to search under, if any
+ * @param endsAt - When the search must be done, in epoch ms
  * @returns Every preset whose name contains it, or a failed search
  */
 async function searchPresets(
   preset: string,
   key: string,
   scope: PresetScope | undefined,
+  endsAt: number,
 ): Promise<Candidate[] | BrowserItemResolution> {
   const searches: Array<{ section: Section; path?: string }> =
     scope == null
@@ -139,15 +147,15 @@ async function searchPresets(
       : scopeSection(scope);
   const replies = await Promise.all(
     searches.map(({ section, path }) =>
-      remoteScriptRequest({
-        route: "/list",
-        query: {
+      listBrowser(
+        {
           type: section.type,
           presets: "true",
           q: key,
           ...(path == null ? {} : { path }),
         },
-      }),
+        endsAt,
+      ),
     ),
   );
   const candidates: Candidate[] = [];

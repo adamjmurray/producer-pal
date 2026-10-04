@@ -9,7 +9,7 @@
 // `p<note>` is the only exception, because Live indexes drum pads by MIDI note.
 //
 // Parsing only: nothing here touches the Live API, so a bad path fails before
-// anything is created or moved. See dev/tools/object-paths/README.md.
+// anything is created or moved. See dev/specs/tool-behavior/object-paths/README.md.
 
 import {
   NEW_CHAIN,
@@ -138,9 +138,15 @@ const LIVE_API_COLLECTION = {
  * callers resolve the result against the Live API.
  * @param path - The path (e.g., "t0", "t0/s3", "t0/l0", "t1/d0")
  * @param label - Param name for error messages
+ * @param quiet - Skip the legacy-spelling warning, for a check that parses a
+ *   path the tool will parse again
  * @returns What the path names
  */
-export function parseObjectPath(path: string, label = "path"): ObjectPath {
+export function parseObjectPath(
+  path: string,
+  label = "path",
+  quiet = false,
+): ObjectPath {
   if (typeof path !== "string" || path.trim() === "") {
     throw new Error(`invalid ${label}: path is empty`);
   }
@@ -152,14 +158,14 @@ export function parseObjectPath(path: string, label = "path"): ObjectPath {
   // song position can sit on.
   if (position != null) {
     return arrangementPosition(
-      body === "" ? null : parseObjectPath(body, label),
+      body === "" ? null : parseObjectPath(body, label, quiet),
       position,
       label,
       input,
     );
   }
 
-  const legacy = parseLegacyPath(input, label);
+  const legacy = parseLegacyPath(input, label, quiet);
 
   if (legacy != null) {
     return legacy;
@@ -355,6 +361,14 @@ function parseTail(
   }
 
   const first = tail[0] as string;
+
+  if (first === NEW_SCENE) {
+    throw pathError(
+      label,
+      input,
+      `${NEW_OBJECT_ADVICE["new-scene"]}; a clip slot is "t<track>/s<scene>" (e.g. "t0/s1")`,
+    );
+  }
 
   if (isTrackChild(first)) {
     return parseTrackChild(root, tail, label, input);

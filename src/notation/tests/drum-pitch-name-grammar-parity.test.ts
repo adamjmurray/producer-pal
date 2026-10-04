@@ -6,12 +6,12 @@
 // Parity between the Stark grammar's drum-header pitch name and the regex that
 // takes it apart. The same shape is spelled twice, in two languages:
 //
-//   stark-grammar.peggy   DrumPitchName = $([A-Ga-g] [#b]? "-"? [0-9]+)
+//   stark-grammar.peggy   DrumPitchName = [A-Ga-g] Accidental? "-"? [0-9]+
 //   stark-interpreter.ts  /^([A-Ga-g])([#b]?)(-?\d+)$/
 //
 // drumHeaderPitch() asserts the match instead of null-checking it, because the
 // grammar is what guarantees the shape. Nothing mechanical ties the two patterns together, so
-// widening one alone (a double accidental, a Unicode ♯) turns a header the
+// widening one alone (a double accidental, a new glyph) turns a header the
 // grammar now accepts into a thrown `Bug:` at interpret time. This test is the
 // tie: every header below must be rejected by the grammar or accepted by BOTH.
 //
@@ -36,7 +36,7 @@ function resolveHeader(header: string): number[] | null {
   } catch (error) {
     const message = errorMessage(error);
 
-    if (message.startsWith("Stark notation parse error:")) {
+    if (message.startsWith("Stark notation parse error")) {
       return null;
     }
 
@@ -67,6 +67,9 @@ describe("drum-header pitch-name parity (Stark grammar ↔ interpreter regex)", 
       ["E#3", 65], // enharmonic, same octave
       ["Fb2", 52],
       ["B#3", 72], // enharmonic, wraps up an octave
+      ["C♯1", 37], // glyphs are normalized to #/b by the grammar
+      ["D♭1", 37],
+      ["b♭1", 46],
     ];
 
     for (const [header, midi] of HEADERS) {
@@ -102,8 +105,7 @@ describe("drum-header pitch-name parity (Stark grammar ↔ interpreter regex)", 
       "H1", // not a note letter
       "C##1", // double sharp
       "Cbb1", // double flat
-      "C♯1", // Unicode sharp
-      "D♭1", // Unicode flat
+      "C♯♯1", // doubled glyph
       "Cx1", // bogus accidental
       "C", // no octave
       "C#", // accidental, no octave

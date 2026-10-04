@@ -8,6 +8,9 @@ import { marked } from "marked";
 
 // Explicit allowlist for markdown-rendered HTML. Pinned here so a future
 // DOMPurify default change can't widen what we accept from LLM output.
+// No `img`: a remote image URL would leak conversation data to whoever hosts
+// it. No `class`: raw HTML could use the bundle's Tailwind classes to cover
+// the UI. Nothing here is styled through classes.
 const SANITIZE_CONFIG: Config = {
   ALLOWED_TAGS: [
     "a",
@@ -23,7 +26,6 @@ const SANITIZE_CONFIG: Config = {
     "h5",
     "h6",
     "hr",
-    "img",
     "li",
     "ol",
     "p",
@@ -39,7 +41,7 @@ const SANITIZE_CONFIG: Config = {
     "tr",
     "ul",
   ],
-  ALLOWED_ATTR: ["href", "title", "alt", "src", "class", "rel", "target"],
+  ALLOWED_ATTR: ["href", "title", "rel", "target"],
 };
 
 // The chat UI renders assistant markdown inside the Max for Live device's

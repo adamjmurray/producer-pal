@@ -139,6 +139,6 @@ describe("context - memory scope", () => {
 
     await expect(
       context({ action: "read", scope: "memory", name: "x" }),
-    ).rejects.toThrow("memory.read failed: unknown error");
+    ).rejects.toThrow("unknown error");
   });
 });

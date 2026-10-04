@@ -41,6 +41,10 @@ export interface SeedConversation {
    * non-forked records. */
   forkParentId?: string;
   forkedAtIndex?: number;
+  /** The system prompt the conversation locked; omitted on legacy records. */
+  systemInstruction?: string;
+  /** Set on records that came from a file import. */
+  imported?: boolean;
 }
 
 /**

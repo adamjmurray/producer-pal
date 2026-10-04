@@ -6,12 +6,13 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   sessionClipTargets,
-  type ClipSlotTarget,
+  type SlotPayload,
 } from "./session-clip-targets.ts";
 import {
   namedIdParam,
   namedParam,
   namedPathParam,
+  refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
@@ -30,12 +31,13 @@ import {
   parseSlotList,
 } from "#src/tools/shared/validation/position-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
   /** The clip slots every target param named, in call order */
-  clips: ClipSlotTarget[];
+  clips: Array<Target<SlotPayload>>;
 }
 
 export interface PlaybackTargetParams {
@@ -99,20 +101,20 @@ export function resolvePlaybackTarget(
   action: string,
   { id, ids, path, paths, slots, sceneIndex }: PlaybackTargetParams,
 ): PlaybackTarget {
+  // The transport actions take no target, and playback() has already refused
+  // one that was sent.
+  if (!TARGETING_ACTIONS.has(action)) {
+    return { sceneIndex: null, clips: [] };
+  }
+
   const namedIds = namedIdParam(id, ids, "ids");
   const namedPaths = namedPathParam(path, paths);
 
-  // Parsing these for an action that never reads them turns a leftover param
-  // into a failed transport command: `stop` has to stop.
-  if (!TARGETING_ACTIONS.has(action)) {
-    warnUnusedTarget(action, {
-      path: namedPaths,
-      slots,
-      ids: namedIds,
-      sceneIndex,
-    });
-
-    return { sceneIndex: null, clips: [] };
+  for (const [param, value] of [
+    ["path", namedPaths],
+    ["slots", slots],
+  ] as const) {
+    refuseNamedTwice({ param, value, noun: "scene", also: { sceneIndex } });
   }
 
   const { entries, source } = readPathParam(namedPaths, slots);
@@ -128,19 +130,10 @@ export function resolvePlaybackTarget(
     };
   }
 
-  // Narrow before warning: a path this action can't use throws, and saying we
-  // ignored a param on a call that did nothing is noise the model has to read.
   const clips = sessionClipTargets(
     namedIds,
     slotPathsFrom(action, entries, source),
   );
-
-  if (sceneIndex != null) {
-    console.warn(
-      `sceneIndex ignored: action "${action}" acts on clip slots; ` +
-        `use action "${PLAY_SCENE}" for the whole scene`,
-    );
-  }
 
   return { sceneIndex: null, clips };
 }
@@ -161,11 +154,13 @@ function readPathParam(
   const named = namedParam(path, "path");
   const legacy = namedHiddenPath(slots, "slots");
 
-  if (named != null && legacy != null) {
-    throw new Error(
-      "path and slots both name clips; use path alone (slots is deprecated)",
-    );
-  }
+  refuseNamedTwice({
+    param: "path",
+    value: named,
+    noun: "clips",
+    also: { slots: legacy },
+    hint: "slots is deprecated",
+  });
 
   if (named != null) {
     return {
@@ -389,31 +384,4 @@ function assertClipPath(
     `names a scene; action "${action}" takes clip slots ` +
       `"t<track>/s<scene>" (e.g., "t0/s${entry.sceneIndex}")${wholeScene}`,
   );
-}
-
-/**
- * Warns for target params on an action that has no target to apply them to.
- * @param action - The playback action
- * @param params - The target params, with `id` already normalized
- * @param params.path - Raw path param
- * @param params.slots - Raw deprecated slots param
- * @param params.ids - Normalized id param
- * @param params.sceneIndex - Raw sceneIndex param
- */
-function warnUnusedTarget(
-  action: string,
-  { path, slots, ids, sceneIndex }: PlaybackTargetParams,
-): void {
-  const sent = [
-    namedParam(path, "path") != null ? "path" : null,
-    namedHiddenPath(slots, "slots") != null ? "slots" : null,
-    ids != null ? "id" : null,
-    sceneIndex != null ? "sceneIndex" : null,
-  ].filter((param) => param != null);
-
-  if (sent.length === 0) {
-    return;
-  }
-
-  console.warn(`${sent.join("/")} ignored: action "${action}" takes no target`);
 }

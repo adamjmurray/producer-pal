@@ -79,7 +79,7 @@ describe("handleArrangementLengthOperation", () => {
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    expectSkippedWithReason(clip, "ignored for a take-lane clip");
+    expectSkippedWithReason(clip, "ignored: this is a take-lane clip");
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {

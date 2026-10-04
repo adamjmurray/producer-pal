@@ -12,6 +12,8 @@ import { type BrowserItemResolution } from "#src/tools/device/create/helpers/rem
 import { pathSegment } from "../../live-library/reconstruct-path.ts";
 import {
   type RemoteScriptAnswer,
+  type RemoteScriptReply,
+  RemoteScriptTimeout,
   remoteScriptRequest,
   replyError,
 } from "./remote-script-client.ts";
@@ -49,17 +51,51 @@ export interface Candidate extends ListedItem {
  * `Plug-Ins/VST3/FabFilter/Pro-Q 4`, names one directly. Anything else is
  * searched for in every section: exact names first, else substrings.
  * @param deviceName - The name the call used
+ * @param endsAt - When the whole lookup must be done, in epoch ms
  * @returns The item, an error worded for the model, or `available: false`
+ * @throws RemoteScriptTimeout when `endsAt` passes before the search is done
  */
 export async function lookUpBrowserDevice(
   deviceName: string,
+  endsAt: number,
 ): Promise<BrowserItemResolution> {
   const wanted = deviceName.trim();
   const prefixed = sectionPrefixed(wanted);
 
   return prefixed == null
-    ? await searchSections(deviceName, wanted)
-    : await findAtPath(deviceName, prefixed, () => nothingNamed(deviceName));
+    ? await searchSections(deviceName, wanted, endsAt)
+    : await findAtPath(
+        deviceName,
+        prefixed,
+        () => nothingNamed(deviceName),
+        endsAt,
+      );
+}
+
+/**
+ * One /list request that must finish by a shared deadline: Live skips it if it
+ * hasn't started it by then. A skipped or unfinished one throws, so a search
+ * never reads a half-listed section as a complete one.
+ * @param query - The /list params
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The reply
+ * @throws RemoteScriptTimeout when the deadline passes first
+ */
+export async function listBrowser(
+  query: Record<string, string>,
+  endsAt: number,
+): Promise<RemoteScriptReply> {
+  const reply = await remoteScriptRequest({
+    route: "/list",
+    query,
+    expiresInMs: endsAt - Date.now(),
+  });
+
+  if (reply.available && reply.status === 504) {
+    throw new RemoteScriptTimeout(replyError(reply), true);
+  }
+
+  return reply;
 }
 
 /**
@@ -86,12 +122,14 @@ export function sectionPrefixed(
  * @param prefixed.section - The section it starts with
  * @param prefixed.rest - Everything after the section
  * @param missing - The resolution when nothing is there
+ * @param endsAt - When the lookup must be done, in epoch ms
  * @returns The resolution
  */
 export async function findAtPath(
   name: string,
   { section, rest }: { section: Section; rest: string },
   missing: () => BrowserItemResolution,
+  endsAt: number,
 ): Promise<BrowserItemResolution> {
   const segments = rest
     .split("/")
@@ -103,14 +141,14 @@ export async function findAtPath(
     return missing();
   }
 
-  const reply = await remoteScriptRequest({
-    route: "/list",
-    query: {
+  const reply = await listBrowser(
+    {
       type: section.type,
       recursive: "false",
       ...(segments.length > 0 ? { path: segments.join("/") } : {}),
     },
-  });
+    endsAt,
+  );
 
   if (!reply.available) {
     return { available: false };
@@ -245,11 +283,13 @@ export function candidateList(matches: Candidate[]): string {
  * Search every section for a name.
  * @param deviceName - The name the call used
  * @param wanted - The name, trimmed
+ * @param endsAt - When the search must be done, in epoch ms
  * @returns The resolution
  */
 async function searchSections(
   deviceName: string,
   wanted: string,
+  endsAt: number,
 ): Promise<BrowserItemResolution> {
   const key = normalizedName(wanted);
 
@@ -259,10 +299,7 @@ async function searchSections(
 
   const replies = await Promise.all(
     SECTIONS.map((section) =>
-      remoteScriptRequest({
-        route: "/list",
-        query: { type: section.type, q: key },
-      }),
+      listBrowser({ type: section.type, q: key }, endsAt),
     ),
   );
   const candidates: Candidate[] = [];

@@ -43,6 +43,16 @@ reports where Live's User Library is (read from its browser database), what is
 installed there, and what `/ping` says is running; `POST /remote-script/install`
 writes the folder.
 
+## Warnings ride inside the response JSON
+
+V8 puts a request's warnings in a `warnings?: string[]` field on the response
+object, the same way `errorCode` travels. Node's `handleLiveApiResult` pulls it
+off, collapses repeats and appends `WARNING:` content items. Nothing follows the
+terminator on the wire: `END_OF_CHUNKS` is only there to tell an empty payload
+from no payload, which a bare `join("")` would report as the same vague
+`JSON.parse` failure. The flattening to text items is for every transport, since
+MCP results have no warnings field and the model reads only `content`.
+
 ## Per-request assembly
 
 Three settings vary per caller rather than per device. Each rides an HTTP

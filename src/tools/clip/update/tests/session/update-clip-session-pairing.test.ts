@@ -300,12 +300,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
-    // The first naming of the clip keeps its slot, pointing at the later one
-    // that did the update.
+    // The first naming of the clip keeps its slot, in the caller's own
+    // spelling, pointing at the later one that did the update.
     expect(result).toStrictEqual([
       {
         id: "456",
-        path: "t1/s1",
         detail: 'named again as "t1/s1" later in this call',
       },
       {
@@ -337,7 +336,6 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result).toStrictEqual([
       {
         id: "123",
-        path: "t0/s0",
         detail: "named again as id 123 later in this call",
       },
       { id: "123", path: "t0/s0" },
@@ -354,11 +352,13 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       toPath: "t5/s0,t6/s1",
     });
 
+    // The last naming is the one that was to move it, and that move was turned
+    // down: nothing replaced the first, so it says so.
     expect(result).toStrictEqual([
       {
         id: "456",
-        path: "t1/s1",
-        detail: 'named again as "t1/s1" later in this call',
+        ok: false,
+        detail: 'not written: "t1/s1" was meant to replace it, but failed',
       },
       {
         path: "t1/s1",
@@ -421,11 +421,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
   it("moves only the last clip when toPath names one slot twice", async () => {
     const { slots, result } = await moveBothClips("t1/s2,t1/s2");
 
-    // The first clip stayed put, so its path is still its own slot.
+    // The first clip's move was left unwritten, so it stayed in its own slot.
     expect(result[0]).toStrictEqual({
       path: "t0/s0",
-      ok: false,
-      detail: "not moved: t1/s2 is named again later in this call",
+      detail: "overwritten later in this call by t1/s2",
     });
     expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
     expect(slots.get("t0/s0")?.call).not.toHaveBeenCalledWith(

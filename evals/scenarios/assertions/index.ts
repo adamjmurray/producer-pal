@@ -30,4 +30,4 @@ export {
   normalizeCount,
   partialMatch,
 } from "./helpers/argument-matching.ts";
-export { isSignalAssertion } from "./helpers/signal-assertions.ts";
+export { asSignal, isSignalAssertion } from "./helpers/signal-assertions.ts";

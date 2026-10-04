@@ -33,6 +33,14 @@ const getIncludeUsage = (model: unknown): unknown =>
   ((model as Record<string, unknown>).config as Record<string, unknown>)
     .includeUsage;
 
+// The request URL the model would hit, built from its configured base URL.
+const getChatUrl = (model: unknown): string =>
+  (
+    (model as Record<string, unknown>).config as {
+      url: (opts: { path: string }) => string;
+    }
+  ).url({ path: "/chat/completions" });
+
 describe("createProviderModel", () => {
   it("creates a model for anthropic provider", () => {
     const model = createProviderModel(
@@ -57,6 +65,16 @@ describe("createProviderModel", () => {
 
     expect(model).toBeDefined();
     expect(getModelId(model)).toBe("claude-3.5-sonnet");
+  });
+
+  it("creates a model for vercel provider", () => {
+    const model = createProviderModel(
+      "vercel",
+      "anthropic/claude-sonnet-5.5",
+      "key",
+    );
+
+    expect(getModelId(model)).toBe("anthropic/claude-sonnet-5.5");
   });
 
   it("creates a model for mistral provider", () => {
@@ -101,6 +119,20 @@ describe("createProviderModel", () => {
 
     expect(model).toBeDefined();
   });
+
+  it.each([
+    ["lmstudio", "http://localhost:1234/v1/chat/completions"],
+    ["ollama", "http://localhost:11434/v1/chat/completions"],
+  ] as const)(
+    "falls back to the default URL for a blank %s URL",
+    (provider, url) => {
+      for (const blank of ["", "   "]) {
+        const model = createProviderModel(provider, "m", "", blank);
+
+        expect(getChatUrl(model)).toBe(url);
+      }
+    },
+  );
 
   it("creates a model for custom provider", () => {
     const model = createProviderModel(

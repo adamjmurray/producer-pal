@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The `[song position]` coordinate: which lanes may carry one, and building the
-// path it makes. See dev/tools/object-paths/README.md.
+// path it makes. See dev/specs/tool-behavior/object-paths/README.md.
 
 import { type ObjectPath } from "../object-path.ts";
 import { pathError } from "./object-path-lexer.ts";
@@ -31,7 +31,7 @@ export interface ArrangementPosition {
 
 /**
  * Both halves of an arrangement location, on a lane that exists — the one
- * shape that names a single clip. See dev/tools/object-paths/README.md, "Complete and
+ * shape that names a single clip. See dev/specs/tool-behavior/object-paths/README.md, "Complete and
  * partial".
  */
 export interface CompleteArrangementPosition extends ArrangementPosition {
@@ -62,7 +62,7 @@ export function arrangementPosition(
       label,
       input,
       lane.kind === "new-take-lane"
-        ? '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"'
+        ? '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"'
         : `a song position needs an arrangement lane; expected "t<track>", ` +
             `"t<track>/l<lane>", or "[${position}]" on its own`,
     );

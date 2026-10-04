@@ -137,7 +137,6 @@ describe("deleteObject by track and scene path", () => {
           "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
       },
       {
-        id: "lane_1",
         path: "t0/l1",
         ok: false,
         detail:
@@ -172,7 +171,6 @@ describe("deleteObject by track and scene path", () => {
         deleteObject({ path: "t0/l1, t0/l9, t99/l0", type }),
       ).toStrictEqual([
         {
-          id: "lane_1",
           path: "t0/l1",
           ok: false,
           detail:

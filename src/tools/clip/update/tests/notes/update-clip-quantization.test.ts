@@ -4,11 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { handleQuantization } from "#src/tools/clip/update/helpers/notes/note-updates.ts";
 import {
-  handleQuantization,
   QUANTIZE_GRID,
   QUANTIZE_GRID_ALIASES,
-} from "#src/tools/clip/update/helpers/notes/note-updates.ts";
+  QUANTIZE_GRID_VALUES,
+} from "#src/tools/clip/update/helpers/notes/quantize-grid.ts";
+import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type ClipReasons,
@@ -83,7 +87,7 @@ describe("handleQuantization", () => {
       call: vi.fn(),
       getProperty: vi.fn(),
     };
-    mockClip.call.mockReturnValue(["id", 0]);
+    mockClip.call.mockReturnValue(JSON.stringify({ notes: [] }));
   });
 
   it("should do nothing when no quantize param is provided", () => {
@@ -125,7 +129,7 @@ describe("handleQuantization", () => {
     });
 
     expect(reasons.said.get("321")?.join("; ")).toBe(
-      "quantize/quantizeGrid ignored: the clip is audio",
+      "quantize, quantizeGrid ignored: the clip is audio",
     );
     expect(capturedWarnings()).toHaveLength(0);
     expect(mockClip.call).not.toHaveBeenCalled();
@@ -221,4 +225,177 @@ describe("handleQuantization", () => {
     ["n/24", 6],
     ["n/32", 8],
   ])("should bridge n/N alias %s to grid value %i", expectGridValue);
+
+  describe("muted notes", () => {
+    const note = (pitch: number, start: number, mute: number) => ({
+      pitch,
+      start_time: start,
+      duration: 1,
+      velocity: 100,
+      mute,
+    });
+
+    /**
+     * Hold notes on the mock clip: `before` until quantize runs, `after` once
+     * it has.
+     * @param before - Notes get_notes_extended reports before quantizing
+     * @param after - Notes it reports afterwards
+     */
+    function quantizeFrom(before: object[], after: object[]): void {
+      let quantized = false;
+
+      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+      mockClip.call.mockImplementation((method: string) => {
+        if (method.startsWith("quantize")) {
+          quantized = true;
+        }
+
+        return JSON.stringify({ notes: quantized ? after : before });
+      });
+    }
+
+    it("says how many muted notes quantize moved", () => {
+      quantizeFrom(
+        [note(60, 0.1, 0), note(62, 0.1, 1), note(64, 0.1, 1)],
+        [note(60, 0, 0), note(62, 0, 1), note(64, 0, 1)],
+      );
+
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      expect(reasons.said.get("321")).toStrictEqual([
+        "quantized 2 muted notes",
+      ]);
+    });
+
+    it("counts only the muted notes that moved", () => {
+      quantizeFrom(
+        [note(60, 0.1, 1), note(62, 0.1, 1)],
+        [note(60, 0, 1), note(62, 0.1, 1)],
+      );
+
+      handleQuantization(mockClip, reasons, { quantizePitch: "C3" });
+
+      expect(reasons.said.get("321")).toStrictEqual(["quantized 1 muted note"]);
+    });
+
+    it("says nothing when the muted notes were already on the grid", () => {
+      const notes = [note(60, 0, 0), note(62, 0, 1)];
+
+      quantizeFrom(notes, notes);
+
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      expect(reasons.said.get("321")).toBeUndefined();
+    });
+
+    it("says what happened on a clip of only muted notes that moved", () => {
+      quantizeFrom([note(62, 0.1, 1)], [note(62, 0, 1)]);
+
+      handleQuantization(mockClip, reasons, { quantize: 1 });
+
+      expect(reasons.said.get("321")).toStrictEqual(["quantized 1 muted note"]);
+    });
+
+    it("says nothing moved on a clip of only muted notes that didn't", () => {
+      const notes = [note(62, 0, 1)];
+
+      quantizeFrom(notes, notes);
+
+      handleQuantization(mockClip, reasons, { quantize: 1 });
+
+      expect(reasons.said.get("321")).toStrictEqual([
+        "quantize moved nothing: the clip has only muted notes, and none moved",
+      ]);
+    });
+
+    it("reads the notes once for a clip with no muted notes", () => {
+      quantizeFrom([note(60, 0.1, 0)], [note(60, 0, 0)]);
+
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      const reads = mockClip.call.mock.calls.filter(
+        ([method]: [string]) => method === "get_notes_extended",
+      );
+
+      expect(reads).toHaveLength(1);
+      expect(reasons.said.get("321")).toBeUndefined();
+    });
+
+    it("adds up what two quantizes of one clip moved", () => {
+      quantizeFrom([note(62, 0.1, 1)], [note(62, 0, 1)]);
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+      quantizeFrom([note(62, 0.1, 1)], [note(62, 0, 1)]);
+      handleQuantization(mockClip, reasons, { quantizeGrid: "1/8" });
+
+      expect(reasons.said.get("321")).toStrictEqual([
+        "quantized 2 muted notes",
+      ]);
+    });
+  });
+});
+
+const MODES = [
+  ["default", {}],
+  ["small-model", { smallModelMode: true }],
+] as const;
+
+describe.each(MODES)("quantizeGrid schema (%s)", (_, mode) => {
+  const { published, validating } = resolveToolSchema(
+    toolDefUpdateClip.toolOptions.inputSchema,
+    mode,
+  );
+
+  it("publishes only Live's grid spellings", () => {
+    const json = z.toJSONSchema(z.object(published)) as unknown as {
+      properties: { quantizeGrid: { enum: string[] } };
+    };
+
+    expect(json.properties.quantizeGrid.enum).toStrictEqual([
+      ...QUANTIZE_GRID_VALUES,
+    ]);
+    expect(Object.keys(QUANTIZE_GRID)).toStrictEqual([...QUANTIZE_GRID_VALUES]);
+  });
+
+  it.each(Object.entries(QUANTIZE_GRID_ALIASES))(
+    "still accepts %s and hands the handler %s",
+    (alias, native) => {
+      for (const schema of [validating, published]) {
+        const parsed = z.object(schema).parse({ quantizeGrid: alias });
+
+        expect(parsed.quantizeGrid).toBe(native);
+      }
+    },
+  );
+
+  it("still refuses an unknown grid, listing only the published ones", () => {
+    const refusal = z.object(published).safeParse({ quantizeGrid: "n/7" });
+
+    const message = refusal.error?.issues[0]?.message;
+
+    expect(message).toContain("1/16+1/16T");
+    expect(message).not.toContain("n/16");
+  });
+
+  it("quantizes an n/16 call as 1/16", () => {
+    const { quantizeGrid } = z
+      .object(published)
+      .parse({ quantizeGrid: "n/16" });
+    const clip = {
+      id: "321",
+      call: vi.fn().mockReturnValue(JSON.stringify({ notes: [] })),
+      getProperty: vi.fn().mockReturnValue(1),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock clip
+    handleQuantization(clip as any, newClipReasons(), {
+      quantize: 1,
+      quantizeGrid: quantizeGrid as string | undefined,
+    });
+
+    expect(clip.call).toHaveBeenCalledWith(
+      "quantize",
+      QUANTIZE_GRID["1/16"],
+      1,
+    );
+  });
 });

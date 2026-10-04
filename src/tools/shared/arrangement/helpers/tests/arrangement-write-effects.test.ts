@@ -3,101 +3,24 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
-import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
-import {
-  clearMockRegistry,
-  mockNonExistentObjects,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
-import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
+import { describe, expect, it } from "vitest";
 import {
   arrangementLaneOf,
-  arrangementWriteEffects,
-  snapshotLane,
+  type ClipSpan,
+  describeWriteEffects,
+  withoutWriteEffects,
 } from "../arrangement-write-effects.ts";
 
-const MAIN_LANE: ArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE_LANE: ArrangementLane = {
-  kind: "take-lane",
-  trackIndex: 0,
-  laneIndex: 1,
-};
-
-/** One clip on a lane, as the registry should answer for it. */
-interface Span {
-  id: string;
-  start: number;
-  end: number;
-}
+const LANE = { kind: "track", trackIndex: 0 } as const;
 
 /**
- * Put these clips on the track's main lane, replacing whatever was there.
- * @param spans - The clips, in Live's order
+ * @param id - The clip's id
+ * @param start - Where it begins, in beats
+ * @param end - Where it ends, in beats
+ * @returns The span
  */
-function setMainLane(spans: Span[]): void {
-  setLane(spans, (index) => livePath.track(0).arrangementClip(index));
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-}
-
-/**
- * Put these clips on take lane 1, replacing whatever was there.
- * @param spans - The clips, in Live's order
- */
-function setTakeLane(spans: Span[]): void {
-  setLane(spans, (index) =>
-    livePath.track(0).takeLane(1).arrangementClip(index),
-  );
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children() },
-  });
-}
-
-/**
- * Register each clip at the path its index gives it.
- * @param spans - The clips, in Live's order
- * @param pathAt - The path a clip at that index sits on
- */
-function setLane(spans: Span[], pathAt: (index: number) => PathLike): void {
-  for (const [index, { id, start, end }] of spans.entries()) {
-    registerMockObject(id, {
-      path: pathAt(index),
-      type: "Clip",
-      properties: { start_time: start, end_time: end },
-    });
-  }
-}
-
-/**
- * Photograph the main lane, rewrite it, and report what the write did.
- * @param before - The clips on the lane to start with
- * @param after - The clips on it once the write has run
- * @param written - Ids the write itself created or moved
- * @returns What the write did to the clips that were already there
- */
-function effectsOfWrite(
-  before: Span[],
-  after: Span[],
-  written: string[] = [],
-): string | undefined {
-  setMainLane(before);
-
-  const snapshot = snapshotLane(MAIN_LANE);
-
-  setMainLane(after);
-
-  return arrangementWriteEffects(snapshot, written);
+function span(id: string, start: number, end: number): ClipSpan {
+  return { id, start, end };
 }
 
 describe("arrangementLaneOf", () => {
@@ -117,144 +40,103 @@ describe("arrangementLaneOf", () => {
   });
 });
 
-describe("arrangementWriteEffects", () => {
-  beforeEach(() => {
-    clearMockRegistry();
-    mockNonExistentObjects();
-  });
+describe("describeWriteEffects", () => {
+  it("says nothing when every clip is as it was", () => {
+    const a = span("a", 0, 8);
 
-  it("says nothing when the write left the neighbours alone", () => {
     expect(
-      effectsOfWrite(
-        [{ id: "a", start: 0, end: 8 }],
-        [
-          { id: "a", start: 0, end: 8 },
-          { id: "new", start: 16, end: 24 },
-        ],
-        ["new"],
-      ),
+      describeWriteEffects(LANE, [a], new Map([["a", a]]), []),
     ).toBeUndefined();
   });
 
-  it("names a clip the write wiped out, at the address it had", () => {
-    expect(
-      effectsOfWrite(
-        [{ id: "a", start: 12, end: 20 }],
-        [{ id: "new", start: 12, end: 24 }],
-        ["new"],
-      ),
-    ).toBe("overwrote the clip at t0[4|1]");
+  it("names a clip that is gone, at the address it had", () => {
+    expect(describeWriteEffects(LANE, [span("a", 12, 20)], new Map(), [])).toBe(
+      "overwrote the clip at t0[4|1]",
+    );
   });
 
-  it("names a clip the write cut short, where it sits now", () => {
+  // Front trimming moves the start, so the clip answers to a new address.
+  it("names a trimmed clip where it sits now", () => {
     expect(
-      effectsOfWrite(
-        [{ id: "a", start: 0, end: 20 }],
-        [
-          { id: "a", start: 0, end: 12 },
-          { id: "new", start: 12, end: 24 },
-        ],
-        ["new"],
-      ),
-    ).toBe("shortened the clip at t0[1|1]");
-  });
-
-  // A front trim moves the clip's start, so the address it answers to changes.
-  it("names a front-trimmed clip at its new address", () => {
-    expect(
-      effectsOfWrite(
-        [{ id: "a", start: 8, end: 24 }],
-        [
-          { id: "new", start: 0, end: 16 },
-          { id: "a", start: 16, end: 24 },
-        ],
-        ["new"],
+      describeWriteEffects(
+        LANE,
+        [span("a", 8, 24)],
+        new Map([["a", span("a", 16, 24)]]),
+        [],
       ),
     ).toBe("shortened the clip at t0[5|1]");
   });
 
-  // Live re-creates what a front trim leaves under a new id, so the old id
-  // vanishing doesn't mean the clip is gone.
-  it("names a front-trimmed clip Live gave a new id as shortened", () => {
+  // A write starting where a clip starts re-creates its rest under a new id.
+  it("names the rest of a clip re-created under a new id", () => {
     expect(
-      effectsOfWrite(
-        [{ id: "a", start: 8, end: 24 }],
-        [
-          { id: "new", start: 0, end: 16 },
-          { id: "rest", start: 16, end: 24 },
-        ],
-        ["new"],
-      ),
+      describeWriteEffects(LANE, [span("a", 8, 24)], new Map(), [
+        span("rest", 16, 24),
+      ]),
     ).toBe("shortened the clip at t0[5|1]");
   });
 
-  // A new clip inside the old span that stops short of its end isn't the rest.
-  it("still says overwrote when no new clip ends where the old one did", () => {
+  // A new clip that isn't the written one, inside the old span, is the tail.
+  it("names both pieces of a split clip", () => {
     expect(
-      effectsOfWrite(
-        [{ id: "a", start: 8, end: 24 }],
-        [
-          { id: "new", start: 0, end: 18 },
-          { id: "s", start: 18, end: 22 },
-        ],
-        ["new"],
-      ),
-    ).toBe("overwrote the clip at t0[3|1]");
-  });
-
-  // Live keeps the head on the original id and gives the tail a new one, so
-  // the new clip inside the old span is what says a split happened.
-  it("names both pieces of a clip the write split", () => {
-    expect(
-      effectsOfWrite(
-        [{ id: "a", start: 0, end: 32 }],
-        [
-          { id: "a", start: 0, end: 12 },
-          { id: "new", start: 12, end: 16 },
-          { id: "tail", start: 16, end: 32 },
-        ],
-        ["new"],
+      describeWriteEffects(
+        LANE,
+        [span("a", 0, 32)],
+        new Map([["a", span("a", 0, 12)]]),
+        [span("tail", 16, 32)],
       ),
     ).toBe("split the clip at t0[1|1] into t0[1|1] and t0[5|1]");
   });
 
-  it("joins what it did to several clips", () => {
+  it("ignores a new clip outside the old span", () => {
     expect(
-      effectsOfWrite(
-        [
-          { id: "a", start: 0, end: 16 },
-          { id: "b", start: 16, end: 24 },
-        ],
-        [
-          { id: "a", start: 0, end: 8 },
-          { id: "new", start: 8, end: 32 },
-        ],
-        ["new"],
-      ),
-    ).toBe("shortened the clip at t0[1|1]; overwrote the clip at t0[5|1]");
-  });
-
-  // A move's own source sits on the lane and is cleared right after, so it
-  // must not report on itself.
-  it("says nothing about the clips the write itself accounts for", () => {
-    expect(
-      effectsOfWrite(
-        [{ id: "source", start: 0, end: 16 }],
-        [{ id: "moved", start: 32, end: 48 }],
-        ["source", "moved"],
+      describeWriteEffects(
+        LANE,
+        [span("a", 0, 8)],
+        new Map([["a", span("a", 0, 8)]]),
+        [span("tail", 16, 32)],
       ),
     ).toBeUndefined();
   });
 
-  it("reads a take lane rather than the track's own clips", () => {
-    setTakeLane([{ id: "a", start: 16, end: 24 }]);
+  it("joins what it did to several clips", () => {
+    expect(
+      describeWriteEffects(
+        LANE,
+        [span("a", 0, 16), span("b", 16, 24)],
+        new Map([["a", span("a", 0, 8)]]),
+        [],
+      ),
+    ).toBe("shortened the clip at t0[1|1]; overwrote the clip at t0[5|1]");
+  });
+});
 
-    const snapshot = snapshotLane(TAKE_LANE);
+describe("withoutWriteEffects", () => {
+  it("drops every sentence describeWriteEffects words", () => {
+    const effects = describeWriteEffects(
+      LANE,
+      [span("a", 0, 16), span("b", 16, 24), span("c", 40, 56)],
+      new Map([
+        ["a", span("a", 0, 8)],
+        ["c", span("c", 40, 44)],
+      ]),
+      [span("tail", 48, 56)],
+    ) as string;
 
-    setTakeLane([{ id: "new", start: 16, end: 32 }]);
+    expect(effects.split("; ")).toHaveLength(3);
+    expect(withoutWriteEffects(`first; ${effects}; last`)).toBe("first; last");
+  });
 
-    expect(arrangementWriteEffects(snapshot, ["new"])).toBe(
-      "overwrote the clip at t0/l1[5|1]",
+  it("leaves a detail with none of them as it was", () => {
+    expect(withoutWriteEffects("arrangementLength ignored")).toBe(
+      "arrangementLength ignored",
     );
+  });
+
+  it("answers undefined when nothing is left", () => {
+    expect(
+      withoutWriteEffects("overwrote the clip at t0[1|1]"),
+    ).toBeUndefined();
+    expect(withoutWriteEffects(undefined)).toBeUndefined();
   });
 });

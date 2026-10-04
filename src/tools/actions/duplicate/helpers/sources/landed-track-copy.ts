@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
@@ -12,6 +13,8 @@ export interface LandedTrackCopy {
   index: number;
   /** How many tracks the copy added: 1, plus a group's copied members. */
   added: number;
+  /** What Live threw after the copy was made, when it did */
+  threw?: string;
 }
 
 /**
@@ -25,8 +28,15 @@ export interface LandedTrackCopy {
 export function landTrackCopy(trackIndex: number): LandedTrackCopy {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const before = new Set(liveSet.getChildIds("tracks"));
+  let threw: string | undefined;
 
-  liveSet.call("duplicate_track", trackIndex);
+  // A throw after the copy was made still leaves the copy, so what Live did is
+  // read before deciding the call failed.
+  try {
+    liveSet.call("duplicate_track", trackIndex);
+  } catch (error) {
+    threw = errorMessage(error);
+  }
 
   // Nothing before the source moves, so only look after it.
   const newIds = liveSet
@@ -38,8 +48,12 @@ export function landTrackCopy(trackIndex: number): LandedTrackCopy {
   if (first == null) {
     const source = formatObjectPath({ kind: "track", trackIndex });
 
-    throw new Error(`Live made no copy of ${source}`);
+    throw new Error(threw ?? `Live made no copy of ${source}`);
   }
 
-  return { index: first.index, added: newIds.length };
+  return {
+    index: first.index,
+    added: newIds.length,
+    ...(threw != null && { threw }),
+  };
 }

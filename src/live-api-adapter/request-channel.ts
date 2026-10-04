@@ -106,12 +106,13 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
           try {
             outlet(0, spec.requestMessage, requestId, payload);
           } catch (error) {
+            pending.delete(requestId);
+            task.schedule(-1);
+
             if (!spec.reportSendFailure) {
               throw error;
             }
 
-            pending.delete(requestId);
-            task.schedule(-1);
             fail(`Failed to send ${subject}: ${asMessage(error)}`);
           }
         }),

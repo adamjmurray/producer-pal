@@ -15,11 +15,13 @@ import {
   CONFIG_URL,
   fetchSkillOverrides,
   parseToolResult,
-  remoteScriptAnswers,
-  serverHasCodeExec,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import {
+  remoteScriptAnswers,
+  serverHasCodeExec,
+} from "./helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 

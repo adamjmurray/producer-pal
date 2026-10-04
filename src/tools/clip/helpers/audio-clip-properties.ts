@@ -13,7 +13,15 @@ import {
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
 } from "#src/tools/constants.ts";
-import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
+import {
+  dbToLiveGain,
+  liveGainToDb,
+} from "#src/tools/shared/helpers/gain-conversion.ts";
+import { differsAtPublishedResolution } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import {
+  asFiniteNumber,
+  round2dp,
+} from "#src/tools/shared/helpers/rounding.ts";
 
 export interface AudioClipProperties {
   /** Audio clip gain in decibels (-70 to 24) */
@@ -83,4 +91,77 @@ export function pitchShiftToCoarseFine(pitchShift: number): {
   const fine = Math.round((pitchShift - coarse) * 100);
 
   return { coarse, fine };
+}
+
+/** The audio values Live kept in place of the ones asked for. */
+export type AudioReadBack = {
+  gainDb?: number;
+  pitchShift?: number;
+  warpMode?: string;
+};
+
+/** How far a raw gain can sit from the one written and still be it. */
+const GAIN_TOLERANCE = 1e-4;
+
+/**
+ * Read back the audio values a call just wrote, and keep only the ones Live
+ * didn't take as asked, in the units the read tools publish. Gain is compared
+ * raw: the dB table is approximate, so a round trip through it says nothing
+ * about what Live did.
+ * @param clip - The audio clip
+ * @param requested - What the call asked for; an unset value is not checked
+ * @param requested.gainDb - The gain in decibels asked for
+ * @param requested.pitchShift - The pitch shift in semitones asked for
+ * @param requested.warpMode - The warp mode asked for
+ * @returns The values that read back differently
+ */
+export function readBackAudioClipProperties(
+  clip: LiveAPI,
+  { gainDb, pitchShift, warpMode }: AudioClipProperties,
+): AudioReadBack {
+  const shown: AudioReadBack = {};
+
+  if (gainDb != null) {
+    const raw = asFiniteNumber(clip.getProperty("gain"));
+
+    if (raw != null && Math.abs(raw - dbToLiveGain(gainDb)) > GAIN_TOLERANCE) {
+      shown.gainDb = round2dp(liveGainToDb(raw));
+    }
+  }
+
+  if (pitchShift != null) {
+    const coarse = asFiniteNumber(clip.getProperty("pitch_coarse"));
+    const fine = asFiniteNumber(clip.getProperty("pitch_fine"));
+    const landed =
+      coarse != null && fine != null ? coarse + fine / 100 : undefined;
+
+    if (
+      landed != null &&
+      differsAtPublishedResolution(pitchShift, landed, round2dp)
+    ) {
+      shown.pitchShift = landed;
+    }
+  }
+
+  if (warpMode != null && WARP_MODE_VALUES[warpMode] !== undefined) {
+    const raw = asFiniteNumber(clip.getProperty("warp_mode"));
+
+    if (raw != null && raw !== WARP_MODE_VALUES[warpMode]) {
+      shown.warpMode = warpModeName(raw);
+    }
+  }
+
+  return shown;
+}
+
+/**
+ * The name a read publishes for a warp mode.
+ * @param value - Live's warp mode number
+ * @returns The mode's name, or "unknown"
+ */
+function warpModeName(value: number): string {
+  return (
+    Object.entries(WARP_MODE_VALUES).find(([, mode]) => mode === value)?.[0] ??
+    "unknown"
+  );
 }

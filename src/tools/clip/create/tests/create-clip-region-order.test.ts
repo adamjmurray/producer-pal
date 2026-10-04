@@ -18,6 +18,14 @@ const MARKERS = new Set([
   "end_marker",
 ]);
 
+// A region from 1|1-n/2 for n/4 spans beats -2 to -1: the starts move first.
+const WRITES_BEFORE_1_1 = [
+  ["start_marker", -2],
+  ["loop_start", -2],
+  ["loop_end", -1],
+  ["end_marker", -1],
+];
+
 /**
  * The marker writes a clip received, in order.
  * @param set - The clip's mocked set()
@@ -74,12 +82,7 @@ describe("createClip - region write order", () => {
     await createClip({ path: "t0[3|1]", start: "1|1-n/2", length: "n/4" });
 
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 1);
-    expect(markerWrites(clip.set)).toStrictEqual([
-      ["start_marker", -2],
-      ["loop_start", -2],
-      ["loop_end", -1],
-      ["end_marker", -1],
-    ]);
+    expect(markerWrites(clip.set)).toStrictEqual(WRITES_BEFORE_1_1);
   });
 
   it("creates a session clip only as long as its region", async () => {
@@ -93,11 +96,6 @@ describe("createClip - region write order", () => {
     await createClip({ slot: "0/0", start: "1|1-n/2", length: "n/4" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 1);
-    expect(markerWrites(clip.set)).toStrictEqual([
-      ["start_marker", -2],
-      ["loop_start", -2],
-      ["loop_end", -1],
-      ["end_marker", -1],
-    ]);
+    expect(markerWrites(clip.set)).toStrictEqual(WRITES_BEFORE_1_1);
   });
 });

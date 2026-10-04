@@ -96,8 +96,11 @@ describe("resolveAbsolutePaths", () => {
     });
   });
 
-  it("accepts a 'C:\\' drive root and strips the trailing separator", () => {
-    insertRow(1, 0, "C:\\");
+  it.each([
+    ["accepts a 'C:\\' drive root and strips the trailing separator", "C:\\"],
+    ["leaves a Windows drive root alone", "C:"],
+  ])("%s", (_name, root) => {
+    insertRow(1, 0, root);
     insertRow(2, 1, "Users");
     insertRow(3, 2, "kick.wav");
 
@@ -216,16 +219,6 @@ describe("resolveAbsolutePaths", () => {
     insertRow(2, 1, "Te\u0301st.adv");
 
     expect(resolveAbsolutePaths(db, [2]).get(2)?.path).toBe("/Te\u0301st.adv");
-  });
-
-  it("leaves a Windows drive root alone", () => {
-    insertRow(1, 0, "C:");
-    insertRow(2, 1, "Users");
-    insertRow(3, 2, "kick.wav");
-
-    expect(resolveAbsolutePaths(db, [3]).get(3)?.path).toBe(
-      "C:/Users/kick.wav",
-    );
   });
 
   it("resolves multiple files in a single query", () => {

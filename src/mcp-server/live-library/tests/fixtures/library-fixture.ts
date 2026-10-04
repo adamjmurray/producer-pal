@@ -195,7 +195,7 @@ export async function expectQueryDegradesOnBrokenDb(
 }
 
 /**
- * Assert a `source: "sampleFolder"` query explains itself instead of returning
+ * Assert a `source: "sample-folder"` query explains itself instead of returning
  * a silently empty set. sampleFolder files aren't in Live's fe_values index, so
  * the query can only ever match nothing.
  *
@@ -209,7 +209,7 @@ export async function expectSampleFolderExplained<
   const result = await runQuery();
 
   expect(matches(result)).toStrictEqual([]);
-  expect(result.detail).toContain("sampleFolder");
+  expect(result.detail).toContain("sample-folder");
 
   return result;
 }

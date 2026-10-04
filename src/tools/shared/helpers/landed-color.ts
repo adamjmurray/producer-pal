@@ -16,7 +16,7 @@ export interface LandedColor {
 /**
  * The color a target ended up with, read back after the write. Live keeps a
  * fixed palette and snaps anything else to the nearest entry in it, so the
- * target's own entry reports what landed (ADR-0042).
+ * target's own entry reports what landed.
  * @param object - The track, scene, or clip just written to
  * @param requested - The color the call asked for, as #RRGGBB
  * @returns The entry's `color` and `detail`, empty when it landed as asked

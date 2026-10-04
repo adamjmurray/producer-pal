@@ -113,7 +113,8 @@ export async function runCorrectnessAssertion(
       return {
         assertion,
         earned: 0,
-        maxScore: 0,
+        // maxScore 0 would score as a pass (earned === maxScore).
+        maxScore: 1,
         message: `Unknown assertion type: ${(assertion as EvalAssertion).type}`,
       };
   }

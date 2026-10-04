@@ -29,6 +29,7 @@ const CREATE_CLIP = "ppal-create-clip";
 const READ_TRACK = "ppal-read-track";
 const READ_SCENE = "ppal-read-scene";
 const UPDATE_CLIP = "ppal-update-clip";
+const READ_CLIP = "ppal-read-clip";
 const DUPLICATE = "ppal-duplicate";
 const CREATE_DEVICE = "ppal-create-device";
 
@@ -68,7 +69,10 @@ const CONVERSATION_ONLY = "conversation-only";
  * Fragments teaching what only the Producer Pal remote script makes possible.
  * They also keep their tool gate; this is a second condition on top of it.
  */
-const REMOTE_SCRIPT_FRAGMENTS = ["plugins-and-max-devices"] as const;
+const REMOTE_SCRIPT_FRAGMENTS = [
+  "plugins-and-max-devices",
+  "automation",
+] as const;
 
 /**
  * Tools that carry clip `notes` in either direction — the three read tools all
@@ -79,10 +83,10 @@ const REMOTE_SCRIPT_FRAGMENTS = ["plugins-and-max-devices"] as const;
  * read-only caller still needs the grammar to parse what read-clip RETURNS. What
  * a read-only caller does NOT need is the authoring syntax, and that is a
  * separate `-write` fragment rather than a narrower gate here — see
- * {@link NOTE_WRITE_TOOLS} and ADR-0019.
+ * {@link NOTE_WRITE_TOOLS}.
  */
 const NOTE_TOOLS = [
-  "ppal-read-clip",
+  READ_CLIP,
   CREATE_CLIP,
   UPDATE_CLIP,
   READ_TRACK,
@@ -144,7 +148,7 @@ const DEVICE_WRITE_TOOLS = [CREATE_DEVICE, "ppal-update-device"] as const;
  */
 const ARRANGEMENT_TOOLS = [
   CREATE_CLIP,
-  "ppal-read-clip",
+  READ_CLIP,
   UPDATE_CLIP,
   DUPLICATE,
   READ_TRACK,
@@ -224,6 +228,9 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   // lane shows up in read-track output and in a clip path, so a reader meets
   // one whether or not it can write.
   "arrangement-basic": ARRANGEMENT_TOOLS,
+  // Only read-clip reports an envelope and only update-clip writes one, and
+  // neither can without the remote script (see remoteScriptGatedFragments).
+  automation: [READ_CLIP, UPDATE_CLIP],
 
   "object-paths": TRACK_SCENE_PATH_TOOLS,
   "object-paths-basic": SMALL_MODEL_PATH_TOOLS,

@@ -151,11 +151,9 @@
   // Fold a list of selector segments (each a pitch / time / where piece, parsed in
   // any order) into the single { pitchRange, timeRange, predicate } shape the
   // statement rule consumes. Each kind may appear at most once — a duplicate is a
-  // user mistake (two pitch selectors AND-combine to the empty set). Rather than
-  // throw (which would abort the WHOLE transforms string, killing the other
-  // lines), keep the first occurrence and record a `selectorWarning`. The
-  // evaluator relays it as a WARNING and skips just this line, so the remaining
-  // lines still apply — the warn-and-skip pattern used across the transform tool.
+  // user mistake (two pitch selectors AND-combine to the empty set). Keep the
+  // first occurrence and record a `selectorError` rather than throwing here, so
+  // transform-arg-checks.ts refuses it alongside its other checks.
   // `matched` is the raw prefix text, for the message.
   function combineSelectorSegments(segments, matched) {
     let pitchRange = null;
@@ -192,10 +190,10 @@
         predicate = seg.predicate;
       }
     }
-    const selectorWarning = reasons.length
-      ? `Skipping "${label}": ${reasons.join("; ")}.`
+    const selectorError = reasons.length
+      ? `Bad selector "${label}": ${reasons.join("; ")}`
       : null;
-    return { pitchRange, timeRange, predicate, selectorWarning };
+    return { pitchRange, timeRange, predicate, selectorError };
   }
 }}
 
@@ -211,17 +209,19 @@ start
 // A transform line is either a parameter assignment (the common case) or a
 // note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
-statement "statement"
+// No display name here or on whereClause, noteOp or expression: a name hides
+// failures inside the rule, so every syntax error would point at the start of
+// the line.
+statement
   = prefix:selectorPrefix? body:(noteOp / assignmentBody / badNoteOpWithoutParens) {
     const pitchRange = prefix?.pitchRange ?? null;
     const timeRange = prefix?.timeRange ?? null;
     const predicate = prefix?.predicate ?? null;
-    const selectorWarning = prefix?.selectorWarning ?? null;
+    const selectorError = prefix?.selectorError ?? null;
     const isNoteOpBody = !Array.isArray(body) && body.kind === "noteOp";
-    // A duplicate-selector line is already destined to be warn-and-skipped by the
-    // evaluator (selectorWarning set), so don't hard-fail it on the where()-on-
-    // noteOp rule below — let the skip take precedence.
-    if (predicate != null && isNoteOpBody && selectorWarning == null) {
+    // A duplicate-selector line is refused by the arg checks (selectorError set),
+    // so don't hard-fail it on the where()-on-noteOp rule below.
+    if (predicate != null && isNoteOpBody && selectorError == null) {
       // Note-count ops (ratchet/merge/split/repeat) don't support a where()
       // predicate. Reject rather than silently ignore so the limitation is visible.
       throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split/repeat) — put the predicate on a parameter assignment line instead.`);
@@ -229,19 +229,19 @@ statement "statement"
     // Only attach `predicate` when a where() clause is present, so non-predicate
     // assignments keep their historical shape (just pitchRange/timeRange).
     const predPart = predicate != null ? { predicate } : {};
-    // A duplicate-selector line carries a warning for the evaluator to relay
-    // before skipping; absent on well-formed lines so they keep their shape.
-    const warnPart = selectorWarning != null ? { selectorWarning } : {};
+    // A duplicate-selector line carries its error for the arg checks; absent on
+    // well-formed lines so they keep their shape.
+    const errorPart = selectorError != null ? { selectorError } : {};
     // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
     // selector + predicate to each so a single token's writes share one filter.
     if (Array.isArray(body)) {
-      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...warnPart, ...b }));
+      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...errorPart, ...b }));
     }
     // Note ops carry only the positional selector (no predicate field).
     if (isNoteOpBody) {
-      return { pitchRange, timeRange, ...warnPart, ...body };
+      return { pitchRange, timeRange, ...errorPart, ...body };
     }
-    return { pitchRange, timeRange, ...predPart, ...warnPart, ...body };
+    return { pitchRange, timeRange, ...predPart, ...errorPart, ...body };
   }
 
 // The optional `selector:` prefix. A list of selector segments — a pitch
@@ -303,7 +303,7 @@ selectorSep
 // These are NOT expression functions; using one as a value raises a targeted
 // error (see badNoteOpInExpression). `split` takes a list of bar|beat positions
 // (not expressions), so it has its own rule rather than sharing argumentList.
-noteOp "note-count operation"
+noteOp
   = "split" "(" _ points:barBeatPointSyncList? _ ")" {
       return { kind: "noteOp", name: "split", args: points?.args ?? [], sync: points?.sync ?? false };
     }
@@ -588,7 +588,7 @@ beatValue
 // rule across grammars). The `1|0`-as-pickup reading is deliberately not taught.
 badZeroBeat
   = "0" [0-9]* ("." [0-9]*)? {
-      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text().replace(/\.$/, "")}.`);
     }
 
 // Old bare-fraction beat (`4/3`); matched only to raise a targeted error.
@@ -623,7 +623,7 @@ parameter "parameter name"
 // assignment RHS stays purely arithmetic. `validatePredicate` rejects any
 // non-note-property variable and the two selection-derived functions (legato/seq)
 // with a targeted error; other functions are allowed (resolved at selection time).
-whereClause "where() predicate"
+whereClause
   = "where" _ "(" _ expr:boolOr _ ")" {
       validatePredicate(expr);
       return expr;
@@ -669,7 +669,10 @@ comparisonOp
   / ">" { return ">"; }
   / "<" { return "<"; }
 
-expression "expression"
+// No display name here: a name hides failures inside the rule, so an error deep
+// in a call (`rand(1 2)`) would point at the start of the expression. Single
+// tokens are named instead (see `valueToken`).
+expression
   = additive
 
 // Left-associative: fold a head term with a list of (op, term) tails so
@@ -691,10 +694,19 @@ multiplicative
     );
   }
 
+// Calls, variables and parenthesized groups stay unnamed so a failure inside
+// them is reported where it happens. Every other form is a single token, grouped
+// under one name (`valueToken`).
 primary
   = functionCall
   / variable
-  / negatedDuration
+  / "(" _ expr:expression _ ")" { return expr; }
+  / valueToken
+
+// Named on purpose: a failure inside a single token is reported as "expected
+// expression" at the token's start, not as a missing digit mid-token.
+valueToken "expression"
+  = negatedDuration
   / nDuration
   / barDuration
   / pitchLiteral
@@ -704,7 +716,6 @@ primary
   / badVelocityShorthandInExpression
   / unknownFunction
   / number
-  / "(" _ expr:expression _ ")" { return expr; }
 
 // A leading `-` on a note value or bar count (`-n/1`, `-2bar`), so a backwards
 // waveform cycle can be written in musical units like a forward one. Desugars
@@ -726,9 +737,8 @@ badNoteOpInExpression
 
 // A name used as a function that no rule defines — reached only after every real
 // function, note-count op, and shorthand has been tried. Without it the parse
-// fails at column 1 with peggy's generic "Expected statement", which tells a
-// model nothing: `duration *= random(0.9, 0.98)` reported a bad `d`, and models
-// gave up on the DSL and hand-wrote the result instead of trying `rand`.
+// fails with a generic error, and models gave up on the DSL and hand-wrote the
+// result instead of trying `rand`.
 unknownFunction
   = name:$([A-Za-z][A-Za-z0-9_]*) &{ return !FUNCTION_NAMES.includes(name); } "(" {
     throw new Error(`unknown function ${name}() — available: ${FUNCTION_NAMES.join(", ")}. Note-count operations (ratchet/repeat/split/merge) go on their own line, not in an expression.`);
@@ -736,9 +746,9 @@ unknownFunction
 
 // A note-count op written without its parentheses (`C1: merge`). Tried after the
 // real noteOp rule and every assignment form, so the name can only be this
-// mistake. Without it the line fails with peggy's generic "Expected statement",
-// which a model reads as "merge isn't supported" — it then clears the clip and
-// rewrites the notes by hand, the exact thing the op exists to avoid.
+// mistake. Without it the line fails with a generic error, which a model reads
+// as "merge isn't supported" — it then clears the clip and rewrites the notes by
+// hand, the exact thing the op exists to avoid.
 badNoteOpWithoutParens
   = name:noteOpLikeName !"(" {
     throw new Error(`${name} is a note-count operation and needs parentheses — write "${noteOpExample(name)}".`);
@@ -771,7 +781,7 @@ badDeleteInExpression
 // than move the token — the same giving-up unknownFunction was added to stop.
 badVelocityShorthandInExpression
   = "v" min:unsignedInt "-" max:unsignedInt {
-    throw new Error(`v${min}-${max} is a shorthand, not a value — write it on its own line with the selector, e.g. "C1: v${min}-${max}", not "velocity = v${min}-${max}". It sets velocity and velocity_deviation together.`);
+    throw new Error(`v${min}-${max} is a shorthand, not a value — write it on its own line with the selector, e.g. "C1: v${min}-${max}", not "velocity = v${min}-${max}". It sets velocity and deviation together.`);
   }
   / "v" value:unsignedInt {
     throw new Error(`v${value} is a shorthand, not a value — write the bare number ("velocity = ${value}") or the shorthand on its own line ("C1: v${value}").`);
@@ -785,6 +795,9 @@ nDuration "absolute duration value"
   / badBarDuration
   / "n" frac:unsignedFraction {
     return { type: "nDuration", wholeNoteFraction: frac };
+  }
+  / "n" [0-9.]* "/0" ![0-9.] {
+    throw new Error(`a note value's denominator can't be 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
   }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
@@ -976,7 +989,7 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
+  = num:([0-9]+ "." [0-9]* / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
     // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
     // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
     // sample-derived value with no clean note-value fraction. The denominator

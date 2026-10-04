@@ -10,8 +10,6 @@
  * Phase is normalized (0.0-1.0 represents one complete cycle).
  */
 
-import * as console from "./transform-warning-label.ts";
-
 /**
  * Cosine wave generator
  * @param phase - Phase in cycles (0.0-1.0)
@@ -134,7 +132,7 @@ export function choose(options: number[]): number {
  * @param phase - Phase in cycles (0.0-1.0)
  * @param start - Starting value
  * @param end - Ending value
- * @param exponent - Curve exponent (must be > 0; >1: slow start, <1: fast start, 1: linear)
+ * @param exponent - Curve exponent (must be > 0, which evaluateCurve enforces; >1: slow start, <1: fast start, 1: linear)
  * @returns Interpolated value between start and end
  */
 export function curve(
@@ -143,13 +141,6 @@ export function curve(
   end: number,
   exponent: number,
 ): number {
-  if (exponent <= 0) {
-    console.warn(
-      `curve() exponent must be > 0, got ${exponent}, clamping to 0.001`,
-    );
-    exponent = 0.001;
-  }
-
   const clampedPhase = Math.min(phase, 1.0);
   const curvedPhase = Math.pow(clampedPhase, exponent);
 

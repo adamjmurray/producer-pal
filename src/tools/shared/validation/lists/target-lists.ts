@@ -9,13 +9,12 @@
 // concatenation and the count is their sum. Comparing the two to each other
 // would refuse a call naming two of each.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import {
   namedIdParam,
   namedPathParam,
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   countListEntries,
   countPathEntries,
@@ -31,6 +30,19 @@ export interface TargetParams {
 
 /** Resolves a path list to one id per entry, null where a path named none. */
 export type IdPerPath = (paths: string) => Array<string | null>;
+
+/**
+ * Both plural aliases folded onto `id` and `path`. A param that names nothing
+ * warns each time it is read, so a call folds once and passes the result on.
+ * @param targets - The call's id/ids and path/paths params
+ * @returns The same targets, named by the canonical params
+ */
+export function foldTargetParams(targets: TargetParams): TargetParams {
+  return {
+    id: namedIdParam(targets.id, targets.ids, "ids"),
+    path: namedPathParam(targets.path, targets.paths),
+  };
+}
 
 /**
  * How many objects a call names, without looking any of them up. Lists are
@@ -73,29 +85,6 @@ export function targetParamLabel(args: TargetParams): string {
   return "id and path";
 }
 
-/**
- * The ids a call names, ids first, keeping one slot per entry so a caller
- * pairing them against another list keeps its positions.
- * @param args - The call's id/ids and path/paths params
- * @param idPerPath - Resolves the path list for this kind of object
- * @returns One id per target, null where a path named nothing
- */
-export function targetIds(
-  args: TargetParams,
-  idPerPath: IdPerPath,
-): Array<string | null> {
-  const named = namedIdParam(args.id, args.ids, "ids");
-  const paths = namedPathParam(args.path, args.paths);
-
-  // An id that parses to nothing gets its own word even when path carries the
-  // call: the combined list is still non-empty, so nothing else would notice
-  // that the ids the caller asked for dropped out.
-  return [
-    ...targetEntries(named, "id"),
-    ...(paths == null ? [] : idPerPath(paths)),
-  ];
-}
-
 /** One param naming a target, by the name the caller would have written. */
 export interface ParamSpelling {
   name: string;
@@ -112,7 +101,7 @@ interface TargetSide {
  * Warn when one of the two ways to name a target arrived blank and the other
  * one carried the call.
  *
- * A blank reads as unset (ADR-0029), so the call still runs on whichever param
+ * A blank reads as unset, so the call still runs on whichever param
  * named something — and nothing in the result would say the other one was
  * dropped. It is a claim about what the call did, not about what it was given,
  * so the caller says how many targets resolved and nothing is said when none
@@ -129,8 +118,41 @@ export function warnBlankTarget(
   resolved: number,
   idAlias?: ParamSpelling,
 ): void {
+  for (const { param, why } of blankTargetIgnores(
+    targets,
+    objects,
+    resolved,
+    idAlias,
+  )) {
+    warnIgnored(param, why);
+  }
+}
+
+/** A blank target param the call dropped, and why that was safe to do. */
+export interface BlankTargetIgnore {
+  /** What was ignored, e.g. "blank id" */
+  param: string;
+  /** What carried the call instead, e.g. `"path" names the clips` */
+  why: string;
+}
+
+/**
+ * The blank target params a call dropped. {@link warnBlankTarget} says them in
+ * its own wording; a tool on the write pipeline says them in the pipeline's.
+ * @param targets - The call's id/ids and path/paths params
+ * @param objects - What this tool's targets are, plural ("clips")
+ * @param resolved - How many targets the call ended up with
+ * @param idAlias - A tool's own spelling of `id` ("clipId"), where it has one
+ * @returns One per blank param the other side carried the call past
+ */
+export function blankTargetIgnores(
+  targets: TargetParams,
+  objects: string,
+  resolved: number,
+  idAlias?: ParamSpelling,
+): BlankTargetIgnore[] {
   if (resolved === 0) {
-    return;
+    return [];
   }
 
   const idSide: TargetSide = {
@@ -147,35 +169,41 @@ export function warnBlankTarget(
     ],
   };
 
-  warnBlankSide(idSide, pathSide, objects);
-  warnBlankSide(pathSide, idSide, objects);
+  return [
+    blankSideIgnore(idSide, pathSide, objects),
+    blankSideIgnore(pathSide, idSide, objects),
+  ].filter((ignore) => ignore != null);
 }
 
 /**
- * Warn when `blank` named nothing because it arrived blank, and `carrying`
- * named the targets in its place. Both are reported by the spelling the caller
+ * Whether `blank` named nothing because it arrived blank, and `carrying` named
+ * the targets in its place. Both are reported by the spelling the caller
  * actually wrote, which for either side may be an alias.
  * @param blank - The side that may have arrived blank
  * @param carrying - The side that may have named the targets
  * @param objects - What this tool's targets are, plural
+ * @returns What was ignored, or null when `blank` wasn't blank
  */
-function warnBlankSide(
+function blankSideIgnore(
   blank: TargetSide,
   carrying: TargetSide,
   objects: string,
-): void {
+): BlankTargetIgnore | null {
   if (spelling(blank, paramNamesSomething) != null) {
-    return;
+    return null;
   }
 
   const carried = spelling(carrying, paramNamesSomething);
   const dropped = spelling(blank, isBlank);
 
   if (carried == null || dropped == null) {
-    return;
+    return null;
   }
 
-  console.warn(`blank ${dropped} ignored — "${carried}" names the ${objects}`);
+  return {
+    param: `blank ${dropped}`,
+    why: `"${carried}" names the ${objects}`,
+  };
 }
 
 /**

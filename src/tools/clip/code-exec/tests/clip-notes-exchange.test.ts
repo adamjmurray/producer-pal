@@ -210,24 +210,26 @@ describe("clip-notes-exchange", () => {
       });
     });
 
-    it("dedupes same-pitch+start duplicates (keep-last) and warns", () => {
+    it("dedupes same-pitch+start duplicates (keep-last) and returns the count", () => {
       // User code returned two notes at the same pitch and onset. add_new_notes
       // deletes the earlier one when the later overlaps its onset, so without the
-      // dedupe one note is silently dropped. Collapse keep-last and warn.
+      // dedupe one note is silently dropped. Collapse keep-last; the caller says so.
       const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
       const mockClip = createMockClip(4); // signature_denominator
       const first = codeNote(60, 0, { duration: 1, velocity: 100 });
       const last = codeNote(60, 0, { duration: 2, velocity: 80 });
 
-      applyNotesToClip(mockClip as unknown as LiveAPI, [first, last]);
+      const { collisions: dropped } = applyNotesToClip(
+        mockClip as unknown as LiveAPI,
+        [first, last],
+      );
 
       // The duplicate collapses to the last write.
       expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
         notes: [toLiveApiNote(last)],
       });
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Dropped 1 duplicate note"),
-      );
+      expect(dropped).toBe(1);
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it("converts musical beats back to Ableton beats using the clip meter", () => {

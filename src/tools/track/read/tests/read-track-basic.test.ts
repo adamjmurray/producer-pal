@@ -216,9 +216,15 @@ describe("readOneTrack", () => {
     });
 
     const result = readOneTrack({ trackIndex: 0 });
+    // A group holds no clips, so it has no counts to report.
+    const {
+      sessionClipCount: _session,
+      arrangementClipCount: _arrangement,
+      ...soloed
+    } = expectedSoloedMidiTrackResult();
 
     expect(result).toStrictEqual({
-      ...expectedSoloedMidiTrackResult(),
+      ...soloed,
       isGroup: true,
       isGroupMember: true,
       groupId: "456",

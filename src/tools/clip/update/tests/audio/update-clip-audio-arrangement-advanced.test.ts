@@ -116,12 +116,13 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     return clip!;
   }
 
-  // end_time is read three times: to record the resize, before it, and after.
+  // end_time is read four times: to see what the call covers, to record the
+  // resize, before it, and after.
   it("should extend unwarped clip by setting loop_end (hidden content)", async () => {
     const clip = setupUnwarpedClip(
       "800",
       "Unwarped Audio",
-      new MockSequence(6.0, 6.0, 12.0),
+      new MockSequence(6.0, 6.0, 6.0, 12.0),
     );
 
     const result = await updateClip(
@@ -137,7 +138,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     setupUnwarpedClip(
       "810",
       "Unwarped Capped",
-      new MockSequence(6.0, 6.0, 10.0),
+      new MockSequence(6.0, 6.0, 6.0, 10.0),
     );
 
     const result = await updateClip(
@@ -247,7 +248,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     expect(sourceClip!.set).not.toHaveBeenCalledWith("loop_end", 8.0);
 
     // Single moved clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: movedClipId, path: "t0[3|1]" });
     mockCreate.mockRestore();
   });

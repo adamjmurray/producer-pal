@@ -45,6 +45,8 @@ interface PartialTileOptions {
   contentOffset?: number;
   /** Caller guarantees the target span is already clear */
   targetIsEmpty?: boolean;
+  /** Told the moment the tile is in place, before its markers are written */
+  onPlaced?: (tile: LiveAPI) => void;
 }
 
 /**
@@ -63,6 +65,8 @@ interface PartialTileOptions {
  * @param options.targetIsEmpty - Caller guarantees nothing occupies the target,
  *   skipping the clear that exists to stop Ableton crashing on an overlap. Only
  *   pass true for a span already cleared or just vacated.
+ * @param options.onPlaced - Told once the tile is in place, before the markers
+ *   that can still throw
  * @returns The created partial tile clip (LiveAPI instance)
  */
 export function createPartialTile(
@@ -76,6 +80,7 @@ export function createPartialTile(
     adjustPreRoll = true,
     contentOffset = 0,
     targetIsEmpty = false,
+    onPlaced,
   }: PartialTileOptions = {},
 ): LiveAPI {
   // Read from the track, not from a start captured earlier in the request: a
@@ -84,6 +89,7 @@ export function createPartialTile(
   const holdingStart = holdingAreaStartOnTrack(
     track,
     targetPosition + partialLength,
+    context,
   );
 
   // Create shortened clip in holding area
@@ -105,6 +111,8 @@ export function createPartialTile(
     context,
     targetIsEmpty,
   );
+
+  onPlaced?.(partialTile);
 
   // Set start_marker to show correct portion of clip content
   const clipLoopStart = sourceClip.getProperty("loop_start") as number;
@@ -251,7 +259,7 @@ export function tileClipToRange(
         );
       }
 
-      const partialTile = createPartialTile(
+      createPartialTile(
         sourceClip,
         track,
         currentPosition,
@@ -262,10 +270,9 @@ export function tileClipToRange(
           adjustPreRoll,
           contentOffset: currentContentOffset,
           targetIsEmpty: clearAhead,
+          onPlaced: (tile) => createdClips.push({ id: tile.id }),
         },
       );
-
-      createdClips.push({ id: partialTile.id });
     }
   }
 
