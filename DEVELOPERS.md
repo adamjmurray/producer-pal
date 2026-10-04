@@ -260,6 +260,9 @@ The same switch turns on `.githooks/pre-commit`, which refuses a commit made
 with signing turned off, and a check in `pre-push` that refuses to send an
 unsigned commit on any branch. `SKIP_DEV_PUSH_GUARD` does not lift that one —
 it's about CI sequencing, and an unsigned commit is never what anyone meant.
+`pre-push` also runs `npm run format:check` and `npm run lint` on the pushed
+commit, on any branch, and refuses the push if either fails. Only `--no-verify`
+skips it.
 
 ## Releasing
 

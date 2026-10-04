@@ -35,6 +35,9 @@
 # not lift it — that hatch is about CI sequencing, and an unsigned commit is
 # never what anyone meant. pre-commit blocks the usual way in; this catches the
 # ways it can't see, and anything committed before the hooks were switched on.
+#
+# Format and lint run on the pushed commit for every ref too, so a red build
+# from a missed `npm run fix` never reaches CI. Same hatch: --no-verify only.
 
 ZERO=0000000000000000000000000000000000000000
 WORKFLOW="Run Test Suite"
@@ -62,6 +65,44 @@ guarded() {
 	git config --get-all push-guard.ref 2>/dev/null | grep -qxF "$1"
 }
 
+# Run format:check and lint against one commit's own files.
+check_commit() {
+	short=$(printf %.8s "$1")
+	wt=$(mktemp -d) || return 1
+	log="$wt.log"
+	root=$(git rev-parse --show-toplevel)
+
+	echo "pre-push: format and lint check of $short..." >&2
+
+	if ! git worktree add -q --detach "$wt/tree" "$1" </dev/null 2>"$log"; then
+		cat "$log" >&2
+		rm -rf "$wt" "$log"
+		return 1
+	fi
+
+	ln -s "$root/node_modules" "$wt/tree/node_modules"
+	ln -s "$root/webui/node_modules" "$wt/tree/webui/node_modules"
+
+	(cd "$wt/tree" && npm run format:check --silent && npm run lint --silent) </dev/null >"$log" 2>&1
+	status=$?
+
+	git worktree remove --force "$wt/tree"
+	rm -rf "$wt"
+
+	if [ "$status" -ne 0 ]; then
+		cat "$log" >&2
+		rm -f "$log"
+		echo "" >&2
+		echo "pre-push: refusing to push $short — format or lint check failed." >&2
+		echo "" >&2
+		echo "  Run npm run fix, amend, and push again." >&2
+		echo "  Override: git push --no-verify ..." >&2
+		return 1
+	fi
+
+	rm -f "$log"
+}
+
 while read -r _local_ref local_sha remote_ref remote_sha; do
 	branch=${remote_ref#refs/heads/}
 	# Deleting the branch — nothing to build.
@@ -86,6 +127,11 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
 		echo "  Override: git push --no-verify ..." >&2
 		exit 1
 	fi
+
+	# --- 0b. the pushed commit passes format and lint ---------------------
+	# Checked in a throwaway worktree of the exact commit: other sessions leave
+	# uncommitted edits in this checkout, so the working tree proves nothing.
+	check_commit "$local_sha" || exit 1
 
 	[ "$SKIP_DEV_PUSH_GUARD" = "1" ] && continue
 
