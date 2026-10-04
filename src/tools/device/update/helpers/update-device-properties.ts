@@ -25,6 +25,7 @@ import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
+import { type SettledParams } from "./call/simpler-pitch-bend.ts";
 import {
   updateABCompare,
   updateMacroCount,
@@ -91,6 +92,7 @@ export interface DeviceApplied {
  * @param type - Device type
  * @param options - Update options
  * @param notes - What this device's entry has to say, added to
+ * @param settled - Params already written by the caller, by entry
  * @returns What its params read as and what its actions did
  */
 export function updateDeviceProperties(
@@ -98,6 +100,7 @@ export function updateDeviceProperties(
   type: string,
   options: UpdatePropertyOptions,
   notes: TargetNotes,
+  settled?: SettledParams,
 ): DeviceApplied {
   const {
     params,
@@ -126,7 +129,7 @@ export function updateDeviceProperties(
   // values are read at the end instead: an A/B swap, a variation recall or a
   // specialized action below rewrites them.
   const paramResults =
-    params != null ? setParamValues(target, params, force, notes) : [];
+    params != null ? setParamValues(target, params, force, notes, settled) : [];
 
   if (paramResults.some(paramWritten)) {
     noteLanded(notes, "params");

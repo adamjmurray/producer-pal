@@ -33,6 +33,7 @@ import {
   racksHidingMappings,
 } from "./look-up-macro-mappings.ts";
 import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
+import { type PitchBendStall } from "./simpler-pitch-bend.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
 import { type UpdateTargetOptions } from "../update-device-properties.ts";
@@ -73,6 +74,8 @@ export interface DeviceChecked {
   /** How many targets the call named */
   named: number;
   focus?: boolean;
+  /** Whether a Simpler pitch bend write stalled, so later ones aren't tried */
+  pitchBend: PitchBendStall;
   /** The call's spelling of each written entry's container, where it is kept */
   written: Map<object, WrittenContainer | undefined>;
 }
@@ -163,6 +166,7 @@ export function checkDeviceUpdate(
       sent,
       named,
       focus,
+      pitchBend: {},
       written,
     };
   }
@@ -189,6 +193,7 @@ export function checkDeviceUpdate(
     sent,
     named,
     focus,
+    pitchBend: {},
     written,
   };
   const racks =

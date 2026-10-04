@@ -10,6 +10,12 @@ import {
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 
 /**
+ * How long a read waits on a remote-script route for extra detail. It is never
+ * worth holding the whole read up for the usual 45 seconds.
+ */
+export const READ_DETAIL_MAX_WAIT_MS = 3000;
+
+/**
  * How long V8 waits on a remote-script route: its usual wait, cut to what is
  * left of the request's time. V8 must answer before Node's tool timeout, or it
  * goes on creating devices the caller was told timed out, and a retry

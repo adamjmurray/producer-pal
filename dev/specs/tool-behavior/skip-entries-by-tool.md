@@ -120,6 +120,21 @@ with a tool, the tool wins.
   moot. The question is asked before the write, so nothing can fail after the
   count has changed. A rack Live won't take below 1 macro says where the count
   landed.
+- **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
+  entries written through the remote script.** Only a Simpler has them (on
+  another device the name is not found, as any unknown param). Each entry comes
+  back as `{ name, value }` when it read back as asked, and `ok: false` with the
+  reason otherwise: not a whole number in range (nothing is sent for it), the
+  remote script isn't running or is too old ("needs the Producer Pal remote
+  script"), the remote script refused, or it read back different
+  (`landed at 11, not 12`). The entries are written ahead of the target's other
+  writes, one call per Simpler, the last of each name. A route that doesn't
+  answer may still have written: the entry says the value _may have changed_ and
+  keeps its place (never a lone throw), and the Simplers after it in the call
+  say they weren't tried and to re-run. A call with no time left says the value
+  wasn't set and names the target to re-run. Where the sync param write is all
+  there is (create-device, a rack's `pC1/d0/` shortcut) the entry says to use
+  update-device on the Simpler's own path.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

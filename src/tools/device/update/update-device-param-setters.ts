@@ -55,6 +55,7 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param notes - What the device's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
+ * @param settled - Entries the caller already wrote, with what each came to
  * @returns One entry per param named, in order
  */
 export function setParamValues(
@@ -62,6 +63,7 @@ export function setParamValues(
   params: ParamEntry[],
   force = false,
   notes?: TargetNotes,
+  settled?: Map<ParamEntry, ParamOutcome[]>,
 ): ParamOutcome[] {
   const skips = supersededParamReasons(device, params);
   const results: ParamOutcome[] = [];
@@ -79,6 +81,13 @@ export function setParamValues(
 
     if (skip != null) {
       results.push(supersededParam(key, byId, skip));
+      continue;
+    }
+
+    const done = settled?.get(entry);
+
+    if (done != null) {
+      results.push(...done);
       continue;
     }
 

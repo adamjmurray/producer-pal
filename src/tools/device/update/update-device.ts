@@ -49,6 +49,10 @@ import {
   targetIsGone,
   writtenContainer,
 } from "./helpers/call/resolve-device-target.ts";
+import {
+  type SettledParams,
+  writePitchBendParams,
+} from "./helpers/call/simpler-pitch-bend.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateDeviceTarget } from "./helpers/update-device-target.ts";
 import { updateDrumPadGroup } from "./helpers/update-drum-pad-group.ts";
@@ -72,8 +76,10 @@ type DeviceEntry = Record<string, unknown>;
 export type UpdateDeviceResult = PipelineResult<DeviceEntry>;
 
 /**
- * Update device(s), chain(s), or drum pad(s) by ID or path, without a preset or
- * a macro count: sync.
+ * Update device(s), chain(s), or drum pad(s) by ID or path, without a preset
+ * or a macro count: sync, except that a Simpler's `pitchBendRange` or
+ * `notePitchBendRange` in `params` goes through the remote script and answers
+ * as a promise, whatever this signature says.
  * @param args - The update-device args: the target (id/path), what to set on
  *   it, and `wrapInRack` or `focus`
  * @param ctx - Internal context object, for the request deadline
@@ -85,8 +91,9 @@ export function updateDevice(
 ): UpdateDeviceResult;
 /**
  * Update device(s), chain(s), or drum pad(s) by ID or path. A `preset` loads
- * through the remote script, and a `macroCount` may ask it which macros are
- * mapped, so the answer comes as a promise.
+ * through the remote script, a `macroCount` may ask it which macros are
+ * mapped, and a Simpler's pitch bend `params` are written through it, so the
+ * answer comes as a promise.
  * @param args - The update-device args: the target (id/path), what to set on
  *   it, and `wrapInRack`, `preset` or `focus`
  * @param ctx - Internal context object, for the request deadline
@@ -292,7 +299,7 @@ async function loadThenUpdate(
       ? resolved
       : { kind: "object", target: loaded.device };
 
-  return updateResolved(
+  return await updateResolved(
     current,
     loaded.device == null ? options : { ...options, mappedMacros: undefined },
     writtenPath,
@@ -316,7 +323,7 @@ function updateResolved(
   writtenPath: string | undefined,
   step: Step<DeviceChecked>,
   presetOutcome?: PresetOutcome,
-): DeviceEntry {
+): MaybePromise<DeviceEntry> {
   if (resolved.kind === "drum-pad") {
     const id = resolved.group.pad?.id;
 
@@ -332,17 +339,34 @@ function updateResolved(
   }
 
   const { target } = resolved;
-  const update = updateDeviceTarget(
+  const landed = (phrase: string): void =>
+    step.landed(phrase, { id: target.id });
+
+  const finish = (settled?: SettledParams): DeviceEntry => {
+    const update = updateDeviceTarget(
+      target,
+      options,
+      writtenPath,
+      presetOutcome,
+      landed,
+      settled,
+    );
+
+    step.checked.written.set(update.entry, update.written);
+
+    return update.entry;
+  };
+
+  // A Simpler's pitch bend params go through the remote script, which the sync
+  // param write can't wait on, so they are settled first. Sync unless one is sent.
+  const pitchBend = writePitchBendParams(
     target,
-    options,
-    writtenPath,
-    presetOutcome,
-    (phrase) => step.landed(phrase, { id: target.id }),
+    options.params,
+    step.checked.pitchBend,
+    { deadline: step.call.ctx.deadline, landed },
   );
 
-  step.checked.written.set(update.entry, update.written);
-
-  return update.entry;
+  return pitchBend == null ? finish() : pitchBend.then(finish);
 }
 
 /**

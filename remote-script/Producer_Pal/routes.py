@@ -13,6 +13,7 @@ from .errors import RouteError
 from .params import parse_index
 from .producer_pal_device import is_producer_pal
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
+from .simpler_settings import ROUTES as _SIMPLER_ROUTES
 from .version import VERSION
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
@@ -311,6 +312,7 @@ ROUTES = {
     **_ENVELOPE_ROUTES,
     **_RACK_MACRO_ROUTES,
     **_CONVERSION_ROUTES,
+    **_SIMPLER_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
@@ -322,4 +324,5 @@ POST_ONLY = (
     "/envelope/write",
     "/envelope/clear",
     "/clip/convert",
+    "/device/simpler/write",
 )

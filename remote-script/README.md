@@ -300,6 +300,27 @@ later, blocking Live for about a second, and nothing says where the track lands.
 The caller finds it by comparing the track list from before. See
 [dev/live-api/conversions.md](../dev/live-api/conversions.md).
 
+### `POST /device/simpler/read`, `/device/simpler/write`
+
+A Simpler's pitch bend ranges, which Max for Live's LOM doesn't have:
+`pitch_bend_range` (semitones the pitch wheel bends, 0-24) and
+`note_pitch_bend_range` (MPE per-note bend, 0-48). Both are whole numbers.
+
+`/device/simpler/read` takes `device_paths` (up to 200, as for `/device/macros`)
+and answers `{simplers: [...]}`, one entry per path in order:
+`{pitch_bend_range, note_pitch_bend_range}`, or `{error}` when the path names
+nothing or a device that isn't a Simpler. One bad path doesn't fail the rest.
+
+`/device/simpler/write` takes one `device_path` and `pitch_bend_range`,
+`note_pitch_bend_range` or both, and answers both values read back. Live clamps
+an out-of-range write without saying so and raises on a float, so a value that
+isn't a whole number in range, a call that sets neither, or a device that isn't
+a Simpler is a 400 and nothing is written.
+
+```sh
+curl -s -X POST localhost:3349/device/simpler/write -d '{"device_path": "live_set tracks 0 devices 0", "pitch_bend_range": 12}'
+```
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -326,6 +347,7 @@ started in that time.
 - `rack_macros.py`: which rack macros are mapped
 - `conversions.py`: converting an audio clip to a new track
 - `clip_address.py`: finding the clip a route names
+- `simpler_settings.py`: a Simpler's pitch bend ranges
 
 ## Hot reload
 

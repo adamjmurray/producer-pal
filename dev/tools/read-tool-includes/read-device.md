@@ -83,6 +83,14 @@ mappings. Without the remote script, or when it can't answer for a rack, it is
 `{ count, hasMappings }`. One remote-script call (more past 200 racks) covers
 every rack in the read, and the read waits at most 3 seconds for it.
 
+A Simpler read with `params` also lists `pitchBendRange` (0-24 semitones) and
+`notePitchBendRange` (0-48, MPE per-note bend) as `{ name, value }` entries in
+`parameters`, after its other pseudo-params. They come from the remote script's
+`/device/simpler/read`: one call for every Simpler in the read (more past 200),
+at most 3 seconds, skipped when the macros call already stalled. They are left
+out without the remote script, or when it can't answer for a Simpler. A
+`paramSearch` filters them like any other param.
+
 ## Include: `"param-values"`
 
 Superset of `params` — includes full parameter details (value, min, max, state,

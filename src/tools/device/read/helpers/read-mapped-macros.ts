@@ -7,12 +7,9 @@
 // remote script can say; without it a rack reports just whether it has any.
 
 import { lookUpMappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
-
-/**
- * How long a read waits for the answer. It is extra detail, so a busy remote
- * script mustn't hold the whole read up for the usual 45 seconds.
- */
-const READ_MAX_WAIT_MS = 3000;
+import { isStalled } from "#src/tools/shared/remote-script/device-batch-route.ts";
+import { READ_DETAIL_MAX_WAIT_MS } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import { findInReadResult } from "./find-in-read-result.ts";
 
 /** A rack's `macros` as the read wrote it, before and after this pass. */
 interface RackMacros {
@@ -35,21 +32,23 @@ interface MacroRack {
  * extra detail, never a reason to fail the read.
  * @param results - What the read produced: devices, or skips
  * @param deadline - The request deadline from ToolContext, if any
+ * @returns Whether the remote script stalled (no time, or no reply), so the
+ *   next thing asked of it would stall too
  */
 export async function addMappedMacros(
   results: unknown[],
   deadline: number | null | undefined,
-): Promise<void> {
-  const racks = results.flatMap((result) => findMacroRacks(result));
+): Promise<boolean> {
+  const racks = findInReadResult(results, isMacroRack);
 
   if (racks.length === 0) {
-    return;
+    return false;
   }
 
   const answers = await lookUpMappedMacros(
     racks.map((rack) => LiveAPI.from(`id ${rack.id}`)),
     deadline,
-    READ_MAX_WAIT_MS,
+    READ_DETAIL_MAX_WAIT_MS,
   );
 
   for (const [i, rack] of racks.entries()) {
@@ -59,6 +58,8 @@ export async function addMappedMacros(
       reportMapped(rack.macros, answer.mapped);
     }
   }
+
+  return answers?.some(isStalled) ?? false;
 }
 
 // --- Helpers below main exports ---
@@ -77,29 +78,6 @@ function reportMapped(macros: RackMacros, mapped: number[]): void {
   if (hidden.length > 0) {
     macros.hiddenMapped = hidden;
   }
-}
-
-/**
- * Every device under a read result that reports macros, nested ones included.
- * @param node - A read result, or any part of one
- * @returns The racks, outermost first
- */
-function findMacroRacks(node: unknown): MacroRack[] {
-  if (Array.isArray(node)) {
-    return node.flatMap((item) => findMacroRacks(item));
-  }
-
-  if (node == null || typeof node !== "object") {
-    return [];
-  }
-
-  const record = node as Record<string, unknown>;
-  const own = isMacroRack(record) ? [record] : [];
-
-  return [
-    ...own,
-    ...Object.values(record).flatMap((value) => findMacroRacks(value)),
-  ];
 }
 
 /**

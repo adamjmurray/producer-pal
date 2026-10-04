@@ -33,6 +33,7 @@ import {
   readDrumPadByPath,
 } from "./helpers/drum-pad-reading.ts";
 import { addMappedMacros } from "./helpers/read-mapped-macros.ts";
+import { addSimplerSettings } from "./helpers/read-simpler-settings.ts";
 import { type ReadOptions } from "./helpers/read-device-options.ts";
 
 // ============================================================================
@@ -62,7 +63,8 @@ interface ReadDeviceArgs {
  * @param args.paths - Hidden alias for path
  * @param context - Internal context object (supplies the active notation)
  * @returns One device, or one entry per target named; a promise, because a
- *   rack's mapped macros come from the remote script
+ *   rack's mapped macros and a Simpler's pitch bend ranges come from the remote
+ *   script
  */
 export async function readDevice(
   args: ReadDeviceArgs,
@@ -74,12 +76,16 @@ export async function readDevice(
     (one) => readOneDevice(one, context),
   );
 
-  // Which macros are mapped is the one part of a device read that waits on the
-  // remote script, so it is added after the fan-out, once, for every rack read.
-  await addMappedMacros(
-    Array.isArray(result) ? result : [result],
-    context.deadline,
-  );
+  // Which macros are mapped, and a Simpler's pitch bend ranges, are the parts of
+  // a device read that wait on the remote script, so each is added after the
+  // fan-out, once, for every device read. One after the other: awaits never
+  // overlap. A remote script that stalled on the first would stall on the second.
+  const results = Array.isArray(result) ? result : [result];
+  const stalled = await addMappedMacros(results, context.deadline);
+
+  if (!stalled) {
+    await addSimplerSettings(results, context.deadline, args.paramSearch);
+  }
 
   return result;
 }

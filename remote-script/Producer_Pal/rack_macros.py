@@ -7,10 +7,7 @@
 Python API can, through `RackDevice.macros_mapped`. Main thread only."""
 
 from . import hotswap
-from .errors import RouteError
-
-# One call covers a whole read; this only stops a runaway request.
-MAX_DEVICES = 200
+from .params import parse_device_paths
 
 
 def macros(bridge, params):
@@ -20,11 +17,7 @@ def macros(bridge, params):
     path names nothing or a device that isn't a rack. One bad path doesn't fail
     the rest.
     """
-    paths = params.get("device_paths")
-    if not isinstance(paths, list) or not paths:
-        raise RouteError(400, "device_paths must be a non-empty list of device paths")
-    if len(paths) > MAX_DEVICES:
-        raise RouteError(400, "device_paths takes at most %s paths" % MAX_DEVICES)
+    paths = parse_device_paths(params)
 
     return {"racks": [_mapped_macros(bridge.song, path) for path in paths]}
 

@@ -12,6 +12,7 @@ import { withChainsLeft } from "#src/tools/shared/device/helpers/path/chains-lef
 import { moveDeviceToPath } from "./move-device.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
 import { type PresetOutcome } from "./call/device-presets.ts";
+import { type SettledParams } from "./call/simpler-pitch-bend.ts";
 import { writtenContainer } from "./call/resolve-device-target.ts";
 import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import {
@@ -64,6 +65,7 @@ export interface TargetUpdate {
  * @param writtenPath - The path the call named the target by, if it named one
  * @param presetOutcome - What loading its preset did, when the call sent one
  * @param landed - Told what has changed as it does, for a throw to say so
+ * @param settled - Params already written by the caller, by entry
  * @returns Result with ID and any params written, and the container spelling
  *   it was named by
  * @throws Error when this kind of object can't be written to
@@ -74,6 +76,7 @@ export function updateDeviceTarget(
   writtenPath?: string,
   presetOutcome?: PresetOutcome,
   landed?: (phrase: string) => void,
+  settled?: SettledParams,
 ): TargetUpdate {
   const type = target.type;
 
@@ -132,6 +135,7 @@ export function updateDeviceTarget(
     type,
     options,
     notes,
+    settled,
   );
   const result: UpdateTargetResult = {
     id: target.id,
