@@ -5,19 +5,19 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { findPresetFiles } from "../../../live-library/query/preset-files.ts";
+import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
-import { RemoteScriptTimeout } from "../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../../remote-script-client.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
   type ReceivedRequest,
   startFakeRemoteScript,
-} from "./remote-script-test-helpers.ts";
+} from "../../tests/remote-script-test-helpers.ts";
 
 // A name the browser doesn't have is looked up in Live's database, which a test
 // can't stand in for. The database's own queries are tested beside it.
-vi.mock(import("../../../live-library/query/preset-files.ts"), () => ({
+vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
 }));
 

@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
-import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
   getToolErrorMessage,
   isToolError,
@@ -183,7 +183,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     // hasn't started by it.
     it("remote script skips a /list that expired before Live ran it", async () => {
       const response = await fetch(
-        `http://127.0.0.1:${remoteScriptPort()}/list?type=plugin&expires_in_ms=0`,
+        `http://127.0.0.1:${await resolveRemoteScriptPort()}/list?type=plugin&expires_in_ms=0`,
       );
       const body = (await response.json()) as { error?: string };
 
@@ -231,7 +231,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     it("remote script refuses a second Producer Pal device", async () => {
       const before = await trackCount();
       const response = await fetch(
-        `http://127.0.0.1:${remoteScriptPort()}/load`,
+        `http://127.0.0.1:${await resolveRemoteScriptPort()}/load`,
         {
           method: "POST",
           body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),

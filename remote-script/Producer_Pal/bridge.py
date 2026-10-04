@@ -17,7 +17,10 @@ from . import routes
 from .errors import RouteError
 from .http_server import BridgeHTTPServer
 
-PORT = 3349
+# Tried in order. 3350 is skipped: it's the MCP server's port, and Live loads
+# this script first, so we'd take it from the device. Nine ports is more Live
+# instances than anyone runs.
+PORTS = (3349, *range(3351, 3359))
 
 # How long a request waits for Live's main thread to run it, and then for it to
 # finish. A request that sends `expires_in_ms` waits to start until then, and
@@ -39,8 +42,13 @@ class ProducerPalBridge:
     def __init__(self, c_instance):
         self._c_instance = c_instance
         self._jobs = queue.Queue()
-        self._server = BridgeHTTPServer(PORT, self._dispatch, self.log)
+        self._server = BridgeHTTPServer(PORTS, self._dispatch, self.log)
         self._server.start()
+
+    @property
+    def port(self):
+        """The port the server bound, or None when it couldn't."""
+        return self._server.port
 
     @property
     def song(self):

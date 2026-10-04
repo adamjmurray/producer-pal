@@ -13,7 +13,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
-import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
   type ClipEnvelopeRead,
   envelopesOf,
@@ -117,7 +117,7 @@ async function readLeadEnvelopes(
  * @param body - Route args beyond the clip's address
  */
 async function post(route: string, body: object): Promise<void> {
-  const port = remoteScriptPort();
+  const port = await resolveRemoteScriptPort();
   let response: Response;
 
   try {

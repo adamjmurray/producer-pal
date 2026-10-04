@@ -52,7 +52,8 @@ Producer Pal in the Set. Without the flag nothing is added. With no path and no
 - Node.js 18+, no npm packages.
 - For `--add-producer-pal` only: the
   [Producer Pal remote script](https://github.com/adamjmurray/producer-pal/tree/main/remote-script)
-  selected as a Control Surface (Live Settings → Tempo & MIDI; port 3349,
+  selected as a Control Surface (Live Settings → Tempo & MIDI; port 3349, else
+  the port in `~/.producer-pal/remote-script-port.txt`;
   `PPAL_REMOTE_SCRIPT_PORT` to override), and the `Producer_Pal` device
   installed in the User Library's Max MIDI Effect folder
   ([install guide](https://producer-pal.org/installation#install-the-device)).

@@ -72,6 +72,7 @@ describe("remoteScriptStatus", () => {
       running: false,
       runningVersion: null,
       liveVersion: null,
+      otherOnPort: null,
       updateAvailable: false,
       installedNewer: false,
     });
@@ -173,13 +174,14 @@ describe("remoteScriptStatus", () => {
     expect(setRunningLiveMajor).not.toHaveBeenCalled();
   });
 
-  it("leaves the versions null when a running script omits them", async () => {
+  it("says another program holds the port when its ping has no script_version", async () => {
     remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
 
     const status = await remoteScriptStatus();
 
-    expect(status.running).toBe(true);
+    expect(status.running).toBe(false);
     expect(status.runningVersion).toBeNull();
     expect(status.liveVersion).toBeNull();
+    expect(status.otherOnPort).toBe(remote.port);
   });
 });

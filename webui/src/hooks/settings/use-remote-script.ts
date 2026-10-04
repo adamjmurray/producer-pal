@@ -22,6 +22,8 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
   /** Installed is older than this build (or unreadable). */
   updateAvailable: boolean;
   /** Installed is newer than this build, so installing downgrades it. */

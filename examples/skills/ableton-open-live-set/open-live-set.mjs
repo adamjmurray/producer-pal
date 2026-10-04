@@ -33,9 +33,10 @@
 // Status/progress → stderr.
 
 import { execFile } from "node:child_process";
-import { existsSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { get, request } from "node:http";
-import { basename, extname, resolve } from "node:path";
+import { homedir } from "node:os";
+import { basename, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -45,8 +46,6 @@ const LIVE_BUNDLE_ID = "com.ableton.live"; // shared by every installed Live
 const NEW_SET_NAME = "Untitled"; // a new Set's window title
 const PPAL_PORT = process.env.PPAL_PORT ?? 3350;
 const PPAL_CONFIG = `http://localhost:${PPAL_PORT}/config`;
-const REMOTE_SCRIPT_PORT = process.env.PPAL_REMOTE_SCRIPT_PORT ?? 3349;
-const REMOTE_SCRIPT = `http://127.0.0.1:${REMOTE_SCRIPT_PORT}`;
 const REMOTE_SCRIPT_REPO =
   "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
 const POLL_MS = 250;
@@ -103,7 +102,8 @@ const USAGE = `Usage: node open-live-set.mjs <path.als> [options]
   --timeout <seconds>  give up after this long (default: 120)
   --help, -h           show this help
 
-Env: PPAL_PORT (default 3350), PPAL_REMOTE_SCRIPT_PORT (default 3349).
+Env: PPAL_PORT (default 3350), PPAL_REMOTE_SCRIPT_PORT (default: 3349 if the
+remote script answers there, else the port in its port file).
 
 Prints {"opened": "<path>" or "new": true, "producerPal": true|false,
 "dismissed": [...]} on stdout, plus "addedProducerPal": {"trackIndex",
@@ -419,6 +419,70 @@ async function waitForSet({
   }
 }
 
+// Ports to try: PPAL_REMOTE_SCRIPT_PORT alone if valid, else 3349 first (never
+// follow the file to another Live), then the port in ~/.producer-pal's file.
+function remoteScriptPorts() {
+  const raw = process.env.PPAL_REMOTE_SCRIPT_PORT;
+  const fromEnv = raw == null || raw.trim() === "" ? Number.NaN : Number(raw);
+  if (Number.isInteger(fromEnv) && fromEnv >= 0) {
+    return [fromEnv];
+  }
+  const ports = [3349];
+  try {
+    const text = readFileSync(
+      join(homedir(), ".producer-pal", "remote-script-port.txt"),
+      "utf8",
+    ).trim();
+    const port = /^\d+$/.test(text) ? Number(text) : Number.NaN;
+    if (port >= 1 && port <= 65535 && port !== 3349) {
+      ports.push(port);
+    }
+  } catch {
+    // No file: an older script, which is on 3349.
+  }
+  return ports;
+}
+
+/**
+ * Whether our remote script (not some other program) answers on `port`. A slow
+ * ping counts: Live is busy, not absent, and it may be this Live's script.
+ */
+function isRemoteScript(port) {
+  return new Promise((done) => {
+    const url = `http://127.0.0.1:${port}/ping`;
+    const req = get(url, { agent: false, timeout: 2000 }, (res) => {
+      let text = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => (text += chunk));
+      res.on("end", () => {
+        try {
+          done(
+            res.statusCode === 200 &&
+              typeof JSON.parse(text)?.script_version === "string",
+          );
+        } catch {
+          done(false);
+        }
+      });
+    });
+    req.on("timeout", () => {
+      done(true);
+      req.destroy();
+    });
+    req.on("error", () => done(false));
+  });
+}
+
+/** The base URL of the first port where the remote script answers, or null. */
+async function findRemoteScript() {
+  for (const port of remoteScriptPorts()) {
+    if (await isRemoteScript(port)) {
+      return `http://127.0.0.1:${port}`;
+    }
+  }
+  return null;
+}
+
 /**
  * Load the Producer_Pal device through the remote script, then wait for
  * Producer Pal to answer. Not bound by --timeout: the Set is already open.
@@ -427,17 +491,18 @@ async function waitForSet({
 async function loadProducerPal() {
   const open = "The Set is open, but";
   process.stderr.write("Adding Producer Pal…\n");
-  const reachable = await poll(
-    () => answers(`${REMOTE_SCRIPT}/ping`),
-    Date.now() + REMOTE_SCRIPT_START_MS,
-  );
+  let remoteScript = null;
+  const reachable = await poll(async () => {
+    remoteScript = await findRemoteScript();
+    return remoteScript != null;
+  }, Date.now() + REMOTE_SCRIPT_START_MS);
   if (!reachable) {
     throw new Error(
-      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${REMOTE_SCRIPT_PORT}. Install it and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. Install it and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
     );
   }
 
-  const { status, body } = await postJson(`${REMOTE_SCRIPT}/load`, {
+  const { status, body } = await postJson(`${remoteScript}/load`, {
     type: "mfl-device",
     name: "Producer_Pal",
   }).catch((err) => ({ status: 0, body: { error: err.message } }));

@@ -41,7 +41,9 @@ describe("POST /config remoteScriptEnabled on a release build", () => {
   });
 
   it("ignores it like any unknown field, even a bad one", async () => {
-    fake = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+    fake = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
 
     for (const value of [false, true, "no"]) {
       const response = await appState.postConfig({
@@ -99,7 +101,9 @@ describe("POST /config remoteScriptEnabled on a debug build", () => {
   });
 
   it("makes a running remote script look uninstalled, and back again", async () => {
-    fake = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+    fake = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
     expect(await ping()).toBe(true);
 
     const off = await appState.postConfig({ remoteScriptEnabled: false });

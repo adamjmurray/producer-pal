@@ -25,6 +25,8 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
   /** Installed is older than this build (or unreadable): offer an Update. */
   updateAvailable: boolean;
   /** Installed is newer than this build: installing would downgrade it. */
@@ -69,6 +71,7 @@ export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
     running: ping.running,
     runningVersion: ping.scriptVersion,
     liveVersion: ping.liveVersion,
+    otherOnPort: ping.otherOnPort,
     updateAvailable:
       installed && installedVersion !== VERSION && !installedNewer,
     installedNewer,

@@ -80,6 +80,7 @@ describe("GET /remote-script", () => {
       running: false,
       runningVersion: null,
       liveVersion: null,
+      otherOnPort: null,
       updateAvailable: false,
       installedNewer: false,
     });

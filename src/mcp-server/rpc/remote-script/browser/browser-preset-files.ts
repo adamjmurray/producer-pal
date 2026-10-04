@@ -10,14 +10,14 @@
 // by its file, which the remote script finds under Packs, User Library or
 // Places.
 
-import { type LibraryDeviceKind } from "../../live-library/library-types.ts";
-import { findPresetFiles } from "../../live-library/query/preset-files.ts";
+import { type LibraryDeviceKind } from "../../../live-library/library-types.ts";
+import { findPresetFiles } from "../../../live-library/query/preset-files.ts";
 import {
   type BrowserItemResolution,
   type PresetScope,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { ambiguity } from "./browser-device-lookup.ts";
-import { RemoteScriptTimeout } from "./remote-script-client.ts";
+import { RemoteScriptTimeout } from "../remote-script-client.ts";
 
 /** The files a preset can be. */
 const PRESET_FILE = /\.(?:adv|adg)$/i;

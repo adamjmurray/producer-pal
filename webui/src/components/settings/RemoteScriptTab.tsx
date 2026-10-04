@@ -116,13 +116,23 @@ function summarize(status: RemoteScriptStatus): string {
  */
 function runningText(status: RemoteScriptStatus): string {
   if (!status.running) {
-    return "not running";
+    return `not running${portConflictText(status)}`;
   }
 
   const live =
     status.liveVersion == null ? "" : ` in Live ${status.liveVersion}`;
 
   return `running ${versionText(status.runningVersion)}${live}`;
+}
+
+/**
+ * @param status - The server's remote-script status
+ * @returns A clause naming the port another program answers on, or ""
+ */
+function portConflictText(status: RemoteScriptStatus): string {
+  return status.otherOnPort == null
+    ? ""
+    : `; another program answers on port ${status.otherOnPort}`;
 }
 
 /**

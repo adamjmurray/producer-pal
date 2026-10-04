@@ -17,7 +17,7 @@
  * Run with: npm run e2e:mcp:remote-script -- clip/read/ppal-read-clip-envelopes
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   parseToolResult,
@@ -47,7 +47,7 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
     beforeAll(async () => {
       if (!(await remoteScriptAnswers())) {
         throw new Error(
-          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(remoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
+          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
         );
       }
     });
@@ -131,7 +131,7 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
  */
 async function writeEnvelope(body: Record<string, unknown>): Promise<void> {
   const response = await fetch(
-    `http://127.0.0.1:${String(remoteScriptPort())}/envelope/write`,
+    `http://127.0.0.1:${String(await resolveRemoteScriptPort())}/envelope/write`,
     {
       method: "POST",
       body: JSON.stringify(body),

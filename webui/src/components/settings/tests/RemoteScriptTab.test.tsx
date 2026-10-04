@@ -404,6 +404,24 @@ describe("RemoteScriptTab", () => {
     expect(summary).toBe("Installed v1.2.0 (running v1.2.0)");
   });
 
+  it("doesn't mention another program on the port when nothing is installed", async () => {
+    const summary = await renderTab({ otherOnPort: 3349 });
+
+    expect(summary).toBe("Not installed");
+  });
+
+  it("says it again for an installed script that isn't running", async () => {
+    const summary = await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      otherOnPort: 3351,
+    });
+
+    expect(summary).toBe(
+      "Installed v1.2.0 (not running; another program answers on port 3351)",
+    );
+  });
+
   it("omits the Live version from the installed-elsewhere summary too", async () => {
     const summary = await renderTab({
       running: true,

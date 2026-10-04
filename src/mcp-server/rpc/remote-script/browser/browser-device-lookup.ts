@@ -9,14 +9,14 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { type BrowserItemResolution } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { pathSegment } from "../../live-library/reconstruct-path.ts";
+import { pathSegment } from "../../../live-library/reconstruct-path.ts";
 import {
   type RemoteScriptAnswer,
   type RemoteScriptReply,
   RemoteScriptTimeout,
   remoteScriptRequest,
   replyError,
-} from "./remote-script-client.ts";
+} from "../remote-script-client.ts";
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
 export const SECTIONS = [

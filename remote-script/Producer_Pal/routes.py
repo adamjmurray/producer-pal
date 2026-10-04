@@ -56,6 +56,8 @@ def ping(bridge, params):
         "ok": True,
         "live_version": version,
         "script_version": VERSION,
+        # getattr: a hot reload can put this route on a bridge from before it had one.
+        "port": getattr(bridge, "port", None),
         # Of the implementation files when they were last loaded.
         "source_hash": hot_reload.loaded_hash,
     }

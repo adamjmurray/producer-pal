@@ -24,6 +24,7 @@ interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  otherOnPort: number | null;
   updateAvailable: boolean;
   installedNewer: boolean;
 }
@@ -52,6 +53,7 @@ function status(
     running: false,
     runningVersion: null,
     liveVersion: "12.1",
+    otherOnPort: null,
     updateAvailable: false,
     installedNewer: false,
     ...overrides,
@@ -170,6 +172,22 @@ test.describe("Settings — remote script (stubbed backend)", () => {
     await expect(page.getByTestId("remote-script-steps")).toHaveAttribute(
       "open",
       "",
+    );
+  });
+
+  test("says another program answers on the port when the script is installed but not running", async ({
+    page,
+  }) => {
+    await setupSettingsTest(page);
+    await stubRemoteScript(
+      page,
+      status({ installed: true, installedVersion: "1.2.0", otherOnPort: 3349 }),
+      { status: 200, body: {} },
+    );
+    await openRemoteScriptTab(page);
+
+    await expect(page.getByTestId("remote-script-status")).toHaveText(
+      "Installed v1.2.0 (not running; another program answers on port 3349)",
     );
   });
 

@@ -1,9 +1,9 @@
 # Producer Pal Remote Script
 
-An Ableton Live remote script that listens on **http://127.0.0.1:3349** and can
-list and load Live devices, Max for Live devices, VST/VST3/AU plugins and
-presets, load a preset in place of a device already in the Set, and copy a
-device. Prototype.
+An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
+next free port, see [Port](#port)) and can list and load Live devices, Max for
+Live devices, VST/VST3/AU plugins and presets, load a preset in place of a
+device already in the Set, and copy a device. Prototype.
 
 Producer Pal's `ppal-create-device` uses it to load plug-ins, Max for Live
 devices and presets, `ppal-update-device` to swap a preset onto a device, and
@@ -43,7 +43,7 @@ space breaks it.
 ## Try it
 
 ```sh
-curl -s localhost:3349/ping
+curl -s localhost:3349/ping  # or the port in ~/.producer-pal/remote-script-port.txt
 
 # list everything loadable, at any depth
 curl -s "localhost:3349/list?type=mfl-device"
@@ -73,6 +73,23 @@ curl -s -X POST localhost:3349/hotswap -d '{"type": "instrument", "path": "Drift
 # copy the second device on track 1 (the copy lands right after it)
 curl -s -X POST localhost:3349/device/duplicate -d '{"device_path": "live_set tracks 1 devices 1"}'
 ```
+
+## Port
+
+It tries 3349, then 3351 to 3358 (3350 is the MCP server's), and takes the first
+free one: a second Live, or another program, may have 3349. A port counts as
+taken if a bind fails or something already accepts connections on it (a program
+on the wildcard address can sit beside a 127.0.0.1 bind). It writes the port it
+got to `~/.producer-pal/remote-script-port.txt`, even when it's 3349, and leaves
+the file on shutdown. If no port is free it logs that and doesn't serve.
+
+Producer Pal uses 3349 when the remote script answers there, else the port in
+the file, else 3349 (2.4.0 and earlier write no file). With two Lives, every
+Producer Pal therefore talks to the one on 3349: it can't tell which Live it is
+in. It only trusts a `/ping` that has `script_version`, so another program on a
+port counts as "not running". It remembers the port for a few seconds and looks
+again after a call that gets no answer. `PPAL_REMOTE_SCRIPT_PORT` overrides all
+of it.
 
 ## Types
 
@@ -130,9 +147,9 @@ change.
 ### `GET /ping`
 
 Liveness, Live's version, and this script's (`script_version`, from
-`version.py`, which the build stamps with the Producer Pal release). Also
-`source_hash`: a hash of the implementation files when they were last loaded.
-See [Hot reload](#hot-reload).
+`version.py`, which the build stamps with the Producer Pal release). Also the
+`port` it is listening on, and `source_hash`: a hash of the implementation files
+when they were last loaded. See [Hot reload](#hot-reload).
 
 ### `GET /list`
 
@@ -332,7 +349,7 @@ its own 30s to finish, so time queued behind other jobs doesn't count against
 it. Without it, the thread waits 30s for the reply, and 30s more if the job
 started in that time.
 
-- `http_server.py`: the HTTP server; never touches Live
+- `http_server.py`: the HTTP server and the port file; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control
   surface
 - `errors.py`: `RouteError`, a route's own HTTP status and body

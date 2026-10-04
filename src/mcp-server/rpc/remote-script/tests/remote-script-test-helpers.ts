@@ -40,6 +40,8 @@ export type FakeAnswer =
   | null;
 
 export interface FakeRemoteScript {
+  /** The port it listens on. */
+  port: number;
   requests: ReceivedRequest[];
   close: () => Promise<void>;
 }
@@ -76,11 +78,12 @@ export async function startFakeRemoteScript(
   await new Promise<void>((resolve) => {
     server.listen(0, "127.0.0.1", resolve);
   });
-  process.env.PPAL_REMOTE_SCRIPT_PORT = String(
-    (server.address() as AddressInfo).port,
-  );
+  const { port } = server.address() as AddressInfo;
+
+  process.env.PPAL_REMOTE_SCRIPT_PORT = String(port);
 
   return {
+    port,
     requests,
     close: async () => {
       // Back to the port nothing answers on, as test-setup.ts leaves it.

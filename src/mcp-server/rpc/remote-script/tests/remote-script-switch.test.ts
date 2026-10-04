@@ -69,7 +69,7 @@ describe("the remote script switch", () => {
   it("makes every caller see no remote script, without a request reaching it", async () => {
     registerRemoteScriptRoutes();
     fake = await startFakeRemoteScript(() => ({
-      body: { ok: true, items: [], envelopes: [] },
+      body: { ok: true, script_version: "2.5.0", items: [], envelopes: [] },
     }));
 
     // Control: the stand-in answers while the switch is on.

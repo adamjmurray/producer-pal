@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   RemoteScriptTimeout,
   pingRemoteScript,
+  remoteScriptPing,
   remoteScriptRequest,
   replyError,
 } from "../remote-script-client.ts";
@@ -78,16 +79,18 @@ describe("remoteScriptRequest", () => {
     });
   });
 
-  it("is unavailable when whatever answers isn't sending a JSON object", async () => {
+  it("is unavailable, but says something answered, when it isn't sending a JSON object", async () => {
     await answerWith({ raw: "hello" });
     expect(await remoteScriptRequest({ route: "/ping" })).toStrictEqual({
       available: false,
+      otherAnswered: true,
     });
 
     await fake?.close();
     await answerWith({ raw: "[1]" });
     expect(await remoteScriptRequest({ route: "/ping" })).toStrictEqual({
       available: false,
+      otherAnswered: true,
     });
   });
 
@@ -183,21 +186,6 @@ describe("remoteScriptRequest", () => {
     ).rejects.toThrow(/socket hang up|ECONNRESET/);
   });
 
-  it("uses the default port when PPAL_REMOTE_SCRIPT_PORT isn't set", async () => {
-    const remote = await answerWith({ body: { ok: true } });
-
-    delete process.env.PPAL_REMOTE_SCRIPT_PORT;
-
-    // Whatever is or isn't on the default port here, it isn't the stand-in,
-    // which is listening on a port of its own. Either outcome is fine; what
-    // matters is that the request didn't go to the port the env var named.
-    await remoteScriptRequest({ route: "/ping", timeoutMs: 200 }).catch(
-      () => null,
-    );
-
-    expect(remote.requests).toStrictEqual([]);
-  });
-
   it("throws when the answer is cut off", async () => {
     await answerWith({ cut: '{"ok":' });
 
@@ -229,9 +217,17 @@ describe("remoteScriptRequest", () => {
 
 describe("pingRemoteScript", () => {
   it("is true when the remote script answers ok", async () => {
-    await answerWith({ body: { ok: true, live_version: "12.4.5" } });
+    await answerWith({
+      body: { ok: true, live_version: "12.4.5", script_version: "2.4.1" },
+    });
 
     expect(await pingRemoteScript()).toBe(true);
+  });
+
+  it("is false for a reply without script_version: that isn't our script", async () => {
+    await answerWith({ body: { ok: true, live_version: "12.4.5" } });
+
+    expect(await pingRemoteScript()).toBe(false);
   });
 
   it("is false for any other answer", async () => {
@@ -255,6 +251,36 @@ describe("pingRemoteScript", () => {
     vi.advanceTimersByTime(1000);
 
     expect(await ping).toBe(false);
+  });
+});
+
+describe("remoteScriptPing", () => {
+  it("reports the versions of our script", async () => {
+    await answerWith({
+      body: { ok: true, live_version: "12.4.5", script_version: "2.4.1" },
+    });
+
+    expect(await remoteScriptPing()).toStrictEqual({
+      running: true,
+      liveVersion: "12.4.5",
+      scriptVersion: "2.4.1",
+      otherOnPort: null,
+    });
+  });
+
+  it("names the port when something else answers there", async () => {
+    const remote = await answerWith({ body: { ok: true } });
+
+    const ping = await remoteScriptPing();
+
+    expect(ping.running).toBe(false);
+    expect(ping.otherOnPort).toBe(remote.port);
+  });
+
+  it("names no port when nothing answers", async () => {
+    const ping = await remoteScriptPing();
+
+    expect(ping.otherOnPort).toBeNull();
   });
 });
 

@@ -5,7 +5,7 @@
 
 /** Calling the remote script's envelope routes directly, for e2e suites. */
 
-import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   callToolAndSettle,
@@ -24,7 +24,7 @@ export async function postEnvelopeRoute(
   body: Record<string, unknown>,
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = await fetch(
-    `http://127.0.0.1:${String(remoteScriptPort())}/envelope/${route}`,
+    `http://127.0.0.1:${String(await resolveRemoteScriptPort())}/envelope/${route}`,
     { method: "POST", body: JSON.stringify(body) },
   );
   const answer = (await response.json()) as Record<string, unknown>;

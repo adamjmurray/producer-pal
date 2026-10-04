@@ -351,8 +351,9 @@ so `--tag` is how most runs are scoped; `-t` and `--tag` together narrow to
 scenarios matching both.
 
 `automation` scenarios need the Producer Pal remote script running in Live (it
-is the only way to reach clip envelopes), and their `setup` talks to it on
-`127.0.0.1:3349` (`PPAL_REMOTE_SCRIPT_PORT` overrides). One scenario,
+is the only way to reach clip envelopes), and their `setup` talks to it on its
+port (`PPAL_REMOTE_SCRIPT_PORT` overrides; else 3349 if the script answers
+there, else the port in `~/.producer-pal/remote-script-port.txt`). One scenario,
 `automation-no-remote-script`, sets `config: { remoteScriptEnabled: false }` to
 run as if it weren't installed (debug builds only; a release build ignores the
 field); `resetConfig()` turns it back on after every scenario.

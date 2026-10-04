@@ -23,6 +23,7 @@ export function statusBody(
     running: false,
     runningVersion: null,
     liveVersion: "12.1",
+    otherOnPort: null,
     updateAvailable: false,
     installedNewer: false,
     ...overrides,

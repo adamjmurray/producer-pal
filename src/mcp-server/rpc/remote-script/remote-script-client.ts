@@ -10,9 +10,14 @@
 import http from "node:http";
 import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import {
+  forgetRemoteScriptPort,
+  remoteScriptPortFromEnv,
+  resolveRemoteScriptPort as resolvePort,
+  type ProbeResult,
+} from "./port/remote-script-port.ts";
 
 const HOST = "127.0.0.1";
-const DEFAULT_PORT = 3349;
 
 /**
  * Dev switch (POST /config `remoteScriptEnabled`): off makes every request here
@@ -39,7 +44,11 @@ const PING_TIMEOUT_MS = 1000;
 
 /** What the remote script answered, or that nothing did. */
 export type RemoteScriptReply =
-  | { available: false }
+  | {
+      available: false;
+      /** Something connected and replied, but not with a JSON object. */
+      otherAnswered?: true;
+    }
   | { available: true; status: number; body: Record<string, unknown> };
 
 /** An answer from the remote script, as opposed to silence. */
@@ -76,6 +85,8 @@ export interface RemoteScriptRequest {
    * `timeoutMs`. Nothing is sent when it is 0 or less.
    */
   expiresInMs?: number;
+  /** Skip finding the port and use this one. For probing a port. */
+  port?: number;
 }
 
 /**
@@ -93,6 +104,7 @@ export interface RemoteScriptRequest {
  * @param request.timeoutMs - How long to wait for the answer
  * @param request.expiresInMs - How long Live may leave the job queued; sets the
  *   wait instead of `timeoutMs`
+ * @param request.port - Send to this port instead of the resolved one
  * @returns The reply, or `available: false`
  * @throws RemoteScriptTimeout when the remote script took the connection but
  *   didn't answer in time, or `expiresInMs` was used up before the request left
@@ -104,34 +116,116 @@ export function remoteScriptRequest({
   body,
   timeoutMs = REMOTE_SCRIPT_HTTP_TIMEOUT_MS,
   expiresInMs,
+  port,
 }: RemoteScriptRequest): Promise<RemoteScriptReply> {
   if (!remoteScriptEnabled) {
     return Promise.resolve({ available: false });
   }
 
-  if (expiresInMs != null) {
-    if (expiresInMs <= 0) {
+  if (expiresInMs != null && expiresInMs <= 0) {
+    return Promise.reject(
+      new RemoteScriptTimeout("ran out of time before the request left", false),
+    );
+  }
+
+  const started = Date.now();
+
+  const send = (
+    target: number,
+    elapsedMs: number,
+  ): Promise<RemoteScriptReply> => {
+    // Finding the port took part of the time the caller gave us.
+    const left = expiresInMs == null ? null : expiresInMs - elapsedMs;
+
+    if (left != null && left <= 0) {
       return Promise.reject(
-        new RemoteScriptTimeout(
-          "ran out of time before the request left",
-          false,
-        ),
+        new RemoteScriptTimeout("ran out of time finding the port", false),
       );
     }
 
-    timeoutMs = remoteScriptReplyWait(expiresInMs);
+    let wait = timeoutMs;
+    let search = query == null ? "" : `?${new URLSearchParams(query)}`;
+    let payload = body == null ? undefined : JSON.stringify(body);
 
-    if (body == null) {
-      query = { ...query, expires_in_ms: String(Math.floor(expiresInMs)) };
-    } else {
-      body = { ...body, expires_in_ms: expiresInMs };
+    if (left != null) {
+      wait = remoteScriptReplyWait(left);
+
+      if (body == null) {
+        search = `?${new URLSearchParams({ ...query, expires_in_ms: String(Math.floor(left)) })}`;
+      } else {
+        payload = JSON.stringify({ ...body, expires_in_ms: left });
+      }
     }
+
+    return sendRequest(
+      { method, path: `${route}${search}`, payload, timeoutMs: wait },
+      target,
+    );
+  };
+
+  const fixedPort = port ?? remoteScriptPortFromEnv();
+
+  if (fixedPort != null) {
+    return send(fixedPort, 0);
   }
 
-  const payload = body == null ? undefined : JSON.stringify(body);
-  const search = query == null ? "" : `?${new URLSearchParams(query)}`;
+  return resolveRemoteScriptPort()
+    .then((target) => send(target, Date.now() - started))
+    .then((reply) => {
+      // Nothing there: Live may have restarted onto another port.
+      if (!reply.available) {
+        forgetRemoteScriptPort();
+      }
 
-  return new Promise((resolve, reject) => {
+      return reply;
+    });
+}
+
+/**
+ * The port requests go to. Probes 3349 first, so a second Live's script on
+ * another port doesn't take over this one's requests.
+ * @returns The port to send to
+ */
+export async function resolveRemoteScriptPort(): Promise<number> {
+  const found = await findPort();
+
+  return found.port;
+}
+
+/**
+ * Find the port, keeping the ping it was found by, if any.
+ * @returns The port, and the ping that just showed our script there
+ */
+function findPort(): Promise<{ port: number; info: RemoteScriptPing | null }> {
+  return resolvePort(async (port): Promise<ProbeResult<RemoteScriptPing>> => {
+    const { ping, kind } = await pingPort(port);
+
+    return kind === "ours" ? { kind, info: ping } : { kind };
+  });
+}
+
+interface WireRequest {
+  method: string;
+  path: string;
+  payload: string | undefined;
+  timeoutMs: number;
+}
+
+/**
+ * One HTTP exchange with the remote script on `port`.
+ * @param wire - The request on the wire
+ * @param wire.method - GET or POST
+ * @param wire.path - Route plus query string
+ * @param wire.payload - JSON body, if any
+ * @param wire.timeoutMs - How long to wait for the answer
+ * @param port - Where to send it
+ * @returns The reply, or `available: false`
+ */
+function sendRequest(
+  { method, path, payload, timeoutMs }: WireRequest,
+  port: number,
+): Promise<RemoteScriptReply> {
+  return new Promise<RemoteScriptReply>((resolve, reject) => {
     let connected = false;
     let settled = false;
     const timers: NodeJS.Timeout[] = [];
@@ -151,9 +245,9 @@ export function remoteScriptRequest({
     const request = http.request(
       {
         host: HOST,
-        port: remoteScriptPort(),
+        port,
         method,
-        path: `${route}${search}`,
+        path,
         agent: false,
         headers:
           payload == null
@@ -174,7 +268,7 @@ export function remoteScriptRequest({
           settle(() =>
             resolve(
               parsed == null
-                ? { available: false }
+                ? { available: false, otherAnswered: true }
                 : {
                     available: true,
                     status: response.statusCode ?? 0,
@@ -218,37 +312,41 @@ export function remoteScriptRequest({
   });
 }
 
-/** What `/ping` reports. Versions are null on a script too old to send them. */
+/** What `/ping` reports. Versions are null when nothing of ours answered. */
 export interface RemoteScriptPing {
   running: boolean;
   liveVersion: string | null;
   scriptVersion: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
 }
 
 /**
  * Ask the remote script whether it's running, and which Live and script
- * versions it is. Never throws.
- * @returns The ping reply, all-null when nothing answered
+ * versions it is. Only a reply with `script_version` counts: anything else is
+ * some other program on the port. Never throws.
+ * @param port - The port to ask; the resolved one when omitted
+ * @returns The ping reply, all-null when nothing of ours answered
  */
-export async function remoteScriptPing(): Promise<RemoteScriptPing> {
-  try {
-    const reply = await remoteScriptRequest({
-      route: "/ping",
-      timeoutMs: PING_TIMEOUT_MS,
-    });
+export async function remoteScriptPing(
+  port?: number,
+): Promise<RemoteScriptPing> {
+  let target = port;
 
-    if (!reply.available || reply.status !== 200 || reply.body.ok !== true) {
-      return notRunning();
+  if (target == null) {
+    const found = await findPort();
+
+    // The port was just found by a ping: don't ask Live a second time.
+    if (found.info != null) {
+      return found.info;
     }
 
-    return {
-      running: true,
-      liveVersion: stringOrNull(reply.body.live_version),
-      scriptVersion: stringOrNull(reply.body.script_version),
-    };
-  } catch {
-    return notRunning();
+    target = found.port;
   }
+
+  const { ping } = await pingPort(target);
+
+  return ping;
 }
 
 /**
@@ -274,12 +372,69 @@ export function replyError(reply: RemoteScriptAnswer): string {
 
 // --- Helpers below main exports ---
 
+/** How a port answered a ping. "slow": it took the connection, then no reply. */
+type PingKind = "ours" | "other" | "none" | "slow";
+
+/**
+ * Ping one port.
+ * @param port - The port to ask
+ * @returns The ping, and what kind of answer it was
+ */
+async function pingPort(
+  port: number,
+): Promise<{ ping: RemoteScriptPing; kind: PingKind }> {
+  try {
+    const reply = await remoteScriptRequest({
+      route: "/ping",
+      timeoutMs: PING_TIMEOUT_MS,
+      port,
+    });
+
+    if (!reply.available) {
+      return reply.otherAnswered === true
+        ? { ping: notRunning(port), kind: "other" }
+        : { ping: notRunning(), kind: "none" };
+    }
+
+    const scriptVersion = stringOrNull(reply.body.script_version);
+
+    if (
+      reply.status !== 200 ||
+      reply.body.ok !== true ||
+      scriptVersion == null
+    ) {
+      return { ping: notRunning(port), kind: "other" };
+    }
+
+    return {
+      ping: {
+        running: true,
+        liveVersion: stringOrNull(reply.body.live_version),
+        scriptVersion,
+        otherOnPort: null,
+      },
+      kind: "ours",
+    };
+  } catch (error) {
+    return {
+      ping: notRunning(),
+      kind: error instanceof RemoteScriptTimeout ? "slow" : "none",
+    };
+  }
+}
+
 /**
  * A ping reply for a remote script that isn't there.
+ * @param otherOnPort - The port something else answered on, if it did
  * @returns The all-null reply
  */
-function notRunning(): RemoteScriptPing {
-  return { running: false, liveVersion: null, scriptVersion: null };
+function notRunning(otherOnPort: number | null = null): RemoteScriptPing {
+  return {
+    running: false,
+    liveVersion: null,
+    scriptVersion: null,
+    otherOnPort,
+  };
 }
 
 /**
@@ -289,18 +444,6 @@ function notRunning(): RemoteScriptPing {
  */
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : null;
-}
-
-/**
- * The remote script's port: PPAL_REMOTE_SCRIPT_PORT, else 3349. Read per call,
- * so a test can point it at its own server.
- * @returns The port
- */
-export function remoteScriptPort(): number {
-  const raw = process.env.PPAL_REMOTE_SCRIPT_PORT;
-  const port = raw == null || raw.trim() === "" ? Number.NaN : Number(raw);
-
-  return Number.isInteger(port) && port >= 0 ? port : DEFAULT_PORT;
 }
 
 /**

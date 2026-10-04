@@ -6,7 +6,7 @@
 // What the E2E suites that need the Producer Pal remote script share.
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { remoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { beforeAll } from "vitest";
 import { callToolAndSettle, parseToolResult } from "../../mcp-test-helpers";
 import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers";
@@ -23,7 +23,7 @@ export function requireRemoteScript(): void {
   beforeAll(async () => {
     if (!(await remoteScriptAnswers())) {
       throw new Error(
-        `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(remoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
+        `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
       );
     }
   });
@@ -49,7 +49,7 @@ export async function listPresets(
 ): Promise<Preset[]> {
   const query = new URLSearchParams({ type, path: device, presets: "true" });
   const response = await fetch(
-    `http://127.0.0.1:${String(remoteScriptPort())}/list?${query.toString()}`,
+    `http://127.0.0.1:${String(await resolveRemoteScriptPort())}/list?${query.toString()}`,
   );
   const body = (await response.json()) as { items?: Preset[] };
 

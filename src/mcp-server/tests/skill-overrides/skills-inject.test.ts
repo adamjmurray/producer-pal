@@ -153,7 +153,9 @@ describe("withRemoteScriptAnswer", () => {
   const HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
   it("teaches loading plug-ins while the remote script answers its ping", async () => {
-    const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+    const remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
 
     try {
       expect(await withRemoteScriptAnswer({})).toStrictEqual({
@@ -163,6 +165,18 @@ describe("withRemoteScriptAnswer", () => {
       const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
 
       expect(lastText(await wrapped("ppal-connect", {}))).toContain(HEADING);
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it("doesn't when something else answers the port", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: false,
+      });
     } finally {
       await remote.close();
     }

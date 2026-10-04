@@ -8,13 +8,13 @@ import {
   lookUpBrowserDevice,
   normalizedName,
 } from "../browser-device-lookup.ts";
-import { RemoteScriptTimeout } from "../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../../remote-script-client.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
   type ReceivedRequest,
   startFakeRemoteScript,
-} from "./remote-script-test-helpers.ts";
+} from "../../tests/remote-script-test-helpers.ts";
 
 /** Item paths under each remote script `type`. */
 type Browser = Partial<Record<string, string[]>>;

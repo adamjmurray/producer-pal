@@ -15,8 +15,8 @@ import {
 import { setRunningLiveMajorFromArgs } from "../../live-library/library-routes.ts";
 import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
-import { lookUpBrowserDevice } from "./browser-device-lookup.ts";
-import { lookUpBrowserPreset } from "./browser-preset-lookup.ts";
+import { lookUpBrowserDevice } from "./browser/browser-device-lookup.ts";
+import { lookUpBrowserPreset } from "./browser/browser-preset-lookup.ts";
 import { RemoteScriptTimeout } from "./remote-script-client.ts";
 import {
   failedChange,
