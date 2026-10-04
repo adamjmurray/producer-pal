@@ -64,6 +64,14 @@ describe("arrangementLength preserves clip envelopes", () => {
     expect(await hasEnvelopes(await audioClipId())).toBe(false);
   });
 
+  it("leaves envs off an arrangement clip, even one with an envelope", async () => {
+    const result = await callTool(ctx.client!, "ppal-read-clip", {
+      id: await fixtureClipId(),
+    });
+
+    expect(parseToolResult<object>(result)).not.toHaveProperty("envs");
+  });
+
   it("keeps the envelope on every tile when lengthening a looping clip", async () => {
     const { id } = await duplicateClipToArrangement(
       ctx.client!,

@@ -95,6 +95,9 @@ export interface ReadClipResult {
   recording?: boolean;
   overdubbing?: boolean;
   muted?: boolean;
+  /** Session clips only: the clip has automation. Follows Live's own flag, so
+   * it also covers envelopes an `envelopes` read can't show. */
+  envs?: boolean;
 
   // Location properties
   /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
@@ -266,7 +269,7 @@ export function readOneClip(
     ...(includeColor && { color: clip.getColor() }),
   };
 
-  addBooleanStateProperties(result, clip);
+  addBooleanStateProperties(result, clip, isArrangementClip);
 
   addClipLocationProperties(result, clip, isArrangementClip);
 
@@ -295,14 +298,17 @@ export function readOneClip(
 }
 
 /**
- * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
- * Only includes properties that are true
+ * Add boolean state properties (playing, triggered, recording, overdubbing,
+ * muted, envs). Only includes properties that are true
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
+ * @param isArrangementClip - Arrangement clips never get `envs`: their
+ *   envelopes can't be read or written
  */
 function addBooleanStateProperties(
   result: ReadClipResult,
   clip: LiveAPI,
+  isArrangementClip: boolean,
 ): void {
   if ((clip.getProperty("is_playing") as number) > 0) {
     result.playing = true;
@@ -322,6 +328,10 @@ function addBooleanStateProperties(
 
   if ((clip.getProperty("muted") as number) > 0) {
     result.muted = true;
+  }
+
+  if (!isArrangementClip && (clip.getProperty("has_envelopes") as number) > 0) {
+    result.envs = true;
   }
 }
 

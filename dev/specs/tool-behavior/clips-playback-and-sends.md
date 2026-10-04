@@ -80,6 +80,12 @@ remote script. A line it can't write is a `detail` on that clip's entry
   `envelope "<target>": re-enabled its automation, which was overridden`. A
   parameter that wasn't overridden adds nothing.
 
+Any clip read (`ppal-read-clip`, and the clips `ppal-read-track` and
+`ppal-read-scene` list) adds `envs: true` to a session clip whose
+`has_envelopes` is true, whatever `include` says. It follows Live's flag, so it
+also covers envelopes `include: ["envelopes"]` can't read. Arrangement clips
+never get it, and it is omitted otherwise.
+
 `ppal-read-clip` `envelopes` lists each automated parameter. An envelope's
 `detail` is a note about it: why `events` is absent, or, on an unwarped audio
 clip, `doesn't play: the clip is unwarped. Turn warping on to hear it` beside

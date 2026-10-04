@@ -50,6 +50,22 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     const ctx = setupMcpTestContext();
 
     /**
+     * Read one clip with the default include.
+     * @param id - The clip to read
+     * @returns The clip's read result
+     */
+    async function readClip(id: string): Promise<ReadClipResult> {
+      await sleep(50);
+
+      return parseToolResult<ReadClipResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-clip",
+          arguments: { id },
+        }),
+      );
+    }
+
+    /**
      * Read one clip's envelopes.
      * @param id - The clip to read
      * @param include - The include array to send
@@ -110,6 +126,21 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       const id = await clipWithVolumeEnvelope();
 
       expect(await readEnvelopes(id, ["*"])).toBeUndefined();
+    });
+
+    it("flags a session clip with envelopes in a default read", async () => {
+      const id = await clipWithVolumeEnvelope();
+
+      expect(await readClip(id)).toHaveProperty("envs", true);
+    });
+
+    it("leaves envs off a session clip without envelopes", async () => {
+      const id = await createClipInSlot(ctx, `${TRACK}/s0`, {
+        notes: "C3 1|1",
+        length: "1bar",
+      });
+
+      expect(await readClip(id)).not.toHaveProperty("envs");
     });
 
     it("sends an arrangement clip to the track's automation lane", async () => {

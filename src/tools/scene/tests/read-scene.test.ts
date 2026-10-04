@@ -292,6 +292,22 @@ describe("readOneScene", () => {
     );
   });
 
+  it("flags a nested session clip that has envelopes", () => {
+    setupLiveSetTracks(["track1"]);
+    setupScene("scene_envs", 0);
+    setupSessionClip("clip_envs", 0, 0, {
+      is_midi_clip: 0,
+      has_envelopes: 1,
+    });
+
+    const result = readOneScene({ sceneIndex: 0, include: ["clips"] });
+
+    expect((result.clips as Record<string, unknown>[])[0]).toHaveProperty(
+      "envs",
+      true,
+    );
+  });
+
   it("includes all available options when '*' is used", () => {
     setupLiveSetTracks(["track1", "track2"]);
     setupScene(

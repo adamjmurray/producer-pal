@@ -31,7 +31,8 @@ are **MIDI or warped audio**.
 - Automation and modulation on the same parameter coexist. Writing automation
   leaves the modulation alone.
 - `has_envelopes` is true for any envelope, reachable or not. So "has envelopes
-  but none readable" means the clip holds envelopes we can't see.
+  but none readable" means the clip holds envelopes we can't see. Every clip
+  read shows it as `envs: true` on session clips.
 - **Unwarped audio clips can't have envelopes in Live**: an unwarped clip has no
   beat grid to line envelope times up with, so the UI offers no Envelopes tab.
   The API still writes one, and reads one copied from a warped clip, but it

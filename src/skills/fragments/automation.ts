@@ -14,7 +14,7 @@ export const automation = `## Clip Automation
 
 **Session clips only.** An arrangement clip has no envelopes of its own — its automation lives in the track's automation lane.
 
-**Read** with ppal-read-clip \`include: ["envelopes"]\`. Each entry names the automated parameter, its \`id\`, and its points.
+**Read** with ppal-read-clip \`include: ["envelopes"]\` — any clip read shows \`envs: true\` on a session clip that has some. Each entry names the automated parameter, its \`id\`, and its points.
 
 **Write** with ppal-update-clip \`envelopes\`: one \`<target>: <notation>\` line per parameter. A target is a parameter \`id\` (a device read lists them) or a mixer name — \`volume\`, \`pan\`, \`send0\`... Each line replaces that parameter's whole envelope; a line with nothing after the colon clears it. Don't rewrite an envelope read as \`truncated\`: the part not shown is lost.
 

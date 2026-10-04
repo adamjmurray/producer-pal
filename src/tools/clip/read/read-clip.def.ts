@@ -60,7 +60,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
         .default([]),
       {
         default:
-          'notes = MIDI data (muted notes are hidden and counted in mutedNotes; edits leave them alone). timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. envelopes = clip automation, session clips only; needs the Producer Pal remote script and a round trip per parameter, so ask for it by name - "*" leaves it out. "*" = all the rest',
+          'notes = MIDI data (muted notes are hidden and counted in mutedNotes; edits leave them alone). timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. envelopes = clip automation, session clips only (shown as envs: true when a clip has any); needs the Producer Pal remote script and a round trip per parameter, so ask for it by name - "*" leaves it out. "*" = all the rest',
         smallModel: {
           description:
             "notes = MIDI data (muted notes hidden, counted in mutedNotes). timing = loop/start/end markers. sample = audio file info. color",

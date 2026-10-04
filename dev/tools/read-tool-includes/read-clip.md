@@ -19,9 +19,10 @@ Always returned for any clip:
 | `recording`         | `true`              | Only present when true                                                                          |
 | `overdubbing`       | `true`              | Only present when true                                                                          |
 | `muted`             | `true`              | Only present when true                                                                          |
+| `envs`              | `true`              | Session clips only, when Live reports automation. Omitted otherwise                             |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
-`muted`) are omitted when `false` to reduce response size.
+`muted`, `envs`) are omitted when `false` to reduce response size.
 
 ## Include: `"timing"`
 
