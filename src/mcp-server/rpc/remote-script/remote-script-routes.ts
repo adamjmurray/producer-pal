@@ -11,6 +11,7 @@ import {
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { setRunningLiveMajorFromArgs } from "../../live-library/library-routes.ts";
 import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
 import { lookUpBrowserDevice } from "./browser-device-lookup.ts";
@@ -43,14 +44,18 @@ export function registerRemoteScriptRoutes(): void {
 
   registerNodeRoute(
     REMOTE_SCRIPT_ROUTES.resolvePreset,
-    (args) =>
-      resolveWithin(args, (endsAt) =>
+    (args) => {
+      // A name the browser lacks is read from the running Live's database.
+      setRunningLiveMajorFromArgs(args);
+
+      return resolveWithin(args, (endsAt) =>
         lookUpBrowserPreset(
           requireString(args, "name"),
           presetScope(args),
           endsAt,
         ),
-      ),
+      );
+    },
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
 

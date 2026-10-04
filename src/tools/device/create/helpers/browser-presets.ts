@@ -81,6 +81,9 @@ export async function resolveBrowserPreset(
     {
       name: preset,
       expiresInMs: remoteScriptExpiry(waitMs),
+      // Node reads the running Live's library database for a name the browser
+      // lacks (Live 12.4 returns "12.4", which V8 coerces to a number).
+      liveVersion: String(LiveAPI.from("live_app").call("get_version_string")),
       ...(scope == null ? {} : { scope }),
     },
     waitMs,

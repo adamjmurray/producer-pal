@@ -62,7 +62,7 @@ function answerLookups(
 }
 
 /**
- * The resolvePreset calls the tool made, by their args, less the expiry.
+ * The resolvePreset calls the tool made, by their args, less the expiry and Live version.
  * @returns Each call's args
  */
 function presetLookups(): unknown[] {
@@ -73,7 +73,9 @@ function presetLookups(): unknown[] {
     )
     .map(([, args]) =>
       Object.fromEntries(
-        Object.entries(args ?? {}).filter(([key]) => key !== "expiresInMs"),
+        Object.entries(args ?? {}).filter(
+          ([key]) => key !== "expiresInMs" && key !== "liveVersion",
+        ),
       ),
     );
 }

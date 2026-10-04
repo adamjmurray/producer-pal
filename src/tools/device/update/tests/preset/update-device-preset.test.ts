@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  MOCK_LIVE_VERSION,
   type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
@@ -145,6 +146,7 @@ describe("updateDevice with a preset", () => {
       {
         name: "AG Bass",
         expiresInMs: LOOKUP_EXPIRY_MS,
+        liveVersion: MOCK_LIVE_VERSION,
         scope: {
           type: "instrument",
           path: "Drift",
@@ -265,11 +267,13 @@ describe("updateDevice with a preset", () => {
       {
         name: "AG Bass",
         expiresInMs: LOOKUP_EXPIRY_MS,
+        liveVersion: MOCK_LIVE_VERSION,
         scope: targetScope("instrument", "Drift"),
       },
       {
         name: "Concert Hall",
         expiresInMs: LOOKUP_EXPIRY_MS,
+        liveVersion: MOCK_LIVE_VERSION,
         scope: targetScope("audio-effect", "Reverb"),
       },
     ]);

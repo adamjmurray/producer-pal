@@ -46,6 +46,12 @@ export interface Candidate extends ListedItem {
   section: Section;
 }
 
+/** A file on disk, which is its own spelling. */
+export interface FileCandidate {
+  name: string;
+  path: string;
+}
+
 /**
  * Find the one browser item a device name refers to. `<section>/<path>`, e.g.
  * `Plug-Ins/VST3/FabFilter/Pro-Q 4`, names one directly. Anything else is
@@ -254,7 +260,7 @@ export function searchFailed(
 export function ambiguity(
   { name, noun }: { name: string; noun: string },
   value: string,
-  matches: Candidate[],
+  matches: Array<Candidate | FileCandidate>,
 ): string {
   return `${name} "${value}" matches ${matches.length} ${noun}; pass one of these as ${name}: ${candidateList(matches)}`;
 }
@@ -264,10 +270,16 @@ export function ambiguity(
  * @param matches - The candidates
  * @returns The list, saying how many more there are past the cap
  */
-export function candidateList(matches: Candidate[]): string {
+export function candidateList(
+  matches: Array<Candidate | FileCandidate>,
+): string {
   const listed = matches
     .slice(0, MAX_LISTED)
-    .map((match) => `"${match.section.label}/${match.path}"`)
+    .map((match) =>
+      "section" in match
+        ? `"${match.section.label}/${match.path}"`
+        : `"${match.path}"`,
+    )
     .join(", ");
   const more =
     matches.length > MAX_LISTED

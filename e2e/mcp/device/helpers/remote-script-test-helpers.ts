@@ -103,3 +103,45 @@ export async function readDevice(
     await callToolAndSettle(client, "ppal-read-device", { path }),
   );
 }
+
+/**
+ * A pack's drum kit whose name nothing else in the library shares, found with
+ * ppal-library. Installed packs differ per machine, so a test picks one at run
+ * time and skips when there is none. Live's browser files these under Drums,
+ * not under any device, so only the library has them.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when no pack has such a kit
+ * @returns The kit's file name and absolute path
+ */
+export async function packDrumKitOrSkip(
+  client: Client,
+  skip: () => never,
+): Promise<Preset> {
+  const search = async (kind: string, query: string): Promise<Preset[]> =>
+    parseToolResult<{ items?: Preset[] }>(
+      await callToolAndSettle(client, "ppal-library", {
+        kind,
+        query,
+        source: "pack",
+        limit: 200,
+      }),
+    ).items ?? [];
+
+  const kits = (await search("device-group", "Kit")).filter(
+    ({ name, path }) => name.endsWith(".adg") && path.includes("/Drums/"),
+  );
+
+  for (const kit of kits) {
+    const name = presetName(kit.name).toLowerCase();
+    const same = [
+      ...(await search("device-group", presetName(kit.name))),
+      ...(await search("preset", presetName(kit.name))),
+    ].filter((item) => presetName(item.name).toLowerCase() === name);
+
+    if (same.length === 1) {
+      return kit;
+    }
+  }
+
+  return skip();
+}

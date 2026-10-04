@@ -5,8 +5,9 @@
 
 // Finding the preset a `preset` arg refers to. Live's browser files every
 // device preset (.adv, and .adg racks built around a device) under that device,
-// so a name is searched there. A file path from ppal-library also reaches
-// presets filed elsewhere, such as a pack's drum kits.
+// so a name is searched there first. A name it doesn't have is looked up in
+// Live's library database, which also reaches presets filed elsewhere, such as
+// a pack's drum kits. A file path from ppal-library names one directly.
 
 import {
   type BrowserItemResolution,
@@ -26,6 +27,7 @@ import {
   searchFailed,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
+import { lookUpPresetFile, presetFile } from "./browser-preset-files.ts";
 
 /** Sections that hold presets. Plug-ins list none. */
 const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
@@ -33,14 +35,12 @@ const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
 /** An absolute path: `/…`, or a Windows drive. */
 const ABSOLUTE_PATH = /^(?:\/|[a-z]:[\\/])/i;
 
-/** The files a preset can be. */
-const PRESET_FILE = /\.(?:adv|adg)$/i;
-
 /**
  * Find the one preset a `preset` arg refers to: a file path, a
  * `<section>/<path>` browser path, or a name searched for among the presets.
  * A name must match exactly (any case, with or without its suffix): loading a
- * preset that merely contains it would load one the caller didn't name.
+ * preset that merely contains it would load one the caller didn't name. A name
+ * the browser doesn't have is looked up in Live's library database.
  * @param preset - The preset as the call named it
  * @param scope - The device whose presets a name is searched among, if the call
  *   named one
@@ -86,45 +86,70 @@ export async function lookUpBrowserPreset(
     return nothingNamed(preset, scope);
   }
 
+  const searched = await searchByName(preset, key, scope, endsAt);
+
+  if ("available" in searched) {
+    return searched;
+  }
+
+  if (searched.exact.length > 0) {
+    return pickPreset(preset, searched.exact);
+  }
+
+  return (
+    (await lookUpPresetFile(preset, key, scope, endsAt)) ??
+    nothingNamed(preset, searched.searchedScope, searched.close)
+  );
+}
+
+// --- Helpers below main export ---
+
+/** What a name search in the browser found. */
+interface NameSearch {
+  /** The presets named exactly that */
+  exact: Candidate[];
+  /** Every preset whose name contains it */
+  close: Candidate[];
+  /** The device the browser pass ended on, if any: the one errors name */
+  searchedScope: PresetScope | undefined;
+}
+
+/**
+ * Search the browser for a preset name: under its device, then, for a device
+ * already in the Set, anywhere.
+ * @param preset - The preset as the call named it
+ * @param key - The name, normalized
+ * @param scope - The device whose presets it's searched among, if any
+ * @param endsAt - When the search must be done, in epoch ms
+ * @returns What it found, or a failed search
+ */
+async function searchByName(
+  preset: string,
+  key: string,
+  scope: PresetScope | undefined,
+  endsAt: number,
+): Promise<NameSearch | BrowserItemResolution> {
+  const exactOf = (candidates: Candidate[]): Candidate[] =>
+    candidates.filter((item) => normalizedName(item.name) === key);
   const scoped = await searchPresets(preset, key, scope, endsAt);
 
   if (!Array.isArray(scoped)) {
     return scoped;
   }
 
-  const exact = (candidates: Candidate[]): Candidate[] =>
-    candidates.filter((item) => normalizedName(item.name) === key);
-
-  if (scope?.orAnywhere !== true || exact(scoped).length > 0) {
-    return pickPreset(preset, exact(scoped), scoped, scope);
+  if (scope?.orAnywhere !== true || exactOf(scoped).length > 0) {
+    return { exact: exactOf(scoped), close: scoped, searchedScope: scope };
   }
 
   const anywhere = await searchPresets(preset, key, undefined, endsAt);
 
   return Array.isArray(anywhere)
-    ? pickPreset(preset, exact(anywhere), anywhere, undefined)
+    ? {
+        exact: exactOf(anywhere),
+        close: anywhere,
+        searchedScope: undefined,
+      }
     : anywhere;
-}
-
-// --- Helpers below main export ---
-
-/**
- * The resolution for a preset file on disk. Whether Live's browser has it is
- * only known when the remote script loads it.
- * @param path - The absolute path
- * @returns The item, or an error when it isn't a preset file
- */
-function presetFile(path: string): BrowserItemResolution {
-  if (!PRESET_FILE.test(path)) {
-    return {
-      available: true,
-      error: `preset "${path}" is not a preset file (.adv or .adg)`,
-    };
-  }
-
-  const name = path.split(/[\\/]/).at(-1) as string;
-
-  return { available: true, item: { type: "file", path, name } };
 }
 
 /**
@@ -185,29 +210,18 @@ async function searchPresets(
 }
 
 /**
- * The one exact match, or an error naming the matches or the near misses.
+ * The one match, or an error naming them all.
  * @param preset - The preset as the call named it
- * @param exact - The presets with exactly that name
- * @param close - Every preset whose name contains it
- * @param scope - The device searched under, if any
+ * @param exact - The presets with exactly that name, at least one
  * @returns The resolution
  */
-function pickPreset(
-  preset: string,
-  exact: Candidate[],
-  close: Candidate[],
-  scope: PresetScope | undefined,
-): BrowserItemResolution {
-  if (exact.length === 1) {
-    return found(exact[0] as Candidate);
-  }
-
-  return exact.length > 1
-    ? {
+function pickPreset(preset: string, exact: Candidate[]): BrowserItemResolution {
+  return exact.length === 1
+    ? found(exact[0] as Candidate)
+    : {
         available: true,
         error: ambiguity({ name: "preset", noun: "presets" }, preset, exact),
-      }
-    : nothingNamed(preset, scope, close);
+      };
 }
 
 /**

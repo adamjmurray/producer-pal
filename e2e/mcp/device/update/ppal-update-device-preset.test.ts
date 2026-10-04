@@ -26,6 +26,7 @@ import {
 import {
   type Preset,
   REMOTE_SCRIPT_E2E,
+  packDrumKitOrSkip,
   listPresets,
   presetEndingIn,
   presetName,
@@ -193,6 +194,30 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
       ok: false,
       detail: expect.stringContaining("no longer exists"),
     });
+  });
+
+  it("swaps a Drum Rack for a pack's drum kit, by name", async ({ skip }) => {
+    const kit = await packDrumKitOrSkip(ctx.client!, skip);
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
+    );
+    const rack = parseToolResult<{ id: string; path: string }>(
+      await call("ppal-create-device", {
+        device: "Drum Rack",
+        path: `t${trackIndexFromPath(track.path)}/d0`,
+      }),
+    );
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", {
+        path: rack.path,
+        preset: presetName(kit.name),
+      }),
+    );
+    const device = await readDevice(ctx.client!, rack.path);
+
+    expect(updated.path).toBe(rack.path);
+    expect(device.id).toBe(updated.id);
+    expect(device.type).toBe("drum-rack");
   });
 
   it("loads nothing for a preset of another kind", async () => {

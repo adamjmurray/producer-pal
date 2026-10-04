@@ -25,6 +25,7 @@ import {
 import {
   type Preset,
   REMOTE_SCRIPT_E2E,
+  packDrumKitOrSkip,
   listPresets,
   presetEndingIn,
   presetName,
@@ -106,6 +107,29 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
       presetName(adv.name),
     );
   });
+
+  for (const [label, device] of [
+    ["which no device lists", undefined],
+    ["and device Drum Rack", "Drum Rack"],
+  ] as const) {
+    it(`creates a pack's drum kit from its name, ${label}`, async ({
+      skip,
+    }) => {
+      const kit = await packDrumKitOrSkip(ctx.client!, skip);
+      const track = await createMidiTrack(ctx.client!);
+      const created = parseToolResult<{ path: string }>(
+        await create({
+          ...(device == null ? {} : { device }),
+          preset: presetName(kit.name),
+          path: `t${track}/d0`,
+        }),
+      );
+
+      expect((await readDevice(ctx.client!, created.path)).type).toBe(
+        "drum-rack",
+      );
+    });
+  }
 
   it("refuses a preset that isn't the named device's", async () => {
     const result = await create({

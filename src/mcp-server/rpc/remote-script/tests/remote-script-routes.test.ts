@@ -3,11 +3,26 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
+import { setRunningLiveMajor } from "../../../live-library/live-db-path.ts";
 import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
 import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
+
+// A name the browser lacks is looked up in Live's database, which a test can't
+// stand in for.
+vi.mock(
+  import("../../../live-library/live-db-path.ts"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    setRunningLiveMajor: vi.fn(),
+  }),
+);
+
+vi.mock(import("../../../live-library/query/preset-files.ts"), () => ({
+  findPresetFiles: vi.fn().mockResolvedValue(null),
+}));
 
 const LOAD_ARGS = {
   type: "plugin",
@@ -276,6 +291,17 @@ describe("remoteScript.resolvePreset", () => {
     expect(remote.requests.every((request) => request.query.path == null)).toBe(
       true,
     );
+  });
+
+  it("reads the library of the Live the call says is running", async () => {
+    await answerWith({ body: { items: [] } });
+    await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.resolvePreset, {
+      name: "Warm Pad",
+      expiresInMs: 5000,
+      liveVersion: "12.4",
+    });
+
+    expect(setRunningLiveMajor).toHaveBeenCalledWith(12);
   });
 
   it("needs a scope's device", async () => {

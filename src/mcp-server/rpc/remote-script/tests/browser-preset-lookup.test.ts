@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { findPresetFiles } from "../../../live-library/query/preset-files.ts";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
 import { RemoteScriptTimeout } from "../remote-script-client.ts";
 import {
@@ -13,6 +14,12 @@ import {
   type ReceivedRequest,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
+
+// A name the browser doesn't have is looked up in Live's database, which a test
+// can't stand in for. The database's own queries are tested beside it.
+vi.mock(import("../../../live-library/query/preset-files.ts"), () => ({
+  findPresetFiles: vi.fn(),
+}));
 
 /** Preset paths under each remote script `type`. */
 type Browser = Partial<Record<string, string[]>>;
@@ -35,7 +42,12 @@ const WAVETABLE: PresetScope = {
 
 let fake: FakeRemoteScript | undefined;
 
+beforeEach(() => {
+  vi.mocked(findPresetFiles).mockResolvedValue(null);
+});
+
 afterEach(async () => {
+  vi.clearAllMocks();
   await fake?.close();
   fake = undefined;
 });
@@ -285,6 +297,212 @@ describe("lookUpBrowserPreset — a name", () => {
   });
 });
 
+describe("lookUpBrowserPreset — a name only the library has", () => {
+  const KIT = {
+    name: "505 Classic Kit.adg",
+    path: "/Users/me/Music/Ableton/Factory Packs/Drum Essentials/Drums/Drum Machines/505 Classic Kit.adg",
+  };
+
+  it("loads the one file with that name", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+
+    expect(await lookUp("505 Classic Kit")).toStrictEqual({
+      available: true,
+      item: { type: "file", path: KIT.path, name: KIT.name },
+    });
+    expect(findPresetFiles).toHaveBeenCalledWith({ name: "505 classic kit" });
+  });
+
+  it("looks the name up as the browser compares it", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+    await lookUp("  505 CLASSIC Kit.adg ");
+
+    expect(findPresetFiles).toHaveBeenCalledWith({ name: "505 classic kit" });
+  });
+
+  it("lists the files, spelled as preset args, for several", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([
+      KIT,
+      { name: "505 Classic Kit.adg", path: "/Users/me/User Library/Kit.adg" },
+    ]);
+
+    expect(await lookUp("505 Classic Kit")).toStrictEqual({
+      available: true,
+      error:
+        'preset "505 Classic Kit" matches 2 presets; pass one of these as preset: ' +
+        `"${KIT.path}", "/Users/me/User Library/Kit.adg"`,
+    });
+  });
+
+  it("keeps the no-preset error when the library has none", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([]);
+
+    expect(await lookUp("505 Classic Kit")).toStrictEqual({
+      available: true,
+      error:
+        'no preset "505 Classic Kit". Search ppal-library (kind: preset or device-group) and pass a result\'s path as preset',
+    });
+  });
+
+  it("keeps the no-preset error when the library can't be read", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue(null);
+
+    expect(await lookUp("505 Classic Kit")).toStrictEqual({
+      available: true,
+      error:
+        'no preset "505 Classic Kit". Search ppal-library (kind: preset or device-group) and pass a result\'s path as preset',
+    });
+  });
+
+  it("offers the browser's close matches when the library has none", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([]);
+
+    expect(await lookUp("Abdominal")).toStrictEqual({
+      available: true,
+      error:
+        'no preset "Abdominal". Close matches, to pass as preset: "Instruments/Wavetable/Bass/Abdominal Bass.adv"',
+    });
+  });
+
+  it("doesn't ask the library when the browser has the name", async () => {
+    await lookUp("Concert Hall");
+
+    expect(findPresetFiles).not.toHaveBeenCalled();
+  });
+
+  it("asks only for presets for the device a call named", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+
+    const rack: PresetScope = {
+      type: "instrument",
+      path: "Drum Rack",
+      device: "Drum Rack",
+    };
+
+    expect(await lookUp("505 Classic Kit", rack)).toStrictEqual({
+      available: true,
+      item: { type: "file", path: KIT.path, name: KIT.name },
+    });
+    expect(findPresetFiles).toHaveBeenCalledWith({
+      name: "505 classic kit",
+      device: { name: "Drum Rack", kind: "instrument" },
+    });
+  });
+
+  it("reads each kind of device as its own kind of presets", async () => {
+    await lookUp("Nope", {
+      type: "audio-effect",
+      path: "Reverb",
+      device: "Reverb",
+    });
+    await lookUp("Nope", {
+      type: "midi-effect",
+      path: "Arpeggiator",
+      device: "Arpeggiator",
+    });
+
+    expect(
+      vi
+        .mocked(findPresetFiles)
+        .mock.calls.map(([query]) => query.device?.kind),
+    ).toStrictEqual(["audiofx", "midifx"]);
+  });
+
+  it("asks for the device's presets first when updating a device", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+    await lookUp("505 Classic Kit", { ...WAVETABLE, orAnywhere: true });
+
+    expect(findPresetFiles).toHaveBeenCalledExactlyOnceWith({
+      name: "505 classic kit",
+      device: { name: "Wavetable", kind: "instrument" },
+    });
+  });
+
+  it("asks for any preset only when the device has none by that name", async () => {
+    vi.mocked(findPresetFiles)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([KIT]);
+
+    expect(
+      await lookUp("505 Classic Kit", { ...WAVETABLE, orAnywhere: true }),
+    ).toStrictEqual({
+      available: true,
+      item: { type: "file", path: KIT.path, name: KIT.name },
+    });
+    expect(vi.mocked(findPresetFiles).mock.calls).toStrictEqual([
+      [
+        {
+          name: "505 classic kit",
+          device: { name: "Wavetable", kind: "instrument" },
+        },
+      ],
+      [{ name: "505 classic kit" }],
+    ]);
+  });
+
+  it("asks for any preset on a plug-in in the Set, which has no class to filter by", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+    await lookUp("505 Classic Kit", {
+      type: "plugin",
+      path: "VST3/Pro-Q 4",
+      device: "Pro-Q 4",
+      orAnywhere: true,
+    });
+
+    expect(findPresetFiles).toHaveBeenCalledExactlyOnceWith({
+      name: "505 classic kit",
+    });
+  });
+
+  it("names no device in the error when updating a device finds nothing", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([]);
+
+    expect(
+      await lookUp("Nope", { ...WAVETABLE, orAnywhere: true }),
+    ).toStrictEqual({
+      available: true,
+      error:
+        'no preset "Nope". Search ppal-library (kind: preset or device-group) and pass a result\'s path as preset',
+    });
+  });
+
+  it("leaves a plug-in's or Max device's presets to the browser", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+
+    expect(
+      await lookUp("505 Classic Kit", {
+        type: "plugin",
+        path: "VST3/Pro-Q 4",
+        device: "Pro-Q 4",
+      }),
+    ).toStrictEqual({
+      available: true,
+      error:
+        'no preset "505 Classic Kit" for Pro-Q 4. Search ppal-library (kind: preset or device-group) and pass a result\'s path as preset',
+    });
+    expect(findPresetFiles).not.toHaveBeenCalled();
+  });
+
+  it("stops when the deadline passes before the library is read", async () => {
+    // The browser answers after the lookup's time is up, but within the wait
+    // the client allows, so the search itself succeeds.
+    fake = await startFakeRemoteScript((request) => {
+      const until = Date.now() + 250;
+
+      while (Date.now() < until) {
+        // Wait out the deadline.
+      }
+
+      return listing(BROWSER, request);
+    });
+
+    await expect(
+      lookUpBrowserPreset("Nope", undefined, Date.now() + 200),
+    ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+    expect(findPresetFiles).not.toHaveBeenCalled();
+  });
+});
+
 describe("lookUpBrowserPreset — time", () => {
   it("shares one deadline between the scoped and the anywhere search", async () => {
     // Nothing under Wavetable matches, so the second search runs: both draw on
@@ -299,9 +517,9 @@ describe("lookUpBrowserPreset — time", () => {
       Date.now() + 20_000,
     );
 
-    const expiries = remote.requests.map(({ query }) =>
-      Number(query.expires_in_ms),
-    );
+    const expiries = remote.requests
+      .filter(({ route }) => route === "/list")
+      .map(({ query }) => Number(query.expires_in_ms));
 
     expect(expiries.length).toBeGreaterThan(1);
     expect(expiries.every((ms) => ms > 19_000 && ms <= 20_000)).toBe(true);

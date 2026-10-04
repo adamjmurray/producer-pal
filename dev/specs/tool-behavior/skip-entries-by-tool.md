@@ -138,6 +138,20 @@ with a tool, the tool wins.
   folders with no disk path) could hold is never guessed: that path's entry is
   `{path, ok: false, detail}` naming each candidate by its browser `uri`, and
   says to load the file from a uniquely named folder.
+- **A `preset` name (create-device, update-device) is found wherever it's
+  filed.** Live's browser is searched first, under the named device or, for
+  update-device, then anywhere. A name it lacks is looked up in Live's library
+  database, never by walking the Drums or Sounds sections (that can crash Live),
+  and loads by file. The match is the same as in the browser: the whole name,
+  any case, with or without `.adv`/`.adg`. One file loads; several refuse,
+  listing their paths. Only the device's presets count when a device is named
+  (racks by their rack class; any other device by the class of the presets filed
+  in or just under its folder). update-device asks for the target's presets
+  first and takes any preset only when it has none by that name. A plug-in or
+  Max device named on create-device has no class to filter by, so its name isn't
+  looked up in the database. The database is read as of Live's last save, so a
+  preset added this session may not be found; with no database, today's "no
+  preset" error stands.
 - **create-track answers per path named.** A track Live didn't make (an insert
   it refused, an answer with no track, one the deadline never reached) holds its
   slot as `{path, ok: false, detail}` in the caller's spelling (`t+`, `t2`,
