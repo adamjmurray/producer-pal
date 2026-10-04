@@ -11,7 +11,8 @@ import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.t
 
 // Enough to pin a boundary to ~1e-9 of the raw range, far finer than the
 // resolution Live actually stores. Each search costs one str_for_value call per
-// iteration, and we run two.
+// iteration, and we run two. Don't cut it to float32's 24 bits: the search
+// halves the range in absolute terms, so values near the low end lose precision.
 const BINARY_SEARCH_ITERATIONS = 30;
 
 /**
