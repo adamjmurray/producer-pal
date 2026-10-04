@@ -130,6 +130,23 @@ function setupSlotDuplication(
   return { sourceClipSlot, occupant };
 }
 
+/**
+ * Make the copy land, then refuse to be renamed.
+ * @param sourceClipSlot - The slot being duplicated
+ */
+function makeCopyRefuseItsName(sourceClipSlot: RegisteredMockObject): void {
+  const makeCopy = sourceClipSlot.methods.duplicate_clip_to as () => null;
+
+  sourceClipSlot.methods.duplicate_clip_to = () => {
+    makeCopy();
+    registerMockObject(COPY_ID, {}).set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    return null;
+  };
+}
+
 describe("duplicateClipSlot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -211,16 +228,8 @@ describe("duplicateClipSlot", () => {
   // The clip is in the slot by then, so a skip would lose it from the result.
   it("keeps a copy that exists when naming it throws", () => {
     const { sourceClipSlot } = setupSlotDuplication();
-    const makeCopy = sourceClipSlot.methods.duplicate_clip_to as () => null;
 
-    sourceClipSlot.methods.duplicate_clip_to = () => {
-      makeCopy();
-      registerMockObject(COPY_ID, {}).set.mockImplementation(() => {
-        throw new Error("name refused");
-      });
-
-      return null;
-    };
+    makeCopyRefuseItsName(sourceClipSlot);
 
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
       id: COPY_ID,
@@ -231,16 +240,8 @@ describe("duplicateClipSlot", () => {
 
   it("keeps the overwrite note when a copy that replaced a clip can't be named", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destHasClip: 1 });
-    const makeCopy = sourceClipSlot.methods.duplicate_clip_to as () => null;
 
-    sourceClipSlot.methods.duplicate_clip_to = () => {
-      makeCopy();
-      registerMockObject(COPY_ID, {}).set.mockImplementation(() => {
-        throw new Error("name refused");
-      });
-
-      return null;
-    };
+    makeCopyRefuseItsName(sourceClipSlot);
 
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
       id: COPY_ID,

@@ -47,6 +47,21 @@ export interface FakeRemoteScript {
 }
 
 /**
+ * What a stand-in was asked, without the expiry each request carries.
+ * @param fake - The stand-in, if one was started
+ * @returns Each request's query
+ */
+export function queriesAsked(
+  fake: FakeRemoteScript | undefined,
+): Array<Record<string, string>> {
+  return (fake?.requests ?? []).map(({ query }) =>
+    Object.fromEntries(
+      Object.entries(query).filter(([key]) => key !== "expires_in_ms"),
+    ),
+  );
+}
+
+/**
  * Start a stand-in remote script on a free port, and point the client at it
  * until it closes.
  * @param answer - Answers each request

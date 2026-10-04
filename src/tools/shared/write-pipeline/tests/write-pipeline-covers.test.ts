@@ -6,23 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { runWrite } from "../write-pipeline.ts";
 import { type Cover } from "../write-pipeline-types.ts";
-import {
-  type ToyArgs,
-  type ToyLog,
-  newToyLog,
-  toySpec,
-} from "./toy-write-spec.ts";
-
-/**
- * Run the toy tool.
- * @param args - The call
- * @returns What it answered, and what it saw
- */
-function runToy(args: ToyArgs): { result: unknown; log: ToyLog } {
-  const log = newToyLog();
-
-  return { result: runWrite(toySpec(log), args), log };
-}
+import { newToyLog, ranOutOfTime, runToy, toySpec } from "./toy-write-spec.ts";
 
 const slot = (path: string): Cover => ({ slot: path });
 const lane = (from: number, to: number, as: string): Cover => ({
@@ -32,11 +16,32 @@ const lane = (from: number, to: number, as: string): Cover => ({
   as,
 });
 
+const SAME_SLOT = { a: [slot("t2/s1")], b: [slot("t2/s1")] };
+const CUT_SHORT = {
+  a: [lane(0, 8, "t0[1|1]")],
+  b: [lane(4, 12, "t0[2|1]")],
+};
+const CUT_SHORT_TWICE = {
+  a: [lane(0, 8, "t0[1|1]")],
+  b: [lane(4, 12, "t0[B]")],
+  c: [lane(6, 14, "t0[C]")],
+};
+const REPLACED_BETWEEN_TWO = {
+  a: [lane(0, 8, "t0[1|1]")],
+  b: [lane(0, 4, "t0[B]")],
+  c: [lane(4, 8, "t0[C]")],
+};
+const TWO_SLOTS_EACH_COVERED = {
+  a: [slot("t2/s1"), slot("t3/s1")],
+  b: [slot("t2/s1")],
+  c: [slot("t3/s1")],
+};
+
 describe("a later target that goes over an earlier one", () => {
   it("leaves an earlier slot write unwritten, naming the later one", () => {
     const { result, log } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
     });
 
     expect(log.writes).toStrictEqual(["b"]);
@@ -65,7 +70,7 @@ describe("a later target that goes over an earlier one", () => {
   it("says nothing of ok or deleted on the earlier entry", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
     });
 
     expect((result as object[])[0]).not.toHaveProperty("ok");
@@ -75,7 +80,7 @@ describe("a later target that goes over an earlier one", () => {
   it("marks the earlier target superseded for settle", () => {
     const { log } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
     });
 
     expect(log.settled[0]?.outcomes).toStrictEqual(["superseded", "written"]);
@@ -84,10 +89,7 @@ describe("a later target that goes over an earlier one", () => {
   it("writes an earlier stretch the later one only partly covers, saying it was cut short", () => {
     const { result, log } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
     });
 
     expect(log.writes).toStrictEqual(["a", "b"]);
@@ -104,10 +106,7 @@ describe("a later target that goes over an earlier one", () => {
   it("tells settle which targets it already said were cut short", () => {
     const { log } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
     });
 
     expect(log.settled[0]?.shortened).toStrictEqual([0]);
@@ -203,11 +202,7 @@ describe("a later target that goes over an earlier one", () => {
   it("names the last target to go over each ground when different ones do", () => {
     const { result } = runToy({
       ids: "a,b,c",
-      covers: {
-        a: [slot("t2/s1"), slot("t3/s1")],
-        b: [slot("t2/s1")],
-        c: [slot("t3/s1")],
-      },
+      covers: TWO_SLOTS_EACH_COVERED,
     });
 
     expect((result as object[])[0]).toStrictEqual({
@@ -219,11 +214,7 @@ describe("a later target that goes over an earlier one", () => {
   it("names the last of several targets that each cut an earlier one short", () => {
     const { result } = runToy({
       ids: "a,b,c",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[B]")],
-        c: [lane(6, 14, "t0[C]")],
-      },
+      covers: CUT_SHORT_TWICE,
     });
 
     expect((result as object[])[0]).toStrictEqual({
@@ -236,11 +227,7 @@ describe("a later target that goes over an earlier one", () => {
   it("replaces a stretch two later targets go over between them, naming the last", () => {
     const { result, log } = runToy({
       ids: "a,b,c",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(0, 4, "t0[B]")],
-        c: [lane(4, 8, "t0[C]")],
-      },
+      covers: REPLACED_BETWEEN_TWO,
     });
 
     expect(log.writes).toStrictEqual(["b", "c"]);
@@ -285,7 +272,7 @@ describe("a later target that goes over an earlier one", () => {
   it("doesn't count a skipped target as going over anything", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
       skip: { b: "no such b" },
     });
 
@@ -311,7 +298,7 @@ describe("a replacement that fails", () => {
   it("leaves the earlier target ok:false, since nothing replaced it", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
       failBefore: ["b"],
     });
 
@@ -328,7 +315,7 @@ describe("a replacement that fails", () => {
   it("settles the earlier target as skipped", () => {
     const { log } = runToy({
       ids: "a,b,c",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
       failBefore: ["b"],
     });
 
@@ -359,7 +346,7 @@ describe("a replacement that fails", () => {
   it("keeps the earlier target replaced when the later one only half landed", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
       failAfter: ["b"],
     });
 
@@ -374,7 +361,7 @@ describe("a replacement that fails", () => {
   it("counts a later write that only said its cover landed before it threw", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
       failAfterCoverOnly: ["b"],
     });
 
@@ -387,10 +374,7 @@ describe("a replacement that fails", () => {
   it("doesn't say an earlier target was cut short by a later one that failed", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
       failBefore: ["b"],
     });
 
@@ -400,10 +384,7 @@ describe("a replacement that fails", () => {
   it("doesn't cut short an earlier target that never landed", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
       failBefore: ["a"],
     });
 
@@ -417,10 +398,7 @@ describe("a replacement that fails", () => {
   it("doesn't cut short an earlier target whose own ground never landed", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
       coverMisses: ["a"],
     });
 
@@ -432,7 +410,7 @@ describe("a replacement that fails", () => {
   it("leaves the earlier target ok:false when the later one wrote none of its ground", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] },
+      covers: SAME_SLOT,
       coverMisses: ["b"],
     });
 
@@ -449,10 +427,7 @@ describe("a replacement that fails", () => {
   it("doesn't say a target was cut short by a later one that wrote none of its ground", () => {
     const { result } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
       coverMisses: ["b"],
     });
 
@@ -462,11 +437,7 @@ describe("a replacement that fails", () => {
   it("names the toucher that landed when a later one that touches it didn't", () => {
     const { result } = runToy({
       ids: "a,b,c",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[B]")],
-        c: [lane(6, 14, "t0[C]")],
-      },
+      covers: CUT_SHORT_TWICE,
       coverMisses: ["c"],
     });
 
@@ -480,11 +451,7 @@ describe("a replacement that fails", () => {
   it("looks at every target it took to replace a stretch", () => {
     const { result } = runToy({
       ids: "a,b,c",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(0, 4, "t0[B]")],
-        c: [lane(4, 8, "t0[C]")],
-      },
+      covers: REPLACED_BETWEEN_TWO,
       coverMisses: ["b"],
     });
 
@@ -525,31 +492,17 @@ describe("a replacement that fails", () => {
     const log = newToyLog();
     const result = runWrite(
       toySpec(log),
-      { ids: "a,b", covers: { a: [slot("t2/s1")], b: [slot("t2/s1")] } },
+      { ids: "a,b", covers: SAME_SLOT },
       { deadline: Date.now() - 1 },
     );
 
-    expect(result).toStrictEqual([
-      {
-        id: "a",
-        ok: false,
-        detail: "the request ran out of time; re-run for this toy",
-      },
-      {
-        id: "b",
-        ok: false,
-        detail: "the request ran out of time; re-run for this toy",
-      },
-    ]);
+    expect(result).toStrictEqual(ranOutOfTime("a", "b"));
   });
 
   it("tells the plan which targets a later one cuts short, and which", () => {
     const { log } = runToy({
       ids: "a,b",
-      covers: {
-        a: [lane(0, 8, "t0[1|1]")],
-        b: [lane(4, 12, "t0[2|1]")],
-      },
+      covers: CUT_SHORT,
     });
 
     expect(log.shortenedBy).toStrictEqual([[[0, [1]]]]);

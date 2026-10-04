@@ -8,18 +8,14 @@
 
 import { describe, expect, it } from "vitest";
 import "../../duplicate-mocks-test-helpers.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
+  copySceneTo,
+  registerEightBeatSource,
   registerLiveLane,
+  registerTwoClipScene,
   type LiveLane,
 } from "#src/tools/actions/duplicate/tests/clip/overwrites/duplicate-live-lane-test-helpers.ts";
-import {
-  createStandardMidiClipMock,
-  registerClipSlot,
-  setupArrangementSceneMocks,
-} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
 /**
  * Make a track's next arrangement duplicate clear its range and then throw.
@@ -47,31 +43,9 @@ function laneWithClip(trackIndex: number): LiveLane {
   });
 }
 
-/** A scene with one clip on each of its first two tracks. */
-function registerTwoClipScene(): void {
-  setupArrangementSceneMocks(2);
-  registerClipSlot(0, 0, true, createStandardMidiClipMock());
-  registerClipSlot(1, 0, true, createStandardMidiClipMock());
-}
-
-/** A session clip as long as every copy Live makes on the simulated lanes. */
-function registerSource(): void {
-  setupArrangementSceneMocks(2);
-  registerMockObject("source", {
-    path: livePath.track(0).clipSlot(0).clip(),
-    properties: {
-      is_midi_clip: 1,
-      length: 8,
-      looping: 0,
-      loop_start: 0,
-      loop_end: 8,
-    },
-  });
-}
-
 describe("a clip copy that clears clips and then throws", () => {
   it("keeps its place, saying what it overwrote, beside a copy that landed", async () => {
-    registerSource();
+    registerEightBeatSource();
     clearThenThrow(laneWithClip(1));
     registerLiveLane({ trackIndex: 0 });
 
@@ -91,7 +65,7 @@ describe("a clip copy that clears clips and then throws", () => {
   });
 
   it("answers a lone one with the entry, not an error", async () => {
-    registerSource();
+    registerEightBeatSource();
     clearThenThrow(laneWithClip(1));
 
     expect(
@@ -103,7 +77,7 @@ describe("a clip copy that clears clips and then throws", () => {
   });
 
   it("is still a skip when it cleared nothing", async () => {
-    registerSource();
+    registerEightBeatSource();
     clearThenThrow(registerLiveLane({ trackIndex: 1 }));
 
     await expect(
@@ -118,9 +92,7 @@ describe("a scene copy whose track clears clips and then throws", () => {
     clearThenThrow(laneWithClip(0));
     registerLiveLane({ trackIndex: 1 });
 
-    expect(
-      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1]" }),
-    ).toStrictEqual({
+    expect(await copySceneTo("[5|1]")).toStrictEqual({
       clips: [{ id: "copy-1-0", path: "t1[5|1]" }],
       detail: "on t0: Live is unhappy, but overwrote the clip at t0[5|1]",
     });
@@ -131,9 +103,7 @@ describe("a scene copy whose track clears clips and then throws", () => {
     clearThenThrow(laneWithClip(0));
     clearThenThrow(laneWithClip(1));
 
-    expect(
-      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1]" }),
-    ).toStrictEqual({
+    expect(await copySceneTo("[5|1]")).toStrictEqual({
       clips: [],
       detail:
         "on t0: Live is unhappy, but overwrote the clip at t0[5|1]; " +

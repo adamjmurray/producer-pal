@@ -57,6 +57,23 @@ async function standIn(
   return fake;
 }
 
+/**
+ * Put `answer` on the preferred port and a real script on the file's port.
+ * @param answer - What the preferred port says
+ * @returns The two stand-ins
+ */
+async function preferredAndFilePorts(
+  answer: FakeAnswer,
+): Promise<{ preferred: FakeRemoteScript; other: FakeRemoteScript }> {
+  const preferred = await standIn(answer);
+  const other = await standIn(OURS);
+
+  ports.preferred = preferred.port;
+  ports.file = other.port;
+
+  return { preferred, other };
+}
+
 beforeEach(() => {
   savedEnv = process.env.PPAL_REMOTE_SCRIPT_PORT;
   ports.preferred = 1;
@@ -82,11 +99,8 @@ afterEach(async () => {
 
 describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
   it("goes to 3349 when the script answers there, not to the file's port", async () => {
-    const preferred = await standIn(OURS);
-    const other = await standIn(OURS);
+    const { preferred, other } = await preferredAndFilePorts(OURS);
 
-    ports.preferred = preferred.port;
-    ports.file = other.port;
     await remoteScriptRequest({ route: "/list" });
 
     expect(preferred.requests.map((r) => r.route)).toContain("/list");
@@ -94,11 +108,8 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
   });
 
   it("goes to the file's port when 3349 answers without script_version", async () => {
-    const preferred = await standIn(NOT_OURS);
-    const other = await standIn(OURS);
+    const { preferred, other } = await preferredAndFilePorts(NOT_OURS);
 
-    ports.preferred = preferred.port;
-    ports.file = other.port;
     await remoteScriptRequest({ route: "/list" });
 
     expect(other.requests.map((r) => r.route)).toContain("/list");
@@ -129,11 +140,7 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
   });
 
   it("goes to 3349 when its ping is slow, not to the file's port", async () => {
-    const preferred = await standIn(null);
-    const other = await standIn(OURS);
-
-    ports.preferred = preferred.port;
-    ports.file = other.port;
+    const { other } = await preferredAndFilePorts(null);
 
     await expect(
       remoteScriptRequest({ route: "/list", timeoutMs: 100 }),
@@ -142,11 +149,10 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
   });
 
   it("treats a non-JSON reply on 3349 as another program: uses the file's port", async () => {
-    const preferred = await standIn({ raw: "<html>dev server</html>" });
-    const other = await standIn(OURS);
+    const { other } = await preferredAndFilePorts({
+      raw: "<html>dev server</html>",
+    });
 
-    ports.preferred = preferred.port;
-    ports.file = other.port;
     await remoteScriptRequest({ route: "/list" });
 
     expect(other.requests.map((r) => r.route)).toContain("/list");

@@ -10,6 +10,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
+  expectUntouchedClipsReadOnce,
+  readsOf,
   registerStackingTrack,
   stackedLaneSpans,
 } from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
@@ -22,14 +24,6 @@ import { mockContext } from "./helpers/arrangement-tiling-test-helpers.ts";
 
 /** Clips on the track, each 4 beats long, one every 8 beats from beat 0. */
 const LANE = 30;
-
-/**
- * @param ids - Clip ids
- * @returns How often each one's properties were read, in order
- */
-function readsOf(ids: string[]): number[] {
-  return ids.map((id) => lookupMockObject(id)?.get.mock.calls.length ?? 0);
-}
 
 describe("a lane the call shares", () => {
   let ids: string[];
@@ -73,13 +67,7 @@ describe("a lane the call shares", () => {
 
     const untouched = ids.slice(10);
 
-    expect(readsOf(untouched)).toStrictEqual(untouched.map(() => 2));
-    expect(
-      untouched.map(
-        (id) =>
-          from.mock.calls.filter(([found]) => found === `id ${id}`).length,
-      ),
-    ).toStrictEqual(untouched.map(() => 1));
+    expectUntouchedClipsReadOnce(from, untouched);
   });
 
   it("knows a clip it trimmed is shorter, so clearing the part it lost does nothing", () => {

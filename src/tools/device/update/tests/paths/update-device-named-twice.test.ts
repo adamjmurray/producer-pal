@@ -17,6 +17,7 @@ import {
   keepsParamValue,
   livePath,
   registerMockObject,
+  registerTrackDevices,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 
@@ -43,6 +44,46 @@ function registerEffectAndInstrument(): {
       path: livePath.track(0).device(1),
       type: "Device",
       properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+    }),
+  };
+}
+
+/**
+ * Register a Drum Rack at t0/d0 with one pad on C1 and its chain, whose volume
+ * is a parameter.
+ * @returns The pad, the chain and the chain's volume
+ */
+function registerDrumRackWithPad(): {
+  pad: RegisteredMockObject;
+  chain: RegisteredMockObject;
+  volume: RegisteredMockObject;
+} {
+  const rack = livePath.track(0).device(0);
+
+  registerMockObject("rack", {
+    path: rack,
+    type: "RackDevice",
+    properties: {
+      can_have_drum_pads: 1,
+      chains: children("chain-0"),
+      drum_pads: children("pad-36"),
+    },
+  });
+
+  return {
+    pad: registerMockObject("pad-36", {
+      type: "DrumPad",
+      properties: { note: 36 },
+    }),
+    volume: registerMockObject("volume", {
+      path: `${rack.chain(0)} mixer_device volume`,
+      type: "DeviceParameter",
+      properties: { display_value: 0 },
+    }),
+    chain: registerMockObject("chain-0", {
+      path: rack.chain(0),
+      type: "DrumChain",
+      properties: { in_note: 36 },
     }),
   };
 }
@@ -107,26 +148,7 @@ describe("updateDevice - a device named twice", () => {
   });
 
   it("matches a chain named by its pad and by its rack position", () => {
-    registerMockObject("rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        can_have_drum_pads: 1,
-        chains: children("chain-0"),
-        drum_pads: children("pad-36"),
-      },
-    });
-    registerMockObject("pad-36", { type: "DrumPad", properties: { note: 36 } });
-    registerMockObject("volume", {
-      path: `${livePath.track(0).device(0).chain(0)} mixer_device volume`,
-      type: "DeviceParameter",
-      properties: { display_value: 0 },
-    });
-    const chain = registerMockObject("chain-0", {
-      path: livePath.track(0).device(0).chain(0),
-      type: "DrumChain",
-      properties: { in_note: 36 },
-    });
+    const { chain } = registerDrumRackWithPad();
 
     const result = updateDevice({ path: "t0/d0/pC1/c0,t0/d0/c0", mute: true });
 
@@ -141,31 +163,9 @@ describe("updateDevice - a device named twice", () => {
   });
 
   it("matches a drum pad named by its id and by its path", () => {
-    registerMockObject("rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        can_have_drum_pads: 1,
-        chains: children("chain-0"),
-        drum_pads: children("pad-36"),
-      },
-    });
-    const pad = registerMockObject("pad-36", {
-      type: "DrumPad",
-      properties: { note: 36 },
-    });
-    const volume = registerMockObject("volume", {
-      path: `${livePath.track(0).device(0).chain(0)} mixer_device volume`,
-      type: "DeviceParameter",
-      properties: { display_value: 0 },
-    });
+    const { pad, volume } = registerDrumRackWithPad();
 
     keepsParamValue(volume, -6.02);
-    registerMockObject("chain-0", {
-      path: livePath.track(0).device(0).chain(0),
-      type: "DrumChain",
-      properties: { in_note: 36 },
-    });
 
     const result = updateDevice({
       id: "pad-36",
@@ -204,14 +204,7 @@ describe("updateDevice - a device named twice", () => {
   });
 
   it("keeps two different devices apart", () => {
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-    });
-    registerMockObject("456", {
-      path: livePath.track(0).device(1),
-      type: "Device",
-    });
+    registerTrackDevices("123", "456");
 
     const result = updateDevice({ id: "123", path: "t0/d1", name: "A,B" });
 

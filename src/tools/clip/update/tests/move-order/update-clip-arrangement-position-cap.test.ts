@@ -11,38 +11,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-/**
- * One arrangement MIDI clip on its own track.
- * @param trackIndex - The track it sits on
- * @returns The track mock, which records the move calls
- */
-function setupClipOnTrack(trackIndex: number): RegisteredMockObject {
-  registerMockObject(`10${trackIndex}`, {
-    path: livePath.track(trackIndex).arrangementClip(0),
-    type: "Clip",
-    properties: {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0,
-      end_time: 16,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    },
-  });
-
-  return registerMockObject(`track-${trackIndex}`, {
-    path: livePath.track(trackIndex),
-    type: "Track",
-    properties: { track_index: trackIndex },
-    methods: {
-      duplicate_clip_to_arrangement: () => `id moved-${trackIndex}`,
-      create_midi_clip: () => `id temp-${trackIndex}`,
-      delete_clip: () => null,
-    },
-  });
-}
+import { setupClipOnTrack } from "./clip-per-track-fixtures.ts";
 
 /**
  * Whether a track was asked to move anything.

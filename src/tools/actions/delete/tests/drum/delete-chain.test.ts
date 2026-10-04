@@ -93,20 +93,35 @@ function makeInNoteStick(chains: RegisteredMockObject[]): void {
 }
 
 /**
- * A pad whose clear fails.
+ * A pad whose clear does what `clear` says.
  * @param note - The pad's note
+ * @param clear - Runs when the clear is called
  */
-function registerThrowingPad(note: number): void {
+function registerPad(note: number, clear: () => null): void {
   registerMockObject(`pad-${note}`, {
     path: livePath.track(0).device(0).drumPad(note),
     type: "DrumPad",
     properties: { note },
-    methods: {
-      delete_all_chains: () => {
-        throw new Error("Live is busy");
-      },
-    },
+    methods: { delete_all_chains: clear },
   });
+}
+
+/**
+ * A pad whose clear fails.
+ * @param note - The pad's note
+ */
+function registerThrowingPad(note: number): void {
+  registerPad(note, () => {
+    throw new Error("Live is busy");
+  });
+}
+
+/**
+ * A pad whose clear does nothing, so a chain on it survives.
+ * @param note - The pad's note
+ */
+function registerInertPad(note: number): void {
+  registerPad(note, () => null);
 }
 
 describe("deleteObject chain deletion", () => {
@@ -238,12 +253,7 @@ describe("deleteObject chain deletion", () => {
     const { chains } = registerDrumRack([36]);
 
     // A pad whose clear does nothing: the chain survives on the scratch pad.
-    registerMockObject("pad-37", {
-      path: livePath.track(0).device(0).drumPad(37),
-      type: "DrumPad",
-      properties: { note: 37 },
-      methods: { delete_all_chains: () => null },
-    });
+    registerInertPad(37);
 
     expect(() => deleteObject({ id: "chain-0", type: "chain" })).toThrow(
       "Live did not remove chain t0/d0/pC1/c0 (id chain-0), so it was left as is",
@@ -304,12 +314,7 @@ describe("deleteObject chain deletion", () => {
     const { chains } = registerDrumRack([36]);
 
     // A clear that does nothing, then a restore Live refuses.
-    registerMockObject("pad-37", {
-      path: livePath.track(0).device(0).drumPad(37),
-      type: "DrumPad",
-      properties: { note: 37 },
-      methods: { delete_all_chains: () => null },
-    });
+    registerInertPad(37);
     chains[0]?.set.mockImplementation((_property, value) => {
       if (value === 36) {
         throw new Error("Live is busy");

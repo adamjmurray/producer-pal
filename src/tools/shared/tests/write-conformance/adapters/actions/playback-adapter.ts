@@ -14,7 +14,11 @@ import {
   registerClipSlot,
   setupPlaybackLiveSet,
 } from "#src/tools/session/tests/playback/playback-test-helpers.ts";
-import { LIVE_FAILURE, namedOrder } from "../../write-conformance-fixtures.ts";
+import {
+  LIVE_FAILURE,
+  manyScenario,
+  repeatScenario,
+} from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
 
 /**
@@ -54,25 +58,14 @@ export const playbackAdapter: WriteToolAdapter = {
   many: (n) => {
     setUpClips(n);
 
-    const order = namedOrder(n);
-
-    return {
-      args: { id: order.map((i) => `c${i}`).join(",") },
-      expected: order.map((i) => ({ id: `c${i}`, path: `t${i}/s0` })),
-    };
+    return manyScenario(n, "c", (i) => `t${i}/s0`, false);
   },
 
   repeat: () => {
     setUpClips(2);
     mockNonExistentObjects();
 
-    // The same slot by id and by path; the id comes first.
-    return {
-      args: { id: "c0,c1", path: "t0/s0" },
-      keptArgs: { id: "c1", path: "t0/s0" },
-      skipped: [0],
-      expected: [{}, { id: "c1", path: "t1/s0" }, { id: "c0", path: "t0/s0" }],
-    };
+    return repeatScenario("c", (i) => `t${i}/s0`, false);
   },
 
   unparsable: () => {

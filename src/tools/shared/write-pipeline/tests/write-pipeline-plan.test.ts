@@ -5,27 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { runWrite } from "../write-pipeline.ts";
-import {
-  type ToyArgs,
-  type ToyLog,
-  newToyLog,
-  toySpec,
-} from "./toy-write-spec.ts";
-
-/**
- * Run the toy tool.
- * @param args - The call
- * @param ctx - The request context
- * @returns What it answered, and what it saw
- */
-function runToy(
-  args: ToyArgs,
-  ctx: Partial<ToolContext> = {},
-): { result: unknown; log: ToyLog } {
-  const log = newToyLog();
-
-  return { result: runWrite(toySpec(log), args, ctx), log };
-}
+import { newToyLog, runToy, toySpec, wroteAll } from "./toy-write-spec.ts";
 
 describe("the order targets are written in", () => {
   it("is the order named when the tool has no plan", () => {
@@ -69,11 +49,7 @@ describe("the order targets are written in", () => {
       slow: ["b"],
     });
 
-    expect(await result).toStrictEqual([
-      { id: "a", wrote: true },
-      { id: "b", wrote: true },
-      { id: "c", wrote: true },
-    ]);
+    expect(await result).toStrictEqual(wroteAll("a", "b", "c"));
     expect(log.writes).toStrictEqual(["b", "c", "a"]);
     expect(log.overlap).toBe(1);
   });

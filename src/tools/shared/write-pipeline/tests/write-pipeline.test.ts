@@ -8,26 +8,12 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { startPipelineProbe, stopPipelineProbe } from "../pipeline-probe.ts";
 import { runWrite } from "../write-pipeline.ts";
 import {
-  type ToyArgs,
-  type ToyLog,
   newToyLog,
+  ranOutOfTime,
+  runToy,
   toySpec,
+  wroteAll,
 } from "./toy-write-spec.ts";
-
-/**
- * Run the toy tool.
- * @param args - The call
- * @param ctx - The request context
- * @returns What it answered, and what it saw
- */
-function runToy(
-  args: ToyArgs,
-  ctx: Partial<ToolContext> = {},
-): { result: unknown; log: ToyLog } {
-  const log = newToyLog();
-
-  return { result: runWrite(toySpec(log), args, ctx), log };
-}
 
 describe("runWrite", () => {
   it("answers one entry per target, in the order named", () => {
@@ -61,11 +47,7 @@ describe("runWrite", () => {
     const { result, log } = runToy({ ids: "a,b,c", slow: ["a", "b"] });
 
     expect(result).toBeInstanceOf(Promise);
-    expect(await result).toStrictEqual([
-      { id: "a", wrote: true },
-      { id: "b", wrote: true },
-      { id: "c", wrote: true },
-    ]);
+    expect(await result).toStrictEqual(wroteAll("a", "b", "c"));
     expect(log.writes).toStrictEqual(["a", "b", "c"]);
     expect(log.overlap).toBe(1);
   });
@@ -327,18 +309,7 @@ describe("runWrite", () => {
         { deadline: Date.now() - 1 },
       );
 
-      expect(result).toStrictEqual([
-        {
-          id: "a",
-          ok: false,
-          detail: "the request ran out of time; re-run for this toy",
-        },
-        {
-          id: "b",
-          ok: false,
-          detail: "the request ran out of time; re-run for this toy",
-        },
-      ]);
+      expect(result).toStrictEqual(ranOutOfTime("a", "b"));
       expect(log.writes).toStrictEqual([]);
     });
 

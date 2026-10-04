@@ -12,6 +12,7 @@ import {
   type FakeAnswer,
   type FakeRemoteScript,
   type ReceivedRequest,
+  queriesAsked,
   startFakeRemoteScript,
 } from "../../tests/remote-script-test-helpers.ts";
 
@@ -103,18 +104,6 @@ function found(type: string, path: string): unknown {
 }
 
 /**
- * What the stand-in was asked, without the expiry each request carries.
- * @returns Each request's query
- */
-function queriesAsked(): Array<Record<string, string>> {
-  return (fake?.requests ?? []).map(({ query }) =>
-    Object.fromEntries(
-      Object.entries(query).filter(([key]) => key !== "expires_in_ms"),
-    ),
-  );
-}
-
-/**
  * Look a preset up in a stand-in browser.
  * @param preset - The preset arg
  * @param scope - The device to search under
@@ -140,7 +129,7 @@ describe("lookUpBrowserPreset — a name", () => {
       },
     });
     // Every section but Plug-Ins, which lists no presets.
-    expect(queriesAsked()).toStrictEqual(
+    expect(queriesAsked(fake)).toStrictEqual(
       ["mfl-device", "instrument", "audio-effect", "midi-effect"].map(
         (type) => ({ type, presets: "true", q: "concert hall" }),
       ),
@@ -157,7 +146,7 @@ describe("lookUpBrowserPreset — a name", () => {
       },
     });
     expect(fake?.requests).toHaveLength(1);
-    expect(queriesAsked()[0]).toStrictEqual({
+    expect(queriesAsked(fake)[0]).toStrictEqual({
       type: "instrument",
       presets: "true",
       q: "warm pad",

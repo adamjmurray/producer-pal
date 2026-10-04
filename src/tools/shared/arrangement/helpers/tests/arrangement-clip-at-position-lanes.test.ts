@@ -7,58 +7,25 @@
 // lookup of its own, from one read of each lane.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
-  clearMockRegistry,
   lookupMockObject,
+  clearMockRegistry,
   mockNonExistentObjects,
-  registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  positionPath as at,
+  registerBoundaryClips,
   registerMainLaneClip,
+  registerSpanningClip,
   registerTakeLaneClip,
+  registerTrackClips,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
-import {
-  type CompleteArrangementPosition,
-  type ArrangementLane,
-} from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
   arrangementClipAtPosition,
   arrangementPositionTarget,
 } from "../arrangement-clip-at-position.ts";
 import { LaneView } from "../arrangement-lane-view.ts";
-
-const MAIN: ArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE: ArrangementLane = {
-  kind: "take-lane",
-  trackIndex: 0,
-  laneIndex: 1,
-};
-
-/**
- * @param lane - The lane the path names
- * @param position - The song position, bar|beat
- * @returns The parsed path
- */
-function at(
-  lane: ArrangementLane,
-  position: string,
-): CompleteArrangementPosition {
-  return { kind: "arrangement-position", lane, position };
-}
-
-/**
- * Registers what track 0 answers as its own arrangement clips.
- * @param clipIds - The clip ids, in order
- */
-function registerTrackClips(...clipIds: string[]): void {
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...clipIds) },
-  });
-}
+import { MAIN, TAKE } from "./lane-view-fixtures.ts";
 
 describe("arrangementClipAtPosition on a call's lanes", () => {
   beforeEach(() => {
@@ -77,11 +44,7 @@ describe("arrangementClipAtPosition on a call's lanes", () => {
   });
 
   it("finds a clip that only spans the position, and names nothing where none does", () => {
-    registerMockObject("clip_long", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { start_time: 8, end_time: 24 },
-    });
-    registerTrackClips("clip_long");
+    registerSpanningClip();
 
     const lanes = new LaneView();
 
@@ -94,12 +57,7 @@ describe("arrangementClipAtPosition on a call's lanes", () => {
   });
 
   it("resolves a boundary between two clips to the one starting there", () => {
-    registerMockObject("clip_before", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { start_time: 8, end_time: 16 },
-    });
-    registerMainLaneClip("clip_after", 16, 1);
-    registerTrackClips("clip_before", "clip_after");
+    registerBoundaryClips();
 
     expect(
       arrangementClipAtPosition(at(MAIN, "5|1"), "path", new LaneView())?.id,

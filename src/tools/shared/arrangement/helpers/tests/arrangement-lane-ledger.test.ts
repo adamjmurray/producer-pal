@@ -5,88 +5,19 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
-import {
-  clearMockRegistry,
-  mockNonExistentObjects,
-  registerMockObject,
-  type RegisteredMockObject,
-} from "#src/test/mocks/mock-registry.ts";
-import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { LaneLedger } from "../arrangement-lane-ledger.ts";
-
-const MAIN: ArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE: ArrangementLane = {
-  kind: "take-lane",
-  trackIndex: 0,
-  laneIndex: 1,
-};
-
-/** One clip on a lane, as the registry should answer for it. */
-interface Span {
-  id: string;
-  start: number;
-  end: number;
-  /** The path to register it at; defaults to its place on the main lane. */
-  path?: string;
-}
-
-const clipMocks = new Map<string, RegisteredMockObject>();
-
-/**
- * Put these clips on the track's main lane, replacing whatever was there.
- * @param spans - The clips, in Live's order
- */
-function setMainLane(spans: Span[]): void {
-  setClips(spans, (index) => livePath.track(0).arrangementClip(index));
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-}
-
-/**
- * Put these clips on take lane 1, replacing whatever was there. The track's own
- * list is empty.
- * @param spans - The clips, in Live's order
- */
-function setTakeLane(spans: Span[]): void {
-  setClips(spans, (index) =>
-    livePath.track(0).takeLane(1).arrangementClip(index),
-  );
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-}
-
-/**
- * Register each clip, in place when it already exists.
- * @param spans - The clips, in Live's order
- * @param pathAt - The path a clip at that index sits on
- */
-function setClips(spans: Span[], pathAt: (index: number) => string): void {
-  for (const [index, { id, start, end, path }] of spans.entries()) {
-    clipMocks.set(
-      id,
-      registerMockObject(id, {
-        path: path ?? pathAt(index),
-        type: "Clip",
-        properties: { start_time: start, end_time: end },
-      }),
-    );
-  }
-}
-
-/**
- * Forget every read so far, so a test sees only what a step cost.
- */
-function clearReads(): void {
-  for (const mock of clipMocks.values()) {
-    mock.get.mockClear();
-  }
-}
+import {
+  clearReads,
+  LANE_AFTER_WRITE,
+  LANE_BEFORE_WRITE,
+  MAIN,
+  resetLaneMocks,
+  setMainLane,
+  setTakeLane,
+  TAKE,
+  wasRead,
+  type Span,
+} from "./lane-view-fixtures.ts";
 
 /**
  * @param from - The spy on LiveAPI.from
@@ -102,14 +33,6 @@ function clipsBuilt(
     .map(([id]) => String(id))
     .filter((id) => id.startsWith("id "))
     .toSorted();
-}
-
-/**
- * @param id - A clip's id
- * @returns Whether its span was read since the last {@link clearReads}
- */
-function wasRead(id: string): boolean {
-  return (clipMocks.get(id)?.get.mock.calls.length ?? 0) > 0;
 }
 
 /**
@@ -136,9 +59,7 @@ function effectsOfWrite(
 
 describe("LaneLedger", () => {
   beforeEach(() => {
-    clearMockRegistry();
-    mockNonExistentObjects();
-    clipMocks.clear();
+    resetLaneMocks();
   });
 
   afterEach(() => {
@@ -238,23 +159,12 @@ describe("LaneLedger", () => {
   });
 
   it("reads the spans of the written clips and what they overlapped, no more", () => {
-    setMainLane([
-      { id: "before", start: 0, end: 8 },
-      { id: "hit", start: 8, end: 24 },
-      { id: "next", start: 24, end: 32 },
-      { id: "far", start: 100, end: 108 },
-    ]);
+    setMainLane(LANE_BEFORE_WRITE);
 
     const ledger = new LaneLedger();
 
     ledger.scan(MAIN);
-    setMainLane([
-      { id: "before", start: 0, end: 8 },
-      { id: "hit", start: 8, end: 12 },
-      { id: "new", start: 12, end: 24 },
-      { id: "next", start: 24, end: 32 },
-      { id: "far", start: 100, end: 108 },
-    ]);
+    setMainLane(LANE_AFTER_WRITE);
     clearReads();
 
     expect(ledger.afterWrite(MAIN, ["new"])).toBe(
@@ -549,9 +459,7 @@ describe("LaneLedger", () => {
 
 describe("LaneLedger that skips the call's own clips", () => {
   beforeEach(() => {
-    clearMockRegistry();
-    mockNonExistentObjects();
-    clipMocks.clear();
+    resetLaneMocks();
   });
 
   afterEach(() => {

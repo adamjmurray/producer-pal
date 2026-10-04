@@ -13,47 +13,17 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  positionPath as at,
+  registerBoundaryClips,
   registerMainLaneClip,
+  registerSpanningClip,
   registerTakeLaneClip,
+  registerTrackClips,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
 import { arrangementClipAtPosition } from "../arrangement-clip-at-position.ts";
-import {
-  type CompleteArrangementPosition,
-  type ArrangementLane,
-} from "#src/tools/shared/validation/helpers/object-path-position.ts";
+import { MAIN as MAIN_LANE, TAKE as TAKE_LANE } from "./lane-view-fixtures.ts";
 
 const PARAM_NAME = "path";
-const MAIN_LANE: ArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE_LANE: ArrangementLane = {
-  kind: "take-lane",
-  trackIndex: 0,
-  laneIndex: 1,
-};
-
-/**
- * A complete arrangement path, the way the parser hands one over.
- * @param lane - The lane the path names
- * @param position - The song position, bar|beat or `loc:`
- * @returns The parsed path
- */
-function at(
-  lane: ArrangementLane,
-  position: string,
-): CompleteArrangementPosition {
-  return { kind: "arrangement-position", lane, position };
-}
-
-/**
- * Registers what track 0 answers as its own arrangement clips.
- * @param clipIds - The clip ids, in order
- */
-function registerTrackClips(...clipIds: string[]): void {
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...clipIds) },
-  });
-}
 
 describe("arrangementClipAtPosition", () => {
   beforeEach(() => {
@@ -121,11 +91,7 @@ describe("arrangementClipAtPosition", () => {
   // A path is an address, not a "starts at": a clip running from bar 3 through
   // bar 6 is the clip at 5|1.
   it("finds a clip that only spans the position, not starts there", () => {
-    registerMockObject("clip_long", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { start_time: 8, end_time: 24 },
-    });
-    registerTrackClips("clip_long");
+    registerSpanningClip();
 
     expect(
       arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,
@@ -135,12 +101,7 @@ describe("arrangementClipAtPosition", () => {
   // A clip's end is exclusive: back-to-back clips at the boundary resolve to
   // the one starting there, never the one ending there.
   it("resolves a boundary between two clips to the one starting there", () => {
-    registerMockObject("clip_before", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { start_time: 8, end_time: 16 },
-    });
-    registerMainLaneClip("clip_after", 16, 1);
-    registerTrackClips("clip_before", "clip_after");
+    registerBoundaryClips();
 
     expect(
       arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,

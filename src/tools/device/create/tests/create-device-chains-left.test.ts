@@ -8,12 +8,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerGrowingRack } from "../../tests/helpers/growing-rack-fixtures.ts";
 import { createDevice } from "../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -21,42 +21,17 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warnOnce: vi.fn(),
 }));
 
-const RACK = livePath.track(0).device(0);
-
 /**
  * Register an Audio Effect Rack on track 0 whose chains turn down every insert,
  * the way Live refuses an instrument there. Each insert_chain adds a chain.
  * @param existing - How many chains the rack already has
  */
 function registerRefusingRack(existing: number): void {
-  const chainIds: string[] = [];
-
   registerMockObject("track-0", { path: livePath.track(0) });
-
-  const addChain = (): string => {
-    const index = chainIds.length / 2;
-    const id = `chain-${index}`;
-
-    registerMockObject(id, {
-      path: RACK.chain(index),
-      type: "Chain",
-      properties: { devices: children() },
-      methods: { insert_device: () => ["id", "0"] },
-    });
-    chainIds.push("id", id);
-
-    return id;
-  };
-
-  for (let i = 0; i < existing; i++) {
-    addChain();
-  }
-
-  registerMockObject("rack", {
-    path: RACK,
-    type: "RackDevice",
-    properties: { chains: chainIds, can_have_chains: 1, can_have_drum_pads: 0 },
-    methods: { insert_chain: () => ["id", addChain()] },
+  registerGrowingRack({
+    track: 0,
+    existing,
+    chainMethods: { insert_device: () => ["id", "0"] },
   });
 }
 

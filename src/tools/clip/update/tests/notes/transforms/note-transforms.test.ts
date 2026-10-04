@@ -11,6 +11,7 @@ import {
   buildClipContext,
 } from "../../../helpers/notes/note-transforms.ts";
 import {
+  clipRegionProperty,
   makeNotesMockClip,
   rawNote,
   registerScaledLiveSet,
@@ -445,9 +446,7 @@ describe("note-transforms", () => {
       const removeCalls: unknown[][] = [];
       let cleared = false;
       const mockClip = {
-        getProperty: vi.fn((prop: string) =>
-          ["length", "end_marker", "loop_end"].includes(prop) ? 4 : 0,
-        ),
+        getProperty: vi.fn(clipRegionProperty()),
         call: vi.fn((method: string, ...args: unknown[]) => {
           if (method === "get_notes_extended") {
             // Live only surfaces the pickup when the window reaches before beat 0.

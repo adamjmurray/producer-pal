@@ -13,6 +13,7 @@ import {
   type FakeAnswer,
   type FakeRemoteScript,
   type ReceivedRequest,
+  queriesAsked,
   startFakeRemoteScript,
 } from "../../tests/remote-script-test-helpers.ts";
 
@@ -24,18 +25,6 @@ let fake: FakeRemoteScript | undefined;
 /** A deadline far enough off that no test hits it by accident. */
 function inAMinute(): number {
   return Date.now() + 60_000;
-}
-
-/**
- * What the stand-in was asked, without the expiry each request carries.
- * @returns Each request's query
- */
-function queriesAsked(): Array<Record<string, string>> {
-  return (fake?.requests ?? []).map(({ query }) =>
-    Object.fromEntries(
-      Object.entries(query).filter(([key]) => key !== "expires_in_ms"),
-    ),
-  );
 }
 
 afterEach(async () => {
@@ -365,7 +354,7 @@ describe("lookUpBrowserDevice", () => {
           name: "Pro-Q 4",
         },
       });
-      expect(queriesAsked()).toStrictEqual([
+      expect(queriesAsked(fake)).toStrictEqual([
         { type: "plugin", recursive: "false", path: "VST/FabFilter" },
       ]);
     });
@@ -377,7 +366,7 @@ describe("lookUpBrowserDevice", () => {
         available: true,
         item: { type: "audio-effect", path: "Reverb", name: "Reverb" },
       });
-      expect(queriesAsked()).toStrictEqual([
+      expect(queriesAsked(fake)).toStrictEqual([
         { type: "audio-effect", recursive: "false" },
       ]);
     });

@@ -11,12 +11,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  lookupMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
+  expectUntouchedClipsReadOnce,
+  makeLooping,
+  readsOf,
   registerStackingTrack,
   stackedLaneSpans,
 } from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
@@ -26,28 +26,6 @@ const LANE = 40;
 
 /** The clips of the far end of the lane, which no copy here comes near. */
 const FAR_FROM = 30;
-
-/**
- * @param ids - Clip ids
- * @returns How often each one's properties were read, in order
- */
-function readsOf(ids: string[]): number[] {
-  return ids.map((id) => lookupMockObject(id)?.get.mock.calls.length ?? 0);
-}
-
-/**
- * Make a clip loop over its own length, which is what lengthening tiles.
- * @param id - The clip
- */
-function makeLooping(id: string): void {
-  Object.assign(lookupMockObject(id)?.properties ?? {}, {
-    looping: 1,
-    loop_start: 0,
-    loop_end: 4,
-    start_marker: 0,
-    end_marker: 4,
-  });
-}
 
 describe("duplicate over a long lane", () => {
   let ids: string[];
@@ -80,13 +58,7 @@ describe("duplicate over a long lane", () => {
 
     const far = ids.slice(FAR_FROM);
 
-    expect(readsOf(far)).toStrictEqual(far.map(() => 2));
-    expect(
-      far.map(
-        (id) =>
-          from.mock.calls.filter(([found]) => found === `id ${id}`).length,
-      ),
-    ).toStrictEqual(far.map(() => 1));
+    expectUntouchedClipsReadOnce(from, far);
   });
 
   it("reads each clip lengthened session copies don't touch once", async () => {

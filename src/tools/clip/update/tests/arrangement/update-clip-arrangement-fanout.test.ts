@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -12,39 +11,7 @@ import {
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-/**
- * One 4-bar arrangement MIDI clip on its own track, so a move can't collide
- * with a sibling.
- * @param trackIndex - The track it sits on
- * @returns The track mock, which records the move calls
- */
-function setupClipOnTrack(trackIndex: number): RegisteredMockObject {
-  registerMockObject(clipId(trackIndex), {
-    path: livePath.track(trackIndex).arrangementClip(0),
-    type: "Clip",
-    properties: {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0,
-      end_time: 16,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    },
-  });
-
-  return registerMockObject(`track-${trackIndex}`, {
-    path: livePath.track(trackIndex),
-    type: "Track",
-    properties: { track_index: trackIndex },
-    methods: {
-      duplicate_clip_to_arrangement: () => `id moved-${trackIndex}`,
-      create_midi_clip: () => `id temp-${trackIndex}`,
-      delete_clip: () => null,
-    },
-  });
-}
+import { setupClipOnTrack } from "../move-order/clip-per-track-fixtures.ts";
 
 /**
  * Every position a track took a move at, in call order.
@@ -65,15 +32,6 @@ function movesTo(track: RegisteredMockObject): number[] {
  */
 function movedTo(track: RegisteredMockObject): number | null {
   return movesTo(track)[0] ?? null;
-}
-
-/**
- * The clip id for a track. Not "0": Live reads id 0 as no object at all.
- * @param trackIndex - The track the clip sits on
- * @returns The clip id
- */
-function clipId(trackIndex: number): string {
-  return `10${trackIndex}`;
 }
 
 describe("updateClip - arrangement params per clip", () => {

@@ -9,11 +9,11 @@
 
 import { describe, expect, it } from "vitest";
 import "../../duplicate-mocks-test-helpers.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { registerLiveLane } from "#src/tools/actions/duplicate/tests/clip/overwrites/duplicate-live-lane-test-helpers.ts";
-import { setupArrangementSceneMocks } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerEightBeatSource,
+  registerLiveLane,
+} from "#src/tools/actions/duplicate/tests/clip/overwrites/duplicate-live-lane-test-helpers.ts";
 
 interface Entry {
   id?: string;
@@ -21,21 +21,6 @@ interface Entry {
   ok?: false;
   deleted?: true;
   detail?: string;
-}
-
-/** A session clip as long as every copy Live makes on the simulated lanes. */
-function registerSource(): void {
-  setupArrangementSceneMocks(2);
-  registerMockObject("source", {
-    path: livePath.track(0).clipSlot(0).clip(),
-    properties: {
-      is_midi_clip: 1,
-      length: 8,
-      looping: 0,
-      loop_start: 0,
-      loop_end: 8,
-    },
-  });
 }
 
 /**
@@ -49,9 +34,18 @@ async function copyTo(toPath: string): Promise<Entry | Entry[]> {
     | Entry[];
 }
 
+/** A source, and a lane whose clip at beats 16-20 is cleared by a copy Live then declines. */
+function registerDeclinedLane(): void {
+  registerEightBeatSource();
+  registerLiveLane({
+    trackIndex: 1,
+    clips: [{ id: "x", start: 16, end: 20 }],
+  }).declineNextWrite();
+}
+
 describe("what a copy did to the clips already on its lane", () => {
   it("says it overwrote a clip it covered whole", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 16, end: 20 }],
@@ -65,7 +59,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("says it shortened a clip it covered the end of", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 0, end: 20 }],
@@ -80,7 +74,7 @@ describe("what a copy did to the clips already on its lane", () => {
 
   // Live deletes a clip a write starts exactly on and re-creates the rest.
   it("says it shortened a clip it covered the front of", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 16, end: 40 }],
@@ -95,7 +89,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("says it split a clip it landed inside", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 8, end: 40 }],
@@ -110,7 +104,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("says nothing when a copy lands in free space", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 64, end: 68 }],
@@ -123,7 +117,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("names a clip only on the copy that landed on it", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 16, end: 20 }],
@@ -140,7 +134,7 @@ describe("what a copy did to the clips already on its lane", () => {
   // The first copy leaves the rest of the clip under a new id, which Live made,
   // not the call: the second copy covering it overwrites a clip that was there.
   it("does not take what Live left of a clip for a copy of the call", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 16, end: 32 }],
@@ -157,7 +151,7 @@ describe("what a copy did to the clips already on its lane", () => {
   // A copy the later one covers whole is never written, so the later copy is
   // the one that overwrote the clip that was there.
   it("leaves a copy a later copy covers whole unwritten", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 16, end: 20 }],
@@ -179,14 +173,7 @@ describe("what a copy did to the clips already on its lane", () => {
   // A copy Live declined can still have cleared its range first. The Set
   // changed, so the entry is no skip: it has no `ok: false`.
   it("says what a copy Live declined had already cleared", async () => {
-    registerSource();
-
-    const lane = registerLiveLane({
-      trackIndex: 1,
-      clips: [{ id: "x", start: 16, end: 20 }],
-    });
-
-    lane.declineNextWrite();
+    registerDeclinedLane();
 
     expect(await copyTo("t1[5|1],t1[9|1]")).toStrictEqual([
       {
@@ -199,14 +186,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("answers a lone declined copy that had cleared, without throwing", async () => {
-    registerSource();
-
-    const lane = registerLiveLane({
-      trackIndex: 1,
-      clips: [{ id: "x", start: 16, end: 20 }],
-    });
-
-    lane.declineNextWrite();
+    registerDeclinedLane();
 
     expect(await copyTo("t1[5|1]")).toStrictEqual({
       path: "t1[5|1]",
@@ -215,7 +195,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("still throws a lone declined copy that had cleared nothing", async () => {
-    registerSource();
+    registerEightBeatSource();
 
     const lane = registerLiveLane({ trackIndex: 1 });
 
@@ -227,7 +207,7 @@ describe("what a copy did to the clips already on its lane", () => {
   // Each of these copies reaches into the one before it, cutting its back off.
   // The earlier copy is still there, so its entry says it was shortened.
   it("says a copy of the same call cut short at the back was shortened", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({ trackIndex: 1 });
 
     const result = (await copyTo("t1[5|1],t1[6|1]")) as Entry[];
@@ -243,7 +223,7 @@ describe("what a copy did to the clips already on its lane", () => {
   });
 
   it("keeps what a copy overwrote when a later copy trims it", async () => {
-    registerSource();
+    registerEightBeatSource();
     registerLiveLane({
       trackIndex: 1,
       clips: [{ id: "x", start: 16, end: 20 }],

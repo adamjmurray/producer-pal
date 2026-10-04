@@ -11,6 +11,11 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  type AfterChangeScenario,
+  type RepeatScenario,
+  type Scenario,
+} from "./write-conformance-types.ts";
 
 /** The message every injected Live failure carries. */
 export const LIVE_FAILURE = "Live refused the write";
@@ -256,4 +261,83 @@ export function childIdAt(
   index: number,
 ): string {
   return String((owner.properties[property] as unknown[])[index * 2 + 1]);
+}
+
+/**
+ * A call naming `count` objects out of order, with `N<i>` names when `named`.
+ * @param count - How many objects
+ * @param idPrefix - Prefix of the object ids: `c` names `c0`, `c1`, ...
+ * @param pathOf - The path the entry for object `i` carries
+ * @param named - Rename each object too
+ * @returns The call and its expected entries
+ */
+export function manyScenario(
+  count: number,
+  idPrefix: string,
+  pathOf: (i: number) => string,
+  named = true,
+): Scenario {
+  const order = namedOrder(count);
+
+  return {
+    args: {
+      id: order.map((i) => `${idPrefix}${i}`).join(","),
+      ...(named ? { name: order.map((i) => `N${i}`).join(",") } : {}),
+    },
+    expected: order.map((i) => ({ id: `${idPrefix}${i}`, path: pathOf(i) })),
+  };
+}
+
+/**
+ * A call naming object 0 by id and by path, with the id first.
+ * @param idPrefix - Prefix of the object ids
+ * @param pathOf - The path of object `i`
+ * @param named - Rename too; the earlier mention takes the first name
+ * @returns The call and what to compare it with
+ */
+export function repeatScenario(
+  idPrefix: string,
+  pathOf: (i: number) => string,
+  named = true,
+): RepeatScenario {
+  const [id0, id1] = [`${idPrefix}0`, `${idPrefix}1`];
+
+  return {
+    args: {
+      id: `${id0},${id1}`,
+      path: pathOf(0),
+      ...(named ? { name: "A,B,C" } : {}),
+    },
+    keptArgs: { id: id1, path: pathOf(0), ...(named ? { name: "B,C" } : {}) },
+    skipped: [0],
+    expected: [{}, { id: id1, path: pathOf(1) }, { id: id0, path: pathOf(0) }],
+  };
+}
+
+/**
+ * Make the second of three objects take a rename, then refuse another write.
+ * @param objects - The registered objects, in order
+ * @param idPrefix - Prefix of the object ids
+ * @param prop - The property that is refused, passed after the name
+ * @param value - Its value in the call
+ * @returns The call and what should come back
+ */
+export function afterRenameScenario(
+  objects: RegisteredMockObject[],
+  idPrefix: string,
+  prop: string,
+  value: unknown,
+): AfterChangeScenario {
+  const [id0, id1, id2] = [0, 1, 2].map((i) => `${idPrefix}${i}`);
+
+  failOnSet(objects[1] as RegisteredMockObject, prop);
+
+  return {
+    args: { id: `${id0},${id1},${id2}`, name: "A,B,C", [prop]: value },
+    failIndex: 1,
+    message: LIVE_FAILURE,
+    changed: { id: id1 },
+    landed: "name",
+    expected: [{ id: id0 }, {}, { id: id2 }],
+  };
 }

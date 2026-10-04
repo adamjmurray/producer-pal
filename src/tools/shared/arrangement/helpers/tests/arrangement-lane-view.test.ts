@@ -7,12 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
-import {
-  clearMockRegistry,
-  mockNonExistentObjects,
-  registerMockObject,
-  type RegisteredMockObject,
-} from "#src/test/mocks/mock-registry.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
   clipLane,
@@ -21,99 +15,43 @@ import {
   sharingLaneView,
   trackLane,
 } from "../arrangement-lane-view.ts";
+import {
+  clearReads,
+  LANE_AFTER_WRITE,
+  LANE_BEFORE_WRITE,
+  MAIN,
+  readOf,
+  resetLaneMocks,
+  setMainLane,
+  setTakeLane,
+  TAKE,
+  type Span,
+} from "./lane-view-fixtures.ts";
 
-const MAIN: ArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE: ArrangementLane = {
-  kind: "take-lane",
-  trackIndex: 0,
-  laneIndex: 1,
-};
 const TAKE_PATH = "live_set tracks 0 take_lanes 1 arrangement_clips 0";
 
-/** One clip on a lane, as the registry should answer for it. */
-interface Span {
-  id: string;
-  start: number;
-  end: number;
-  path?: string;
-}
-
-const clipMocks = new Map<string, RegisteredMockObject>();
-let trackMock: RegisteredMockObject;
+const ABC: Span[] = [
+  { id: "a", start: 0, end: 8 },
+  { id: "b", start: 8, end: 16 },
+  { id: "c", start: 24, end: 40 },
+];
 
 /**
- * Put these clips on the track's main lane, replacing whatever was there.
- * @param spans - The clips, in Live's order
+ * @param aEnd - Where "a" ends
+ * @param bStart - Where "b" starts
+ * @returns Two near clips and one far from them, on the main lane
  */
-function setMainLane(spans: Span[]): void {
-  for (const [index, { id, start, end, path }] of spans.entries()) {
-    clipMocks.set(
-      id,
-      registerMockObject(id, {
-        path: path ?? livePath.track(0).arrangementClip(index),
-        type: "Clip",
-        properties: { start_time: start, end_time: end },
-      }),
-    );
-  }
-
-  trackMock = registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-}
-
-/**
- * Put these clips on take lane 1, replacing whatever was there.
- * @param spans - The clips, in Live's order
- */
-function setTakeLane(spans: Span[]): void {
-  for (const [index, { id, start, end }] of spans.entries()) {
-    clipMocks.set(
-      id,
-      registerMockObject(id, {
-        path: livePath.track(0).takeLane(1).arrangementClip(index),
-        type: "Clip",
-        properties: { start_time: start, end_time: end },
-      }),
-    );
-  }
-
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-}
-
-/** Forget every read so far, so a test sees only what a step cost. */
-function clearReads(): void {
-  for (const mock of clipMocks.values()) {
-    mock.get.mockClear();
-  }
-}
-
-/**
- * @param id - A clip's id
- * @returns Whether its span was read since the last {@link clearReads}
- */
-function wasRead(id: string): boolean {
-  return (clipMocks.get(id)?.get.mock.calls.length ?? 0) > 0;
-}
-
-/**
- * @param ids - Clip ids
- * @returns The ids whose span was read since the last {@link clearReads}
- */
-function readOf(ids: string[]): string[] {
-  return ids.filter(wasRead);
+function aBFar(aEnd: number, bStart = 20): Span[] {
+  return [
+    { id: "a", start: 0, end: aEnd },
+    { id: "b", start: bStart, end: 30 },
+    { id: "far", start: 100, end: 108 },
+  ];
 }
 
 describe("LaneView", () => {
   beforeEach(() => {
-    clearMockRegistry();
-    mockNonExistentObjects();
-    clipMocks.clear();
+    resetLaneMocks();
   });
 
   afterEach(() => {
@@ -122,19 +60,11 @@ describe("LaneView", () => {
 
   describe("asking", () => {
     beforeEach(() => {
-      setMainLane([
-        { id: "a", start: 0, end: 8 },
-        { id: "b", start: 8, end: 16 },
-        { id: "c", start: 24, end: 40 },
-      ]);
+      setMainLane(ABC);
     });
 
     it("lists the clips in Live's order", () => {
-      expect(new LaneView().clips(MAIN)).toStrictEqual([
-        { id: "a", start: 0, end: 8 },
-        { id: "b", start: 8, end: 16 },
-        { id: "c", start: 24, end: 40 },
-      ]);
+      expect(new LaneView().clips(MAIN)).toStrictEqual(ABC);
     });
 
     it("finds the clips that share time with a stretch, not those at its edge", () => {
@@ -198,10 +128,7 @@ describe("LaneView", () => {
 
   describe("clips that come and go", () => {
     it("drops a clip whose id has gone, and reads nothing", () => {
-      setMainLane([
-        { id: "a", start: 0, end: 8 },
-        { id: "b", start: 8, end: 16 },
-      ]);
+      const trackMock = setMainLane(ABC.slice(0, 2));
 
       const view = new LaneView();
 
@@ -214,23 +141,12 @@ describe("LaneView", () => {
     });
 
     it("reads a new clip, and the clips it overlaps, and no others", () => {
-      setMainLane([
-        { id: "before", start: 0, end: 8 },
-        { id: "hit", start: 8, end: 24 },
-        { id: "next", start: 24, end: 32 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(LANE_BEFORE_WRITE);
 
       const view = new LaneView();
 
       view.clips(MAIN);
-      setMainLane([
-        { id: "before", start: 0, end: 8 },
-        { id: "hit", start: 8, end: 12 },
-        { id: "new", start: 12, end: 24 },
-        { id: "next", start: 24, end: 32 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(LANE_AFTER_WRITE);
       clearReads();
 
       expect(view.clips(MAIN).map(({ id, end }) => [id, end])).toStrictEqual([
@@ -249,11 +165,7 @@ describe("LaneView", () => {
 
   describe("writes that leave no clip", () => {
     beforeEach(() => {
-      setMainLane([
-        { id: "a", start: 0, end: 20 },
-        { id: "b", start: 20, end: 30 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(aBFar(20));
     });
 
     it("reads again the clips a reported stretch overlaps, and no others", () => {
@@ -261,11 +173,7 @@ describe("LaneView", () => {
 
       view.clips(MAIN);
       // A temp clip trimmed a's tail and was deleted.
-      setMainLane([
-        { id: "a", start: 0, end: 12 },
-        { id: "b", start: 20, end: 30 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(aBFar(12));
       view.wrote(MAIN, { start: 12, end: 20 });
       clearReads();
 
@@ -277,11 +185,7 @@ describe("LaneView", () => {
       const view = new LaneView();
 
       view.clips(MAIN);
-      setMainLane([
-        { id: "a", start: 0, end: 12 },
-        { id: "b", start: 20, end: 30 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(aBFar(12));
       view.wroteOnTrack(LiveAPI.from(livePath.track(0)), 12, 20);
 
       expect(view.clips(MAIN)[0]?.end).toBe(12);
@@ -301,11 +205,7 @@ describe("LaneView", () => {
 
       view.clips(MAIN);
       // a grew to 28 and b lost its front.
-      setMainLane([
-        { id: "a", start: 0, end: 28 },
-        { id: "b", start: 28, end: 30 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(aBFar(28, 28));
       view.changed(MAIN, ["a"]);
       clearReads();
 
@@ -321,11 +221,7 @@ describe("LaneView", () => {
       const view = new LaneView();
 
       view.clips(MAIN);
-      setMainLane([
-        { id: "a", start: 0, end: 4 },
-        { id: "b", start: 20, end: 30 },
-        { id: "far", start: 100, end: 108 },
-      ]);
+      setMainLane(aBFar(4));
       view.changed(MAIN, ["id a"]);
 
       expect(view.clips(MAIN)[0]?.end).toBe(4);

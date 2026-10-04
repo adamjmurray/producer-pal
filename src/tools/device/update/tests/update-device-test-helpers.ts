@@ -270,6 +270,20 @@ export function registerDrumRackPadChain(
 }
 
 /**
+ * Register plain devices on track 0, one per id, in order.
+ * @param ids - The device ids, d0 first
+ * @returns The registered device mocks
+ */
+export function registerTrackDevices(...ids: string[]): RegisteredMockObject[] {
+  return ids.map((id, i) =>
+    registerMockObject(id, {
+      path: livePath.track(0).device(i),
+      type: "Device",
+    }),
+  );
+}
+
+/**
  * Register a device at t0/d0 holding the given parameter mocks.
  * @param paramIds - Parameter mock ids, in the device's parameter order
  * @returns The registered device mock

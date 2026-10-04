@@ -81,6 +81,20 @@ describe("liveApi", () => {
     proto.getstring = vi.fn((property: string) => `<${property}>`);
   });
 
+  /**
+   * Run one operation that reads the tempo, and check the one result it gives.
+   * @param operation - The operation, whose answer is the mocked tempo
+   */
+  function expectTempoRead(operation: LiveApiOperation): void {
+    defaultMock.get.mockReturnValueOnce([120]);
+
+    const result = liveApi({ operations: [operation] });
+
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]).toStrictEqual([120]);
+    expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+  }
+
   describe("input validation", () => {
     it("should throw error if operations is not an array", () => {
       expect(() =>
@@ -204,15 +218,7 @@ describe("liveApi", () => {
     });
 
     it("should handle call-method operation", () => {
-      defaultMock.get.mockReturnValueOnce([120]);
-
-      const result = liveApi({
-        operations: [{ type: "call-method", method: "get", args: ["tempo"] }],
-      });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0]).toStrictEqual([120]);
-      expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+      expectTempoRead({ type: "call-method", method: "get", args: ["tempo"] });
     });
 
     it("should handle call-method operation without args", () => {
@@ -295,15 +301,7 @@ describe("liveApi", () => {
 
   describe("convenience shortcuts", () => {
     it("should handle get operation", () => {
-      defaultMock.get.mockReturnValueOnce([120]);
-
-      const result = liveApi({
-        operations: [{ type: "get", property: "tempo" }],
-      });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0]).toStrictEqual([120]);
-      expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+      expectTempoRead({ type: "get", property: "tempo" });
     });
 
     it("should throw error for get without property", () => {

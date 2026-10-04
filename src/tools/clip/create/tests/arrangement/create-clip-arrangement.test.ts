@@ -454,6 +454,22 @@ describe("createClip - arrangement clip Live does not make", () => {
 
 // Writing into an occupied range is normal, so the create goes ahead — but a
 // caller can't see what it cost unless the new clip's entry says so.
+const OLD_CUT_SHORT = { id: "old", start: 0, end: 12 };
+const MADE_BAR = { id: "made", start: 12, end: 16 };
+
+/**
+ * Create a one-bar clip at t0[4|1].
+ * @returns What the entry says the create did to the clips already there
+ */
+async function createdDetail(): Promise<string | undefined> {
+  const result = (await createClip({
+    path: "t0[4|1]",
+    length: "1bar",
+  })) as { detail?: string };
+
+  return result.detail;
+}
+
 describe("createClip - what an arrangement create displaced", () => {
   it("says it wiped out the clip that was there", async () => {
     setupDisplacingTrack(
@@ -461,47 +477,25 @@ describe("createClip - what an arrangement create displaced", () => {
       [{ id: "made", start: 12, end: 16 }],
     );
 
-    const result = (await createClip({
-      path: "t0[4|1]",
-      length: "1bar",
-    })) as { detail?: string };
-
-    expect(result.detail).toBe("overwrote the clip at t0[4|1]");
+    expect(await createdDetail()).toBe("overwrote the clip at t0[4|1]");
   });
 
   it("says it cut short the clip it landed after", async () => {
     setupDisplacingTrack(
       [{ id: "old", start: 0, end: 20 }],
-      [
-        { id: "old", start: 0, end: 12 },
-        { id: "made", start: 12, end: 16 },
-      ],
+      [OLD_CUT_SHORT, MADE_BAR],
     );
 
-    const result = (await createClip({
-      path: "t0[4|1]",
-      length: "1bar",
-    })) as { detail?: string };
-
-    expect(result.detail).toBe("shortened the clip at t0[1|1]");
+    expect(await createdDetail()).toBe("shortened the clip at t0[1|1]");
   });
 
   it("names both pieces of a clip it landed inside", async () => {
     setupDisplacingTrack(
       [{ id: "old", start: 0, end: 32 }],
-      [
-        { id: "old", start: 0, end: 12 },
-        { id: "made", start: 12, end: 16 },
-        { id: "tail", start: 16, end: 32 },
-      ],
+      [OLD_CUT_SHORT, MADE_BAR, { id: "tail", start: 16, end: 32 }],
     );
 
-    const result = (await createClip({
-      path: "t0[4|1]",
-      length: "1bar",
-    })) as { detail?: string };
-
-    expect(result.detail).toBe(
+    expect(await createdDetail()).toBe(
       "split the clip at t0[1|1] into t0[1|1] and t0[5|1]",
     );
   });
@@ -515,11 +509,7 @@ describe("createClip - what an arrangement create displaced", () => {
         { id: "old", start: 0, end: 12 },
         { id: "made", start: 12, end: 20 },
       ],
-      [
-        { id: "old", start: 0, end: 12 },
-        { id: "made", start: 12, end: 16 },
-        { id: "made2", start: 16, end: 20 },
-      ],
+      [OLD_CUT_SHORT, MADE_BAR, { id: "made2", start: 16, end: 20 }],
     );
 
     const result = (await createClip({
@@ -536,11 +526,6 @@ describe("createClip - what an arrangement create displaced", () => {
   it("says nothing when the range was empty", async () => {
     setupDisplacingTrack([], [{ id: "made", start: 12, end: 16 }]);
 
-    const result = (await createClip({
-      path: "t0[4|1]",
-      length: "1bar",
-    })) as { detail?: string };
-
-    expect(result.detail).toBeUndefined();
+    expect(await createdDetail()).toBeUndefined();
   });
 });

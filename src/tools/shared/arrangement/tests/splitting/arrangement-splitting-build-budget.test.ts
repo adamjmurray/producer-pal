@@ -21,6 +21,7 @@ import {
 import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import { buildsOf } from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   createSplittingCallMock,
@@ -91,12 +92,7 @@ describe("arrangement splitting build budget", () => {
 
     const untouched = clipIds.slice(2);
 
-    expect(
-      untouched.map(
-        (id) =>
-          from.mock.calls.filter(([found]) => found === `id ${id}`).length,
-      ),
-    ).toStrictEqual(untouched.map(() => 1));
+    expect(buildsOf(from, untouched)).toStrictEqual(untouched.map(() => 1));
   });
 
   it("builds nothing new for a listed clip no point falls inside", async () => {

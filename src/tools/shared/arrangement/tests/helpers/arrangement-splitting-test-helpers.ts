@@ -262,6 +262,18 @@ export function setupClipSplittingMocks(
 
 export const SPLIT_CLIP_ID = "clip_1";
 
+/**
+ * A session clip, which an arrangement split refuses.
+ * @returns The clip mock
+ */
+export function registerSessionClip(): RegisteredMockObject {
+  return registerMockObject("session_clip", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    type: "Clip",
+    properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+  });
+}
+
 interface SplitTestFixture {
   clipId: string;
   callState: SplittingCallState;

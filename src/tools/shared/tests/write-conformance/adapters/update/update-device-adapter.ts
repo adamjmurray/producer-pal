@@ -15,7 +15,9 @@ import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-de
 import {
   LIVE_FAILURE,
   failOnSet,
-  namedOrder,
+  afterRenameScenario,
+  manyScenario,
+  repeatScenario,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
 
@@ -74,26 +76,13 @@ export const updateDeviceAdapter: WriteToolAdapter = {
   many: (n) => {
     setUpDevices(n);
 
-    const order = namedOrder(n);
-
-    return {
-      args: {
-        id: order.map((i) => `d${i}`).join(","),
-        name: order.map((i) => `N${i}`).join(","),
-      },
-      expected: order.map((i) => ({ id: `d${i}`, path: `t0/d${i}` })),
-    };
+    return manyScenario(n, "d", (i) => `t0/d${i}`);
   },
 
   repeat: () => {
     setUpDevices(2);
 
-    return {
-      args: { id: "d0,d1", path: "t0/d0", name: "A,B,C" },
-      keptArgs: { id: "d1", path: "t0/d0", name: "B,C" },
-      skipped: [0],
-      expected: [{}, { id: "d1", path: "t0/d1" }, { id: "d0", path: "t0/d0" }],
-    };
+    return repeatScenario("d", (i) => `t0/d${i}`);
   },
 
   newTwice: () => {
@@ -155,21 +144,8 @@ export const updateDeviceAdapter: WriteToolAdapter = {
     };
   },
 
-  afterChange: () => {
-    const chains = setUpChains(3);
-
-    // The name goes on, then the mute is refused.
-    failOnSet(chains[1] as RegisteredMockObject, "mute");
-
-    return {
-      args: { id: "c0,c1,c2", name: "A,B,C", mute: true },
-      failIndex: 1,
-      message: LIVE_FAILURE,
-      changed: { id: "c1" },
-      landed: "name",
-      expected: [{ id: "c0" }, {}, { id: "c2" }],
-    };
-  },
+  // The name goes on, then the mute is refused.
+  afterChange: () => afterRenameScenario(setUpChains(3), "c", "mute", true),
 
   wrongLength: () => {
     setUpDevices(2);

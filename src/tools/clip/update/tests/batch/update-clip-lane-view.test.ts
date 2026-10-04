@@ -20,44 +20,15 @@ import {
 } from "../../helpers/entries/clip-reasons.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
 import {
+  expectUntouchedClipsReadOnce,
+  makeLooping,
+  readsOf,
   registerStackingTrack,
   stackedLaneSpans,
 } from "./stacking-track-test-helpers.ts";
 
 /** Clips on the track, each 4 beats long, one every 8 beats from beat 0. */
 const LANE = 40;
-
-/**
- * @param ids - Clip ids
- * @returns How often each one's properties were read, in order
- */
-function readsOf(ids: string[]): number[] {
-  return ids.map((id) => lookupMockObject(id)?.get.mock.calls.length ?? 0);
-}
-
-/**
- * @param from - The spy on LiveAPI.from
- * @param id - A clip's id
- * @returns How often it was looked up
- */
-function buildsOf(from: { mock: { calls: unknown[][] } }, id: string): number {
-  return from.mock.calls.filter(([found]) => found === `id ${id}`).length;
-}
-
-/**
- * Make a stacked clip a looping one, which is what update-clip lengthens by
- * tiling.
- * @param id - The clip
- */
-function makeLooping(id: string): void {
-  Object.assign(lookupMockObject(id)?.properties ?? {}, {
-    looping: 1,
-    loop_start: 0,
-    loop_end: 4,
-    start_marker: 0,
-    end_marker: 4,
-  });
-}
 
 describe("update-clip over a long lane", () => {
   let ids: string[];
@@ -85,8 +56,7 @@ describe("update-clip over a long lane", () => {
     // The far end of the lane: scanned for its end and start, and no more.
     const far = ids.slice(30);
 
-    expect(readsOf(far)).toStrictEqual(far.map(() => 2));
-    expect(far.map((id) => buildsOf(from, id))).toStrictEqual(far.map(() => 1));
+    expectUntouchedClipsReadOnce(from, far);
   });
 
   it("reads each clip a batch of paths and moves doesn't touch once, paths included", async () => {
@@ -107,8 +77,7 @@ describe("update-clip over a long lane", () => {
     // Four lookups and four moves, and the far end of the lane was read once.
     const far = ids.slice(30);
 
-    expect(readsOf(far)).toStrictEqual(far.map(() => 2));
-    expect(far.map((id) => buildsOf(from, id))).toStrictEqual(far.map(() => 1));
+    expectUntouchedClipsReadOnce(from, far);
   });
 
   it("reads each clip a batch of lengthenings doesn't touch once", async () => {

@@ -10,14 +10,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { moveDeviceToPath } from "../../helpers/move-device.ts";
 import {
-  children,
+  registerGrowingRack,
+  registerMoveSourceAndRackTrack,
+} from "../../../tests/helpers/growing-rack-fixtures.ts";
+import {
   livePath,
   mockNonExistentObjects,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
-
-const RACK = livePath.track(1).device(0);
 
 /**
  * Register a rack on track 1 that appends a chain per insert_chain, and a
@@ -25,71 +26,37 @@ const RACK = livePath.track(1).device(0);
  * @param existing - How many chains the rack starts with
  */
 function registerRackAndDroppedMoves(existing: number): void {
-  const chainIds: string[] = [];
-
-  const addChain = (): string => {
-    const index = chainIds.length / 2;
-    const id = `chain-${index}`;
-
-    registerMockObject(id, {
-      path: RACK.chain(index),
-      type: "Chain",
-      properties: { devices: children() },
-    });
-    chainIds.push("id", id);
-
-    return id;
-  };
-
-  for (let i = 0; i < existing; i++) {
-    addChain();
-  }
-
-  registerMockObject("rack", {
-    path: RACK,
-    type: "RackDevice",
-    properties: { chains: chainIds, can_have_chains: 1, can_have_drum_pads: 0 },
-    methods: { insert_chain: () => ["id", addChain()] },
-  });
+  registerGrowingRack({ track: 1, existing });
   registerMockObject("live-set", {
     path: livePath.liveSet,
     methods: { move_device: () => null },
   });
 }
 
+/**
+ * Move a device that sits on track 0 to a path, the way update-device does.
+ * @param toPath - Where to move it
+ * @returns What the move came to
+ */
+function moveToPath(toPath: string): ReturnType<typeof moveDeviceToPath> {
+  registerMockObject("moving", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+  });
+
+  return moveDeviceToPath(LiveAPI.from("moving"), toPath, null, toPath);
+}
+
 describe("a move refused after its toPath made chains", () => {
   beforeEach(() => {
     mockNonExistentObjects();
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      type: "Track",
-      properties: { devices: children("src-0") },
-    });
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("rack") },
-    });
-    registerMockObject("src-0", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-    });
+    registerMoveSourceAndRackTrack();
   });
 
   it("hands back the chains a c+ made, which created leaves out", () => {
     registerRackAndDroppedMoves(1);
 
-    registerMockObject("moving", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-    });
-
-    const move = moveDeviceToPath(
-      LiveAPI.from("moving"),
-      "t1/d0/c+",
-      null,
-      "t1/d0/c+",
-    );
+    const move = moveToPath("t1/d0/c+");
 
     expect(move).toStrictEqual({
       outcome: "refused",
@@ -102,17 +69,7 @@ describe("a move refused after its toPath made chains", () => {
   it("hands back a gap's chains too, and no created for a failed move", () => {
     registerRackAndDroppedMoves(0);
 
-    registerMockObject("moving", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-    });
-
-    const move = moveDeviceToPath(
-      LiveAPI.from("moving"),
-      "t1/d0/c2/d+",
-      null,
-      "t1/d0/c2/d+",
-    );
+    const move = moveToPath("t1/d0/c2/d+");
 
     expect(move).toStrictEqual({
       outcome: "refused",

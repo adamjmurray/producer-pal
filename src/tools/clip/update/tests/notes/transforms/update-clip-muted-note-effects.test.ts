@@ -16,6 +16,7 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { clipRegionProperty } from "../notes-mock-test-helpers.ts";
 
 interface HeldNote {
   pitch: number;
@@ -79,9 +80,7 @@ function liveClip(existing: HeldNote[]): LiveAPI {
 
   return {
     id: "123",
-    getProperty: vi.fn((prop: string) =>
-      ["length", "end_marker", "loop_end"].includes(prop) ? 4 : 0,
-    ),
+    getProperty: vi.fn(clipRegionProperty()),
     call: vi.fn((method: string, ...args: unknown[]) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: notesInClip });

@@ -9,9 +9,13 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   keepsParamValue,
+  lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { registerReturnTracks } from "./send-return-fixtures.ts";
+import {
+  registerReturnTracks,
+  registerTwoTracksWithSends,
+} from "./send-return-fixtures.ts";
 import { updateTrack } from "../../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -25,17 +29,8 @@ describe("updateTrack - send properties", () => {
   let send3: RegisteredMockObject;
 
   beforeEach(() => {
-    track123 = registerMockObject("123", { path: livePath.track(0) });
-    registerMockObject("456", { path: livePath.track(1) });
-
-    registerMockObject("mixer_1", {
-      path: livePath.track(0).mixerDevice(),
-      properties: { sends: children("send_1", "send_2") },
-    });
-    registerMockObject("mixer_2", {
-      path: livePath.track(1).mixerDevice(),
-      properties: { sends: children("send_3", "send_4") },
-    });
+    registerTwoTracksWithSends(["send_1", "send_2"], ["send_3", "send_4"]);
+    track123 = lookupMockObject("123") as RegisteredMockObject;
 
     registerReturnTracks();
 

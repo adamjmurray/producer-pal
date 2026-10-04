@@ -24,3 +24,24 @@ export function registerReturnTracks(): void {
     properties: { name: "B-Delay" },
   });
 }
+
+/**
+ * Registers tracks `123` and `456` (t0, t1), each with a mixer holding sends.
+ * @param first - Ids of the first track's sends
+ * @param second - Ids of the second track's sends
+ */
+export function registerTwoTracksWithSends(
+  first: string[],
+  second: string[],
+): void {
+  registerMockObject("123", { path: livePath.track(0) });
+  registerMockObject("456", { path: livePath.track(1) });
+  registerMockObject("mixer_1", {
+    path: livePath.track(0).mixerDevice(),
+    properties: { sends: children(...first) },
+  });
+  registerMockObject("mixer_2", {
+    path: livePath.track(1).mixerDevice(),
+    properties: { sends: children(...second) },
+  });
+}

@@ -14,7 +14,9 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   LIVE_FAILURE,
   failOnSet,
-  namedOrder,
+  afterRenameScenario,
+  manyScenario,
+  repeatScenario,
   replaceClipOnCopy,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -55,26 +57,13 @@ export const updateClipAdapter: WriteToolAdapter = {
   many: (n) => {
     setUpClips(n);
 
-    const order = namedOrder(n);
-
-    return {
-      args: {
-        id: order.map((i) => `c${i}`).join(","),
-        name: order.map((i) => `N${i}`).join(","),
-      },
-      expected: order.map((i) => ({ id: `c${i}`, path: `t${i}/s0` })),
-    };
+    return manyScenario(n, "c", (i) => `t${i}/s0`);
   },
 
   repeat: () => {
     setUpClips(2);
 
-    return {
-      args: { id: "c0,c1", path: "t0/s0", name: "A,B,C" },
-      keptArgs: { id: "c1", path: "t0/s0", name: "B,C" },
-      skipped: [0],
-      expected: [{}, { id: "c1", path: "t1/s0" }, { id: "c0", path: "t0/s0" }],
-    };
+    return repeatScenario("c", (i) => `t${i}/s0`);
   },
 
   unparsable: () => {
@@ -147,21 +136,9 @@ export const updateClipAdapter: WriteToolAdapter = {
     };
   },
 
-  afterChange: () => {
-    const clips = setUpClips(3);
-
-    // The name goes on, then the color is refused.
-    failOnSet(clips[1] as RegisteredMockObject, "color");
-
-    return {
-      args: { id: "c0,c1,c2", name: "A,B,C", color: "#ff0000" },
-      failIndex: 1,
-      message: LIVE_FAILURE,
-      changed: { id: "c1" },
-      landed: "name",
-      expected: [{ id: "c0" }, {}, { id: "c2" }],
-    };
-  },
+  // The name goes on, then the color is refused.
+  afterChange: () =>
+    afterRenameScenario(setUpClips(3), "c", "color", "#ff0000"),
 
   wrongLength: () => {
     setUpClips(2);

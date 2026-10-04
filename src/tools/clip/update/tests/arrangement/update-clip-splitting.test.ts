@@ -19,6 +19,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createSplittingCallMock,
+  registerSessionClip,
   setupClipSplittingMocks,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
@@ -374,11 +375,7 @@ describe("updateClip - splitting smoke tests", () => {
   it("refuses a session clip in a batch while the arrangement clip splits", async () => {
     const { callState } = setupClipSplittingMocks("clip_1");
 
-    registerMockObject("session_clip", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
-    });
+    registerSessionClip();
 
     const result = await updateClip(
       { ids: "session_clip,clip_1", arrangementSplit: "2|1" },
@@ -400,11 +397,7 @@ describe("updateClip - splitting smoke tests", () => {
   // A target with no clip keeps its number, and each split piece gets its own.
   it("numbers split pieces after an empty target, then the next clip", async () => {
     setupClipSplittingMocks("clip_1");
-    registerMockObject("session_clip", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
-    });
+    registerSessionClip();
     const update = vi.spyOn(processModule, "processSingleClipUpdate");
 
     await updateClip(
@@ -434,11 +427,7 @@ describe("updateClip - splitting smoke tests", () => {
   it("keeps a session clip's entry when its rename lands beside the split", async () => {
     setupClipSplittingMocks("clip_1");
 
-    const sessionClip = registerMockObject("session_clip", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
-    });
+    const sessionClip = registerSessionClip();
 
     const result = await updateClip(
       { id: "session_clip", arrangementSplit: "2|1", name: "Renamed Anyway" },

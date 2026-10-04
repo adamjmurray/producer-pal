@@ -26,6 +26,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { registerMoveToEmptySlot } from "../session/slot-move-fixtures.ts";
 
 vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
   executeNoteCode: vi.fn(),
@@ -53,21 +54,7 @@ describe("updateClip - code failure on a re-created clip", () => {
       path: livePath.track(0),
       properties: { has_midi_input: 1, is_frozen: 0 },
     });
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      properties: { has_midi_input: 1, is_frozen: 0 },
-    });
-    registerMockObject("t0/s0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 1 },
-    });
-    registerMockObject("t1/s2", {
-      path: livePath.track(1).clipSlot(2),
-      properties: { has_clip: 0 },
-    });
-    registerMockObject("t1/s2/clip", {
-      path: livePath.track(1).clipSlot(2).clip(),
-    });
+    registerMoveToEmptySlot();
 
     // The move landed, so the clip keeps its entry with the reason on it.
     expect(

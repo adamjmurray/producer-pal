@@ -92,6 +92,29 @@ function registerCopiesIntoOneNewSlot(): void {
   });
 }
 
+/**
+ * Duplicate clip1 with an arrangementStart and a session destination, on a
+ * source slot where Live makes no copy, and expect the call to fail for it.
+ * @param destination - The session destination, as toPath or toSlot
+ */
+async function expectNoCopyMade(
+  destination: { toPath: string } | { toSlot: string },
+): Promise<void> {
+  registerMockObject("clipslot-0-0", {
+    path: livePath.track(0).clipSlot(0),
+    methods: { duplicate_clip_to: () => null },
+  });
+
+  await expect(
+    duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      ...destination,
+    }),
+  ).rejects.toThrow("Live made no copy there");
+}
+
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", async () => {
     registerSourceClip();
@@ -436,21 +459,7 @@ describe("duplicate - clip duplication", () => {
       registerMockObject("clipslot-2-0", {
         path: livePath.track(2).clipSlot(0),
       });
-      // Live makes no copy, so the one copy it asked for couldn't be made — the
-      // warning about the dropped param still lands.
-      registerMockObject("clipslot-0-0", {
-        path: livePath.track(0).clipSlot(0),
-        methods: { duplicate_clip_to: () => null },
-      });
-
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toPath: "t2/s0",
-        }),
-      ).rejects.toThrow("Live made no copy there");
+      await expectNoCopyMade({ toPath: "t2/s0" });
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("arrangementStart ignored"),
       );
@@ -532,20 +541,7 @@ describe("duplicate - clip duplication", () => {
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
       registerSourceClip();
-      // Live makes no copy, so the one copy it asked for couldn't be made.
-      registerMockObject("clipslot-0-0", {
-        path: livePath.track(0).clipSlot(0),
-        methods: { duplicate_clip_to: () => null },
-      });
-
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toSlot: "2/0",
-        }),
-      ).rejects.toThrow("Live made no copy there");
+      await expectNoCopyMade({ toSlot: "2/0" });
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "arrangementStart ignored: toSlot names a clip slot",

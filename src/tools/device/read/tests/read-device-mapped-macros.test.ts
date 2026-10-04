@@ -58,6 +58,19 @@ function registerRack(
   });
 }
 
+/**
+ * Read both racks, with params, and take each one's macros.
+ * @returns Each rack's macros, in the order read
+ */
+async function macrosOfBothRacks(): Promise<unknown[]> {
+  const result = (await readDevice({
+    id: "rack-1,rack-2",
+    include: ["params"],
+  })) as Array<{ macros: unknown }>;
+
+  return result.map((entry) => entry.macros);
+}
+
 describe("readDevice with the remote script", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -111,12 +124,7 @@ describe("readDevice with the remote script", () => {
     registerRack("rack-2", SECOND, { count: 8, mapped: true });
     remoteScriptSays({ mapped: [1] }, { mapped: [2, 3] });
 
-    const result = (await readDevice({
-      id: "rack-1,rack-2",
-      include: ["params"],
-    })) as Array<{ macros: unknown }>;
-
-    expect(result.map((entry) => entry.macros)).toStrictEqual([
+    expect(await macrosOfBothRacks()).toStrictEqual([
       { count: 8, mapped: [1] },
       { count: 8, mapped: [2, 3] },
     ]);
@@ -133,12 +141,7 @@ describe("readDevice with the remote script", () => {
     registerRack("rack-2", SECOND, { count: 8, mapped: true });
     remoteScriptSays({ error: "not a rack" }, { mapped: [2] });
 
-    const result = (await readDevice({
-      id: "rack-1,rack-2",
-      include: ["params"],
-    })) as Array<{ macros: unknown }>;
-
-    expect(result.map((entry) => entry.macros)).toStrictEqual([
+    expect(await macrosOfBothRacks()).toStrictEqual([
       { count: 8, hasMappings: true },
       { count: 8, mapped: [2] },
     ]);

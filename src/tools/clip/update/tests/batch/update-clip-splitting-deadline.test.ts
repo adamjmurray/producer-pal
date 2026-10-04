@@ -7,9 +7,10 @@
 // Set, so the clips it cut keep their entries.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
+import {
+  registerSessionClip,
+  setupClipSplittingMocks,
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 
 // The split's own check is the first call; every one after it is out of time.
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
@@ -51,11 +52,7 @@ describe("updateClip - a split cut short by the deadline", () => {
 
   it("skips a clip after it that the request ran out of time before", async () => {
     setupClipSplittingMocks("clip_1");
-    registerMockObject("session_clip", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-      properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
-    });
+    registerSessionClip();
 
     const result = await updateClip(
       { ids: "clip_1,session_clip", arrangementSplit: "2|1" },

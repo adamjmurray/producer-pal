@@ -8,23 +8,16 @@
 
 import { describe, expect, it } from "vitest";
 import "../duplicate-mocks-test-helpers.ts";
-import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
+  copySceneTo,
   registerLiveLane,
+  registerTwoClipScene,
   type LiveLane,
 } from "#src/tools/actions/duplicate/tests/clip/overwrites/duplicate-live-lane-test-helpers.ts";
 import {
-  createStandardMidiClipMock,
   registerClipSlot,
   setupArrangementSceneMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-
-/** A scene with one clip on each of its first two tracks. */
-function registerTwoClipScene(): void {
-  setupArrangementSceneMocks(2);
-  registerClipSlot(0, 0, true, createStandardMidiClipMock());
-  registerClipSlot(1, 0, true, createStandardMidiClipMock());
-}
 
 /**
  * Make a track's duplicate throw from its nth call on.
@@ -52,9 +45,7 @@ describe("a scene copied to the arrangement when a track throws", () => {
     throwFrom(registerLiveLane({ trackIndex: 0 }), 1);
     registerLiveLane({ trackIndex: 1 });
 
-    expect(
-      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1]" }),
-    ).toStrictEqual({
+    expect(await copySceneTo("[5|1]")).toStrictEqual({
       clips: [{ id: "copy-1-0", path: "t1[5|1]" }],
       detail: "on t0: Live is unhappy",
     });
@@ -65,9 +56,7 @@ describe("a scene copied to the arrangement when a track throws", () => {
     throwFrom(registerLiveLane({ trackIndex: 0 }), 2);
     throwFrom(registerLiveLane({ trackIndex: 1 }), 2);
 
-    expect(
-      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1],[9|1]" }),
-    ).toStrictEqual([
+    expect(await copySceneTo("[5|1],[9|1]")).toStrictEqual([
       {
         clips: [
           { id: "copy-0-0", path: "t0[5|1]" },
@@ -90,9 +79,7 @@ describe("a scene copied to the arrangement when a track throws", () => {
       trackIndex: 1,
     }).track.methods.duplicate_clip_to_arrangement = () => 1;
 
-    await expect(
-      duplicate({ type: "scene", id: "scene1", toPath: "[5|1]" }),
-    ).rejects.toThrow(
+    await expect(copySceneTo("[5|1]")).rejects.toThrow(
       "no clip landed: on t0: Live is unhappy; Live made no copy on t1",
     );
   });
@@ -108,9 +95,7 @@ describe("a scene copied to the arrangement when a track throws", () => {
     first.declineNextWrite();
     throwFrom(registerLiveLane({ trackIndex: 1 }), 1);
 
-    expect(
-      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1]" }),
-    ).toStrictEqual({
+    expect(await copySceneTo("[5|1]")).toStrictEqual({
       clips: [],
       detail:
         "Live made no copy on t0, but overwrote the clip at t0[5|1]; on t1: Live is unhappy",
@@ -124,9 +109,7 @@ describe("a scene with nothing to copy to the arrangement", () => {
     registerClipSlot(0, 0, false);
     registerClipSlot(1, 0, false);
 
-    expect(
-      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1],[9|1]" }),
-    ).toStrictEqual([
+    expect(await copySceneTo("[5|1],[9|1]")).toStrictEqual([
       { clips: [], detail: "the scene has no clips" },
       { clips: [], detail: "the scene has no clips" },
     ]);

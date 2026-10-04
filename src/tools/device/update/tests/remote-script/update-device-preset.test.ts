@@ -114,18 +114,29 @@ function registerDevice(
   return registerMockObject(id, { path, type: "Device", properties });
 }
 
+/**
+ * Register the Drift and the Reverb every test here starts with.
+ * @returns The Drift mock
+ */
+function registerDriftAndReverb(): RegisteredMockObject {
+  const driftMock = registerDevice("drift", String(DRIFT_PATH), {
+    class_display_name: "Drift",
+    type: 1,
+    name: "Drift",
+  });
+
+  registerDevice("reverb", String(REVERB_PATH), {
+    class_display_name: "Reverb",
+    type: 2,
+    name: "Reverb",
+  });
+
+  return driftMock;
+}
+
 describe("updateDevice with a preset", () => {
   beforeEach(() => {
-    drift = registerDevice("drift", String(DRIFT_PATH), {
-      class_display_name: "Drift",
-      type: 1,
-      name: "Drift",
-    });
-    registerDevice("reverb", String(REVERB_PATH), {
-      class_display_name: "Reverb",
-      type: 2,
-      name: "Reverb",
-    });
+    drift = registerDriftAndReverb();
     answerRemoteScript();
   });
 
@@ -444,16 +455,7 @@ describe("updateDevice - Live fails around a preset load", () => {
   }
 
   beforeEach(() => {
-    drift = registerDevice("drift", String(DRIFT_PATH), {
-      class_display_name: "Drift",
-      type: 1,
-      name: "Drift",
-    });
-    registerDevice("reverb", String(REVERB_PATH), {
-      class_display_name: "Reverb",
-      type: 2,
-      name: "Reverb",
-    });
+    drift = registerDriftAndReverb();
     answerRemoteScript();
   });
 

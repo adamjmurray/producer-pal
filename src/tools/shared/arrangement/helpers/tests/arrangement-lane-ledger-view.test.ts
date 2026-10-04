@@ -7,65 +7,20 @@
 // none of them reads a lane another has already read.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
-import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
-import {
-  clearMockRegistry,
-  mockNonExistentObjects,
-  registerMockObject,
-  type RegisteredMockObject,
-} from "#src/test/mocks/mock-registry.ts";
-import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { LaneLedger } from "../arrangement-lane-ledger.ts";
 import { LaneView } from "../arrangement-lane-view.ts";
-
-const MAIN: ArrangementLane = { kind: "track", trackIndex: 0 };
-
-interface Span {
-  id: string;
-  start: number;
-  end: number;
-}
-
-const clipMocks = new Map<string, RegisteredMockObject>();
-
-/**
- * Put these clips on the track's main lane, replacing whatever was there.
- * @param spans - The clips, in Live's order
- */
-function setMainLane(spans: Span[]): void {
-  for (const [index, { id, start, end }] of spans.entries()) {
-    clipMocks.set(
-      id,
-      registerMockObject(id, {
-        path: livePath.track(0).arrangementClip(index),
-        type: "Clip",
-        properties: { start_time: start, end_time: end },
-      }),
-    );
-  }
-
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...spans.map((s) => s.id)) },
-  });
-}
-
-/**
- * @param id - A clip's id
- * @returns Whether its span has been read since the registry was last set
- */
-function wasRead(id: string): boolean {
-  return (clipMocks.get(id)?.get.mock.calls.length ?? 0) > 0;
-}
+import {
+  clearReads,
+  MAIN,
+  resetLaneMocks,
+  setMainLane,
+  wasRead,
+} from "./lane-view-fixtures.ts";
 
 describe("ledgers that share a lane view", () => {
   beforeEach(() => {
-    clearMockRegistry();
-    mockNonExistentObjects();
-    clipMocks.clear();
+    resetLaneMocks();
   });
 
   it("reports only what each ledger's own write did", () => {
@@ -109,7 +64,7 @@ describe("ledgers that share a lane view", () => {
     const lanes = new LaneView();
 
     new LaneLedger({ lanes }).scan(MAIN);
-    clipMocks.get("a")?.get.mockClear();
+    clearReads();
     new LaneLedger({ lanes }).scan(MAIN);
 
     expect(wasRead("a")).toBe(false);
@@ -123,7 +78,7 @@ describe("ledgers that share a lane view", () => {
 
     first.scan(MAIN);
     first.forget(MAIN);
-    clipMocks.get("a")?.get.mockClear();
+    clearReads();
     new LaneLedger({ lanes }).scan(MAIN);
 
     expect(wasRead("a")).toBe(true);

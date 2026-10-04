@@ -95,7 +95,16 @@ describe("a copy that is lengthened", () => {
     });
   });
 
-  it("says a clip that only growing overwrote once", async () => {
+  it.each([
+    [
+      "says a clip that only growing overwrote once",
+      "overwrote the clip at t1[3|1]",
+    ],
+    [
+      "keeps what else update-clip said about the copy",
+      "arrangementLength unchanged: no more content; overwrote the clip at t1[3|1]",
+    ],
+  ])("%s", async (_name, detail) => {
     registerSource();
 
     const lane = registerLiveLane({
@@ -104,73 +113,10 @@ describe("a copy that is lengthened", () => {
       clips: [{ id: "p", start: 8, end: 12 }],
     });
 
-    updateClipGrowsCopy(lane, 12, "overwrote the clip at t1[3|1]");
+    updateClipGrowsCopy(lane, 12, detail);
 
     const copy = await copyTwoBars();
 
-    expect(copy.detail).toBe("overwrote the clip at t1[3|1]");
-  });
-
-  it("keeps what else update-clip said about the copy", async () => {
-    registerSource();
-
-    const lane = registerLiveLane({
-      trackIndex: 1,
-      copyBeats: 4,
-      clips: [{ id: "p", start: 8, end: 12 }],
-    });
-
-    updateClipGrowsCopy(
-      lane,
-      12,
-      "arrangementLength unchanged: no more content; overwrote the clip at t1[3|1]",
-    );
-
-    const copy = await copyTwoBars();
-
-    expect(copy.detail).toBe(
-      "arrangementLength unchanged: no more content; overwrote the clip at t1[3|1]",
-    );
-  });
-});
-
-describe("a call that copies to many positions", () => {
-  /**
-   * How often each clip already on the lane was read.
-   * @param trackIndex - The track to copy to
-   * @param positions - The destinations' bars
-   * @returns One count per clip that was there, in lane order
-   */
-  async function readsOfExistingClips(
-    trackIndex: number,
-    positions: number[],
-  ): Promise<number[]> {
-    const lane = registerLiveLane({
-      trackIndex,
-      clips: Array.from({ length: 30 }, (_, i) => ({
-        id: `old-${trackIndex}-${i}`,
-        start: 1000 + i * 8,
-        end: 1004 + i * 8,
-      })),
-    });
-    const there = lane.clips().map((clip) => clip.id);
-
-    await duplicate({
-      type: "clip",
-      id: "source",
-      toPath: positions.map((bar) => `t${trackIndex}[${bar}|1]`).join(","),
-    });
-
-    return there.map((id) => lane.mocks.get(id)?.get.mock.calls.length ?? 0);
-  }
-
-  it("reads the lane once, not once per copy", async () => {
-    registerSource();
-
-    const one = await readsOfExistingClips(1, [1]);
-    const six = await readsOfExistingClips(2, [1, 3, 5, 7, 9, 11]);
-
-    expect(one.every((reads) => reads > 0)).toBe(true);
-    expect(six).toStrictEqual(one);
+    expect(copy.detail).toBe(detail);
   });
 });

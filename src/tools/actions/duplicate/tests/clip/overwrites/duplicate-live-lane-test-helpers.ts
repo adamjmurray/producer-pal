@@ -16,6 +16,12 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import {
+  createStandardMidiClipMock,
+  registerClipSlot,
+  setupArrangementSceneMocks,
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
 /** One clip on the lane. */
 export interface LaneClip {
@@ -201,4 +207,35 @@ export function registerLiveLane(options: LiveLaneOptions): LiveLane {
     },
     mocks,
   };
+}
+
+/** A session clip as long as every copy Live makes on the simulated lanes. */
+export function registerEightBeatSource(): void {
+  setupArrangementSceneMocks(2);
+  registerMockObject("source", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: {
+      is_midi_clip: 1,
+      length: 8,
+      looping: 0,
+      loop_start: 0,
+      loop_end: 8,
+    },
+  });
+}
+
+/** A scene with one clip on each of its first two tracks. */
+export function registerTwoClipScene(): void {
+  setupArrangementSceneMocks(2);
+  registerClipSlot(0, 0, true, createStandardMidiClipMock());
+  registerClipSlot(1, 0, true, createStandardMidiClipMock());
+}
+
+/**
+ * Copy scene1 to arrangement positions.
+ * @param toPath - The destinations
+ * @returns The duplicate result
+ */
+export function copySceneTo(toPath: string): ReturnType<typeof duplicate> {
+  return duplicate({ type: "scene", id: "scene1", toPath });
 }

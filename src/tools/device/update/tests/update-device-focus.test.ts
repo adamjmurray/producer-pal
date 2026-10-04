@@ -4,13 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import {
-  mockNonExistentObjects,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../update-device.ts";
+import { registerTrackDevices } from "./update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -23,20 +20,7 @@ describe("updateDevice - focus functionality", () => {
   beforeEach(() => {
     mockNonExistentObjects();
 
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-    });
-
-    registerMockObject("456", {
-      path: livePath.track(0).device(1),
-      type: "Device",
-    });
-
-    registerMockObject("789", {
-      path: livePath.track(0).device(2),
-      type: "Device",
-    });
+    registerTrackDevices("123", "456", "789");
   });
 
   it("should select device and show device detail when focus=true", () => {

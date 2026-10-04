@@ -5,6 +5,7 @@
 
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type WithPieces, withPieces } from "../entry-pieces.ts";
+import { runWrite } from "../write-pipeline.ts";
 import { type Cover, type WriteSpec } from "../write-pipeline-types.ts";
 
 /** What a toy call does to each of its targets, by id. */
@@ -212,4 +213,41 @@ export function toySpec(
       });
     },
   };
+}
+
+/**
+ * Run the toy tool.
+ * @param args - The call
+ * @param ctx - The request context
+ * @returns What it answered, and what it saw
+ */
+export function runToy(
+  args: ToyArgs,
+  ctx: Partial<ToolContext> = {},
+): { result: unknown; log: ToyLog } {
+  const log = newToyLog();
+
+  return { result: runWrite(toySpec(log), args, ctx), log };
+}
+
+/**
+ * The entries of a call where every named target was written.
+ * @param ids - The targets, in the order named
+ * @returns One written entry per id
+ */
+export function wroteAll(...ids: string[]): ToyEntry[] {
+  return ids.map((id) => ({ id, wrote: true }));
+}
+
+/**
+ * The entries of a call that ran out of time before reaching any target.
+ * @param ids - The targets, in the order named
+ * @returns One skipped entry per id
+ */
+export function ranOutOfTime(...ids: string[]): object[] {
+  return ids.map((id) => ({
+    id,
+    ok: false,
+    detail: "the request ran out of time; re-run for this toy",
+  }));
 }
