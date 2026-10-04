@@ -82,6 +82,31 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
   });
 
+  it("creates a device from a preset's file path", async () => {
+    // A Core Library file: the remote script finds it under the "Core Library"
+    // pack, which it can only match by name.
+    const library = parseToolResult<{
+      items: { name: string; path: string }[];
+    }>(
+      await callToolAndSettle(ctx.client!, "ppal-library", {
+        kind: "preset",
+        query: presetName(adv.name),
+      }),
+    );
+    const file = library.items.find((item) => item.name === adv.name)?.path;
+
+    expect(file).toBeDefined();
+
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({ preset: file, path: `t${track}/d0` }),
+    );
+
+    expect((await readDevice(ctx.client!, created.path)).name).toBe(
+      presetName(adv.name),
+    );
+  });
+
   it("refuses a preset that isn't the named device's", async () => {
     const result = await create({
       device: "Operator",

@@ -104,7 +104,10 @@ devices by Live, so `plugin` lists everything.
 **Presets filed elsewhere** (a pack's drum kits, say) aren't under any device.
 Load those by file: `type: file` with the absolute `path`. The script walks that
 path down whichever browser tree mirrors its folder: the User Library (the one
-this script is installed in), a pack under Packs, or a Places folder.
+this script is installed in), a Places folder, or a pack under Packs. The User
+Library and Places folders are matched by their real location. Live doesn't say
+where a pack is on disk, so packs are matched by name. If several packs could
+hold the file, the load is refused with a 409 listing them.
 
 ## Routes
 

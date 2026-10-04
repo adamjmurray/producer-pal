@@ -226,6 +226,8 @@ def _find_item(bridge, params):
             raise RouteError(400, "type 'file' needs the file's absolute path")
         try:
             item, path = browser.find_file(bridge.app.browser, file_path)
+        except browser.AmbiguousFile as err:
+            raise RouteError(409, str(err))
         except LookupError as err:
             raise RouteError(404, str(err))
         if not item.is_loadable:

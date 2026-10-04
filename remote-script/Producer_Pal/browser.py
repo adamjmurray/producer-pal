@@ -6,6 +6,7 @@
 """Finding things in Live's browser. Main thread only."""
 
 import os
+from urllib.parse import unquote
 
 try:
     import unicodedata
@@ -13,6 +14,9 @@ except ImportError:  # not confirmed in every Live build; only accents need it
     unicodedata = None
 
 MAX_DEPTH = 8
+
+# How many folders an ambiguous-file error names.
+MAX_LISTED = 5
 
 # The `type` param: the app.browser attribute holding that tree, and whether to
 # keep only devices. Live's own sections mix devices with their presets, but
@@ -37,11 +41,37 @@ _USER_LIBRARY = (
 )
 
 
+# How a Places folder's `uri` starts. Packs' URIs carry no disk path.
+_USERFOLDER = "userfolder:"
+
+
 class PathNotFound(LookupError):
     def __init__(self, walked, segment, choices):
         where = "/".join(walked) or "the top level"
         super().__init__("no %r in %s" % (segment, where))
         self.choices = choices
+
+
+class AmbiguousFile(LookupError):
+    """Several name-matched folders could hold the file.
+
+    The message names them by `uri` (a pack's is the only thing telling two
+    same-named packs apart). Browser paths can't be passed back: a `preset`
+    only takes a device section or a disk path.
+    """
+
+    def __init__(self, file_path, matches):
+        listed = [
+            "%s %r (%s)" % (label, name, uri) if uri else "%s %r" % (label, name)
+            for label, name, uri in matches[:MAX_LISTED]
+        ]
+        if len(matches) > MAX_LISTED:
+            listed.append("%d more" % (len(matches) - MAX_LISTED))
+        super().__init__(
+            "%r could be in %d folders Live can't tell apart by location: %s. "
+            "Load it from a folder with a unique name."
+            % (file_path, len(matches), "; ".join(listed))
+        )
 
 
 def type_root(app, item_type):
@@ -129,24 +159,56 @@ def find_file(browser, file_path):
 
     The browser has no lookup by file, but its User Library, Packs and Places
     trees mirror folders on disk, so walk the file's path down whichever holds
-    it. A pack or Places folder is matched by name. Raises LookupError.
+    it. The User Library and Places folders are matched by their real location
+    (a Places `uri` is `userfolder:<disk path>`). Packs expose no disk path, and
+    neither does a Places folder with another `uri`, so those are matched by
+    name; if more than one could hold the file, raises AmbiguousFile rather
+    than guess. Raises LookupError.
     """
-    segments = _file_segments(file_path)
-    library = _file_segments(_USER_LIBRARY) if _USER_LIBRARY else None
-    if library and _lower(segments[: len(library)]) == _lower(library):
-        found = _walk(browser.user_library, segments[len(library) :])
+    segments = _forms(file_path)
+    library = _forms(_USER_LIBRARY) if _USER_LIBRARY else []
+    rest = _below(segments, library)
+    if rest is not None:
+        found = _walk(browser.user_library, rest)
         if found is not None:
-            return found, "/".join(["User Library"] + segments[len(library) :])
+            return found, "/".join(["User Library"] + rest)
 
-    for label, roots in (("Packs", browser.packs.children), ("Places", browser.user_folders)):
-        for root in roots:
-            root_name = _path_name(root.name)
-            for i, segment in enumerate(segments[:-1]):
-                if segment.lower() == root_name.lower():
-                    rest = segments[i + 1 :]
-                    found = _walk(root, rest)
-                    if found is not None:
-                        return found, "/".join([label, root_name] + rest)
+    by_name = [("pack", "Packs", root) for root in browser.packs.children]
+    for root in browser.user_folders:
+        folder = _place_forms(root)
+        if folder is None:
+            by_name.append(("Places folder", "Places", root))
+            continue
+        rest = _below(segments, folder)
+        if rest is not None:
+            found = _walk(root, rest)
+            if found is not None:
+                return found, "/".join(["Places", _path_name(root.name)] + rest)
+
+    matches = []  # (item, path, kind, root name, uri)
+    names = segments[0]
+    for kind, label, root in by_name:
+        root_name = _path_name(root.name)
+        for i, segment in enumerate(names[:-1]):
+            if segment.lower() == root_name.lower():
+                rest = names[i + 1 :]
+                found = _walk(root, rest)
+                if found is not None:
+                    uri = getattr(root, "uri", None)
+                    matches.append(
+                        (
+                            found,
+                            "/".join([label, root_name] + rest),
+                            kind,
+                            root_name,
+                            uri if isinstance(uri, str) else None,
+                        )
+                    )
+                    break
+    if len(matches) > 1:
+        raise AmbiguousFile(file_path, [m[2:] for m in matches])
+    if matches:
+        return matches[0][:2]
     raise LookupError(
         "no folder in Live's browser (User Library, Packs, Places) holds %r"
         % file_path
@@ -208,6 +270,52 @@ def _file_segments(path):
     return [
         _path_name(part) for part in str(path).replace("\\", "/").split("/") if part
     ]
+
+
+def _forms(path):
+    """A path's segment lists: as written, then with symlinks resolved.
+
+    A Place or the file may be given through a link (`/tmp` vs `/private/tmp`).
+    """
+    path = str(path)
+    forms = [_file_segments(path)]
+    if os.path.isabs(path):
+        resolved = _file_segments(os.path.realpath(path))
+        if resolved not in forms:
+            forms.append(resolved)
+    return forms
+
+
+def _place_forms(root):
+    """A Places folder's real path as segment lists, or None.
+
+    None unless its `uri` is `userfolder:<disk path>`. The path is tried as
+    written and %-decoded, since a literal "%" is possible.
+    """
+    uri = getattr(root, "uri", None)
+    if not isinstance(uri, str) or not uri.startswith(_USERFOLDER):
+        return None
+    raw = uri[len(_USERFOLDER) :]
+    forms = []
+    for path in (raw, unquote(raw)):
+        for form in _forms(path):
+            if form and form not in forms:
+                forms.append(form)
+    return forms
+
+
+def _below(file_forms, folder_forms):
+    """The file's segments below the first folder holding it, or None.
+
+    Compares case-insensitively, like the User Library check always has.
+    """
+    for folder in folder_forms:
+        for segments in file_forms:
+            if len(segments) > len(folder) and _lower(segments[: len(folder)]) == _lower(
+                folder
+            ):
+                return segments[len(folder) :]
+    return None
 
 
 def _lower(segments):

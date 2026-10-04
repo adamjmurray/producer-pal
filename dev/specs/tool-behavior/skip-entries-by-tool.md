@@ -122,7 +122,10 @@ with a tool, the tool wins.
   what landed: `<error>; already changed: device created`. Entries name each
   device where it sits after the call, since a later insert can push an earlier
   one down a slot. The `name` list pairs by the path's place, so a skip doesn't
-  slide it.
+  slide it. A `preset` file path that several same-named packs (or Places
+  folders with no disk path) could hold is never guessed: that path's entry is
+  `{path, ok: false, detail}` naming each candidate by its browser `uri`, and
+  says to load the file from a uniquely named folder.
 - **create-track answers per path named.** A track Live didn't make (an insert
   it refused, an answer with no track, one the deadline never reached) holds its
   slot as `{path, ok: false, detail}` in the caller's spelling (`t+`, `t2`,
