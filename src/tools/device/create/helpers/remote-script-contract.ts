@@ -102,12 +102,13 @@ export type BrowserItemLoad =
 /**
  * What remoteScript.hotswap answers: whether Live put a new device in place of
  * the old one. `error` is worded for the model; `unfinished` marks a load that
- * timed out after Live may have started it.
+ * timed out after Live may have started it; `changed` marks a refusal that
+ * came after Live had already changed the device, so the old one may be gone.
  */
 export type BrowserItemHotswap =
   | { available: false }
   | { available: true; replaced: boolean }
-  | { available: true; error: string; unfinished?: true };
+  | { available: true; error: string; unfinished?: true; changed?: true };
 
 /**
  * What remoteScript.duplicateDevice answers: where Live put the copy (right

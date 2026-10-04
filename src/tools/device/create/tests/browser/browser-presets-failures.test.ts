@@ -105,6 +105,23 @@ describe("hotswapPreset", () => {
   });
 });
 
+describe("hotswapPreset after Live changed the device", () => {
+  it("passes on that the device changed", async () => {
+    registerMockObject("drift", {
+      path: livePath.track(0).device(0),
+      properties: { name: "Drift" },
+    });
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: true, error: "slot is now empty", changed: true },
+    });
+
+    expect(
+      await hotswapPreset(LiveAPI.from("drift"), PRESET, null),
+    ).toStrictEqual({ error: "slot is now empty", changed: true });
+  });
+});
+
 describe("presetScopeForDevice", () => {
   it("searches instruments for a name that is no native device", () => {
     expect(presetScopeForDevice("Not A Device", null)).toStrictEqual({

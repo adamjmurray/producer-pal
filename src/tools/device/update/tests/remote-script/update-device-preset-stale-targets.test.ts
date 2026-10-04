@@ -178,3 +178,63 @@ describe("updateDevice - targets gone by their turn", () => {
     expect(hotswapCalls()).toHaveLength(1);
   });
 });
+
+describe("updateDevice - after a refused preset removed a device", () => {
+  const SLOT = String(livePath.track(3).device(0));
+  const NEXT_SLOT = String(livePath.track(3).device(1));
+  const REFUSED = "the preset contains the Producer Pal device";
+
+  beforeEach(() => {
+    for (const [id, path] of [
+      ["first", SLOT],
+      ["second", NEXT_SLOT],
+    ] as const) {
+      registerMockObject(id, {
+        path,
+        type: "Device",
+        properties: { class_display_name: "Reverb", type: 2, name: id },
+      });
+    }
+  });
+
+  it("loads the next target at the path it has now", async () => {
+    let swaps = 0;
+
+    const refusal = {
+      available: true as const,
+      error: REFUSED,
+      changed: true as const,
+    };
+    const done = { available: true as const, replaced: false };
+
+    vi.mocked(requestNode).mockImplementation(async (route) => {
+      if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
+        return { success: true, result: { available: true, item: PRESET } };
+      }
+
+      if (swaps++ > 0) {
+        return { success: true, result: done };
+      }
+
+      // Live loses the first device, and the second slides into its slot.
+      deleteMockObject(SLOT);
+      registerMockObject("second", { path: SLOT });
+
+      return { success: true, result: refusal };
+    });
+
+    expect(
+      await updateDevice({ ids: "first,second", preset: "Pad,Pad" }),
+    ).toStrictEqual([
+      {
+        path: "t3/d0",
+        detail: `preset not loaded: ${REFUSED}; already changed: the device was replaced and removed; its slot is empty`,
+      },
+      { id: "second", path: "t3/d0" },
+    ]);
+    expect(hotswapCalls()).toHaveLength(2);
+    expect(vi.mocked(requestNode).mock.calls.at(-1)?.[1]).toStrictEqual(
+      expect.objectContaining({ devicePath: SLOT }),
+    );
+  });
+});

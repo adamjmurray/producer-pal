@@ -9,6 +9,7 @@
 // Live's library database, which also reaches presets filed elsewhere, such as
 // a pack's drum kits. A file path from ppal-library names one directly.
 
+import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
 import {
   type BrowserItemResolution,
   type PresetScope,
@@ -28,12 +29,10 @@ import {
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
 import { lookUpPresetFile, presetFile } from "./browser-preset-files.ts";
+import { presetFileIsFor } from "./preset-file-device.ts";
 
 /** Sections that hold presets. Plug-ins list none. */
 const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
-
-/** An absolute path: `/…`, or a Windows drive. */
-const ABSOLUTE_PATH = /^(?:\/|[a-z]:[\\/])/i;
 
 /**
  * Find the one preset a `preset` arg refers to: a file path, a
@@ -55,8 +54,16 @@ export async function lookUpBrowserPreset(
 ): Promise<BrowserItemResolution> {
   const wanted = preset.trim();
 
-  if (ABSOLUTE_PATH.test(wanted)) {
-    return presetFile(wanted);
+  if (isAbsolutePath(wanted)) {
+    const file = presetFile(wanted);
+
+    // A device in the Set may take any preset, a rack included.
+    return scope != null &&
+      !scope.orAnywhere &&
+      "item" in file &&
+      !(await presetFileIsFor(wanted, scope.device))
+      ? notAPresetFor(preset, scope)
+      : file;
   }
 
   const prefixed = sectionPrefixed(wanted);
@@ -73,10 +80,7 @@ export async function lookUpBrowserPreset(
       !scope.orAnywhere &&
       "item" in resolution &&
       !inScope(resolution, scope)
-      ? {
-          available: true,
-          error: `preset "${preset}" is not a preset for ${scope.device}`,
-        }
+      ? notAPresetFor(preset, scope)
       : resolution;
   }
 
@@ -252,6 +256,22 @@ function inScope(
     item.type === scope.type &&
     item.path.toLowerCase().startsWith(`${scope.path.toLowerCase()}/`)
   );
+}
+
+/**
+ * The resolution for a preset that belongs to another device.
+ * @param preset - The preset as the call named it
+ * @param scope - The device the call named
+ * @returns The error
+ */
+function notAPresetFor(
+  preset: string,
+  scope: PresetScope,
+): BrowserItemResolution {
+  return {
+    available: true,
+    error: `preset "${preset}" is not a preset for ${scope.device}`,
+  };
 }
 
 /**

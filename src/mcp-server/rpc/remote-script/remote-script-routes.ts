@@ -120,8 +120,8 @@ async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
  * remote script refuses when the device there no longer has `deviceName`.
  * @param args - `{ type, path, devicePath, deviceName, expiresInMs }`
  * @returns Whether Live replaced the device, an error worded for the model
- *   (`unfinished` when Live may have started the load anyway), or
- *   `available: false`
+ *   (`unfinished` when Live may have started the load anyway, `changed` when
+ *   it had already changed the device), or `available: false`
  */
 async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
   const reply = await requestChange({
@@ -140,7 +140,9 @@ async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
   }
 
   if (reply.status !== 200) {
-    return failedChange(reply);
+    return reply.body.changed === true
+      ? { ...failedChange(reply), changed: true }
+      : failedChange(reply);
   }
 
   const device = reply.body.device as { replaced?: unknown } | undefined;

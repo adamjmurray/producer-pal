@@ -490,6 +490,27 @@ describe("updateDevice - Live fails around a preset load", () => {
     });
   });
 
+  it("names the target by path, not its id, when Live changed it before refusing the preset", async () => {
+    const error =
+      "the preset contains the Producer Pal device, which a Set can only have once; the slot is now empty";
+
+    answerRemoteScript({
+      hotswaps: [{ available: true, error, changed: true }],
+    });
+
+    const result = await updateDevice({
+      path: "t3/d0",
+      preset: "AG Bass",
+      name: "Lead",
+    });
+
+    expect(result).toStrictEqual({
+      path: "t3/d0",
+      detail: `preset not loaded: ${error}; already changed: the device was replaced and removed; its slot is empty`,
+    });
+    expect(drift.set).not.toHaveBeenCalled();
+  });
+
   it("writes the targets after one that failed, loading each preset", async () => {
     refuseWrites(drift);
 

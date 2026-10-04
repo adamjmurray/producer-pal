@@ -69,6 +69,10 @@ export interface UpdateDeviceArgs extends UpdateTargetOptions {
   focus?: boolean;
 }
 
+/** What a refused preset left of the device it was loaded onto. */
+const CHANGED_BY_PRESET =
+  "the device was replaced and removed; its slot is empty";
+
 /** One target's entry. */
 type DeviceEntry = Record<string, unknown>;
 
@@ -286,7 +290,16 @@ async function loadThenUpdate(
   step: Step<DeviceChecked>,
 ): Promise<DeviceEntry> {
   const { device, item } = preset;
+  // Read now: the device may be gone afterwards, and its id means nothing then.
+  const where = pathField(device, writtenContainer(writtenPath));
   const loaded = await loadPreset(device, item, step.call.ctx.deadline);
+
+  // Live changed the device before refusing, so it isn't the one the call
+  // named. Throw after landing, so the entry keeps what changed.
+  if ("error" in loaded.outcome && loaded.outcome.changed === true) {
+    step.landed(CHANGED_BY_PRESET, where);
+    throw new Error(`preset not loaded: ${loaded.outcome.error}`);
+  }
 
   if (!("error" in loaded.outcome)) {
     step.landed("preset", { id: (loaded.device ?? device).id });

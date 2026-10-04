@@ -14,3 +14,31 @@ def is_producer_pal(name):
     if text.endswith(".amxd"):
         text = text[: -len(".amxd")]
     return text == PRODUCER_PAL_NAME
+
+
+def holds_producer_pal(device):
+    """True for the Producer Pal device, or a device with it somewhere inside.
+
+    Looks in chains, return chains and drum pads. Goes by name only, so a
+    renamed Producer Pal isn't found.
+    """
+    if is_producer_pal(device.name):
+        return True
+    return any(holds_producer_pal(inner) for inner in _inner_devices(device))
+
+
+def _inner_devices(device):
+    chains = _members(device, "chains") + _members(device, "return_chains")
+    for pad in _members(device, "drum_pads"):
+        chains += _members(pad, "chains")
+    return [inner for chain in chains for inner in chain.devices]
+
+
+def _members(obj, name):
+    """`obj.name` as a list, or [] where it has none. Live raises rather than
+    answering empty: drum_pads on a rack that isn't a Drum Rack is a
+    RuntimeError ("Only drum racks can have pads!")."""
+    try:
+        return list(getattr(obj, name, None) or [])
+    except RuntimeError:
+        return []

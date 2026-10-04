@@ -83,9 +83,11 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
   });
 
-  it("creates a device from a preset's file path", async () => {
-    // A Core Library file: the remote script finds it under the "Core Library"
-    // pack, which it can only match by name.
+  /**
+   * The absolute path of the Drift .adv preset, from ppal-library.
+   * @returns The file path
+   */
+  async function driftPresetFile(): Promise<string> {
     const library = parseToolResult<{
       items: { name: string; path: string }[];
     }>(
@@ -98,6 +100,13 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
 
     expect(file).toBeDefined();
 
+    return file as string;
+  }
+
+  it("creates a device from a preset's file path", async () => {
+    // A Core Library file: the remote script finds it under the "Core Library"
+    // pack, which it can only match by name.
+    const file = await driftPresetFile();
     const track = await createMidiTrack(ctx.client!);
     const created = parseToolResult<{ path: string }>(
       await create({ preset: file, path: `t${track}/d0` }),
@@ -105,6 +114,19 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
 
     expect((await readDevice(ctx.client!, created.path)).name).toBe(
       presetName(adv.name),
+    );
+  });
+
+  it("refuses a preset file that isn't the named device's", async () => {
+    const result = await create({
+      device: "Operator",
+      preset: await driftPresetFile(),
+      path: "t0/d+",
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "is not a preset for Operator",
     );
   });
 

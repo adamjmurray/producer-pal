@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
@@ -183,17 +184,4 @@ function unwritableSimplerReason(
   }
 
   return null;
-}
-
-/**
- * Test whether a path looks absolute. Accepts POSIX paths (leading `/`)
- * and Windows-style paths with a drive letter (e.g. `C:\` or `C:/`).
- * Used to reject obviously-invalid input before handing it to Live, which
- * silently fails on relative paths.
- *
- * @param p - Path to check
- * @returns True when the path appears absolute
- */
-function isAbsolutePath(p: string): boolean {
-  return p.startsWith("/") || /^[A-Za-z]:[/\\]/.test(p);
 }

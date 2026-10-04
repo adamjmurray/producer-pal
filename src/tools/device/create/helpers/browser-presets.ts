@@ -47,10 +47,13 @@ const DEVICE_TYPE_SECTIONS: Record<number, string> = {
 const HOTSWAP_UNFINISHED =
   "Live may have loaded it anyway, so check the device before re-running";
 
-/** What loading a preset onto a device did: the device there now, or why not. */
+/**
+ * What loading a preset onto a device did: the device there now, or why not.
+ * `changed` marks a failure after Live had already changed the device.
+ */
 export type PresetHotswap =
   | { replaced: boolean; device: LiveAPI }
-  | { error: string };
+  | { error: string; changed?: true };
 
 /**
  * Find a preset in Live's browser.
@@ -210,6 +213,7 @@ export async function hotswapPreset(
         result.unfinished === true
           ? `${result.error}; ${HOTSWAP_UNFINISHED}`
           : result.error,
+      ...(result.changed === true ? { changed: true as const } : {}),
     };
   }
 

@@ -277,6 +277,33 @@ describe("createDevice — a throw after a browser load", () => {
     ]);
   });
 
+  it("skips each path whose preset holds Producer Pal, and still removes the temp tracks", async () => {
+    const refused =
+      "the preset contains the Producer Pal device, which a Set can only have once; nothing was loaded";
+    const answer = vi
+      .mocked(requestNode)
+      .getMockImplementation() as typeof requestNode;
+
+    liveSet.methods.delete_track = vi.fn();
+    vi.mocked(requestNode).mockImplementation(async (route, args, wait) =>
+      route === REMOTE_SCRIPT_ROUTES.load
+        ? { success: true, result: { available: true, error: refused } }
+        : await answer(route, args, wait),
+    );
+
+    const skipped = {
+      path: "t0/d+",
+      ok: false,
+      detail: `could not load "Warm": ${refused}`,
+    };
+
+    expect(
+      await createDevice({ preset: "Warm", path: "t0/d+,t0/d+" }),
+    ).toStrictEqual([skipped, skipped]);
+    expect(liveSet.methods.delete_track).toHaveBeenCalledTimes(2);
+    expect(tempTrack.properties.devices).toStrictEqual([]);
+  });
+
   it("keeps the device's entry when its name then won't take", async () => {
     onLoaded = (loaded) => failOnSet(loaded, "name");
     liveSet.methods.delete_track = vi.fn();

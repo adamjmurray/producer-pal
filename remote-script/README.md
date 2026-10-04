@@ -185,6 +185,14 @@ its (unique) name rather than an index.
 it is a 409 naming the track that has it. Only each track's top-level devices
 are checked, so one inside a rack doesn't count.
 
+**A preset holding Producer Pal is a 409 too.** A rack preset, or one saved from
+a Set, can hold the device inside. Name matching can't see that, so after the
+load the script looks through what Live added (chains, return chains, drum
+pads), deletes the devices that hold it, and answers 409 "nothing was loaded". A
+track the request made is deleted as well. If the delete fails, the 409 says to
+remove the new device by hand. It matches by device name, so a renamed Producer
+Pal isn't caught.
+
 **Hotswap mode is turned off first**: with it on (Live's own, from a device's
 hotswap button), `load_item` replaces that device instead of adding one.
 
@@ -216,6 +224,12 @@ Returns the device's name afterwards and whether Live `replaced` it.
   mismatched preset with that same name then goes unnoticed.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
+- **A preset holding Producer Pal is a 409** (see `/load`), and so is a target
+  that is, or holds, the Producer Pal device (checked before loading). Live has
+  already changed the device by the time the preset is found, and can't give the
+  old one back, so the script deletes the new one and **the slot is left
+  empty**. The 409 says so and has `changed: true`. If the delete fails, it says
+  where the device is, still with `changed: true`.
 
 ### `POST /device/duplicate`
 

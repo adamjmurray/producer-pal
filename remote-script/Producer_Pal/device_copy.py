@@ -12,7 +12,7 @@ instruments, racks of them included.
 
 from . import hotswap
 from .errors import RouteError
-from .producer_pal_device import is_producer_pal
+from .producer_pal_device import holds_producer_pal
 
 
 def duplicate_device(bridge, params):
@@ -29,7 +29,7 @@ def duplicate_device(bridge, params):
             409, "the device there is now %r, not %r" % (device.name, expected)
         )
 
-    if _holds_producer_pal(device):
+    if holds_producer_pal(device):
         raise RouteError(409, "the Producer Pal device can't be duplicated")
     if hotswap.device_kind(device) == "instrument":
         raise RouteError(409, "Live can't duplicate an instrument")
@@ -41,17 +41,6 @@ def duplicate_device(bridge, params):
 
     copy = list(holder.devices)[index + 1]
     return {"device": {"name": copy.name, "index": index + 1}}
-
-
-def _holds_producer_pal(device):
-    """True for the Producer Pal device, or a rack with it somewhere inside."""
-    if is_producer_pal(device.name):
-        return True
-    chains = list(getattr(device, "chains", None) or [])
-    chains += list(getattr(device, "return_chains", None) or [])
-    return any(
-        _holds_producer_pal(inner) for chain in chains for inner in chain.devices
-    )
 
 
 ROUTES = {"/device/duplicate": duplicate_device}

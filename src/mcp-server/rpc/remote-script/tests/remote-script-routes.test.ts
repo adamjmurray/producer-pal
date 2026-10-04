@@ -366,6 +366,20 @@ describe("remoteScript.hotswap", () => {
     });
   });
 
+  it("marks a refusal that came after Live changed the device as changed", async () => {
+    await answerWith({
+      status: 409,
+      body: { error: "slot is now empty", changed: true },
+    });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: "slot is now empty", changed: true },
+    });
+  });
+
   it("says so when the remote script isn't running", async () => {
     expect(
       await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS),

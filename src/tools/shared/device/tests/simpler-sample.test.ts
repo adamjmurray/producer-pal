@@ -221,6 +221,17 @@ describe("setSimplerSample", () => {
     expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
 
+  it("accepts a Windows network path", () => {
+    const device = registerSimpler();
+
+    setSimplerSample(LiveAPI.from("id simpler-1"), "\\\\nas\\music\\kick.wav");
+
+    expect(device.call).toHaveBeenCalledWith(
+      "replace_sample",
+      "\\\\nas\\music\\kick.wav",
+    );
+  });
+
   it("accepts Windows-style drive-letter paths", () => {
     const device = registerSimpler();
 

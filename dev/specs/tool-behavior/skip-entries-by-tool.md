@@ -167,6 +167,27 @@ with a tool, the tool wins.
   looked up in the database. The database is read as of Live's last save, so a
   preset added this session may not be found; with no database, today's "no
   preset" error stands.
+- **A preset file is checked against the device a call names.** create-device
+  with a `device` and an absolute file path (a Windows drive or network share
+  too) reads the gzipped XML and refuses a file for another device, as it does a
+  browser path: `preset "<path>" is not a preset for <device>`. An `.adv` is for
+  the device its root element names; an `.adg` for the rack it holds, or (for a
+  device that isn't a rack) the device it is built around, the first device of
+  its first chain. A rack that merely holds the device isn't for it. A device
+  with no known class (plug-ins, Max devices), or a file that can't be read,
+  isn't checked. update-device takes any file, as it does any preset.
+- **A preset that holds the Producer Pal device is refused after Live loads
+  it.** The remote script looks through what `/load` or `/hotswap` loaded
+  (chains, return chains, drum pads) and deletes what holds it, by device name
+  (a renamed Producer Pal isn't caught). `/load`: 409 "nothing was loaded", so
+  create-device's entry is `{path, ok: false, detail}`. `/hotswap`: Live had
+  already replaced the device and can't give it back, so the slot is left empty,
+  and the 409 says so. update-device's entry names the target by `path` (the old
+  id is gone) with
+  `preset not loaded: <why>; already changed: the device was replaced and removed; its slot is empty`,
+  and nothing else is written to that target. Later targets still load at their
+  current path. If the delete fails, the 409 says where the device is. Only a
+  preset can hold it: Producer Pal loaded by name is judged on its own.
 - **create-track answers per path named.** A track Live didn't make (an insert
   it refused, an answer with no track, one the deadline never reached) holds its
   slot as `{path, ok: false, detail}` in the caller's spelling (`t+`, `t2`,

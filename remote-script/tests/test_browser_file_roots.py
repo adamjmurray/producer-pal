@@ -96,6 +96,19 @@ class PlacesByLocationTest(unittest.TestCase):
         root = FakeItem("S", [KICK], uri="userfolder:C:\\Users\\me\\Samples")
         self.assertIs(find("C:\\Users\\me\\Samples\\kick.wav", [root])[0], KICK)
 
+    def test_unc_path(self):
+        root = FakeItem("S", [KICK], uri="userfolder:\\\\nas\\music\\Samples")
+        self.assertIs(find("\\\\nas\\music\\Samples\\kick.wav", [root])[0], KICK)
+        self.assertIs(find("//nas/music/Samples/kick.wav", [root])[0], KICK)
+        with self.assertRaises(LookupError):
+            find("\\\\nas\\other\\Samples\\kick.wav", [root])
+
+    def test_unc_path_segments_start_at_the_server(self):
+        self.assertEqual(
+            browser._file_segments("\\\\nas\\music\\Pad.adv"),
+            ["nas", "music", "Pad.adv"],
+        )
+
     def test_prefix_of_a_folder_name_is_not_inside_it(self):
         root = FakeItem("Samples", [KICK], uri="userfolder:/a/Samples")
         with self.assertRaises(LookupError):

@@ -11,7 +11,11 @@ from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
 from .params import parse_index
-from .producer_pal_device import is_producer_pal
+from .preset_guard import (
+    refuse_hotswapped_producer_pal,
+    refuse_loaded_producer_pal,
+)
+from .producer_pal_device import holds_producer_pal, is_producer_pal
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
 from .version import VERSION
@@ -83,11 +87,12 @@ def load(bridge, params):
     item, path, kind = _find_item(bridge, params)
     song = bridge.song
 
-    if is_producer_pal(item.name):
+    is_pal_item = is_producer_pal(item.name)
+    if is_pal_item:
         _refuse_second_producer_pal(song)
 
     default_track_type = TRACK_TYPE_FOR_KIND.get(kind, UNKNOWN_KIND_TRACK_TYPE)
-    track = _target_track(song, params, default_track_type)
+    track, created = _target_track(song, params, default_track_type)
 
     # load_item loads into whatever track is selected, so select it first.
     song.view.selected_track = track
@@ -95,7 +100,11 @@ def load(bridge, params):
     # In hotswap mode (Live's own, or ours left on) load_item replaces the
     # target device instead of adding one.
     live_browser.hotswap_target = None
+    before = list(track.devices)
     live_browser.load_item(item)
+    # Producer Pal itself loads when the Set has none; a preset holding it never.
+    if not is_pal_item:
+        refuse_loaded_producer_pal(song, track, before, created)
 
     return {
         "loaded": {"name": item.name, "path": path, "kind": kind},
@@ -125,6 +134,14 @@ def hotswap_device(bridge, params):
             409, "the device there is now %r, not %r" % (device.name, expected)
         )
 
+    # The check after the load deletes whatever holds Producer Pal.
+    if holds_producer_pal(device):
+        raise RouteError(
+            409,
+            "a preset can't be loaded onto the Producer Pal device or a rack "
+            "holding it",
+        )
+
     device_kind = hotswap.device_kind(device)
     if kind and device_kind and kind != device_kind:
         raise RouteError(
@@ -135,6 +152,7 @@ def hotswap_device(bridge, params):
 
     before_name = device.name
     after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
+    refuse_hotswapped_producer_pal(song, device_path)
     replaced = after != device
     # A preset for a different kind of device loads nothing. When the kind was
     # unknown up front, an untouched device is the only sign. A kept device is
@@ -262,9 +280,10 @@ def _find_loadable(root, devices_only, params):
 
 
 def _target_track(song, params, default_track_type):
+    """(track, created): the track to load onto, and whether this call made it."""
     name = params.get("track_name")
     if name:
-        return _track_named(song, str(name))
+        return _track_named(song, str(name)), False
 
     index = _parse_track_index(params.get("track_index"))
     if index is not None:
@@ -273,13 +292,13 @@ def _target_track(song, params, default_track_type):
             raise RouteError(
                 400, "track_index %s is out of range (%s tracks)" % (index, len(tracks))
             )
-        return tracks[index]
+        return tracks[index], False
 
     track_type = str(params.get("track_type") or default_track_type).strip().lower()
     if track_type == "midi":
-        return song.create_midi_track(-1) or song.tracks[-1]
+        return song.create_midi_track(-1) or song.tracks[-1], True
     if track_type == "audio":
-        return song.create_audio_track(-1) or song.tracks[-1]
+        return song.create_audio_track(-1) or song.tracks[-1], True
     raise RouteError(400, "track_type must be 'midi' or 'audio', got %r" % track_type)
 
 
