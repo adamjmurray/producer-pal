@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -429,6 +429,21 @@ describe("parseObjectPath", () => {
       expect(warn).toHaveBeenCalledWith(
         'toPath "7" is a bare track index; use "t7"',
       );
+    });
+
+    it("reads both spellings without a warning when quiet", () => {
+      const warn = vi.spyOn(console, "warn");
+
+      expect(parseObjectPath("0/3", "path", true)).toStrictEqual({
+        kind: "slot",
+        trackIndex: 0,
+        sceneIndex: 3,
+      });
+      expect(parseObjectPath("7", "path", true)).toStrictEqual({
+        kind: "track",
+        trackIndex: 7,
+      });
+      expect(warn).not.toHaveBeenCalled();
     });
 
     // Three numbers were never a spelling of anything, so there's nothing to

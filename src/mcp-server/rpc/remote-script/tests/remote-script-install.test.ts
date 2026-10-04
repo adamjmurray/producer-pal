@@ -37,6 +37,8 @@ const fault = vi.hoisted(() => ({
   renameFrom: [] as string[],
   rm: [] as string[],
   readdir: false,
+  // Throw a bare string instead of an Error.
+  renameBare: false,
 }));
 
 // The install expands "~", and a test can't write to the real home folder.
@@ -54,7 +56,11 @@ vi.mock(import("node:fs"), async (importOriginal) => {
     ...actual,
     renameSync: (from: PathLike, to: PathLike) => {
       if (fault.renameFrom.some((prefix) => String(from).startsWith(prefix))) {
-        throw new Error(`EPERM: rename ${String(from)}`);
+        const message = `EPERM: rename ${String(from)}`;
+
+        const thrown: unknown = fault.renameBare ? message : new Error(message);
+
+        throw thrown;
       }
 
       actual.renameSync(from, to);
@@ -86,6 +92,7 @@ beforeEach(() => {
   fault.renameFrom = [];
   fault.rm = [];
   fault.readdir = false;
+  fault.renameBare = false;
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-remote-script-"));
   homedir.mockReturnValue(scratchDir);
 });
@@ -222,6 +229,32 @@ describe("installRemoteScript", () => {
         "utf8",
       ),
     ).toBe("old install");
+  });
+
+  it("leaves nothing behind when a first install can't be moved in", () => {
+    const path = remoteScriptPath(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow("EPERM");
+    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([]);
+  });
+
+  it("rethrows a non-Error swap failure as is when the old install can't be put back", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`, `${path}.old-`];
+    fault.renameBare = true;
+
+    let thrown: unknown;
+
+    try {
+      installRemoteScript(scratchDir);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatch(/^EPERM: rename .*Producer_Pal\.tmp-[^ ]*$/);
   });
 
   it("keeps installing when old installs can't be cleaned up", () => {

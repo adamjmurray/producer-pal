@@ -84,6 +84,7 @@ describe("note op arguments that are wrong for every clip", () => {
     "repeat(n/8, -1bar)",
     "velocity = curve(0, 100, -1bar)",
     "ratchet(0 * n/8)",
+    "ratchet(-n/8 / 2)",
   ])("refuses %s in every meter", (transform) => {
     for (const [numerator, denominator] of [
       [4, 4],
@@ -102,6 +103,8 @@ describe("note op arguments that are wrong for every clip", () => {
     ["ratchet(1bar - 4)", "ratchet() needs a count of 2 or more"],
     ["ratchet(n/16 - n/8)", "ratchet() needs a count of 2 or more"],
     ["ratchet(n/8 * 2)", "ratchet() needs a count of 2 or more"],
+    ["ratchet(n/8 / 2)", "ratchet() needs a count of 2 or more"],
+    ["ratchet((n/16 - n/8) / 2)", "ratchet() needs a count of 2 or more"],
     ["ratchet(pow(1bar, 999))", "ratchet() argument could not be evaluated"],
     ["velocity = curve(0, 100, 1bar - 4)", "curve() exponent must be > 0"],
   ])(

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,6 +18,7 @@ import {
   registerMainLaneClip,
   registerTakeLaneClip,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
+import { resolvePath } from "#src/tools/session/helpers/select-path-resolution.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { select } from "#src/tools/session/select.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
@@ -792,3 +793,19 @@ function setupArrangementMocks(clipStart: number): {
     liveSet: setupLiveSetMock(),
   };
 }
+
+describe("resolvePath", () => {
+  it("names both deprecated params when both come with path", () => {
+    expect(() =>
+      resolvePath({ path: "t0/s1", slot: "0/1", devicePath: "t0/d1" }),
+    ).toThrow("(slot and devicePath are deprecated)");
+  });
+
+  it("keeps a trackType that agrees with the track path", () => {
+    expect(resolvePath({ path: "rt1", trackType: "return" })).toStrictEqual({
+      category: "return",
+      trackIndex: 1,
+      sceneIndex: undefined,
+    });
+  });
+});

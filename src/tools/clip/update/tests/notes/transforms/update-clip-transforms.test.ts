@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -63,6 +63,28 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     mockMergeNoteTracking(mocks.clip123, [{ ...C3 }]);
     mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
     mockMergeNoteTracking(mocks.clip789, [{ ...C3 }]);
+  });
+
+  it("says a per-note fallback once, however many notes hit it", async () => {
+    mockMergeNoteTracking(mocks.clip123, [
+      { ...C3 },
+      { ...C3, pitch: 62 },
+      { ...C3, pitch: 64 },
+    ]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "velocity = 90 + clip.position",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "123",
+        detail: "clip.position isn't available on a session clip; used 0",
+      }),
+    );
+    expect(addedVelocity(mocks.clip123)).toBe(90);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("applies a transform string to one clip", async () => {

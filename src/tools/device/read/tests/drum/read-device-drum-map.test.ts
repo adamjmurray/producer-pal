@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { CHAIN_TYPE } from "#src/tools/constants.ts";
 import { postProcessDrumMap } from "../../helpers/drum-map-post-processing.ts";
 import { readOneDevice } from "../../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
@@ -258,7 +259,7 @@ describe("postProcessDrumMap", () => {
     // A chain read at the depth limit reports a device count instead of the
     // devices, so the map has nothing to search and must not be built.
     const result = postProcessDrumMap(
-      { type: "Chain", deviceCount: 2 },
+      { type: CHAIN_TYPE.CHAIN, deviceCount: 2 },
       options,
     );
 

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -271,6 +271,23 @@ describe("carryChainMixer", () => {
       expect.stringContaining(
         'send "b Reverb" matched by id; "rc-1" is also the name of "rc-1"',
       ),
+    );
+  });
+
+  it("carries nothing onto a chain with no mixer device", () => {
+    mockNonExistentObjects();
+    const bare = registerMockObject("bare-chain", {
+      path: rackPath.chain(3),
+      type: "Chain",
+    });
+
+    carryChainMixer(carried, LiveAPI.from(bare.path));
+
+    expect(capturedWarnings()).toContain(
+      "chain t0/d0/c3 (id bare-chain): the chain has no mixer device",
+    );
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
   });
 });

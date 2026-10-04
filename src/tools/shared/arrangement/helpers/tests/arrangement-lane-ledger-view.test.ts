@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Ledgers over one lane view: each reports only what its own writes did, and
@@ -165,5 +165,24 @@ describe("ledgers that share a lane view", () => {
         "shortened the clip at t0[1|1]",
       );
     });
+  });
+
+  it("leaves the entry's detail alone when the write displaced nothing", () => {
+    setMainLane([{ id: "a", start: 0, end: 8 }]);
+
+    const entry = new LaneLedger({ lanes: new LaneView() }).writeClip(
+      { trackIndex: 0, takeLane: null },
+      null,
+      () => {
+        setMainLane([
+          { id: "a", start: 0, end: 8 },
+          { id: "new", start: 16, end: 24 },
+        ]);
+
+        return { id: "new", detail: "first" };
+      },
+    );
+
+    expect(entry).toStrictEqual({ id: "new", detail: "first" });
   });
 });

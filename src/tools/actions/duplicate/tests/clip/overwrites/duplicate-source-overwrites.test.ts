@@ -23,6 +23,7 @@ import {
   type LaneCopyEntry,
   registerLaneSource,
   registerLiveSet,
+  registerMainLaneSource,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
 import { updateClipMock } from "../../setup.ts";
 
@@ -430,6 +431,53 @@ describe("duplicate - a copy onto another source", () => {
       expect(result.map((entry) => entry.path)).toStrictEqual([
         "t0/l1",
         "t1/l0",
+      ]);
+    });
+
+    it("leaves a destination refused in the plan out of the check", async () => {
+      registerTwoLaneSourcesAndTrack1();
+
+      const result = await duplicateToLanes<LaneCopyEntry[]>({
+        path: "t0/l0,t0/l1",
+        toPath: "t0/l0,t1/l0",
+      });
+
+      expect(result[1]?.path).toBe("t1/l0");
+      expect(result[0]).toStrictEqual({
+        path: "t0/l0",
+        ok: false,
+        detail: expect.stringContaining("is the source lane"),
+      });
+    });
+
+    // A return track holds no arrangement clips, so it sits on no lane a copy
+    // could land on.
+    it("checks nothing against a source track with no lane", async () => {
+      registerMainLaneSource([0]);
+      registerMockObject("return", {
+        path: livePath.returnTrack(0),
+        properties: {
+          has_midi_input: 1,
+          arrangement_clips: children(),
+          take_lanes: children(),
+        },
+      });
+      registerTakeLaneTrack({ trackIndex: 1 });
+
+      const result = await duplicateToLanes<LaneCopyEntry[]>({
+        id: "return,src_track",
+        toPath: "t1/l0,t1/l1",
+      });
+
+      expect(result[0]).toStrictEqual(
+        expect.objectContaining({
+          path: "t1/l0",
+          ok: false,
+          detail: expect.stringContaining("has no arrangement clips"),
+        }),
+      );
+      expect(result[1]?.clips.map((clip) => clip.path)).toStrictEqual([
+        "t1/l1[1|1]",
       ]);
     });
   });

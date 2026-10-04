@@ -18,13 +18,26 @@ import { useEffect } from "preact/hooks";
 import { vi } from "vitest";
 import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
+const READY_EMPTY: UseDocReturn["status"] = { kind: "ready", content: "" };
+let systemPromptStatus: UseDocReturn["status"] = READY_EMPTY;
+
 /**
- * Ready useSystemPrompt value so App tests don't fetch /system-prompt.
- * @returns A stable, no-op use-doc hook return in the "ready" state
+ * Set the status the stubbed useSystemPrompt reports (null = ready and empty).
+ * @param status - The doc status App should see, or null for the default
+ */
+export function setSystemPromptStatus(
+  status: UseDocReturn["status"] | null,
+): void {
+  systemPromptStatus = status ?? READY_EMPTY;
+}
+
+/**
+ * useSystemPrompt stand-in so App tests don't fetch /system-prompt.
+ * @returns A no-op use-doc hook return, ready and empty unless a test set it
  */
 export function systemPromptDocMock(): UseDocReturn {
   return {
-    status: { kind: "ready", content: "" },
+    status: systemPromptStatus,
     saveStatus: "idle",
     saveError: null,
     save: vi.fn(),

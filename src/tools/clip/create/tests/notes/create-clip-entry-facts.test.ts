@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -79,6 +79,21 @@ describe("createClip - facts about a clip go on its entry", () => {
       });
 
       expect(detailOf(result)).toBe("transforms ignored: the clip is audio");
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says a per-note fallback once, however many notes hit it", async () => {
+      setupSessionMocks({ liveSet: FOUR_FOUR });
+
+      const result = await createClip({
+        slot: "0/0",
+        notes: "C3 D3 E3 1|1",
+        transforms: "velocity = 100 + clip.position",
+      });
+
+      expect(detailOf(result)).toBe(
+        "clip.position isn't available on a session clip; used 0",
+      );
       expect(capturedWarnings()).toStrictEqual([]);
     });
 

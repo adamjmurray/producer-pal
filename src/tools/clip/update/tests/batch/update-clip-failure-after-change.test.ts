@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Live can throw partway through a clip's update. What already landed stays, so
@@ -105,6 +105,24 @@ describe("updateClip - Live throws after something of a clip landed", () => {
         detail: expect.stringMatching(
           /^Live refused; already changed: name, .*region/,
         ),
+      });
+    });
+
+    it("names a landed meter as the time signature, once", async () => {
+      setupMidiClipMock(mocks.clip123, { length: 4 });
+      refuseSet(mocks.clip123, "end_marker");
+
+      const result = await updateClip({
+        id: "123",
+        timeSignature: "3/4",
+        length: "1bar",
+      });
+
+      expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 3);
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/s0",
+        detail: `${REFUSED}; already changed: time signature, region`,
       });
     });
 

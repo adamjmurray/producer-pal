@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import "#src/live-api-adapter/live-api-extensions.ts";
@@ -20,8 +20,10 @@ import {
   isDrumPadSampleShortcut,
   resolveDrumChainSampleTarget,
   resolveNestedParamTarget,
+  sayWhatWasLeft,
   splitForAdvice,
 } from "../nested-param-target.ts";
+import { type ParamOutcome } from "../param-reading.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
@@ -897,5 +899,33 @@ describe("sample write below a nested drum rack", () => {
 
     expect(deviceOf(target)?.id).toBe("held-simpler");
     expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+});
+
+describe("sayWhatWasLeft", () => {
+  const device = {} as unknown as LiveAPI;
+  const read = (): unknown => "kick.wav";
+
+  it("returns the entries as they are when the call made nothing", () => {
+    const outcomes: ParamOutcome[] = [{ name: "x", ok: false, detail: "no" }];
+
+    expect(sayWhatWasLeft({ device }, outcomes)).toBe(outcomes);
+  });
+
+  it("notes what was made on failed and pseudo-param entries only", () => {
+    const made = "made an empty Simpler on C1";
+    const outcomes: ParamOutcome[] = [
+      { name: "gain", ok: false, detail: "no such param" },
+      { name: "sample", read },
+      { id: "5", name: "Volume", requested: 0.5 },
+      { name: "pan", detail: "set again later in this call" },
+    ];
+
+    expect(sayWhatWasLeft({ device, made }, outcomes)).toStrictEqual([
+      { name: "gain", ok: false, detail: `no such param; ${made}` },
+      { name: "sample", read, made },
+      { id: "5", name: "Volume", requested: 0.5 },
+      { name: "pan", detail: "set again later in this call" },
+    ]);
   });
 });

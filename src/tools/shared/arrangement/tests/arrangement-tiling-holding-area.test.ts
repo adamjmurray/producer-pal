@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -225,5 +225,37 @@ describe("tileClipToRange clearing when the span was not pre-cleared", () => {
 
     expect(track.call).toHaveBeenCalledWith("delete_clip", "id 700");
     expect(result).toStrictEqual([{ id: "200" }, { id: "201" }]);
+  });
+});
+
+describe("tile start_marker", () => {
+  // 1.3 + (5.1 % 1.7) rounds up to exactly loop_end, which Live refuses as a
+  // start_marker, so it wraps back to loop_start.
+  it("wraps to loop_start when float rounding lands it on loop_end", () => {
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      loop_start: 1.3,
+      loop_end: 3,
+      start_marker: 1.3,
+      end_marker: 3,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", "200"]],
+    });
+    const tile = setupTileClip("200", { start_marker: 1.3, loop_start: 1.3 });
+
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      3 - 1.3,
+      mockContext,
+      {
+        startOffset: 5.1,
+      },
+    );
+
+    expect(result).toStrictEqual([{ id: "200" }]);
+    expect(tile.set).toHaveBeenCalledWith("start_marker", 1.3);
+    expect(tile.set).not.toHaveBeenCalledWith("start_marker", 3);
   });
 });

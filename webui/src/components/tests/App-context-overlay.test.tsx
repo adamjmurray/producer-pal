@@ -206,10 +206,14 @@ describe("App", () => {
     });
 
     it("does not close when clicking inside the context view", async () => {
+      setStubLeaveGuard(() => true);
       await openContextThen(() => {
         const inner = contextStub();
 
         if (inner) {
+          // A full press-and-release on content bubbles to the overlay.
+          fireEvent.mouseDown(inner);
+          fireEvent.mouseUp(inner);
           fireEvent.click(inner);
         }
       });

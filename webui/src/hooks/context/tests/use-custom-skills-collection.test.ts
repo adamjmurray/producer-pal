@@ -10,7 +10,11 @@ import { act, renderHook } from "@testing-library/preact";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it } from "vitest";
 import { useCustomSkillsCollection } from "#webui/hooks/context/use-custom-skills-collection";
-import { installFetchMock, jsonResponse } from "./doc-transport-test-helpers";
+import {
+  deferred,
+  installFetchMock,
+  jsonResponse,
+} from "./doc-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 // The collection machinery itself is covered by use-memory-collection.test; this
@@ -75,5 +79,30 @@ describe("useCustomSkillsCollection", () => {
       ENTRY_URL,
       expect.objectContaining({ method: "PUT", body: JSON.stringify(input) }),
     );
+  });
+
+  it("resolves a save that fails after unmount to null", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [] }));
+
+    const { result, unmount } = renderHook(useCustomSkillsCollection);
+
+    await waitForHookState(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    const write = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(write.promise);
+
+    const saving = result.current.saveEntry("jazz-voicings", {
+      description: "rich",
+      content: "b",
+      enabled: true,
+    });
+
+    unmount();
+    write.reject(new Error("offline"));
+
+    await expect(saving).resolves.toBeNull();
   });
 });

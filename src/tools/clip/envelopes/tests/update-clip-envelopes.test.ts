@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // update-clip's `envelopes` param, the one part of a clip write that goes out
@@ -198,6 +198,15 @@ describe("updateClip - envelopes", () => {
     await expect(
       updateClip({ id: "123", envelopes: "kick: 1|1 0" }),
     ).rejects.toThrow('Invalid envelopes target "kick"');
+  });
+
+  it("refuses a line with no colon between target and notation", async () => {
+    await expect(
+      updateClip({ id: "123", envelopes: "volume 1|1 0" }),
+    ).rejects.toThrow(
+      'Invalid envelopes line "volume 1|1 0": expected "<target>: <notation>"',
+    );
+    expect(requestNode).not.toHaveBeenCalled();
   });
 
   it("refuses two lines for the same parameter", async () => {
@@ -434,6 +443,44 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         detail: `envelope "${ACTIVATOR_ID}": id ${ACTIVATOR_ID} is a mixer parameter clip automation can't reach: only the track's volume, pan and sends`,
+      }),
+    );
+  });
+
+  it("names a send reached by id the way the routes do", async () => {
+    registerMockObject("480", {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).mixerDevice()} sends 1`,
+    });
+    mockNonExistentObjects();
+
+    await updateClip({ id: "123", envelopes: `480: ${NOTATION}` });
+
+    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual({
+      track: "t0",
+      slot: 0,
+      parameter: "send1",
+      points: POINTS,
+    });
+  });
+
+  it("says a parameter elsewhere on the track can't be reached", async () => {
+    registerMockObject("481", {
+      type: "DeviceParameter",
+      path: `${livePath.track(0)} view selected_parameter`,
+    });
+    mockNonExistentObjects();
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: `481: ${NOTATION}`,
+    });
+
+    expect(requestNode).not.toHaveBeenCalled();
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 0,
+        detail: `envelope "481": id 481 is a parameter clip automation can't reach`,
       }),
     );
   });

@@ -186,4 +186,11 @@ describe("remoteScript.envelope.clear", () => {
       await dispatchNodeRoute(ENVELOPE_ROUTES.clear, { slot: 1 }),
     ).toStrictEqual({ success: false, error: "track must be a string" });
   });
+
+  it("needs args at all", async () => {
+    expect(await dispatchNodeRoute(ENVELOPE_ROUTES.clear, null)).toStrictEqual({
+      success: false,
+      error: "track must be a string",
+    });
+  });
 });

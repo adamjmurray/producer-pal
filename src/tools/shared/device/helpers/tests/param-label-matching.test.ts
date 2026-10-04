@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -29,6 +29,8 @@ describe("looseLabelKey", () => {
     ["11  / 16", "11/16"],
     ["1 / 16", "1/16"],
     ["Amp 1 LFO 1 -> Volume", "amp1lfo1->volume"],
+    [" 1 2", "1 2"],
+    ["1 2 ", "1 2"],
   ])("keeps a space between digits only: %s is %s", (label, key) => {
     expect(looseLabelKey(label)).toBe(key);
   });
@@ -105,6 +107,15 @@ describe("resolveEnumIndex loose matching", () => {
   it("does not drop the minus sign of a number", () => {
     expect(resolveEnumIndex(["-6", "0"], "6")).toBe(-1);
     expect(resolveEnumIndex(["-6", "0"], "-6")).toBe(0);
+  });
+
+  it("reads blank text as nothing, not as 0", () => {
+    expect(resolveEnumIndex(["0 ms", "1 ms"], "  ")).toBe(-1);
+  });
+
+  it("matches a padded note name on its option", () => {
+    expect(resolveEnumIndex(["C3", "D3"], " D3 ")).toBe(1);
+    expect(resolveEnumIndex(["C3", "D3"], " E3 ")).toBe(-1);
   });
 
   it("keeps a different unit refused", () => {

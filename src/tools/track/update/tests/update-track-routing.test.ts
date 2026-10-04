@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -9,6 +9,8 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
+import { applyRoutingProperties } from "../helpers/track-routing-updates.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -227,5 +229,25 @@ describe("updateTrack routing by name", () => {
       );
       expect(track.set).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("applyRoutingProperties", () => {
+  it("routes the input of a track with no category of its own as a regular track", () => {
+    const loose = registerMockObject("loose", {
+      type: "Track",
+      properties: { ...routingProperties, is_foldable: 0 },
+    });
+
+    applyRoutingProperties(
+      LiveAPI.from("loose"),
+      { inputRoutingType: "Resampling" },
+      newTargetNotes(),
+    );
+
+    expect(loose.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      '{"input_routing_type":{"identifier":18}}',
+    );
   });
 });

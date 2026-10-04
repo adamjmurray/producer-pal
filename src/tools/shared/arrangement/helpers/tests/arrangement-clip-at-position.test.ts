@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -94,6 +94,19 @@ describe("arrangementClipAtPosition", () => {
     expect(
       arrangementClipAtPosition(at(MAIN_LANE, "loc:Verse"), PARAM_NAME)?.id,
     ).toBe("clip_main");
+  });
+
+  it("reports a locator that isn't there as a problem with the path", () => {
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 16, name: "Verse" }],
+    });
+    registerTrackClips();
+
+    expect(() =>
+      arrangementClipAtPosition(at(MAIN_LANE, "loc:Chorus"), PARAM_NAME),
+    ).toThrow(
+      'invalid path "t0[loc:Chorus]" - no locator found with name "Chorus"',
+    );
   });
 
   it("names nothing when no clip starts there", () => {

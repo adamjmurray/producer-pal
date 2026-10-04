@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -59,6 +59,12 @@ describe('parseObjectPath, the "c+" that appends a chain', () => {
   it("refuses anything after it, since the chain it makes is empty", () => {
     expect(() => parseObjectPath("t0/d0/c+/d0")).toThrow(
       'invalid path "t0/d0/c+/d0" - "c+" appends a new, empty chain, so nothing can follow it',
+    );
+  });
+
+  it("says a slot under it belongs to the track, not a new chain", () => {
+    expect(() => parseObjectPath("t0/d0/c+/s1")).toThrow(
+      "clip slots belong to a track, not a new chain",
     );
   });
 });

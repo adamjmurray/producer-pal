@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Take lanes can't be deleted, so a clip written past the last lane says which
@@ -9,7 +9,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  registerTakeLaneTrack,
+  stopMakingTakeLanesAfter,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -89,5 +92,15 @@ describe("createClip - take lanes made on the way", () => {
     expect(result.created).toBe("l0-l1");
     expect(result.detail).toContain("already changed: take lane l0-l1 made");
     expect(result.ok).toBeUndefined();
+  });
+
+  // Nothing changed, so a lone target's failure is the call's.
+  it("fails the call when Live made no lane before it failed", async () => {
+    registerLiveSet();
+    stopMakingTakeLanesAfter(registerTakeLaneTrack({ initialLanes: 0 }), 0);
+
+    await expect(
+      createClip({ path: "t0/l1[1|1]", notes: "C3" }),
+    ).rejects.toThrow("Live is unhappy");
   });
 });

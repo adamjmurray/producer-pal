@@ -3,8 +3,18 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import "../../tests/duplicate-mocks-test-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicateClipToArrangement } from "../clip/duplicate-clip-to-arrangement.ts";
+
+// The tests below swap in their own LiveAPI; the registry's is put back after.
+const registryLiveAPI = (global as Record<string, unknown>).LiveAPI;
+
+afterEach(() => {
+  (global as Record<string, unknown>).LiveAPI = registryLiveAPI;
+});
 
 describe("duplicateClipToArrangement", () => {
   beforeEach(() => {
@@ -29,6 +39,32 @@ describe("duplicateClipToArrangement", () => {
 
     await expect(duplicateClipToArrangement("clip1", 0)).rejects.toThrow(
       "no track for clip id clip1",
+    );
+  });
+
+  it("copies onto the source clip's own track when handed no tracks", async () => {
+    registerMockObject("clip1", {
+      path: livePath.track(2).clipSlot(0).clip(),
+      properties: { is_midi_clip: 1, length: 4 },
+    });
+
+    const copy = registerMockObject("copy1", {
+      path: livePath.track(2).arrangementClip(0),
+      properties: { is_arrangement_clip: 1, start_time: 8, end_time: 12 },
+    });
+    const track = registerMockObject("track2", {
+      path: livePath.track(2),
+      properties: { arrangement_clips: [] },
+      methods: { duplicate_clip_to_arrangement: () => ["id", copy.id] },
+    });
+
+    expect(await duplicateClipToArrangement("clip1", 8)).toStrictEqual({
+      copy: { id: "copy1", path: "t2[3|1]" },
+    });
+    expect(track.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id clip1",
+      8,
     );
   });
 });

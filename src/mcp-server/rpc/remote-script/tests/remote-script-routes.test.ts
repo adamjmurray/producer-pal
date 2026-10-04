@@ -193,6 +193,17 @@ describe("remoteScript.load", () => {
     });
   });
 
+  it("fails the route when the connection drops mid-load", async () => {
+    await answerWith({ drop: true });
+
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS),
+    ).toStrictEqual({
+      success: false,
+      error: expect.stringMatching(/socket hang up|ECONNRESET/),
+    });
+  });
+
   it("sends nothing once the expiry is 0", async () => {
     const remote = await answerWith({ body: { loaded: {} } });
 

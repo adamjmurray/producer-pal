@@ -331,6 +331,31 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     expect(destination.call).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a refused destination's own reason beside one past the cap", async () => {
+    registerMainLaneSource([0]);
+    registerTakeLaneTrack({ trackIndex: 1 });
+    registerTakeLaneTrack({ trackIndex: 2, hasMidiInput: 0 });
+
+    const result = await copyToLanes<LaneCopyEntry[]>({
+      toPath: `t2/l0,t1/l${MAX_TAKE_LANES}`,
+    });
+
+    expect(result[0]).toStrictEqual(
+      expect.objectContaining({
+        path: "t2/l0",
+        ok: false,
+        detail: expect.stringContaining("needs a MIDI track"),
+      }),
+    );
+    expect(result[1]).toStrictEqual(
+      expect.objectContaining({
+        path: `t1/l${MAX_TAKE_LANES}`,
+        ok: false,
+        detail: expect.stringContaining("is out of range"),
+      }),
+    );
+  });
+
   it("refuses a lane destination that carries a position", async () => {
     registerMainLaneSource([0]);
 

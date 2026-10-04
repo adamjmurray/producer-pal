@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -17,6 +17,7 @@ import {
   requireClipSlotPath,
   trackSegmentPath,
 } from "../helpers/object-paths.ts";
+import { deviceTailNoun } from "../helpers/object-path-device-tail.ts";
 
 describe("parseObjectPathList", () => {
   it("parses a comma-separated list in order", () => {
@@ -359,3 +360,24 @@ describe("a song position on a tool that can't take one", () => {
     ).toThrow("a song position names a clip, not a device");
   });
 });
+
+describe("deviceTailNoun", () => {
+  it("names the track when the chain has no segments", () => {
+    expect(deviceTailNoun([])).toBe("a track");
+  });
+
+  it("names whatever the last segment names", () => {
+    expect(deviceTailNoun(parseDeviceSegments("t0/d0/c1"))).toBe("a chain");
+  });
+});
+
+/**
+ * The device segments a path parses to.
+ * @param path - A device path
+ * @returns Its segments
+ */
+function parseDeviceSegments(path: string) {
+  const parsed = parseObjectPath(path);
+
+  return "segments" in parsed ? parsed.segments : [];
+}

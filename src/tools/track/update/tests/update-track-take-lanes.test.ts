@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -13,7 +13,11 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  registerTakeLaneTrack,
+  stopMakingTakeLanesAfter,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import { updateTakeLane } from "../helpers/track-take-lanes.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
@@ -399,6 +403,35 @@ describe("updateTrack take lane targets", () => {
         detail: 'only regular tracks have take lanes; "t1" is a group track',
       },
     ]);
+  });
+
+  it("says nothing was made when Live refuses the first lane", () => {
+    stopMakingTakeLanesAfter(track, 0);
+    const landed = vi.fn();
+
+    expect(() =>
+      updateTakeLane(
+        { entry: "t0/l+", trackIndex: 0, laneIndex: null, work: true },
+        "Take A",
+        [],
+        landed,
+      ),
+    ).toThrow("Live is unhappy");
+    expect(landed).not.toHaveBeenCalled();
+  });
+
+  it("leaves an existing lane as it is when asked nothing of it", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    const result = updateTakeLane(
+      { entry: "t0/l0", trackIndex: 0, laneIndex: 0, work: false },
+      undefined,
+      [],
+      vi.fn(),
+    );
+
+    expect(result).toStrictEqual({ id: lane(0)!.id, path: "t0/l0" });
+    expect(lane(0)?.set).not.toHaveBeenCalled();
   });
 
   it("throws for a lone lane target it can't reach", () => {

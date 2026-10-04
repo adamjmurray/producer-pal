@@ -644,4 +644,17 @@ describe("useCollectionEntryAutosave — externalUpdate", () => {
     });
     expect(persist).not.toHaveBeenCalled();
   });
+
+  it("adoptExternal with no server copy leaves the draft unsaved", async () => {
+    const persist = vi.fn().mockResolvedValue("seed");
+    const { result, unmount } = setup(seeded(persist));
+
+    await act(() => {
+      result.current.adoptExternal();
+    });
+    unmount();
+
+    // No external key to adopt, so the baseline clears and leaving flushes.
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
 });

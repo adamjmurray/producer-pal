@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The `envelopes` include, which is the one part of a clip read that goes out
@@ -19,6 +19,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { clipEnvelopes } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
 import {
   type ReadClipResult,
   readClip,
@@ -254,6 +255,46 @@ describe("readClip - envelopes", () => {
         parameter: "Unknown Mixer Param",
         eventCount: 2,
         events: EVENTS_NOTATION,
+      },
+    ]);
+  });
+
+  it("addresses a device parameter with no index as its first", async () => {
+    setupClip();
+    registerMockObject("first-param", {
+      path: livePath.track(0).device(0).parameter(0),
+    });
+    mockNonExistentObjects();
+    answerEnvelopeRoutes([
+      { device: "d0", parameter: parameterInfo("On"), event_count: 1 },
+      { parameter: parameterInfo("Unnamed"), event_count: 1 },
+    ]);
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "On",
+        id: "first-param",
+        device: "t0/d0",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+      { parameter: "Unnamed", eventCount: 2, events: EVENTS_NOTATION },
+    ]);
+  });
+
+  it("falls back to the listed count when a read gives none", async () => {
+    setupClip();
+    answerEnvelopeRoutes([{ ...MIXER_VOLUME, event_count: 5 }], {
+      event_count: undefined,
+      events: undefined,
+    });
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 5,
+        events: "",
       },
     ]);
   });
@@ -521,6 +562,25 @@ describe("readClip - envelopes", () => {
     setupClip();
 
     expect(await readEnvelopes(["*"])).toBeUndefined();
+    expect(requestNode).not.toHaveBeenCalled();
+  });
+});
+
+describe("clipEnvelopes - clip placement", () => {
+  it("says a clip outside a session slot can't report automation", async () => {
+    registerMockObject("loose-clip", {
+      path: `${livePath.track(0)} view detail_clip`,
+    });
+
+    const result = await clipEnvelopes(
+      LiveAPI.from("loose-clip"),
+      false,
+      () => ({ numerator: 4, denominator: 4 }),
+    );
+
+    expect(result).toBe(
+      "only a clip in a session clip slot can report its automation",
+    );
     expect(requestNode).not.toHaveBeenCalled();
   });
 });

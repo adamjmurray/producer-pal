@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { getHostTrackIndex } from "../get-host-track-index.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { getHostTrackIndex, groupsHostTrack } from "../get-host-track-index.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -66,5 +68,37 @@ describe("getHostTrackIndex", () => {
 
       expect(result).toBe(expected);
     }
+  });
+});
+
+describe("groupsHostTrack", () => {
+  const groupNamed = (id: string) => ({ id }) as unknown as LiveAPI;
+
+  /** Host track 2 sits in group 10, which sits in group 20. */
+  function registerNestedGroups(): void {
+    registerMockObject("host", {
+      path: livePath.track(2),
+      properties: { group_track: ["id", 10] },
+    });
+    registerMockObject("10", { properties: { group_track: ["id", 20] } });
+    // An empty list reads as "not grouped"
+    registerMockObject("20", { properties: { group_track: [] } });
+  }
+
+  it("returns false when there is no host track", () => {
+    expect(groupsHostTrack(groupNamed("10"), null)).toBe(false);
+  });
+
+  it("finds the host track inside a nested group", () => {
+    registerNestedGroups();
+
+    expect(groupsHostTrack(groupNamed("10"), 2)).toBe(true);
+    expect(groupsHostTrack(groupNamed("20"), 2)).toBe(true);
+  });
+
+  it("returns false for a group the host track isn't in", () => {
+    registerNestedGroups();
+
+    expect(groupsHostTrack(groupNamed("99"), 2)).toBe(false);
   });
 });

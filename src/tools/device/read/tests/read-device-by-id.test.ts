@@ -54,6 +54,28 @@ describe("readOneDevice by id of a chain", () => {
       }),
     );
   });
+
+  // Live can hand back a drum chain's path through its pad. That names the
+  // chain by an index within the pad, so the read gives no path at all rather
+  // than a wrong one.
+  it("gives no path for a drum chain Live placed under its pad", () => {
+    registerMockObject("chain-1", {
+      path: `${livePath.track(1).device(0)} drum_pads 36 chains 0`,
+      type: "DrumChain",
+      properties: { name: "Layer 1", in_note: 36, devices: [] },
+    });
+
+    const result = readOneDevice({ id: "chain-1" });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "chain-1",
+        name: "Layer 1",
+        type: "drum-chain",
+      }),
+    );
+    expect(result).not.toHaveProperty("path");
+  });
 });
 
 describe("readDevice by id of something that is not a device", () => {

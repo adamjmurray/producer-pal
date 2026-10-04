@@ -616,4 +616,11 @@ describe("duplicate - drum pad", () => {
 
     await expect(copyC1ToD1()).rejects.toThrow("had no effect");
   });
+
+  it("refuses a copy onto a pad the rack doesn't list, before or after", async () => {
+    const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
+
+    await expect(copyC1ToD1()).rejects.toThrow("had no effect");
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+  });
 });

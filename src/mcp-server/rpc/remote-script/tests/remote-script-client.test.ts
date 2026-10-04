@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import http from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   RemoteScriptTimeout,
@@ -203,6 +204,26 @@ describe("remoteScriptRequest", () => {
     await expect(
       remoteScriptRequest({ route: "/ping", timeoutMs: 5000 }),
     ).rejects.toThrow("aborted");
+  });
+
+  it("reads a reply with no status code as status 0", async () => {
+    await answerWith({ body: { ok: true } });
+    const realRequest = http.request;
+
+    vi.spyOn(http, "request").mockImplementation(((
+      options: http.RequestOptions,
+      callback: (response: http.IncomingMessage) => void,
+    ) =>
+      realRequest(options, (response) => {
+        response.statusCode = undefined;
+        callback(response);
+      })) as typeof http.request);
+
+    expect(await remoteScriptRequest({ route: "/ping" })).toStrictEqual({
+      available: true,
+      status: 0,
+      body: { ok: true },
+    });
   });
 });
 

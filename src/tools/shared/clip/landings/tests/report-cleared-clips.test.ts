@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   newLandingLog,
@@ -63,6 +64,40 @@ function reportTwo(
   return { first, second };
 }
 
+/**
+ * Lands an 8-beat clip on another track, then reports on it and `entry`.
+ * @param log - The call's landing log
+ * @param entry - The entry under test
+ * @returns The other clip's entry, once reported on
+ */
+function reportBesideOther(
+  log: ReturnType<typeof newLandingLog>,
+  entry: ClearedClipEntry,
+): ClearedClipEntry {
+  registerMockObject("other", {
+    path: livePath.track(1).arrangementClip(0),
+    type: "Clip",
+    properties: { start_time: 0, end_time: 8 },
+  });
+
+  const other: ClearedClipEntry = { id: "other", path: "t1[1|1]" };
+
+  recordLandedClip(log, { trackIndex: 1, takeLane: null }, 0, {
+    id: "other",
+    length: 8,
+  });
+  reportClearedClips({
+    written: [
+      { entry, said: false },
+      { entry: other, said: false },
+    ],
+    spanOf: (e) => log.landed.get(e.id as string),
+    log,
+  });
+
+  return other;
+}
+
 describe("reportClearedClips - a clip a later write cut the tail off", () => {
   it("says it was shortened, and how long it is now", () => {
     const { first, second } = reportTwo(24);
@@ -114,15 +149,8 @@ describe("reportClearedClips - a clip that ends sooner with no later write", () 
       type: "Clip",
       properties: { start_time: 16, end_time: 32 },
     });
-    registerMockObject("other", {
-      path: livePath.track(1).arrangementClip(0),
-      type: "Clip",
-      properties: { start_time: 0, end_time: 8 },
-    });
-
     const log = newLandingLog();
     const tile: ClearedClipEntry = { id: "tile", path: "t0[5|1]" };
-    const other: ClearedClipEntry = { id: "other", path: "t1[1|1]" };
 
     recordLandedClip(log, MAIN_LANE, 16, { id: "tile", length: 16 });
     recordResize(log, LiveAPI.from("whole"), 48);
@@ -131,18 +159,7 @@ describe("reportClearedClips - a clip that ends sooner with no later write", () 
       recordLandedClip(log, MAIN_LANE, 20, { id: "x", length: null });
     }
 
-    recordLandedClip(log, { trackIndex: 1, takeLane: null }, 0, {
-      id: "other",
-      length: 8,
-    });
-    reportClearedClips({
-      written: [
-        { entry: tile, said: false },
-        { entry: other, said: false },
-      ],
-      spanOf: (entry) => log.landed.get(entry.id as string),
-      log,
-    });
+    reportBesideOther(log, tile);
 
     return tile;
   }
@@ -158,5 +175,43 @@ describe("reportClearedClips - a clip that ends sooner with no later write", () 
       arrangementLength: "3bar",
       detail: "shortened later in this call",
     });
+  });
+});
+
+describe("reportClearedClips - a clip gone from its path with nothing written over it", () => {
+  it("names what is left of it, without blaming a write", () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    // Live moved the first clip off its spot and left a piece where it was.
+    registerMockObject("first", {
+      path: livePath.track(0).arrangementClip(1),
+      type: "Clip",
+      properties: { start_time: 40, end_time: 48 },
+    });
+    registerMockObject("piece", {
+      path: livePath.track(0).arrangementClip(0),
+      type: "Clip",
+      properties: { start_time: 16, end_time: 24 },
+    });
+    registerMockObject("track_0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { arrangement_clips: children("piece") },
+    });
+    const log = newLandingLog();
+    const first: ClearedClipEntry = { id: "first", path: "t0[5|1]" };
+
+    recordLandedClip(log, MAIN_LANE, 16, { id: "first", length: 12 });
+    const other = reportBesideOther(log, first);
+
+    expect(first).toStrictEqual({
+      id: "piece",
+      path: "t0[5|1]",
+      arrangementLength: "2bar",
+      detail: "shortened later in this call",
+    });
+    expect(other).toStrictEqual({ id: "other", path: "t1[1|1]" });
   });
 });

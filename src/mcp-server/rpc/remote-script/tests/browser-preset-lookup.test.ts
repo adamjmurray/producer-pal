@@ -253,6 +253,36 @@ describe("lookUpBrowserPreset — a name", () => {
       available: false,
     });
   });
+
+  it("reports a fallback search the remote script failed", async () => {
+    fake = await startFakeRemoteScript((request) =>
+      request.query.path == null
+        ? { status: 500, body: { error: "boom" } }
+        : listing(BROWSER, request),
+    );
+
+    expect(
+      await lookUp("808 Drifter", { ...WAVETABLE, orAnywhere: true }),
+    ).toStrictEqual({
+      available: true,
+      error: `could not search Live's browser for "808 Drifter": boom`,
+    });
+  });
+
+  it("searches nothing for a device whose type lists no presets", async () => {
+    const result = await lookUp("Warm Pad", {
+      type: "plugin",
+      path: "Serum",
+      device: "Serum",
+    });
+
+    expect(result).toStrictEqual({
+      available: true,
+      error:
+        'no preset "Warm Pad" for Serum. Search ppal-library (kind: preset or device-group) and pass a result\'s path as preset',
+    });
+    expect(fake?.requests).toHaveLength(0);
+  });
 });
 
 describe("lookUpBrowserPreset — time", () => {

@@ -626,6 +626,39 @@ describe("chatAdapter", () => {
         vi.mocked(createProviderModel).mockImplementation(() => mockModel);
         warnSpy.mockRestore();
       });
+
+      it("warns with the thrown value when it isn't an Error", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        vi.mocked(createProviderModel).mockImplementation((_p, modelId) => {
+          if (modelId === "broken-worker") {
+            const notAnError: unknown = "no base URL";
+
+            throw notAnError;
+          }
+
+          return mockModel;
+        });
+
+        const config = chatAdapter.buildConfig(
+          "gpt-4o",
+          "Default",
+          {},
+          undefined,
+          {
+            ...extraParams,
+            subagentPreset: { ...subagentPreset, model: "broken-worker" },
+          },
+        );
+
+        expect(config.subagentConfig).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("current settings. no base URL"),
+        );
+
+        vi.mocked(createProviderModel).mockImplementation(() => mockModel);
+        warnSpy.mockRestore();
+      });
     });
   });
 

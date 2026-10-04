@@ -31,14 +31,19 @@ describeDocTransport({
 describe("useSystemPrompt drift", () => {
   const fetchMock = installFetchMock();
 
-  it("surfaces drift state from the /system-prompt response", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        content: "my fork",
-        drifted: true,
-        forkedFromVersion: "1.4.0",
-      }),
-    );
+  it.each([
+    {
+      name: "surfaces drift state from the /system-prompt response",
+      body: { content: "my fork", drifted: true, forkedFromVersion: "1.4.0" },
+      drift: { drifted: true, forkedFromVersion: "1.4.0" },
+    },
+    {
+      name: "reports no fork version when the response leaves it out",
+      body: { content: "my fork", drifted: false },
+      drift: { drifted: false, forkedFromVersion: null },
+    },
+  ])("$name", async ({ body, drift }) => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(body));
 
     const { result } = renderHook(useSystemPrompt);
 
@@ -46,10 +51,7 @@ describe("useSystemPrompt drift", () => {
       expect(result.current.status.kind).toBe("ready");
     });
 
-    expect(result.current.drift).toStrictEqual({
-      drifted: true,
-      forkedFromVersion: "1.4.0",
-    });
+    expect(result.current.drift).toStrictEqual(drift);
   });
 
   it("refreshes drift after a save echoes fresh provenance", async () => {

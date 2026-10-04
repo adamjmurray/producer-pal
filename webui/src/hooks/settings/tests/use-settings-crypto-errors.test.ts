@@ -63,6 +63,20 @@ describe("useSettings crypto error handling", () => {
     });
   });
 
+  it("still logs a failed decrypt-load that settles after unmount", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { unmount } = renderHook(() => useSettings());
+
+    unmount();
+
+    await waitForHookState(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to load provider settings",
+        expect.any(Error),
+      );
+    });
+  });
+
   it("surfaces a saveError and leaves saved* unchanged when encrypt fails", async () => {
     const { result, errorSpy } = await renderPastFailedLoad();
 

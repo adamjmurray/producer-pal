@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -11,6 +11,7 @@ import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
   resolveTakeLane,
+  TakeLanesMadeError,
   takeLanesMadeBy,
   takeLaneLabel,
   takeLaneTargetsThatFit,
@@ -207,6 +208,15 @@ describe("resolveTakeLane", () => {
 
     expect((failure as Error).message).toBe("Live is unhappy");
     expect(takeLanesMadeBy(failure)).toBe("l0");
+  });
+
+  it("reads a non-Error failure as its text", () => {
+    const failure = new TakeLanesMadeError("lane refused", "l0-l1");
+
+    expect(failure.message).toBe("lane refused");
+    expect(failure.cause).toBe("lane refused");
+    expect(takeLanesMadeBy(failure)).toBe("l0-l1");
+    expect(takeLanesMadeBy(new Error("other"))).toBeNull();
   });
 
   it("names a newly created lane but never renames an existing one", () => {
