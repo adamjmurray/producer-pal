@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Only Live's own Python has this module; the package imports it on load.
 sys.modules.setdefault("Live", types.ModuleType("Live"))
 
-from Producer_Pal import bridge  # noqa: E402
+from Producer_Pal import bridge, routes  # noqa: E402
 
 
 class Handler:
@@ -96,12 +96,12 @@ def dispatch(handler, params):
     """POST /load through the bridge, with Live running each job as it's queued."""
     surface = object.__new__(bridge.ProducerPalBridge)
     surface._jobs = types.SimpleNamespace(put=lambda queued: queued.run())
-    original = bridge.ROUTES["/load"]
-    bridge.ROUTES["/load"] = handler
+    original = routes.ROUTES["/load"]
+    routes.ROUTES["/load"] = handler
     try:
         return surface._dispatch("POST", "/load", params)
     finally:
-        bridge.ROUTES["/load"] = original
+        routes.ROUTES["/load"] = original
 
 
 class ExpiryTest(unittest.TestCase):

@@ -13,8 +13,9 @@ import traceback
 
 import Live
 
+from . import routes
+from .errors import RouteError
 from .http_server import BridgeHTTPServer
-from .routes import POST_ONLY, ROUTES, RouteError
 
 PORT = 3349
 
@@ -56,10 +57,15 @@ class ProducerPalBridge:
 
     def _dispatch(self, method, path, params):
         """Called on an HTTP worker thread. Hands the work to the main thread and waits."""
-        handler = ROUTES.get(path)
+        # Read through the module on every request, so a hot reload (see
+        # hot_reload.py) takes effect.
+        handler = routes.ROUTES.get(path)
         if handler is None:
-            return 404, {"error": "unknown route: " + path, "routes": sorted(ROUTES)}
-        if path in POST_ONLY and method != "POST":
+            return 404, {
+                "error": "unknown route: " + path,
+                "routes": sorted(routes.ROUTES),
+            }
+        if path in routes.POST_ONLY and method != "POST":
             return 405, {"error": "%s needs POST" % path}
         try:
             expires_at = _expires_at(params.get("expires_in_ms"))

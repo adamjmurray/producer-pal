@@ -30,9 +30,10 @@ Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
 Live** (it only scans Remote Scripts at startup), then pick **Producer Pal**
 under Settings → Tempo & MIDI → Control Surface. Leave Input and Output as None.
 
-`npm run remote-script:install -- --probe` also adds a dev-only `/probe` route
-that runs posted Python. See
-[dev/live-api/python-remote-script-api/](../dev/live-api/python-remote-script-api/README.md).
+`npm run remote-script:install -- --probe` also adds two dev-only routes:
+`/probe`, which runs posted Python (see
+[dev/live-api/python-remote-script-api/](../dev/live-api/python-remote-script-api/README.md)),
+and `/reload`. See [Hot reload](#hot-reload).
 
 The folder name must be a valid Python name: Live runs `import <folder>`, so a
 space breaks it.
@@ -120,7 +121,9 @@ also a 504, with `started: true`: Live may have made the change.
 ### `GET /ping`
 
 Liveness, Live's version, and this script's (`script_version`, from
-`version.py`, which the build stamps with the Producer Pal release).
+`version.py`, which the build stamps with the Producer Pal release). Also
+`source_hash`: a hash of the implementation files when they were last loaded.
+See [Hot reload](#hot-reload).
 
 ### `GET /list`
 
@@ -237,10 +240,38 @@ started in that time.
 - `http_server.py`: the HTTP server; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control
   surface
+- `errors.py`: `RouteError`, a route's own HTTP status and body
+- `hot_reload.py`: the dev-only reload and the source hash
 - `routes.py`: what each route does; main thread only
+- `params.py`: reading request params
 - `browser.py`: browser tree walking, name matching, and finding a file
 - `hotswap.py`: walking a device path, and loading in place of a device
 - `envelopes.py`: clip automation envelopes
+
+## Hot reload
+
+Change the code and run it in Live without restarting:
+
+```sh
+npm run remote-script:install -- --probe --reload
+```
+
+It reinstalls, reloads the code in Live, and checks Live loaded what was
+installed. `--reload` needs `--probe`, which adds the dev-only `/reload` route.
+
+Every top-level `.py` file reloads except the bootstrap: `__init__.py`,
+`bridge.py`, `errors.py`, `hot_reload.py` and `http_server.py`. If a module
+fails to load, all of them are put back, the old code keeps running, and the
+reply has the traceback.
+
+Still needs a Live restart:
+
+- The first install with `--probe`: the running script has no `/reload` yet.
+- A change to a bootstrap file.
+- Code in a subfolder.
+
+To check what's running, `/ping` returns `source_hash`, a hash of the reloadable
+files as last loaded. `/reload` returns the same `hash`.
 
 ## Notes
 
@@ -250,9 +281,8 @@ started in that time.
   returns, so the `devices` list in the response can lag.
 - **Debugging**: `bridge.log()` writes to Live's `Log.txt`
   (`~/Library/Preferences/Ableton/Live x.x.x/` on macOS).
-- **Developing**: code changes need a reinstall
-  (`npm run remote-script:install`) and a Live restart. To test against the dev
-  build of the Producer Pal device, open an e2e Set (`e2e/live-sets/`), which
+- **Developing**: see [Hot reload](#hot-reload). To test against the dev build
+  of the Producer Pal device, open an e2e Set (`e2e/live-sets/`), which
   references the repo's device, rather than loading `Producer_Pal` from the
   browser, which finds whatever copy is in your library.
 - **Tests**: `tests/` runs routes against fake Live objects, outside Live:

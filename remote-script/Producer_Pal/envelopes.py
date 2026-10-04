@@ -21,7 +21,8 @@ seconds), not raw. Times are beats (quarter notes) from the clip start.
 import math
 import re
 
-from .routes import RouteError, parse_index
+from .errors import RouteError
+from .params import parse_index
 
 MAX_EVENTS = 1000
 EPSILON = 1e-6

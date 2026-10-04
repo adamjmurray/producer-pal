@@ -23,6 +23,24 @@ POST_ONLY = POST_ONLY + ("/probe",)
  * @param installPath - The installed Producer_Pal folder
  */
 export function addProbeRoute(installPath: string): void {
+  // Copied first: the registration imports it, so Live would fail to load
+  // the script if it were missing.
+  copyFileSync(PROBE_SOURCE, join(installPath, "probe.py"));
+  appendToRoutes(installPath, REGISTRATION);
+}
+
+/**
+ * Append Python to an installed routes.py, where it can add to ROUTES and
+ * POST_ONLY.
+ *
+ * @param installPath - The installed Producer_Pal folder
+ * @param registration - The Python to append
+ * @throws Error when routes.py no longer defines ROUTES and POST_ONLY
+ */
+export function appendToRoutes(
+  installPath: string,
+  registration: string,
+): void {
   const routesPath = join(installPath, "routes.py");
   const routes = readFileSync(routesPath, "utf8");
 
@@ -31,6 +49,5 @@ export function addProbeRoute(installPath: string): void {
     throw new Error(`${routesPath} no longer defines ROUTES and POST_ONLY`);
   }
 
-  copyFileSync(PROBE_SOURCE, join(installPath, "probe.py"));
-  appendFileSync(routesPath, REGISTRATION);
+  appendFileSync(routesPath, registration);
 }

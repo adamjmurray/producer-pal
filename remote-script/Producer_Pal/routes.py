@@ -5,7 +5,10 @@
 
 """What the HTTP routes do. Every function here runs on Live's main thread."""
 
-from . import browser, hotswap
+from . import browser, hot_reload, hotswap
+from .envelopes import ROUTES as _ENVELOPE_ROUTES
+from .errors import RouteError
+from .params import parse_index
 from .version import VERSION
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
@@ -40,15 +43,6 @@ MAX_CANDIDATES = 25
 MAX_CHOICES = 50
 
 
-class RouteError(Exception):
-    """A route's own HTTP status and body."""
-
-    def __init__(self, status, message, **extra):
-        super().__init__(message)
-        self.status = status
-        self.payload = dict(extra, error=message)
-
-
 def ping(bridge, params):
     app = bridge.app
     version = "%s.%s.%s" % (
@@ -56,7 +50,13 @@ def ping(bridge, params):
         app.get_minor_version(),
         app.get_bugfix_version(),
     )
-    return {"ok": True, "live_version": version, "script_version": VERSION}
+    return {
+        "ok": True,
+        "live_version": version,
+        "script_version": VERSION,
+        # Of the implementation files when they were last loaded.
+        "source_hash": hot_reload.loaded_hash,
+    }
 
 
 def list_items(bridge, params):
@@ -301,21 +301,6 @@ def _parse_track_index(value):
     return parse_index(value, "track_index")
 
 
-def parse_index(value, name):
-    """A whole number >= 0, or None when absent. Anything else is a 400."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, bool):
-        raise RouteError(400, "%s must be a whole number, got %r" % (name, value))
-    try:
-        index = int(str(value).strip())
-    except ValueError:
-        raise RouteError(400, "%s must be a whole number, got %r" % (name, value))
-    if index < 0:
-        raise RouteError(400, "%s must be 0 or more, got %s" % (name, index))
-    return index
-
-
 def _as_bool(value):
     if isinstance(value, bool):
         return value
@@ -327,13 +312,9 @@ ROUTES = {
     "/list": list_items,
     "/load": load,
     "/hotswap": hotswap_device,
+    **_ENVELOPE_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
 # <img> tag), so these refuse GET.
 POST_ONLY = ("/load", "/hotswap", "/envelope/write", "/envelope/clear")
-
-# Imported after ROUTES so envelopes.py can import RouteError from here.
-from .envelopes import ROUTES as _ENVELOPE_ROUTES  # noqa: E402
-
-ROUTES.update(_ENVELOPE_ROUTES)

@@ -28,7 +28,9 @@ The scripts are in `scripts/live-api/python-probe/`.
    main thread. It's arbitrary code execution over local HTTP, so it exists only
    in the installed copy: the route's source sits outside
    `remote-script/Producer_Pal/`, so the device never bundles it. Reinstall
-   without the flag to remove it.
+   without the flag to remove it. The flag also adds `/reload`: with `--reload`
+   too, later installs take effect without a restart (see the
+   [remote script README](../../../remote-script/README.md#hot-reload)).
 2. **Run Python in Live:**
    `node scripts/live-api/python-probe/run-probe.ts <file.py> [out.json]`. The
    code sees `song`, `app`, `Live` and `bridge`, and returns whatever it assigns
