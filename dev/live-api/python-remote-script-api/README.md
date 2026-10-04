@@ -19,6 +19,34 @@ and probing) and
 [Structure Void's MIDI Remote Scripts docs](https://midiremotescripts.structure-void.com/)
 (the object model across Live versions).
 
+Checked against both on Live 12.4.6: neither lists a member our inventory
+misses. PhotonicVelocity covers 12.3.6 only. Ableton's own scripts never call
+`duplicate_device`, `sync_parameter_changes` or `replace_sample`, so there's no
+reference use to copy. What they did add:
+
+- `Application.unavailable_features` lists what the edition lacks (Push checks
+  for `note_velocity_ranges_and_probabilities`), and `get_variant()` names the
+  edition.
+- After writing a clip envelope, Ableton's scripts call
+  `param.re_enable_automation()`. A parameter the user moved stays overridden
+  otherwise, and the new envelope doesn't play (probed).
+- Max gates each allowlisted member by a minimum version (`min_epii_version`),
+  so a member in the allowlist may still be missing from an older Live.
+
+## Writes from Python land late
+
+A song property set from Python reads back at once, but what depends on it
+doesn't update until `Song.sync_parameter_changes()` or the next update tick.
+After `signature_numerator = 3` and `current_song_time = 12`,
+`get_current_beats_song_time()` still says 1.1.1, then 5.1.1 after the sync
+(Live 12.4.6). So a route that writes and then reads something derived must call
+it in between. It's new in 12.4, so a route that relies on it needs a version
+check.
+
+Max writes don't have this problem: a time signature change followed by a
+locator or start position at a bar, in the same call or the next, lands at the
+right beat.
+
 ## Probing
 
 The scripts are in `scripts/live-api/python-probe/`.
