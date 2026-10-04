@@ -34,6 +34,19 @@ REQUEST_TIMEOUT = 30.0
 # a huge one overflows the wait.
 MAX_EXPIRES_IN_MS = 3_600_000
 
+# While the server has a request in flight, `update_display` keeps looping so
+# the HTTP threads don't wait a whole tick per hop. Live holds the GIL between
+# ticks, so those threads only run while we sleep. Never sleep when idle: it
+# would cost Live's main thread on every tick.
+#
+# The longest one call spends looping. A running job is never cut short.
+YIELD_BUDGET = 0.020
+# Not-busy checks in a row, after being busy, before we stop. Between accept()
+# and the request being counted, the server briefly looks idle.
+YIELD_QUIET_CHECKS = 3
+# One sleep, long enough to hand the GIL to the HTTP threads.
+YIELD_SLEEP = 0.001
+
 # Ends the error for a job Live skipped: it changed nothing, so a re-run is safe.
 _RERUN = "; nothing changed, re-run it"
 
@@ -86,7 +99,28 @@ class ProducerPalBridge:
     # --- Live's main thread --------------------------------------------
 
     def update_display(self):
-        """Live calls this ~10x/sec. It is the only place we touch the Live API."""
+        """Live calls this ~10x/sec. It is the only place we touch the Live API.
+
+        Runs queued jobs. While the server is busy it sleeps briefly between
+        rounds, so the HTTP threads can queue the next job without waiting a tick.
+        """
+        start = time.monotonic()
+        was_busy = False
+        quiet = 0
+        while True:
+            self._run_queued_jobs()
+            if self._server.busy():
+                was_busy = True
+                quiet = 0
+            else:
+                quiet += 1
+                if not was_busy or quiet >= YIELD_QUIET_CHECKS:
+                    return
+            if time.monotonic() - start >= YIELD_BUDGET:
+                return
+            time.sleep(YIELD_SLEEP)
+
+    def _run_queued_jobs(self):
         while True:
             try:
                 job = self._jobs.get_nowait()

@@ -7,11 +7,12 @@
 
 import json
 import os
+import selectors
 import socket
 import sys
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from threading import Thread
+from threading import Lock, Thread
 from urllib.parse import parse_qs, urlparse, urlsplit
 
 # A Host outside these is a DNS-rebinding page reaching us under its own name.
@@ -41,6 +42,7 @@ class BridgeHTTPServer:
         self._log = log
         self._port_file = port_file
         self._server = None
+        self._selector = None
         self._thread = None
         # The port we bound, or None before `start` succeeds.
         self.port = None
@@ -61,6 +63,10 @@ class BridgeHTTPServer:
         else:
             self._log("no free port among %s" % ", ".join(map(str, self._ports)))
             return False
+        # Not `select.select`: it raises for fds past FD_SETSIZE, and Live has
+        # many open.
+        self._selector = selectors.DefaultSelector()
+        self._selector.register(self._server.socket, selectors.EVENT_READ)
         self._server.dispatch = self._dispatch
         self._server.log = self._log
         self._thread = Thread(target=self._serve, name="Producer Pal", daemon=True)
@@ -76,7 +82,23 @@ class BridgeHTTPServer:
         self._server.shutdown()
         self._server.server_close()
         self._server = None
+        self._selector.close()
+        self._selector = None
         self._log("stopped")
+
+    def busy(self):
+        """Whether a connection is waiting to be accepted or a request is in progress.
+
+        Main thread only, like `stop`. Never blocks.
+        """
+        if self._server is None:
+            return False
+        if self._server.in_progress():
+            return True
+        try:
+            return bool(self._selector.select(timeout=0))
+        except (OSError, ValueError):
+            return False
 
     def _write_port_file(self):
         try:
@@ -105,9 +127,53 @@ class _Server(ThreadingHTTPServer):
     # a burst (one lookup asks every browser section at once).
     request_queue_size = 32
 
+    def __init__(self, *args, **kwargs):
+        # Request sockets, from accept until the response is written.
+        self._active = set()
+        self._active_lock = Lock()
+        self._accepting = False
+        super().__init__(*args, **kwargs)
+
+    def server_activate(self):
+        super().server_activate()
+        # Without a timeout, accept() can block after the client dropped, and
+        # `_accepting` would stay set, so every tick would sleep its budget.
+        # Accepted sockets are still blocking.
+        self.socket.settimeout(0.5)
+
+    def in_progress(self):
+        with self._active_lock:
+            return self._accepting or bool(self._active)
+
+    def untrack(self, request):
+        """Stop counting a request. Safe to call twice."""
+        with self._active_lock:
+            self._active.discard(request)
+
+    def get_request(self):
+        # Set before accept(): once it returns, the connection has left the
+        # backlog, and this thread may wait for the GIL before it's tracked.
+        self._accepting = True
+        try:
+            request, address = super().get_request()
+            with self._active_lock:
+                self._active.add(request)
+            return request, address
+        finally:
+            self._accepting = False
+
+    def shutdown_request(self, request):
+        # Runs on every path that ends a request: after the handler, when
+        # verify_request refuses, and when process_request raises.
+        self.untrack(request)
+        super().shutdown_request(request)
+
 
 class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    # Seconds a socket read or write may stall. A connection that stops sending
+    # counts as busy, and each tick sleeps while anything is busy.
+    timeout = 10
 
     def do_GET(self):
         if not self._allowed():
@@ -172,6 +238,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        # One request per connection. A kept-alive one outlives a Set reload,
+        # which replaces the bridge, so its next request would queue on the old
+        # bridge and never run.
+        self.send_header("Connection", "close")
+        self.close_connection = True
         self.end_headers()
         self.wfile.write(data)
 
