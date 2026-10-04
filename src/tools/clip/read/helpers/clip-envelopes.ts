@@ -27,6 +27,14 @@ const DEVICE_SEGMENT = /^([dc])(\d+)$/;
 /** A mixer send, as the remote script names it: send0, send1, ... */
 const SEND_PARAMETER = /^send(\d+)$/;
 
+/** What a clip's envelopes say when it holds ones Producer Pal can't see. */
+const UNREADABLE_ENVELOPES =
+  "the clip has envelopes Producer Pal can't read (modulation, clip-level ones like Gain, or MIDI CC)";
+
+/** The note on every envelope of an unwarped audio clip. */
+const UNWARPED_ENVELOPE_NOTE =
+  "doesn't play: the clip is unwarped. Turn warping on to hear it";
+
 /** One automated parameter on a clip. */
 export interface ClipEnvelope {
   /** The parameter's name, as Live shows it */
@@ -40,7 +48,7 @@ export interface ClipEnvelope {
   truncated?: true;
   /** The automation as envelope notation, in the clip's own meter; absent when it couldn't be read */
   events?: string;
-  /** Why `events` is absent */
+  /** Why `events` is absent, or why the envelope doesn't play */
   detail?: string;
 }
 
@@ -53,7 +61,7 @@ type ListedEnvelope = EnvelopeListResult["envelopes"][number];
  * @param clipMeter - Getter for the clip's meter, which spells the event times
  * @param deadline - The request deadline from ToolContext, if any
  * @returns One entry per automated parameter, each saying why when its events
- *   couldn't be read, or why there are none to report at all
+ *   couldn't be read or can't play, or why there are none to report at all
  */
 export async function clipEnvelopes(
   clip: LiveAPI,
@@ -83,6 +91,17 @@ export async function clipEnvelopes(
     return listed.reason;
   }
 
+  // `has_envelopes` is true for any envelope; the routes only see automation.
+  if (
+    listed.result.envelopes.length === 0 &&
+    (clip.getProperty("has_envelopes") as number) > 0
+  ) {
+    return UNREADABLE_ENVELOPES;
+  }
+
+  const unwarped =
+    (clip.getProperty("is_audio_clip") as number) > 0 &&
+    (clip.getProperty("warping") as number) === 0;
   const envelopes: ClipEnvelope[] = [];
 
   let stalledReason: string | undefined;
@@ -121,7 +140,9 @@ export async function clipEnvelopes(
       continue;
     }
 
-    envelopes.push(envelopeEntry(trackIndex, entry, read.result, clipMeter));
+    envelopes.push(
+      envelopeEntry(trackIndex, entry, read.result, clipMeter, unwarped),
+    );
   }
 
   return envelopes;
@@ -189,6 +210,7 @@ function unreadEnvelope(
  * @param entry - What the list route said about the parameter
  * @param read - What the read route returned for it
  * @param clipMeter - Getter for the clip's meter
+ * @param unwarped - Whether the clip is audio with warping off
  * @returns The entry for the clip result
  */
 function envelopeEntry(
@@ -196,6 +218,7 @@ function envelopeEntry(
   entry: ListedEnvelope,
   read: EnvelopeReadResult,
   clipMeter: () => { numerator: number; denominator: number },
+  unwarped: boolean,
 ): ClipEnvelope {
   const { numerator, denominator } = clipMeter();
 
@@ -211,6 +234,7 @@ function envelopeEntry(
       })),
       { timeSigNumerator: numerator, timeSigDenominator: denominator },
     ),
+    ...(unwarped && { detail: UNWARPED_ENVELOPE_NOTE }),
   };
 }
 

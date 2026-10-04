@@ -688,4 +688,6 @@ export interface ClipEnvelopeResult {
   truncated?: true;
   /** The automation as envelope notation, in the clip's own meter */
   events: string;
+  /** Why the events are missing, or why the envelope doesn't play */
+  detail?: string;
 }

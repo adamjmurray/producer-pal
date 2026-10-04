@@ -39,7 +39,13 @@ interface ClipAddress {
   timeSigDenominator: number;
   /** Where the clip stops playing, in beats; Live keeps events past it */
   endBeats: number;
+  /** An audio clip with warping off: Live keeps its envelopes but never plays them */
+  unwarped: boolean;
 }
+
+/** Why points aren't written to an unwarped audio clip. */
+const UNWARPED_CLIP_REFUSAL =
+  "not written: an unwarped audio clip can't play envelopes. Set warping: true on the clip, then write it again";
 
 /**
  * Write one clip's automation, reporting what landed on its own entry.
@@ -88,6 +94,10 @@ export async function applyClipEnvelopes(
         clip.getProperty("loop_end") as number,
         clip.getProperty("end_marker") as number,
       ),
+      // Read here, last: the same call may just have changed warping.
+      unwarped:
+        (clip.getProperty("is_audio_clip") as number) > 0 &&
+        (clip.getProperty("warping") as number) === 0,
     },
     deadline,
   );
@@ -223,6 +233,11 @@ async function writeOneLine(
     slot: address.slot,
     ...target,
   };
+
+  // A clear still runs: removing an envelope that can't play does no harm.
+  if (line.notation !== "" && address.unwarped) {
+    return { ok: false, reason: UNWARPED_CLIP_REFUSAL, available: true };
+  }
 
   if (line.notation === "") {
     const cleared = await envelopeRoute<EnvelopeClearResult>(

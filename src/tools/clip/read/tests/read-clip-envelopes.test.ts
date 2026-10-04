@@ -82,8 +82,12 @@ function parameterInfo(name: string): ParameterInfo {
  * Register a 4/4 session clip on track 0, and the Live objects the parameter
  * ids resolve against.
  * @param arrangement - Whether the clip reads as an arrangement clip
+ * @param extraProps - More clip properties, over the defaults
  */
-function setupClip(arrangement = false): void {
+function setupClip(
+  arrangement = false,
+  extraProps: Record<string, unknown> = {},
+): void {
   setupMidiClipMock({
     trackIndex: 0,
     sceneIndex: 1,
@@ -94,6 +98,7 @@ function setupClip(arrangement = false): void {
       signature_denominator: 4,
       length: 4,
       is_arrangement_clip: arrangement ? 1 : 0,
+      ...extraProps,
     },
   });
 
@@ -263,6 +268,59 @@ describe("readClip - envelopes", () => {
         id: "volume-param",
         eventCount: 97,
         truncated: true,
+        events: EVENTS_NOTATION,
+      },
+    ]);
+  });
+
+  it("says the clip holds envelopes it can't read when the list is empty but the clip has some", async () => {
+    setupClip(false, { has_envelopes: 1 });
+    answerEnvelopeRoutes([]);
+
+    expect(await readEnvelopes()).toBe(
+      "the clip has envelopes Producer Pal can't read (modulation, clip-level ones like Gain, or MIDI CC)",
+    );
+  });
+
+  it("lists the envelopes it can read, without the unreadable note", async () => {
+    setupClip(false, { has_envelopes: 1 });
+    answerEnvelopeRoutes([MIXER_VOLUME]);
+
+    expect(await readEnvelopes()).toHaveLength(1);
+  });
+
+  it("reports an empty list when the clip has no envelopes at all", async () => {
+    setupClip(false, { has_envelopes: 0 });
+    answerEnvelopeRoutes([]);
+
+    expect(await readEnvelopes()).toStrictEqual([]);
+  });
+
+  it("keeps the events of an unwarped audio clip's envelope, with a note that it doesn't play", async () => {
+    setupClip(false, { is_audio_clip: 1, warping: 0 });
+    answerEnvelopeRoutes([MIXER_VOLUME]);
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+        detail:
+          "doesn't play: the clip is unwarped. Turn warping on to hear it",
+      },
+    ]);
+  });
+
+  it("adds no note to a warped audio clip's envelope", async () => {
+    setupClip(false, { is_audio_clip: 1, warping: 1 });
+    answerEnvelopeRoutes([MIXER_VOLUME]);
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 2,
         events: EVENTS_NOTATION,
       },
     ]);

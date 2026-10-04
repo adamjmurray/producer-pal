@@ -142,6 +142,30 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
       ]);
     });
 
+    it("reports a refused line and still writes the others", async () => {
+      const id = await emptyClip();
+
+      // Volume tops out at 1, so the first line is refused by the route.
+      const result = await writeEnvelopes(
+        id,
+        `volume: 1|1 5\npan: ${NOTATION}`,
+      );
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 1,
+          detail: expect.stringMatching(
+            /^envelope "volume": .*outside/,
+          ) as string,
+        }),
+      );
+
+      const envelopes = (await readEnvelopes(id)) as ClipEnvelopeResult[];
+
+      expect(envelopes).toHaveLength(1);
+      expect(envelopes[0]?.events).toMatch(/^1\|1 -0\.5/);
+    });
+
     it("clears an envelope when the line has nothing after the colon", async () => {
       const id = await emptyClip();
 

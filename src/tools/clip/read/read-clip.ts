@@ -118,7 +118,7 @@ export interface ReadClipResult {
   warpMode?: string;
   warpMarkers?: WarpMarker[];
 
-  /** Each automated parameter (with a `detail` when its events couldn't be read), or why there are none to report */
+  /** Each automated parameter (with a `detail` when its events couldn't be read or it won't play), or why there are none to report */
   envelopes?: ClipEnvelope[] | string;
 
   /** What the read couldn't produce for this clip */

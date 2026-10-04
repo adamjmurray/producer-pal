@@ -47,6 +47,34 @@ reads the first one as the instruction, so the common case (double the whole
 clip, on its own) goes first. Leading with "send two calls, length first" sent a
 trial to the wrong region and took six calls to recover.
 
+## Clip envelopes
+
+Mechanics: [clip-envelopes.md](../../live-api/clip-envelopes.md).
+
+`ppal-update-clip` `envelopes` writes one line at a time, each a call to the
+remote script. A line it can't write is a `detail` on that clip's entry
+(`envelope "<target>": <why>`), and the other lines still run.
+
+- **An unwarped audio clip takes no points.** Live keeps its envelopes but never
+  plays them, so a line with points is refused:
+  `not written: an unwarped audio clip can't play envelopes. Set warping: true on the clip, then write it again`.
+  A clear line (nothing after the colon) still runs: removing an envelope that
+  can't play does no harm. `warping` is read when the envelopes are applied,
+  after the rest of the call, so a call that turns warping on writes and one
+  that turns it off refuses.
+
+`ppal-read-clip` `envelopes` lists each automated parameter. An envelope's
+`detail` is a note about it: why `events` is absent, or, on an unwarped audio
+clip, `doesn't play: the clip is unwarped. Turn warping on to hear it` beside
+the events. One field, not two: both are plain text for the model about why the
+envelope isn't what it looks like.
+
+When the clip's `has_envelopes` is true but no automation was found, `envelopes`
+is the string
+`the clip has envelopes Producer Pal can't read (modulation, clip-level ones like Gain, or MIDI CC)`
+instead of an empty list. Only that all-unreadable case is detectable; a clip
+with both kinds lists the readable ones and says nothing of the rest.
+
 ## Transform counts
 
 `ppal-create-clip` and `ppal-update-clip` (transforms alone, or with `notes`)

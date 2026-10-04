@@ -34,18 +34,14 @@ def list_envelopes(bridge, params):
     """Every parameter this clip automates, with its event count."""
     track = _track(bridge.song, params.get("track"))
     clip = _clip(track, params)
-    out = []
-    if clip.has_envelopes:
-        for target, param in _automatable(track):
-            env = clip.automation_envelope(param)
-            if env is not None:
-                out.append(
-                    dict(
-                        target,
-                        parameter=_describe(param),
-                        event_count=len(list(env.events_in_range(0, MAX_TIME))),
-                    )
-                )
+    out = [
+        dict(
+            target,
+            parameter=_describe(param),
+            event_count=len(list(env.events_in_range(0, MAX_TIME))),
+        )
+        for target, param, env in _automated(track, clip)
+    ]
     return {"envelopes": out}
 
 
@@ -130,13 +126,18 @@ def _write_events(env, points):
 
 
 def clear(bridge, params):
-    """Remove one envelope, or every envelope when no parameter is given."""
+    """Remove one envelope, or every envelope when no parameter is given.
+
+    Clearing all reports whether any automation we can see was removed
+    (`cleared`) and whether envelopes are still on the clip (`remaining`):
+    modulation, clip-level and MIDI CC envelopes survive it.
+    """
     track = _track(bridge.song, params.get("track"))
     clip = _clip(track, params)
     if "parameter" not in params and "device" not in params:
-        had = bool(clip.has_envelopes)
+        removed = any(True for _ in _automated(track, clip))
         clip.clear_all_envelopes()
-        return {"cleared": had, "all": True}
+        return {"cleared": removed, "all": True, "remaining": bool(clip.has_envelopes)}
     param = _parameter(track, params)
     had = clip.automation_envelope(param) is not None
     if had:
@@ -218,6 +219,16 @@ def _parameter(track, params):
     if m and int(m[1]) < len(mixer.sends):
         return mixer.sends[int(m[1])]
     raise RouteError(400, "mixer parameter must be volume, pan or send0..")
+
+
+def _automated(track, clip):
+    """(target, parameter, envelope) for each automatable parameter that has one."""
+    if not clip.has_envelopes:
+        return
+    for target, param in _automatable(track):
+        env = clip.automation_envelope(param)
+        if env is not None:
+            yield target, param, env
 
 
 def _automatable(track):

@@ -126,9 +126,15 @@ export interface EnvelopeWriteResult {
 }
 
 export interface EnvelopeClearResult {
+  /** Whether an envelope Producer Pal can see was removed */
   cleared: boolean;
-  /** True when every envelope on the clip was cleared */
+  /** True when the call asked to clear the whole clip */
   all?: boolean;
+  /**
+   * With `all`: whether the clip still holds envelopes afterwards (modulation,
+   * clip-level or MIDI CC), which clearing can't remove
+   */
+  remaining?: boolean;
 }
 
 export type EnvelopeListReply = EnvelopeReply<EnvelopeListResult>;

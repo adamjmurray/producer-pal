@@ -33,6 +33,14 @@ are **MIDI or warped audio**.
   The API still writes one, and reads one copied from a warped clip, but it
   never plays. It isn't lost: warping the clip again brings it back. Unwarping
   also switches `loop_end` to seconds while `end_marker` stays as it was.
+  `ppal-update-clip` refuses to write points to one (a clear still runs), and
+  `ppal-read-clip` reports its envelopes with a note that they don't play.
+- `/envelope/clear` with no parameter calls `clear_all_envelopes`, so it answers
+  with whether it removed any automation it can see (`cleared`) and whether
+  envelopes are still on the clip afterwards (`remaining`, from
+  `has_envelopes`). `ppal-read-clip` says so when `has_envelopes` is true but
+  the list route found none. It can't tell unreadable envelopes from readable
+  ones when both exist.
 - Duplicating a Session clip keeps its envelopes, curves included. Duplicating
   to the Arrangement writes the envelope into the track's automation lane, which
   neither API can read.

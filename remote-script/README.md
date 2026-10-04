@@ -216,7 +216,13 @@ index.
 | `/list`  | clip                                   | every automated parameter on the clip with its event count                                                                                               |
 | `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range (default: all, even past the clip end): `time`, `value` (raw), `display` (Live's units: linear gain for dB, Hz), `display_str` |
 | `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?}]`, raw values                                                                             |
-| `/clear` | clip, optional parameter               | removes one envelope, or all reachable ones                                                                                                              |
+| `/clear` | clip, optional parameter               | removes one envelope, or every one it can reach; see below                                                                                               |
+
+`/clear` answers `{cleared}` for one parameter: whether it had an envelope. With
+no parameter it answers `{cleared, all: true, remaining}`: `cleared` is whether
+any automation it can see was removed, and `remaining` is whether the clip still
+holds envelopes afterwards (modulation, clip-level or MIDI CC, which it can't
+remove).
 
 Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
 device params are `0..1`); `display_str` is what Live shows. Each point ramps to
