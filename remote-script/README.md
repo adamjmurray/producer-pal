@@ -87,9 +87,9 @@ Producer Pal uses 3349 when the remote script answers there, else the port in
 the file, else 3349 (2.4.0 and earlier write no file). With two Lives, every
 Producer Pal therefore talks to the one on 3349: it can't tell which Live it is
 in. It only trusts a `/ping` that has `script_version`, so another program on a
-port counts as "not running". It remembers the port for a few seconds and looks
-again after a call that gets no answer. `PPAL_REMOTE_SCRIPT_PORT` overrides all
-of it.
+port counts as "not running". It keeps the port it found until a call finds
+nothing listening there, then looks again; a busy Live that is slow to answer a
+ping doesn't lose it. `PPAL_REMOTE_SCRIPT_PORT` overrides all of it.
 
 ## Types
 

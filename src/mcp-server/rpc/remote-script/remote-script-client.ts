@@ -11,7 +11,7 @@ import http from "node:http";
 import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import {
-  forgetRemoteScriptPort,
+  forgetRemoteScriptPort as forgetPort,
   remoteScriptPortFromEnv,
   resolveRemoteScriptPort as resolvePort,
   type ProbeResult,
@@ -172,8 +172,9 @@ export function remoteScriptRequest({
   return resolveRemoteScriptPort()
     .then((target) => send(target, Date.now() - started))
     .then((reply) => {
-      // Nothing there: Live may have restarted onto another port.
-      if (!reply.available) {
+      // Nothing listening: Live may have restarted onto another port. Any
+      // answer, even an odd one, keeps the port.
+      if (!reply.available && reply.otherAnswered !== true) {
         forgetRemoteScriptPort();
       }
 
@@ -183,7 +184,8 @@ export function remoteScriptRequest({
 
 /**
  * The port requests go to. Probes 3349 first, so a second Live's script on
- * another port doesn't take over this one's requests.
+ * another port doesn't take over this one's requests, then keeps the port until
+ * a call finds nothing listening there.
  * @returns The port to send to
  */
 export async function resolveRemoteScriptPort(): Promise<number> {
@@ -193,14 +195,31 @@ export async function resolveRemoteScriptPort(): Promise<number> {
 }
 
 /**
- * Find the port, keeping the ping it was found by, if any.
- * @returns The port, and the ping that just showed our script there
+ * Forget the port and the last good ping, so the next call looks again.
  */
-function findPort(): Promise<{ port: number; info: RemoteScriptPing | null }> {
-  return resolvePort(async (port): Promise<ProbeResult<RemoteScriptPing>> => {
-    const { ping, kind } = await pingPort(port);
+export function forgetRemoteScriptPort(): void {
+  forgetPort();
+  lastGoodPing = null;
+}
 
-    return kind === "ours" ? { kind, info: ping } : { kind };
+/** The last ping that showed our script, with the port it came from. */
+let lastGoodPing: { port: number; ping: RemoteScriptPing } | null = null;
+
+/** A ping and how the port answered it. */
+interface PingResult {
+  ping: RemoteScriptPing;
+  kind: PingKind;
+}
+
+/**
+ * Find the port, keeping the ping if it was just made on that port.
+ * @returns The port, and the ping result when this call made one there
+ */
+function findPort(): Promise<{ port: number; info: PingResult | null }> {
+  return resolvePort(async (port): Promise<ProbeResult<PingResult>> => {
+    const result = await pingPort(port);
+
+    return { kind: result.kind, info: result };
   });
 }
 
@@ -324,27 +343,23 @@ export interface RemoteScriptPing {
 /**
  * Ask the remote script whether it's running, and which Live and script
  * versions it is. Only a reply with `script_version` counts: anything else is
- * some other program on the port. Never throws.
- * @param port - The port to ask; the resolved one when omitted
+ * some other program on the port. A ping that gets no reply in time, from a
+ * script that answered before, repeats that answer: Live is busy, not gone.
+ * Never throws.
  * @returns The ping reply, all-null when nothing of ours answered
  */
-export async function remoteScriptPing(
-  port?: number,
-): Promise<RemoteScriptPing> {
-  let target = port;
+export async function remoteScriptPing(): Promise<RemoteScriptPing> {
+  const found = await findPort();
+  // Finding the port may have just pinged it: don't ask Live twice.
+  const { ping, kind } = found.info ?? (await pingPort(found.port));
 
-  if (target == null) {
-    const found = await findPort();
-
-    // The port was just found by a ping: don't ask Live a second time.
-    if (found.info != null) {
-      return found.info;
-    }
-
-    target = found.port;
+  if (kind === "slow" && lastGoodPing?.port === found.port) {
+    return lastGoodPing.ping;
   }
 
-  const { ping } = await pingPort(target);
+  if (kind === "none") {
+    forgetRemoteScriptPort();
+  }
 
   return ping;
 }
@@ -380,9 +395,21 @@ type PingKind = "ours" | "other" | "none" | "slow";
  * @param port - The port to ask
  * @returns The ping, and what kind of answer it was
  */
-async function pingPort(
-  port: number,
-): Promise<{ ping: RemoteScriptPing; kind: PingKind }> {
+async function pingPort(port: number): Promise<PingResult> {
+  const result = await askForPing(port);
+
+  if (result.kind === "ours") {
+    lastGoodPing = { port, ping: result.ping };
+  }
+
+  return result;
+}
+
+/**
+ * @param port - The port to ask
+ * @returns The ping, and what kind of answer it was
+ */
+async function askForPing(port: number): Promise<PingResult> {
   try {
     const reply = await remoteScriptRequest({
       route: "/ping",

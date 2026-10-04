@@ -13,25 +13,26 @@ import {
   remoteScriptPortFromFile,
 } from "./remote-script-port-file.ts";
 
-/** How long a found port is trusted before looking again. */
-const REMEMBER_MS = 5000;
-
 /**
- * How a port answered a probe: `ours` (with whatever the probe learned),
- * `other` (answered, but isn't the script), `none` (refused or no listener), or
- * `slow` (took the connection, then no reply in time).
+ * How a port answered a probe, with what the probe learned: `ours`, `other`
+ * (answered, but isn't the script), `none` (refused or no listener), or `slow`
+ * (took the connection, then no reply in time).
  */
-export type ProbeResult<T> =
-  | { kind: "ours"; info: T }
-  | { kind: "other" | "none" | "slow" };
+export interface ProbeResult<T> {
+  kind: "ours" | "other" | "none" | "slow";
+  info: T;
+}
 
-/** What the port was found with: `info` only when this call's probe saw our script. */
+/** The port, and the probe's `info` when this call probed that same port. */
 interface FoundPort<T> {
   port: number;
   info: T | null;
 }
 
-let remembered: { port: number; at: number } | null = null;
+let remembered: number | null = null;
+
+/** The probe in flight, which calls made meanwhile wait on. */
+let pending: Promise<FoundPort<unknown>> | null = null;
 
 /**
  * PPAL_REMOTE_SCRIPT_PORT, when it is a port number. Tests point it at their
@@ -47,16 +48,14 @@ export function remoteScriptPortFromEnv(): number | null {
 
 /**
  * Find the remote script's port: PPAL_REMOTE_SCRIPT_PORT, else 3349 if the
- * script answers there, else the port file, else 3349. The answer is kept for a
- * few seconds, except when 3349 was merely slow: a busy Live still holds 3349,
- * so it is used, but not remembered.
+ * script answers there, else the port file, else 3349. The port is kept until
+ * `forgetRemoteScriptPort`, so a Live too busy to answer a ping can't lose it.
+ * A 3349 that is merely slow is used but not kept.
  * @param probe - Asks a port whether the remote script answers there
- * @param now - The time in ms; tests pass their own
- * @returns The port, and the probe's `info` when it just saw our script there
+ * @returns The port, and the probe's `info` when it probed that port just now
  */
 export async function resolveRemoteScriptPort<T>(
   probe: (port: number) => Promise<ProbeResult<T>>,
-  now = Date.now(),
 ): Promise<FoundPort<T>> {
   const fromEnv = remoteScriptPortFromEnv();
 
@@ -64,24 +63,48 @@ export async function resolveRemoteScriptPort<T>(
     return { port: fromEnv, info: null };
   }
 
-  if (remembered != null && now - remembered.at < REMEMBER_MS) {
-    return { port: remembered.port, info: null };
+  if (remembered != null) {
+    return { port: remembered, info: null };
   }
 
+  // Calls made together share one probe: a burst of probes plus the requests
+  // behind them overflows the remote script's listen queue, and the refused
+  // ones read as the script missing.
+  pending ??= probePorts(probe).finally(() => {
+    pending = null;
+  });
+
+  return (await pending) as FoundPort<T>;
+}
+
+/**
+ * Probe 3349, then fall back to the port file.
+ * @param probe - Asks a port whether the remote script answers there
+ * @returns The port, and the probe's `info` when it probed that port just now
+ */
+async function probePorts<T>(
+  probe: (port: number) => Promise<ProbeResult<T>>,
+): Promise<FoundPort<T>> {
   const result = await probe(REMOTE_SCRIPT_DEFAULT_PORT);
 
   if (result.kind === "slow") {
-    return { port: REMOTE_SCRIPT_DEFAULT_PORT, info: null };
+    return { port: REMOTE_SCRIPT_DEFAULT_PORT, info: result.info };
   }
 
-  const port =
-    result.kind === "ours"
-      ? REMOTE_SCRIPT_DEFAULT_PORT
-      : (remoteScriptPortFromFile() ?? REMOTE_SCRIPT_DEFAULT_PORT);
+  if (result.kind === "ours") {
+    remembered = REMOTE_SCRIPT_DEFAULT_PORT;
 
-  remembered = { port, at: now };
+    return { port: remembered, info: result.info };
+  }
 
-  return { port, info: result.kind === "ours" ? result.info : null };
+  const fromFile = remoteScriptPortFromFile();
+
+  remembered = fromFile ?? REMOTE_SCRIPT_DEFAULT_PORT;
+
+  return {
+    port: remembered,
+    info: remembered === REMOTE_SCRIPT_DEFAULT_PORT ? result.info : null,
+  };
 }
 
 /** Drop the remembered port, so the next call looks again. */

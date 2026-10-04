@@ -101,6 +101,9 @@ class _Server(ThreadingHTTPServer):
     # so the fallback to the next port would never happen.
     allow_reuse_address = sys.platform != "win32"
     daemon_threads = True
+    # Requests queue while Live's main thread is busy; the default of 5 refuses
+    # a burst (one lookup asks every browser section at once).
+    request_queue_size = 32
 
 
 class _Handler(BaseHTTPRequestHandler):

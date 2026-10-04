@@ -6,10 +6,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RemoteScriptTimeout,
+  forgetRemoteScriptPort,
   remoteScriptPing,
   remoteScriptRequest,
 } from "../remote-script-client.ts";
-import { forgetRemoteScriptPort } from "../port/remote-script-port.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
@@ -174,6 +174,100 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
     expect(ping.running).toBe(true);
     expect(ping.scriptVersion).toBe("2.5.0");
     expect(preferred.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
+  });
+
+  it("pings once when the ping is slow and nothing is known yet", async () => {
+    const preferred = await standIn(null);
+
+    ports.preferred = preferred.port;
+    const ping = await remoteScriptPing();
+
+    expect(ping.running).toBe(false);
+    expect(preferred.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
+  });
+
+  describe("once found", () => {
+    /**
+     * A script that answers its first ping, then pings never come back.
+     * @returns The stand-in
+     */
+    async function busyAfterFirstPing(): Promise<FakeRemoteScript> {
+      let pings = 0;
+      const fake = await standIn((request) => {
+        if (request.route !== "/ping") {
+          return { body: { ok: true } };
+        }
+
+        pings += 1;
+
+        return pings === 1 ? OURS : null;
+      });
+
+      ports.preferred = fake.port;
+
+      return fake;
+    }
+
+    it("keeps the port with no more pings, however long it has been", async () => {
+      const fake = await busyAfterFirstPing();
+      const other = await standIn(OURS);
+
+      await remoteScriptRequest({ route: "/list" });
+      ports.file = other.port;
+      await remoteScriptRequest({ route: "/list" });
+      await remoteScriptRequest({ route: "/list" });
+
+      expect(fake.requests.map((r) => r.route)).toStrictEqual([
+        "/ping",
+        "/list",
+        "/list",
+        "/list",
+      ]);
+      expect(other.requests).toStrictEqual([]);
+    });
+
+    it("still reads as running when a later ping is too slow", async () => {
+      await busyAfterFirstPing();
+
+      const first = await remoteScriptPing();
+      const second = await remoteScriptPing();
+
+      expect(first.running).toBe(true);
+      expect(second).toStrictEqual(first);
+    });
+
+    it("doesn't move to the file's port when a later ping is too slow", async () => {
+      const fake = await busyAfterFirstPing();
+      const other = await standIn(OURS);
+
+      await remoteScriptPing();
+      ports.file = other.port;
+      await remoteScriptPing();
+      await remoteScriptRequest({ route: "/list" });
+
+      expect(other.requests).toStrictEqual([]);
+      expect(fake.requests.at(-1)?.route).toBe("/list");
+    });
+
+    it("looks again after the port refuses a connection", async () => {
+      const fake = await busyAfterFirstPing();
+      const other = await standIn(OURS);
+
+      await remoteScriptRequest({ route: "/list" });
+      await fake.close();
+      // Closing a stand-in points the env at port 0.
+      delete process.env.PPAL_REMOTE_SCRIPT_PORT;
+      ports.file = other.port;
+
+      expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
+        available: false,
+      });
+
+      const reply = await remoteScriptRequest({ route: "/list" });
+
+      expect(reply.available).toBe(true);
+      expect(other.requests.map((r) => r.route)).toContain("/list");
+    });
   });
 
   describe("with a deadline", () => {
