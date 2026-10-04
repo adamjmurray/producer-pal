@@ -179,8 +179,8 @@ Live, or make sure your standalone Max is up to date. See
   them says so
 - Route duplicated tracks to source instrument for MIDI layering
 
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
+Note: Return tracks can't be duplicated. Devices on return and main tracks can
+be copied when the Producer Pal remote script is running.
 
 <!--@include: ../_generated/ppal-duplicate-schema.md-->
 

@@ -10,7 +10,8 @@ description:
 
 The remote script is an optional companion to the Producer Pal device. It is a
 small Ableton control surface script that runs inside Live and listens on
-`http://127.0.0.1:3349`.
+`http://127.0.0.1:3349`, or on the next free port (3351 to 3358) when something
+else, such as a second Live, already has it. Producer Pal finds it either way.
 
 Install it if you want AI to:
 
@@ -70,7 +71,7 @@ steps to enable it:
 
 After restarting Live, click **Refresh** in the Remote Script tab. It shows the
 installed version and whether Live is running it. "Running" means Live loaded it
-and it is answering on port 3349:
+and it is answering on its port:
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Remote Script tab showing Installed v2.4.0, running in Live" width="500"/>
 

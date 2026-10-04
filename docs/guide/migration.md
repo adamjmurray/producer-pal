@@ -521,8 +521,9 @@ says which: `created: "c2-c3"` for rack chains on `ppal-create-device` and
 
 `ppal-update-device` also reads `macroCount` back off the rack instead of
 assuming the write took: a count that didn't land reads
-`detail: "macroCount landed at 8, not 4: Live keeps a mapped macro visible"`,
-and lowering the count on a mapped rack says which macros went with it.
+`detail: "macroCount landed at 6, not 4"`. Lowering the count hides macros but
+keeps their mappings, and the entry says which mapped macros were hidden
+(`detail: "macro 7 hidden; its mapping is kept"`).
 
 ### Chains say `chain`, not Live's class name
 
