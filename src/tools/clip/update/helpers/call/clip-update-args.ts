@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type ConvertType } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import { type ClipAudioWarpQuantizeParams } from "../batch/process-single-clip-update.ts";
 
 /** Every param one update-clip call carries, as the tool received them. */
@@ -32,5 +33,6 @@ export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
   split?: string;
   code?: string;
   envelopes?: string;
+  convert?: ConvertType;
   focus?: boolean;
 }

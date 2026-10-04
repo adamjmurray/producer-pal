@@ -8,6 +8,10 @@
 // move that didn't free its span, a span written over) rides here. It is built
 // per call and dies with it: never hold a LiveAPI past the request.
 
+import {
+  type ConvertProgress,
+  newConvertProgress,
+} from "#src/tools/clip/convert/apply-clip-convert.ts";
 import { type SplitRun } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   type LandingLog,
@@ -38,6 +42,8 @@ export interface ClipRun {
   split?: SplitRun;
   /** How many clips the call set out to cut */
   splitCount: number;
+  /** What the call's conversions know of each other */
+  convert: ConvertProgress;
 }
 
 /**
@@ -55,5 +61,6 @@ export function newClipRun(context: Partial<ToolContext>): ClipRun {
     stayed: new Set(),
     calledOff: new Set(),
     splitCount: 0,
+    convert: newConvertProgress(),
   };
 }

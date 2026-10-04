@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { CONVERT_TYPES } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import {
   QUANTIZE_GRID_ALIASES,
@@ -183,6 +184,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "notation: bar|beat points in the clip meter, '~' ramping to the next and '>' holding then jumping, e.g. '1|1 0 ~ 3|1 0.8 > 4|1 0.2'. " +
         "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max; an out-of-range value is refused with the real range. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
         "Each line REPLACES that parameter's whole envelope; a line with nothing after the colon ('472:') clears it",
+      smallModel: null,
+    }),
+
+    convert: param(z.enum(CONVERT_TYPES).optional(), {
+      default:
+        "audio clips only: make a new track from each clip, after the other edits (adds a track, shifting the ones after it). " +
+        "drums/melody/harmony: a MIDI clip of the notes Live detects; simpler: a MIDI track with Simpler playing it; drum-rack: a Drum Rack with it on the first pad. " +
+        "Needs the remote script. Cannot be combined with arrangementSplit or a move (toPath)",
       smallModel: null,
     }),
 

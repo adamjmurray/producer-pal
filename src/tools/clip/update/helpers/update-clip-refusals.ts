@@ -277,6 +277,68 @@ function namedSplitParam(
 }
 
 /**
+ * Refuse a conversion sent with a split. The split makes several clips from the
+ * one named, and nothing says which of them to convert.
+ * @param convert - The `convert` param, if sent
+ * @param arrangementSplit - Song-timeline split positions, if sent
+ * @param split - Deprecated clip-relative split positions, if sent
+ */
+export function refuseConvertWithSplit(
+  convert: string | undefined,
+  arrangementSplit: string | undefined,
+  split: string | undefined,
+): void {
+  const splitParam = namedSplitParam(arrangementSplit, split);
+
+  if (convert != null && splitParam != null) {
+    throw new Error(
+      `convert cannot be combined with ${splitParam}: the split makes several ` +
+        `clips and the conversion would have to pick one. Send ${splitParam} ` +
+        `on its own, then convert the piece you want in a second call.`,
+    );
+  }
+}
+
+/**
+ * Refuse a conversion sent with a move. A move re-creates the clip somewhere
+ * else, and the conversion adds a track that shifts every later path, so the
+ * call would be naming places that change under it.
+ * @param args - The conversion and move params as received
+ * @param args.convert - The `convert` param, if sent
+ * @param args.toPath - Destination path(s), if sent
+ * @param args.toSlot - Deprecated destination slot(s), if sent
+ * @param args.arrangementStart - Position(s), if sent
+ */
+export function refuseConvertWithMove({
+  convert,
+  toPath,
+  toSlot,
+  arrangementStart,
+}: Pick<SplitMoveArgs, "toPath" | "toSlot" | "arrangementStart"> & {
+  convert?: string;
+}): void {
+  if (convert == null) {
+    return;
+  }
+
+  const moves = [
+    paramNamesSomething(toPath) ? "toPath" : null,
+    pathNamesSomething(toSlot) ? "toSlot" : null,
+    paramNamesSomething(arrangementStart) ? "arrangementStart" : null,
+  ].filter((param) => param != null);
+
+  if (moves.length > 0) {
+    const named = moves.join(" or ");
+
+    throw new Error(
+      `convert cannot be combined with ${named}: the move changes where the ` +
+        `clip is, and the conversion adds a track that shifts later paths. ` +
+        `Send ${named} on its own, then convert in a second call.`,
+    );
+  }
+}
+
+/**
  * Refuse a value the tool can't read, before any clip is touched.
  *
  * A value that won't parse is the whole call's problem whichever clip it was

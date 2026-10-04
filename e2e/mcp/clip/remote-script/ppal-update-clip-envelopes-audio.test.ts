@@ -11,7 +11,7 @@
  * Uses: e2e-test-set — t5 "Audio 2" has free slots s1-s7.
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/envelopes/ppal-update-clip-envelopes-audio
+ * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-update-clip-envelopes-audio
  */
 import { describe, expect, it } from "vitest";
 import { AUDIO_TRACK } from "../../e2e-test-set.ts";

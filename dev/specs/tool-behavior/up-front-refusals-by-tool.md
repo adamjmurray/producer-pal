@@ -99,6 +99,10 @@ follows the code; when it disagrees with a tool, the tool wins.
 - **A list of locators reads `\,` as a comma in a name** wherever positions take
   `loc:` (`arrangementStart`, `arrangementSplit`, `duplicate`'s retired
   `locator`), and refuses a hole before any locator is looked up.
+- **`updateClip` refuses `convert` beside a split** (`arrangementSplit` or
+  `split`): the split makes several clips and nothing says which to convert. It
+  refuses `convert` beside a move (`toPath`, `toSlot`, `arrangementStart`) too:
+  the conversion adds a track that shifts the paths the move names.
 - **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
   any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
   skips that clip, as does a `start` at or past a looping clip's loop end sent

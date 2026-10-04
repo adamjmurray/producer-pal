@@ -21,8 +21,8 @@ seconds), not raw. Times are beats (quarter notes) from the clip start.
 import math
 import re
 
+from .clip_address import clip_in_track, regular_track, whole_number
 from .errors import RouteError
-from .params import parse_index
 
 MAX_EVENTS = 1000
 EPSILON = 1e-6
@@ -32,8 +32,8 @@ MAX_TIME = 1e6
 
 def list_envelopes(bridge, params):
     """Every parameter this clip automates, with its event count."""
-    track = _track(bridge.song, params.get("track"))
-    clip = _clip(track, params)
+    track = regular_track(bridge.song, params.get("track"))
+    clip = clip_in_track(track, params)
     out = [
         dict(
             target,
@@ -47,9 +47,9 @@ def list_envelopes(bridge, params):
 
 def read(bridge, params):
     """One envelope's events between `from` and `to` (beats), up to `limit`."""
-    track = _track(bridge.song, params.get("track"))
+    track = regular_track(bridge.song, params.get("track"))
     param = _parameter(track, params)
-    clip = _clip(track, params)
+    clip = clip_in_track(track, params)
     env = clip.automation_envelope(param)
     if env is None:
         return {"exists": False, "parameter": _describe(param)}
@@ -58,7 +58,7 @@ def read(bridge, params):
     end = _num(params.get("to", MAX_TIME))
     limit = MAX_EVENTS
     if params.get("limit") is not None:
-        limit = min(_index(params["limit"], "limit", 1), MAX_EVENTS)
+        limit = min(whole_number(params["limit"], "limit", 1), MAX_EVENTS)
     events = list(env.events_in_range(start, end))
     out = []
     for i, event in enumerate(events[:limit]):
@@ -89,9 +89,9 @@ def write(bridge, params):
     """Replace the envelope with `points`: raw values, each ramping to the next
     unless the next has `jump`, which holds until its time and then jumps."""
     song = bridge.song
-    track = _track(song, params.get("track"))
+    track = regular_track(song, params.get("track"))
     param = _parameter(track, params)
-    clip = _clip(track, params)
+    clip = clip_in_track(track, params)
     if not param.is_enabled:
         raise RouteError(409, "parameter is disabled or controlled by a macro")
 
@@ -132,8 +132,8 @@ def clear(bridge, params):
     (`cleared`) and whether envelopes are still on the clip (`remaining`):
     modulation, clip-level and MIDI CC envelopes survive it.
     """
-    track = _track(bridge.song, params.get("track"))
-    clip = _clip(track, params)
+    track = regular_track(bridge.song, params.get("track"))
+    clip = clip_in_track(track, params)
     if "parameter" not in params and "device" not in params:
         removed = any(True for _ in _automated(track, clip))
         clip.clear_all_envelopes()
@@ -146,34 +146,6 @@ def clear(bridge, params):
 
 
 # --- resolving ---------------------------------------------------------
-
-
-def _track(song, path):
-    """A regular track. Return and master tracks have no clips to automate."""
-    m = re.fullmatch(r"t(\d+)", str(path or ""))
-    if not m:
-        raise RouteError(400, "track must be t0, t1... (return and master tracks have no clips)")
-    i = int(m[1])
-    if i >= len(song.tracks):
-        raise RouteError(404, "no track %s" % path)
-    return song.tracks[i]
-
-
-def _clip(track, params):
-    if "slot" in params:
-        i = _index(params["slot"], "slot")
-        if i >= len(track.clip_slots):
-            raise RouteError(404, "no slot %s" % i)
-        slot = track.clip_slots[i]
-        if not slot.has_clip:
-            raise RouteError(404, "slot %s is empty" % i)
-        return slot.clip
-    if "arrangement_index" in params:
-        i = _index(params["arrangement_index"], "arrangement_index")
-        if i >= len(track.arrangement_clips):
-            raise RouteError(404, "no arrangement clip %s" % i)
-        return track.arrangement_clips[i]
-    raise RouteError(400, "give slot or arrangement_index")
 
 
 def _device(track, path):
@@ -198,7 +170,7 @@ def _parameter(track, params):
         device = _device(track, params["device"])
         parameters = list(device.parameters)
         if isinstance(name, int) or str(name).isdigit():
-            i = _index(name, "parameter")
+            i = whole_number(name, "parameter")
             if i >= len(parameters):
                 raise RouteError(404, "no parameter %s" % i)
             return parameters[i]
@@ -267,16 +239,6 @@ def _describe(p):
         "enabled": bool(p.is_enabled),
         "automation_state": int(p.automation_state),
     }
-
-
-def _index(value, name, minimum=0):
-    """A required whole number of at least `minimum`."""
-    i = parse_index(value, name)
-    if i is None:
-        raise RouteError(400, "%s must be a whole number" % name)
-    if i < minimum:
-        raise RouteError(400, "%s must be %d or more, got %s" % (name, minimum, i))
-    return i
 
 
 def _num(v):

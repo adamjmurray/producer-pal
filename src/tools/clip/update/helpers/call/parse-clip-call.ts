@@ -44,6 +44,8 @@ import {
 } from "../move/move-destinations.ts";
 import {
   laneWithPositionPerClip,
+  refuseConvertWithMove,
+  refuseConvertWithSplit,
   refuseSplitWithMove,
   refuseRegionWithDuplicateLoop,
   refuseUnreadableCall,
@@ -136,6 +138,9 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
     arrangementStart: args.arrangementStart,
     arrangementLength,
   });
+
+  refuseConvertWithSplit(args.convert, args.arrangementSplit, args.split);
+  refuseConvertWithMove(args);
 
   // Rewrite every `loc:` position as the bar|beat it names, once, before
   // anything reads them. `start`, `firstStart` and `split` are clip-relative

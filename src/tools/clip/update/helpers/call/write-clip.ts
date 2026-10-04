@@ -10,6 +10,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
+import { applyClipConvert } from "#src/tools/clip/convert/apply-clip-convert.ts";
 import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelopes.ts";
 import {
   buildClipResultObject,
@@ -79,6 +80,7 @@ const CONTENT_PARAMS = [
   "quantizePitch",
   "code",
   "envelopes",
+  "convert",
 ] as const satisfies ReadonlyArray<keyof ClipCall["args"]>;
 
 /**
@@ -204,8 +206,8 @@ interface PieceTurn {
 }
 
 /**
- * Update one clip: its params, then its code and envelopes, keeping what it has
- * to say on the entry it wrote.
+ * Update one clip: its params, then its code, envelopes and conversion,
+ * keeping what it has to say on the entry it wrote.
  * @param run - The call's shared state
  * @param turn - The clip, and where it sits in its target
  * @param turn.piece - The clip to update: the target's own, or one piece of it
@@ -286,6 +288,15 @@ async function updatePiece(
     // Last, and on the entry the rest of the update settled on: a move
     // re-creates the clip under a new id.
     await applyClipEnvelopes(updated[0], call.envelopeLines, context.deadline);
+    // After the envelopes, so it converts the clip as the call left it.
+    await applyClipConvert({
+      entry: updated[0],
+      type: call.args.convert,
+      clipId: piece.id,
+      reasons,
+      progress: run.convert,
+      deadline: context.deadline,
+    });
   } catch (error) {
     // Properties written before the throw can have resized the clip, which
     // nothing reports on a failed turn.

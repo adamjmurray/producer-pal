@@ -243,12 +243,12 @@ class ReloadTest(unittest.TestCase):
         self.assertEqual(self.post("/v"), (200, 2))
 
     def test_a_module_that_imports_an_edited_one_gets_the_new_code(self):
-        envelopes = sys.modules[self.package + ".envelopes"]
+        clip_address = sys.modules[self.package + ".clip_address"]
         self.append("params.py", "\n\ndef parse_index(value, name):\n    return 42\n")
 
         self.reload()
 
-        self.assertEqual(envelopes.parse_index("1", "x"), 42)
+        self.assertEqual(clip_address.parse_index("1", "x"), 42)
 
     def test_the_hash_changes_when_the_code_does(self):
         before = self.reload()[1]["hash"]

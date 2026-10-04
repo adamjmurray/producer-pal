@@ -6,6 +6,7 @@
 """What the HTTP routes do. Every function here runs on Live's main thread."""
 
 from . import browser, hot_reload, hotswap
+from .conversions import ROUTES as _CONVERSION_ROUTES
 from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
@@ -309,6 +310,7 @@ ROUTES = {
     **_DEVICE_COPY_ROUTES,
     **_ENVELOPE_ROUTES,
     **_RACK_MACRO_ROUTES,
+    **_CONVERSION_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
@@ -319,4 +321,5 @@ POST_ONLY = (
     "/device/duplicate",
     "/envelope/write",
     "/envelope/clear",
+    "/clip/convert",
 )

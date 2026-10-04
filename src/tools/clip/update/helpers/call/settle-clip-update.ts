@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { refreshPathsAfterConvert } from "#src/tools/clip/convert/refresh-converted-paths.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type LandedSpan } from "#src/tools/shared/arrangement/helpers/clip-remainders.ts";
 import { reportClearedClips } from "#src/tools/shared/clip/landings/report-cleared-clips.ts";
@@ -55,6 +56,16 @@ export function settleClipUpdate(
         nameWhereItIs(written as ClipResult);
       }
     }
+  }
+
+  if (run.convert.madeTrack) {
+    refreshPathsAfterConvert(
+      entries.flatMap((entry, index) =>
+        outcomes[index] === "written"
+          ? ([entry, ...(pieces[index] as ClipResult[])] as ClipResult[])
+          : [],
+      ),
+    );
   }
 
   // A cut that every clip was measured against says what it cut nothing of.

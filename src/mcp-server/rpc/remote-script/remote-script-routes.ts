@@ -17,20 +17,20 @@ import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
 import { lookUpBrowserDevice } from "./browser-device-lookup.ts";
 import { lookUpBrowserPreset } from "./browser-preset-lookup.ts";
+import { RemoteScriptTimeout } from "./remote-script-client.ts";
 import {
-  type RemoteScriptAnswer,
-  type RemoteScriptReply,
-  RemoteScriptTimeout,
-  remoteScriptRequest,
-  replyError,
-} from "./remote-script-client.ts";
+  failedChange,
+  requestChange,
+  requireExpiry,
+} from "./forwarded/remote-script-change.ts";
+import { registerRemoteScriptConvertRoute } from "./forwarded/remote-script-convert-route.ts";
 import { registerRemoteScriptDeviceRoutes } from "./forwarded/remote-script-device-routes.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "./forwarded/remote-script-envelope-routes.ts";
 
 /**
  * Register every route V8 uses to reach the remote script: loading a plug-in,
- * Max for Live device, or preset, copying a device, plus clip envelopes and rack
- * macros. Every step of a device call gets the time V8 has left
+ * Max for Live device, or preset, copying a device, plus clip envelopes,
+ * conversions and rack macros. Every step of a device call gets the time V8 has left
  * (`expiresInMs`), not a limit of its own.
  */
 export function registerRemoteScriptRoutes(): void {
@@ -79,6 +79,7 @@ export function registerRemoteScriptRoutes(): void {
   );
 
   registerRemoteScriptEnvelopeRoutes();
+  registerRemoteScriptConvertRoute();
   registerRemoteScriptDeviceRoutes();
 }
 
@@ -205,21 +206,6 @@ function presetScope(args: unknown): PresetScope | undefined {
 }
 
 /**
- * How long the remote script may leave a change queued before skipping it.
- * @param args - The route args, with `expiresInMs`
- * @returns The expiry, in ms
- */
-function requireExpiry(args: unknown): number {
-  const value = (args as Record<string, unknown> | null)?.expiresInMs;
-
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    throw new TypeError("expiresInMs must be a number, 0 or more");
-  }
-
-  return value;
-}
-
-/**
  * Run a lookup that must be done by the time V8 gave it. Running out of that
  * time is an answer for V8 to word, not a crash.
  * @param args - The route args, with `expiresInMs`
@@ -241,51 +227,4 @@ async function resolveWithin(
 
     throw error;
   }
-}
-
-/**
- * POST a change to the remote script. A timeout comes back as the 504 the
- * remote script itself sends: `started` when the request went out, so Live may
- * have made the change.
- * @param request - What to send
- * @param request.route - The remote script's route
- * @param request.body - JSON body
- * @param request.expiresInMs - How long Live may leave the job queued
- * @returns The reply
- */
-async function requestChange(request: {
-  route: string;
-  body: object;
-  expiresInMs: number;
-}): Promise<RemoteScriptReply> {
-  try {
-    return await remoteScriptRequest({ method: "POST", ...request });
-  } catch (error) {
-    if (!(error instanceof RemoteScriptTimeout)) {
-      throw error;
-    }
-
-    return {
-      available: true,
-      status: 504,
-      body: { error: error.message, ...(error.sent ? { started: true } : {}) },
-    };
-  }
-}
-
-/**
- * The answer for a change the remote script didn't make.
- * @param reply - A reply that wasn't a 200
- * @returns The error, marked `unfinished` when Live may have started the change
- */
-function failedChange(reply: RemoteScriptAnswer): {
-  available: true;
-  error: string;
-  unfinished?: true;
-} {
-  return {
-    available: true,
-    error: replyError(reply),
-    ...(reply.body.started === true ? { unfinished: true as const } : {}),
-  };
 }

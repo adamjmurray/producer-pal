@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Clip automation envelopes. Shipped only while the Producer Pal remote script
-// answers, since nothing else can reach an envelope at all.
+// Clip automation envelopes, and converting an audio clip to a track. Shipped
+// only while the Producer Pal remote script answers, since nothing else can do
+// either.
 //
 // The handoffs (a device read for parameter ids, duplicate and delete for the
 // arrangement round trip) aren't named as tools: this gate can't promise the
@@ -19,4 +20,8 @@ export const automation = `## Clip Automation
 
 **Notation** is \`bar|beat value\` points in the clip's meter, \`~\` ramping to the next and \`>\` holding then jumping: \`1|1 0 ~ 3|1 0.8 > 4|1 0.2\`. Values are RAW, usually 0..1 — not the display units a device read's \`min\`/\`max\` use (a % reads 0..100). An out-of-range value is refused with the real range. Mixer \`volume\`: 0.85 = 0 dB, 1 = +6 dB; \`pan\`: -1 = hard left, 0 = center, 1 = hard right.
 
-**To automate the arrangement:** automate a session clip, duplicate it onto the arrangement span, then delete the session clip. The copy writes the envelope into the track's automation lane, which stays behind. When the notes are already in the arrangement, use a temporary session clip — empty, or holding the same notes — just to carry the automation. A later copy replaces the lane over its own span.`;
+**To automate the arrangement:** automate a session clip, duplicate it onto the arrangement span, then delete the session clip. The copy writes the envelope into the track's automation lane, which stays behind. When the notes are already in the arrangement, use a temporary session clip — empty, or holding the same notes — just to carry the automation. A later copy replaces the lane over its own span.
+
+## Converting Audio Clips
+
+ppal-update-clip \`convert\` makes a new track from an audio clip: \`drums\`, \`melody\` or \`harmony\` give a MIDI track with a clip of the notes Live detects (it can find none), \`simpler\` or \`drum-rack\` an instrument track playing the clip. The track is added, so later track paths shift; the result names the new track and clip.`;

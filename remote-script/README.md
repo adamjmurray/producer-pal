@@ -281,6 +281,25 @@ curl -s -X POST localhost:3349/device/macros -d '{"device_paths": ["live_set tra
 Lowering a rack's macro count hides macros but keeps their mappings, so a hidden
 macro can still be mapped.
 
+### `POST /clip/convert`
+
+Starts converting an audio clip into a new track, as Live's "Convert ... to New
+MIDI Track" menu does. Max for Live can't reach `Live.Conversions`.
+
+| Param   | Meaning                                                                                                                            |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `track` | `t0`, `t1`.. a regular track                                                                                                       |
+| `slot`  | 0-based Session slot, or `arrangement_index` for an Arrangement clip                                                               |
+| `type`  | `drums`, `melody`, `harmony` (a MIDI clip of the detected notes), `simpler` (a MIDI track with Simpler), `drum-rack` (a Drum Rack) |
+
+Answers `{started: true, type}`. It's a 409 for a clip that isn't audio, is
+recording, or Live says isn't convertible, and for anything Live refuses.
+
+**The new track doesn't exist yet when it answers.** Live does the work a moment
+later, blocking Live for about a second, and nothing says where the track lands.
+The caller finds it by comparing the track list from before. See
+[dev/live-api/conversions.md](../dev/live-api/conversions.md).
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -305,6 +324,8 @@ started in that time.
 - `producer_pal_device.py`: recognizing the Producer Pal device
 - `envelopes.py`: clip automation envelopes
 - `rack_macros.py`: which rack macros are mapped
+- `conversions.py`: converting an audio clip to a new track
+- `clip_address.py`: finding the clip a route names
 
 ## Hot reload
 

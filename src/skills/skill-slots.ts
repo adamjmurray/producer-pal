@@ -323,7 +323,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   automation: {
     title: "Clip automation",
     description:
-      "Reading and writing a clip's automation envelopes, and the session-to-arrangement round trip that puts one in a track's automation lane. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
+      "Reading and writing a clip's automation envelopes, and the session-to-arrangement round trip that puts one in a track's automation lane; also converting an audio clip to a new track. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
     builtIn: automation,
   },
 

@@ -43,6 +43,13 @@ export interface NoteUpdateResult {
   length?: string;
 }
 
+/** What `convert` made: the new track, and its MIDI clip when the kind makes one. */
+export interface ConvertedResult {
+  track: { id: string; path?: string };
+  /** `noteCount` can be 0: Live found no notes in the audio */
+  clip?: { id: string; path?: string; noteCount: number };
+}
+
 export interface ClipResult {
   id: string;
   noteCount?: number;
@@ -74,6 +81,8 @@ export interface ClipResult {
    * A line that failed on its own says so in `detail`.
    */
   envelopes?: number | string;
+  /** The track `convert` made from this clip, and its MIDI clip. */
+  converted?: ConvertedResult;
   /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take
