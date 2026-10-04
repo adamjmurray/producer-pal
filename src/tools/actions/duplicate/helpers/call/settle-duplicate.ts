@@ -13,7 +13,7 @@ import { reportOverwrittenCopies } from "../clip/overwrites/overwritten-copies.t
 import {
   settleDevicePaths,
   type DeviceCopy,
-} from "../device/duplicate-device.ts";
+} from "../device/device-copy-entry.ts";
 import { focusIfRequested } from "../focus-if-requested.ts";
 import {
   settleCopyPaths,

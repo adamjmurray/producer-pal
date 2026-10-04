@@ -40,6 +40,11 @@ const ROUTE_ARGS: Record<string, unknown> = {
     deviceName: "Pro-Q 4",
     expiresInMs: 1000,
   },
+  [REMOTE_SCRIPT_ROUTES.duplicateDevice]: {
+    devicePath: "t0/d1",
+    deviceName: "Reverb",
+    expiresInMs: 1000,
+  },
   [ENVELOPE_ROUTES.list]: ENVELOPE_ARGS,
   [ENVELOPE_ROUTES.read]: { ...ENVELOPE_ARGS, parameter: "volume" },
   [ENVELOPE_ROUTES.write]: {

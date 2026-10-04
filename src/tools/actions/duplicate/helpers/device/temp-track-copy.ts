@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Live has no duplicate_device or duplicate_chain call. The way around it is to
-// duplicate the whole track, take what you want off the copy, and delete it —
-// which every caller here shares, so the track-index bookkeeping lives in one
-// place.
+// Max for Live has no duplicate_device or duplicate_chain call (the remote
+// script reaches Live's own duplicate_device, but not for instruments or
+// chains). The way around it is to duplicate the whole track, take what you
+// want off the copy, and delete it — which every caller here shares, so the
+// track-index bookkeeping lives in one place.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";

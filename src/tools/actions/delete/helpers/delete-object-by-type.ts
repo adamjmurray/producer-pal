@@ -146,7 +146,7 @@ function deleteClipObject(
  * @param object - The object to delete
  * @returns null if the device is gone, else why it wasn't deleted
  */
-function deleteDeviceObject(id: string, object: LiveAPI): string | null {
+export function deleteDeviceObject(id: string, object: LiveAPI): string | null {
   // Find the LAST "devices X" in the path to handle nested devices
   // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
   const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];

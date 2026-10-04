@@ -24,6 +24,9 @@ export const EMPTY_MIDI_TRACK = 8;
 /** t5 "Audio 2": one unwarped session clip in s0, s1-s7 and the arrangement free. */
 export const AUDIO_TRACK = 5;
 
+/** t6 "FX Bus": an audio track, for effects. */
+export const FX_BUS_TRACK = 6;
+
 /** t7 "Racks": nested instrument racks for deep device paths. No clips. */
 export const RACKS_TRACK = 7;
 

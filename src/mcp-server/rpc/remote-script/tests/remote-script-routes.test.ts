@@ -40,6 +40,12 @@ const HOTSWAP_ARGS = {
   expiresInMs: 5000,
 };
 
+const DUPLICATE_ARGS = {
+  devicePath: "live_set tracks 3 devices 1",
+  deviceName: "Reverb",
+  expiresInMs: 5000,
+};
+
 const answerWith = useFakeRemoteScriptRoutes(registerRemoteScriptRoutes);
 
 /** An answer from the remote script that Live skipped, or gave up on mid-run. */
@@ -402,11 +408,123 @@ describe("remoteScript.hotswap", () => {
   });
 });
 
+describe("remoteScript.duplicateDevice", () => {
+  it("copies the device and says where the copy went", async () => {
+    const remote = await answerWith({
+      body: { device: { name: "Reverb", index: 2 } },
+    });
+
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toStrictEqual({ success: true, result: { available: true, index: 2 } });
+    expect(remote.requests[0]).toStrictEqual({
+      method: "POST",
+      route: "/device/duplicate",
+      query: {},
+      body: {
+        device_path: "live_set tracks 3 devices 1",
+        device_name: "Reverb",
+        expires_in_ms: 5000,
+      },
+    });
+  });
+
+  it("says so when the remote script isn't running", async () => {
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toStrictEqual({ success: true, result: { available: false } });
+  });
+
+  it("reads a remote script too old to have the route as not running", async () => {
+    await answerWith({ status: 404, body: { error: "unknown route" } });
+
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toStrictEqual({ success: true, result: { available: false } });
+  });
+
+  it("hands back why Live didn't copy it", async () => {
+    await answerWith({ status: 409, body: { error: "Can not duplicate" } });
+
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: "Can not duplicate" },
+    });
+  });
+
+  it("marks a copy Live started but didn't finish as unfinished", async () => {
+    await answerWith(ABANDONED);
+
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: ABANDONED.body.error,
+        unfinished: true,
+      },
+    });
+  });
+
+  it("doesn't mark a copy Live skipped as unfinished", async () => {
+    await answerWith(SKIPPED);
+
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: SKIPPED.body.error },
+    });
+  });
+
+  it("calls a copy made but not placed unfinished, since it exists", async () => {
+    await answerWith({ body: { device: {} } });
+
+    expect(
+      await dispatchNodeRoute(
+        REMOTE_SCRIPT_ROUTES.duplicateDevice,
+        DUPLICATE_ARGS,
+      ),
+    ).toHaveProperty("result.unfinished", true);
+  });
+
+  it("needs the device's name", async () => {
+    expect(
+      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.duplicateDevice, {
+        ...DUPLICATE_ARGS,
+        deviceName: undefined,
+      }),
+    ).toStrictEqual({ success: false, error: "deviceName must be a string" });
+  });
+});
+
 describe.each([
   ["resolve", REMOTE_SCRIPT_ROUTES.resolve, { name: "Reverb" }],
   ["resolvePreset", REMOTE_SCRIPT_ROUTES.resolvePreset, { name: "Warm Pad" }],
   ["load", REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS],
   ["hotswap", REMOTE_SCRIPT_ROUTES.hotswap, HOTSWAP_ARGS],
+  ["duplicateDevice", REMOTE_SCRIPT_ROUTES.duplicateDevice, DUPLICATE_ARGS],
 ])("remoteScript.%s's expiry", (_name, route, args) => {
   it.each([undefined, "5000", -1, Number.NaN])(
     "refuses %s",

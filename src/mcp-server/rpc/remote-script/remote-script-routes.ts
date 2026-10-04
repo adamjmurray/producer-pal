@@ -7,6 +7,7 @@ import {
   type BrowserItemHotswap,
   type BrowserItemLoad,
   type BrowserItemResolution,
+  type DeviceDuplication,
   type PresetScope,
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTES,
@@ -28,9 +29,9 @@ import { registerRemoteScriptEnvelopeRoutes } from "./forwarded/remote-script-en
 
 /**
  * Register every route V8 uses to reach the remote script: loading a plug-in,
- * Max for Live device, or preset, plus clip envelopes and rack macros. Every
- * step of a device call gets the time V8 has left (`expiresInMs`), not a limit
- * of its own.
+ * Max for Live device, or preset, copying a device, plus clip envelopes and rack
+ * macros. Every step of a device call gets the time V8 has left
+ * (`expiresInMs`), not a limit of its own.
  */
 export function registerRemoteScriptRoutes(): void {
   registerNodeRoute(
@@ -68,6 +69,12 @@ export function registerRemoteScriptRoutes(): void {
   registerNodeRoute(
     REMOTE_SCRIPT_ROUTES.hotswap,
     hotswapBrowserItem,
+    REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
+  );
+
+  registerNodeRoute(
+    REMOTE_SCRIPT_ROUTES.duplicateDevice,
+    duplicateDevice,
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
 
@@ -138,6 +145,44 @@ async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
   const device = reply.body.device as { replaced?: unknown } | undefined;
 
   return { available: true, replaced: device?.replaced === true };
+}
+
+/**
+ * Copy the device at a Live path with Live's own duplicate_device. The remote
+ * script refuses when the device there no longer has `deviceName`. A remote
+ * script too old to have the route answers 404, which reads as not available.
+ * @param args - `{ devicePath, deviceName, expiresInMs }`
+ * @returns Where the copy went, an error worded for the model (`unfinished`
+ *   when Live may have made the copy anyway), or `available: false`
+ */
+async function duplicateDevice(args: unknown): Promise<DeviceDuplication> {
+  const reply = await requestChange({
+    route: "/device/duplicate",
+    body: {
+      device_path: requireString(args, "devicePath"),
+      device_name: requireString(args, "deviceName"),
+    },
+    expiresInMs: requireExpiry(args),
+  });
+
+  if (!reply.available || reply.status === 404) {
+    return { available: false };
+  }
+
+  if (reply.status !== 200) {
+    return failedChange(reply);
+  }
+
+  const index = (reply.body.device as { index?: unknown } | undefined)?.index;
+
+  // Live copied it, but not saying where leaves nothing to find it by.
+  return typeof index === "number"
+    ? { available: true, index }
+    : {
+        available: true,
+        error: "the remote script copied the device but didn't say where",
+        unfinished: true,
+      };
 }
 
 /**

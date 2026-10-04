@@ -230,6 +230,19 @@ with a tool, the tool wins.
   on after making it, a device whose temp track couldn't be deleted, a pad whose
   chains couldn't be named, a take lane made for a clip that then failed. Only a
   copy nothing of which landed is `ok: false`.
+- **duplicate: a device copy that can't be placed.** With the remote script,
+  Live copies a device right after the original. Nothing is moved or deleted
+  until the device in that slot is checked to have the original's name and
+  class. If the move to `toPath` then fails, the copy is deleted again and the
+  entry is `ok: false`; if it can't be deleted (or no longer looks like the
+  copy), the detail says where it may be left. A request that timed out is
+  checked the same way: a copy that landed keeps its entry plus a `detail`,
+  otherwise the entry says Live may have made it anyway.
+- **duplicate: devices on return and main tracks.** With the remote script they
+  copy like any other device. Without it they are refused
+  (`cannot duplicate devices on return and main tracks`), since the temp-track
+  route can't reach them. Instruments, and destinations in the original's own
+  container, take the temp-track route either way.
 - **duplicate: a copy lands where Live put it.** A track or scene copy is found
   by what is new in the Set, not assumed to follow its source, and every entry
   names its copy where it is after the call, once the later copies have shifted

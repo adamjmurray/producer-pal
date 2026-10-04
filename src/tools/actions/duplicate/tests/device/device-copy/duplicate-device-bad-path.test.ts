@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerMockObject,
   registerPendingMockObject,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { remoteScriptDown } from "#src/tools/actions/duplicate/helpers/device/remote-script-down-test-helpers.ts";
 import {
   mockNonExistentObjects,
   simulateMockDeletes,
@@ -17,9 +18,16 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
+  requestNode: vi.fn(),
+  handleNodeResponse: vi.fn(),
+}));
+
 // The real move runs here — the rest of the device suite stubs it out, which is
 // how a destination that threw before returning an outcome went unnoticed.
 describe("duplicate device - a toPath entry that names nowhere", () => {
+  beforeEach(remoteScriptDown);
+
   it("keeps the copy that landed when a later destination doesn't resolve", async () => {
     mockNonExistentObjects();
     simulateMockDeletes();

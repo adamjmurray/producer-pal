@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// What V8 and Node share about loading a device or preset from Live's browser
-// through the Producer Pal remote script (remote-script/): route names,
-// answers, timeouts.
+// What V8 and Node share about the Producer Pal remote script (remote-script/):
+// loading a device or preset from Live's browser, and copying a device. Route
+// names, answers, timeouts.
 
 /** The Node routes V8 calls to reach the remote script. */
 export const REMOTE_SCRIPT_ROUTES = {
@@ -13,6 +13,7 @@ export const REMOTE_SCRIPT_ROUTES = {
   resolvePreset: "remoteScript.resolvePreset",
   load: "remoteScript.load",
   hotswap: "remoteScript.hotswap",
+  duplicateDevice: "remoteScript.duplicateDevice",
 } as const;
 
 // One deadline covers the lookup and the load of a create-device call. V8 waits
@@ -106,4 +107,16 @@ export type BrowserItemLoad =
 export type BrowserItemHotswap =
   | { available: false }
   | { available: true; replaced: boolean }
+  | { available: true; error: string; unfinished?: true };
+
+/**
+ * What remoteScript.duplicateDevice answers: where Live put the copy (right
+ * after the original, so `index` is the original's plus one). `available: false`
+ * also covers a remote script too old to have the route. `error` is worded for
+ * the model; `unfinished` marks a copy that timed out after Live may have made
+ * it.
+ */
+export type DeviceDuplication =
+  | { available: false }
+  | { available: true; index: number }
   | { available: true; error: string; unfinished?: true };

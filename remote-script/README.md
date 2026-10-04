@@ -2,13 +2,15 @@
 
 An Ableton Live remote script that listens on **http://127.0.0.1:3349** and can
 list and load Live devices, Max for Live devices, VST/VST3/AU plugins and
-presets, and load a preset in place of a device already in the Set. Prototype.
+presets, load a preset in place of a device already in the Set, and copy a
+device. Prototype.
 
 Producer Pal's `ppal-create-device` uses it to load plug-ins, Max for Live
-devices and presets, and `ppal-update-device` to swap a preset onto a device.
-Without it, only native Live devices load. The model finds plug-ins with
-`ppal-library`'s `list-plugins` action, and Max devices by searching with
-`kind: m4l-device`.
+devices and presets, `ppal-update-device` to swap a preset onto a device, and
+`ppal-duplicate` to copy a device. Without it, only native Live devices load,
+and device copies are slower (they go through a temp track). The model finds
+plug-ins with `ppal-library`'s `list-plugins` action, and Max devices by
+searching with `kind: m4l-device`.
 
 To open or create a Set with Producer Pal in it, use the
 [`ableton-open-live-set`](../examples/skills/ableton-open-live-set/) skill's
@@ -67,6 +69,9 @@ curl -s -X POST localhost:3349/load -d '{"type": "file", "path": "/path/to/Facto
 
 # load a preset in place of the first device on track 3
 curl -s -X POST localhost:3349/hotswap -d '{"type": "instrument", "path": "Drift/Bass/AG Bass.adv", "device_path": "live_set tracks 3 devices 0"}'
+
+# copy the second device on track 1 (the copy lands right after it)
+curl -s -X POST localhost:3349/device/duplicate -d '{"device_path": "live_set tracks 1 devices 1"}'
 ```
 
 ## Types
@@ -116,10 +121,11 @@ Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
 skipped with a 504 (a re-run is safe). Producer Pal sends one with every
-`/list`, `/load` and `/hotswap` of a device call, a bit under the time it has
-left, so one deadline covers the lookup and the load, and a change it stopped
-waiting for isn't made later. A job Live started but didn't finish in 30s is
-also a 504, with `started: true`: Live may have made the change.
+`/list`, `/load`, `/hotswap` and `/device/duplicate` of a device call, a bit
+under the time it has left, so one deadline covers the lookup and the load, and
+a change it stopped waiting for isn't made later. A job Live started but didn't
+finish in 30s is also a 504, with `started: true`: Live may have made the
+change.
 
 ### `GET /ping`
 
@@ -193,6 +199,29 @@ Returns the device's name afterwards and whether Live `replaced` it.
   mismatched preset with that same name then goes unnoticed.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
+
+### `POST /device/duplicate`
+
+Copies a device with Live's own `duplicate_device`, which Max for Live can't
+call.
+
+| Param         | Default  | Meaning                                                                                   |
+| ------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `device_path` | required | The device's Live path, e.g. `live_set tracks 0 devices 1 chains 0 devices 0`             |
+| `device_name` | —        | The device's current name; a 409 if it's changed, since devices can shift while it queues |
+
+Returns the copy's `name` and `index`. Live puts it right after the original
+(`index` is the original's plus one), keeping its name, parameter values and,
+for a rack, its chains and macros. Works on tracks, rack chains and drum chains,
+including return and main tracks.
+
+- **Instruments are a 409**: Live raises `Can not duplicate instrument.` for an
+  instrument, an instrument rack, a drum rack, and an instrument inside a chain.
+  The client copies those another way.
+- **The Producer Pal device is a 409**, as is a rack holding it. Live would copy
+  it.
+- Max for Live devices copy (about 170 ms; a native effect about 60 ms).
+  Plug-ins haven't been tried.
 
 ### `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`
 
@@ -272,6 +301,8 @@ started in that time.
 - `params.py`: reading request params
 - `browser.py`: browser tree walking, name matching, and finding a file
 - `hotswap.py`: walking a device path, and loading in place of a device
+- `device_copy.py`: copying a device
+- `producer_pal_device.py`: recognizing the Producer Pal device
 - `envelopes.py`: clip automation envelopes
 - `rack_macros.py`: which rack macros are mapped
 

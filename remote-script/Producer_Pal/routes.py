@@ -6,9 +6,11 @@
 """What the HTTP routes do. Every function here runs on Live's main thread."""
 
 from . import browser, hot_reload, hotswap
+from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
 from .params import parse_index
+from .producer_pal_device import is_producer_pal
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .version import VERSION
 
@@ -34,9 +36,6 @@ MFL_FOLDER_KINDS = {
 
 # The `type` that names a file on disk by its absolute `path`.
 FILE_TYPE = "file"
-
-# A Live Set can only have one Producer Pal device.
-PRODUCER_PAL_NAME = "producer_pal"
 
 # Plugins often exist as AU, VST and VST3 under the same name, so ambiguity is
 # normal - report the candidates instead of guessing.
@@ -80,7 +79,7 @@ def load(bridge, params):
     item, path, kind = _find_item(bridge, params)
     song = bridge.song
 
-    if _is_producer_pal(item.name):
+    if is_producer_pal(item.name):
         _refuse_second_producer_pal(song)
 
     default_track_type = TRACK_TYPE_FOR_KIND.get(kind, UNKNOWN_KIND_TRACK_TYPE)
@@ -105,7 +104,7 @@ def load(bridge, params):
 
 def hotswap_device(bridge, params):
     item, path, kind = _find_item(bridge, params)
-    if _is_producer_pal(item.name):
+    if is_producer_pal(item.name):
         raise RouteError(409, "Producer Pal can't be loaded onto another device")
 
     song = bridge.song
@@ -162,14 +161,6 @@ def _kind_words(kind):
     }[kind]
 
 
-def _is_producer_pal(name):
-    """True for the Producer Pal device, any case, with or without .amxd."""
-    text = str(name or "").strip().lower()
-    if text.endswith(".amxd"):
-        text = text[: -len(".amxd")]
-    return text == PRODUCER_PAL_NAME
-
-
 def _refuse_second_producer_pal(song):
     """Raise 409 when the Set already has Producer Pal, before anything loads.
 
@@ -184,7 +175,7 @@ def _refuse_second_producer_pal(song):
     tracks.append(("master track", song.master_track))
 
     for label, track in tracks:
-        if any(_is_producer_pal(device.name) for device in track.devices):
+        if any(is_producer_pal(device.name) for device in track.devices):
             raise RouteError(
                 409,
                 "Producer Pal is already in this Live Set, on %s %r - a Set can "
@@ -315,10 +306,17 @@ ROUTES = {
     "/list": list_items,
     "/load": load,
     "/hotswap": hotswap_device,
+    **_DEVICE_COPY_ROUTES,
     **_ENVELOPE_ROUTES,
     **_RACK_MACRO_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
 # <img> tag), so these refuse GET.
-POST_ONLY = ("/load", "/hotswap", "/envelope/write", "/envelope/clear")
+POST_ONLY = (
+    "/load",
+    "/hotswap",
+    "/device/duplicate",
+    "/envelope/write",
+    "/envelope/clear",
+)

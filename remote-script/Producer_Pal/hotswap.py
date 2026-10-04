@@ -3,7 +3,8 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Loading a browser item in place of a device already in the Set. Main thread only."""
+"""Finding a device by its Live path, and loading a browser item in place of one
+already in the Set. Main thread only."""
 
 # The words a device path may walk, and whether each is a list (followed by an
 # index) or a single object.
@@ -30,6 +31,14 @@ class DevicePathError(ValueError):
 
 def device_at(song, device_path):
     """The device at a Live path, e.g. 'live_set tracks 2 devices 0 chains 1 devices 0'."""
+    return locate_device(song, device_path)[2]
+
+
+def locate_device(song, device_path):
+    """(holder, index, device) for a Live path.
+
+    `holder` is the track, chain or drum chain whose `devices` list holds it.
+    """
     words = str(device_path or "").replace('"', " ").split()
     if words[:1] == ["live_set"]:
         words = words[1:]
@@ -42,11 +51,13 @@ def device_at(song, device_path):
         )
 
     obj = song
+    holder = None
     i = 0
     while i < len(words):
         word = words[i]
         if word not in _PATH_WORDS:
             raise DevicePathError("device_path can't contain %r" % word)
+        holder = obj
         try:
             obj = getattr(obj, word)
         except AttributeError:
@@ -54,9 +65,9 @@ def device_at(song, device_path):
             raise DevicePathError("device_path has nothing at %r here" % word)
         i += 1
         if _PATH_WORDS[word]:
-            obj = _nth(obj, word, words[i] if i < len(words) else None)
+            index, obj = _nth(obj, word, words[i] if i < len(words) else None)
             i += 1
-    return obj
+    return holder, index, obj
 
 
 def device_kind(device):
@@ -84,6 +95,7 @@ def hotswap(browser, item, device, device_path, song):
 
 
 def _nth(items, word, index_word):
+    """(index, item) for the index a path word is followed by."""
     try:
         index = int(index_word)
     except (TypeError, ValueError):
@@ -91,4 +103,4 @@ def _nth(items, word, index_word):
     items = list(items)
     if index < 0 or index >= len(items):
         raise DevicePathError("device_path has nothing at %s %s" % (word, index))
-    return items[index]
+    return index, items[index]

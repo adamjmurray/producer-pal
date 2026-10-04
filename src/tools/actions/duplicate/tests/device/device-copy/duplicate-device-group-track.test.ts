@@ -8,6 +8,12 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { registerTrackCopySet } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { remoteScriptDown } from "#src/tools/actions/duplicate/helpers/device/remote-script-down-test-helpers.ts";
+
+vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
+  requestNode: vi.fn(),
+  handleNodeResponse: vi.fn(),
+}));
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
@@ -21,6 +27,7 @@ import {
 describe("duplicate - device on a group track", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    remoteScriptDown();
   });
 
   it("moves the device off the group's copy and deletes that copy", async () => {

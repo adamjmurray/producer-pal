@@ -11,6 +11,7 @@ import {
   registerPendingMockObject,
   setupDeviceDuplicationMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { remoteScriptDown } from "#src/tools/actions/duplicate/helpers/device/remote-script-down-test-helpers.ts";
 import {
   mockNonExistentObjects,
   simulateMockDeletes,
@@ -21,6 +22,11 @@ import {
 } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 
 // Mock moveDeviceToPath to track calls
+vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
+  requestNode: vi.fn(),
+  handleNodeResponse: vi.fn(),
+}));
+
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
   // Reports a completed move; tests that need a failed one override it.
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
@@ -58,6 +64,7 @@ function registerSourceWithTempDevice(id: string): void {
 describe("duplicate - device duplication", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    remoteScriptDown();
   });
 
   it("refuses to duplicate the Producer Pal device", async () => {
@@ -687,6 +694,7 @@ describe("duplicate - device duplication", () => {
 describe("duplicate - device copies pushed by later copies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    remoteScriptDown();
     registerMockObject("live_set", { path: livePath.liveSet });
   });
 

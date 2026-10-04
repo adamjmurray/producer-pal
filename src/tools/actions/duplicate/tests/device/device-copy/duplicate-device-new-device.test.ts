@@ -8,6 +8,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { setupDeviceDuplicationMocks } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { remoteScriptDown } from "#src/tools/actions/duplicate/helpers/device/remote-script-down-test-helpers.ts";
+
+vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
+  requestNode: vi.fn(),
+  handleNodeResponse: vi.fn(),
+}));
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
@@ -27,6 +33,7 @@ import {
 describe("duplicate type=device — d+ as a destination", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    remoteScriptDown();
   });
 
   it("sends the copy to the end of the destination track", async () => {

@@ -74,7 +74,7 @@ export function writeDuplicateCopy(
     case "lane":
       return writeLane(body, step, run);
     default:
-      return writeChainCopy(body, label);
+      return writeChainCopy(body, label, run);
   }
 }
 
@@ -266,12 +266,14 @@ function writeLane(
  * Copy a device, a rack chain or a drum pad.
  * @param body - The copy
  * @param label - Its name
- * @returns The copy's entry
+ * @param run - The call's shared state
+ * @returns The copy's entry, as a promise when it awaits the remote script
  */
 function writeChainCopy(
   body: Extract<CopyBody, { kind: "device" | "chain" | "pad" }>,
   label: CopyLabel,
-): object {
+  run: DuplicateRun,
+): MaybePromise<object> {
   // Read fresh: an earlier copy inserted at or before the source's own index
   // shifts it up, so reusing an object would copy whatever moved into its place.
   if (body.kind === "pad") {
@@ -293,5 +295,6 @@ function writeChainCopy(
         validateIdType(body.sourceId, "device"),
         body.toPath,
         label.name,
+        run.context.deadline,
       );
 }
