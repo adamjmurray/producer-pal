@@ -48,6 +48,58 @@ async function createArrangementClip(
   return parseToolResult<{ id: string }>(result).id;
 }
 
+/**
+ * Call ppal-update-clip, without parsing the result.
+ * @param args - Tool arguments
+ * @returns The raw tool result
+ */
+async function callUpdateClip(args: Record<string, unknown>) {
+  return await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: args,
+  });
+}
+
+/**
+ * Run an update-clip call that moves clips.
+ * @param args - Tool arguments
+ * @returns Each moved clip's new path
+ */
+async function movedPaths(args: Record<string, unknown>): Promise<string[]> {
+  const { data } = parseToolResultWithWarnings<{ path: string }[]>(
+    await callUpdateClip(args),
+  );
+
+  return data.map((clip) => clip.path);
+}
+
+/**
+ * Assert the call was refused for sharing one destination between two clips.
+ * @param result - Raw tool result
+ */
+function expectSharedDestinationRefused(
+  result: Awaited<ReturnType<typeof callUpdateClip>>,
+): void {
+  expect(result.isError).toBe(true);
+  expect(JSON.stringify(result.content)).toContain(
+    "toPath names 1 destination but the call names 2 clips",
+  );
+}
+
+/**
+ * Read a clip's path.
+ * @param id - Clip ID
+ * @returns The clip's path
+ */
+async function readClipPath(id: string): Promise<string> {
+  return parseToolResult<{ path: string }>(
+    await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id },
+    }),
+  ).path;
+}
+
 describe("ppal-update-clip refuses a shared destination", () => {
   it("refuses one arrangement spot for two clip ids, and moves neither", async () => {
     const id1 = await createArrangementClip("401|1");
@@ -55,33 +107,17 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     await sleep(200);
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { id: `${id1},${id2}`, toPath: `t${EMPTY_MIDI_TRACK}[420|1]` },
-    });
-
-    expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain(
-      "toPath names 1 destination but the call names 2 clips",
+    expectSharedDestinationRefused(
+      await callUpdateClip({
+        id: `${id1},${id2}`,
+        toPath: `t${EMPTY_MIDI_TRACK}[420|1]`,
+      }),
     );
 
     await sleep(200);
 
-    const read1 = parseToolResult<{ path: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { id: id1 },
-      }),
-    );
-    const read2 = parseToolResult<{ path: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { id: id2 },
-      }),
-    );
-
-    expect(read1.path).toBe(`t${EMPTY_MIDI_TRACK}[401|1]`);
-    expect(read2.path).toBe(`t${EMPTY_MIDI_TRACK}[405|1]`);
+    expect(await readClipPath(id1)).toBe(`t${EMPTY_MIDI_TRACK}[401|1]`);
+    expect(await readClipPath(id2)).toBe(`t${EMPTY_MIDI_TRACK}[405|1]`);
   });
 
   it("refuses one session slot for two clip ids", async () => {
@@ -90,14 +126,11 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     await sleep(200);
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { id: `${id1},${id2}`, toPath: `t${EMPTY_MIDI_TRACK}/s5` },
-    });
-
-    expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain(
-      "toPath names 1 destination but the call names 2 clips",
+    expectSharedDestinationRefused(
+      await callUpdateClip({
+        id: `${id1},${id2}`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s5`,
+      }),
     );
   });
 
@@ -133,14 +166,7 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     await sleep(200);
 
-    const read1 = parseToolResult<{ path: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { id: id1 },
-      }),
-    );
-
-    expect(read1.path).toBe(`t${EMPTY_MIDI_TRACK}[461|1]`);
+    expect(await readClipPath(id1)).toBe(`t${EMPTY_MIDI_TRACK}[461|1]`);
   });
 
   // One track with a position per clip: the positions keep the clips apart, so
@@ -151,18 +177,13 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     await sleep(200);
 
-    const { data: moved } = parseToolResultWithWarnings<{ path: string }[]>(
-      await ctx.client!.callTool({
-        name: "ppal-update-clip",
-        arguments: {
-          id: `${id1},${id2}`,
-          toPath: `t${EMPTY_MIDI_TRACK}`,
-          arrangementStart: "620|1,624|1",
-        },
-      }),
-    );
+    const moved = await movedPaths({
+      id: `${id1},${id2}`,
+      toPath: `t${EMPTY_MIDI_TRACK}`,
+      arrangementStart: "620|1,624|1",
+    });
 
-    expect(moved.map((clip) => clip.path)).toStrictEqual([
+    expect(moved).toStrictEqual([
       `t${EMPTY_MIDI_TRACK}[620|1]`,
       `t${EMPTY_MIDI_TRACK}[624|1]`,
     ]);
@@ -174,18 +195,12 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     await sleep(200);
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
+    expectSharedDestinationRefused(
+      await callUpdateClip({
         id: `${id1},${id2}`,
         toPath: `t${EMPTY_MIDI_TRACK}`,
         arrangementStart: "650|1",
-      },
-    });
-
-    expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain(
-      "toPath names 1 destination but the call names 2 clips",
+      }),
     );
   });
 
@@ -198,14 +213,12 @@ describe("ppal-update-clip refuses a shared destination", () => {
 
     await sleep(200);
 
-    const { data: moved } = parseToolResultWithWarnings<{ path: string }[]>(
-      await ctx.client!.callTool({
-        name: "ppal-update-clip",
-        arguments: { id: `${id1},${id2}`, toPath: "[520|1]" },
-      }),
-    );
+    const moved = await movedPaths({
+      id: `${id1},${id2}`,
+      toPath: "[520|1]",
+    });
 
-    expect(moved.map((clip) => clip.path)).toStrictEqual([
+    expect(moved).toStrictEqual([
       `t${EMPTY_MIDI_TRACK}[520|1]`,
       `t${BASS_TRACK}[520|1]`,
     ]);

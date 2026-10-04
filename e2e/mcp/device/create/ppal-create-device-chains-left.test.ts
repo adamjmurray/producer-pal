@@ -44,15 +44,24 @@ async function chainCount(rackPath: string): Promise<number> {
   return rack.chains?.length ?? 0;
 }
 
+/**
+ * Put an Audio Effect Rack on a new MIDI track.
+ * @returns The rack's path and how many chains it starts with
+ */
+async function newAudioRack(): Promise<{ rack: string; before: number }> {
+  const track = await createMidiTrack(ctx.client!);
+  const rack = await createTestDeviceAt(
+    ctx.client!,
+    "Audio Effect Rack",
+    `t${track}`,
+  );
+
+  return { rack, before: await chainCount(rack) };
+}
+
 describe("ppal-create-device when the insert is refused after a c+", () => {
   it("names the empty chain it left in the rack", async () => {
-    const track = await createMidiTrack(ctx.client!);
-    const rack = await createTestDeviceAt(
-      ctx.client!,
-      "Audio Effect Rack",
-      `t${track}`,
-    );
-    const before = await chainCount(rack);
+    const { rack, before } = await newAudioRack();
 
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
@@ -70,13 +79,7 @@ describe("ppal-create-device when the insert is refused after a c+", () => {
   });
 
   it("names it on that path's entry in a list, beside the one that landed", async () => {
-    const track = await createMidiTrack(ctx.client!);
-    const rack = await createTestDeviceAt(
-      ctx.client!,
-      "Audio Effect Rack",
-      `t${track}`,
-    );
-    const before = await chainCount(rack);
+    const { rack, before } = await newAudioRack();
 
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",

@@ -16,8 +16,7 @@
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/update/ppal-update-clip-envelopes
  */
-import { beforeAll, describe, expect, it } from "vitest";
-import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   type ClipEnvelopeResult,
@@ -28,7 +27,10 @@ import {
   sleep,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
-import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers.ts";
+import {
+  REMOTE_SCRIPT_E2E,
+  requireRemoteScript,
+} from "../../device/helpers/remote-script-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const TRACK = `t${String(EMPTY_MIDI_TRACK)}`;
@@ -42,18 +44,10 @@ const REENABLED_DETAIL =
 /** Live's `automation_state` once the user has moved an automated parameter. */
 const OVERRIDDEN = 2;
 
-describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
+describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-update-clip — clip automation envelopes",
   () => {
-    // Ahead of the per-test hooks, so a missing remote script fails before any
-    // Live Set opens.
-    beforeAll(async () => {
-      if (!(await remoteScriptAnswers())) {
-        throw new Error(
-          `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
-        );
-      }
-    });
+    requireRemoteScript();
 
     const ctx = setupMcpTestContext();
 
