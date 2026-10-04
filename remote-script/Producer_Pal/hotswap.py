@@ -17,6 +17,9 @@ _PATH_WORDS = {
     "drum_pads": True,
 }
 
+# The words a device path may start with, after `live_set`.
+_PATH_ROOTS = ("tracks", "return_tracks", "master_track")
+
 # Live.Device.DeviceType values, named the way /load names kinds.
 _DEVICE_KINDS = {1: "instrument", 2: "audio-effect", 4: "midi-effect"}
 
@@ -32,6 +35,11 @@ def device_at(song, device_path):
         words = words[1:]
     if words[-2:-1] != ["devices"]:
         raise DevicePathError("device_path must end in 'devices <index>'")
+    if words[0] not in _PATH_ROOTS:
+        raise DevicePathError(
+            "device_path must start with one of %s (after 'live_set')"
+            % ", ".join(_PATH_ROOTS)
+        )
 
     obj = song
     i = 0
@@ -39,7 +47,11 @@ def device_at(song, device_path):
         word = words[i]
         if word not in _PATH_WORDS:
             raise DevicePathError("device_path can't contain %r" % word)
-        obj = getattr(obj, word)
+        try:
+            obj = getattr(obj, word)
+        except AttributeError:
+            # e.g. 'chains' on a device that isn't a rack
+            raise DevicePathError("device_path has nothing at %r here" % word)
         i += 1
         if _PATH_WORDS[word]:
             obj = _nth(obj, word, words[i] if i < len(words) else None)
@@ -66,6 +78,8 @@ def hotswap(browser, item, device, device_path, song):
         # Left on, Live keeps filtering the browser to this device, and the
         # next load replaces it instead of adding a device.
         browser.hotswap_target = None
+    # Live 12.4.6 finishes a plug-in or Max device load inside load_item, so the
+    # device is already in place here.
     return device_at(song, device_path)
 
 

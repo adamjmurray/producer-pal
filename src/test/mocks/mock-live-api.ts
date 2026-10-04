@@ -219,7 +219,11 @@ export class LiveAPI {
         return "";
       }
 
-      return this._registered.returnPath ?? this._registered.path;
+      const { returnPath, path, id } = this._registered;
+
+      // A real object always has a path; a fixture without one still counts as
+      // alive, since an empty path is how a destroyed object reads.
+      return returnPath ?? (path || `id ${id}`);
     }
 
     return this._path ?? "";

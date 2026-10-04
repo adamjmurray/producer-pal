@@ -34,7 +34,8 @@ import {
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { clipIsGone, removeMovedSource } from "./moved-source.ts";
+import { removeMovedSource } from "./moved-source.ts";
+import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
 import {
   type LandingLog,
@@ -196,7 +197,7 @@ export function handleArrangementStartOperation({
 
   // Clear the original to complete the move. A self-overlapping move already
   // deleted it. Check the path: a held clip's exists() stays true once it's gone.
-  if (!clipIsGone(clip)) {
+  if (!objectIsGone(clip)) {
     const leftover = removeMovedSource(clip, sourceTrack);
 
     if (leftover != null) {

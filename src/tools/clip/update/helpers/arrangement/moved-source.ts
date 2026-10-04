@@ -27,14 +27,3 @@ export function removeMovedSource(
 
   return null;
 }
-
-/**
- * Whether a clip this call is holding has been destroyed since it was resolved.
- * Read the path, never `exists()`: a held object keeps reporting its id after
- * its target dies, and only the path clears (dev/live-api/object-reuse.md).
- * @param clip - The clip the call is holding
- * @returns True when it is gone
- */
-export function clipIsGone(clip: LiveAPI): boolean {
-  return !clip.path;
-}

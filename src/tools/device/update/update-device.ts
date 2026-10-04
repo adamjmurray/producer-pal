@@ -46,6 +46,7 @@ import {
   type ResolvedTarget,
   resolveNamedTarget,
   resolvedTargetKey,
+  targetIsGone,
   writtenContainer,
 } from "./helpers/call/resolve-device-target.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
@@ -230,6 +231,14 @@ function writeDevice(
 
   if ("wrap" in data) {
     return { ...wrapDevicesInRack(data.wrap) };
+  }
+
+  // A target resolved up front can die before its turn: an earlier target's
+  // preset replaced the rack it sits in, or a forced pad sample swap deleted it.
+  if (targetIsGone(data.resolved)) {
+    throw new Error(
+      "no longer exists: an earlier target in this call replaced it or its rack",
+    );
   }
 
   const options = optionsForTarget(step.checked, step.index);

@@ -143,32 +143,39 @@ export function parseToolResultWithWarnings<T>(
 }
 
 /**
- * Parse a tool result's JSON text, failing on a `reason` key at any depth:
- * every explanation on a result entry is `detail`.
+ * Parse a tool result's JSON text, failing on a `reason` key outside Live's own
+ * data: every explanation on a result entry is `detail`.
  * @param text - The result's JSON text
  * @returns The parsed result
  */
 function parseResultJson<T>(text: string): T {
-  let hasReason = false;
   let data: T;
 
   try {
-    data = JSON.parse(text, (key, value: unknown) => {
-      hasReason ||= key === "reason";
-
-      return value;
-    }) as T;
+    data = JSON.parse(text) as T;
   } catch (error) {
     console.error("Failed to parse JSON response. Raw text:", text);
     throw error;
   }
 
-  if (hasReason) {
-    throw new Error(`Tool result has a "reason" key, not "detail": ${text}`);
-  }
+  expect(hasReasonKey(data), `"reason" key, not "detail": ${text}`).toBe(false);
 
   return data;
 }
+
+/**
+ * Whether a parsed result has a `reason` key. Skips ppal-live-api's `results`
+ * (the one with an `id` beside it), which is raw Live data.
+ * @param value - The parsed result, or part of it
+ * @returns True if one is found
+ */
+const hasReasonKey = (value: unknown): boolean =>
+  value instanceof Object &&
+  Object.entries(value).some(
+    ([k, v]) =>
+      k === "reason" ||
+      (!(k === "results" && "id" in value) && hasReasonKey(v)),
+  );
 
 /**
  * Parse a result from a call that used a param alias, asserting the tool both

@@ -26,7 +26,7 @@ import {
   type Step,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { writtenOverBy } from "#src/tools/shared/clip/landings/landing-log.ts";
-import { clipIsGone } from "../arrangement/moved-source.ts";
+import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import {
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
@@ -107,7 +107,7 @@ export async function writeClip(
 
   try {
     // Something earlier in the call cleared it, and nothing it asked can land.
-    if (clipIsGone(clip)) {
+    if (objectIsGone(clip)) {
       const by = writtenOverBy(
         target.data.span ?? undefined,
         run.landings.written,

@@ -14,7 +14,7 @@ import {
   type Done,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { writtenOverBy } from "#src/tools/shared/clip/landings/landing-log.ts";
-import { clipIsGone } from "../arrangement/moved-source.ts";
+import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 import { type ClipPayload } from "./resolve-clip-targets.ts";
@@ -137,7 +137,7 @@ function reportClearedInPlace(run: ClipRun, done: ClipDone): void {
     if (
       target.skip != null ||
       outcomes[index] !== "superseded" ||
-      !clipIsGone(target.data.clip) ||
+      !objectIsGone(target.data.clip) ||
       // Named again: the later mention is the one that speaks for the clip.
       targets.some(
         (later, at) =>

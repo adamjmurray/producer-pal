@@ -14,6 +14,7 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type WrittenContainer } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -65,6 +66,25 @@ export function resolvedTargetKey(resolved: ResolvedTarget): string {
 
   // A pad with no DrumPad object is known by the chains it routes to.
   return pad?.id ?? `pad-chains:${chains.map((chain) => chain.id).join(",")}`;
+}
+
+/**
+ * Whether a target was destroyed since the call resolved it, as a rack does
+ * the devices in it when an earlier target's preset replaces the rack. A pad
+ * with no DrumPad object is gone once every chain it routes to is.
+ * @param resolved - A resolved target
+ * @returns True when it is gone
+ */
+export function targetIsGone(resolved: ResolvedTarget): boolean {
+  if (resolved.kind === "object") {
+    return objectIsGone(resolved.target);
+  }
+
+  const { pad, chains } = resolved.group;
+
+  return pad != null
+    ? objectIsGone(pad)
+    : chains.length > 0 && chains.every(objectIsGone);
 }
 
 /**

@@ -16,6 +16,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   callToolAndSettle,
+  createTestDeviceAt,
   getToolErrorMessage,
   isToolError,
   parseToolResult,
@@ -81,8 +82,40 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
   }
 
-  it("keeps the device for one of its own presets", async () => {
-    const drift = await createDrift();
+  /**
+   * An Instrument Rack on a fresh MIDI track, with a Drift in its first chain.
+   * @returns The rack's path, and the Drift's id and path
+   */
+  async function createRackWithDrift(): Promise<{
+    rack: string;
+    drift: { id: string; path: string };
+  }> {
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
+    );
+    const rack = await createTestDeviceAt(
+      ctx.client!,
+      "Instrument Rack",
+      `t${trackIndexFromPath(track.path)}`,
+    );
+    const drift = parseToolResult<{ id: string; path: string }>(
+      await call("ppal-create-device", {
+        device: "Drift",
+        path: `${rack}/c0`,
+      }),
+    );
+
+    return { rack, drift };
+  }
+
+  /**
+   * Load one of Drift's own presets, and check the device is kept.
+   * @param drift - The Drift's id and path
+   */
+  async function expectOwnPresetKeepsDevice(drift: {
+    id: string;
+    path: string;
+  }): Promise<void> {
     const updated = parseToolResult<UpdateResult>(
       await call("ppal-update-device", {
         path: drift.path,
@@ -94,6 +127,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect((await readDevice(ctx.client!, drift.path)).name).toBe(
       presetName(adv.name),
     );
+  }
+
+  it("keeps the device for one of its own presets", async () => {
+    const drift = await createDrift();
+
+    await expectOwnPresetKeepsDevice(drift);
   });
 
   it("loads a preset onto each of several devices", async () => {
@@ -129,6 +168,31 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect(updated.detail).toContain("replaced the device");
     expect(device.id).toBe(updated.id);
     expect(device.type).toBe("instrument-rack");
+  });
+
+  it("loads a preset onto a device inside a rack chain", async () => {
+    const { drift } = await createRackWithDrift();
+
+    await expectOwnPresetKeepsDevice(drift);
+  });
+
+  it("skips a device in a rack that an earlier target replaced", async () => {
+    // A Drift preset replaces the rack itself, taking the Drift inside it.
+    // (A rack preset on the rack keeps the rack and its devices.)
+    const { rack, drift } = await createRackWithDrift();
+    const updated = parseToolResult<UpdateResult[]>(
+      await call("ppal-update-device", {
+        path: `${rack},${drift.path}`,
+        preset: presetName(adv.name),
+      }),
+    );
+
+    expect(updated[0]?.detail).toContain("replaced the device");
+    expect(updated[1]).toStrictEqual({
+      path: drift.path,
+      ok: false,
+      detail: expect.stringContaining("no longer exists"),
+    });
   });
 
   it("loads nothing for a preset of another kind", async () => {

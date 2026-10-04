@@ -248,6 +248,13 @@ with a tool, the tool wins.
   throws.
 - **select has one target**: nothing to list, so a refusal or a failed selection
   throws.
+- **update-device: a target dead by its turn is a skip.** Targets resolve up
+  front, so one inside a rack that an earlier target's `preset` replaced (or one
+  an earlier forced pad-sample swap deleted) is gone when its turn comes. Every
+  target kind is checked before any work: its entry is
+  `{ id | path, ok: false, detail: "no longer exists: an earlier target in this call replaced it or its rack" }`,
+  and nothing is written to it. A target that only moved keeps its path and is
+  written as usual.
 - **update-device's per-param drop paths became entries.** A `params` list
   answers with one entry per param sent: a disabled param, an ambiguous name, an
   unreadable value, a unit that can't be checked, a write Live ignored, a nested
