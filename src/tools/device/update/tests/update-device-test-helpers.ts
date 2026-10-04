@@ -375,6 +375,8 @@ export interface MacroRackSpec {
   mapped?: boolean;
   /** The fewest macros it will hide down to, for a rack that keeps some */
   floor?: number;
+  /** Which device slot on track 0 it sits in; the first when absent */
+  slot?: number;
 }
 
 /**
@@ -385,11 +387,12 @@ export interface MacroRackSpec {
  * @param spec.count - The macros it shows to begin with
  * @param spec.mapped - Whether one of its macros is mapped
  * @param spec.floor - The fewest macros it will hide down to
+ * @param spec.slot - Which device slot on track 0 it sits in
  * @returns The registered rack mock
  */
 export function registerMacroRack(
   id: string,
-  { count, mapped = false, floor = 0 }: MacroRackSpec,
+  { count, mapped = false, floor = 0, slot = 0 }: MacroRackSpec,
 ): RegisteredMockObject {
   const properties: Record<string, unknown> = {
     can_have_chains: 1,
@@ -407,7 +410,7 @@ export function registerMacroRack(
   };
 
   return registerMockObject(id, {
-    path: livePath.track(0).device(0),
+    path: livePath.track(0).device(slot),
     type: "RackDevice",
     properties,
     methods: { add_macro: move(2), remove_macro: move(-2) },

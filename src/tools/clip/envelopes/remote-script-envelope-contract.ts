@@ -7,15 +7,13 @@
 // Producer Pal remote script (remote-script/) can reach. Result shapes are the
 // remote script's own JSON, so their fields stay snake_case.
 
+import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
+
 // Envelope calls wait as long as a device load does.
 export {
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-
-/** What a caller is told when the remote script gave no answer at all. */
-export const REMOTE_SCRIPT_UNANSWERED =
-  "the Producer Pal remote script did not answer in time";
 
 /** The Node routes V8 calls to reach the remote script's envelope routes. */
 export const ENVELOPE_ROUTES = {
@@ -80,10 +78,7 @@ export interface ParameterInfo {
 }
 
 /** What an envelope route answers. `error` is worded for the model. */
-export type EnvelopeReply<Result> =
-  | { available: false }
-  | { available: true; error: string }
-  | { available: true; result: Result };
+export type EnvelopeReply<Result> = RouteReply<Result>;
 
 export interface EnvelopeListResult {
   envelopes: {

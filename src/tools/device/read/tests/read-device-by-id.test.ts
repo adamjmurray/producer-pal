@@ -100,11 +100,11 @@ describe("readDevice by id of something that is not a device", () => {
     );
   });
 
-  it("keeps its slot when a readable target was named too", () => {
+  it("keeps its slot when a readable target was named too", async () => {
     registerMockObject("999", { path: livePath.track(3), type: "Track" });
     setupChainMock({ id: "chain-21" });
 
-    expect(readDevice({ id: "999,chain-21" })).toStrictEqual([
+    expect(await readDevice({ id: "999,chain-21" })).toStrictEqual([
       { id: "999", ok: false, detail: "cannot read a track: t3 (id 999)" },
       expect.objectContaining({ id: "chain-21" }),
     ]);

@@ -5,6 +5,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
+import { RACK_MACROS_ROUTE } from "#src/tools/shared/remote-script/rack-macros-contract.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { clearNodeRoutes } from "../../node-request-protocol.ts";
@@ -47,6 +48,7 @@ const ROUTE_ARGS: Record<string, unknown> = {
     points: [{ time: 0, value: 0.5 }],
   },
   [ENVELOPE_ROUTES.clear]: ENVELOPE_ARGS,
+  [RACK_MACROS_ROUTE]: { devicePaths: ["live_set tracks 0 devices 0"] },
 };
 
 let fake: FakeRemoteScript | undefined;
@@ -79,6 +81,7 @@ describe("the remote script switch", () => {
     const routes = [
       ...Object.values(REMOTE_SCRIPT_ROUTES),
       ...Object.values(ENVELOPE_ROUTES),
+      RACK_MACROS_ROUTE,
     ];
 
     // A route added to a contract without args here fails the sweep.

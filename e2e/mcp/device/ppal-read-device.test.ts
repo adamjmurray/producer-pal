@@ -223,8 +223,13 @@ describe("ppal-read-device", () => {
     });
     const macroRack = parseToolResult<ReadDeviceResult>(macroResult);
 
+    // With the remote script running it names the mapped macros instead; that
+    // is covered in ppal-rack-macros-remote-script.
     expect(macroRack.macros).toBeDefined();
-    expect(macroRack.macros!.hasMappings).toBe(true);
+    expect(
+      macroRack.macros!.hasMappings === true ||
+        (macroRack.macros!.mapped ?? []).length === 1,
+    ).toBe(true);
 
     // Test deactivated: t7/d0 entire chain is deactivated
     const deactivatedResult = await ctx.client!.callTool({
@@ -379,7 +384,12 @@ interface ReadDeviceResult {
   name?: string;
   collapsed?: boolean;
   deactivated?: boolean;
-  macros?: { count: number; hasMappings: boolean };
+  macros?: {
+    count: number;
+    hasMappings?: boolean;
+    mapped?: number[];
+    hiddenMapped?: number[];
+  };
   parameters?: Array<{
     id?: string; // absent for specialized pseudo-params (name + value only)
     name: string;

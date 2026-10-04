@@ -20,7 +20,18 @@ button: it waits for a user click and takes no macro index.
 
 `RackDevice.macros_mapped` is a tuple of 16 bools, one per macro, true when that
 macro is mapped to anything. It has a listener. Max's `info` on a rack doesn't
-list it.
+list it. The remote script's `/device/macros` route serves it, and
+`ppal-read-device` and `ppal-update-device` use that.
+
+## Lowering the macro count
+
+Live doesn't refuse, and doesn't keep a mapped macro visible: lowering the count
+(`remove_macro`) hides macros and **keeps their mappings**. On a rack with macro
+7 mapped, the count went 8, 6, 4, 2, 1 and `macros_mapped` still showed macro 7
+at every step, and raising the count back showed it still mapped. So a hidden
+macro can be mapped: `macros_mapped` covers all 16, not just the visible ones.
+The count steps by 2 and stops at 1, never 0. `visible_macro_count` has no
+setter; `add_macro` and `remove_macro` change it.
 
 ## The saved Set
 

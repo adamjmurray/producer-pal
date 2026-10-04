@@ -108,6 +108,18 @@ with a tool, the tool wins.
   `sends` entry a later one replaced is `{ return, returnId, detail }` with no
   `ok`, the same for a rack chain's sends in update-device; `ok: false` stays
   for a send that really failed.
+- **update-device's `macroCount` says which mapped macros it hid.** Lowering the
+  count hides macros and keeps their mappings, so a hidden one is no loss but
+  would otherwise vanish unremarked. With the remote script, a rack with
+  mappings is asked which macros are mapped before anything is written, and the
+  entry's `detail` names those the count hid
+  (`macro 7 hidden; its mapping is kept`). Without it, or when it can't answer,
+  the detail says the hidden range keeps any mappings, and why the check failed.
+  A remote script too old to have the route counts as not running. A target that
+  also loads a preset isn't asked, since a replaced device makes the answer
+  moot. The question is asked before the write, so nothing can fail after the
+  count has changed. A rack Live won't take below 1 macro says where the count
+  landed.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

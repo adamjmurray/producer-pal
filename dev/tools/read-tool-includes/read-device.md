@@ -73,8 +73,15 @@ Adds parameter names, macro variation info, and A/B Compare state. A
 | ------------ | ---------- | ------------------------------------------ |
 | `parameters` | `Param[]`  | Parameter names and IDs                    |
 | `variations` | `object`   | Rack only: `{ count, selected }`           |
-| `macros`     | `object`   | Rack only: `{ count, hasMappings }`        |
+| `macros`     | `object`   | Rack only; see below                       |
 | `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
+
+`macros` is `{ count, mapped }` when the remote script is running: `mapped`
+lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`
+lists any beyond `count`, since lowering the count hides macros but keeps their
+mappings. Without the remote script, or when it can't answer for a rack, it is
+`{ count, hasMappings }`. One remote-script call (more past 200 racks) covers
+every rack in the read, and the read waits at most 3 seconds for it.
 
 ## Include: `"param-values"`
 

@@ -19,7 +19,7 @@ import { inRequestScope } from "#src/live-api-adapter/tests/objects/in-request-s
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "../../read-device.ts";
+import { readOneDevice } from "../../read-device.ts";
 
 /** Pads the fixture kit fills, each holding one chain with one instrument. */
 const PADS = 16;
@@ -178,11 +178,11 @@ function setupPadChain(
   }
 }
 
-describe("readDevice drum rack build budget", () => {
+describe("readOneDevice drum rack build budget", () => {
   it("reads a pad list without building 128 pads or a chain mixer", () => {
     setupKit();
 
-    readDevice({ path: "t1/d0", include: ["drum-pads"], maxDepth: 0 });
+    readOneDevice({ path: "t1/d0", include: ["drum-pads"], maxDepth: 0 });
 
     // The rack, one pad to check the list really is in note order, then per
     // filled pad: its chain for the name and state, and its device to answer
@@ -194,7 +194,7 @@ describe("readDevice drum rack build budget", () => {
   it("reads a drum map without looking at the pads at all", () => {
     setupKit();
 
-    readDevice({ path: "t1/d0", include: ["drum-map"], maxDepth: 0 });
+    readOneDevice({ path: "t1/d0", include: ["drum-map"], maxDepth: 0 });
 
     // Same, less the order check: a map is keyed by note, so no pad id is
     // shown and the pad list is never read.
@@ -204,7 +204,7 @@ describe("readDevice drum rack build budget", () => {
   it("still builds the chain mixers when the chains are shown", () => {
     setupKit();
 
-    readDevice({
+    readOneDevice({
       path: "t1/d0",
       include: ["drum-pads", "chains"],
       maxDepth: 0,
@@ -222,7 +222,7 @@ describe("readDevice drum rack build budget", () => {
     // Inside a request scope: the names are remembered for one request only, so
     // without one every chain names the returns again.
     inRequestScope(() => {
-      readDevice({
+      readOneDevice({
         path: "t1/d0",
         include: ["drum-pads", "chains"],
         maxDepth: 0,

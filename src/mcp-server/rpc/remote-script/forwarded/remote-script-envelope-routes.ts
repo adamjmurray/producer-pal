@@ -5,16 +5,12 @@
 
 import {
   ENVELOPE_ROUTES,
-  type EnvelopeReply,
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
-  REMOTE_SCRIPT_UNANSWERED,
 } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
-import { registerNodeRoute } from "../node-request-protocol.ts";
-import { requireString } from "../route-string-args.ts";
-import {
-  type RemoteScriptReply,
-  remoteScriptRequest,
-} from "./remote-script-client.ts";
+import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
+import { registerNodeRoute } from "../../node-request-protocol.ts";
+import { requireString } from "../../route-string-args.ts";
+import { forwardRemoteScriptRequest } from "./remote-script-forward.ts";
 
 /** The V8-side name of each param the remote script spells differently. */
 const BODY_KEYS: Record<string, string> = {
@@ -55,36 +51,11 @@ export function registerRemoteScriptEnvelopeRoutes(): void {
 async function forwardEnvelopeRequest(
   name: string,
   args: unknown,
-): Promise<EnvelopeReply<Record<string, unknown>>> {
-  const body = envelopeBody(args);
-  let reply: RemoteScriptReply;
-
-  try {
-    reply = await remoteScriptRequest({
-      method: "POST",
-      route: `/envelope/${name}`,
-      body,
-    });
-  } catch {
-    // The client words this for the browser routes, not for clip automation.
-    throw new Error(REMOTE_SCRIPT_UNANSWERED);
-  }
-
-  if (!reply.available) {
-    return { available: false };
-  }
-
-  if (reply.status === 200) {
-    return { available: true, result: reply.body };
-  }
-
-  return {
-    available: true,
-    error:
-      typeof reply.body.error === "string"
-        ? reply.body.error
-        : `the Producer Pal remote script answered with status ${reply.status}`,
-  };
+): Promise<RouteReply<Record<string, unknown>>> {
+  return await forwardRemoteScriptRequest(
+    `/envelope/${name}`,
+    envelopeBody(args),
+  );
 }
 
 /**

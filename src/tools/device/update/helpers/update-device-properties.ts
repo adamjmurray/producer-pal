@@ -21,6 +21,7 @@ import {
   chainMixerReport,
   type ChainMixerReport,
 } from "./chain/chain-mixer-report.ts";
+import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
@@ -67,6 +68,8 @@ export interface UpdatePropertyOptions {
   force?: boolean;
   /** Loaded before anything else; see updateDevice */
   preset?: string;
+  /** @internal Which macros were mapped, read before the write; never an arg */
+  mappedMacros?: MappedMacros;
 }
 
 export interface UpdateTargetOptions extends UpdatePropertyOptions {
@@ -102,6 +105,7 @@ export function updateDeviceProperties(
     macroVariation,
     macroVariationIndex,
     macroCount,
+    mappedMacros,
     abCompare,
     mute,
     solo,
@@ -146,7 +150,7 @@ export function updateDeviceProperties(
     }
 
     if (macroCount != null) {
-      updateMacroCount(target, macroCount, notes);
+      updateMacroCount(target, macroCount, notes, mappedMacros);
     }
   } else {
     noteIfSet(ignored, "macroVariation", macroVariation);

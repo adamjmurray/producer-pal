@@ -49,50 +49,48 @@ describe("readDevice over a list of targets", () => {
     mockNonExistentObjects();
   });
 
-  it("reads one device per id, in the order named", () => {
-    expect(readDevice({ id: "device-2,device-1" })).toStrictEqual([
+  it("reads one device per id, in the order named", async () => {
+    expect(await readDevice({ id: "device-2,device-1" })).toStrictEqual([
       device2,
       device1,
     ]);
   });
 
-  it("reads one device per path, in the order named", () => {
-    expect(readDevice({ path: "t2/d0, t1/d0" })).toStrictEqual([
+  it("reads one device per path, in the order named", async () => {
+    expect(await readDevice({ path: "t2/d0, t1/d0" })).toStrictEqual([
       device2,
       device1,
     ]);
   });
 
-  it("reads ids and paths together, ids first", () => {
-    expect(readDevice({ id: "device-2", path: "t1/d0" })).toStrictEqual([
+  it("reads ids and paths together, ids first", async () => {
+    expect(await readDevice({ id: "device-2", path: "t1/d0" })).toStrictEqual([
       device2,
       device1,
     ]);
   });
 
-  it("takes the list from the ids and paths aliases", () => {
-    expect(readDevice({ ids: "device-1", paths: "t2/d0" })).toStrictEqual([
-      device1,
-      device2,
-    ]);
+  it("takes the list from the ids and paths aliases", async () => {
+    expect(await readDevice({ ids: "device-1", paths: "t2/d0" })).toStrictEqual(
+      [device1, device2],
+    );
   });
 
   // The tool's own id alias names targets like `id` does, and adds up with the
   // paths. Left as its own param it would name the same device again in every
   // entry of the list.
-  it("names targets by the deviceId alias too", () => {
-    expect(readDevice({ deviceId: "device-1", path: "t2/d0" })).toStrictEqual([
-      device1,
-      device2,
-    ]);
-    expect(readDevice({ deviceId: "device-2,device-1" })).toStrictEqual([
+  it("names targets by the deviceId alias too", async () => {
+    expect(
+      await readDevice({ deviceId: "device-1", path: "t2/d0" }),
+    ).toStrictEqual([device1, device2]);
+    expect(await readDevice({ deviceId: "device-2,device-1" })).toStrictEqual([
       device2,
       device1,
     ]);
   });
 
-  it("keeps a slot for a target it can't read, and says why", () => {
-    expect(readDevice({ path: "t1/d0,t9/d0" })).toStrictEqual([
+  it("keeps a slot for a target it can't read, and says why", async () => {
+    expect(await readDevice({ path: "t1/d0,t9/d0" })).toStrictEqual([
       device1,
       {
         path: "t9/d0",
@@ -103,13 +101,13 @@ describe("readDevice over a list of targets", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("keeps the slot of a type segment that names nothing, and says why", () => {
+  it("keeps the slot of a type segment that names nothing, and says why", async () => {
     registerMockObject("track-1", {
       path: livePath.track(1),
       properties: { devices: children("device-1") },
     });
 
-    expect(readDevice({ path: "t1/d0,t1/afx0" })).toStrictEqual([
+    expect(await readDevice({ path: "t1/d0,t1/afx0" })).toStrictEqual([
       device1,
       {
         path: "t1/afx0",
@@ -120,30 +118,30 @@ describe("readDevice over a list of targets", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("reports a miss by id the way the caller wrote it", () => {
-    expect(readDevice({ id: "device-1,nope" })).toStrictEqual([
+  it("reports a miss by id the way the caller wrote it", async () => {
+    expect(await readDevice({ id: "device-1,nope" })).toStrictEqual([
       device1,
       { id: "nope", ok: false, detail: 'id "nope" does not exist' },
     ]);
   });
 
-  it("unwraps a single target", () => {
-    expect(readDevice({ path: "t1/d0" })).toStrictEqual(device1);
+  it("unwraps a single target", async () => {
+    expect(await readDevice({ path: "t1/d0" })).toStrictEqual(device1);
   });
 
-  it("still throws when the only target names nothing", () => {
-    expect(() => readDevice({ id: "nope" })).toThrow(
+  it("still throws when the only target names nothing", async () => {
+    await expect(readDevice({ id: "nope" })).rejects.toThrow(
       'id "nope" does not exist',
     );
   });
 
-  it("refuses a list with an empty entry", () => {
-    expect(() => readDevice({ path: "t1/d0,,t2/d0" })).toThrow(
+  it("refuses a list with an empty entry", async () => {
+    await expect(readDevice({ path: "t1/d0,,t2/d0" })).rejects.toThrow(
       'invalid path "t1/d0,,t2/d0" - it has an empty entry',
     );
   });
 
-  it("throws when nothing names a device", () => {
-    expect(() => readDevice({})).toThrow("id or path is required");
+  it("throws when nothing names a device", async () => {
+    await expect(readDevice({})).rejects.toThrow("id or path is required");
   });
 });

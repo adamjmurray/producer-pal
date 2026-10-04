@@ -72,20 +72,21 @@ type DeviceEntry = Record<string, unknown>;
 export type UpdateDeviceResult = PipelineResult<DeviceEntry>;
 
 /**
- * Update device(s), chain(s), or drum pad(s) by ID or path, without a preset:
- * sync.
+ * Update device(s), chain(s), or drum pad(s) by ID or path, without a preset or
+ * a macro count: sync.
  * @param args - The update-device args: the target (id/path), what to set on
  *   it, and `wrapInRack` or `focus`
  * @param ctx - Internal context object, for the request deadline
  * @returns Updated object info(s)
  */
 export function updateDevice(
-  args: UpdateDeviceArgs & { preset?: undefined },
+  args: UpdateDeviceArgs & { preset?: undefined; macroCount?: undefined },
   ctx?: Partial<ToolContext>,
 ): UpdateDeviceResult;
 /**
  * Update device(s), chain(s), or drum pad(s) by ID or path. A `preset` loads
- * through the remote script, so the answer comes as a promise.
+ * through the remote script, and a `macroCount` may ask it which macros are
+ * mapped, so the answer comes as a promise.
  * @param args - The update-device args: the target (id/path), what to set on
  *   it, and `wrapInRack`, `preset` or `focus`
  * @param ctx - Internal context object, for the request deadline
@@ -199,20 +200,21 @@ function pathBefore(
  * What to apply to one target: the call's options, with the name, color,
  * destination and other strings that pair per target taken at its position.
  * @param checked - The checked call
- * @param checked.options - What the call applies to every target
- * @param checked.lists - The call's per-target values
  * @param index - The target's position
  * @returns The target's options
  */
 function optionsForTarget(
-  { options, lists }: DeviceChecked,
+  checked: DeviceChecked,
   index: number,
 ): UpdateTargetOptions {
+  const { options, lists } = checked;
+
   return {
     ...options,
     name: getNameForIndex(options.name, index, lists.names),
     color: getColorForIndex(options.color, index, lists.colors),
     toPath: lists.destinations[index],
+    mappedMacros: checked.macros[index],
     ...lists.valuesAt(index),
   };
 }
@@ -283,13 +285,20 @@ async function loadThenUpdate(
     step.landed("preset", { id: (loaded.device ?? device).id });
   }
 
-  // A new device has a new id, and the target is that device from here on.
+  // A new device has a new id, and the target is that device from here on. What
+  // was read of the old one's macros says nothing about it.
   const current: ResolvedTarget =
     loaded.device == null
       ? resolved
       : { kind: "object", target: loaded.device };
 
-  return updateResolved(current, options, writtenPath, step, loaded.outcome);
+  return updateResolved(
+    current,
+    loaded.device == null ? options : { ...options, mappedMacros: undefined },
+    writtenPath,
+    step,
+    loaded.outcome,
+  );
 }
 
 /**

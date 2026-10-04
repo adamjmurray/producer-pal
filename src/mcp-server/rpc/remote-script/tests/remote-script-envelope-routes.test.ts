@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
-import { registerRemoteScriptEnvelopeRoutes } from "../remote-script-envelope-routes.ts";
+import { registerRemoteScriptEnvelopeRoutes } from "../forwarded/remote-script-envelope-routes.ts";
 import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
 
 const PARAMETER = {

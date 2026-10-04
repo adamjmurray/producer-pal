@@ -32,6 +32,7 @@ import {
   buildDrumPadInfo,
   readDrumPadByPath,
 } from "./helpers/drum-pad-reading.ts";
+import { addMappedMacros } from "./helpers/read-mapped-macros.ts";
 import { type ReadOptions } from "./helpers/read-device-options.ts";
 
 // ============================================================================
@@ -60,17 +61,27 @@ interface ReadDeviceArgs {
  * @param args.path - Comma-separated device/chain/drum-pad paths
  * @param args.paths - Hidden alias for path
  * @param context - Internal context object (supplies the active notation)
- * @returns One device, or one entry per target named
+ * @returns One device, or one entry per target named; a promise, because a
+ *   rack's mapped macros come from the remote script
  */
-export function readDevice(
+export async function readDevice(
   args: ReadDeviceArgs,
   context: Partial<ToolContext> = {},
-): ReadResult<Record<string, unknown>> {
-  return readFanOut(
+): Promise<ReadResult<Record<string, unknown>>> {
+  const result = readFanOut(
     args,
     { object: "device", idAlias: "deviceId", deadline: context.deadline },
     (one) => readOneDevice(one, context),
   );
+
+  // Which macros are mapped is the one part of a device read that waits on the
+  // remote script, so it is added after the fan-out, once, for every rack read.
+  await addMappedMacros(
+    Array.isArray(result) ? result : [result],
+    context.deadline,
+  );
+
+  return result;
 }
 
 /**

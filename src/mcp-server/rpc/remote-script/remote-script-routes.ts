@@ -22,12 +22,14 @@ import {
   remoteScriptRequest,
   replyError,
 } from "./remote-script-client.ts";
-import { registerRemoteScriptEnvelopeRoutes } from "./remote-script-envelope-routes.ts";
+import { registerRemoteScriptDeviceRoutes } from "./forwarded/remote-script-device-routes.ts";
+import { registerRemoteScriptEnvelopeRoutes } from "./forwarded/remote-script-envelope-routes.ts";
 
 /**
  * Register every route V8 uses to reach the remote script: loading a plug-in,
- * Max for Live device, or preset, plus clip envelopes. Every step of a device
- * call gets the time V8 has left (`expiresInMs`), not a limit of its own.
+ * Max for Live device, or preset, plus clip envelopes and rack macros. Every
+ * step of a device call gets the time V8 has left (`expiresInMs`), not a limit
+ * of its own.
  */
 export function registerRemoteScriptRoutes(): void {
   registerNodeRoute(
@@ -65,6 +67,7 @@ export function registerRemoteScriptRoutes(): void {
   );
 
   registerRemoteScriptEnvelopeRoutes();
+  registerRemoteScriptDeviceRoutes();
 }
 
 /**

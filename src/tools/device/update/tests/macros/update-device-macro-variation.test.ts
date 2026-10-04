@@ -10,8 +10,8 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
-import { updateMacroCount } from "../helpers/rack-macro-updates.ts";
-import { updateDevice } from "../update-device.ts";
+import { updateMacroCount } from "../../helpers/rack-macro-updates.ts";
+import { updateDevice } from "../../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 

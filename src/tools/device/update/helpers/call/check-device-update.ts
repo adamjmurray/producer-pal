@@ -28,6 +28,11 @@ import {
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { lookUpPresets, presetDevice } from "./device-presets.ts";
+import {
+  lookUpHiddenMacroMappings,
+  racksHidingMappings,
+} from "./look-up-macro-mappings.ts";
+import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
 import { type UpdateTargetOptions } from "../update-device-properties.ts";
@@ -61,6 +66,8 @@ export interface DeviceChecked {
   lists: TargetLists;
   /** Each target's preset, found in the browser; undefined where it gets none */
   presets: Array<BrowserItem | undefined>;
+  /** Each target's mapped macros, found where a macroCount would hide some */
+  macros: Array<MappedMacros | undefined>;
   /** The target params as sent, for a blank one to be reported */
   sent: TargetParams;
   /** How many targets the call named */
@@ -122,11 +129,12 @@ export function deviceListArgs(call: DeviceCall): ListArg[] {
  * Check what the call pairs up and look up its presets, refusing a bad call
  * before anything is written or loaded. Every preset name is looked up first,
  * so one that matches no preset, or several, fails the call with nothing
- * changed.
+ * changed. A `macroCount` that would hide mapped macros asks which are mapped.
  * @param call - The update-device call
  * @param targets - The call's targets
  * @param deadline - The request deadline
- * @returns The call, checked; a promise when it names presets to look up
+ * @returns The call, checked; a promise when it has presets or mapped macros
+ *   to look up
  */
 export function checkDeviceUpdate(
   call: DeviceCall,
@@ -147,7 +155,16 @@ export function checkDeviceUpdate(
       valuesAt: pairParams({}, DEVICE_VALUE_LABELS, 0),
     };
 
-    return { options, lists, presets: [], sent, named, focus, written };
+    return {
+      options,
+      lists,
+      presets: [],
+      macros: [],
+      sent,
+      named,
+      focus,
+      written,
+    };
   }
 
   const { parsedNames, parsedColors } = pairLabels({
@@ -166,7 +183,7 @@ export function checkDeviceUpdate(
       targets.length,
     ),
   };
-  const checked: Omit<DeviceChecked, "presets"> = {
+  const checked: Omit<DeviceChecked, "presets" | "macros"> = {
     options,
     lists,
     sent,
@@ -174,16 +191,52 @@ export function checkDeviceUpdate(
     focus,
     written,
   };
+  const racks =
+    options.macroCount == null
+      ? []
+      : racksHidingMappings(
+          targets,
+          options.macroCount,
+          (i) => lists.valuesAt(i).preset != null,
+        );
 
-  return preset == null
-    ? { ...checked, presets: [] }
-    : presetsFor(targets, lists, deadline).then((presets) => ({
-        ...checked,
-        presets,
-      }));
+  // Only a call with something to look up waits on the remote script.
+  return preset == null && racks.every((rack) => rack == null)
+    ? { ...checked, presets: [], macros: [] }
+    : lookUpThenCheck({ checked, targets, racks, deadline });
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Look up the presets, then which macros are mapped. In that order: a preset
+ * that matches nothing fails the call before the remote script is asked more.
+ * @param lookups - What to look up
+ * @param lookups.checked - The call, checked but for what is looked up
+ * @param lookups.targets - The call's targets
+ * @param lookups.racks - The racks a macroCount would hide mapped macros of
+ * @param lookups.deadline - The request deadline
+ * @returns The call, checked
+ */
+async function lookUpThenCheck({
+  checked,
+  targets,
+  racks,
+  deadline,
+}: {
+  checked: Omit<DeviceChecked, "presets" | "macros">;
+  targets: Array<Target<DevicePayload>>;
+  racks: Array<LiveAPI | null>;
+  deadline: number | null | undefined;
+}): Promise<DeviceChecked> {
+  const presets =
+    checked.options.preset == null
+      ? []
+      : await presetsFor(targets, checked.lists, deadline);
+  const macros = await lookUpHiddenMacroMappings(racks, deadline);
+
+  return { ...checked, presets, macros };
+}
 
 /**
  * Look up the preset each target is to load.

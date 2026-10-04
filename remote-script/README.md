@@ -235,6 +235,23 @@ quantized parameter holds each value until the next anyway. A read returns at
 most 1000 events (`limit`, a positive whole number); a write takes at most 1000
 points. Indexes must be whole numbers >= 0.
 
+### `POST /device/macros`
+
+Which macros of a rack are mapped, which Max for Live's LOM can't say (it only
+reports whether any are). Takes `device_paths`, a list of up to 200 Live device
+paths (`live_set tracks 2 devices 0 chains 1 devices 0`), and answers
+`{racks: [...]}`, one entry per path in order: `{mapped: [7]}` (macro numbers,
+from 1, hidden macros included) or `{error}` when the path names nothing or a
+device that isn't a rack. One bad path doesn't fail the rest. A missing or empty
+list is a 400. Producer Pal asks in chunks of 200.
+
+```sh
+curl -s -X POST localhost:3349/device/macros -d '{"device_paths": ["live_set tracks 0 devices 0"]}'
+```
+
+Lowering a rack's macro count hides macros but keeps their mappings, so a hidden
+macro can still be mapped.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -256,6 +273,7 @@ started in that time.
 - `browser.py`: browser tree walking, name matching, and finding a file
 - `hotswap.py`: walking a device path, and loading in place of a device
 - `envelopes.py`: clip automation envelopes
+- `rack_macros.py`: which rack macros are mapped
 
 ## Hot reload
 

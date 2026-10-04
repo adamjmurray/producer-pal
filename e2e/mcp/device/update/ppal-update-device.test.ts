@@ -504,7 +504,7 @@ interface ReadDeviceResult {
     value?: number | string;
   }>;
   chains?: unknown[];
-  macros?: { count: number; hasMappings: boolean };
+  macros?: { count: number; hasMappings?: boolean; mapped?: number[] };
   variations?: { count: number; selected: number };
 }
 

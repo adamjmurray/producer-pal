@@ -9,6 +9,7 @@ from . import browser, hot_reload, hotswap
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
 from .params import parse_index
+from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .version import VERSION
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
@@ -315,6 +316,7 @@ ROUTES = {
     "/load": load,
     "/hotswap": hotswap_device,
     **_ENVELOPE_ROUTES,
+    **_RACK_MACRO_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
