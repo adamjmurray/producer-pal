@@ -40,6 +40,8 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 const APPENDS = "t0/d+,t0/d+,t0/d+";
 const DEVICES = "Reverb,Delay,Compressor";
 const LANDED = `${LIVE_FAILURE}; already changed: device created`;
+const STRANDED = `the temporary track at t1 couldn't be deleted: ${LIVE_FAILURE}`;
+const STRANDED_ENTRY = `the device was created, but ${STRANDED}`;
 
 /**
  * Make the nth device a track takes refuse its name.
@@ -194,7 +196,15 @@ describe("createDevice — a throw after a native insert", () => {
   });
 });
 
-describe("createDevice — a throw after a browser load", () => {
+/**
+ * The Live Set's view, where a load puts the track selection back.
+ * @returns The registered mock
+ */
+function songView(): RegisteredMockObject {
+  return lookupMockObject("song-view") as RegisteredMockObject;
+}
+
+describe("createDevice — a browser load's cleanup", () => {
   const ITEM = { type: "plugin", path: "VST3/Pro-Q 4", name: "Pro-Q 4" };
   const PRESET = { type: "preset", path: "Presets/Warm", name: "Warm" };
   const TEMP_TRACK = livePath.track(1);
@@ -250,19 +260,73 @@ describe("createDevice — a throw after a browser load", () => {
     });
   });
 
-  it("keeps the device's entry when the temp track won't go", async () => {
+  it("keeps the device's entry, and says so, when the temp track won't go", async () => {
     const result = (await createDevice({
       device: "Pro-Q 4",
       path: "t0/d+,t0/d+",
     })) as object[];
 
     expect(result).toStrictEqual([
-      // In place before the cleanup threw: its entry, not a skip, and no
+      // In place before the cleanup failed: its entry, not a skip, and no
       // chains-left claim.
-      { id: "loaded-1", path: "t0/d0", detail: LANDED },
+      { id: "loaded-1", path: "t0/d0", detail: STRANDED_ENTRY },
       { id: "loaded-2", path: "t0/d1" },
     ]);
     expect(result[0]).not.toHaveProperty("ok");
+  });
+
+  it("says nothing when only the selection won't go back", async () => {
+    liveSet.methods.delete_track = vi.fn();
+    failOnSet(songView(), "selected_track");
+
+    expect(
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
+    ).toStrictEqual({ id: "loaded-1", path: "t0/d0" });
+    expect(liveSet.methods.delete_track).toHaveBeenCalledWith(1);
+  });
+
+  it("still puts the selection back when the temp track won't go", async () => {
+    await createDevice({ device: "Pro-Q 4", path: "t0/d+" });
+
+    expect(songView().set).toHaveBeenCalledWith(
+      "selected_track",
+      "id selected-track",
+    );
+  });
+
+  it("keeps the body's own error when the temp track won't go either", async () => {
+    onLoaded = (loaded) => failOnSet(loaded, "name");
+
+    // The name fails inside the load, and the delete after it.
+    expect(
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+", name: "EQ" }),
+    ).toStrictEqual({
+      id: "loaded-1",
+      path: "t0/d0",
+      detail: `${LIVE_FAILURE}; ${STRANDED}; already changed: device created`,
+    });
+  });
+
+  it("keeps the body's own error when only the selection won't go back", async () => {
+    onLoaded = (loaded) => failOnSet(loaded, "name");
+    liveSet.methods.delete_track = vi.fn();
+    failOnSet(songView(), "selected_track");
+
+    expect(
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+", name: "EQ" }),
+    ).toStrictEqual({ id: "loaded-1", path: "t0/d0", detail: LANDED });
+  });
+
+  it("adds the stranded temp track to a load's failure", async () => {
+    vi.mocked(requestNode).mockImplementation(async (route) =>
+      route === REMOTE_SCRIPT_ROUTES.resolve
+        ? { success: true, result: { available: true, item: ITEM } }
+        : { success: true, result: { available: true, error: "no such item" } },
+    );
+
+    await expect(
+      createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
+    ).rejects.toThrow(`could not load "Pro-Q 4": no such item; ${STRANDED}`);
   });
 
   it("does the same for a device loaded from a preset", async () => {
@@ -272,7 +336,7 @@ describe("createDevice — a throw after a browser load", () => {
     })) as object[];
 
     expect(result).toStrictEqual([
-      { id: "loaded-1", path: "t0/d0", detail: LANDED },
+      { id: "loaded-1", path: "t0/d0", detail: STRANDED_ENTRY },
       { id: "loaded-2", path: "t0/d1" },
     ]);
   });
@@ -329,7 +393,7 @@ describe("createDevice — a throw after a browser load", () => {
       id: "loaded-1",
       path: "t0/d0",
       params: [{ name: "Nope", ok: false, detail: expect.any(String) }],
-      detail: `${LIVE_FAILURE}; already changed: device created, name, params`,
+      detail: STRANDED_ENTRY,
     });
   });
 
@@ -373,7 +437,7 @@ describe("createDevice — a throw after a browser load", () => {
       id: "loaded-1",
       path: "t0/d0/c1/d0",
       created: "c0-c1",
-      detail: LANDED,
+      detail: STRANDED_ENTRY,
     });
   });
 });

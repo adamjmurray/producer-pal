@@ -38,6 +38,8 @@ export interface CreateDeviceResult {
   /** The rack chains the path had to make first ("c2-c3"), when it made any */
   created?: string;
   params?: ParamResult[];
+  /** What didn't finish after the device landed */
+  detail?: string;
 }
 
 /** A device a path put in place. */

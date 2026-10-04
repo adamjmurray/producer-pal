@@ -145,12 +145,16 @@ with a tool, the tool wins.
   turned down, one the deadline never reached) holds its slot as
   `{path, ok: false, detail}`, and the other paths are still made. A device that
   is in the Set keeps its normal entry (`id`, `path`) when a later step threw (a
-  name Live refused, a browser load's cleanup), plus a `detail` saying why and
-  what landed: `<error>; already changed: device created`. Entries name each
-  device where it sits after the call, since a later insert can push an earlier
-  one down a slot. The `name` list pairs by the path's place, so a skip doesn't
-  slide it. A `preset` file path that several same-named packs (or Places
-  folders with no disk path) could hold is never guessed: that path's entry is
+  name Live refused), plus a `detail` saying why and what landed:
+  `<error>; already changed: device created`. A browser load's temp track that
+  can't be deleted doesn't fail the load: the entry keeps `id` and `path`, plus
+  `the device was created, but the temporary track at <path> couldn't be deleted: <why>`.
+  If the load itself failed, that goes on the end of its error. A track
+  selection that won't go back is not reported. Entries name each device where
+  it sits after the call, since a later insert can push an earlier one down a
+  slot. The `name` list pairs by the path's place, so a skip doesn't slide it. A
+  `preset` file path that several same-named packs (or Places folders with no
+  disk path) could hold is never guessed: that path's entry is
   `{path, ok: false, detail}` naming each candidate by its browser `uri`, and
   says to load the file from a uniquely named folder.
 - **A `preset` name (create-device, update-device) is found wherever it's

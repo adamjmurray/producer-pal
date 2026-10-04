@@ -58,6 +58,10 @@ export function withTempTrackCopy<T>(
 
   const withinTrack = extractPathWithinTrack(sourcePath, what);
 
+  // Copying the host track makes a second Producer Pal device, which would
+  // start up if it lived. It doesn't, only because this call deletes the temp
+  // track synchronously, before that device can start: never await between the
+  // copy and the delete.
   const landing = landTrackCopy(sourceTrackIndex);
   let result: T | undefined;
   let failure: unknown;

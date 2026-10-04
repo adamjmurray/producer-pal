@@ -20,12 +20,13 @@ import {
   type TrackCopyEntry,
 } from "../sources/duplicate-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 
-// Mock getHostTrackIndex
+// The host is elsewhere unless a case says otherwise.
 vi.mock(
   import("#src/tools/shared/arrangement/get-host-track-index.ts"),
   () => ({
-    getHostTrackIndex: vi.fn(() => 0),
+    getHostTrackIndex: vi.fn(() => null),
   }),
 );
 
@@ -183,6 +184,7 @@ describe("duplicate-track", () => {
     });
 
     it("says on the copy's entry when this_device can't be read", () => {
+      vi.mocked(getHostTrackIndex).mockReturnValueOnce(0);
       const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },

@@ -5,7 +5,6 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   appendDetail,
   joinDetails,
@@ -27,7 +26,8 @@ import {
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
 import { configureRouting } from "./duplicate-routing.ts";
-import { landTrackCopy, type LandedTrackCopy } from "./landed-track-copy.ts";
+import { landTrackCopy } from "./landed-track-copy.ts";
+import { removeHostTrackDevice } from "../device/remove-host-track-device.ts";
 
 /** One track copy's entry in the result. */
 export interface TrackCopyEntry {
@@ -37,56 +37,6 @@ export interface TrackCopyEntry {
   color?: string;
   clips: MinimalClipInfo[];
   detail?: string;
-}
-
-/**
- * Remove the Producer Pal device from the copy of its host track. A group's
- * copy holds copies of its members right after it, in the same order, so the
- * host may be one of those.
- * @param trackIndex - The source track
- * @param landing - Where the copy landed
- * @param withoutDevices - Whether devices were excluded
- * @param notes - What the copy's entry should say
- */
-function removeHostTrackDevice(
-  trackIndex: number,
-  landing: LandedTrackCopy,
-  withoutDevices: boolean | undefined,
-  notes: TargetNotes,
-): void {
-  const hostTrackIndex = getHostTrackIndex();
-
-  if (hostTrackIndex == null || withoutDevices === true) {
-    return;
-  }
-
-  const offset = hostTrackIndex - trackIndex;
-
-  if (offset < 0 || offset >= landing.added) {
-    return;
-  }
-
-  try {
-    const thisDevice = LiveAPI.from("this_device");
-    const thisDevicePath = thisDevice.path;
-
-    // Extract device index from path like "live_set tracks 1 devices 0"
-    const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
-
-    if (deviceIndexMatch) {
-      LiveAPI.from(livePath.track(landing.index + offset)).call(
-        "delete_device",
-        Number.parseInt(deviceIndexMatch[1] ?? ""),
-      );
-      noteTarget(notes, "the Producer Pal device was not copied");
-    }
-  } catch {
-    // this_device is unreadable, so nothing was removed either way.
-    noteTarget(
-      notes,
-      "could not check the new track for the Producer Pal device",
-    );
-  }
 }
 
 /**

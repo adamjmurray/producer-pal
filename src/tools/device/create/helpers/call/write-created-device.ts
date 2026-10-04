@@ -55,8 +55,8 @@ async function loadDevice(
 ): Promise<CreateDeviceResult> {
   const { deadline, timeoutMs } = step.call.ctx;
   // Named and given its params as soon as it is moved into place, before the
-  // load cleans up its temp track: a cleanup failure then leaves an entry that
-  // already shows what was asked.
+  // load cleans up its temp track, so the entry already shows what was asked
+  // when the cleanup has something to add.
   const created = await createBrowserDevice(item, plan.device, plan.path, {
     deadline,
     timeoutMs,

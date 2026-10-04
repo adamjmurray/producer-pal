@@ -11,6 +11,7 @@ import {
   type NodeResponse,
   requestNode,
 } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { loopBudgetMs } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -27,7 +28,12 @@ import {
   remoteScriptExpiry,
   remoteScriptWait,
 } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import {
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   REQUEST_OUT_OF_TIME,
   unreachedDetail,
@@ -83,7 +89,7 @@ export type RequestTiming = Pick<
 export interface BrowserLoadOptions extends RequestTiming {
   /**
    * Called once the device is in place, before the temp track is cleaned up.
-   * A throw from it, or from the cleanup, leaves the device in the Set.
+   * A throw from it leaves the device in the Set.
    */
   onPlaced?: (created: CreatedDevice) => void;
 }
@@ -187,21 +193,36 @@ async function loadAndMove(
   // Checked before the track exists, so a doomed load makes nothing.
   loadWait(deviceName, options);
 
-  return await withTempTrack(deviceName, async (track) => {
-    const device = await loadOnto(track, item, deviceName, options);
+  let leftover: string | undefined;
 
-    moveIntoPlace(device, target, deviceName, path);
+  const created = await withTempTrack(
+    deviceName,
+    async (track) => {
+      const device = await loadOnto(track, item, deviceName, options);
 
-    const created: CreatedDevice = {
-      device,
-      entry: createdDeviceEntry(device.id, device, target),
-      written: writtenContainer(target),
-    };
+      moveIntoPlace(device, target, deviceName, path);
 
-    options.onPlaced?.(created);
+      const placed: CreatedDevice = {
+        device,
+        entry: createdDeviceEntry(device.id, device, target),
+        written: writtenContainer(target),
+      };
 
-    return created;
-  });
+      options.onPlaced?.(placed);
+
+      return placed;
+    },
+    (note) => {
+      leftover = note;
+    },
+  );
+
+  // The device is in place, so a temp track that won't go is on its entry.
+  if (leftover != null) {
+    appendDetail(created.entry, `the device was created, but ${leftover}`);
+  }
+
+  return created;
 }
 
 /**
@@ -243,13 +264,22 @@ function outOfTime(timeoutMs: number | undefined): string {
  * delete it and put the track selection back, however `body` ends. MIDI,
  * because Live refuses an instrument on an audio track; effects go on either.
  * The end, so no path the call named shifts.
+ *
+ * A temp track that can't be deleted is left behind, and said so: after `body`
+ * threw, in its error; after it returned, to `leftBehind`, since what `body`
+ * made is already in the Set. A selection that won't go back is dropped: it is
+ * only what the user had highlighted, and the model can't act on it.
  * @param deviceName - The device as the call named it, for the error
  * @param body - Runs while the temp track exists
+ * @param leftBehind - Told when the temp track couldn't be deleted after `body`
+ *   succeeded
  * @returns Whatever body returns
+ * @throws Error when no temp track can be made, or `body` throws
  */
 async function withTempTrack<T>(
   deviceName: string,
   body: (track: LiveAPI) => Promise<T>,
+  leftBehind: (note: string) => void,
 ): Promise<T> {
   const liveSet = LiveAPI.from(livePath.liveSet);
   // The remote script selects the track it loads onto.
@@ -262,23 +292,74 @@ async function withTempTrack<T>(
     throw new Error(`could not load "${deviceName}": Live made no track`);
   }
 
+  let result: T | undefined;
+  let failure: unknown;
+
   try {
-    return await body(track);
-  } finally {
-    // Read now, not at creation: another request may have added or removed a
-    // track while this one waited.
-    const index = track.trackIndex;
+    result = await body(track);
+  } catch (error) {
+    failure = error;
+  }
 
-    if (index != null) {
-      liveSet.call("delete_track", index);
-    }
+  const leftover = deleteTempTrack(liveSet, track);
 
-    if (selectedTrackId !== "0") {
-      LiveAPI.from(livePath.view.song).setProperty(
-        "selected_track",
-        toLiveApiId(selectedTrackId),
-      );
-    }
+  restoreSelection(selectedTrackId);
+
+  if (failure != null) {
+    throw leftover == null && failure instanceof Error
+      ? failure
+      : new Error(joinDetails([errorMessage(failure), leftover]), {
+          cause: failure,
+        });
+  }
+
+  if (leftover != null) {
+    leftBehind(leftover);
+  }
+
+  return result as T;
+}
+
+/**
+ * Delete the temp track.
+ * @param liveSet - The Live Set
+ * @param track - The temp track
+ * @returns What to say when it couldn't be deleted, or undefined when it was
+ */
+function deleteTempTrack(liveSet: LiveAPI, track: LiveAPI): string | undefined {
+  // Read now, not at creation: another request may have added or removed a
+  // track while this one waited.
+  const index = track.trackIndex;
+
+  if (index == null) {
+    return undefined;
+  }
+
+  try {
+    liveSet.call("delete_track", index);
+
+    return undefined;
+  } catch (error) {
+    return `the temporary track at ${formatObjectPath({ kind: "track", trackIndex: index })} couldn't be deleted: ${errorMessage(error)}`;
+  }
+}
+
+/**
+ * Put the track selection back, if it can be.
+ * @param selectedTrackId - The track that was selected, or "0" for none
+ */
+function restoreSelection(selectedTrackId: string): void {
+  if (selectedTrackId === "0") {
+    return;
+  }
+
+  try {
+    LiveAPI.from(livePath.view.song).setProperty(
+      "selected_track",
+      toLiveApiId(selectedTrackId),
+    );
+  } catch {
+    // Only the user's highlight, and nothing the model can do about it.
   }
 }
 
