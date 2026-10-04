@@ -223,10 +223,11 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   because the request ran out of time, every target it never reached keeps a
   skip entry with a `detail` saying so and what to re-run. `readFanOut` checks
   the deadline before each target of a multi-target read. A one-target read, and
-  the inside of one big read (`read-live-set`), are not cut short. A target
-  whose work had begun keeps its normal entry with a `detail` for what did not
-  run. A lookup that runs out of time before anything is written refuses the
-  call.
+  the inside of one big read (`read-live-set`), are not cut short: on a 20-track
+  Set with nested racks, the biggest reads take 1–2 s, far under the deadline. A
+  target whose work had begun keeps its normal entry with a `detail` for what
+  did not run. A lookup that runs out of time before anything is written refuses
+  the call.
 - **"Ignored" is one wording, in a warning and in an entry:**
   `X ignored: reason`. A param the whole call ignored is a warning
   (`takeLane ignored: session clips have no take lanes`). Params one target
