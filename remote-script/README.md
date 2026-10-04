@@ -196,26 +196,32 @@ empty, so write in Session and duplicate to the Arrangement. That copies the
 envelope into the track's automation lane, which stays after the clip is deleted
 but can't be read back.
 
+Only automation on track and device parameters is reachable. Modulation,
+clip-level (Gain...) and MIDI CC envelopes are invisible to every route and
+`/clear` leaves them. An unwarped audio clip can't have envelopes in Live: the
+API still writes one, but it never plays. See
+[dev/live-api/clip-envelopes.md](../dev/live-api/clip-envelopes.md).
+
 Common params: `track` (`t0`, `t1`.. a regular track; return and master tracks
 have no clips), `slot` (0-based Session slot) or `arrangement_index`, and a
 parameter: `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device`
 (`d0`, `d0/c1/d0` into rack chains) plus `parameter` as an exact name or 0-based
 index.
 
-| Route    | Params                                 | Returns                                                                                                                   |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/list`  | clip                                   | every automated parameter on the clip with its event count                                                                |
-| `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range (default: all, even past the clip end): `time`, `value` (raw), `display` (Hz/dB), `display_str` |
-| `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?}]`, raw values                                              |
-| `/clear` | clip, optional parameter               | removes one envelope, or all of them                                                                                      |
+| Route    | Params                                 | Returns                                                                                                                                                  |
+| -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/list`  | clip                                   | every automated parameter on the clip with its event count                                                                                               |
+| `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range (default: all, even past the clip end): `time`, `value` (raw), `display` (Live's units: linear gain for dB, Hz), `display_str` |
+| `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?}]`, raw values                                                                             |
+| `/clear` | clip, optional parameter               | removes one envelope, or all reachable ones                                                                                                              |
 
 Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
-device params are `0..1`); `display` is what Live shows. Each point ramps to the
-next; a point with `jump: true` holds the previous value until its time, then
-jumps (two events at one time, which is how Live stores a step). A quantized
-parameter holds each value until the next anyway. A read returns at most 1000
-events (`limit`, a positive whole number); a write takes at most 1000 points.
-Indexes must be whole numbers >= 0.
+device params are `0..1`); `display_str` is what Live shows. Each point ramps to
+the next; a point with `jump: true` holds the previous value until its time,
+then jumps (two events at one time, which is how Live stores a step). A
+quantized parameter holds each value until the next anyway. A read returns at
+most 1000 events (`limit`, a positive whole number); a write takes at most 1000
+points. Indexes must be whole numbers >= 0.
 
 ## How it works
 

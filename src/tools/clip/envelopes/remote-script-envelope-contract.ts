@@ -108,7 +108,10 @@ export interface EnvelopeReadResult {
   truncated?: boolean;
 }
 
-/** One envelope event: raw `value`, and Live's display scale in `display`. */
+/**
+ * One envelope event: raw `value`, and the event's own value in `display`,
+ * which is Live's units (linear gain for dB, Hz, seconds), not raw.
+ */
 export interface EnvelopeEvent {
   time: number;
   value: number;

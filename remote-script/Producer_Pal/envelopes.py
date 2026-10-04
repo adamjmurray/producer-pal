@@ -9,9 +9,13 @@ Max for Live's LOM can't reach clip envelopes; Live's Python API can, for
 Session clips only. Arrangement clips raise on write and read as empty, so a
 Session clip is the only way in - duplicate it to the Arrangement afterwards.
 
+Only automation on track and device parameters is reachable: modulation,
+clip-level (Gain...) and MIDI CC envelopes are invisible, and
+`clear_all_envelopes` leaves them.
+
 Units: writes, `value_at_time` and `parameter.value` are raw `min..max`;
-`events_in_range` reports the parameter's display scale (Hz, dB). Times are
-beats (quarter notes) from the clip start.
+`events_in_range` values are Live's own units (linear gain for dB, Hz,
+seconds), not raw. Times are beats (quarter notes) from the clip start.
 """
 
 import math

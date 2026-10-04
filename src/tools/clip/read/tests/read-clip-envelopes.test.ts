@@ -34,8 +34,8 @@ type ListedEnvelope = EnvelopeListResult["envelopes"][number];
 
 /** Every read route answers with this unless a test says otherwise. */
 const EVENTS = [
-  { time: 0, value: 0.25, display: -12, display_str: "-12.0 dB" },
-  { time: 2, value: 0.5, display: -6, display_str: "-6.0 dB" },
+  { time: 0, value: 0.25, display: 0.2512, display_str: "-12.0 dB" },
+  { time: 2, value: 0.5, display: 0.5012, display_str: "-6.0 dB" },
 ];
 
 /** The same events, as notation in the clip's 4/4 meter. */
