@@ -13,10 +13,13 @@ should follow from them unambiguously, without being spelled out here.
    warnings report an object's `id`, and its `path` unless the nesting around it
    already gives it. A `path` or `id` a tool returns can be sent straight back
    as input and names the same object. A write to a position past the end of a
-   container creates what's missing when the path alone determines what to
-   create (a scene, a take lane, a rack chain); creation is capped and the
-   result entry reports what was created. When the path leaves a choice open (a
-   track's type), the call refuses and the error names the tool that creates it.
+   container creates what's missing when the path names where something goes and
+   alone determines what to create (a scene, a take lane, a rack chain);
+   creation is capped and the result entry reports what was created. A path
+   naming something to update is refused past the end, and so is a path that
+   leaves a choice open (a track's type); the error names the tool that creates
+   it. Where no other tool creates it (a take lane), the update creates it
+   instead of refusing, capped and reported the same way.
 
 2. Multi-target: Every tool that could possibly operate on multiple objects
    supports it by accepting a comma-separated list of targets (`id`, `path`),
@@ -83,9 +86,11 @@ should follow from them unambiguously, without being spelled out here.
    refused before anything runs), an effect on objects the caller didn't name
    that the tool description doesn't already teach (an insert or delete shifting
    later siblings is taught there once, not warned on every call), and a call
-   that worked but was written a way the tools tolerate without teaching — the
-   result carries the outcome, not the lesson. Anything about a target belongs
-   in that target's result entry, not a warning.
+   that worked but was written in a way worth unlearning (a retired spelling, or
+   an alias for a param that does more) — the result carries the outcome, not
+   the lesson. A spelling as good as the taught one is accepted silently, and
+   the result answers in the taught one. Anything about a target belongs in that
+   target's result entry, not a warning.
 
 7. Destruction: An operation that would destroy something the caller didn't ask
    for and wouldn't expect is skipped, and its entry points to the `force` arg
@@ -107,11 +112,12 @@ should follow from them unambiguously, without being spelled out here.
    result uses the input spelling. A spelling the tools tolerate but don't teach
    is answered with the taught one, so a result never re-teaches a spelling
    being retired. When the call had no path, or one that won't keep referring to
-   the same object or position (a locator), the result uses the spelling that
-   stays valid longest. Where the API reaches one object by more than one route,
-   one is canonical and the rest only resolve on input. Canonical is the route
-   that carries the most context: `pC1/c1` names the pad and the pitch that
-   plays it; a bare `cN` names neither.
+   the same object or position (a locator, a position inside an arrangement
+   clip), the result uses the spelling that stays valid longest. Where the API
+   reaches one object by more than one route, one is canonical and the rest only
+   resolve on input. Canonical is the route that carries the most context:
+   `pC1/c1` names the pad and the pitch that plays it; a bare `cN` names
+   neither.
 
 10. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
     as few tokens as the other principles allow.
