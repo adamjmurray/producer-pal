@@ -88,15 +88,37 @@ uses.
 ## Curves
 
 Each event has `control_coefficients` (`x1, y1, x2, y2`) that shape the segment
-it starts. `0.5, 0.5, 0.5, 0.5` is straight. Curves drawn by hand in Live
-(Option-drag) read back the same way, and `value_at_time` follows them.
+it starts: a cubic bezier in a 0..1 box, x the fraction of the segment's time, y
+the fraction of the way from the start value to the end value (so a falling ramp
+measures progress toward the end value, not height). `0.5, 0.5, 0.5, 0.5` is
+straight. Curves drawn by hand in Live (Option-drag) read back the same way, and
+`value_at_time` follows them. The editor rounds each coefficient to 1/256; a
+write from the remote script is stored as given.
+
+Every curve the editor draws is one amount `t` (0..1) on one side:
+
+- slow start (y below x): P1 = (0.25 + 0.75t, 0.25 - 0.25t), P2 = (0.75 + 0.25t,
+  0.75 - 0.75t)
+- fast start (y above x): P1 = (0.25 - 0.25t, 0.25 + 0.75t), P2 = (0.75 - 0.75t,
+  0.75 + 0.25t)
+
+`t = 1` is `1, 0, 1, 0` (slow) or `0, 1, 0, 1` (fast).
+
+The notation's `~N` is that amount, signed: positive bends above the straight
+line, negative below. Above means a fast start on a rising ramp and a slow start
+on a falling one. `src/notation/barbeat/envelope/envelope-curves.ts` maps both
+ways; the remote script only passes the coefficients through. `~0` and `/` write
+Live's own straight (`0.5` four times), not `t = 0`. A read fits the nearest
+amount in hundredths, so coefficients from another source read as the closest
+curve Live's editor could draw. Every amount in hundredths survives the editor's
+1/256 rounding.
 
 - **Write the last point first.** Live straightens a curve on an event that has
   no later event yet, so writing left to right loses every curve.
 - An event added at a time that already has events goes **after** them. So a
   step (two events at one time, old value then new) must keep its pair in
   forward order even when the rest is written right to left. Reversing the pair
-  flips the jump.
+  flips the jump. The curve for a step's next segment goes on the second event.
 - Re-creating an existing event (same time and value) with a curve is ignored. A
   new value at an existing time adds a step instead of replacing the event.
 - Adding a point inside a curved segment keeps the start event's coefficients,

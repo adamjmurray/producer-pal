@@ -75,7 +75,7 @@ function readLine(line: string): EnvelopeLine {
 
   if (colon < 0) {
     throw new Error(
-      `Invalid envelopes line "${line}": expected "<target>: <notation>", like "472: 1|1 0 ~ 3|1 1"`,
+      `Invalid envelopes line "${line}": expected "<target>: <notation>", like "472: 1|1 0 / 3|1 1"`,
     );
   }
 

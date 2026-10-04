@@ -7,6 +7,7 @@
 // Producer Pal remote script (remote-script/) can reach. Result shapes are the
 // remote script's own JSON, so their fields stay snake_case.
 
+import { type CurveCoefficients } from "#src/notation/barbeat/envelope/envelope-curves.ts";
 import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
 
 // Envelope calls wait as long as a device load does.
@@ -56,6 +57,8 @@ export interface EnvelopeWriteRequest extends EnvelopeRequest {
 /** A point to write: ramps from the previous one unless `jump` holds then jumps. */
 export interface EnvelopeWritePoint extends EnvelopePoint {
   jump?: boolean;
+  /** The curve of the segment this point starts; absent means straight */
+  coefficients?: CurveCoefficients;
 }
 
 /** A time in beats from the clip start, and a raw min..max value. */
@@ -112,6 +115,8 @@ export interface EnvelopeEvent {
   value: number;
   display: number;
   display_str: string;
+  /** The curve of the segment this event starts; absent when straight */
+  coefficients?: CurveCoefficients;
 }
 
 export interface EnvelopeWriteResult {

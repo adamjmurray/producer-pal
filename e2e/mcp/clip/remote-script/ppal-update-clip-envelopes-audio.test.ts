@@ -35,7 +35,7 @@ import {
 const TRACK = `t${String(AUDIO_TRACK)}`;
 const SLOT_PATH = `${TRACK}/s1`;
 
-const NOTATION = "1|1 0.5 ~ 1|3 0.9";
+const NOTATION = "1|1 0.5 / 1|3 0.9";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-update-clip — envelopes on audio clips",
@@ -128,7 +128,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           parameter: expect.any(String),
           id: expect.any(String),
           eventCount: 2,
-          events: expect.stringMatching(/^1\|1 0\.5 .*~ 1\|3 0\.9/),
+          events: expect.stringMatching(/^1\|1 0\.5 .*\/ 1\|3 0\.9/),
           detail:
             "doesn't play: the clip is unwarped. Turn warping on to hear it",
         },

@@ -55,6 +55,16 @@ Mechanics: [clip-envelopes.md](../../live-api/clip-envelopes.md).
 remote script. A line it can't write is a `detail` on that clip's entry
 (`envelope "<target>": <why>`), and the other lines still run.
 
+- **A curve is spelled `~N`.** Points join with `/` (straight), `_` (hold, then
+  jump) or `~N` (curved ramp, N from -1 to 1, no space after the `~`). A bare
+  `~` or an amount outside -1..1 refuses the whole call before anything is
+  written, with an example that works. A read prints `/`, `~N` (hundredths) or
+  `_`; a curve that rounds to 0, or sits on a flat segment, prints `/`.
+
+- **A write that fails partway leaves no half envelope.** The clear and the
+  rewrite are one step: if Live throws while the points go in, the remote script
+  removes what it wrote and the line's `detail` says the envelope was removed.
+
 - **An unwarped audio clip takes no points.** Live keeps its envelopes but never
   plays them, so a line with points is refused:
   `not written: an unwarped audio clip can't play envelopes. Set warping: true on the clip, then write it again`.

@@ -231,6 +231,7 @@ function envelopeEntry(
         time: event.time,
         value: event.value,
         display: event.display_str,
+        coefficients: event.coefficients,
       })),
       { timeSigNumerator: numerator, timeSigDenominator: denominator },
     ),

@@ -28,7 +28,7 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
 }));
 
 /** A ramp and a jump, in the clip's 4/4. */
-const NOTATION = "1|1 0 ~ 3|1 0.8 > 4|1 0.2";
+const NOTATION = "1|1 0 / 3|1 0.8 _ 4|1 0.2";
 
 /** The same points, as the write route takes them. */
 const POINTS = [
@@ -143,6 +143,24 @@ describe("updateClip - envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({ id: "123", envelopes: 1 }),
     );
+  });
+
+  it("sends a curve as coefficients on the point that starts the segment", async () => {
+    await updateClip({
+      id: "123",
+      envelopes: "volume: 1|1 0 ~0.5 2|1 1 ~-1 3|1 0.5",
+    });
+
+    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual({
+      track: "t0",
+      slot: 0,
+      parameter: "volume",
+      points: [
+        { time: 0, value: 0, coefficients: [0.125, 0.625, 0.375, 0.875] },
+        { time: 4, value: 1, coefficients: [0, 1, 0, 1] },
+        { time: 8, value: 0.5 },
+      ],
+    });
   });
 
   it("writes a mixer parameter by name", async () => {
@@ -361,7 +379,7 @@ describe("updateClip - envelopes", () => {
 
     const result = await updateClip({
       id: "123",
-      envelopes: `volume: 1|5 0 ~ 2|1 1\npan: 1|1 0 ~ 2|1 1`,
+      envelopes: `volume: 1|5 0 / 2|1 1\npan: 1|1 0 / 2|1 1`,
     });
 
     expect(requestNode).toHaveBeenCalledTimes(1);

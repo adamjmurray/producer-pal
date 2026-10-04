@@ -40,7 +40,7 @@ const EVENTS = [
 ];
 
 /** The same events, as notation in the clip's 4/4 meter. */
-const EVENTS_NOTATION = "1|1 0.25 (-12.0 dB) ~ 1|3 0.5 (-6.0 dB)";
+const EVENTS_NOTATION = "1|1 0.25 (-12.0 dB) / 1|3 0.5 (-6.0 dB)";
 
 const MIXER_VOLUME: ListedEnvelope = {
   parameter_name: "volume",
@@ -186,6 +186,34 @@ describe("readClip - envelopes", () => {
         device: "t0/d0/c1/d0",
         eventCount: 2,
         events: EVENTS_NOTATION,
+      },
+    ]);
+  });
+
+  it("reads a curve as ~N, and a step as _", async () => {
+    setupClip();
+    answerEnvelopeRoutes([MIXER_VOLUME], {
+      event_count: 4,
+      events: [
+        {
+          time: 0,
+          value: 0,
+          display: 0,
+          display_str: "0",
+          coefficients: [0, 1, 0, 1],
+        },
+        { time: 4, value: 1, display: 1, display_str: "1" },
+        { time: 4, value: 0.5, display: 0.5, display_str: "0.5" },
+        { time: 8, value: 0, display: 0, display_str: "0" },
+      ],
+    });
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 4,
+        events: "1|1 0 ~1 2|1 1 _ 2|1 0.5 / 3|1 0",
       },
     ]);
   });

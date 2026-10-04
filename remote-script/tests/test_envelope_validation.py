@@ -26,6 +26,9 @@ class FakeEvent:
     def __init__(self, time):
         self.time = time
         self.value = 0.5
+        # Straight, except the second event, which is curved.
+        x = 0.25 if time == 1.0 else 0.5
+        self.control_coefficients = types.SimpleNamespace(x1=x, y1=0.5, x2=0.5, y2=0.5)
 
 
 class FakeEnvelope:
@@ -115,6 +118,13 @@ class EnvelopeValidationTest(unittest.TestCase):
         self.assertEqual(call("read", slot="1", limit="2")["truncated"], True)
         out = call("read", arrangement_index=1, device="d0", parameter=1)
         self.assertTrue(out["exists"])
+
+    def test_a_read_returns_coefficients_only_for_a_curved_event(self):
+        events = call("read")["events"]
+        self.assertEqual(
+            [e.get("coefficients") for e in events],
+            [None, [0.25, 0.5, 0.5, 0.5], None],
+        )
 
     def test_negative_or_non_numeric_slot(self):
         for bad in (-1, "-1", "x", "²", 1.5, True, "", None):

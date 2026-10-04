@@ -38,7 +38,7 @@ export interface ClipEnvelopeRead {
   /** Set for a device parameter, e.g. "t3/d3"; absent for a mixer one. */
   device?: string;
   eventCount: number;
-  /** Notation like "1|1 0.4 (display) ~ 2|1 0.85 (display)". */
+  /** Notation like "1|1 0.4 (display) / 2|1 0.85 (display)". */
   events?: string;
 }
 

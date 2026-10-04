@@ -17,6 +17,7 @@ import {
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
+import { envelopeWritePoints } from "./envelope-write-points.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
   envelopeRoute,
@@ -270,11 +271,7 @@ async function writeOneLine(
     ENVELOPE_ROUTES.write,
     {
       ...request,
-      points: points.map((point) => ({
-        time: point.time,
-        value: point.value,
-        ...(point.jump && { jump: true }),
-      })),
+      points: envelopeWritePoints(points),
     },
     deadline,
   );

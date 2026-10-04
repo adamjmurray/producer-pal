@@ -13,6 +13,11 @@ Only automation on track and device parameters is reachable: modulation,
 clip-level (Gain...) and MIDI CC envelopes are invisible, and
 `clear_all_envelopes` leaves them.
 
+Curves: each event carries `control_coefficients` (`x1, y1, x2, y2`), a bezier
+that shapes the segment the event starts. Reads return them as a list when they
+aren't straight (0.5 four times), and writes take the same list on a point. This
+side never interprets them: Node maps them to and from the notation's `~N`.
+
 Units: writes, `value_at_time` and `parameter.value` are raw `min..max`;
 `events_in_range` values are Live's own units (linear gain for dB, Hz,
 seconds), not raw. Times are beats (quarter notes) from the clip start.
@@ -30,6 +35,8 @@ EPSILON = 1e-6
 MAX_TIME = 1e6
 # `automation_state` after the user moves an automated parameter.
 OVERRIDDEN = 2
+# What Live stores on an event for a straight segment.
+STRAIGHT = (0.5, 0.5, 0.5, 0.5)
 
 
 def list_envelopes(bridge, params):
@@ -68,14 +75,16 @@ def read(bridge, params):
         # gives the earlier one, so sample just after it for the later.
         follows_same_time = i > 0 and events[i - 1].time == event.time
         raw = env.value_at_time(event.time + EPSILON if follows_same_time else event.time)
-        out.append(
-            {
-                "time": event.time,
-                "value": raw,
-                "display": event.value,
-                "display_str": param.str_for_value(raw),
-            }
-        )
+        item = {
+            "time": event.time,
+            "value": raw,
+            "display": event.value,
+            "display_str": param.str_for_value(raw),
+        }
+        coefficients = _coefficients(event)
+        if coefficients != STRAIGHT:
+            item["coefficients"] = list(coefficients)
+        out.append(item)
     return {
         "exists": True,
         "parameter": _describe(param),
@@ -89,7 +98,8 @@ def read(bridge, params):
 
 def write(bridge, params):
     """Replace the envelope with `points`: raw values, each ramping to the next
-    unless the next has `jump`, which holds until its time and then jumps."""
+    unless the next has `jump`, which holds until its time and then jumps. A
+    point may carry `coefficients`: the curve of the segment it starts."""
     song = bridge.song
     track = regular_track(song, params.get("track"))
     param = _parameter(track, params)
@@ -105,35 +115,89 @@ def write(bridge, params):
 
     song.begin_undo_step()
     try:
-        if clip.automation_envelope(param) is not None:
-            clip.clear_envelope(param)
-        env = clip.create_automation_envelope(param)
-        _write_events(env, points)
-        # Safe in any state, so always called.
-        param.re_enable_automation()
+        env = _replace_envelope(clip, param, points)
     finally:
         song.end_undo_step()
 
     # Just after each time, so a jump reads its new value.
     result = {
         "parameter": _describe(param),
-        "samples": [{"time": t, "value": env.value_at_time(t + EPSILON)} for t, _, _ in points],
+        "samples": [
+            {"time": t, "value": env.value_at_time(t + EPSILON)} for t, _, _, _ in points
+        ],
     }
     if overridden:
         result["re_enabled"] = True
     return result
 
 
-def _write_events(env, points):
-    """Every point as an event; a jump is two events at the same time."""
-    from Live.Envelope import EnvelopeEvent
+def _replace_envelope(clip, param, points):
+    """Clear the parameter's envelope and write `points`; returns the new one.
 
+    A failure after the clear leaves nothing half written: the new envelope is
+    removed and the error says so.
+    """
+    if clip.automation_envelope(param) is not None:
+        clip.clear_envelope(param)
+    try:
+        env = clip.create_automation_envelope(param)
+        _write_events(env, points)
+        # Safe in any state, so always called.
+        param.re_enable_automation()
+    except Exception as err:
+        try:
+            clip.clear_envelope(param)
+            outcome = "the envelope was removed"
+        except Exception:
+            outcome = "the envelope may be partly written"
+        raise RouteError(
+            500, "writing the envelope failed (%s: %s); %s" % (type(err).__name__, err, outcome)
+        )
+    return env
+
+
+def _write_events(env, points):
+    """Create every event, the last time first.
+
+    Live straightens a curve on an event with no later event yet, so a curve
+    only sticks once the segment's end exists. An event added at a time that
+    already has events goes after them, so each time's events stay in order.
+    """
+    from Live.Envelope import EnvelopeEvent, EnvelopeEventControlCoefficients
+
+    for group in reversed(_events_by_time(points)):
+        for t, v, coefficients in group:
+            if coefficients is None:
+                env.create_event(EnvelopeEvent(t, v))
+            else:
+                env.create_event(
+                    EnvelopeEvent(t, v, EnvelopeEventControlCoefficients(*coefficients))
+                )
+
+
+def _events_by_time(points):
+    """Points as events, grouped by time: a jump is two events at one time.
+
+    An event that repeats the one before it (same time and value) is dropped,
+    as Live would, but keeps its coefficients: they shape the segment after.
+    """
+    groups = []
     prev = None
-    for t, v, jump in points:
+    for t, v, jump, coefficients in points:
+        events = [(t, v, coefficients)]
         if jump and prev is not None:
-            env.create_event(EnvelopeEvent(t, prev))
-        env.create_event(EnvelopeEvent(t, v))
+            events.insert(0, (t, prev, None))
+        for event in events:
+            last = groups[-1][-1] if groups else None
+            if last is not None and last[:2] == event[:2]:
+                if event[2] is not None:
+                    groups[-1][-1] = event
+            elif groups and groups[-1][0][0] == t:
+                groups[-1].append(event)
+            else:
+                groups.append([event])
         prev = v
+    return groups
 
 
 def clear(bridge, params):
@@ -252,10 +316,28 @@ def _describe(p):
     }
 
 
+def _coefficients(event):
+    """An event's curve as (x1, y1, x2, y2)."""
+    c = event.control_coefficients
+    return (c.x1, c.y1, c.x2, c.y2)
+
+
 def _num(v):
     if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
         raise RouteError(400, "expected a finite number, got %r" % (v,))
     return float(v)
+
+
+def _curve(raw):
+    """A point's optional curve: four numbers, each 0..1."""
+    if raw is None:
+        return None
+    if not isinstance(raw, list) or len(raw) != 4:
+        raise RouteError(400, "coefficients must be a list of 4 numbers")
+    values = tuple(_num(v) for v in raw)
+    if not all(0 <= v <= 1 for v in values):
+        raise RouteError(400, "coefficients must each be from 0 to 1")
+    return values
 
 
 def _points(params, param):
@@ -265,12 +347,17 @@ def _points(params, param):
     if not all(isinstance(p, dict) for p in raw):
         raise RouteError(400, "each point must be an object with time and value")
     points = [
-        (_num(p.get("time")), _num(p.get("value")), bool(p.get("jump", False)))
+        (
+            _num(p.get("time")),
+            _num(p.get("value")),
+            bool(p.get("jump", False)),
+            _curve(p.get("coefficients")),
+        )
         for p in raw
     ]
     if points[0][0] < 0 or any(b[0] < a[0] for a, b in zip(points, points[1:])):
         raise RouteError(400, "times must be >= 0 and non-decreasing")
-    for _, v, _ in points:
+    for _, v, _, _ in points:
         if not param.min <= v <= param.max:
             raise RouteError(
                 400, "value %s is outside %s..%s" % (v, param.min, param.max)

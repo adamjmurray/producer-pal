@@ -26,7 +26,7 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   handleNodeResponse: vi.fn(),
 }));
 
-const NOTATION = "1|1 0 ~ 3|1 0.8";
+const NOTATION = "1|1 0 / 3|1 0.8";
 
 /** A parameter on the clip's own track. */
 const FILTER_ID = "472";

@@ -5,13 +5,24 @@
 
 // Clip automation envelopes as one compact string:
 //
-//   1|1 -0.5 > 3|1 0.5 ~ 5|1 0
+//   1|1 -0.5 _ 3|1 0.5 ~0.5 5|1 0 / 7|1 1
 //
-// A point is "bar|beat value", `~` ramps to the next point and `>` holds the
-// previous value until the next point's time and then jumps to it. On read a
-// point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`. Round
-// brackets inside a display are written as square ones, so it stays one group.
+// A point is "bar|beat value". A connector, set off by spaces, says how to get
+// to the next point:
+//
+//   `/`   a straight ramp
+//   `_`   hold the previous value until the next point's time, then jump to it
+//   `~N`  a curved ramp, N from -1 to 1 with no space after the `~`: positive
+//         bends above the straight line, negative below it, ~0 is straight
+//
+// On read a point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`.
+// Round brackets inside a display are written as square ones, so it stays one
+// group. A curve that isn't one Live draws reads as the nearest amount.
 
+import {
+  type CurveCoefficients,
+  coefficientsToCurve,
+} from "#src/notation/barbeat/envelope/envelope-curves.ts";
 import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import {
   abletonBeatsToBarBeat,
@@ -24,6 +35,12 @@ const EPSILON = 1e-9;
 
 /** A point's value: a plain decimal, or an exponent form we still accept. */
 const VALUE = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/;
+
+/** A connector token: a straight ramp, a step, or a curve (its amount checked later). */
+const CONNECTOR = /^(?:\/|_|~.*)$/;
+
+/** A curve token `~N`: a signed decimal, no space after the `~`. */
+const CURVE = /^~([-+]?(?:\d+(?:\.\d*)?|\.\d+))$/;
 
 /** "bar|beat value", with an optional "(display)" a read may have written. */
 const POINT = /^(\S+)\s+([^\s()]+)(?:\s*\(([^()]*)\))?$/;
@@ -42,6 +59,8 @@ export interface EnvelopeNotationEvent {
   value: number;
   /** What Live shows for `value` */
   display?: string;
+  /** The curve of the segment this event starts; absent means straight */
+  coefficients?: CurveCoefficients;
 }
 
 /** One point a notation string spells. */
@@ -51,6 +70,8 @@ export interface EnvelopeNotationPoint {
   value: number;
   /** Hold the previous value until `time`, then jump to `value` */
   jump: boolean;
+  /** The `~N` amount of the ramp that arrives here; absent for a straight one */
+  curve?: number;
 }
 
 /**
@@ -63,10 +84,14 @@ export function formatEnvelopeNotation(
   events: EnvelopeNotationEvent[],
   meter: EnvelopeMeter,
 ): string {
-  return collapseEvents(events)
+  const points = collapseEvents(events);
+
+  return points
     .map(
       (point, index) =>
-        (index === 0 ? "" : point.jump ? "> " : "~ ") +
+        (index === 0
+          ? ""
+          : `${formatConnector(points[index - 1] as FormattedPoint, point)} `) +
         formatPoint(point, meter),
     )
     .join(" ");
@@ -90,13 +115,20 @@ export function parseEnvelopeNotation(
   const points: EnvelopeNotationPoint[] = [];
 
   for (const segment of splitOnConnectors(text)) {
-    const point = parsePoint(segment.text, segment.jump, meter);
+    const connector = readConnector(segment.connector);
+    const point = parsePoint(segment.text, meter);
     const previous = points.at(-1);
 
     checkOrder(points, point, segment.text.trim());
+
+    // Two points at one time are a jump, and a jump has no ramp to curve.
+    const jump =
+      connector.jump || (previous != null && sameTime(previous, point));
+
     points.push({
       ...point,
-      jump: point.jump || (previous != null && sameTime(previous, point)),
+      jump,
+      ...(connector.curve != null && !jump && { curve: connector.curve }),
     });
   }
 
@@ -169,6 +201,36 @@ function groupByTime(
 }
 
 /**
+ * The connector that arrives at a point: a curve only when it draws one.
+ * @param previous - The point the segment starts at
+ * @param point - The point it arrives at
+ * @returns "_", "/" or "~N"
+ */
+function formatConnector(
+  previous: FormattedPoint,
+  point: FormattedPoint,
+): string {
+  if (point.jump) {
+    return "_";
+  }
+
+  // A curve on a flat segment draws nothing.
+  if (
+    previous.coefficients == null ||
+    formatValue(previous.value) === formatValue(point.value)
+  ) {
+    return "/";
+  }
+
+  const amount = coefficientsToCurve(
+    previous.coefficients,
+    point.value > previous.value,
+  );
+
+  return amount === 0 ? "/" : `~${String(amount)}`;
+}
+
+/**
  * Write one point, with Live's display when it says more than the value does.
  * The display is informational, so its parentheses become square brackets.
  * @param point - The point to write
@@ -201,16 +263,48 @@ function formatValue(value: number): string {
   return formatted === "-0" ? "0" : formatted;
 }
 
+/** A segment of the notation: one point, and the connector before it. */
+interface Segment {
+  text: string;
+  /** The connector token that preceded the point; null before the first */
+  connector: string | null;
+}
+
 /**
  * Cut the notation at each connector, keeping which connector preceded each
- * point. Connectors inside a "(display)" are the display's, not ours.
+ * point. A connector is a space-separated `/`, `_` or `~N` token: a `/` inside
+ * a time (`2|1+n/12`) has no spaces around it, and a "(display)" is one token.
  * @param text - The notation
- * @returns One segment per point, `jump` set by a ">" before it
+ * @returns One segment per point
  */
-function splitOnConnectors(text: string): { text: string; jump: boolean }[] {
-  const segments: { text: string; jump: boolean }[] = [];
+function splitOnConnectors(text: string): Segment[] {
+  const segments: Segment[] = [];
+  let words: string[] = [];
+  let connector: string | null = null;
+
+  for (const token of splitOnSpaces(text)) {
+    if (CONNECTOR.test(token)) {
+      segments.push({ text: words.join(" "), connector });
+      words = [];
+      connector = token;
+    } else {
+      words.push(token);
+    }
+  }
+
+  segments.push({ text: words.join(" "), connector });
+
+  return segments;
+}
+
+/**
+ * Split on whitespace, keeping a "(display)" in one piece.
+ * @param text - The notation
+ * @returns The pieces
+ */
+function splitOnSpaces(text: string): string[] {
+  const tokens: string[] = [];
   let current = "";
-  let jump = false;
   let depth = 0;
 
   for (const char of text) {
@@ -220,39 +314,78 @@ function splitOnConnectors(text: string): { text: string; jump: boolean }[] {
       depth -= 1;
     }
 
-    if (depth === 0 && (char === "~" || char === ">")) {
-      segments.push({ text: current, jump });
+    if (depth === 0 && /\s/.test(char)) {
+      if (current !== "") {
+        tokens.push(current);
+      }
+
       current = "";
-      jump = char === ">";
       continue;
     }
 
     current += char;
   }
 
-  segments.push({ text: current, jump });
+  if (current !== "") {
+    tokens.push(current);
+  }
 
-  return segments;
+  return tokens;
+}
+
+/**
+ * Read the connector before a point.
+ * @param token - The connector token, or null before the first point
+ * @returns Whether it jumps, and the curve amount when it has one
+ * @throws If a `~` has no amount, or the amount is outside -1..1
+ */
+function readConnector(token: string | null): {
+  jump: boolean;
+  curve?: number;
+} {
+  if (token == null || token === "/") {
+    return { jump: false };
+  }
+
+  if (token === "_") {
+    return { jump: true };
+  }
+
+  const amount = CURVE.exec(token)?.[1];
+
+  if (amount == null) {
+    throw new Error(
+      `Invalid envelope curve "${token}": write the amount right after the "~", from -1 to 1, like "~0.5" in "1|1 0 ~0.5 2|1 1"`,
+    );
+  }
+
+  const curve = Number(amount);
+
+  if (Math.abs(curve) > 1) {
+    throw new Error(
+      `Invalid envelope curve "${token}": the amount must be from -1 to 1, like "~0.5" in "1|1 0 ~0.5 2|1 1"`,
+    );
+  }
+
+  return curve === 0 ? { jump: false } : { jump: false, curve };
 }
 
 /**
  * Read one "bar|beat value (display)" segment.
  * @param segment - The text between two connectors
- * @param jump - Whether a ">" preceded it
  * @param meter - The clip meter the time is spelled in
  * @returns The point, with its time in Ableton beats
  * @throws If the segment isn't a point, or its value isn't a finite number
  */
 function parsePoint(
   segment: string,
-  jump: boolean,
   meter: EnvelopeMeter,
 ): EnvelopeNotationPoint {
   const token = segment.trim();
 
   if (token === "") {
     throw new Error(
-      `Invalid envelope notation: a "~" or ">" connector needs a point on each side, like "1|1 0 ~ 2|1 1"`,
+      `Invalid envelope notation: a connector ("/", "_" or "~N") needs a point on each side, like "1|1 0 / 2|1 1"`,
     );
   }
 
@@ -290,7 +423,7 @@ function parsePoint(
       meter.timeSigDenominator,
     ),
     value,
-    jump,
+    jump: false,
   };
 }
 

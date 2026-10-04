@@ -20,6 +20,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   type ClipEnvelopeResult,
+  getToolErrorMessage,
   parseToolResult,
   type ReadClipResult,
   setConfig,
@@ -31,15 +32,18 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../../device/helpers/remote-script-test-helpers.ts";
+import { postEnvelopeRoute } from "../helpers/envelope-route-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const TRACK = `t${String(EMPTY_MIDI_TRACK)}`;
 
 /** A jump and a ramp, in raw pan values (-1..1). */
-const NOTATION = "1|1 -0.5 > 2|1 0.5 ~ 3|1 0";
+const NOTATION = "1|1 -0.5 _ 2|1 0.5 / 3|1 0";
 
 const REENABLED_DETAIL =
   'envelope "pan": re-enabled its automation, which was overridden';
+
+type Coefficients = [number, number, number, number];
 
 /** Live's `automation_state` once the user has moved an automated parameter. */
 const OVERRIDDEN = 2;
@@ -118,10 +122,115 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           parameter: expect.any(String) as string,
           // Each point may carry Live's display string, which is not ours either.
           events: expect.stringMatching(
-            /^1\|1 -0\.5.*> 2\|1 0\.5.*~ 3\|1 0/,
+            /^1\|1 -0\.5.*_ 2\|1 0\.5.*\/ 3\|1 0/,
           ) as string,
         }),
       );
+    });
+
+    /**
+     * The curve Live stored on each event of the clip's pan envelope, read
+     * straight from the remote script. A curve Live straightened is absent.
+     * @returns One entry per event: its time, and its coefficients when curved
+     */
+    async function storedCurves(): Promise<
+      { time: number; coefficients?: Coefficients }[]
+    > {
+      const read = await postEnvelopeRoute("read", {
+        track: TRACK,
+        slot: 0,
+        parameter: "pan",
+      });
+
+      return (
+        read.body.events as { time: number; coefficients?: Coefficients }[]
+      ).map(({ time, coefficients }) => ({ time, coefficients }));
+    }
+
+    it.each([
+      [
+        "rising ramp bending above",
+        "-1",
+        "~0.5",
+        "1",
+        [0.125, 0.625, 0.375, 0.875],
+      ],
+      ["rising ramp bending below", "-1", "~-1", "1", [1, 0, 1, 0]],
+      [
+        "falling ramp bending above",
+        "1",
+        "~0.5",
+        "-1",
+        [0.625, 0.125, 0.875, 0.375],
+      ],
+      ["falling ramp bending below", "1", "~-1", "-1", [0, 1, 0, 1]],
+    ])("keeps a curve on a %s", async (_name, from, curve, to, expected) => {
+      const id = await emptyClip();
+
+      await writeEnvelopes(id, `pan: 1|1 ${from} ${curve} 2|1 ${to}`);
+
+      const [envelope] = (await readEnvelopes(id)) as ClipEnvelopeResult[];
+
+      // The same notation back, apart from Live's display beside each value.
+      expect(envelope?.events).toMatch(
+        new RegExp(`^1\\|1 ${from}\\b.* ${curve} 2\\|1 ${to}\\b`),
+      );
+
+      // Live kept the curve, and the end of the segment has none of its own.
+      const [start, end] = await storedCurves();
+
+      expect(start?.coefficients).toBeDefined();
+
+      for (const [i, value] of expected.entries()) {
+        expect(start?.coefficients?.[i]).toBeCloseTo(value, 2);
+      }
+
+      expect(end?.coefficients).toBeUndefined();
+    });
+
+    it("reads ~0 back as a straight ramp, with no curve stored", async () => {
+      const id = await emptyClip();
+
+      await writeEnvelopes(id, "pan: 1|1 -1 ~0 2|1 1");
+
+      const [envelope] = (await readEnvelopes(id)) as ClipEnvelopeResult[];
+
+      expect(envelope?.events).toMatch(/^1\|1 -1\b.* \/ 2\|1 1\b/);
+      expect((await storedCurves())[0]?.coefficients).toBeUndefined();
+    });
+
+    it("keeps a step beside a curve", async () => {
+      const id = await emptyClip();
+
+      await writeEnvelopes(id, "pan: 1|1 -1 _ 2|1 1 ~0.5 3|1 -1");
+
+      const [envelope] = (await readEnvelopes(id)) as ClipEnvelopeResult[];
+
+      expect(envelope?.events).toMatch(
+        /^1\|1 -1\b.* _ 2\|1 1\b.* ~0\.5 3\|1 -1\b/,
+      );
+
+      // The step is two events at beat 4, and the curve sits on the second.
+      const events = await storedCurves();
+
+      expect(events.map((event) => event.time)).toStrictEqual([0, 4, 4, 8]);
+      expect(events[1]?.coefficients).toBeUndefined();
+      expect(events[2]?.coefficients?.[0]).toBeCloseTo(0.625, 2);
+    });
+
+    it("refuses a bare ~ and an amount outside -1..1, and writes nothing", async () => {
+      const id = await emptyClip();
+
+      for (const line of ["pan: 1|1 0 ~ 2|1 1", "pan: 1|1 0 ~2 2|1 1"]) {
+        const result = await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: { id, envelopes: line },
+        });
+
+        expect(getToolErrorMessage(result)).toContain("~0.5");
+      }
+
+      expect(await readEnvelopes(id)).toStrictEqual([]);
     });
 
     it("writes a parameter named by the id a read gave back", async () => {

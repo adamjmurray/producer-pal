@@ -101,7 +101,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           eventCount: POINTS.length,
           // A ramp between the two points, each with Live's own display, which
           // is not ours to predict.
-          events: expect.stringMatching(/^1\|1 0\.5 .*~ 1\|3 0\.9/),
+          events: expect.stringMatching(/^1\|1 0\.5 .*\/ 1\|3 0\.9/),
         },
       ]);
     });
