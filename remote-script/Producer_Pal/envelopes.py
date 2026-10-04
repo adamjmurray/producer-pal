@@ -28,6 +28,8 @@ MAX_EVENTS = 1000
 EPSILON = 1e-6
 # Live keeps events past the clip end, so a read covers them unless told not to.
 MAX_TIME = 1e6
+# `automation_state` after the user moves an automated parameter.
+OVERRIDDEN = 2
 
 
 def list_envelopes(bridge, params):
@@ -96,6 +98,10 @@ def write(bridge, params):
         raise RouteError(409, "parameter is disabled or controlled by a macro")
 
     points = _points(params, param)
+    # Read before the write: re_enable_automation takes effect after it returns,
+    # so a read afterwards still says overridden. A Session clip's override ends
+    # when the clip stops, so an overridden parameter would ignore this write.
+    overridden = int(param.automation_state) == OVERRIDDEN
 
     song.begin_undo_step()
     try:
@@ -103,14 +109,19 @@ def write(bridge, params):
             clip.clear_envelope(param)
         env = clip.create_automation_envelope(param)
         _write_events(env, points)
+        # Safe in any state, so always called.
+        param.re_enable_automation()
     finally:
         song.end_undo_step()
 
     # Just after each time, so a jump reads its new value.
-    return {
+    result = {
         "parameter": _describe(param),
         "samples": [{"time": t, "value": env.value_at_time(t + EPSILON)} for t, _, _ in points],
     }
+    if overridden:
+        result["re_enabled"] = True
+    return result
 
 
 def _write_events(env, points):

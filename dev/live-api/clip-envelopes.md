@@ -49,6 +49,21 @@ are **MIDI or warped audio**.
   to the Arrangement writes the envelope into the track's automation lane, which
   neither API can read.
 
+## Overridden automation
+
+Moving an automated parameter by hand sets its `automation_state` to 2
+(overridden): Live ignores the automation until Re-Enable Automation. A Session
+clip's override ends when the clip stops (state reads 0 and the envelope plays
+again on the next launch).
+
+`/envelope/write` always calls `parameter.re_enable_automation()`, which is safe
+in every state (0, 1, 2). It takes effect after the call returns: the state
+still reads 2 right afterwards and 1 a moment later. So the route answers
+`re_enabled: true` from the state read before the write, never from a re-read,
+and `ppal-update-clip` turns that into a note on the clip's entry. The state
+belongs to the parameter, not the clip, so this also re-enables an overridden
+Arrangement lane on it.
+
 ## Times and values
 
 Times are beats from the clip start, on MIDI and warped audio clips alike.

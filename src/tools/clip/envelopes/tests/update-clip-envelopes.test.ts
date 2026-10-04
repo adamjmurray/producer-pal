@@ -392,6 +392,52 @@ describe("updateClip - envelopes", () => {
     );
   });
 
+  describe("when the write re-enables overridden automation", () => {
+    const REENABLED =
+      'envelope "volume": re-enabled its automation, which was overridden';
+
+    /**
+     * Write volume, which the remote script answers as overridden or not.
+     * @param reEnabled - Whether the route says it re-enabled the parameter
+     * @param notation - The points to write; the default stays inside the clip
+     * @returns The clip's result entry
+     */
+    async function writeVolume(
+      reEnabled: boolean,
+      notation = "1|1 0.5",
+    ): Promise<unknown> {
+      answerRoutes({
+        available: true,
+        result: { samples: [], ...(reEnabled && { re_enabled: true }) },
+      });
+
+      return await updateClip({ id: "123", envelopes: `volume: ${notation}` });
+    }
+
+    it("says so on the entry", async () => {
+      expect(await writeVolume(true)).toStrictEqual(
+        expect.objectContaining({ envelopes: 1, detail: REENABLED }),
+      );
+    });
+
+    it("joins that with a past-the-end note", async () => {
+      setupMidiClipMock(mocks.clip123, { loop_end: 8, end_marker: 8 });
+
+      expect(await writeVolume(true, NOTATION)).toStrictEqual(
+        expect.objectContaining({
+          detail: `${REENABLED}; point 4|1 is past the clip end (3|1), so it never plays`,
+        }),
+      );
+    });
+
+    it("adds no detail when the parameter wasn't overridden", async () => {
+      const result = await writeVolume(false);
+
+      expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+      expect(result).not.toHaveProperty("detail");
+    });
+  });
+
   it("reports a target on another track on the clip's own entry", async () => {
     const result = await updateClip({
       id: "123",

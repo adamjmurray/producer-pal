@@ -23,6 +23,7 @@ import {
   type ClipEnvelopeResult,
   parseToolResult,
   type ReadClipResult,
+  setConfig,
   setupMcpTestContext,
   sleep,
   type UpdateClipResult,
@@ -34,6 +35,12 @@ const TRACK = `t${String(EMPTY_MIDI_TRACK)}`;
 
 /** A jump and a ramp, in raw pan values (-1..1). */
 const NOTATION = "1|1 -0.5 > 2|1 0.5 ~ 3|1 0";
+
+const REENABLED_DETAIL =
+  'envelope "pan": re-enabled its automation, which was overridden';
+
+/** Live's `automation_state` once the user has moved an automated parameter. */
+const OVERRIDDEN = 2;
 
 describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
   "ppal-update-clip — clip automation envelopes",
@@ -175,6 +182,113 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
         expect.objectContaining({ envelopes: 1 }),
       );
       expect(await readEnvelopes(id)).toStrictEqual([]);
+    });
+
+    /**
+     * Run raw Live API operations on an object.
+     * @param id - The object's Live API id
+     * @param operations - The operations to run
+     * @returns One result per operation
+     */
+    async function liveApi(
+      id: string,
+      operations: unknown[],
+    ): Promise<unknown[]> {
+      return parseToolResult<{ results: unknown[] }>(
+        await ctx.client!.callTool({
+          name: "ppal-live-api",
+          arguments: { path: `id ${id}`, operations },
+        }),
+      ).results;
+    }
+
+    /**
+     * Wait for a parameter's `automation_state`, which Live updates a moment
+     * after playback starts, stops or the parameter moves.
+     * @param parameterId - The parameter's Live API id
+     * @param wanted - The state to wait for
+     */
+    async function waitForAutomationState(
+      parameterId: string,
+      wanted: number,
+    ): Promise<void> {
+      let state: unknown;
+
+      for (let attempt = 0; attempt < 20; attempt++) {
+        [state] = await liveApi(parameterId, [
+          { type: "get-property", property: "automation_state" },
+        ]);
+
+        if (state === wanted) {
+          return;
+        }
+
+        await sleep(100);
+      }
+
+      expect(state).toBe(wanted);
+    }
+
+    it("writes no re-enable detail when nothing was overridden", async () => {
+      const id = await emptyClip();
+
+      await writeEnvelopes(id, `pan: ${NOTATION}`);
+
+      const result = await writeEnvelopes(id, "pan: 1|1 0.25");
+
+      expect(result.envelopes).toBe(1);
+      expect(result.detail).toBeUndefined();
+    });
+
+    it("re-enables an overridden parameter and says so", async () => {
+      await setConfig({ liveApiEnabled: true });
+
+      const id = await emptyClip();
+
+      await writeEnvelopes(id, `pan: ${NOTATION}`);
+
+      const parameterId = ((await readEnvelopes(id)) as ClipEnvelopeResult[])[0]
+        ?.id as string;
+
+      expect(parameterId).toBeDefined();
+
+      try {
+        await ctx.client!.callTool({
+          name: "ppal-playback",
+          arguments: { action: "play-session-clips", id },
+        });
+        // Launch quantization can delay the start, so wait for the envelope.
+        await waitForAutomationState(parameterId, 1);
+
+        // Moving the parameter while the clip plays overrides its automation.
+        await liveApi(parameterId, [
+          { type: "set", property: "value", value: 0.3 },
+        ]);
+        await waitForAutomationState(parameterId, OVERRIDDEN);
+
+        expect(await writeEnvelopes(id, "pan: 1|1 0.25")).toStrictEqual(
+          expect.objectContaining({
+            envelopes: 1,
+            detail: REENABLED_DETAIL,
+          }),
+        );
+
+        // Re-enabling takes effect a moment after the write returns.
+        await waitForAutomationState(parameterId, 1);
+      } finally {
+        await ctx.client!.callTool({
+          name: "ppal-playback",
+          arguments: { action: "stop-all-session-clips" },
+        });
+      }
+
+      // Once the clip stops the override is gone, so a write says nothing.
+      await waitForAutomationState(parameterId, 0);
+
+      const plain = await writeEnvelopes(id, "pan: 1|1 -0.25");
+
+      expect(plain.envelopes).toBe(1);
+      expect(plain.detail).toBeUndefined();
     });
   },
 );

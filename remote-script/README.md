@@ -281,6 +281,9 @@ index.
 | `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?}]`, raw values                                                                             |
 | `/clear` | clip, optional parameter               | removes one envelope, or every one it can reach; see below                                                                                               |
 
+`/write` re-enables the parameter's automation, and answers `re_enabled: true`
+when the user had overridden it (`automation_state` 2) before the write.
+
 `/clear` answers `{cleared}` for one parameter: whether it had an envelope. With
 no parameter it answers `{cleared, all: true, remaining}`: `cleared` is whether
 any automation it can see was removed, and `remaining` is whether the clip still

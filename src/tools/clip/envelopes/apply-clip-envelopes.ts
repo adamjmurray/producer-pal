@@ -12,7 +12,10 @@ import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-n
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import {
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
@@ -46,6 +49,9 @@ interface ClipAddress {
 /** Why points aren't written to an unwarped audio clip. */
 const UNWARPED_CLIP_REFUSAL =
   "not written: an unwarped audio clip can't play envelopes. Set warping: true on the clip, then write it again";
+
+/** The user had moved the parameter, which mutes its automation until re-enabled. */
+const REENABLED_NOTE = "re-enabled its automation, which was overridden";
 
 /**
  * Write one clip's automation, reporting what landed on its own entry.
@@ -274,7 +280,13 @@ async function writeOneLine(
   );
 
   return outcome.ok
-    ? { ...outcome, note: pastEndNote(points, address) }
+    ? {
+        ...outcome,
+        note: joinDetails([
+          outcome.result.re_enabled ? REENABLED_NOTE : undefined,
+          pastEndNote(points, address),
+        ]),
+      }
     : outcome;
 }
 

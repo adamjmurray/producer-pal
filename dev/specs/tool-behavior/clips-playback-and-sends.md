@@ -63,6 +63,13 @@ remote script. A line it can't write is a `detail` on that clip's entry
   after the rest of the call, so a call that turns warping on writes and one
   that turns it off refuses.
 
+- **A write re-enables overridden automation.** Moving an automated parameter by
+  hand makes Live ignore its automation until Re-Enable Automation, so the new
+  envelope wouldn't play. Every write re-enables the parameter, and when it had
+  been overridden the clip's `detail` says so:
+  `envelope "<target>": re-enabled its automation, which was overridden`. A
+  parameter that wasn't overridden adds nothing.
+
 `ppal-read-clip` `envelopes` lists each automated parameter. An envelope's
 `detail` is a note about it: why `events` is absent, or, on an unwarped audio
 clip, `doesn't play: the clip is unwarped. Turn warping on to hear it` beside

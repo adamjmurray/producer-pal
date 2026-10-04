@@ -118,6 +118,8 @@ export interface EnvelopeWriteResult {
   parameter: ParameterInfo;
   /** The envelope read back just after each point's time */
   samples: EnvelopePoint[];
+  /** Present when the parameter's automation was overridden and the write re-enabled it */
+  re_enabled?: true;
 }
 
 export interface EnvelopeClearResult {
