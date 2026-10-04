@@ -24,6 +24,10 @@ are **MIDI or warped audio**.
   envelopes. Neither sees modulation, even while Live's editor shows that
   parameter in Modulation mode or after `clip.view.select_envelope_parameter`.
   Nothing in the API picks automation or modulation.
+- Asking `automation_envelope(param)` of every parameter is cheap: 1,170
+  parameters in under 0.1 ms. Matching `clip.automation_envelopes` back to
+  parameters is about 50 times slower, because hashing or comparing a parameter
+  costs more than the call. So the list route asks every parameter.
 - Automation and modulation on the same parameter coexist. Writing automation
   leaves the modulation alone.
 - `has_envelopes` is true for any envelope, reachable or not. So "has envelopes
