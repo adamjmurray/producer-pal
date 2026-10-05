@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type Call,
@@ -15,6 +17,7 @@ import {
   type DeviceCopy,
 } from "../device/device-copy-entry.ts";
 import { focusIfRequested } from "../focus-if-requested.ts";
+import { groupCopyMembersDetail } from "./group-copy-members.ts";
 import {
   settleCopyPaths,
   type CopyEntry,
@@ -30,6 +33,12 @@ import {
 } from "./duplicate-call-types.ts";
 
 type DuplicateDone = Done<CopyPayload, DuplicateCall, object>;
+
+/** A track copy's entry and the id of the track it was copied from. */
+interface TrackCopy {
+  entry: { id: string; detail?: string };
+  sourceId: string;
+}
 
 /**
  * Once every copy has had its turn: name where each copy is now, say what a
@@ -110,27 +119,66 @@ function settleTracks(copies: object[], done: DuplicateDone): void {
   const parsed = done.checked;
 
   settleCopyPaths(withPaths(copies), "track");
+  noteGroupMembers(done);
 
   if (parsed.args.routeToSource === true) {
-    for (const [index, target] of done.targets.entries()) {
-      const entry = done.entries[index] as { id?: string; detail?: string };
-
-      if (
-        done.outcomes[index] === "written" &&
-        target.skip == null &&
-        entry.id != null &&
-        target.data.body.kind === "track"
-      ) {
-        routeTrackCopy(
-          entry,
-          LiveAPI.from(entry.id),
-          LiveAPI.from(target.data.body.sourceId).trackIndex as number,
-        );
-      }
+    for (const { entry, sourceId } of writtenTrackCopies(done)) {
+      routeTrackCopy(
+        entry,
+        LiveAPI.from(entry.id),
+        LiveAPI.from(sourceId).trackIndex as number,
+      );
     }
   }
 
   noteUnhonoredTrackToPath(copies, parsed.args.toPath);
+}
+
+/**
+ * Says on each group copy's entry which tracks came with it. The copies have
+ * settled, so every path listed is where the track is after the call.
+ * @param done - What the call did
+ */
+function noteGroupMembers(done: DuplicateDone): void {
+  // A source is read once, however many copies it made.
+  const groupSources = new Map<string, boolean>();
+
+  for (const { entry, sourceId } of writtenTrackCopies(done)) {
+    if (!groupSources.has(sourceId)) {
+      groupSources.set(sourceId, isGroupTrack(LiveAPI.from(sourceId)));
+    }
+
+    const detail = groupSources.get(sourceId)
+      ? groupCopyMembersDetail(LiveAPI.from(entry.id))
+      : undefined;
+
+    if (detail != null) {
+      appendDetail(entry, detail);
+    }
+  }
+}
+
+/**
+ * The track copies that were made, with the source each was copied from.
+ * @param done - What the call did
+ * @returns Each copy's entry, which has an id, and its source's id
+ */
+function writtenTrackCopies(done: DuplicateDone): TrackCopy[] {
+  return done.targets.flatMap((target, index) => {
+    const entry = done.entries[index] as { id?: string; detail?: string };
+
+    return done.outcomes[index] === "written" &&
+      target.skip == null &&
+      entry.id != null &&
+      target.data.body.kind === "track"
+      ? [
+          {
+            entry: entry as TrackCopy["entry"],
+            sourceId: target.data.body.sourceId,
+          },
+        ]
+      : [];
+  });
 }
 
 /**

@@ -37,6 +37,27 @@ export function tracksInside(group: LiveAPI): LiveAPI[] {
 }
 
 /**
+ * What a group track's entry says about the tracks Live took along with it.
+ * @param verb - What was done to them: "copied" or "deleted"
+ * @param labels - The tracks inside, as `t12 (id 47)`
+ * @returns The detail, or undefined when nothing was inside
+ */
+export function alsoDoneInsideDetail(
+  verb: "copied" | "deleted",
+  labels: string[],
+): string | undefined {
+  if (labels.length === 0) {
+    return undefined;
+  }
+
+  const list = labels.join(", ");
+
+  return labels.length === 1
+    ? `also ${verb} the track inside this group track: ${list}`
+    : `also ${verb} the ${labels.length} tracks inside this group track: ${list}`;
+}
+
+/**
  * The group a track is the only direct member of. Live won't delete such a
  * track by itself.
  * @param track - A regular track

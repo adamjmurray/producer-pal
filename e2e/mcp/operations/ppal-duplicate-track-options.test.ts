@@ -15,6 +15,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  type CreateTrackResult,
   createTestDeviceAt,
   getToolErrorMessage,
   parseToolResult,
@@ -346,5 +347,71 @@ describe("ppal-duplicate from a group track", () => {
     expect(await readDevices("t10")).toStrictEqual([
       expect.objectContaining({ type: "instrument: Operator" }),
     ]);
+  });
+});
+
+describe("ppal-duplicate lists the tracks a group copy took along", () => {
+  /**
+   * What a group copy's entry should say, built from the Set as it is now.
+   * @param copy - The group copy's entry
+   * @returns The detail the entry should carry
+   */
+  async function expectedDetail(copy: DuplicateTrackResult): Promise<string> {
+    const { tracks } = await readTracks();
+    const at = tracks.findIndex((track) => track.id === copy.id);
+    const members = tracks
+      .map((track, index) => ({ track, index }))
+      .filter(({ track }) => track.groupId === copy.id)
+      .map(({ track, index }) => `t${index} (id ${track.id})`);
+
+    expect(at).toBeGreaterThan(-1);
+
+    return members.length === 1
+      ? `also copied the track inside this group track: ${members[0]}`
+      : `also copied the ${members.length} tracks inside this group track: ${members.join(", ")}`;
+  }
+
+  it("names the one track inside a copy of the group", async () => {
+    const parentId = (await readTracks()).tracks[9]!.id;
+    const copy = parseToolResult<DuplicateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "track", id: parentId },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(copy.detail).toBe(await expectedDetail(copy));
+    expect(copy.detail).toContain("also copied the track inside");
+  });
+
+  it("names every track inside each of several copies, where they are after the last", async () => {
+    const parentId = (await readTracks()).tracks[9]!.id;
+
+    // A second member, inside the group right after the group itself.
+    parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "t10", name: "Extra Member" },
+      }),
+    );
+    await sleep(100);
+
+    const copies = parseToolResult<DuplicateTrackResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "track", id: parentId, count: 2 },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(copies).toHaveLength(2);
+
+    for (const copy of copies) {
+      expect(copy.detail).toBe(await expectedDetail(copy));
+      expect(copy.detail).toContain("also copied the 2 tracks inside");
+    }
   });
 });

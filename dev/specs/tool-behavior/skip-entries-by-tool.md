@@ -328,6 +328,10 @@ with a tool, the tool wins.
   names its copy where it is after the call, once the later copies have shifted
   it. A palette color Live snapped to is on the entry (`color` and a `detail`),
   for a track, scene, clip or lane copy.
+- **duplicate: a group track's copy lists the tracks it took along.** Live
+  copies every track inside the group, at any depth, and the group's entry says
+  so by their paths after the call: `detail`:
+  `also copied the 2 tracks inside this group track: t12 (id 47), t13 (id 48)`.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
   hands back why rather than warning it, so the destination's `detail` says what

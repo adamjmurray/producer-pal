@@ -140,7 +140,7 @@ describe("duplicate - the Producer Pal device on a track copy", () => {
       id: "copy-1",
       path: "t2",
       clips: [],
-      detail: NOT_COPIED,
+      detail: `${NOT_COPIED}; also copied the track inside this group track: t3 (id copy-1-m1)`,
     });
     expectOnlyDeleted(
       [

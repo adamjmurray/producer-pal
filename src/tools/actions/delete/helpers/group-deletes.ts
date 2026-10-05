@@ -8,6 +8,7 @@
 // shifts the indexes after it, so afterwards there is no telling what was where.
 
 import {
+  alsoDoneInsideDetail,
   isGroupTrack,
   tracksInside,
 } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
@@ -91,15 +92,10 @@ export function groupDeletes(
  * @returns The detail, or undefined when nothing else went with it
  */
 export function alsoDeletedDetail(inside: InsideTrack[]): string | undefined {
-  const labels = inside.map((track) => track.label).join(", ");
-
-  if (inside.length === 0) {
-    return undefined;
-  }
-
-  return inside.length === 1
-    ? `also deleted the track inside this group track: ${labels}`
-    : `also deleted the ${inside.length} tracks inside this group track: ${labels}`;
+  return alsoDoneInsideDetail(
+    "deleted",
+    inside.map((track) => track.label),
+  );
 }
 
 // What Live deletes along with a group: every track inside it.
