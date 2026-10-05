@@ -12,12 +12,26 @@
  * and so it can report what it sees. Two things it reports rather than hides:
  * a click that keeps failing, and Live running with no windows System Events
  * can see (usually a dialog it cannot reach).
+ *
+ * Live can also lock one System Events process out for good, refusing it
+ * Accessibility although the grant is fine. A fresh System Events is let back
+ * in, so the watcher restarts it once before reporting the refusal.
  */
 
 import { execFile } from "node:child_process";
 
 /** System Events' name for Ableton Live. */
 export const LIVE_PROCESS = "Live";
+
+/** What System Events says when Accessibility is refused. */
+export const ASSISTIVE_ACCESS_DENIED = "not allowed assistive access";
+
+/** Where to fix a refused Accessibility grant. */
+export const ASSISTIVE_ACCESS_FIX =
+  "Grant Accessibility (System Settings → Privacy & Security → " +
+  "Accessibility) to the app running these tests, and to AEServer if it is " +
+  "listed. Toggle an entry that is already on off and back on — the grant " +
+  "goes stale.";
 
 const POLL_INTERVAL_MS = 250;
 const OSASCRIPT_TIMEOUT_MS = 15_000;
@@ -38,6 +52,7 @@ export interface OsascriptResult {
 
 export interface WatcherDeps {
   run: (script: string, signal?: AbortSignal) => Promise<OsascriptResult>;
+  restartSystemEvents: () => Promise<void>;
   now: () => number;
   sleep: (ms: number) => Promise<void>;
 }
@@ -142,8 +157,19 @@ export async function runOsascript(
   });
 }
 
+/**
+ * Quit System Events. The next osascript call relaunches it.
+ */
+async function restartSystemEvents(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    // Fails when it isn't running, which is just as good.
+    execFile("killall", ["System Events"], () => resolve());
+  });
+}
+
 const realDeps: WatcherDeps = {
   run: runOsascript,
+  restartSystemEvents,
   now: () => Date.now(),
   sleep: async (ms) => await new Promise((resolve) => setTimeout(resolve, ms)),
 };
@@ -160,6 +186,8 @@ export function createDialogWatcher(
   let emptySince: number | null = null;
   let failingTicks = 0;
   let lastFailure = "";
+  let accessDenied = false;
+  let restarted = false;
 
   const tick = async (signal?: AbortSignal): Promise<void> => {
     const { output, error } = await deps.run(DIALOG_SCRIPT, signal);
@@ -169,11 +197,23 @@ export function createDialogWatcher(
     }
 
     if (error != null) {
+      accessDenied = error.includes(ASSISTIVE_ACCESS_DENIED);
+
+      if (accessDenied && !restarted) {
+        restarted = true;
+        await deps.restartSystemEvents();
+
+        return;
+      }
+
       failingTicks++;
       lastFailure = `osascript failed: ${error}`;
 
       return;
     }
+
+    accessDenied = false;
+    restarted = false;
 
     const [first, ...rest] = (output ?? "").split("\n");
     const failed = rest.find((line) => line.startsWith("failed "));
@@ -189,6 +229,14 @@ export function createDialogWatcher(
   };
 
   const assertClean = (): void => {
+    if (failingTicks >= FAILING_TICKS_LIMIT && accessDenied) {
+      throw new Error(
+        "macOS refused System Events access to Live, even after restarting " +
+          "System Events, so dialogs can't be found or clicked. " +
+          `${ASSISTIVE_ACCESS_FIX} (${lastFailure})`,
+      );
+    }
+
     if (failingTicks >= FAILING_TICKS_LIMIT) {
       throw new Error(
         `Could not clear a dialog in Live (${lastFailure}). ` +

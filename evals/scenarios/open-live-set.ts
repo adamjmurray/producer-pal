@@ -37,6 +37,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
 import {
+  ASSISTIVE_ACCESS_DENIED,
+  ASSISTIVE_ACCESS_FIX,
   LIVE_PROCESS,
   runOsascript,
   startDialogWatcher,
@@ -58,8 +60,6 @@ const SERVER_STOP_TIMEOUT_MS = 20000;
 const SERVER_START_TIMEOUT_MS = 45000;
 // Live shows this instead of opening a Set that a newer version saved.
 const UNSUPPORTED_VERSION_TEXT = "newer version of Live";
-// What System Events says when the Accessibility grant is missing or stale.
-const ASSISTIVE_ACCESS_DENIED = "not allowed assistive access";
 
 /**
  * Opens an Ableton Live project, clearing any dialogs in the way.
@@ -121,10 +121,8 @@ async function assertAssistiveAccess(): Promise<void> {
   if (error?.includes(ASSISTIVE_ACCESS_DENIED)) {
     throw new Error(
       "AppleScript is not allowed assistive access, so the dialogs that block " +
-        "a Set swap cannot be clicked. Grant Accessibility (System Settings → " +
-        "Privacy & Security → Accessibility) to the app running these tests, " +
-        "and to AEServer if it is listed. Toggle an entry that is already on " +
-        `off and back on — the grant goes stale. osascript said: ${error}`,
+        `a Set swap cannot be clicked. ${ASSISTIVE_ACCESS_FIX} ` +
+        `osascript said: ${error}`,
     );
   }
 }

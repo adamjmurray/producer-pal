@@ -27,6 +27,7 @@ const fail = (error: string): OsascriptResult => ({ output: null, error });
 function setup(results: OsascriptResult[]) {
   let clock = 0;
   let calls = 0;
+  let restarts = 0;
   const deps: WatcherDeps = {
     run: async () => {
       const result = results[Math.min(calls, results.length - 1)];
@@ -34,6 +35,10 @@ function setup(results: OsascriptResult[]) {
       calls++;
 
       return await Promise.resolve(result as OsascriptResult);
+    },
+    restartSystemEvents: async () => {
+      restarts++;
+      await Promise.resolve();
     },
     now: () => clock,
     sleep: async () => await new Promise((resolve) => setImmediate(resolve)),
@@ -46,6 +51,7 @@ function setup(results: OsascriptResult[]) {
       clock += ms;
     },
     calls: () => calls,
+    restarts: () => restarts,
   };
 }
 
@@ -161,6 +167,45 @@ describe("dialog watcher: dismissing fails", () => {
     }
 
     expect(() => watcher.assertClean()).not.toThrow();
+  });
+});
+
+describe("dialog watcher: Accessibility refused", () => {
+  const denied = fail(
+    "System Events got an error: osascript is not allowed assistive access. (-25211)",
+  );
+
+  it("restarts System Events once and carries on when that fixes it", async () => {
+    const { watcher, restarts } = setup([denied, ok("windows 1\n")]);
+
+    await watcher.tick();
+    await watcher.tick();
+
+    expect(restarts()).toBe(1);
+    expect(() => watcher.assertClean()).not.toThrow();
+  });
+
+  it("names the permission when a restart does not fix it", async () => {
+    const { watcher, restarts } = setup([denied]);
+
+    for (let i = 0; i < 4; i++) {
+      await watcher.tick();
+    }
+
+    expect(restarts()).toBe(1);
+    expect(() => watcher.assertClean()).toThrow(
+      /refused System Events access to Live.*Privacy & Security/,
+    );
+  });
+
+  it("restarts again for a refusal after a tick that worked", async () => {
+    const { watcher, restarts } = setup([denied, ok("windows 1\n"), denied]);
+
+    for (let i = 0; i < 3; i++) {
+      await watcher.tick();
+    }
+
+    expect(restarts()).toBe(2);
   });
 });
 
