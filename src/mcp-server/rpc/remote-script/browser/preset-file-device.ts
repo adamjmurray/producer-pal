@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Telling which device a preset file is for, by reading it. A preset is
 // gzipped XML: an .adv's root element is its device's class, and an .adg's is

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A log of which tools ran through the pipeline, for the meta test that holds
 // every write tool to it. Off outside tests, so production keeps nothing.

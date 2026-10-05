@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Checks a whole ppal-live-api call before any of it runs. The operations
 // write to Live and can't be taken back, so a malformed one late in the list

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Ask a remote-script route about many devices at once: a chunk of devices per
 // call, one answer per device, and no throw. Shared by the reads that add

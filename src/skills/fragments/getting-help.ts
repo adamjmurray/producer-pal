@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The one fragment that maps to NO tool: it is about what to tell a person when
 // a tool won't do. Audience, not subject, is what carves it out — it must never

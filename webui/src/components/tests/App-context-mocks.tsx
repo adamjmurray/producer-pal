@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared payloads for the App tests' context-dependency mocks. Any test that
 // renders the real <App> MUST mock these two: App mounts ContextTabs, whose

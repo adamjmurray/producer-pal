@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Track 0 with arrangement clips at chosen spans, answering a duplicate or a new
 // clip the way Live does for one it can place: it clears the clips it covers

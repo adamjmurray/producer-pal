@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `device` replaced `deviceName`. The old name still works so a caller
 // mid-migration keeps creating devices, and the warning tells it the new one.

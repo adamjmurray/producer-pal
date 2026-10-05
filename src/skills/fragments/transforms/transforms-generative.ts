@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Tier 3 of the three transforms fragments: operations that invent material —
 // note-count ops that change how many notes exist, and waveforms that modulate a

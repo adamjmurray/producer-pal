@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Which targets a request may resolve once and reuse, and — mostly — which it
 // may not. See live-api-build.ts for why the safe list is this short.

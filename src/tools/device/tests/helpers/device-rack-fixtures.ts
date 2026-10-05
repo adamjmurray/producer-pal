@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Rack and drum-kit mock layouts shared by the device build-budget tests.
 // Each tool's test still owns its counts and assertions; only the fixture is

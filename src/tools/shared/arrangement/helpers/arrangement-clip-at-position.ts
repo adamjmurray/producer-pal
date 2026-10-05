@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Finding the clip a complete arrangement path names. `t0[5|1]` means the clip
 // COVERING 5|1 on that lane, so dragging a clip in Live doesn't strand a path

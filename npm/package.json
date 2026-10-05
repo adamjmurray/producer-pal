@@ -21,7 +21,7 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/adamjmurray/producer-pal"

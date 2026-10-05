@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 """Finding the clip a route names: `track` ("t0"), then `slot` (Session) or
 `arrangement_index`. Return and master tracks have no clips, so they're refused."""

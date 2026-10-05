@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Reading path params, and narrowing a parsed path to what a caller can act on.
 // A path parses the same everywhere; what a tool accepts differs by what can

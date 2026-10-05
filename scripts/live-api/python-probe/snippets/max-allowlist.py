@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # What Max's LiveAPI may reach on each Live class, read from the allowlist in
 # Live's own _MxDCore package. Max refuses any member of a Live object that

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Types for the specialized-device interface layer. Devices with a specialized
 // Live API class (Roar, Drift, Wavetable, Compressor, ...) expose state that

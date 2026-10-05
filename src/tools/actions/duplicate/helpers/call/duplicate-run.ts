@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What one duplicate call keeps between its copies. Each LiveAPI is looked up
 // once and shared, which is what keeps a long fan-out from rebuilding the

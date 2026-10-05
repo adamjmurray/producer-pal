@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Live chat-UI end-to-end suite: drives the REAL Producer Pal device + a real
 // LLM (needs Ableton running and API keys in .env). NOT run in CI. The stubbed,

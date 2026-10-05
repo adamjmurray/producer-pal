@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Lookup table from Ableton Live clip gain (528 samples; count locked by
 // gain-conversion.test.ts so this comment can't silently drift again).

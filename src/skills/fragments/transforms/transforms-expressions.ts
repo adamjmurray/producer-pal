@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Tier 2 of the three transforms fragments: expressions that read the note's
 // current state and run it through a function. `swing()` / `quant()` live here

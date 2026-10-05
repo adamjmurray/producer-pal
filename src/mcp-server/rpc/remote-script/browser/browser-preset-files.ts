@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Finding a preset by name in Live's library database, for presets Live's
 // device browser doesn't list (a pack's drum kits, racks under Sounds, user

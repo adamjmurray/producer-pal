@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Turns a segment that names a device by type (`inst`, `mfx0`, `afx1`) into the
 // `d<n>` it resolves to, so everything that walks a device path only ever sees

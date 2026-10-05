@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Drives the real portal binary: spawns `npm/producer-pal-portal.js` and speaks
 // MCP to it over stdio, the way Claude Desktop does. Nothing is mocked on the

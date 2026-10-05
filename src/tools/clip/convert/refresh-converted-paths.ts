@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A conversion adds a track, which shifts the paths of every track after it, so
 // a path an entry got earlier in the call can be stale by the end. Ids don't

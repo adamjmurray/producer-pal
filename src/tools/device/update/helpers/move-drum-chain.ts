@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Moving a drum chain onto another pad. Live has no move for this — a pad is
 // just an in_note, so the "move" is a re-map — which is why it resolves the

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Audio helpers build a scratch clip in a session slot. When the last scene
 // holds clips they make a scene for it, and it must not outlive the helper.

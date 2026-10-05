@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Taylor Haun, Adam Murray
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";

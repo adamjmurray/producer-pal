@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { publishedType } from "#src/tools/shared/validation/id-validation.ts";

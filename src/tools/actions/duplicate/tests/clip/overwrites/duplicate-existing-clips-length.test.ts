@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A copy given an arrangementLength is written in two steps: Live's duplicate,
 // then update-clip growing it. The copy's entry says what the whole copy did to

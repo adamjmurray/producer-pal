@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Live has no chain delete, so a drum chain is removed by parking it on an
 // unused pad and clearing that pad. These cover the borrow and everything it

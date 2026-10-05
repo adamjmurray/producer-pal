@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";

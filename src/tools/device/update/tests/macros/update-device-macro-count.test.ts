@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Lowering a rack's macro count hides macros and keeps their mappings. The
 // entry names the mapped macros it hid when the remote script can say which.

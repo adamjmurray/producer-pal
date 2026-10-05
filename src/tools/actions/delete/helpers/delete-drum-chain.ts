@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Removing one chain from a drum rack. Live exposes no chain delete, so this
 // borrows a pad's: park the chain on a pad nothing else uses, then clear that

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { unitForLabels } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import { type ParamNumericRange } from "#src/tools/shared/device/helpers/param-numeric-range.ts";

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The server's tool catalog, grouped. One table behind the chat UI's Tools tab
 // and the portal's `--tools` / `--disable-tools` flags, so the two can't drift.

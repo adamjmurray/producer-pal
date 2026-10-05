@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Making the empty clip at a destination, the one step that puts something new
 // in the Set. What it did to the Set is said as it happens (`step.landed`), so a

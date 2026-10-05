@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The pieces of a split: how many a cut leaves, and finding them afterwards.
 // Kept apart from the splitting itself (arrangement-splitting.ts), which only

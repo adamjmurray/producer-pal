@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The example Live Set every doc example is read from: three tracks (a drum
 // kit, a bass, a muted vocal), one return, two scenes, and two locators. Small

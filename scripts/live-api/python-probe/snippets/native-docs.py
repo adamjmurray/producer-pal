@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # The docstring of every class member and module function in the `Live`
 # module, plus the native modules only control surfaces use. Most include the

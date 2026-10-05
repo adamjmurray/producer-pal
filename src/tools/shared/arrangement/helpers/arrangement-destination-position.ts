@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Rewriting the `loc:` inside a destination coordinate as the bar|beat it
 // names, so nothing downstream needs a Live Set of its own. One position at a

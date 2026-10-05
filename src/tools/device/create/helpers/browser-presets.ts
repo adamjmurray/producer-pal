@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Presets (.adv, and .adg racks) from Live's browser. The Live API can't load
 // one, so the Producer Pal remote script does: onto a temp track for

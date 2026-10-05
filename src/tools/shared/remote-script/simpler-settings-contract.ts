@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What V8 and Node share about a Simpler's pitch bend ranges, which only the
 // Producer Pal remote script (remote-script/) can reach. Results are the remote

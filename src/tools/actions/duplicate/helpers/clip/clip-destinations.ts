@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Where a clip duplicate goes. `toPath` names it — `t7[5|1]` for a spot on
 // that track's arrangement, `t7/s2` for a clip slot — and the deprecated

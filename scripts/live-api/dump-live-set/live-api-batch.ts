@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Packs many objects into one ppal-live-api call. `set-path` is an operation
 // like any other, so a single request can retarget the tool's LiveAPI object

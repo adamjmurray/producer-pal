@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Finding the preset a `preset` arg refers to. Live's browser files every
 // device preset (.adv, and .adg racks built around a device) under that device,

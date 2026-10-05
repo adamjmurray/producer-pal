@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
 import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";

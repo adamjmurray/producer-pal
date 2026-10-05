@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Plug-ins and Max for Live devices. The Live API can't insert either, so the
 // Producer Pal remote script loads each one from Live's browser onto a temp

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Parity between the Stark grammar's drum-header pitch name and the regex that
 // takes it apart. The same shape is spelled twice, in two languages:

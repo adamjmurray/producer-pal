@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A copy's entry carries the span it landed at, keyed by the entry object. A
 // spread or Object.assign builds a new object without it, and that copy is

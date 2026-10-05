@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Every class in the `Live` module with its members, every enum with its
 # values, and every module-level function. Classes are keyed "Module.Class"

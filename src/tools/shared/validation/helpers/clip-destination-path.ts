@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Where a clip lands. An arrangement address has two halves, the lane and the
 // time, and a destination may name either or both: `t0[5|1]` is both, `t0`

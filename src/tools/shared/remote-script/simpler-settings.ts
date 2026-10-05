@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A Simpler's pitch bend ranges. Max's Live API doesn't have them; the Producer
 // Pal remote script reads and writes them through Live's Python API.

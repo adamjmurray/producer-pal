@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A Simpler's pitch bend ranges, listed among its params. Only the Producer Pal
 // remote script can read them; without it the Simpler reads as it always did.

@@ -59,9 +59,9 @@ source and other technical details are in [DEVELOPERS.md](./DEVELOPERS.md).
 ## Open Source
 
 Producer Pal is open source software licensed under the
-[GNU General Public License (GPL-3.0)](./LICENSE). This means:
+[MIT License](./LICENSE). This means:
 
 - Free to use (no subscriptions, paywalls, or "premium" features)
 - Source code is public and development happens on GitHub
-- Forks and modifications are allowed under GPL
-- Redistributed versions (modified or not) must remain open source
+- You can fork, modify, and redistribute it, including in commercial projects,
+  as long as you keep the license notice

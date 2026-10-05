@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Which port the remote script is on. Another Live's script may hold 3349 and
 // ours sit on a later port, so 3349 wins whenever it answers as the script, or

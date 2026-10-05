@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The comment-slop ratchet: the caps that src/test/comment-limits.test.ts
 // enforces and `npm run comment:stats` prints beside the current numbers.

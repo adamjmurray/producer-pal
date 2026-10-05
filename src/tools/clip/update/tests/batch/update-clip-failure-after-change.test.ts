@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Live can throw partway through a clip's update. What already landed stays, so
 // the clip keeps its normal entry — naming what exists now — with a detail for

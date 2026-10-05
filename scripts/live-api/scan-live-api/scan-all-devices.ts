@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Comprehensive per-device scan. Iterates EVERY device on EVERY track in the
 // current Live Set, recording each device's type name, class_name,

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A resize that stays in place counts as written ground: a clip it covers is
 // replaced by it, and a throw after it keeps the entry with what landed. One

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // V8-side driver for the on-disk project-context backup. The Live Set's
 // file_path isn't observable, so instead of reacting to a save we pull it on

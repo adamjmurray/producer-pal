@@ -47,8 +47,8 @@ features:
   - title: Open Source & Free Forever
     details: >
       Built on shared knowledge, shared back to all of us. No subscriptions, no
-      paywalls, no premium tiers. GPL-3.0 licensed and developed completely in
-      the open.
+      paywalls, no premium tiers. MIT licensed and developed completely in the
+      open.
     link: https://github.com/adamjmurray/producer-pal
     linkText: View on GitHub
 ---
@@ -223,8 +223,8 @@ request (scripts, coding agents, your own tools) can read and edit a Live Set
 with no AI involved. There's also a portable [Agent Skill](/guide/skills) for
 Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime.
 
-Producer Pal is free, open-source (GPL-3.0), and developed in the open, with
-updates for new Ableton Live features.
+Producer Pal is free, open-source (MIT), and developed in the open, with updates
+for new Ableton Live features.
 
 ## Support
 

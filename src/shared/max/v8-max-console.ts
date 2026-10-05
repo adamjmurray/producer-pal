@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
 // Note: this is for Max v8 runtime only, meaning is can be used with src/live-api-adapter and src/tools code.

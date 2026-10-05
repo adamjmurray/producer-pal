@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2025 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Stark notation interpreter: converts a Stark expression into MIDI note events.

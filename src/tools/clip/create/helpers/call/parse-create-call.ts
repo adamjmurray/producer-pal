@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Stage 1: read the call once and refuse what can't be made, before Live is
 // touched. Everything per clip that can be worked out from the args alone (the

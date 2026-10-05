@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Sets up a Live Set with every built-in instrument, MIDI effect, and audio
 // effect. Each instrument gets its own MIDI track. MIDI effects go on the

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Writing the `envelopes` param, one round trip to the remote script per line.
 // Runs last in a clip's update, on the clip the rest of it settled on: a move

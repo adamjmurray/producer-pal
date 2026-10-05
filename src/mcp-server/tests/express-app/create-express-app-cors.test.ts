@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Eike Haß, Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRIEFING_REQUEST_HEADER } from "#src/shared/config.ts";

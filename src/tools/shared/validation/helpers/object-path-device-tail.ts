@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The device-chain half of the path grammar: everything after a track root
 // that isn't one of the track's own children. See dev/specs/tool-behavior/object-paths/README.md.

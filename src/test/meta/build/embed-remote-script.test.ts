@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The release bundle embeds the remote script with the build plugin's reader,
 // while tests and the dev installer use readRemoteScriptSource. Both must ship

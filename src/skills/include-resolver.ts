@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Resolves the `@include "./name.md"` directives that compose the Producer Pal
 // Skills out of small fragments. A driver fragment (standard / basic) pulls in a

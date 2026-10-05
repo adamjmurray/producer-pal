@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A bad arrangementLength, or a per-copy list that doesn't match the copies,
 // refuses the whole call before any copy or take lane is made. Only clip and

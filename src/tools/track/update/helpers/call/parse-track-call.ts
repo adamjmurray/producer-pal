@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";

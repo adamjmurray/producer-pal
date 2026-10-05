@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A source that names nothing, or the wrong kind of thing, keeps the place of
 // every copy it was to make, as a skip, and the other sources still copy.

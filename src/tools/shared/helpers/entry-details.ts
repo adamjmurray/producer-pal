@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A nested entry (a param, send or action) a later one overrides is marked with
 // a hidden symbol, so "did anything land" reads the mark and never the detail's

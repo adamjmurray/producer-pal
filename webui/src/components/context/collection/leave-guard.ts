@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A tiny navigation guard so a deep editor can veto a navigation that would
 // silently abandon an unsaved draft. The memory editor registers a check while

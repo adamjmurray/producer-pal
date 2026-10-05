@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 """Make a new track from an audio clip: what Live's "Convert ... to New MIDI
 Track" menu and Push's Convert button do. Max for Live can't reach `Live.Conversions`.

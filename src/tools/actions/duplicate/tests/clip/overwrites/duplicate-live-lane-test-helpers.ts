@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // An arrangement lane that overwrites the way Live does, for the tests of what
 // a copy says it overwrote. A write over [start, end) never touches a clip it

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST transport for the ~/.producer-pal doc collections (memory, custom
 // skills): the list GET, per-entry PUT/rename/DELETE, and the shared write-error

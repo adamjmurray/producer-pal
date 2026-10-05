@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Copies of different lengths, where a later copy lands inside an earlier one
 // and splits it. The tail it leaves belongs to the copy it split, never to a

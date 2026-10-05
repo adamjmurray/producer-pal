@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A target's write can answer with more than one entry: a clip cut in two comes
 // back as both halves. The first is the target's own; the rest ride behind it.

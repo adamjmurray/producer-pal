@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Re-creating clips on a take lane, or on a track's main lane: one clip, and a
 // whole destination of them. A failure keeps its place in the result.

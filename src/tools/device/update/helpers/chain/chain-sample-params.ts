@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What a `sample` entry in `params` means when the call didn't address the rack
 // and spell the pad in the param name. Both spellings below reach the same pad

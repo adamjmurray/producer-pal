@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A real pad copy, via the rack's own copy_pad. Everything that makes a pad
 // sound the way it does lives on its chain — trim, sends, choke group, devices —

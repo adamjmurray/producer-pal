@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Which of a rack's macros are mapped. Max's Live API only says whether the rack
 // has any mapping; the Producer Pal remote script can say which.

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The inserts of one create call, kept true while they run. The plan assumes
 // every insert lands, and a failed one moves the ones after it, so the rest are

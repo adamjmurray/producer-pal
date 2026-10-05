@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Copying a chain writes the source's fader onto the copy, then carries its
 // devices across from a temp track. Nothing below duplicate() is mocked here,

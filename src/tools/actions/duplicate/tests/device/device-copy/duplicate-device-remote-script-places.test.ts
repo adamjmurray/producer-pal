@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Where a device copy made by the remote script can come from and go: return
 // and main tracks, drum chains (where `c0` and `pC1` name one chain), and

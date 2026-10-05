@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Tier 1 of the transforms fragments, plus two things that hang off it: the
 // update-clip-only params (`transformsEditing`) and the small-model tier's whole

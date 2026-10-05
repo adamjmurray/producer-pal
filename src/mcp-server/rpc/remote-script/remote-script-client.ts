@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // HTTP to the Producer Pal remote script (remote-script/), which runs inside
 // Live. node:http with no keep-alive agent: Node's default fetch dispatcher can

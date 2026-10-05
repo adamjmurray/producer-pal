@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Where new clips go. `path` names it in the grammar duplicate and update-clip
 // already speak — `t0/s1` for a clip slot, `t0[5|1]` for a spot on that track's

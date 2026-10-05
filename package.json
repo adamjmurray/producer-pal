@@ -14,7 +14,7 @@
     "#evals/*": "./evals/*"
   },
   "author": "Adam Murray",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "engines": {
     "node": ">=24"
   },

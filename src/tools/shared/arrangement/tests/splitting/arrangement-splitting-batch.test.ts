@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The batch loop itself: every call site in src/ passes one clip, so nothing
 // else here proves that a second one is split, skipped on the deadline, or

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The shared "loadable markdown collection" store: a dynamic set of frontmatter'd
 // entries under ~/.producer-pal/<subdir>/<slug>.md plus a DERIVED index the

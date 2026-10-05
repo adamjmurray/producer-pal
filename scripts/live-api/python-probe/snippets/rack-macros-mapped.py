@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Every rack in the Set, with which of its macros are mapped (macros_mapped,
 # which Max's LiveAPI can't read). Run with run-probe.ts.

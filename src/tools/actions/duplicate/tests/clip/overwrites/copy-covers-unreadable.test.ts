@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What a copy goes over is read before any copy lands. A copy whose stretch
 // can't be read or measured covers nothing in that plan: the call still runs,

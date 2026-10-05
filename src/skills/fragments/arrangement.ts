@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What an arrangement position MEANS, whichever direction it travels. Gated by
 // every clip tool that reports or sets one — read-clip included, because its

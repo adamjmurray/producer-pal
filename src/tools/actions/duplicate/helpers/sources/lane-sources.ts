@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What a take-lane copy reads from: a track's main lane, or a take lane of its
 // own. Only a lane copy takes a lane source, so `t2/l0` names the lane here and

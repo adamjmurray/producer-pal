@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // At-rest encryption for provider API keys stored in localStorage. Keys are
 // encrypted with a non-extractable AES-GCM CryptoKey persisted in IndexedDB, so

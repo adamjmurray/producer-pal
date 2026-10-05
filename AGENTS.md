@@ -77,7 +77,7 @@ UI.
   // Producer Pal
   // Copyright (C) <year> <author>
   // AI assistance: <AI tool> (<company>)
-  // SPDX-License-Identifier: GPL-3.0-or-later
+  // SPDX-License-Identifier: MIT
   ```
 
   Editing an existing file: **append** yourself to the end of the `Copyright`

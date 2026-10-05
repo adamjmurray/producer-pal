@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A Simpler's `pitchBendRange` and `notePitchBendRange` are `params` entries
 // written through the remote script. Each entry comes back like any other

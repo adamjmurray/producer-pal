@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Which tools each skills fragment teaches. Disabling a tool used to leave its
 // guidance in the blob — a user who turned ppal-library off still paid ~750

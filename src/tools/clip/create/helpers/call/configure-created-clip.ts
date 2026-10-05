@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Everything a new clip is given after Live has made it empty. Each write that
 // lands is said as it does (`step.landed`), so a step that throws leaves an

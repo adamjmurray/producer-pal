@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared vi.mock setup for the VoiceApp tests. Import this file at the top of
 // each test file; the mock bag itself lives in voice-app-test-helpers.

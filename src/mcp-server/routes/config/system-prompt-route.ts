@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints for the user's custom system prompt (~/.producer-pal/
 // system-prompt.md), authored from the chat UI's Instructions editor. The chat

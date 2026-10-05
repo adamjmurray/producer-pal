@@ -498,7 +498,7 @@ cd ..
   Publishing the tarball skips the hook, so run the guard by hand
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
-  - `LICENSE` (GPL 3.0 license)
+  - `LICENSE` (MIT license)
   - `licenses/` (only portal dependencies: MCP SDK, zod)
   - `README.md` (npm-specific documentation)
   - `producer-pal-logo.svg` (logo for npm page)

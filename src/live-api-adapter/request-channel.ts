@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The V8 side of a request/response pair with Node: one message out the outlet,
 // one answer back, with a timeout in case none comes. Both the node_request and

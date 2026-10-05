@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Take lanes as update-track targets. `t2/l<n>` names a lane, creating the ones
 // up to it; `t2/l+` appends one; a lane's own id names the lane it came from. A
