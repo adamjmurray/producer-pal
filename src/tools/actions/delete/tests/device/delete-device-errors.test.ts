@@ -9,7 +9,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { deleteObject } from "../delete.ts";
+import { deleteObject } from "../../delete.ts";
 
 describe("deleteObject device path error cases", () => {
   it("reports a device path through a drum pad that holds nothing", () => {

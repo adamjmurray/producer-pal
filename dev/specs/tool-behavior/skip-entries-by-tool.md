@@ -238,7 +238,27 @@ with a tool, the tool wins.
   `{id | path, detail}` with no `ok`, and fail with the last one if it fails. A
   drum chain Live parked on a spare pad before a throw keeps its normal entry,
   `<error>; already changed: moved the chain to a spare drum pad`. Targets are
-  deleted from the highest position down, but entries stay in call order.
+  deleted from the highest position down, but entries stay in call order. A
+  track inside a group the call also names goes last, lowest first, so its group
+  goes before it. Deleting a group track also deletes every track inside it,
+  nested groups included. Its entry lists them in `detail`, as `path (id N)`
+  from before the call, in track order:
+  `also deleted the 3 tracks inside this group track: t13 (id 124), t14 (id 125), t15 (id 126)`.
+  A track the call also named, in any spelling and at any depth, is left out of
+  that list and gets no delete of its own: its entry is a plain
+  `{id, deletedPath}`, and the group has no detail when nothing else went with
+  it. If the group wasn't deleted (refused or skipped), a track named with it is
+  deleted like any other track. A track Live deleted before a throw is
+  `already changed: deleted the track`, and a group's adds what went with it:
+  `already changed: deleted the track, also deleted the track inside this group track: t2 (id b)`.
+  Live silently ignores a delete of the only track in a group track (a group
+  counts), so that target is skipped at its turn, just before the Live call
+  (after any earlier delete in the call), naming the nearest group track that
+  can be deleted:
+  `Live won't delete the only track in a group track; delete group track t11 (id 103) instead, which deletes both`
+  (`the tracks inside it too` when that group holds more). If that group holds
+  the Producer Pal device, the detail names that group as one that can't be
+  deleted, and suggests none.
 - **duplicate answers per copy named, in the order named.** Every copy of every
   source is a target: `count` copies of a track or scene, one per destination of
   a clip, device, chain or pad, one per scene position, one per lane a track

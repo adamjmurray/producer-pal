@@ -34,14 +34,14 @@ export function groupsHostTrack(
     return false;
   }
 
-  let groupId = groupIdOf(livePath.track(hostTrackIndex));
+  let groupId = groupIdOf(LiveAPI.from(livePath.track(hostTrackIndex)));
 
   while (groupId !== "0") {
     if (groupId === track.id) {
       return true;
     }
 
-    groupId = groupIdOf(`id ${groupId}`);
+    groupId = groupIdOf(LiveAPI.from(`id ${groupId}`));
   }
 
   return false;
@@ -49,13 +49,11 @@ export function groupsHostTrack(
 
 /**
  * The group a track sits in
- * @param path - The track's path or id
+ * @param track - The track
  * @returns The group's id, or "0" when it isn't grouped
  */
-function groupIdOf(path: Parameters<typeof LiveAPI.from>[0]): string {
-  const groupId = LiveAPI.from(path).getPropertyList("group_track")[1] as
-    | number
-    | undefined;
+export function groupIdOf(track: LiveAPI): string {
+  const groupId = track.getPropertyList("group_track")[1] as number | undefined;
 
   return String(groupId ?? 0);
 }

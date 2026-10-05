@@ -44,7 +44,7 @@ export function deleteObjectByType(
   }
 
   if (type === "track") {
-    return deleteTrackObject(id, object, confirmDeleted);
+    return deleteTrackObject(id, object, confirmDeleted, landed);
   }
 
   if (type === "scene") {

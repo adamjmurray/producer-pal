@@ -30,7 +30,9 @@ export const FX_BUS_TRACK = 6;
 /** t7 "Racks": nested instrument racks for deep device paths. No clips. */
 export const RACKS_TRACK = 7;
 
-/** t10 "Child": a MIDI track inside the t9 "Parent" group. No clips. */
+export const PARENT_TRACK = 9;
+
+/** t10 "Child": a MIDI track, the only one inside the t9 "Parent" group. */
 export const CHILD_TRACK = 10;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

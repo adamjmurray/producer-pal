@@ -25,6 +25,11 @@ import {
   deleteTargets,
 } from "./helpers/delete-targets.ts";
 import {
+  type GroupDeletes,
+  alsoDeletedDetail,
+  groupDeletes,
+} from "./helpers/group-deletes.ts";
+import {
   type DeleteArgs,
   type DeleteCall,
   parseDeleteCall,
@@ -54,6 +59,8 @@ interface DeleteChecked {
   /** One object per track for the whole call, not per clip. Deleting a clip
    * never moves a track, so the one resolved first stays the right one. */
   tracks: Map<number, LiveAPI>;
+  /** Which named tracks are groups, and which sit inside one that is named */
+  groups: GroupDeletes;
 }
 
 /**
@@ -87,7 +94,12 @@ const DELETE_WRITE: WriteSpec<
   words: { rerun: "target" },
   parse: parseDeleteCall,
   targets: deleteTargets,
-  check: ({ type, sent }) => ({ type, sent, tracks: new Map() }),
+  check: ({ type, sent }, targets) => ({
+    type,
+    sent,
+    tracks: new Map(),
+    groups: groupDeletes(type, targets),
+  }),
   plan: planDeletes,
   write: deleteTarget,
   settle: settleDelete,
@@ -123,13 +135,22 @@ function planDeletes(
     each[index] = data.requestPath ?? objectPathForApi(data.object);
   }
 
-  return {
-    order: positionalDeleteOrder(
-      toDelete.map(({ index, data }) => ({ index, object: data.object })),
+  const ordered = (group: typeof toDelete): number[] =>
+    positionalDeleteOrder(
+      group.map(({ index, data }) => ({ index, object: data.object })),
       checked.type,
-    ),
-    each,
-  };
+    );
+  const inside = toDelete.filter(({ index }) =>
+    checked.groups.covered.has(index),
+  );
+  const rest = toDelete.filter(
+    ({ index }) => !checked.groups.covered.has(index),
+  );
+
+  // A track inside a named group goes last, lowest first so a group comes before
+  // what is in it. It goes with the group; only if that didn't happen does it
+  // get a delete of its own.
+  return { order: [...ordered(rest), ...ordered(inside).toReversed()], each };
 }
 
 /**
@@ -149,11 +170,28 @@ function deleteTarget(
     return noteEntry(named, NOTHING_TO_DELETE);
   }
 
-  const { type, tracks } = step.checked;
-  const { id, object } = data;
+  const { type, tracks, groups } = step.checked;
+  const { id } = data;
   const address = step.planned;
+  const alsoDeleted = alsoDeletedDetail(
+    groups.unnamedInside.get(step.index) ?? [],
+  );
+  let { object } = data;
+
+  if (groups.covered.has(step.index)) {
+    // Look again: the group named with it has had its turn.
+    object = LiveAPI.from(id);
+
+    if (!object.exists()) {
+      return { id, ...addressField(address, true) };
+    }
+  }
+
   const refusal = deleteObjectByType(type, id, object, tracks, (phrase) =>
-    step.landed(phrase, { id, ...addressField(address, false) }),
+    step.landed(landedPhrase(phrase, groups, step.index, alsoDeleted), {
+      id,
+      ...addressField(address, type === "track"),
+    }),
   );
 
   if (refusal != null) {
@@ -161,7 +199,34 @@ function deleteTarget(
   }
 
   // A drum pad is cleared, not removed, so it is still at its path.
-  return { id, ...addressField(address, type !== "drum-pad") };
+  return {
+    id,
+    ...addressField(address, type !== "drum-pad"),
+    ...(alsoDeleted != null && { detail: alsoDeleted }),
+  };
+}
+
+/**
+ * What a throw leaves landed, for a group track with what went along.
+ * @param phrase - What the delete says landed
+ * @param groups - Which named tracks are groups
+ * @param index - The target's place in the call
+ * @param alsoDeleted - The group's detail, when tracks went with it unnamed
+ * @returns The phrase, with the group's own detail when it has one
+ */
+function landedPhrase(
+  phrase: string,
+  groups: GroupDeletes,
+  index: number,
+  alsoDeleted: string | undefined,
+): string {
+  if (!groups.unnamedInside.has(index)) {
+    return phrase;
+  }
+
+  return alsoDeleted == null
+    ? `${phrase} and the tracks inside it`
+    : `${phrase}, ${alsoDeleted}`;
 }
 
 /**

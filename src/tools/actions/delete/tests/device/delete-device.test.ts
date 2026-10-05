@@ -14,8 +14,8 @@ import {
 import {
   setupDeviceMocks,
   setupNestedDrumDeviceMocks,
-} from "./delete-test-helpers.ts";
-import { deleteObject } from "../delete.ts";
+} from "../delete-test-helpers.ts";
+import { deleteObject } from "../../delete.ts";
 
 describe("deleteObject device deletion", () => {
   // delete confirms the object is gone, so the mock has to model it going away

@@ -13,7 +13,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete",
   description:
     "Delete objects. Supports tracks, scenes, clips, devices, drum pads, and drum rack chains. " +
-    "Every type takes an id or a path.",
+    "Every type takes an id or a path. Deleting a group track also deletes the tracks inside it.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

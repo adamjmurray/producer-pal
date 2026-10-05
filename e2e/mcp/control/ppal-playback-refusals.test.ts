@@ -20,7 +20,11 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
-import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import {
+  CHILD_TRACK,
+  EMPTY_MIDI_TRACK,
+  PARENT_TRACK,
+} from "../e2e-test-set.ts";
 import { playbackCalls } from "./helpers/playback-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
@@ -32,9 +36,6 @@ const {
   createClipOnTrack,
   createSessionClip,
 } = playbackCalls(ctx);
-
-/** t9 "Parent": the group track that holds t10 "Child". */
-const PARENT_TRACK = CHILD_TRACK - 1;
 
 describe("ppal-playback refusals", () => {
   // stop used to stop the transport and only then fail to read the position.

@@ -68,8 +68,8 @@ Two structural wins beyond the usual warn-and-skip hardening:
 
 | Gap (now killed)                                                     | Test strengthened / added                               |
 | -------------------------------------------------------------------- | ------------------------------------------------------- |
-| Track / scene / return-track / clip / device index regexes (`\d+`)   | `delete.test.ts`, `delete-device.test.ts`               |
-| Device-deletion comparator tiebreaker (chains-before-return_chains)  | `delete-device.test.ts`                                 |
+| Track / scene / return-track / clip / device index regexes (`\d+`)   | `delete.test.ts`, `device/delete-device.test.ts`        |
+| Device-deletion comparator tiebreaker (chains-before-return_chains)  | `device/delete-device.test.ts`                          |
 | `validateAndConfigureRouteToSource` warns + forced `{true,true}`     | `duplicate-input-validation.test.ts`                    |
 | `inferDestination` / `validateArrangementParameters` whitespace trim | `duplicate-destinations.test.ts`                        |
 | `findRoutingOptionForDuplicateNames` id-sort position                | `duplicate-routing.test.ts`                             |
