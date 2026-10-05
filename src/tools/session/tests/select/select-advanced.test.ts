@@ -412,6 +412,18 @@ describe("view", () => {
         "does not resolve to a device",
       );
     });
+
+    it("refuses a non-device devicePath before switching the view", () => {
+      const songView = setupSongViewMock();
+      const appView = setupAppViewMock();
+
+      expect(() =>
+        select({ devicePath: "t0/d0/c0", view: "arrangement" }),
+      ).toThrow('devicePath "t0/d0/c0" does not resolve to a device');
+      expect(songView.set).not.toHaveBeenCalled();
+      expect(songView.call).not.toHaveBeenCalled();
+      expect(appView.call).not.toHaveBeenCalled();
+    });
   });
 
   describe("validation", () => {

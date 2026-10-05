@@ -170,3 +170,18 @@ tables sit next to each tool's code and feed one helper,
 - **Not covered:** `ppal-create-track` (nothing depends on `type`; `arm` on a
   return track is per target), and `ppal-update-device`'s `wrapInRack`, which
   already refuses what it ignores in its own words.
+
+## A value that can't be read, before the first write
+
+- **`ppal-playback` reads its timeline before any action runs**, for every
+  action that takes one (`play-arrangement`, `update-arrangement`, `stop`):
+  `startTime`, `loopStart` and `loopEnd`, `loc:` names included, are parsed and
+  resolved first. A malformed or unresolvable one refuses the call with the
+  transport and the Set untouched. `stop` still writes the start position after
+  it stops, because Live's second stop moves it; only the reading moved up.
+- **`ppal-playback` `play-scene` with an id that names no scene** throws that
+  id's own reason (`id "999" does not exist`, or the id is in no scene), not "a
+  scene id is required", and warns nothing. When another param still names the
+  scene, a bad id is warned and the scene plays.
+- **`ppal-select` refuses a `devicePath` naming something that isn't a device**
+  (a chain) before it changes the view or the selection.

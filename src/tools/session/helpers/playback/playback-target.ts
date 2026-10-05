@@ -290,7 +290,19 @@ function resolveSceneTarget(
     refs.push({ scene: sceneIndex, source: `sceneIndex ${sceneIndex}` });
   }
 
-  refs.push(...idSceneRefs(ids));
+  const { found, problems } = idSceneRefs(ids);
+
+  refs.push(...found);
+
+  // With no scene to play, an id's own reason is the answer, not a lesser one.
+  if (refs.length === 0 && problems.length > 0) {
+    throw new Error(problems.join("; "));
+  }
+
+  // Otherwise another param still names the scene, so a bad id is warned.
+  for (const problem of problems) {
+    console.warn(problem);
+  }
 
   // Keep the first param to name each scene, so the error names one source per
   // scene rather than repeating a scene the caller named two ways.
@@ -315,23 +327,27 @@ function resolveSceneTarget(
 
 /**
  * The scene each id names: a scene id names itself, and a session clip or clip
- * slot id names the scene it sits in. An id naming no scene is warned and
- * skipped, the way every other bad id in this tool is.
+ * slot id names the scene it sits in. An id naming no scene is set aside with
+ * the reason, for the caller to warn or refuse on.
  * @param ids - The normalized `id` param
- * @returns One ref per id that names a scene
+ * @returns One ref per id that names a scene, and why each other one doesn't
  */
-function idSceneRefs(ids: string | undefined): SceneRef[] {
-  if (ids == null) {
-    return [];
-  }
+function idSceneRefs(ids: string | undefined): {
+  found: SceneRef[];
+  problems: string[];
+} {
+  const found: SceneRef[] = [];
+  const problems: string[] = [];
 
-  const refs: SceneRef[] = [];
+  if (ids == null) {
+    return { found, problems };
+  }
 
   for (const id of targetEntries(ids, "id")) {
     const object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      console.warn(`id "${id}" does not exist`);
+      problems.push(`id "${id}" does not exist`);
       continue;
     }
 
@@ -339,20 +355,20 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
     // what would work, since "found clip" alone reads as a contradiction to a
     // caller who was asked for a clip id.
     if (object.sceneIndex == null) {
-      const found = publishedType(object.type);
-      const kind = found == null ? "" : ` (found ${found})`;
+      const type = publishedType(object.type);
+      const kind = type == null ? "" : ` (found ${type})`;
 
-      console.warn(
+      problems.push(
         `${targetLabel(object)} is in no scene${kind}; ` +
           `action "${PLAY_SCENE}" takes a scene id or a session clip id`,
       );
       continue;
     }
 
-    refs.push({ scene: object.sceneIndex, source: `id "${id}"` });
+    found.push({ scene: object.sceneIndex, source: `id "${id}"` });
   }
 
-  return refs;
+  return { found, problems };
 }
 
 /**

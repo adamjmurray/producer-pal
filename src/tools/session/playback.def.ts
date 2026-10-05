@@ -34,8 +34,8 @@ export const toolDefPlayback = defineTool("ppal-playback", {
 update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s)
-stop-session-clips: by id(s) or path(s)
-(both answer with clip: {id, path} for one id/path, an array of them for several, in order; {id|path, ok:false, detail} for one that couldn't be reached)
+stop-session-clips: by id(s) or path(s); stops each slot's whole track
+(both answer with clip: {id, path} for one id/path, an array of them for several, in order; {id|path, ok:false, detail} for one not reached, e.g. an empty slot to play; a slot named twice: the earlier entry says the later one replaced it)
 stop-all-session-clips: all
 stop: session and arrangement; takes startTime to park the next play`,
       ),

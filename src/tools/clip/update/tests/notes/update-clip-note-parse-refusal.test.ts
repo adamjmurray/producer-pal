@@ -16,6 +16,10 @@ import {
 import { type TimeSignature } from "#src/tools/clip/update/helpers/clip-beat-positions.ts";
 import { refuseNoteEditsByMeter } from "#src/tools/clip/update/helpers/notes/note-edit-parsing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import {
+  clearMockWrites,
+  getMockWrites,
+} from "#src/test/mocks/registry/mock-write-log.ts";
 
 describe("updateClip - unreadable note edits refused before the clip is touched", () => {
   let mocks: UpdateClipMocks;
@@ -145,6 +149,45 @@ describe("updateClip - unreadable note edits refused before the clip is touched"
       updateClip({ id: "456", timeSignature: "3/4", transforms }),
     ).rejects.toThrow("Invalid time range");
     expectClipUntouched(mocks.clip456);
+  });
+});
+
+describe("updateClip - a clip whose new meter can't read the note edits", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+  });
+
+  // The range is only valid in 4/4. Clip 123 is set to 3/4, so it can't read it:
+  // it is skipped before its meter or name is written, and 456 goes on.
+  it("skips it, writing nothing to it, and updates the rest", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+    mockMergeNoteTracking(mocks.clip123, [note(60, 4)]);
+    mockMergeNoteTracking(mocks.clip456, [note(60, 4)]);
+    clearMockWrites();
+
+    const result = (await updateClip({
+      id: "123,456",
+      name: "X,Y",
+      timeSignature: "3/4,4/4",
+      transforms: "1|5-2|1: velocity = 1",
+    })) as object[];
+
+    expect(result[0]).toStrictEqual({
+      id: "123",
+      ok: false,
+      detail: expect.stringContaining("Invalid time range"),
+    });
+    expect(result[1]).not.toHaveProperty("ok");
+    expectClipUntouched(mocks.clip123);
+    expect(
+      getMockWrites().filter(
+        (write) => write.id === "123" && write.kind === "set",
+      ),
+    ).toStrictEqual([]);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Y");
   });
 });
 

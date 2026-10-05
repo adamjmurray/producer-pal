@@ -105,7 +105,7 @@ describe("selection-updates", () => {
   });
 
   describe("updateDeviceSelection", () => {
-    it("resolves a device path the caller hasn't already resolved", () => {
+    it("selects the device a path was already resolved to", () => {
       const { mock, api } = setupSongView();
 
       registerMockObject("device-at-path", {
@@ -115,8 +115,7 @@ describe("selection-updates", () => {
 
       const device = updateDeviceSelection({
         songView: api,
-        devicePath: "t1/d0",
-        devicePathParam: "devicePath",
+        resolvedDevice: LiveAPI.from(`${String(livePath.track(1))} devices 0`),
       });
 
       expect(device?.id).toBe("device-at-path");

@@ -301,4 +301,121 @@ describe("playback clip entries", () => {
     ]);
     expect(result.playing).toBe(true);
   });
+
+  describe("an empty slot", () => {
+    // Firing an empty slot stops whatever its track is playing, so a play never
+    // fires one.
+    it("is skipped, not fired, and the other slots still fire", () => {
+      const slot = mockClipInSlot("clip0", 0, 0);
+      const empty = registerClipSlot(1, 0, false);
+
+      const result = playback({
+        action: "play-session-clips",
+        path: "t1/s0,t0/s0",
+      });
+
+      expect(empty.call).not.toHaveBeenCalledWith("fire");
+      expect(slot.call).toHaveBeenCalledWith("fire");
+      expect(result.clip).toStrictEqual([
+        { path: "t1/s0", ok: false, detail: "no clip to play" },
+        { id: "clip0", path: "t0/s0" },
+      ]);
+      expect(result.playing).toBe(true);
+    });
+
+    it("refuses a call whose only slot is empty, firing nothing", () => {
+      const empty = registerClipSlot(1, 0, false);
+
+      expect(() =>
+        playback({ action: "play-session-clips", path: "t1/s0" }),
+      ).toThrow("no clip to play");
+      expect(empty.call).not.toHaveBeenCalled();
+    });
+
+    it("leaves out of the multi-clip restart and playing what never fired", () => {
+      mockClipInSlot("clip0", 0, 0);
+      registerClipSlot(1, 0, false);
+      registerClipSlot(2, 0, false);
+
+      const result = playback({
+        action: "play-session-clips",
+        path: "t0/s0,t1/s0,t2/s0",
+      });
+
+      // Only one slot fired, so there is no second launch to sync.
+      expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
+      expect(liveSet.call).not.toHaveBeenCalledWith("start_playing");
+      expect(result.playing).toBe(true);
+    });
+
+    it("keeps the transport as it was when every slot is empty", () => {
+      liveSet = setupPlaybackLiveSet({ is_playing: 0 });
+      registerClipSlot(1, 0, false);
+      registerClipSlot(2, 0, false);
+
+      const result = playback({
+        action: "play-session-clips",
+        path: "t1/s0,t2/s0",
+      });
+
+      expect(result.playing).toBe(false);
+      expect(result.clip).toStrictEqual([
+        { path: "t1/s0", ok: false, detail: "no clip to play" },
+        { path: "t2/s0", ok: false, detail: "no clip to play" },
+      ]);
+    });
+
+    // A group track's slot holds no clip but launches its children's clips.
+    it("fires a group track's slot, which holds no clip but controls others", () => {
+      const path = livePath.track(0).clipSlot(0);
+      const group = registerMockObject(path, {
+        path,
+        properties: { has_clip: 0, controls_other_clips: 1 },
+      });
+
+      // No clip object under it, as in Live: the entry has a path and no id.
+      mockNonExistentObjects();
+
+      const result = playback({
+        action: "play-session-clips",
+        path: "t0/s0",
+      });
+
+      expect(group.call).toHaveBeenCalledWith("fire");
+      expect(result).toStrictEqual({ playing: true, clip: { path: "t0/s0" } });
+    });
+
+    it("skips a slot with no clip that controls no others", () => {
+      const path = livePath.track(0).clipSlot(0);
+      const slot = registerMockObject(path, {
+        path,
+        properties: { has_clip: 0, controls_other_clips: 0 },
+      });
+
+      expect(() =>
+        playback({ action: "play-session-clips", path: "t0/s0" }),
+      ).toThrow("no clip to play");
+      expect(slot.call).not.toHaveBeenCalledWith("fire");
+    });
+
+    it("still stops its track on stop-session-clips", () => {
+      const track = registerMockObject(livePath.track(1), {
+        path: livePath.track(1),
+      });
+
+      registerClipSlot(1, 0, false);
+
+      const result = playback({
+        action: "stop-session-clips",
+        path: "t1/s0",
+      });
+
+      expect(track.call).toHaveBeenCalledWith("stop_all_clips");
+      // The mock reports a clip in every slot, so the entry carries an id here.
+      expect(result.clip).toStrictEqual({
+        id: "live_set/tracks/1/clip_slots/0/clip",
+        path: "t1/s0",
+      });
+    });
+  });
 });

@@ -90,6 +90,11 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   that ride behind it (a clip split into pieces).
 - `call.ignored(params, why)`: warn that a whole-call param did nothing, as
   `X ignored: why`.
+- `call.landed(phrase)`: say that something the whole call changes (the
+  transport) has changed Live. A throw from `before` or `settle` then ends the
+  call with `; already changed: <phrases>`, since no entry can carry it. A
+  target's own throw still becomes that target's entry. Only `ppal-playback`
+  records these so far; the other write tools do not yet.
 
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.

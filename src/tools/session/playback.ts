@@ -19,13 +19,15 @@ import {
   type WriteSpec,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
-  applyArrangementTimeline,
   foldLocatorParams,
   handlePlayArrangement,
+  planArrangementTimeline,
   PLAY_ARRANGEMENT,
   readStartTime,
   reportArrangementLoop,
+  writeArrangementTimeline,
   type ArrangementParams,
+  type TimelinePlan,
   type TimelineWrites,
 } from "./helpers/playback/arrangement-playback.ts";
 import {
@@ -107,6 +109,8 @@ interface PlaybackChecked extends PlaybackCall {
   liveSet: LiveAPI;
   /** Read before the action: Live updates is_playing asynchronously */
   isPlayingBefore: boolean;
+  /** The timeline, resolved before anything was written */
+  plan: TimelinePlan;
   writes: TimelineWrites;
   state: PlaybackState;
   /** The tracks stop-session-clips has already stopped */
@@ -183,14 +187,7 @@ const PLAYBACK_WRITE: WriteSpec<
   words: { rerun: "clip" },
   parse: parsePlayback,
   targets: playbackTargets,
-  check: (call) => ({
-    ...call,
-    liveSet: LiveAPI.from(livePath.liveSet),
-    isPlayingBefore: false,
-    writes: { wroteLoop: false },
-    state: { isPlaying: false },
-    stopped: new Set(),
-  }),
+  check: checkPlayback,
   before: beforeTargets,
   write: writeClip,
   settle: settlePlayback,
@@ -246,7 +243,8 @@ function parsePlayback(run: PlaybackRun): PlaybackCall {
 
 /**
  * The clip slots the action acts on: none for an action that acts on the
- * transport alone.
+ * transport alone. An empty slot is skipped when playing: firing it would stop
+ * whatever else its track is playing.
  * @param call - The call
  * @returns One target per clip slot named, in the order named
  * @throws Error when a clip action names no slot
@@ -260,7 +258,47 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
     throw new Error(`id or path is required for action "${call.action}"`);
   }
 
-  return call.clips;
+  if (call.action !== PLAY_SESSION_CLIPS) {
+    return call.clips;
+  }
+
+  return call.clips.map((target) =>
+    target.skip == null && playsNothing(target.data.slot)
+      ? { named: target.named, skip: "no clip to play" }
+      : target,
+  );
+}
+
+/**
+ * Whether firing a slot launches nothing. A group track's slot holds no clip
+ * but launches its children's clips in that scene, so it plays.
+ * @param slot - The clip slot
+ * @returns True when the slot has no clip and controls no other clips
+ */
+function playsNothing(slot: LiveAPI): boolean {
+  return (
+    !slot.getProperty("has_clip") && !slot.getProperty("controls_other_clips")
+  );
+}
+
+/**
+ * Resolve the timeline, which reads Live but writes nothing, so a position or
+ * loop bound that can't be read refuses the call whatever the action.
+ * @param call - The call
+ * @returns The call with what the hooks share
+ */
+function checkPlayback(call: PlaybackCall): PlaybackChecked {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  return {
+    ...call,
+    liveSet,
+    plan: planArrangementTimeline(liveSet, call.timeline),
+    isPlayingBefore: false,
+    writes: { wroteLoop: false },
+    state: { isPlaying: false },
+    stopped: new Set(),
+  };
 }
 
 /**
@@ -268,14 +306,15 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
  * slot is touched. The timeline goes first, except on stop: Live's own second
  * stop sends the start position to the top, wiping one written first.
  * @param checked - The checked call
+ * @param call - The call's shared state
  */
-function beforeTargets(checked: PlaybackChecked): void {
-  const { action, liveSet, timeline, sceneIndex } = checked;
+function beforeTargets(checked: PlaybackChecked, call: Call): void {
+  const { action, liveSet, plan, sceneIndex } = checked;
 
   checked.writes =
     action === STOP
       ? { wroteLoop: false }
-      : applyArrangementTimeline(liveSet, timeline);
+      : writeArrangementTimeline(liveSet, plan, call.landed);
 
   // Read before the action: Live updates is_playing asynchronously, so an
   // action that starts or stops the transport can't read it after, and predicts
@@ -286,23 +325,25 @@ function beforeTargets(checked: PlaybackChecked): void {
 
   switch (action) {
     case PLAY_ARRANGEMENT:
-      checked.state = handlePlayArrangement(liveSet);
+      checked.state = handlePlayArrangement(liveSet, call.landed);
       break;
 
     case PLAY_SCENE:
       checked.state = handlePlayScene(sceneIndex ?? undefined);
+      call.landed("scene fired");
       break;
 
     case "stop-all-session-clips":
       // The transport/arrangement might still be playing, so isPlaying stays.
       liveSet.call("stop_all_clips");
+      call.landed("session clips stopped");
       break;
 
     case STOP:
       // The start position outlives the transport, so stopping puts it back
       // where the caller left it. A startTime this call carries is written
       // after this, and wins.
-      checked.state = stopTransport(liveSet);
+      checked.state = stopTransport(liveSet, call.landed);
       break;
 
     default:
@@ -326,11 +367,13 @@ function writeClip(
 
   if (action === PLAY_SESSION_CLIPS) {
     slot.call("fire");
+    step.call.landed("session clips fired");
   } else if (!stopped.has(position.trackIndex)) {
     // A track stops all its clips at once, so two slots on it are one Live call.
     LiveAPI.from(livePath.track(position.trackIndex)).call("stop_all_clips");
     // Only once it went through: after a throw, the next slot tries again.
     stopped.add(position.trackIndex);
+    step.call.landed("session clips stopped");
   }
 
   return entry;
@@ -347,7 +390,7 @@ function settlePlayback(
   call: Call,
 ): void {
   const { checked } = done;
-  const { action, liveSet, timeline, sceneIndex } = checked;
+  const { action, liveSet, plan, timeline, sceneIndex } = checked;
   let { isPlaying } = checked.state;
 
   if (action === PLAY_SESSION_CLIPS) {
@@ -357,6 +400,7 @@ function settlePlayback(
     // restart the transport to keep them in sync.
     if (fired.length > 1) {
       liveSet.call("stop_playing");
+      call.landed("transport stopped");
       liveSet.call("start_playing");
     }
 
@@ -365,7 +409,7 @@ function settlePlayback(
   }
 
   if (action === STOP) {
-    checked.writes = applyArrangementTimeline(liveSet, timeline);
+    checked.writes = writeArrangementTimeline(liveSet, plan, call.landed);
   }
 
   // Said once the action ran: it claims what the call did.
@@ -419,12 +463,17 @@ function handleFocus(action: string, focus?: boolean): void {
 /**
  * Stop the transport without letting it move the arrangement start position.
  * @param liveSet - LiveAPI instance for live_set
+ * @param landed - Records what has changed Live, for an error later in the call
  * @returns Updated playback state
  */
-function stopTransport(liveSet: LiveAPI): PlaybackState {
+function stopTransport(
+  liveSet: LiveAPI,
+  landed: (phrase: string) => void,
+): PlaybackState {
   const startTimeBeats = liveSet.getProperty("start_time") as number;
 
   liveSet.call("stop_playing");
+  landed("transport stopped");
   liveSet.set("start_time", startTimeBeats);
 
   return { isPlaying: false };

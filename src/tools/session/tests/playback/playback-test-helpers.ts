@@ -78,15 +78,20 @@ export function setupPlaybackLiveSet(
  * Register a session clip slot, keyed by its own path.
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index
+ * @param hasClip - Whether the slot holds a clip
  * @returns RegisteredMockObject for the clip slot
  */
 export function registerClipSlot(
   trackIndex: number,
   sceneIndex: number,
+  hasClip = true,
 ): RegisteredMockObject {
   const path = livePath.track(trackIndex).clipSlot(sceneIndex);
 
-  return registerMockObject(path, { path });
+  return registerMockObject(path, {
+    path,
+    properties: { has_clip: hasClip ? 1 : 0 },
+  });
 }
 
 /**

@@ -375,6 +375,18 @@ describe("ppal-select", () => {
     expect((await select({})).view).toBe("arrangement");
   });
 
+  // The deprecated devicePath naming a chain was rejected only after the view
+  // had already switched.
+  it("refuses a devicePath that names a chain, leaving the view alone", async () => {
+    await select({ view: "session" });
+    await expectRefusal(
+      { devicePath: "t7/d0/c0", view: "arrangement" },
+      'devicePath "t7/d0/c0" does not resolve to a device',
+    );
+
+    expect((await select({})).view).toBe("session");
+  });
+
   // The success path needs a VST/AU installed, which no machine is guaranteed
   // to have, so only the two refusals are covered here.
   it("warns when openPluginWindow names nothing to open", async () => {

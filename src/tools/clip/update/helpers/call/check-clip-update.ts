@@ -13,7 +13,8 @@ import { type ClipPayload } from "./resolve-clip-targets.ts";
 /**
  * Refuse a call whose note edits can't be read, before anything is cut or
  * written. Each clip is read in the meter it will have, so a range that only
- * fits some meters isn't refused for the clips it fits.
+ * fits some meters isn't refused for the clips it fits: the ones it doesn't
+ * fit are skipped, each at its own turn, with nothing written to them.
  * @param call - The update-clip call
  * @param targets - The call's targets, in the order named
  * @param run - The call's shared state
@@ -45,7 +46,7 @@ export function checkClipUpdate(
     }
   }
 
-  refuseUnreadableNoteEdits({
+  run.unreadable = refuseUnreadableNoteEdits({
     clips,
     noteEdits: {
       notationString: args.notes,

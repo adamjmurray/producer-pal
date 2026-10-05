@@ -15,6 +15,7 @@
 
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { assembleEntries } from "./helpers/assemble-entries.ts";
+import { type CallJournal, callJournal } from "./helpers/call-landed.ts";
 import { afterMaybe } from "./helpers/maybe-async.ts";
 import { resolveTargets } from "./helpers/resolve-targets.ts";
 import { settleSupersession } from "./helpers/settle-supersession.ts";
@@ -56,17 +57,20 @@ export function runWrite<
 ): MaybePromise<PipelineResult<E>> {
   recordPipelineRun(spec.tool);
 
-  const call: Call = { ctx, ignored: warnIgnored };
+  const journal = callJournal();
+  const call: Call = { ctx, ignored: warnIgnored, landed: journal.landed };
 
   return afterMaybe(
     resolveTargets(spec, args, call),
     ({ targets, checked }) => {
       const planned = planWrites(spec, targets, checked, call);
 
-      return afterMaybe(spec.before?.(checked, call), () =>
-        afterMaybe(writeLoop(spec, targets, checked, call, planned), (runs) =>
-          finish(spec, { targets, checked, call, planned, runs }),
-        ),
+      return afterMaybe(
+        journal.guard(() => spec.before?.(checked, call)),
+        () =>
+          afterMaybe(writeLoop(spec, targets, checked, call, planned), (runs) =>
+            finish(spec, { targets, checked, call, planned, runs, journal }),
+          ),
       );
     },
   );
@@ -81,6 +85,7 @@ interface Finished<P, Checked, E, Each> {
   call: Call;
   planned: Planned<Each>;
   runs: Array<TargetRun<E>>;
+  journal: CallJournal;
 }
 
 /**
@@ -93,7 +98,7 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
   done: Finished<P, Checked, E, Each>,
 ): MaybePromise<PipelineResult<E>> {
-  const { targets, checked, call, planned, runs } = done;
+  const { targets, checked, call, planned, runs, journal } = done;
   const shortened = settleSupersession(
     runs,
     targets,
@@ -114,9 +119,11 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   );
 
   return afterMaybe(
-    spec.settle?.(
-      { targets, checked, entries, pieces, outcomes, shortened },
-      call,
+    journal.guard(() =>
+      spec.settle?.(
+        { targets, checked, entries, pieces, outcomes, shortened },
+        call,
+      ),
     ),
     () => result,
   );

@@ -27,7 +27,7 @@ interface CallNoteEdits {
  * Refuse a call's note edits that can't be read, before anything is cut or
  * written. Each clip is read in the meter it will have, so a range that only
  * fits some meters isn't refused for the clips it fits. Only a clip the split
- * will cut refuses the whole call; any other keeps its own per-clip skip.
+ * will cut refuses the whole call; any other is skipped on its own.
  * @param call - The clips, the note edits and how the call sets meters
  * @param call.clips - The clips the call will update
  * @param call.noteEdits - The call's notes and transforms
@@ -35,6 +35,8 @@ interface CallNoteEdits {
  * @param call.targetCount - How many targets the call named
  * @param call.requestedIndexById - Each clip's target, by clip id
  * @param call.splitting - Whether the call splits
+ * @returns Why each clip that can't read the edits in its own meter is to be
+ *   skipped, by clip id
  */
 export function refuseUnreadableNoteEdits({
   clips,
@@ -43,10 +45,10 @@ export function refuseUnreadableNoteEdits({
   targetCount,
   requestedIndexById,
   splitting,
-}: CallNoteEdits): void {
+}: CallNoteEdits): Map<string, string> {
   const list = splitList(timeSignature, targetCount, "timeSignature");
 
-  refuseNoteEditsByMeter(
+  return refuseNoteEditsByMeter(
     clips,
     noteEdits,
     (clip) =>

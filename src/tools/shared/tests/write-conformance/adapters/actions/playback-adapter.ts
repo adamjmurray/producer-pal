@@ -120,6 +120,13 @@ export const playbackAdapter: WriteToolAdapter = {
 
       return { action: "play-scene" };
     },
+    // The transport actions read the timeline up front too: stop used to
+    // stop first and throw after.
+    () => {
+      setUpClips(2);
+
+      return { action: "stop", startTime: "garbage" };
+    },
   ],
 
   loneSkipped: () => {

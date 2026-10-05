@@ -23,14 +23,15 @@ interface SelectTargets {
   sceneIndex?: number;
   clipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
+  /** The param the device path came from, for the refusal */
+  devicePathParam?: "path" | "devicePath";
 }
 
 /** What the existence check already resolved, for callers to reuse. */
 export interface SelectTargetsResolved {
   /** The device at `devicePath`, so the selection and response steps don't
    * re-resolve it from the path string. Undefined when there was no
-   * devicePath, or it didn't resolve to a device (left for the selection
-   * step to reject). */
+   * devicePath. */
   device?: LiveAPI;
 }
 
@@ -45,6 +46,7 @@ export interface SelectTargetsResolved {
  * @param targets.sceneIndex - 0-based scene index
  * @param targets.clipSlot - Clip slot coordinates
  * @param targets.devicePath - Device path, e.g. "t0/d1"
+ * @param targets.devicePathParam - The param the device path came from
  * @returns Targets already resolved while checking, for reuse
  */
 export function requireSelectTargets({
@@ -55,6 +57,7 @@ export function requireSelectTargets({
   sceneIndex,
   clipSlot,
   devicePath,
+  devicePathParam = "path",
 }: SelectTargets): SelectTargetsResolved {
   const trackPath =
     trackId == null ? buildTrackPath(category, trackIndex) : null;
@@ -80,7 +83,10 @@ export function requireSelectTargets({
   }
 
   return {
-    device: devicePath == null ? undefined : requireDevice(devicePath),
+    device:
+      devicePath == null
+        ? undefined
+        : requireDevice(devicePath, devicePathParam),
   };
 }
 
@@ -144,12 +150,16 @@ function requireClipSlot({
 }
 
 /**
- * Refuse a device path pointing at nothing. A path naming a chain instead of a
- * device is left to the selection itself to reject.
+ * Refuse a device path pointing at nothing, or at something that isn't a
+ * device (a chain): before the selection writes anything.
  * @param devicePath - The device path, e.g. "t0/d1"
- * @returns The resolved device, or undefined when the path names a non-device
+ * @param devicePathParam - The param the device path came from
+ * @returns The resolved device
  */
-function requireDevice(devicePath: string): LiveAPI | undefined {
+function requireDevice(
+  devicePath: string,
+  devicePathParam: "path" | "devicePath",
+): LiveAPI {
   const resolved = resolvePathToLiveApi(devicePath);
 
   if (resolved.namesNothing != null) {
@@ -157,7 +167,9 @@ function requireDevice(devicePath: string): LiveAPI | undefined {
   }
 
   if (resolved.targetType !== "device") {
-    return undefined;
+    throw new Error(
+      `${devicePathParam} "${devicePath}" does not resolve to a device`,
+    );
   }
 
   const device = LiveAPI.from(resolved.liveApiPath);

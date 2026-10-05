@@ -68,6 +68,13 @@ export interface Call {
   ctx: Partial<ToolContext>;
   /** Warns that a whole-call param did nothing: `X ignored: reason` */
   ignored: (params: string | readonly string[], why: string) => void;
+  /**
+   * Say that something the whole call changes (the transport, a song-level
+   * value) has changed Live. A throw from `before` or `settle` then says
+   * `already changed: <phrases>`, so the caller isn't told only that it failed.
+   * @param phrase - What landed, in a few words ("loop")
+   */
+  landed: (phrase: string) => void;
 }
 
 /** What one target's write hands the pipeline. */
@@ -167,7 +174,8 @@ export interface WriteSpec<
   /**
    * Stage 3b: write what the call as a whole changes (tempo, the transport),
    * once, before the first target. Runs after every refusal the earlier stages
-   * can make, so a refused call has written nothing. A throw ends the call.
+   * can make, so a refused call has written nothing. A throw ends the call; it
+   * names what `call.landed` had recorded.
    */
   before?: (checked: Checked, call: Call) => MaybePromise<void>;
   /**
@@ -199,7 +207,7 @@ export interface WriteSpec<
   /**
    * Stage 5: once every target has had its turn: paths, focus, warnings. It may
    * await a write that needs every entry first (a transform over all the
-   * copies).
+   * copies). A throw ends the call; it names what `call.landed` had recorded.
    */
   settle?: (done: Done<P, Checked, E>, call: Call) => MaybePromise<void>;
 }

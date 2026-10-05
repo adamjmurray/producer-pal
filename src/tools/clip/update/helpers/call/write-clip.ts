@@ -120,6 +120,14 @@ export async function writeClip(
       );
     }
 
+    // Its meter can't read the note edits: refused before anything is written
+    // to it, so the clip keeps the meter it has.
+    const unreadable = run.unreadable.get(clip.id);
+
+    if (unreadable != null) {
+      throw new Error(unreadable);
+    }
+
     if (refusedMove != null) {
       refuseClipWork(reasons, clip.id, refusedMove);
     }

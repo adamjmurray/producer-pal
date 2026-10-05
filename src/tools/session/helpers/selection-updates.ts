@@ -8,7 +8,6 @@ import {
   livePath,
 } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   toLiveApiId,
   toLiveApiView,
@@ -42,10 +41,7 @@ interface UpdateSceneSelectionOptions {
 interface UpdateDeviceSelectionOptions {
   songView: LiveAPI;
   deviceId?: string;
-  devicePath?: string;
-  devicePathParam: "path" | "devicePath";
-  /** The device already resolved for `devicePath` by the existence check, so
-   * this doesn't re-resolve it from the path string. */
+  /** The device a path named, resolved while checking the call */
   resolvedDevice?: LiveAPI;
 }
 
@@ -164,16 +160,12 @@ export function updateSceneSelection({
  * @param options - Selection parameters
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.deviceId - Device ID to select
- * @param options.devicePath - Device path (e.g. "t0/d1")
- * @param options.devicePathParam - The param the device path came from
- * @param options.resolvedDevice - The device already resolved for `devicePath`
- * @returns The resolved device, or undefined if none was targeted/found
+ * @param options.resolvedDevice - The device a path named, already resolved
+ * @returns The selected device, or undefined if none was targeted
  */
 export function updateDeviceSelection({
   songView,
   deviceId,
-  devicePath,
-  devicePathParam,
   resolvedDevice,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
@@ -182,38 +174,13 @@ export function updateDeviceSelection({
     songView.call("select_device", toLiveApiId(deviceId));
 
     return deviceAPI;
-  } else if (devicePath != null) {
-    const deviceAPI =
-      resolvedDevice ?? resolveDeviceFromPath(devicePath, devicePathParam);
+  } else if (resolvedDevice != null) {
+    songView.call("select_device", toLiveApiId(resolvedDevice.id));
 
-    songView.call("select_device", toLiveApiId(deviceAPI.id));
-
-    return deviceAPI;
+    return resolvedDevice;
   }
 
   return undefined;
-}
-
-/**
- * Resolve a device path when the existence check didn't already resolve it
- * (a path naming a chain or other non-device target).
- * @param devicePath - Device path (e.g. "t0/d1")
- * @param devicePathParam - The param the device path came from
- * @returns The resolved device
- */
-function resolveDeviceFromPath(
-  devicePath: string,
-  devicePathParam: "path" | "devicePath",
-): LiveAPI {
-  const resolved = resolvePathToLiveApi(devicePath);
-
-  if (resolved.targetType !== "device") {
-    throw new Error(
-      `${devicePathParam} "${devicePath}" does not resolve to a device`,
-    );
-  }
-
-  return LiveAPI.from(resolved.liveApiPath);
 }
 
 /**

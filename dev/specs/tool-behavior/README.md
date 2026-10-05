@@ -219,6 +219,11 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   `ok: false` with a `detail`; if some of it landed, it keeps its normal entry
   plus a `detail` saying what landed and what didn't. Earlier targets keep their
   entries and later ones still run.
+- **`ppal-playback` says what landed when a whole-call step fails partway.** A
+  throw from the step that writes the transport or timeline, or from the step
+  after the targets, ends the call with `; already changed: ...` naming what had
+  landed (`call.landed`). With nothing landed the error is unchanged. The other
+  write tools don't do this yet.
 - **A deadline is no exception, reads included.** When a call stops early
   because the request ran out of time, every target it never reached keeps a
   skip entry with a `detail` saying so and what to re-run. `readFanOut` checks

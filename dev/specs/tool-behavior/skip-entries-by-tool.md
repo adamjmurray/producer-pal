@@ -42,6 +42,14 @@ with a tool, the tool wins.
   the clip it would land on named. Known gap: if Live fails while a lengthened
   clip's last partial tile is in the holding area past the track's clips, that
   holding copy can be left there unreported.
+- **update-clip: a clip whose new meter can't read the notes or transforms is a
+  skip.** A bar|beat range or constant that is fine in one clip's meter and not
+  in another's (`1|5-2|1` is a bar in 4/4, backwards in 3/4) is checked per
+  meter, with the meter each clip will have after `timeSignature`. A clip that
+  can't read it is `{id, ok: false, detail: <the parse error>}`, written nothing
+  (not even its meter or name), and the other clips go on. The call is refused
+  instead when every meter fails, or a clip the call will split fails: a cut
+  can't be undone.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer
@@ -325,6 +333,13 @@ with a tool, the tool wins.
   twice fires once, by its last mention; the earlier one is
   `{id | path, detail}`. Slots the deadline never reached are skips. A lone skip
   throws.
+- **play-session-clips skips an empty slot** as
+  `{path, ok: false, detail: "no clip to play"}`, with no `id`, and never fires
+  it: Live answers a fired empty slot by stopping whatever its track is playing.
+  A group track's slot holds no clip but launches its members' clips in that
+  scene, so it fires, and its entry is `{path}`. The other slots still fire, and
+  `playing` and the multi-clip transport restart count only the slots that
+  fired. `stop-session-clips` on an empty slot still stops its track.
 - **select has one target**: nothing to list, so a refusal or a failed selection
   throws.
 - **update-device: a target dead by its turn is a skip.** Targets resolve up

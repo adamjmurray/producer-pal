@@ -198,6 +198,7 @@ function checkSelect(call: SelectCall): SelectChecked {
       sceneIndex: resolved.sceneIndex,
       clipSlot: resolved.parsedClipSlot,
       devicePath: resolved.devicePath,
+      devicePathParam: resolved.devicePathParam,
     }),
     // Resolved before any view change, like requireSelectTargets, so a path
     // naming nothing leaves Live untouched.
@@ -228,7 +229,6 @@ function writeSelection(
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
   const { trackIndex, category, sceneIndex, devicePath } = resolved;
   const { arrangementStartBeats } = resolved;
-  const devicePathParam = resolved.devicePathParam ?? "path";
 
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
@@ -272,8 +272,6 @@ function writeSelection(
   const selectedDeviceAPI = updateDeviceSelection({
     songView,
     deviceId,
-    devicePath,
-    devicePathParam,
     resolvedDevice: required.device,
   });
 

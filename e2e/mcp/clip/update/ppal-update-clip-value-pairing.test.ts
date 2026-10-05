@@ -85,4 +85,42 @@ describe("ppal-update-clip per-clip values", () => {
       "7/8",
     ]);
   });
+
+  // 1|5-2|1 is a bar's span in 4/4, but runs backwards in 3/4. The clip that
+  // can't read it in its new meter is skipped untouched; the other goes on.
+  it("skips a clip whose new meter can't read the transform, writing nothing to it", async () => {
+    const ids = [
+      await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s4`, {
+        notes: "C3 1|1",
+      }),
+      await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s5`, {
+        notes: "E3 1|1",
+      }),
+    ];
+
+    const result = parseToolResult<Array<Record<string, unknown>>>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: ids.join(","),
+          name: "Skipped,Updated",
+          timeSignature: "3/4,4/4",
+          transforms: "1|5-2|1: velocity = 1",
+        },
+      }),
+    );
+
+    expect(result[0]).toStrictEqual({
+      id: ids[0],
+      ok: false,
+      detail: expect.stringContaining("Invalid time range"),
+    });
+    expect(result[1]).not.toHaveProperty("ok");
+
+    const [skipped, updated] = await readClips(ids);
+
+    expect(skipped?.timeSignature).toBe("4/4");
+    expect(skipped?.name).not.toBe("Skipped");
+    expect(updated?.name).toBe("Updated");
+  });
 });

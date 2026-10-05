@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -338,8 +339,8 @@ describe("playback play-scene from a clip slot", () => {
   });
 });
 
-// A bad id is a bad id, not a second scene: warn and skip it, the way the rest
-// of the tool treats ids, and let whatever else named a scene carry the call.
+// A bad id is a bad id, not a second scene: with another param naming the scene
+// it is warned and skipped; with none, its own reason is the call's error.
 describe("playback play-scene ids that name no scene", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();
@@ -403,11 +404,33 @@ describe("playback play-scene ids that name no scene", () => {
     );
   });
 
-  it("refuses the action when no id named a scene and nothing else did", () => {
+  it("refuses with the id's own reason when no id named a scene and nothing else did", () => {
     registerMockObject("track9", { path: livePath.track(5), type: "Track" });
 
     expect(() => playback({ action: "play-scene", id: "track9" })).toThrow(
-      'path "s<scene>" or a scene id is required',
+      "t5 (id track9) is in no scene (found track); action " +
+        '"play-scene" takes a scene id or a session clip id',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses a scene id that does not exist with that reason, and no warning", () => {
+    const liveSet = setupPlaybackLiveSet();
+
+    mockNonExistentObjects();
+
+    expect(() => playback({ action: "play-scene", id: "999" })).toThrow(
+      'id "999" does not exist',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("gives every bad id's reason when none names a scene", () => {
+    mockNonExistentObjects();
+
+    expect(() => playback({ action: "play-scene", id: "999,998" })).toThrow(
+      'id "999" does not exist; id "998" does not exist',
     );
   });
 });

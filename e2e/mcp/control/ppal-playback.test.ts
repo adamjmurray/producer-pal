@@ -24,16 +24,16 @@ import {
   sleep,
 } from "../mcp-test-helpers";
 import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import {
+  type ClipEntry,
+  type PlaybackResult,
+  playbackCalls,
+} from "./helpers/playback-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
-async function playback(
-  args: Record<string, unknown>,
-): Promise<PlaybackResult> {
-  return parseToolResult<PlaybackResult>(
-    await ctx.client!.callTool({ name: "ppal-playback", arguments: args }),
-  );
-}
+const { playback, isPlaying, readClip, createClipOnTrack, createSessionClip } =
+  playbackCalls(ctx);
 
 /**
  * Check the next call reports the loop the write before it left. A write
@@ -50,38 +50,6 @@ async function expectLoopReadsBack(
   expect(playing.loop).toBe(true);
   expect(playing.loopStart).toBe(loopStart);
   expect(playing.loopEnd).toBe(loopEnd);
-}
-
-async function createSessionClip(
-  sceneIndex: number,
-  note: string,
-): Promise<string> {
-  return createClipOnTrack(EMPTY_MIDI_TRACK, sceneIndex, note);
-}
-
-async function createClipOnTrack(
-  trackIndex: number,
-  sceneIndex: number,
-  note: string,
-): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      path: `t${trackIndex}/s${sceneIndex}`,
-      notes: `${note} 1|1`,
-      length: "1bar",
-    },
-  });
-
-  return parseToolResult<{ id: string }>(result).id;
-}
-
-async function readClip(
-  path: string,
-): Promise<{ playing?: boolean; triggered?: boolean }> {
-  return parseToolResult<{ playing?: boolean; triggered?: boolean }>(
-    await ctx.client!.callTool({ name: "ppal-read-clip", arguments: { path } }),
-  );
 }
 
 describe("ppal-playback", () => {
@@ -680,16 +648,8 @@ describe("ppal-playback", () => {
   });
 
   it("refuses a scene path sent with sceneIndex, firing nothing", async () => {
-    // read-live-set reports isPlaying only while the transport runs, and firing
+    // isPlaying reads undefined while the transport is stopped, and firing
     // a scene would start it.
-    const isPlaying = async (): Promise<boolean | undefined> =>
-      parseToolResult<{ isPlaying?: boolean }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-live-set",
-          arguments: {},
-        }),
-      ).isPlaying;
-
     await playback({ action: "stop" });
     await sleep(100);
     expect(await isPlaying()).toBeUndefined();
@@ -719,20 +679,3 @@ describe("ppal-playback", () => {
     );
   });
 });
-
-interface ClipEntry {
-  id?: string;
-  path?: string;
-  ok?: false;
-  detail?: string;
-}
-
-interface PlaybackResult {
-  playing: boolean;
-  startTime?: string;
-  scene?: { id: string; path?: string };
-  clip?: ClipEntry | ClipEntry[];
-  loop?: boolean;
-  loopStart?: string;
-  loopEnd?: string;
-}

@@ -632,7 +632,9 @@ apply) keeps its entry with a `detail` rather than becoming a skip.
 `id` or `path` you named, in order; a single target comes back unwrapped,
 several as an array. The earlier entry for a slot you named twice is spelled the
 way you wrote it. If Live throws on one slot, that slot gets `ok: false` with
-the reason and the later slots still run.
+the reason and the later slots still run. `play-session-clips` skips an empty
+slot as `{path, ok: false, detail: "no clip to play"}` instead of firing it,
+which would have stopped whatever its track was playing.
 
 **A locator skip is `{id, ok: false, detail}`**, or `time` or `name` in place of
 `id` for a locator you named that way, with no `operation`. 2.4 answered
