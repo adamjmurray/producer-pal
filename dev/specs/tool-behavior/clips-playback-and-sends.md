@@ -73,6 +73,11 @@ remote script. A line it can't write is a `detail` on that clip's entry
   after the rest of the call, so a call that turns warping on writes and one
   that turns it off refuses.
 
+- **Live before 12.4 takes no points.** Its Python API can't write envelope
+  points, so a line with points is refused:
+  `not written: writing envelope points requires Live 12.4 or later. An empty line still clears an envelope`.
+  A clear line still runs.
+
 - **A write re-enables overridden automation.** Moving an automated parameter by
   hand makes Live ignore its automation until Re-Enable Automation, so the new
   envelope wouldn't play. Every write re-enables the parameter, and when it had

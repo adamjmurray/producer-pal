@@ -24,7 +24,7 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
-import { supportsSampleLoading } from "../../workflow/helpers/server-capability-test-helpers";
+import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -33,7 +33,7 @@ const ctx = setupMcpTestContext({ once: true });
 let canLoadSamples = true;
 
 beforeAll(async () => {
-  canLoadSamples = await supportsSampleLoading(ctx.client!);
+  canLoadSamples = await liveVersionAtLeast(ctx.client!, "12.4");
 });
 
 interface CreateTrackResult {

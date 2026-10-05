@@ -349,9 +349,9 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   result says when that applied. A slot past the last scene creates the scenes
   up to it, reported as `created`
 - Write clip automation envelopes on session clips (needs the
-  [remote script](/guide/remote-script)). Writing one re-enables the parameter's
-  automation if you had moved the parameter by hand; the result notes when it
-  did
+  [remote script](/guide/remote-script) and Live 12.4 or later). Writing one
+  re-enables the parameter's automation if you had moved the parameter by hand;
+  the result notes when it did
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 

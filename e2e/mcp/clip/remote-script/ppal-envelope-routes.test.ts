@@ -19,6 +19,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../../device/helpers/remote-script-test-helpers.ts";
+import { skipBeforeLive } from "../../workflow/helpers/server-capability-test-helpers.ts";
 import { postEnvelopeRoute } from "../helpers/envelope-route-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
@@ -28,6 +29,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("remote script envelope routes", () => {
   requireRemoteScript();
 
   const ctx = setupMcpTestContext();
+
+  skipBeforeLive(
+    ctx,
+    "12.4",
+    "Envelope.create_event, which writes envelope points",
+  );
 
   /**
    * A 1-bar clip in the first slot of the empty MIDI track, with a volume

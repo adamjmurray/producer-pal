@@ -11,6 +11,7 @@
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   appendDetail,
@@ -45,11 +46,19 @@ interface ClipAddress {
   endBeats: number;
   /** An audio clip with warping off: Live keeps its envelopes but never plays them */
   unwarped: boolean;
+  /** Live before 12.4 has no `Envelope.create_event`, so points can't be written */
+  canWritePoints: boolean;
 }
 
 /** Why points aren't written to an unwarped audio clip. */
 const UNWARPED_CLIP_REFUSAL =
   "not written: an unwarped audio clip can't play envelopes. Set warping: true on the clip, then write it again";
+
+/** The oldest Live whose Python API can write envelope points. */
+const WRITE_POINTS_MIN_VERSION = "12.4";
+
+/** Why points aren't written on an older Live. */
+const OLD_LIVE_REFUSAL = `not written: writing envelope points requires Live ${WRITE_POINTS_MIN_VERSION} or later. An empty line still clears an envelope`;
 
 /** The user had moved the parameter, which mutes its automation until re-enabled. */
 const REENABLED_NOTE = "re-enabled its automation, which was overridden";
@@ -105,6 +114,10 @@ export async function applyClipEnvelopes(
       unwarped:
         (clip.getProperty("is_audio_clip") as number) > 0 &&
         (clip.getProperty("warping") as number) === 0,
+      canWritePoints: !isNewerVersion(
+        String(LiveAPI.from("live_app").call("get_version_string")),
+        WRITE_POINTS_MIN_VERSION,
+      ),
     },
     deadline,
   );
@@ -244,6 +257,10 @@ async function writeOneLine(
   // A clear still runs: removing an envelope that can't play does no harm.
   if (line.notation !== "" && address.unwarped) {
     return { ok: false, reason: UNWARPED_CLIP_REFUSAL, available: true };
+  }
+
+  if (line.notation !== "" && !address.canWritePoints) {
+    return { ok: false, reason: OLD_LIVE_REFUSAL, available: true };
   }
 
   if (line.notation === "") {
