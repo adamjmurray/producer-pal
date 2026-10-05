@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { isNewerVersion } from "#src/shared/version-check.ts";
+
 /**
  * Parses a time signature string into numerator and denominator
  * @param timeSignature - Time signature in format "n/m" (e.g., "4/4", "3/4", "6/8")
@@ -162,4 +164,17 @@ export function keptTimeSignature(
   return numerator === asked.numerator && denominator === asked.denominator
     ? undefined
     : `${numerator}/${denominator}`;
+}
+
+/**
+ * Test whether the running Live is at least a version. Calling a Live function
+ * or setting a property that a version doesn't have does nothing and raises no
+ * error, so features added in a later Live check the version instead.
+ * @param min - The oldest version that has the feature, like "12.4"
+ * @returns True when the running Live is `min` or later
+ */
+export function liveVersionAtLeast(min: string): boolean {
+  const version = String(LiveAPI.from("live_app").call("get_version_string"));
+
+  return !isNewerVersion(version, min);
 }

@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * Result of probing a device for its Simpler sample state. Callers branch on
@@ -89,7 +89,7 @@ export function setSimplerSample(
     return unwritable;
   }
 
-  if (!supportsReplaceSample()) {
+  if (!liveVersionAtLeast(REPLACE_SAMPLE_MIN_VERSION)) {
     return `'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`;
   }
 
@@ -150,18 +150,6 @@ export function isSingleSampleSimpler(
 
 /** Simpler's `replace_sample` function was added in Live 12.4. */
 const REPLACE_SAMPLE_MIN_VERSION = "12.4";
-
-/**
- * Test whether this Live can load a sample into Simpler. Older versions have no
- * `replace_sample` function, and calling a function Live doesn't have returns
- * normally and does nothing — so check the version instead of the return value.
- * @returns True on Live 12.4 and later
- */
-function supportsReplaceSample(): boolean {
-  const version = String(LiveAPI.from("live_app").call("get_version_string"));
-
-  return !isNewerVersion(version, REPLACE_SAMPLE_MIN_VERSION);
-}
 
 /**
  * Guard a Simpler single-sample write.

@@ -9,6 +9,7 @@ import {
 } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import {
+  liveVersionAtLeast,
   toLiveApiId,
   toLiveApiView,
 } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -183,6 +184,9 @@ export function updateDeviceSelection({
   return undefined;
 }
 
+/** Live before 12.4 has no `is_editor_open`, and setting it does nothing. */
+const PLUGIN_WINDOW_MIN_VERSION = "12.4";
+
 /**
  * Open or close a plug-in's (VST/AU) floating editor window. The `is_editor_open`
  * property is specific to the PluginDevice LOM class (Live 12.4+), so for any
@@ -211,6 +215,13 @@ export function applyPluginEditorWindow(
     return {
       applied: false,
       detail: "openPluginWindow ignored: not a plug-in (VST/AU)",
+    };
+  }
+
+  if (!liveVersionAtLeast(PLUGIN_WINDOW_MIN_VERSION)) {
+    return {
+      applied: false,
+      detail: `openPluginWindow ignored: requires Live ${PLUGIN_WINDOW_MIN_VERSION} or later`,
     };
   }
 

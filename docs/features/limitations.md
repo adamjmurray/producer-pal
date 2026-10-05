@@ -14,8 +14,8 @@ surprising, see [Known Issues](/support/known-issues).
 
 ## VST/AU Plug-in Internals Can't Be Controlled Directly
 
-Producer Pal can open or close a plug-in's editor window, and
-[list the plug-ins you have installed](/features/tools#ppal-library) (Live
+Producer Pal can open or close a plug-in's editor window and
+[list the plug-ins you have installed](/features/tools#ppal-library) (both Live
 12.4+), but it cannot read or set the parameters inside a third-party VST/AU
 plug-in.
 

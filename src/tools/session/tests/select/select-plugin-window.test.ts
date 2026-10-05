@@ -86,6 +86,26 @@ describe("select - plugin editor window", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("says so on the device's entry on Live before 12.4", () => {
+    registerMockObject("live_app", {
+      path: "live_app",
+      methods: { get_version_string: () => "12.3.8" },
+    });
+    const device = registerDeviceAtT0D0("plugin_0", "PluginDevice");
+
+    const result = select({ devicePath: "t0/d0", openPluginWindow: true });
+
+    expect(device.set).not.toHaveBeenCalledWith(
+      "is_editor_open",
+      expect.anything(),
+    );
+    expect(result.selectedDevice).toStrictEqual({
+      id: "plugin_0",
+      path: "t0/d0",
+      detail: "openPluginWindow ignored: requires Live 12.4 or later",
+    });
+  });
+
   it("warns and skips when no device target is provided", () => {
     setupSongViewMock();
 

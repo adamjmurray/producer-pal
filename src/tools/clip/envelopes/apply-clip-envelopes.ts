@@ -11,12 +11,12 @@
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   appendDetail,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { envelopeWritePoints } from "./envelope-write-points.ts";
 import {
@@ -114,10 +114,7 @@ export async function applyClipEnvelopes(
       unwarped:
         (clip.getProperty("is_audio_clip") as number) > 0 &&
         (clip.getProperty("warping") as number) === 0,
-      canWritePoints: !isNewerVersion(
-        String(LiveAPI.from("live_app").call("get_version_string")),
-        WRITE_POINTS_MIN_VERSION,
-      ),
+      canWritePoints: liveVersionAtLeast(WRITE_POINTS_MIN_VERSION),
     },
     deadline,
   );
