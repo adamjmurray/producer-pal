@@ -309,6 +309,36 @@ export function resolveCompactOutput(
   return undefined;
 }
 
+// --- Portal version ---
+
+/**
+ * Header the portal sends on every request it forwards, carrying its own
+ * VERSION. The portal and the device are updated separately, and the device
+ * server is stateless (a fresh server per POST /mcp), so MCP `clientInfo` from
+ * `initialize` is gone by the time a tool is called. Only a header reaches
+ * ppal-connect, where the mismatch is reported (portal-version-inject.ts).
+ *
+ * Absent for every other caller (chat UI, direct HTTP clients).
+ */
+export const PORTAL_VERSION_HEADER = "x-producer-pal-portal-version";
+
+/**
+ * The portal version a request carries, or undefined when the header is absent
+ * or isn't a version. It is quoted into the connect result the model reads, so
+ * anything but a plain version string is dropped.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @returns The version string, or undefined
+ */
+export function resolvePortalVersion(
+  headerValue: string | undefined,
+): string | undefined {
+  return headerValue != null &&
+    /^\d+\.\d+\.\d+(-[\w.]{1,24})?$/.test(headerValue)
+    ? headerValue
+    : undefined;
+}
+
 // --- Subagent briefing ---
 
 /**

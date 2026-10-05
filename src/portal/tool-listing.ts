@@ -102,7 +102,7 @@ async function fetchDeviceToolNames(
   mcpUrl: string,
   options: BridgeOptions,
 ): Promise<string[] | null> {
-  const client = new Client({ name: "producer-pal-portal", version: "1.0.0" });
+  const client = new Client({ name: "producer-pal-portal", version: VERSION });
 
   try {
     const transport = new StreamableHTTPClientTransport(

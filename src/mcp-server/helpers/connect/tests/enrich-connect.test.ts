@@ -62,6 +62,20 @@ describe("enrichConnect", () => {
     expect(blocks[5]).toContain("Report the connection status");
   });
 
+  it("puts the portal version line right after the connect result, before the skills", async () => {
+    const blocks = await enrichedBlocks({ portalVersion: "1.0.0" });
+
+    expect(blocks[1]).toContain("portalVersion: 1.0.0");
+    expect(blocks[2]).toContain("Producer Pal Skills");
+    expect(blocks.at(-1)).toContain("Report the connection status");
+  });
+
+  it("adds no portal line for a request that did not come through a portal", async () => {
+    const blocks = await enrichedBlocks();
+
+    expect(blocks.some((block) => block.includes("portalVersion"))).toBe(false);
+  });
+
   // The next step reacts to the context and memory carried by the blocks before
   // it, and reads as the response's final word. Compose it anywhere but
   // outermost and it lands mid-response, ahead of the very blocks it describes —

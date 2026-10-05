@@ -84,6 +84,18 @@ is built — before `listTools` could reveal the catalog a whitelist would need.
 Together these are what lets one server serve a full-strength orchestrator and
 several narrowly-scoped subagent workers concurrently.
 
+## Portal version
+
+The portal and the device are updated separately, so they drift. The portal
+sends its own version on every request in `PORTAL_VERSION_HEADER`
+(`src/shared/config.ts`). It has to be a header: the server is stateless, so MCP
+`clientInfo` from `initialize` is gone by the time a tool is called. V8 can't
+see headers, so `withPortalVersion`
+(`src/mcp-server/helpers/connect/portal-version-inject.ts`) appends a
+`portalVersion: <version>` block to the `ppal-connect` result. When the versions
+differ the block adds one sentence saying which side is older and to update it.
+A caller with no header (chat UI, direct HTTP clients) gets no block.
+
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats
 clip notes (`ToolContext.notation`), and V8 holds it as a session global with no

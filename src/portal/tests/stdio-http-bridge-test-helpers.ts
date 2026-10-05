@@ -14,7 +14,7 @@
  */
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { expect, vi, type Mock } from "vitest";
-import { VERSION } from "#src/shared/config.ts";
+import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { type BridgeOptions } from "../portal-settings.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
@@ -24,6 +24,9 @@ export const mockClient = {
   listTools: vi.fn(),
   callTool: vi.fn(),
 };
+
+/** The identity (name, version) each mocked Server was constructed with. */
+export const serverInfoCalls: unknown[] = [];
 
 export const mockServer = {
   setRequestHandler: vi.fn(),
@@ -102,15 +105,15 @@ export function getHandler(
 
 /**
  * Connect a fresh bridge built with `options` and assert the request headers it
- * gave its transport — or, when `expectedHeaders` is null, that it passed no
- * transport options at all. Also asserts nothing was POSTed to /config: these
- * settings are per-client, and a push would change them device-wide.
+ * gave its transport. The portal's version header is always expected on top of
+ * `expectedHeaders`. Also asserts nothing was POSTed to /config: these settings
+ * are per-client, and a push would change them device-wide.
  * @param options - Bridge constructor options
- * @param expectedHeaders - Expected request headers, or null for none
+ * @param expectedHeaders - Expected request headers besides the version
  */
 export async function expectRequestHeaders(
   options: BridgeOptions,
-  expectedHeaders: Record<string, string> | null,
+  expectedHeaders: Record<string, string>,
 ): Promise<void> {
   const fetchSpy = vi
     .spyOn(globalThis, "fetch")
@@ -126,11 +129,11 @@ export async function expectRequestHeaders(
 
   const transportMock = StreamableHTTPClientTransport as unknown as Mock;
 
-  expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual(
-    expectedHeaders == null
-      ? undefined
-      : { requestInit: { headers: expectedHeaders } },
-  );
+  expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual({
+    requestInit: {
+      headers: { [PORTAL_VERSION_HEADER]: VERSION, ...expectedHeaders },
+    },
+  });
   expect(fetchSpy).not.toHaveBeenCalled();
 
   fetchSpy.mockRestore();

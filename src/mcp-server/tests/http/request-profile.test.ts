@@ -5,7 +5,7 @@
 
 import { type Request } from "express";
 import { describe, expect, it } from "vitest";
-import { LIVE_API_HEADER } from "#src/shared/config.ts";
+import { LIVE_API_HEADER, PORTAL_VERSION_HEADER } from "#src/shared/config.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups.ts";
 import {
@@ -94,5 +94,22 @@ describe("resolveRequestProfile — Direct Live API opt-in vs. a curated toolset
     );
 
     expect(profile.tools).toContain(LIVE_API_TOOL_ID);
+  });
+});
+
+describe("resolveRequestProfile — portal version", () => {
+  it("carries the portal's version when the header is sent", () => {
+    const profile = resolveRequestProfile(
+      mockReq({ [PORTAL_VERSION_HEADER]: "2.5.0" }),
+      defaults(),
+    );
+
+    expect(profile.portalVersion).toBe("2.5.0");
+  });
+
+  it("has none when the header is absent", () => {
+    expect(
+      resolveRequestProfile(mockReq({}), defaults()).portalVersion,
+    ).toBeUndefined();
   });
 });

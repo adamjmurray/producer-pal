@@ -175,6 +175,8 @@ function applyLiveApiEnabled(next: boolean): void {
  * @param getNotation - Reads the notation for this wrapper's calls
  * @param getCompactOutput - Reads the output format, or undefined to leave the
  *   device's own setting alone
+ * @param getPortalVersion - Reads the portal's version when the request came
+ *   through one, so ppal-connect can flag a version mismatch
  * @returns A callLiveApi whose ppal-connect results carry every block
  */
 function buildEnrichedCall(
@@ -182,6 +184,7 @@ function buildEnrichedCall(
   getTools: () => readonly string[],
   getNotation: () => Notation,
   getCompactOutput: () => boolean | undefined = () => undefined,
+  getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
   return enrichConnect(
     withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
@@ -201,6 +204,7 @@ function buildEnrichedCall(
       smallModelMode: getSmallModelMode(),
       projectContext: config.projectContext,
       tools: getTools(),
+      portalVersion: getPortalVersion(),
     }),
   );
 }
@@ -309,6 +313,7 @@ export function createExpressApp(): Express {
           () => profile.tools,
           () => profile.notation,
           () => profile.compactOutput,
+          () => profile.portalVersion,
         ),
         {
           smallModelMode: profile.smallModelMode,

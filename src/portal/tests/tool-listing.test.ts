@@ -65,7 +65,11 @@ vi.mock(
 );
 
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
+import {
+  DISABLED_TOOLS_HEADER,
+  PORTAL_VERSION_HEADER,
+  VERSION,
+} from "#src/shared/config.ts";
 import { formatToolListing } from "../tool-listing.ts";
 
 const MCP_URL = "http://localhost:3350/mcp";
@@ -118,7 +122,10 @@ describe("formatToolListing", () => {
       new URL(MCP_URL),
       {
         requestInit: {
-          headers: { [DISABLED_TOOLS_HEADER]: "ppal-create-clip" },
+          headers: {
+            [PORTAL_VERSION_HEADER]: VERSION,
+            [DISABLED_TOOLS_HEADER]: "ppal-create-clip",
+          },
         },
       },
     );

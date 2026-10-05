@@ -44,6 +44,10 @@ Claude Desktop sees for small-model mode, Direct Live API or JSON output; those
 live in the extension's settings. Env vars apply directly, with no opt-in gate,
 because there is no shared state to clobber.
 
+The portal also sends its own version on every request, so `ppal-connect` can
+flag a portal/device version mismatch
+([details](../architecture/runtime-boundary.md#portal-version)).
+
 mcpb can't express "unset": an untoggled checkbox arrives as `false`. So the
 three booleans are always sent, and `false` is the right default for Claude
 Desktop anyway (each is documented as not recommended for the models it runs).

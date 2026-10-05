@@ -131,7 +131,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       this.httpClient = new Client({
         name: "producer-pal-portal",
-        version: "1.0.0",
+        version: VERSION,
       });
 
       await this.httpClient.connect(httpTransport);
@@ -218,7 +218,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
     this.mcpServer = new Server(
       {
         name: "stdio-http-bridge",
-        version: "1.0.0",
+        version: VERSION,
       },
       {
         capabilities: {

@@ -10,6 +10,9 @@
  * Run with: npm run e2e:mcp
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { connectMcp } from "#evals/chat/mcp.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
@@ -236,6 +239,59 @@ describe("ppal-connect", () => {
         await setConfig({ smallModelMode: false });
         await fetch(MEMORY_URL, { method: "DELETE" });
       }
+    });
+  });
+
+  describe("portal version", () => {
+    // The portal sends its version as a header on every request; the device
+    // names it in the connect result and flags a mismatch. A call with no header
+    // (the shared client) says nothing.
+    const PORTAL_PREFIX = "portalVersion:";
+
+    /**
+     * Call ppal-connect on a fresh connection that sends the given portal
+     * version, or none, and return the portal block.
+     * @param portalVersion - Header value, or undefined to send no header
+     * @returns The portal block text, or "" when absent
+     */
+    async function portalBlock(portalVersion?: string): Promise<string> {
+      const { client } = await connectMcp(MCP_URL, {
+        headers:
+          portalVersion == null
+            ? undefined
+            : { [PORTAL_VERSION_HEADER]: portalVersion },
+      });
+
+      try {
+        const result = await client.callTool({
+          name: "ppal-connect",
+          arguments: {},
+        });
+
+        return extractBlock(result, PORTAL_PREFIX);
+      } finally {
+        await client.close();
+      }
+    }
+
+    it("reports a matching portal version without a note", async () => {
+      expect(await portalBlock(VERSION)).toBe(`${PORTAL_PREFIX} ${VERSION}`);
+    });
+
+    it("tells the user to update an older portal", async () => {
+      expect(await portalBlock("1.0.0")).toContain(
+        "The portal is older than the device",
+      );
+    });
+
+    it("tells the user to update an older device", async () => {
+      expect(await portalBlock("99.0.0")).toContain(
+        "The device is older than the portal",
+      );
+    });
+
+    it("says nothing for a caller that is not a portal", async () => {
+      expect(await portalBlock()).toBe("");
     });
   });
 

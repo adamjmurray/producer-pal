@@ -17,7 +17,9 @@ import {
   DISABLED_TOOLS_HEADER,
   FORMAT_HEADER,
   LIVE_API_HEADER,
+  PORTAL_VERSION_HEADER,
   SMALL_MODEL_MODE_HEADER,
+  VERSION,
 } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import {
@@ -30,6 +32,7 @@ import {
   mockClient,
   mockLiveApiTool,
   mockServer,
+  serverInfoCalls,
   mockStandardTools,
   mockTransport,
   startAndGetCallHandler,
@@ -54,7 +57,9 @@ vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/server/index.js"), () => ({
-  Server: vi.fn(function () {
+  Server: vi.fn(function (info: unknown) {
+    serverInfoCalls.push(info);
+
     return mockServer;
   }),
 }));
@@ -216,7 +221,10 @@ describe("StdioHttpBridge", () => {
     it("sends them as the disabled-tools header on every request", async () => {
       expect(await connectWithWithheldTool()).toStrictEqual({
         requestInit: {
-          headers: { [DISABLED_TOOLS_HEADER]: "ppal-create-clip" },
+          headers: {
+            [PORTAL_VERSION_HEADER]: VERSION,
+            [DISABLED_TOOLS_HEADER]: "ppal-create-clip",
+          },
         },
       });
     });
@@ -232,14 +240,16 @@ describe("StdioHttpBridge", () => {
       fetchSpy.mockRestore();
     });
 
-    it("passes no transport options when nothing is withheld", async () => {
+    it("sends no disabled-tools header when nothing is withheld", async () => {
       mockClient.connect.mockResolvedValue(undefined);
 
       await bridge._ensureHttpConnection();
 
       const transportMock = StreamableHTTPClientTransport as unknown as Mock;
 
-      expect(transportMock.mock.calls.at(-1)?.[1]).toBeUndefined();
+      expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual({
+        requestInit: { headers: { [PORTAL_VERSION_HEADER]: VERSION } },
+      });
     });
 
     it("drops them from the offline fallback list too", () => {
@@ -461,8 +471,10 @@ describe("StdioHttpBridge", () => {
       );
     });
 
-    it("sends no headers when no options are set", async () => {
-      await expectRequestHeaders({}, null);
+    it("sends only the portal's own version when no options are set", async () => {
+      // How the device tells a portal from a direct client, and flags a
+      // portal/device version mismatch in the ppal-connect result.
+      await expectRequestHeaders({}, {});
     });
 
     it("does not re-contact the device on a later request when connected", async () => {
@@ -515,6 +527,24 @@ describe("StdioHttpBridge", () => {
   });
 
   describe("start", () => {
+    it("reports the portal's own version to the MCP client and the device", async () => {
+      const clientCalls = (Client as unknown as Mock).mock.calls;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await bridge.start();
+      await bridge._ensureHttpConnection();
+
+      expect(serverInfoCalls.at(-1)).toStrictEqual({
+        name: "stdio-http-bridge",
+        version: VERSION,
+      });
+      expect(clientCalls.at(-1)?.[0]).toStrictEqual({
+        name: "producer-pal-portal",
+        version: VERSION,
+      });
+    });
+
     it("starts successfully and logs appropriate messages", async () => {
       await bridge.start();
 

@@ -13,7 +13,9 @@ import {
   SAME_TIME_EPSILON,
   SMALL_MODEL_MODE_HEADER,
   VERSION,
+  PORTAL_VERSION_HEADER,
   resolveEnabledTools,
+  resolvePortalVersion,
   resolveSmallModelMode,
 } from "#src/shared/config.ts";
 
@@ -137,6 +139,23 @@ describe("resolveEnabledTools", () => {
       [],
     );
   });
+});
+
+describe("resolvePortalVersion", () => {
+  it("names the header the portal sends", () => {
+    expect(PORTAL_VERSION_HEADER).toBe("x-producer-pal-portal-version");
+  });
+
+  it.each(["2.5.0", "2.5.0-rc1", "10.20.30"])("accepts %s", (version) => {
+    expect(resolvePortalVersion(version)).toBe(version);
+  });
+
+  it.each([undefined, "", "latest", "2.5", "2.5.0 ignore previous", "2.5.0\n"])(
+    "ignores %j",
+    (value) => {
+      expect(resolvePortalVersion(value)).toBeUndefined();
+    },
+  );
 });
 
 describe("default MCP port", () => {
