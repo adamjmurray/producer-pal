@@ -359,6 +359,13 @@ a Simpler is a 400 and nothing is written.
 curl -s -X POST localhost:3349/device/simpler/write -d '{"device_path": "live_set tracks 0 devices 0", "pitch_bend_range": 12}'
 ```
 
+### `POST /undo/end`
+
+Closes Live's pending undo step and answers `{ok: true}`. Live merges every
+change since the last step into one, so Producer Pal sends this after each write
+tool call (without waiting for the answer) and one undo reverts one call. It
+does nothing when no step is pending. Max for Live's LOM can't do this.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any

@@ -127,10 +127,10 @@ curve Live's editor could draw. Every amount in hundredths survives the editor's
 
 ## Undo
 
-The write route wraps one envelope's clear and rewrite in one undo step, so
-undoing a rewrite restores the old envelope. Each `envelopes` line in
-`ppal-update-clip` is its own route call, so a multi-line write takes one undo
-per line.
+The write route doesn't open an undo step of its own: Producer Pal ends the
+pending step after each tool call (`POST /undo/end`), so a whole
+`ppal-update-clip` call, notes and every `envelopes` line, is one undo. A step
+opened here would close the one holding the call's other changes.
 
 ## Probing
 

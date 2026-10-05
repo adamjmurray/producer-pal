@@ -94,11 +94,7 @@ def write(state, points=POINTS, clip=None):
         devices=[],
         mixer_device=types.SimpleNamespace(volume=param, panning=FakeParam(0), sends=[]),
     )
-    song = types.SimpleNamespace(
-        tracks=[track],
-        begin_undo_step=lambda: None,
-        end_undo_step=lambda: None,
-    )
+    song = types.SimpleNamespace(tracks=[track])
     result = routes.ROUTES["/envelope/write"](
         types.SimpleNamespace(song=song),
         {"track": "t0", "slot": 0, "parameter": "volume", "points": points},
@@ -193,27 +189,12 @@ class EnvelopeWriteFailureTest(unittest.TestCase):
         self.assertIn("the envelope was removed", message)
         self.assertIsNone(clip.env)
 
-    def test_the_undo_step_still_ends_after_a_failure(self):
-        steps = []
-        param = FakeParam(0)
-        clip = FakeClip(fail_at=0)
-        track = types.SimpleNamespace(
-            clip_slots=[types.SimpleNamespace(has_clip=True, clip=clip)],
-            devices=[],
-            mixer_device=types.SimpleNamespace(volume=param, panning=FakeParam(0), sends=[]),
-        )
-        song = types.SimpleNamespace(
-            tracks=[track],
-            begin_undo_step=lambda: steps.append("begin"),
-            end_undo_step=lambda: steps.append("end"),
-        )
+    def test_the_write_leaves_undo_steps_alone(self):
+        # A begin here would close the step the tool call's other changes are
+        # in. The fake song has no undo methods, so any call would raise.
+        write(0)
         with self.assertRaises(routes.RouteError):
-            routes.ROUTES["/envelope/write"](
-                types.SimpleNamespace(song=song),
-                {"track": "t0", "slot": 0, "parameter": "volume", "points": POINTS},
-            )
-        self.assertEqual(steps, ["begin", "end"])
-        self.assertEqual(param.re_enable_calls, 0)
+            write(0, POINTS, FakeClip(fail_at=0))
 
     def test_bad_coefficients_are_refused_before_anything_changes(self):
         for bad in ([0.5] * 3, [0.5] * 5, "abc", [0.5, 0.5, 0.5, 1.5], [0.5, 0.5, 0.5, "x"], [0.5, 0.5, 0.5, -0.1]):

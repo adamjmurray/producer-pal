@@ -126,6 +126,20 @@ pipeline keeps warnings on the right response by never creating its own timing:
 
 A hook that adds an await without these breaks warnings silently.
 
+## One undo step per call
+
+Live merges every change into one undo step until something closes it. Node
+closes it after each write call: `withUndoStepEnd`
+([`with-undo-step-end.ts`](../../src/mcp-server/rpc/remote-script/with-undo-step-end.ts))
+sends `POST /undo/end` to the remote script once the last running write call
+settles, so overlapping calls share a step. It never begins a step (a begin left
+open by a crash or timeout would merge everything after it) and doesn't wait for
+the answer. No end follows a timeout, since V8 may still be changing the Set. A
+Live without the remote script keeps one merged step. A tool that is not
+read-only (`readOnlyHint`) gets this with no code of its own. Don't open undo
+steps inside a tool or route: a begin closes the step holding the call's other
+changes.
+
 ## Adding a write tool
 
 1. Write a `WriteSpec` with `runWrite()`. Put anything that is one tool's own

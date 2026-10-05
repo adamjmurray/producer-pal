@@ -18,6 +18,7 @@ from .preset_guard import (
 from .producer_pal_device import holds_producer_pal, is_producer_pal
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
+from .undo import ROUTES as _UNDO_ROUTES
 from .version import VERSION
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
@@ -334,6 +335,7 @@ ROUTES = {
     **_RACK_MACRO_ROUTES,
     **_CONVERSION_ROUTES,
     **_SIMPLER_ROUTES,
+    **_UNDO_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
@@ -346,4 +348,5 @@ POST_ONLY = (
     "/envelope/clear",
     "/clip/convert",
     "/device/simpler/write",
+    "/undo/end",
 )

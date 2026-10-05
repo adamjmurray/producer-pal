@@ -113,11 +113,7 @@ def write(bridge, params):
     # when the clip stops, so an overridden parameter would ignore this write.
     overridden = int(param.automation_state) == OVERRIDDEN
 
-    song.begin_undo_step()
-    try:
-        env = _replace_envelope(clip, param, points)
-    finally:
-        song.end_undo_step()
+    env = _replace_envelope(clip, param, points)
 
     # Just after each time, so a jump reads its new value.
     result = {

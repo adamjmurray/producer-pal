@@ -40,6 +40,7 @@ import { registerGlobalContextRoutes } from "./routes/config/global-context-rout
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
+import { withUndoStepEnd } from "./rpc/remote-script/with-undo-step-end.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -166,7 +167,8 @@ function applyLiveApiEnabled(next: boolean): void {
  *
  * Notation is also pushed down as a request override (withDefaultOverrides), so
  * the notation the skills teach is the one V8 actually parses and formats notes
- * in. It wraps the inner call, inside the connect-enrichment chain.
+ * in. It wraps the inner call, inside the connect-enrichment chain. Write calls
+ * also end Live's pending undo step (withUndoStepEnd), so each is one undo.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
  * @param getTools - Reads the toolset skills fragments are gated on
@@ -182,7 +184,7 @@ function buildEnrichedCall(
   getCompactOutput: () => boolean | undefined = () => undefined,
 ): WrappedCallLiveApi {
   return enrichConnect(
-    withDefaultOverrides(callLiveApi, () => {
+    withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
       const overrides: RequestOverrides = { notation: getNotation() };
       const compactOutput = getCompactOutput();
 
