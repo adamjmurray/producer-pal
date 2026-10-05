@@ -103,7 +103,8 @@ Exit code 1, with `Error: …` on stderr.
 - **"would not open the Set"** — it was saved by a newer Live. Use `--app` with
   a newer Live if one is installed.
 - **"not allowed assistive access"** — the Accessibility permission is missing
-  or stale. Have the user grant it (toggle it off and on if it's already on).
+  or stale (the script already retried with a fresh System Events). Have the
+  user grant it (toggle it off and on if it's already on).
 - **"did not quit"** — Live is still running after the timeout. The error lists
   any dialog on screen; relay it.
 - **"did not swap Sets" / "No Live window showed"** — timed out. The error lists

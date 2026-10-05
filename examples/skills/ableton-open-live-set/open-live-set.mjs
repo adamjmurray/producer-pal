@@ -49,6 +49,12 @@ const PPAL_CONFIG = `http://localhost:${PPAL_PORT}/config`;
 const REMOTE_SCRIPT_REPO =
   "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
 const POLL_MS = 250;
+const ASSISTIVE_ACCESS_DENIED = "not allowed assistive access";
+const ASSISTIVE_ACCESS_FIX =
+  "Grant Accessibility (System Settings → Privacy & Security → " +
+  "Accessibility) to the app running the agent, and to AEServer if it is " +
+  "listed. Toggle an entry that is already on off and back on — the grant " +
+  "goes stale.";
 // Live can re-instantiate the device right after a load, so one answer can be
 // the old device's last. Two in a row counts as up.
 const READY_STREAK = 2;
@@ -215,13 +221,10 @@ async function assertAssistiveAccess() {
   const { error } = await osascript(
     'tell application "System Events" to tell process "Finder" to return count of windows',
   );
-  if (error?.includes("not allowed assistive access")) {
+  if (error?.includes(ASSISTIVE_ACCESS_DENIED)) {
     throw new Error(
       "AppleScript is not allowed assistive access, so Live's dialogs can't " +
-        "be read or clicked. Grant Accessibility (System Settings → Privacy & " +
-        "Security → Accessibility) to the app running the agent, and to " +
-        "AEServer if it is listed. Toggle an entry that is already on off and " +
-        `back on — the grant goes stale. osascript said: ${error}`,
+        `be read or clicked. ${ASSISTIVE_ACCESS_FIX} osascript said: ${error}`,
     );
   }
 }
@@ -639,7 +642,7 @@ async function poll(check, until, answerDialogs = async () => {}) {
  * @returns {Promise<void>} Resolves when nothing needs the user.
  */
 async function answerDialog(discard, dismissed, verb = "opened") {
-  const { output } = await osascript(dialogScript(discard));
+  const output = await runDialogScript(discard);
   if (output == null) {
     return;
   }
@@ -673,6 +676,31 @@ async function answerDialog(discard, dismissed, verb = "opened") {
       `Live would not open the Set.${said} A Set saved by a newer Live can't be opened by an older one; use --app to open it with a newer Live if one is installed.`,
     );
   }
+}
+
+/**
+ * Run the dialog script. Live can lock one System Events process out though
+ * the Accessibility grant is fine, and a fresh one is let back in, so a refusal
+ * restarts System Events and retries once before failing.
+ * @param {{unsaved: boolean, recovery: boolean}} discard - What may be lost.
+ * @returns {Promise<string | null>} The script's output.
+ */
+export async function runDialogScript(discard) {
+  const first = await osascript(dialogScript(discard));
+  if (!first.error?.includes(ASSISTIVE_ACCESS_DENIED)) {
+    return first.output;
+  }
+  // Fails when it isn't running, which is just as good.
+  await execFileAsync("killall", ["System Events"]).catch(() => {});
+  const { output, error } = await osascript(dialogScript(discard));
+  if (error?.includes(ASSISTIVE_ACCESS_DENIED)) {
+    throw new Error(
+      "macOS refused System Events access to Live, even after restarting " +
+        "System Events, so Live's dialogs can't be read or clicked. " +
+        `${ASSISTIVE_ACCESS_FIX} osascript said: ${error}`,
+    );
+  }
+  return output;
 }
 
 /**
