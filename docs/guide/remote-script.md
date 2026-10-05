@@ -25,6 +25,8 @@ Install it if you want AI to:
   that's already in the Set with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
   device, or a rack, replaces the device, and its automation is lost.
+- **Undo one request at a time**: each request becomes a single undo step in
+  Live, so Cmd+Z / Ctrl+Z reverts just that request.
 - **Add Producer Pal to a Live Set** from a coding agent: to the open Set with
   the `producer-pal` [Agent Skill](/guide/skills), or while opening or creating
   one with `ableton-open-live-set`. This needs the device installed in your User

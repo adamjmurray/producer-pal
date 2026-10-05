@@ -13,17 +13,19 @@ they aren't listed here.
 
 ## Undo/Redo Behavior
 
-Live groups all Live API changes into a single undo step until you interact with
-Live's UI (clicking, typing, etc.). So if you make multiple requests to Producer
-Pal without clicking in Live between them, Cmd+Z / Ctrl+Z may undo everything at
-once. On the other hand, heavier operations can get split across multiple undo
-steps, so you might need to press undo several times.
+With the [remote script](/guide/remote-script) installed, each Producer Pal
+request is its own undo step, so Cmd+Z / Ctrl+Z undoes one request at a time.
 
-This comes from Live's own undo model as exposed through the Live API, not a Max
-for Live limitation specific to Producer Pal.
+Without it, Live groups all Live API changes into a single undo step until you
+interact with Live's UI (clicking, typing, etc.). So if you make multiple
+requests to Producer Pal without clicking in Live between them, Cmd+Z / Ctrl+Z
+may undo everything at once. On the other hand, heavier operations can get split
+across multiple undo steps, so you might need to press undo several times. This
+comes from Live's own undo model as exposed through the Live API.
 
-**Workaround:** Save your Live Set before big changes. Click somewhere in Live's
-UI between requests if you want separate undo steps.
+**Workaround:** Install the remote script. Without it, save your Live Set before
+big changes, and click somewhere in Live's UI between requests if you want
+separate undo steps.
 
 ## Recent Project Context Can Be Lost on a Device Upgrade (Pre-2.1.0 Devices)
 
