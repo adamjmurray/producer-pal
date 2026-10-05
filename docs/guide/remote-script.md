@@ -43,8 +43,9 @@ it is installed and what it does may change.
 
 1. Open the [Chat UI](/guide/chat-ui) and go to **Settings → Remote Script**.
 2. **Confirm your User Library folder.** Producer Pal reads it from Live's
-   browser database. If it is wrong or missing, paste the path yourself: Live
-   shows it under **Settings → Library → Location of User Library**.
+   browser database or settings, or finds it in the default location. If it is
+   wrong or missing, paste the path yourself: Live shows it under **Settings →
+   Library → Location of User Library**.
    - macOS: `~/Music/Ableton/User Library`
    - Windows: `C:\Users\you\Documents\Ableton\User Library`
 3. Click **Install**. The script is written to
