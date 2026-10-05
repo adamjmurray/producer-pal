@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
@@ -13,6 +14,7 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
+import { groupTrackHoldsNoClips } from "#src/tools/shared/clip/group-track-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
@@ -62,6 +64,9 @@ export interface ReadClipArgs {
   /** @internal The caller walked this track's or scene's own slots, so the
    * address is real by construction and an empty slot needn't prove it */
   slotValidated?: boolean;
+  /** @internal Told the track of a slot that is really empty; may throw to
+   * say why that slot holds no clip */
+  onEmptySlot?: (track: LiveAPI) => void;
 }
 
 interface WarpMarker {
@@ -208,13 +213,20 @@ function readNamedClip(
   args: ReadClipArgs,
   context: Partial<ToolContext>,
 ): ReadClipResult {
-  const clip = readOneClip(args, context);
+  const clip = readOneClip({ ...args, onEmptySlot: refuseGroupTrack }, context);
 
   if (clip.id == null) {
     throw new Error(`no clip at ${clip.path}`);
   }
 
   return clip;
+}
+
+// A group track holds no clips, so a path into one says that, not "no clip".
+function refuseGroupTrack(track: LiveAPI): void {
+  if (isGroupTrack(track)) {
+    throw new Error(groupTrackHoldsNoClips(track));
+  }
 }
 
 /**
@@ -249,6 +261,7 @@ export function readOneClip(
     trackIndex,
     sceneIndex,
     args.slotValidated,
+    args.onEmptySlot,
   );
 
   if (!resolved.found) {

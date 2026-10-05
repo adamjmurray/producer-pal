@@ -39,6 +39,8 @@ interface EmptySlotResponse {
  * @param trackIndex - Track index (required if clipId not provided)
  * @param sceneIndex - Scene index (required if clipId not provided)
  * @param slotValidated - The caller already knows the slot is real (see ReadClipArgs)
+ * @param onEmptySlot - Told the track of a slot that is really empty, for a
+ *   caller that refuses some (see ReadClipArgs)
  * @returns Object with either found clip or empty slot response
  */
 export function resolveClip(
@@ -46,6 +48,7 @@ export function resolveClip(
   trackIndex: number | null,
   sceneIndex: number | null,
   slotValidated = false,
+  onEmptySlot?: (track: LiveAPI) => void,
 ): ResolveClipResult {
   if (clipId != null) {
     return { found: true, clip: validateIdType(clipId, "clip") };
@@ -67,7 +70,9 @@ export function resolveClip(
   // Nothing there: either the slot is empty or the address names something
   // that doesn't exist, and only telling those apart needs the track and scene.
   if (!slotValidated) {
-    assertSlotExists(trackIndex as number, sceneIndex as number);
+    const track = assertSlotExists(trackIndex as number, sceneIndex as number);
+
+    onEmptySlot?.(track);
   }
 
   return {
@@ -85,15 +90,20 @@ export function resolveClip(
  * Throw if a clip slot's track or scene isn't there, naming which one.
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index
+ * @returns The track
  */
-function assertSlotExists(trackIndex: number, sceneIndex: number): void {
-  if (!LiveAPI.from(livePath.track(trackIndex)).exists()) {
+function assertSlotExists(trackIndex: number, sceneIndex: number): LiveAPI {
+  const track = LiveAPI.from(livePath.track(trackIndex));
+
+  if (!track.exists()) {
     throw new Error(`no track at "t${String(trackIndex)}"`);
   }
 
   if (!LiveAPI.from(livePath.scene(sceneIndex)).exists()) {
     throw new Error(`no scene at "s${String(sceneIndex)}"`);
   }
+
+  return track;
 }
 
 /**

@@ -23,6 +23,7 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
+import { AUDIO_TRACK, PARENT_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -133,5 +134,72 @@ describe("ppal-create-device path lists", () => {
       expect(read.id).toBe(entry.id);
       expect(read.type).toMatch(type);
     }
+  });
+
+  /**
+   * A track's id.
+   * @param path - The track's path
+   * @returns The id
+   */
+  async function trackId(path: string): Promise<string> {
+    return parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path },
+      }),
+    ).id;
+  }
+
+  // Live turns these down with no reason, so the entry has to give it.
+  it("says why a group or audio track can't take an instrument, and makes the rest", async () => {
+    const trackIndex = await createTrack();
+    const groupId = await trackId(`t${PARENT_TRACK}`);
+    const audioId = await trackId(`t${AUDIO_TRACK}`);
+    const results = parseToolResult<ListEntry[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          device: "Operator",
+          path: `t${PARENT_TRACK}/d+,t${AUDIO_TRACK}/d+,t${trackIndex}/d+`,
+        },
+      }),
+    );
+
+    expect(results).toHaveLength(3);
+    expect(results[0]).toStrictEqual({
+      path: `t${PARENT_TRACK}/d+`,
+      ok: false,
+      detail: `group track t${PARENT_TRACK} (id ${groupId}) takes only audio effects; "Operator" is an instrument`,
+    });
+    expect(results[1]).toStrictEqual({
+      path: `t${AUDIO_TRACK}/d+`,
+      ok: false,
+      detail: `audio track t${AUDIO_TRACK} (id ${audioId}) takes only audio effects; "Operator" is an instrument`,
+    });
+    expect(results[2]?.id).toBeDefined();
+    expect(results[2]?.ok).toBeUndefined();
+  });
+
+  it("says a MIDI effect doesn't fit a group track either, and still takes an audio effect", async () => {
+    const groupId = await trackId(`t${PARENT_TRACK}`);
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { device: "Arpeggiator", path: `t${PARENT_TRACK}/d+` },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      `group track t${PARENT_TRACK} (id ${groupId}) takes only audio effects; "Arpeggiator" is a MIDI effect`,
+    );
+
+    const made = parseToolResult<ListEntry>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { device: "Utility", path: `t${PARENT_TRACK}/d+` },
+      }),
+    );
+
+    expect(made.id).toBeDefined();
+    expect(made.path).toMatch(new RegExp(`^t${PARENT_TRACK}/d\\d+$`));
   });
 });

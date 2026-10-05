@@ -69,9 +69,10 @@ describe("ppal-create-device when the insert is refused after a c+", () => {
     });
 
     expect(isToolError(result)).toBe(true);
+    // An audio effect rack's chain takes only audio effects, and says so.
     expect(getToolErrorMessage(result)).toMatch(
       new RegExp(
-        `could not insert "Operator" at end in path "${rack}/c\\+"; left an empty chain: c${before}$`,
+        `chain ${rack}/c${before} \\(id \\d+\\) takes only audio effects; "Operator" is an instrument; left an empty chain: c${before}$`,
       ),
     );
     // The chain is really there, as the error says.

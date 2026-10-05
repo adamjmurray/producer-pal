@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 import {
   noteTarget,
   type TargetNotes,

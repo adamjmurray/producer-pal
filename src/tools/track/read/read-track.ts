@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 import {
   findDrumRack,
   getDrumMap,
@@ -365,7 +366,7 @@ export function readTrackGeneric({
 
   // Check track capabilities to avoid warnings
   const canBeArmed = (track.getProperty("can_be_armed") as number) > 0;
-  const isGroup = (track.getProperty("is_foldable") as number) > 0;
+  const isGroup = isGroupTrack(track);
 
   const result: Record<string, unknown> = {
     id: track.id,

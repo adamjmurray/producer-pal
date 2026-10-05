@@ -47,6 +47,12 @@ import {
   resolveCreationTarget,
   writtenContainer,
 } from "./device-creation.ts";
+import {
+  browserItemKind,
+  loadedDeviceKind,
+  misfitReason,
+  trackMisfitReason,
+} from "#src/tools/shared/device/helpers/path/device-fit.ts";
 
 /**
  * Why a browser search stopped: it used up its share of the request's time. A
@@ -113,6 +119,8 @@ export async function createBrowserDevice(
   const arrival = { placed: false };
 
   try {
+    refuseKnownMisfit(item, deviceName, target);
+
     return await loadAndMove(item, deviceName, target, path, {
       ...options,
       onPlaced: (created) => {
@@ -486,8 +494,40 @@ function moveIntoPlace(
   // The container was resolved before the load, and a held object never reads
   // as gone, so anything but "moved" is Live turning the move down.
   if (move.outcome !== "moved") {
-    throw new Error(
-      insertRefusal(deviceName, target.position, path, move.reason),
+    // A plug-in only shows its kind once loaded, so this is the first time it
+    // can be told it doesn't fit. Said bare, as a native insert's is.
+    const misfit = misfitReason(
+      deviceName,
+      loadedDeviceKind(device),
+      target.container,
     );
+
+    throw new Error(
+      misfit ?? insertRefusal(deviceName, target.position, path, move.reason),
+    );
+  }
+}
+
+/**
+ * Refuse before loading an item whose kind is known and doesn't fit the
+ * container, so a doomed load makes no temp track.
+ * @param item - What would be loaded
+ * @param deviceName - The device as the call named it
+ * @param target - Where it goes
+ * @throws Error saying why the container won't take it
+ */
+function refuseKnownMisfit(
+  item: BrowserItem,
+  deviceName: string,
+  target: CreationTarget,
+): void {
+  const misfit = trackMisfitReason(
+    deviceName,
+    browserItemKind(item.type),
+    target.container,
+  );
+
+  if (misfit != null) {
+    throw new Error(misfit);
   }
 }

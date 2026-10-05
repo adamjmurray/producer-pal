@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { atomToString } from "#src/shared/max/max-atoms.ts";
+import { groupIdOf } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
@@ -16,6 +17,7 @@ import {
 } from "#src/tools/shared/validation/lists/insertion-run.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type AppliedTarget,
   type Step,
@@ -102,6 +104,7 @@ export function writeCreatedTrack(
 
   const landed = trackColor == null ? {} : landedColor(track, trackColor);
   const detail = joinDetails([
+    insertion == null ? undefined : insideGroupDetail(track),
     rename.landed.detail,
     landed.detail,
     ...notes.said,
@@ -117,6 +120,24 @@ export function writeCreatedTrack(
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Says so when a new track landed inside a group track, which a path naming a
+ * member's slot does without a word.
+ * @param track - The new track
+ * @returns The detail, or undefined when the track is in no group
+ */
+function insideGroupDetail(track: LiveAPI): string | undefined {
+  const groupId = groupIdOf(track);
+
+  if (groupId === "0") {
+    return undefined;
+  }
+
+  const group = LiveAPI.from(`id ${groupId}`);
+
+  return `inside group track ${targetLabel(group)}`;
+}
 
 /**
  * Create a single track via Live API

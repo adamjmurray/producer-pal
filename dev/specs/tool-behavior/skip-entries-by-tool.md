@@ -10,13 +10,14 @@ with a tool, the tool wins.
   resolve up front, and the entries come back in call order: a split target's
   pieces and a lengthened clip's tiles come right after its own. A path that
   can't be parsed refuses the call, and so does a `toPath` entry that can't be
-  (`tX`). A path or id that finds no clip, a `toPath` entry that parses but
-  names no place a clip can go (a scene), a target whose only requested work (a
-  move, a position, a split) was refused, and a clip an earlier write of the
-  call already cleared hold their slot as a skip. The `name` and `color` lists
-  pair by the target's place, so a skip doesn't slide them. The deadline skips
-  every target it never reached; a split that already cut keeps its pieces, each
-  saying what did not run.
+  (`tX`). A path or id that finds no clip (a path into a group track's slot says
+  `track t9 (id 12) is a group track; it holds no clips`), a `toPath` entry that
+  parses but names no place a clip can go (a scene), a target whose only
+  requested work (a move, a position, a split) was refused, and a clip an
+  earlier write of the call already cleared hold their slot as a skip. The
+  `name` and `color` lists pair by the target's place, so a skip doesn't slide
+  them. The deadline skips every target it never reached; a split that already
+  cut keeps its pieces, each saying what did not run.
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with
@@ -151,9 +152,19 @@ with a tool, the tool wins.
 - **create-device answers per path named.** A path that finds no place for a
   device (no such track or rack, a scene, an index past the end, a device Live
   turned down, one the deadline never reached) holds its slot as
-  `{path, ok: false, detail}`, and the other paths are still made. A device that
-  is in the Set keeps its normal entry (`id`, `path`) when a later step threw (a
-  name Live refused), plus a `detail` saying why and what landed:
+  `{path, ok: false, detail}`, and the other paths are still made. A device of
+  the wrong kind for a track that takes only audio effects (a group, audio,
+  return or main track) is refused before Live is asked, saying why:
+  `group track t9 (id 12) takes only audio effects; "Operator" is an instrument`.
+  The same for a chain of an audio effect rack (audio effects only) or a MIDI
+  effect rack (MIDI effects only), worked out once Live has turned the insert
+  down. A plug-in's kind shows once it is loaded, so it is refused then, or
+  `"X" may not be an audio effect` (`a MIDI effect` for a MIDI effect rack's
+  chain) when its kind can't be read. update-device's `toPath` move names the
+  same reasons, in the same words, when Live drops a move onto such a place
+  (checked once Live has refused it), with the move's usual skip or error shape.
+  A device that is in the Set keeps its normal entry (`id`, `path`) when a later
+  step threw (a name Live refused), plus a `detail` saying why and what landed:
   `<error>; already changed: device created`. A browser load's temp track that
   can't be deleted doesn't fail the load: the entry keeps `id` and `path`, plus
   `the device was created, but the temporary track at <path> couldn't be deleted: <why>`.
@@ -205,11 +216,12 @@ with a tool, the tool wins.
   slot as `{path, ok: false, detail}` in the caller's spelling (`t+`, `t2`,
   `rt+`), and the other tracks are still made. A track that exists keeps its
   normal entry (`id`, `path`) when a later step threw, plus
-  `<error>; already changed: track created`. A failed insert moves the tracks
-  after it, so those are planned again from what the Set holds, and every entry
-  names its track where it sits after the call. `arm` on a return track is a
-  `detail` on its entry, in update-track's words, not a failure: the track was
-  made.
+  `<error>; already changed: track created`. A track that landed inside a group
+  track (a path at one of its members' index) says so in a `detail`:
+  `inside group track t9 (id 12)`. A failed insert moves the tracks after it, so
+  those are planned again from what the Set holds, and every entry names its
+  track where it sits after the call. `arm` on a return track is a `detail` on
+  its entry, in update-track's words, not a failure: the track was made.
 - **create-scene answers per path named, the same way.** A scene Live didn't
   make holds its slot as `{path, ok: false, detail}`; one that exists keeps its
   normal entry plus `<error>; already changed: scene created`. Empty scenes made
@@ -357,9 +369,17 @@ with a tool, the tool wins.
   `{path, ok: false, detail: "no clip to play"}`, with no `id`, and never fires
   it: Live answers a fired empty slot by stopping whatever its track is playing.
   A group track's slot holds no clip but launches its members' clips in that
-  scene, so it fires, and its entry is `{path}`. The other slots still fire, and
-  `playing` and the multi-clip transport restart count only the slots that
-  fired. `stop-session-clips` on an empty slot still stops its track.
+  scene, so it fires, and its entry is `{path}` plus a `detail` saying what that
+  did to the tracks inside it (all depths, read before the fire):
+  `launched t11/s0 (id 31); stopped t12 (id 85), which has no clip in s0`. A
+  track with a clip there launches; one with none stops only when it was playing
+  or queued and its empty slot has a stop button. A track it doesn't touch isn't
+  named, and with none touched there is no `detail`. The other slots still fire,
+  and `playing` and the multi-clip transport restart count only the slots that
+  fired. `stop-session-clips` on an empty slot still stops its track; on a group
+  track's slot it stops every track inside, and the `detail` names those that
+  were playing or queued:
+  `stopped the tracks in this group track: t10 (id 7), t11 (id 8)`.
 - **select has one target**: nothing to list, so a refusal or a failed selection
   throws.
 - **update-device: a target dead by its turn is a skip.** Targets resolve up
@@ -425,5 +445,6 @@ with a tool, the tool wins.
   lone one throws. A multi-target read checks the deadline before each target;
   every target it never reached gets the same skip the write tools give
   (`the request ran out of time; re-run for this <object>`). An empty clip slot
-  is a miss: a lone `read-clip` throws `no clip at <path>`, a listed one is a
-  skip, and `read-scene` and `read-track` leave it out of their clip lists.
+  is a miss: a lone `read-clip` throws `no clip at <path>` (or the group-track
+  wording, for a group track's slot), a listed one is a skip, and `read-scene`
+  and `read-track` leave it out of their clip lists.

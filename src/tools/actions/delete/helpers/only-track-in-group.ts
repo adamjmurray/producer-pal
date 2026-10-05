@@ -6,9 +6,12 @@
 // Live silently ignores a delete of the only track in a group track. Catch it
 // first and point at the group to delete instead, which takes the track along.
 
-import { groupsHostTrack } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import {
+  isGroupTrack,
+  onlyMemberOf,
+} from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
+import { groupsHostTrack } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { onlyMemberOf } from "./group-tracks.ts";
 
 const WONT_DELETE = "Live won't delete the only track in a group track";
 
@@ -52,9 +55,7 @@ export function onlyTrackInGroupRefusal(
   // Deleting the track's own group takes just those two, unless the track is a
   // group too.
   const takes =
-    !walkedUp && !((track.getProperty("is_foldable") as number) > 0)
-      ? "both"
-      : "the tracks inside it too";
+    !walkedUp && !isGroupTrack(track) ? "both" : "the tracks inside it too";
 
   return `${WONT_DELETE}; delete group track ${targetLabel(group)} instead, which deletes ${takes}`;
 }

@@ -30,6 +30,7 @@
  *   silence (see take-lane-placeholder.ts).
  */
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
@@ -119,7 +120,7 @@ export function takeLanesBlocker(
   track: LiveAPI,
   trackIndex: number,
 ): string | null {
-  return (track.getProperty("is_foldable") as number) > 0
+  return isGroupTrack(track)
     ? `only regular tracks have take lanes; "t${trackIndex}" is a group track`
     : null;
 }

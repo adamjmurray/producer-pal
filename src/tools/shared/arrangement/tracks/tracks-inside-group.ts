@@ -7,26 +7,28 @@
 // list, so they are found by walking on from the group until one isn't inside.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { groupIdOf } from "#src/tools/shared/arrangement/get-host-track-index.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { groupIdOf } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 
-/** One track inside a group track, as it was before the call. */
-export interface InsideTrack {
-  id: string;
-  /** `t13 (id 124)` */
-  label: string;
+/**
+ * Whether a track is a group track.
+ * @param track - A regular track
+ * @returns True for a group
+ */
+export function isGroupTrack(track: LiveAPI): boolean {
+  return (track.getProperty("is_foldable") as number) > 0;
 }
 
 /**
  * Every track inside a group track, nested groups included, in track order.
+ * The tracks are only good for the request that read them.
  * @param group - A regular track
- * @returns What Live deletes along with the group
+ * @returns The group's members, at every depth
  */
-export function tracksInside(group: LiveAPI): InsideTrack[] {
-  const inside: InsideTrack[] = [];
+export function tracksInside(group: LiveAPI): LiveAPI[] {
+  const inside: LiveAPI[] = [];
 
   walkInside(group, (track) => {
-    inside.push({ id: track.id, label: targetLabel(track) });
+    inside.push(track);
 
     return false;
   });

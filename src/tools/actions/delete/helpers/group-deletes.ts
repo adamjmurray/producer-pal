@@ -7,9 +7,20 @@
 // Live deletes a group together with every track inside it, and each delete
 // shifts the indexes after it, so afterwards there is no telling what was where.
 
+import {
+  isGroupTrack,
+  tracksInside,
+} from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type DeletePayload } from "./delete-targets.ts";
-import { type InsideTrack, tracksInside } from "./group-tracks.ts";
+
+/** One track inside a group track, as it was before the call. */
+export interface InsideTrack {
+  id: string;
+  /** `t13 (id 124)` */
+  label: string;
+}
 
 /** How the group tracks in a call relate to the tracks named with them. */
 export interface GroupDeletes {
@@ -48,16 +59,14 @@ export function groupDeletes(
       ? [{ index, object: target.data.object }]
       : [],
   );
-  const groups = tracks.filter(
-    ({ object }) => (object.getProperty("is_foldable") as number) > 0,
-  );
+  const groups = tracks.filter(({ object }) => isGroupTrack(object));
   const named = new Set(tracks.map(({ object }) => object.id));
   // A group named twice is walked once.
   const insideById = new Map<string, InsideTrack[]>();
 
   for (const group of groups) {
     const { id } = group.object;
-    const inside = insideById.get(id) ?? tracksInside(group.object);
+    const inside = insideById.get(id) ?? insideTracks(group.object);
     const insideIds = new Set(inside.map((track) => track.id));
 
     insideById.set(id, inside);
@@ -91,4 +100,12 @@ export function alsoDeletedDetail(inside: InsideTrack[]): string | undefined {
   return inside.length === 1
     ? `also deleted the track inside this group track: ${labels}`
     : `also deleted the ${inside.length} tracks inside this group track: ${labels}`;
+}
+
+// What Live deletes along with a group: every track inside it.
+function insideTracks(group: LiveAPI): InsideTrack[] {
+  return tracksInside(group).map((track) => ({
+    id: track.id,
+    label: targetLabel(track),
+  }));
 }

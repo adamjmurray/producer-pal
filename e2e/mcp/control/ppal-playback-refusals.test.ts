@@ -110,7 +110,8 @@ describe("ppal-playback refusals", () => {
 
   // A group track's slot holds no clip, but firing it launches its children's.
   it("fires a group track's slot rather than skipping it", async () => {
-    await createClipOnTrack(CHILD_TRACK, 0, "C3");
+    const childClip = await createClipOnTrack(CHILD_TRACK, 0, "C3");
+
     await sleep(100);
 
     const result = await playback({
@@ -118,9 +119,13 @@ describe("ppal-playback refusals", () => {
       path: `t${PARENT_TRACK}/s0`,
     });
 
-    // No clip of its own, so the entry has a path and no id.
+    // No clip of its own, so the entry has a path and no id, and says which of
+    // its tracks' clips it launched.
     expect(result.playing).toBe(true);
-    expect(result.clip).toStrictEqual({ path: `t${PARENT_TRACK}/s0` });
+    expect(result.clip).toStrictEqual({
+      path: `t${PARENT_TRACK}/s0`,
+      detail: `launched t${CHILD_TRACK}/s0 (id ${childClip})`,
+    });
 
     await sleep(300);
     expect(await clipPlaying(`t${CHILD_TRACK}/s0`)).toBe(true);

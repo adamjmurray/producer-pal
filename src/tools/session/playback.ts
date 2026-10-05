@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   blankTargetIgnores,
@@ -30,6 +31,10 @@ import {
   type TimelinePlan,
   type TimelineWrites,
 } from "./helpers/playback/arrangement-playback.ts";
+import {
+  firedGroupSlotDetail,
+  stoppedGroupSlotDetail,
+} from "./helpers/playback/group-slot-effects.ts";
 import {
   handlePlayScene,
   type FiredScene,
@@ -363,20 +368,39 @@ function writeClip(
   const { slot, position, path } = target.data;
   const { action, stopped } = step.checked;
   const clip = slot.child("clip");
-  const entry: ClipSlotEntry = { ...(clip.exists() && { id: clip.id }), path };
+  const clipId = clip.exists() ? clip.id : undefined;
+  let detail: string | undefined;
 
   if (action === PLAY_SESSION_CLIPS) {
+    // A group track's slot holds no clip. Read what it reaches before firing.
+    if (clipId == null && slot.getProperty("controls_other_clips")) {
+      detail = firedGroupSlotDetail(
+        LiveAPI.from(livePath.track(position.trackIndex)),
+        position.sceneIndex,
+      );
+    }
+
     slot.call("fire");
     step.call.landed("session clips fired");
   } else if (!stopped.has(position.trackIndex)) {
+    const track = LiveAPI.from(livePath.track(position.trackIndex));
+
+    if (isGroupTrack(track)) {
+      detail = stoppedGroupSlotDetail(track);
+    }
+
     // A track stops all its clips at once, so two slots on it are one Live call.
-    LiveAPI.from(livePath.track(position.trackIndex)).call("stop_all_clips");
+    track.call("stop_all_clips");
     // Only once it went through: after a throw, the next slot tries again.
     stopped.add(position.trackIndex);
     step.call.landed("session clips stopped");
   }
 
-  return entry;
+  return {
+    ...(clipId != null && { id: clipId }),
+    path,
+    ...(detail != null && { detail }),
+  };
 }
 
 /**

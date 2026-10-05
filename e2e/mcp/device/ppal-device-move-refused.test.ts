@@ -35,6 +35,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { PARENT_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -140,6 +141,38 @@ describe("a device move Live refuses", () => {
     expect(entry.detail).toContain("already has an instrument");
     expect(entry).not.toHaveProperty("ok");
     expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  // Live drops an instrument aimed at a group track with no reason, so the
+  // refusal names it.
+  it("says a group track takes only audio effects", async () => {
+    const track = await createMidiTrack(ctx.client!);
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Operator",
+      `t${track}`,
+    );
+    const group = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${PARENT_TRACK}` },
+      }),
+    );
+    const before = await readDeviceCount(ctx.client!, track);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: deviceId, toPath: `t${PARENT_TRACK}/d+` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `group track t${PARENT_TRACK} (id ${group.id}) takes only audio effects; "Operator" is an instrument`,
+    );
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, track)).toBe(before);
   });
 
   it("refuses a toPath naming an index past the end of the container", async () => {

@@ -13,8 +13,8 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { registerGrowingRack } from "../../tests/helpers/growing-rack-fixtures.ts";
-import { createDevice } from "../create-device.ts";
+import { registerGrowingRack } from "../../../tests/helpers/growing-rack-fixtures.ts";
+import { createDevice } from "../../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),

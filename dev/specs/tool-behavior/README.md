@@ -198,7 +198,10 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   `ok: false`, since a read can't be satisfied by an absent object.
 - **An empty clip slot is a miss.** A lone `read-clip` of one throws
   `no clip at <path>`, a listed one gets an `ok: false` entry, and a clip list
-  nested in a `read-scene` or `read-track` result leaves it out.
+  nested in a `read-scene` or `read-track` result leaves it out. A group track's
+  slot is a miss in the same shapes, worded
+  `track t9 (id 12) is a group track; it holds no clips` (also in update-clip
+  and duplicate; `delete` still calls it `nothing to delete`).
 - **A target the call could only half serve** keeps its normal entry plus a
   `detail` naming what did not land. `ok: false` means nothing asked of that
   target landed.

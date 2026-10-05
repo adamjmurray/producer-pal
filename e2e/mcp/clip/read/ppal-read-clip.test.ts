@@ -21,6 +21,7 @@ import {
   type SkippedTargetResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
+import { PARENT_TRACK } from "../../e2e-test-set.ts";
 import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 // Use once: true since we're only reading pre-populated clips
@@ -373,6 +374,33 @@ describe("ppal-read-clip over a list of targets", () => {
     expect(getToolErrorMessage(refused)).toContain(
       "slot names the clip on its own - don't send trackIndex or sceneIndex with it",
     );
+  });
+
+  // A group track's slot fires the tracks inside it and holds no clip, so a
+  // path into one says that rather than "no clip".
+  it("says a group track holds no clips", async () => {
+    const group = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${PARENT_TRACK}` },
+      }),
+    );
+    const reason = `track t${PARENT_TRACK} (id ${group.id}) is a group track; it holds no clips`;
+
+    const lone = await readClips({ path: `t${PARENT_TRACK}/s0` });
+
+    expect(isToolError(lone)).toBe(true);
+    expect(getToolErrorMessage(lone)).toContain(reason);
+
+    const entries = parseBatchResult<ReadClipResult | SkippedTargetResult>(
+      await readClips({ path: `t0/s0,t${PARENT_TRACK}/s0` }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0/s0", name: "Beat" }),
+      { path: `t${PARENT_TRACK}/s0`, ok: false, detail: reason },
+    ]);
   });
 
   it("unwraps a single target", async () => {

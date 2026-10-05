@@ -20,6 +20,7 @@ import {
   sleep,
   type CreateTrackResult,
 } from "../mcp-test-helpers";
+import { CHILD_TRACK, PARENT_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -554,6 +555,42 @@ describe("ppal-create-track", () => {
       await sleep(100);
       expect(await trackCount()).toBe(before);
     });
+  });
+
+  // A path at a member's index puts the track inside the group, which the path
+  // itself doesn't show. The index just past the last member lands outside.
+  it("says when a track lands inside a group track", async () => {
+    const parent = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${PARENT_TRACK}` },
+      }),
+    );
+
+    const inside = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: `t${CHILD_TRACK}` },
+      }),
+    );
+
+    expect(inside.path).toBe(`t${CHILD_TRACK}`);
+    expect(inside.detail).toBe(
+      `inside group track t${PARENT_TRACK} (id ${parent.id})`,
+    );
+
+    await sleep(100);
+
+    // Child moved down one, so its old index is now the group's last member.
+    const outside = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: `t${CHILD_TRACK + 2}` },
+      }),
+    );
+
+    expect(outside.path).toBe(`t${CHILD_TRACK + 2}`);
+    expect(outside.detail).toBeUndefined();
   });
 });
 

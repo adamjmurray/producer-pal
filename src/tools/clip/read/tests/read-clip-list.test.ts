@@ -183,3 +183,41 @@ describe("readClip with a deprecated location param", () => {
     );
   });
 });
+
+const GROUP_REASON = "track t0 (id group) is a group track; it holds no clips";
+
+// A group track's slot fires the tracks inside it and holds no clip, so a path
+// into one isn't just an empty slot.
+describe("readClip of a group track's slot", () => {
+  beforeEach(() => {
+    registerMockObject("group", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { is_foldable: 1, has_midi_input: 0 },
+    });
+    registerMockObject("midi", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { is_foldable: 0, has_midi_input: 1 },
+    });
+    registerMockObject("scene0", { path: livePath.scene(0), type: "Scene" });
+    mockNonExistentObjects();
+  });
+
+  it("throws that the track is a group when it is the only target", async () => {
+    await expect(readClip({ path: "t0/s0" })).rejects.toThrow(GROUP_REASON);
+  });
+
+  it("keeps its place in a list with the same reason", async () => {
+    expect(await readClip({ path: "t0/s0,t1/s0" })).toStrictEqual([
+      { path: "t0/s0", ok: false, detail: GROUP_REASON },
+      { path: "t1/s0", ok: false, detail: "no clip at t1/s0" },
+    ]);
+  });
+
+  it("still calls an empty slot on an ordinary track empty", async () => {
+    await expect(readClip({ path: "t1/s0" })).rejects.toThrow(
+      "no clip at t1/s0",
+    );
+  });
+});

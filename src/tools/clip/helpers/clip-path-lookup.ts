@@ -10,12 +10,14 @@
 // arrangement lane. A bare track or lane holds many clips and is refused.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { emptySlotGroupReason } from "#src/tools/shared/clip/group-track-clips.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { requireClipSourcePath } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import {
   existingId,
   type IdLookup,
+  nothingThere,
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
@@ -31,11 +33,17 @@ export function clipIdAtPath(
   label = "path",
   lanes?: LaneView,
 ): IdLookup {
-  return existingId(clipAtPath(entry, label, lanes), {
-    noun: "clip",
-    label,
-    entry,
-  });
+  const { clip, slotTrackIndex } = clipAtPath(entry, label, lanes);
+  const lookup = existingId(clip, { noun: "clip", label, entry });
+
+  // A group track's slot is empty for good, which `no clip at` doesn't say.
+  if (lookup.id == null && slotTrackIndex != null) {
+    const groupReason = emptySlotGroupReason(slotTrackIndex);
+
+    return groupReason == null ? lookup : nothingThere(groupReason);
+  }
+
+  return lookup;
 }
 
 // --- Helpers below main exports ---
@@ -45,20 +53,23 @@ export function clipIdAtPath(
  * @param entry - One clip path, a slot or an arrangement position
  * @param label - Param name the path came from
  * @param lanes - The call's lanes, for a caller resolving several paths
- * @returns The clip, or null when nothing is there
+ * @returns The clip, or null when nothing is there; for a slot, its track
  */
 function clipAtPath(
   entry: string,
   label: string,
   lanes: LaneView | undefined,
-): LiveAPI | null {
+): { clip: LiveAPI | null; slotTrackIndex?: number } {
   const source = requireClipSourcePath(parseObjectPath(entry, label), label);
 
   if (source.kind === "slot") {
-    return LiveAPI.from(
-      livePath.track(source.trackIndex).clipSlot(source.sceneIndex).clip(),
-    );
+    return {
+      clip: LiveAPI.from(
+        livePath.track(source.trackIndex).clipSlot(source.sceneIndex).clip(),
+      ),
+      slotTrackIndex: source.trackIndex,
+    };
   }
 
-  return arrangementClipAtPosition(source, label, lanes);
+  return { clip: arrangementClipAtPosition(source, label, lanes) };
 }

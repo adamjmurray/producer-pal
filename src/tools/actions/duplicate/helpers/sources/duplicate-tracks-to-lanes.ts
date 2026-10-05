@@ -15,6 +15,7 @@
 // be deleted, so a cap or type error found halfway would strand the lanes
 // already made.
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
@@ -276,7 +277,7 @@ function mainLanePlace(entry: string, source: LaneSource): LanePlace | string {
 
   // Before the type check: a MIDI group track passes it and then fails every
   // create, one clip at a time.
-  if (track.exists() && (track.getProperty("is_foldable") as number) > 0) {
+  if (track.exists() && isGroupTrack(track)) {
     return `toPath "${entry}" is a group track, which holds no arrangement clips`;
   }
 

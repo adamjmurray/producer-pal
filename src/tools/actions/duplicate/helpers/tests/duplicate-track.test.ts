@@ -20,11 +20,11 @@ import {
   type TrackCopyEntry,
 } from "../sources/duplicate-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 
 // The host is elsewhere unless a case says otherwise.
 vi.mock(
-  import("#src/tools/shared/arrangement/get-host-track-index.ts"),
+  import("#src/tools/shared/arrangement/tracks/get-host-track-index.ts"),
   () => ({
     getHostTrackIndex: vi.fn(() => null),
   }),

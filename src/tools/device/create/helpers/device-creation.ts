@@ -31,6 +31,11 @@ import {
   type WrittenContainer,
   pathField,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  misfitReason,
+  nativeDeviceKind,
+  trackMisfitReason,
+} from "#src/tools/shared/device/helpers/path/device-fit.ts";
 
 export interface CreateDeviceResult {
   id: string;
@@ -77,6 +82,17 @@ export function insertNativeDevice(
   const target = resolveCreationTarget(path);
 
   try {
+    // Before Live is asked, which would refuse a misfit with no reason.
+    const misfit = trackMisfitReason(
+      deviceName,
+      nativeDeviceKind(deviceName),
+      target.container,
+    );
+
+    if (misfit != null) {
+      throw new Error(misfit);
+    }
+
     return insertInto(target, deviceName, path);
   } catch (error) {
     // The chains the path made stay in the Set whether or not the insert does.
@@ -120,12 +136,13 @@ function insertInto(
     // Live, not a bug, and an audio effect on the same chains succeeds — so
     // name it when the container shows it.
     throw new Error(
-      insertRefusal(
-        deviceName,
-        target.position,
-        path,
-        insertRefusalCause(deviceName, container),
-      ),
+      misfitReason(deviceName, nativeDeviceKind(deviceName), container) ??
+        insertRefusal(
+          deviceName,
+          target.position,
+          path,
+          insertRefusalCause(deviceName, container),
+        ),
     );
   }
 

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import {
   type TargetNotes,
   noteLanded,
@@ -107,7 +108,7 @@ export function applyRoutingProperties(
 
   if (inputRoutingType != null || inputRoutingChannel != null) {
     const category = (track.category as string | undefined) ?? "regular";
-    const isGroup = (track.getProperty("is_foldable") as number) > 0;
+    const isGroup = isGroupTrack(track);
 
     if (isGroup || category !== "regular") {
       refuseTargetWork(

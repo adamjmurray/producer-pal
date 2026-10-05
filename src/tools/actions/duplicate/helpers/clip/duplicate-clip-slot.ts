@@ -14,6 +14,7 @@ import {
   clipOverwriteNote,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { emptySlotGroupReason } from "#src/tools/shared/clip/group-track-clips.ts";
 import {
   recreatedClipLosses,
   recreateLossesNote,
@@ -64,7 +65,8 @@ export function resolveSlotCopySource(
 
   if (!sourceClipSlot.getProperty("has_clip")) {
     throw new Error(
-      `no clip at ${slotPath(sourceTrackIndex, sourceSceneIndex)}`,
+      emptySlotGroupReason(sourceTrackIndex) ??
+        `no clip at ${slotPath(sourceTrackIndex, sourceSceneIndex)}`,
     );
   }
 

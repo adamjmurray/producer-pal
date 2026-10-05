@@ -13,6 +13,10 @@ import {
 } from "#src/tools/shared/device/helpers/chain-mixer/chain-mixer-carry.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import {
+  loadedDeviceKind,
+  misfitReason,
+} from "#src/tools/shared/device/helpers/path/device-fit.ts";
+import {
   ONE_INSTRUMENT_PER_CHAIN,
   deviceHasInstrument,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
@@ -220,7 +224,8 @@ function spelledForCaller(
 }
 
 /**
- * Why Live turned a move down, when the destination says it plainly enough
+ * Why Live turned a move down, when the destination says it plainly enough: a
+ * place that takes only some kinds of device, or a second instrument
  * @param device - The device that stayed put
  * @param container - Where it was headed
  * @returns The reason, or undefined when nothing obvious accounts for it
@@ -229,8 +234,15 @@ function refusalReason(
   device: LiveAPI,
   container: LiveAPI,
 ): string | undefined {
-  return deviceHasInstrument(device) &&
+  const name =
+    (device.getProperty("class_display_name") as string | undefined) ??
+    device.getName();
+
+  return (
+    misfitReason(name, loadedDeviceKind(device), container) ??
+    (deviceHasInstrument(device) &&
     container.someChild("devices", deviceHasInstrument)
-    ? ONE_INSTRUMENT_PER_CHAIN
-    : undefined;
+      ? ONE_INSTRUMENT_PER_CHAIN
+      : undefined)
+  );
 }

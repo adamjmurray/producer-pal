@@ -3,10 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { groupTrackHoldsNoClips } from "./group-track-clips.ts";
 
 /**
  * Copies a session clip into another slot, reporting the copy only when Live
@@ -73,8 +75,8 @@ export function clipCopyBlocker(
 
   // Before the type read too: a group reports no MIDI input, so it would be
   // called an audio track.
-  if ((track.getProperty("is_foldable") as number) > 0) {
-    return `track ${targetLabel(track)} is a group track; it holds no clips`;
+  if (isGroupTrack(track)) {
+    return groupTrackHoldsNoClips(track);
   }
 
   const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;

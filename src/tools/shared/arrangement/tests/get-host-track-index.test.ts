@@ -6,7 +6,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { getHostTrackIndex, groupsHostTrack } from "../get-host-track-index.ts";
+import {
+  getHostTrackIndex,
+  groupsHostTrack,
+} from "../tracks/get-host-track-index.ts";
 
 const g = globalThis as Record<string, unknown>;
 

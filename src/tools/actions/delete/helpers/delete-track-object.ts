@@ -9,7 +9,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   getHostTrackIndex,
   groupsHostTrack,
-} from "#src/tools/shared/arrangement/get-host-track-index.ts";
+} from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { onlyTrackInGroupRefusal } from "./only-track-in-group.ts";
 
