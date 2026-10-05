@@ -62,6 +62,15 @@ describe("lookUpSimplerSettings", () => {
     ]);
   });
 
+  it("gives null when the remote script is out of date", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: false, outdated: "too old" },
+    });
+
+    expect(await lookUpSimplerSettings(simplers(1), null)).toBeNull();
+  });
+
   it("gives null when the remote script isn't running", async () => {
     vi.mocked(requestNode).mockResolvedValue({
       success: true,

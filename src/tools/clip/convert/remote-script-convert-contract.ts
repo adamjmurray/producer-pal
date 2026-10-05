@@ -6,6 +6,8 @@
 // What V8 and Node share about converting an audio clip into a new track, which
 // only the Producer Pal remote script (remote-script/) can do.
 
+import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+
 /** What a clip can be converted to. */
 export const CONVERT_TYPES = [
   "drums",
@@ -45,5 +47,5 @@ export interface ConvertRequest {
  * happens after the route answers, so there's no result to carry.
  */
 export type ConvertReply =
-  | { available: false }
+  | RemoteScriptUnavailable
   | { available: true; error?: string; unfinished?: true };

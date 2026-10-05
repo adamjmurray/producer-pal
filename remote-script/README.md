@@ -133,6 +133,11 @@ hold the file, the load is refused with a 409 listing them.
 
 ## Routes
 
+Adding a route, or changing what one answers? Bump `MIN_REMOTE_SCRIPT_VERSION`
+(`src/mcp-server/rpc/remote-script/port/remote-script-version.ts`) to the
+release that ships it. Producer Pal treats a script older than that as out of
+date and sends it nothing.
+
 Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 

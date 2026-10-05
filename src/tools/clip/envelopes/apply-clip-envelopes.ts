@@ -22,7 +22,6 @@ import { envelopeWritePoints } from "./envelope-write-points.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
   envelopeRoute,
-  REMOTE_SCRIPT_MISSING,
   type RouteOutcome,
 } from "./envelope-route.ts";
 import {
@@ -168,7 +167,7 @@ async function writeEachLine(
     }
 
     if (!outcome.available) {
-      entry.envelopes = REMOTE_SCRIPT_MISSING;
+      entry.envelopes = outcome.reason;
 
       return;
     }

@@ -40,6 +40,7 @@ import { registerGlobalContextRoutes } from "./routes/config/global-context-rout
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
+import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
 import { withUndoStepEnd } from "./rpc/remote-script/with-undo-step-end.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
@@ -62,6 +63,10 @@ interface ProducerPalConfig {
   // /config only (evals and e2e); not a device setting, so it is never sent to
   // Max. A release build neither lists nor accepts it.
   remoteScriptEnabled?: boolean;
+  // Debug builds only, like remoteScriptEnabled: a version string replaces the
+  // minimum remote script version, so a running script can look out of date.
+  // Listed only while set.
+  remoteScriptMinVersion?: string;
   tools: string[];
 }
 
@@ -515,6 +520,16 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   if (incoming.remoteScriptEnabled !== undefined) {
     config.remoteScriptEnabled = incoming.remoteScriptEnabled;
     setRemoteScriptEnabled(incoming.remoteScriptEnabled);
+  }
+
+  if (incoming.remoteScriptMinVersion !== undefined) {
+    if (incoming.remoteScriptMinVersion == null) {
+      delete config.remoteScriptMinVersion;
+    } else {
+      config.remoteScriptMinVersion = incoming.remoteScriptMinVersion;
+    }
+
+    setRemoteScriptMinVersion(incoming.remoteScriptMinVersion);
   }
 
   if (incoming.tools !== undefined) {

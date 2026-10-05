@@ -170,6 +170,18 @@ Warning and continuing would guess the param was the mistake and run the action
 anyway. Reading the param as implying the action guesses the other way, and
 needs a priority rule once two params imply two actions.
 
+### A remote script that is out of date
+
+A remote script older than the server's minimum (`MIN_REMOTE_SCRIPT_VERSION`) is
+treated as missing: its requests are held back before they are sent, so nothing
+is asked of Live, and every caller falls back or refuses as it does when no
+script answers. Where the answer tells the model the script is needed or
+missing, it says instead that the script is out of date, with the running and
+needed versions, and to update it in Settings → Remote Script and restart Live.
+The same goes for a 404 that says the route is unknown; any other 404 still
+means "not found". The Skills teach remote-script features only for a current
+script.
+
 ## Skips, no-ops and replaced targets
 
 A target the call couldn't carry out keeps its slot as a skip entry:

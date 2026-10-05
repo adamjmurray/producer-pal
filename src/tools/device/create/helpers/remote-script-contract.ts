@@ -7,6 +7,8 @@
 // loading a device or preset from Live's browser, and copying a device. Route
 // names, answers, timeouts.
 
+import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+
 /** The Node routes V8 calls to reach the remote script. */
 export const REMOTE_SCRIPT_ROUTES = {
   resolve: "remoteScript.resolve",
@@ -87,7 +89,7 @@ export interface PresetScope {
  * problem.
  */
 export type BrowserItemResolution =
-  | { available: false }
+  | RemoteScriptUnavailable
   | { available: true; item: BrowserItem }
   | { available: true; error: string; outOfTime?: true };
 
@@ -96,7 +98,7 @@ export type BrowserItemResolution =
  * marks a load that timed out after Live may have started it.
  */
 export type BrowserItemLoad =
-  | { available: false }
+  | RemoteScriptUnavailable
   | { available: true; error?: string; unfinished?: true };
 
 /**
@@ -106,7 +108,7 @@ export type BrowserItemLoad =
  * came after Live had already changed the device, so the old one may be gone.
  */
 export type BrowserItemHotswap =
-  | { available: false }
+  | RemoteScriptUnavailable
   | { available: true; replaced: boolean }
   | { available: true; error: string; unfinished?: true; changed?: true };
 
@@ -118,6 +120,6 @@ export type BrowserItemHotswap =
  * it.
  */
 export type DeviceDuplication =
-  | { available: false }
+  | RemoteScriptUnavailable
   | { available: true; index: number }
   | { available: true; error: string; unfinished?: true };

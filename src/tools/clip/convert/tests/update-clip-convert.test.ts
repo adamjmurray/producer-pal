@@ -25,6 +25,10 @@ import {
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 
+/** What the remote script is told to say when it is too old. */
+const OUTDATED =
+  "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
+
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
@@ -433,6 +437,14 @@ describe("updateClip - convert", () => {
 
       await expect(updateClip({ id: "123", convert: "drums" })).rejects.toThrow(
         /converting a clip needs the Producer Pal remote script.*Settings/,
+      );
+    });
+
+    it("says so when the remote script is out of date", async () => {
+      answerRoute(undefined, { available: false, outdated: OUTDATED });
+
+      await expect(updateClip({ id: "123", convert: "drums" })).rejects.toThrow(
+        OUTDATED,
       );
     });
 

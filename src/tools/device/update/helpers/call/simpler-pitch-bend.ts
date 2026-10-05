@@ -174,7 +174,9 @@ async function settle(
     return refuseAll(
       settled,
       asked,
-      `needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+      write.outdated === true
+        ? write.reason
+        : `needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
     );
   }
 

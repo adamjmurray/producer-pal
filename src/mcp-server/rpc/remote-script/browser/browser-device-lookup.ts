@@ -16,6 +16,7 @@ import {
   RemoteScriptTimeout,
   remoteScriptRequest,
   replyError,
+  unavailableReply,
 } from "../remote-script-client.ts";
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
@@ -157,7 +158,7 @@ export async function findAtPath(
   );
 
   if (!reply.available) {
-    return { available: false };
+    return unavailableReply(reply);
   }
 
   // A folder that isn't there is a 404, which means the same as no such item.
@@ -318,7 +319,7 @@ async function searchSections(
 
   for (const [index, reply] of replies.entries()) {
     if (!reply.available) {
-      return { available: false };
+      return unavailableReply(reply);
     }
 
     if (reply.status !== 200) {

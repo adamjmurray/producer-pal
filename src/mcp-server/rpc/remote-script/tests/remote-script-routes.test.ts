@@ -8,7 +8,11 @@ import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-sc
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { setRunningLiveMajor } from "../../../live-library/live-db-path.ts";
 import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
-import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
+import {
+  OUTDATED_ANSWER,
+  unknownRouteAnswer,
+  useFakeRemoteScriptRoutes,
+} from "./remote-script-test-helpers.ts";
 
 // A name the browser lacks is looked up in Live's database, which a test can't
 // stand in for.
@@ -455,15 +459,15 @@ describe("remoteScript.duplicateDevice", () => {
     ).toStrictEqual({ success: true, result: { available: false } });
   });
 
-  it("reads a remote script too old to have the route as not running", async () => {
-    await answerWith({ status: 404, body: { error: "unknown route" } });
+  it("words a route an older remote script lacks as out of date", async () => {
+    await answerWith(unknownRouteAnswer("/device/duplicate"));
 
     expect(
       await dispatchNodeRoute(
         REMOTE_SCRIPT_ROUTES.duplicateDevice,
         DUPLICATE_ARGS,
       ),
-    ).toStrictEqual({ success: true, result: { available: false } });
+    ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
   });
 
   it("hands back why Live didn't copy it", async () => {

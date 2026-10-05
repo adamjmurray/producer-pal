@@ -59,6 +59,10 @@ the suite instead of skipping it.
 uninstalled (a dev switch, debug builds only; `resetConfig()` turns it back on).
 `control/ppal-remote-script-switch` covers it.
 
+`POST /config { "remoteScriptMinVersion": "99.0.0" }` makes a running script
+look out of date (`null` clears it; debug builds only, and `resetConfig()`
+clears it). `control/ppal-remote-script-min-version` covers it.
+
 ### The direct Live API tool is off during e2e
 
 `ppal-live-api` is **not** available to an e2e test unless the test asks for it.

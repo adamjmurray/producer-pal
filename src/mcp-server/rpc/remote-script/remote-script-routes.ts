@@ -17,7 +17,10 @@ import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
 import { lookUpBrowserDevice } from "./browser/browser-device-lookup.ts";
 import { lookUpBrowserPreset } from "./browser/browser-preset-lookup.ts";
-import { RemoteScriptTimeout } from "./remote-script-client.ts";
+import {
+  RemoteScriptTimeout,
+  unavailableReply,
+} from "./remote-script-client.ts";
 import {
   failedChange,
   requestChange,
@@ -109,7 +112,7 @@ async function loadBrowserItem(args: unknown): Promise<BrowserItemLoad> {
   });
 
   if (!reply.available) {
-    return { available: false };
+    return unavailableReply(reply);
   }
 
   return reply.status === 200 ? { available: true } : failedChange(reply);
@@ -136,7 +139,7 @@ async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
   });
 
   if (!reply.available) {
-    return { available: false };
+    return unavailableReply(reply);
   }
 
   if (reply.status !== 200) {
@@ -152,8 +155,7 @@ async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
 
 /**
  * Copy the device at a Live path with Live's own duplicate_device. The remote
- * script refuses when the device there no longer has `deviceName`. A remote
- * script too old to have the route answers 404, which reads as not available.
+ * script refuses when the device there no longer has `deviceName`.
  * @param args - `{ devicePath, deviceName, expiresInMs }`
  * @returns Where the copy went, an error worded for the model (`unfinished`
  *   when Live may have made the copy anyway), or `available: false`
@@ -168,8 +170,8 @@ async function duplicateDevice(args: unknown): Promise<DeviceDuplication> {
     expiresInMs: requireExpiry(args),
   });
 
-  if (!reply.available || reply.status === 404) {
-    return { available: false };
+  if (!reply.available) {
+    return unavailableReply(reply);
   }
 
   if (reply.status !== 200) {

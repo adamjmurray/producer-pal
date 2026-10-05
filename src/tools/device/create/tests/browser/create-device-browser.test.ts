@@ -28,6 +28,10 @@ import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-de
 import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
 import { createDevice } from "../../create-device.ts";
 
+/** What the remote script is told to say when it is too old. */
+const OUTDATED =
+  "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
+
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
@@ -259,6 +263,16 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     ]);
     expect(track.call).toHaveBeenCalledWith("insert_device", "Reverb");
     expectCleanedUp(1);
+  });
+
+  it("says the remote script is out of date when it is too old", async () => {
+    answerRemoteScript({
+      resolution: { available: false, outdated: OUTDATED },
+    });
+
+    await expect(
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
+    ).rejects.toThrow(`can't load: ${OUTDATED}`);
   });
 
   it("answers the native invalid device error when the remote script isn't running", async () => {

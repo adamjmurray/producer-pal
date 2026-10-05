@@ -16,6 +16,7 @@ import {
   type PresetScope,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { whyUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import {
   remoteScriptExpiry,
   remoteScriptWait,
@@ -104,7 +105,7 @@ export async function resolveBrowserPreset(
   const resolution = response.result;
 
   if (!resolution.available) {
-    throw new Error(PRESET_NEEDS_REMOTE_SCRIPT);
+    throw new Error(whyUnavailable(resolution, PRESET_NEEDS_REMOTE_SCRIPT));
   }
 
   if ("error" in resolution) {
@@ -204,7 +205,7 @@ export async function hotswapPreset(
   const result = response.result;
 
   if (!result.available) {
-    return { error: PRESET_NEEDS_REMOTE_SCRIPT };
+    return { error: whyUnavailable(result, PRESET_NEEDS_REMOTE_SCRIPT) };
   }
 
   if ("error" in result) {

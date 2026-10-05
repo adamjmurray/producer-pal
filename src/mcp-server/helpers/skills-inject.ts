@@ -9,7 +9,8 @@ import {
 } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import * as console from "../node-for-max-logger.ts";
-import { pingRemoteScript } from "../rpc/remote-script/remote-script-client.ts";
+import { remoteScriptPing } from "../rpc/remote-script/remote-script-client.ts";
+import { outdatedScript } from "../rpc/remote-script/port/remote-script-version.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
@@ -48,9 +49,10 @@ export function withSkills(
 }
 
 /**
- * Add whether the Producer Pal remote script answers, which decides whether the
- * skills teach loading plug-ins and Max devices. The small-model document never
- * teaches it, so small-model mode skips the ping.
+ * Add whether a current Producer Pal remote script answers, which decides
+ * whether the skills teach loading plug-ins and Max devices. One too old for
+ * this server counts as none. The small-model document never teaches it, so
+ * small-model mode skips the ping.
  *
  * @param options - The rest of the skills context
  * @returns The same options, with `remoteScript` set
@@ -58,8 +60,14 @@ export function withSkills(
 export async function withRemoteScriptAnswer(
   options: BuildSkillsOptions,
 ): Promise<BuildSkillsOptions> {
+  const ping =
+    options.smallModelMode === true ? null : await remoteScriptPing();
+
   return {
     ...options,
-    remoteScript: options.smallModelMode !== true && (await pingRemoteScript()),
+    remoteScript:
+      ping != null &&
+      ping.running &&
+      outdatedScript(ping.scriptVersion) == null,
   };
 }

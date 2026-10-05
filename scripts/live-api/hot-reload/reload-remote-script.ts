@@ -49,7 +49,8 @@ export async function reloadRemoteScript(
   }
 
   if (!reply.available) {
-    return { kind: "not-running" };
+    // A script too old to be held to the minimum has no reload route either.
+    return { kind: reply.outdated == null ? "not-running" : "no-route" };
   }
 
   if (reply.status === 404) {

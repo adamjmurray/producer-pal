@@ -8,7 +8,11 @@ import { RACK_MACROS_ROUTE } from "#src/tools/shared/remote-script/rack-macros-c
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptDeviceRoutes } from "../forwarded/remote-script-device-routes.ts";
-import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
+import {
+  OUTDATED_ANSWER,
+  unknownRouteAnswer,
+  useFakeRemoteScriptRoutes,
+} from "./remote-script-test-helpers.ts";
 
 const PATHS = ["live_set tracks 0 devices 0", "live_set tracks 1 devices 2"];
 
@@ -43,15 +47,12 @@ describe("remoteScript.device.macros", () => {
     });
   });
 
-  it("treats a 404 as no remote script: an older one doesn't have the route", async () => {
-    await answerWith({
-      status: 404,
-      body: { error: "unknown route", routes: ["/ping"] },
-    });
+  it("words a route an older remote script lacks as out of date", async () => {
+    await answerWith(unknownRouteAnswer("/device/macros"));
 
     expect(
       await dispatchNodeRoute(RACK_MACROS_ROUTE, { devicePaths: PATHS }),
-    ).toStrictEqual({ success: true, result: { available: false } });
+    ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
   });
 
   it("words a dropped connection as no answer", async () => {
@@ -102,14 +103,14 @@ describe("remoteScript.device.simplerRead", () => {
     ]);
   });
 
-  it("treats a 404 as no remote script: an older one doesn't have the route", async () => {
-    await answerWith({ status: 404, body: { error: "unknown route" } });
+  it("words a route an older remote script lacks as out of date", async () => {
+    await answerWith(unknownRouteAnswer("/device/simpler/read"));
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.read, {
         devicePaths: PATHS,
       }),
-    ).toStrictEqual({ success: true, result: { available: false } });
+    ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
   });
 
   it("refuses args that aren't a list of paths", async () => {
@@ -183,15 +184,15 @@ describe("remoteScript.device.simplerWrite", () => {
     });
   });
 
-  it("treats a 404 as no remote script", async () => {
-    await answerWith({ status: 404, body: { error: "unknown route" } });
+  it("words a route an older remote script lacks as out of date", async () => {
+    await answerWith(unknownRouteAnswer("/device/simpler/write"));
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
         devicePath: PATHS[0],
         pitchBendRange: 3,
       }),
-    ).toStrictEqual({ success: true, result: { available: false } });
+    ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
   });
 
   it("words a dropped connection as no answer", async () => {

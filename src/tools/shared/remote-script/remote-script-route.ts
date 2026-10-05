@@ -12,6 +12,7 @@ import {
   REMOTE_SCRIPT_UNANSWERED,
   type RouteReply,
 } from "./remote-script-route-contract.ts";
+import { whyUnavailable } from "./outdated-remote-script.ts";
 import { remoteScriptWait } from "./remote-script-wait.ts";
 
 /**
@@ -25,6 +26,8 @@ export type RouteOutcome<T> =
       ok: false;
       reason: string;
       available: boolean;
+      /** The remote script is running but too old: `reason` says so. */
+      outdated?: true;
       stalled?: "out-of-time" | "unanswered";
     };
 
@@ -71,7 +74,12 @@ export async function remoteScriptRoute<T>(
   }
 
   if (!reply.available) {
-    return { ok: false, reason: missing, available: false };
+    return {
+      ok: false,
+      reason: whyUnavailable(reply, missing),
+      available: false,
+      ...(reply.outdated != null && { outdated: true as const }),
+    };
   }
 
   return "error" in reply

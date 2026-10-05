@@ -94,6 +94,15 @@ describe("reloadRemoteScript", () => {
     });
   });
 
+  it("reports a script that is out of date as having no /reload route", async () => {
+    request.mockResolvedValue({
+      available: false,
+      outdated: "out of date",
+    } as RemoteScriptReply);
+
+    expect(await reloadRemoteScript(dir)).toStrictEqual({ kind: "no-route" });
+  });
+
   it("reports a script with no /reload route", async () => {
     answer(404, { error: "unknown route: /reload" });
 

@@ -22,6 +22,10 @@ import {
   REMOTE_SCRIPT_EXPIRY_MARGIN_MS,
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import {
+  type RemoteScriptUnavailable,
+  whyUnavailable,
+} from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import {
@@ -141,13 +145,14 @@ export async function createBrowserDevice(
  * Find a device name in Live's browser.
  * @param deviceName - The name the call used
  * @param deadline - The request deadline from ToolContext
- * @returns The item, or null when the remote script isn't answering
+ * @returns The item, or `available: false` when the remote script isn't
+ *   answering (`outdated` when it is too old)
  * @throws Error when nothing, or more than one thing, goes by that name
  */
 export async function resolveBrowserDevice(
   deviceName: string,
   deadline?: number | null,
-): Promise<BrowserItem | null> {
+): Promise<BrowserItem | RemoteScriptUnavailable> {
   const lookUpFailed = (why: string): Error =>
     new Error(`could not look up "${deviceName}" in Live's browser: ${why}`);
   const waitMs = remoteScriptWait(deadline);
@@ -176,7 +181,7 @@ export async function resolveBrowserDevice(
   const resolution = response.result;
 
   if (!resolution.available) {
-    return null;
+    return resolution;
   }
 
   if ("error" in resolution) {
@@ -459,7 +464,7 @@ function loadFailure(
   }
 
   if (!result.available) {
-    return "Live's browser stopped answering";
+    return whyUnavailable(result, "Live's browser stopped answering");
   }
 
   return result.error == null

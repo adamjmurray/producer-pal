@@ -32,6 +32,10 @@ import {
   updateDevice,
 } from "../update-device-test-helpers.ts";
 
+/** What the remote script is told to say when it is too old. */
+const OUTDATED =
+  "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
+
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
@@ -248,6 +252,17 @@ describe("updateDevice pitch bend params without a good answer", () => {
 
     await expect(update({ id: "simpler-1", params: [PITCH] })).rejects.toThrow(
       `no param landed — "pitchBendRange": ${NEEDS_IT}`,
+    );
+  });
+
+  it("says when the remote script is out of date", async () => {
+    remoteScriptAnswers({
+      success: true,
+      result: { available: false, outdated: OUTDATED },
+    });
+
+    await expect(update({ id: "simpler-1", params: [PITCH] })).rejects.toThrow(
+      `no param landed — "pitchBendRange": ${OUTDATED}`,
     );
   });
 

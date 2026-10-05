@@ -24,6 +24,8 @@ export interface ConfigOptions {
   liveApiEnabled?: boolean;
   /** False makes the remote script look uninstalled. Debug builds only; a release build ignores it. */
   remoteScriptEnabled?: boolean;
+  /** A version string makes a running remote script older than it look out of date; null clears it. Debug builds only. */
+  remoteScriptMinVersion?: string | null;
   tools?: string[];
   notation?: Notation;
 }
@@ -103,6 +105,7 @@ export async function resetConfig(): Promise<void> {
     sampleFolder: "",
     // A release build ignores this, so the reset works on either build.
     remoteScriptEnabled: true,
+    remoteScriptMinVersion: null,
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });

@@ -9,6 +9,7 @@ import {
   withRemoteScriptAnswer,
   withSkills,
 } from "#src/mcp-server/helpers/skills-inject.ts";
+import { setRemoteScriptMinVersion } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import { startFakeRemoteScript } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { writeSkillOverride } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
@@ -166,6 +167,43 @@ describe("withRemoteScriptAnswer", () => {
 
       expect(lastText(await wrapped("ppal-connect", {}))).toContain(HEADING);
     } finally {
+      await remote.close();
+    }
+  });
+
+  it("doesn't when the script is older than this server needs", async () => {
+    const remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.4.0" },
+    }));
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: false,
+      });
+
+      const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
+
+      expect(lastText(await wrapped("ppal-connect", {}))).not.toContain(
+        HEADING,
+      );
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it("doesn't when the dev override makes the script too old", async () => {
+    const remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
+
+    setRemoteScriptMinVersion("9.0.0");
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: false,
+      });
+    } finally {
+      setRemoteScriptMinVersion(null);
       await remote.close();
     }
   });

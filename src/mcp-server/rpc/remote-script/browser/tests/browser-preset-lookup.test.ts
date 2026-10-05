@@ -11,9 +11,11 @@ import { RemoteScriptTimeout } from "../../remote-script-client.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
+  OUTDATED_ANSWER,
   type ReceivedRequest,
   queriesAsked,
   startFakeRemoteScript,
+  unknownRouteAnswer,
 } from "../../tests/remote-script-test-helpers.ts";
 
 // A name the browser doesn't have is looked up in Live's database, which a test
@@ -245,6 +247,14 @@ describe("lookUpBrowserPreset — a name", () => {
       available: true,
       error: `could not search Live's browser for "Warm Pad": boom`,
     });
+  });
+
+  it("says the remote script is out of date when it lacks the route", async () => {
+    fake = await startFakeRemoteScript(() => unknownRouteAnswer("/list"));
+
+    expect(
+      await lookUpBrowserPreset("Warm Pad", undefined, Date.now() + 60_000),
+    ).toStrictEqual(OUTDATED_ANSWER);
   });
 
   it("answers unavailable when nothing is listening", async () => {

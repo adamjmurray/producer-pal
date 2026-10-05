@@ -10,12 +10,17 @@
 import http from "node:http";
 import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import {
   forgetRemoteScriptPort as forgetPort,
   remoteScriptPortFromEnv,
   resolveRemoteScriptPort as resolvePort,
   type ProbeResult,
 } from "./port/remote-script-port.ts";
+import {
+  outdatedScript,
+  unknownRouteReason,
+} from "./port/remote-script-version.ts";
 
 const HOST = "127.0.0.1";
 
@@ -42,13 +47,16 @@ const CONNECT_TIMEOUT_MS = 1000;
 /** Skills assembly pings on every connect, so the ping can't wait long. */
 const PING_TIMEOUT_MS = 1000;
 
-/** What the remote script answered, or that nothing did. */
+/**
+ * What the remote script answered, or that nothing did. `available: false`
+ * carries `outdated` when a script is running but too old: nothing was sent,
+ * or it didn't know the route.
+ */
 export type RemoteScriptReply =
-  | {
-      available: false;
+  | (RemoteScriptUnavailable & {
       /** Something connected and replied, but not with a JSON object. */
       otherAnswered?: true;
-    }
+    })
   | { available: true; status: number; body: Record<string, unknown> };
 
 /** An answer from the remote script, as opposed to silence. */
@@ -109,7 +117,7 @@ export interface RemoteScriptRequest {
  * @throws RemoteScriptTimeout when the remote script took the connection but
  *   didn't answer in time, or `expiresInMs` was used up before the request left
  */
-export function remoteScriptRequest({
+export async function remoteScriptRequest({
   method = "GET",
   route,
   query,
@@ -119,12 +127,13 @@ export function remoteScriptRequest({
   port,
 }: RemoteScriptRequest): Promise<RemoteScriptReply> {
   if (!remoteScriptEnabled) {
-    return Promise.resolve({ available: false });
+    return { available: false };
   }
 
   if (expiresInMs != null && expiresInMs <= 0) {
-    return Promise.reject(
-      new RemoteScriptTimeout("ran out of time before the request left", false),
+    throw new RemoteScriptTimeout(
+      "ran out of time before the request left",
+      false,
     );
   }
 
@@ -165,21 +174,57 @@ export function remoteScriptRequest({
 
   const fixedPort = port ?? remoteScriptPortFromEnv();
 
-  if (fixedPort != null) {
-    return send(fixedPort, 0);
+  const found =
+    fixedPort == null ? await findPort() : { port: fixedPort, info: null };
+  const target = found.port;
+
+  // A probe (`port`) is how the version is learned, so it isn't held to it. A
+  // fixed port is a test's: it is checked only against a version already known.
+  // A version that reads too old is asked for again, since the script may have
+  // been replaced on the same port; the call is refused either way. Finding
+  // the port may have just pinged it.
+  if (
+    port == null &&
+    fixedPort == null &&
+    found.info == null &&
+    versionNeedsLearning(target)
+  ) {
+    await learnScriptVersion(
+      target,
+      expiresInMs == null ? null : expiresInMs - (Date.now() - started),
+    );
   }
 
-  return resolveRemoteScriptPort()
-    .then((target) => send(target, Date.now() - started))
-    .then((reply) => {
-      // Nothing listening: Live may have restarted onto another port. Any
-      // answer, even an odd one, keeps the port.
-      if (!reply.available && reply.otherAnswered !== true) {
-        forgetRemoteScriptPort();
-      }
+  const outdated =
+    port == null ? outdatedScript(cachedScriptVersion(target)) : null;
 
-      return reply;
-    });
+  if (outdated != null) {
+    return { available: false, outdated };
+  }
+
+  const reply = await send(
+    target,
+    fixedPort == null ? Date.now() - started : 0,
+  );
+
+  if (!reply.available) {
+    // Nothing listening: Live may have restarted onto another port. Any
+    // answer, even an odd one, keeps the port.
+    if (fixedPort == null && reply.otherAnswered !== true) {
+      forgetRemoteScriptPort();
+    }
+
+    return reply;
+  }
+
+  // A script too old to have the route says so; no other 404 does.
+  const unknown = unknownRouteReason(
+    reply.status,
+    reply.body,
+    cachedScriptVersion(target),
+  );
+
+  return unknown == null ? reply : { available: false, outdated: unknown };
 }
 
 /**
@@ -204,6 +249,61 @@ export function forgetRemoteScriptPort(): void {
 
 /** The last ping that showed our script, with the port it came from. */
 let lastGoodPing: { port: number; ping: RemoteScriptPing } | null = null;
+
+/**
+ * The script's version from the last ping of this port.
+ * @param port - The port requests go to
+ * @returns The version, or null when that port hasn't answered a ping
+ */
+function cachedScriptVersion(port: number): string | null {
+  return lastGoodPing?.port === port ? lastGoodPing.ping.scriptVersion : null;
+}
+
+/**
+ * Whether the version on a port is unknown, or reads too old and so may have
+ * changed since.
+ * @param port - The port requests go to
+ * @returns True when a ping is worth making
+ */
+function versionNeedsLearning(port: number): boolean {
+  const version = cachedScriptVersion(port);
+
+  return version == null || outdatedScript(version) != null;
+}
+
+/** The pings in flight to learn a version, per port, which calls share. */
+const learning = new Map<number, Promise<PingResult>>();
+
+/**
+ * Ping a port to learn its script's version, which keeps the version with the
+ * port: it costs one ping, not one per call. Calls for the same port share a
+ * ping; one for another port makes its own.
+ * @param port - The port requests go to
+ * @param leftMs - How much of the caller's time is left, or null for no limit;
+ *   the ping waits no longer, and isn't made when nothing is left
+ */
+async function learnScriptVersion(
+  port: number,
+  leftMs: number | null,
+): Promise<void> {
+  if (leftMs != null && leftMs <= 0) {
+    return;
+  }
+
+  let ping = learning.get(port);
+
+  if (ping == null) {
+    ping = pingPort(
+      port,
+      leftMs == null ? PING_TIMEOUT_MS : Math.min(PING_TIMEOUT_MS, leftMs),
+    ).finally(() => {
+      learning.delete(port);
+    });
+    learning.set(port, ping);
+  }
+
+  await ping;
+}
 
 /** A ping and how the port answered it. */
 interface PingResult {
@@ -375,6 +475,20 @@ export async function pingRemoteScript(): Promise<boolean> {
 }
 
 /**
+ * An unavailable reply as a route answers it: no remote script to ask, and why
+ * it is too old when one is running.
+ * @param reply - The unavailable reply
+ * @returns Just `available: false`, with `outdated` when set
+ */
+export function unavailableReply(
+  reply: Extract<RemoteScriptReply, { available: false }>,
+): RemoteScriptUnavailable {
+  return reply.outdated == null
+    ? { available: false }
+    : { available: false, outdated: reply.outdated };
+}
+
+/**
  * The error text a failed reply carries.
  * @param reply - A reply that wasn't a 200
  * @returns The remote script's own error, or the status
@@ -393,10 +507,14 @@ type PingKind = "ours" | "other" | "none" | "slow";
 /**
  * Ping one port.
  * @param port - The port to ask
+ * @param timeoutMs - How long to wait for the answer
  * @returns The ping, and what kind of answer it was
  */
-async function pingPort(port: number): Promise<PingResult> {
-  const result = await askForPing(port);
+async function pingPort(
+  port: number,
+  timeoutMs = PING_TIMEOUT_MS,
+): Promise<PingResult> {
+  const result = await askForPing(port, timeoutMs);
 
   if (result.kind === "ours") {
     lastGoodPing = { port, ping: result.ping };
@@ -407,13 +525,17 @@ async function pingPort(port: number): Promise<PingResult> {
 
 /**
  * @param port - The port to ask
+ * @param timeoutMs - How long to wait for the answer
  * @returns The ping, and what kind of answer it was
  */
-async function askForPing(port: number): Promise<PingResult> {
+async function askForPing(
+  port: number,
+  timeoutMs: number,
+): Promise<PingResult> {
   try {
     const reply = await remoteScriptRequest({
       route: "/ping",
-      timeoutMs: PING_TIMEOUT_MS,
+      timeoutMs,
       port,
     });
 

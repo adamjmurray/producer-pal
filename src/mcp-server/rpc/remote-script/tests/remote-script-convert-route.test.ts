@@ -7,7 +7,11 @@ import { describe, expect, it } from "vitest";
 import { CONVERT_ROUTE } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptConvertRoute } from "../forwarded/remote-script-convert-route.ts";
-import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
+import {
+  OUTDATED_ANSWER,
+  unknownRouteAnswer,
+  useFakeRemoteScriptRoutes,
+} from "./remote-script-test-helpers.ts";
 
 /**
  * Convert the first Session clip of the first track, as drums.
@@ -69,15 +73,12 @@ describe("remoteScript.clip.convert", () => {
     });
   });
 
-  it("treats an older remote script without the route as none running", async () => {
-    await answerWith({
-      status: 404,
-      body: { error: "unknown route: /clip/convert" },
-    });
+  it("words a route an older remote script lacks as out of date", async () => {
+    await answerWith(unknownRouteAnswer("/clip/convert"));
 
     expect(await convertSlot()).toStrictEqual({
       success: true,
-      result: { available: false },
+      result: OUTDATED_ANSWER,
     });
   });
 

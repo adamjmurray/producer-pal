@@ -28,6 +28,7 @@ import {
   searchFailed,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
+import { unavailableReply } from "../remote-script-client.ts";
 import { lookUpPresetFile, presetFile } from "./browser-preset-files.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 
@@ -191,7 +192,7 @@ async function searchPresets(
 
   for (const [index, reply] of replies.entries()) {
     if (!reply.available) {
-      return { available: false };
+      return unavailableReply(reply);
     }
 
     // A device with no preset folder is a 404: it has no presets.

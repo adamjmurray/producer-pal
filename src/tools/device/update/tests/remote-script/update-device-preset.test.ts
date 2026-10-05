@@ -25,6 +25,10 @@ import {
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { updateDevice } from "../../update-device.ts";
 
+/** What the remote script is told to say when it is too old. */
+const OUTDATED =
+  "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
+
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
@@ -417,6 +421,16 @@ describe("updateDevice with a preset", () => {
     await expect(
       updateDevice({ path: "t3/d0", preset: "AG Bass" }),
     ).rejects.toThrow("needs the Producer Pal remote script");
+  });
+
+  it("says the remote script is out of date when it is", async () => {
+    answerRemoteScript({
+      hotswaps: [{ available: false, outdated: OUTDATED }],
+    });
+
+    await expect(
+      updateDevice({ path: "t3/d0", preset: "AG Bass" }),
+    ).rejects.toThrow(OUTDATED);
   });
 
   it("loads nothing once the request is out of time", async () => {

@@ -52,6 +52,33 @@ describe("parseConfigBody", () => {
     });
   });
 
+  it("takes remoteScriptMinVersion as a string or null, only on a debug build", () => {
+    for (const value of ["2.9.0", null]) {
+      expect(
+        parseConfigBody({ remoteScriptMinVersion: value }, false, true),
+      ).toStrictEqual({
+        ok: true,
+        value: { remoteScriptMinVersion: value },
+      });
+    }
+
+    expect(
+      parseConfigBody({ remoteScriptMinVersion: 3 }, false, true),
+    ).toStrictEqual({
+      ok: false,
+      error: {
+        error: "remoteScriptMinVersion: must be a string",
+        fields: { remoteScriptMinVersion: "must be a string" },
+      },
+    });
+    expect(
+      parseConfigBody({ remoteScriptMinVersion: 3 }, false, false),
+    ).toStrictEqual({
+      ok: true,
+      value: {},
+    });
+  });
+
   it("checks tools against the body's liveApiEnabled, else the current one", () => {
     const tools = ["ppal-connect", "ppal-live-api"];
 

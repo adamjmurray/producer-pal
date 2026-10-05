@@ -10,6 +10,7 @@ import {
 import { REMOTE_SCRIPT_ROUTE_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { requireString } from "../../route-string-args.ts";
+import { unavailableReply } from "../remote-script-client.ts";
 import {
   failedChange,
   requestChange,
@@ -45,10 +46,8 @@ async function convertClip(args: unknown): Promise<ConvertReply> {
     expiresInMs: requireExpiry(args),
   });
 
-  // The route only answers 404 itself for a clip that isn't there, which V8
-  // checked first, so a 404 is an older script that doesn't have it.
-  if (!reply.available || reply.status === 404) {
-    return { available: false };
+  if (!reply.available) {
+    return unavailableReply(reply);
   }
 
   return reply.status === 200 ? { available: true } : failedChange(reply);

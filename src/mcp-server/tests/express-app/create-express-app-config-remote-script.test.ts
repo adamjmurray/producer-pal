@@ -20,6 +20,19 @@ async function ping(): Promise<boolean> {
   return await client.pingRemoteScript();
 }
 
+// Whether a request to the remote script is held back as out of date. Imported
+// on each call, like `ping`, and pinged first so the version is known.
+async function heldBackAsOutdated(): Promise<boolean> {
+  const client =
+    await import("../../rpc/remote-script/remote-script-client.ts");
+
+  await client.pingRemoteScript();
+
+  const reply = await client.remoteScriptRequest({ route: "/list" });
+
+  return !reply.available && reply.outdated != null;
+}
+
 async function getJson(response: Response): Promise<Record<string, unknown>> {
   return (await response.json()) as Record<string, unknown>;
 }
@@ -38,6 +51,22 @@ describe("POST /config remoteScriptEnabled on a release build", () => {
     const config = await getJson(await fetch(appState.configUrl));
 
     expect(config).not.toHaveProperty("remoteScriptEnabled");
+    expect(config).not.toHaveProperty("remoteScriptMinVersion");
+  });
+
+  it("ignores remoteScriptMinVersion too", async () => {
+    fake = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
+
+    const response = await appState.postConfig({
+      remoteScriptMinVersion: "9.0.0",
+    });
+
+    expect(await getJson(response)).not.toHaveProperty(
+      "remoteScriptMinVersion",
+    );
+    expect(await heldBackAsOutdated()).toBe(false);
   });
 
   it("ignores it like any unknown field, even a bad one", async () => {
@@ -81,7 +110,10 @@ describe("POST /config remoteScriptEnabled on a debug build", () => {
   let fake: FakeRemoteScript | undefined;
 
   afterEach(async () => {
-    await appState.postConfig({ remoteScriptEnabled: true });
+    await appState.postConfig({
+      remoteScriptEnabled: true,
+      remoteScriptMinVersion: null,
+    });
     await fake?.close();
     fake = undefined;
   });
@@ -115,6 +147,38 @@ describe("POST /config remoteScriptEnabled on a debug build", () => {
 
     await appState.postConfig({ remoteScriptEnabled: true });
     expect(await ping()).toBe(true);
+  });
+
+  it("holds a running script to the minimum version it is sent, until it is cleared", async () => {
+    fake = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
+    expect(await heldBackAsOutdated()).toBe(false);
+
+    const set = await getJson(
+      await appState.postConfig({ remoteScriptMinVersion: "9.0.0" }),
+    );
+
+    expect(set.remoteScriptMinVersion).toBe("9.0.0");
+    expect(await heldBackAsOutdated()).toBe(true);
+
+    const cleared = await getJson(
+      await appState.postConfig({ remoteScriptMinVersion: null }),
+    );
+
+    expect(cleared).not.toHaveProperty("remoteScriptMinVersion");
+    expect(await heldBackAsOutdated()).toBe(false);
+  });
+
+  it("refuses a minimum version that isn't a string", async () => {
+    const response = await appState.postConfig({ remoteScriptMinVersion: 3 });
+
+    const body = await getJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.fields).toStrictEqual({
+      remoteScriptMinVersion: "must be a string",
+    });
   });
 
   it("refuses a non-boolean value", async () => {

@@ -10,7 +10,8 @@ import { validateTools } from "../../create-mcp-server.ts";
 // `null` is allowed on the two text fields: Max sends a bare null for an
 // emptied one. Booleans are strict: the string "false" is refused, not read as
 // true. Unknown keys are ignored — on a release build that includes
-// `remoteScriptEnabled`, which only a debug build accepts.
+// `remoteScriptEnabled` and `remoteScriptMinVersion`, which only a debug build
+// accepts.
 const debugConfigBodySchema = z.object({
   projectContext: z.string().nullable().optional(),
   sampleFolder: z.string().nullable().optional(),
@@ -18,6 +19,7 @@ const debugConfigBodySchema = z.object({
   jsonOutput: z.boolean().optional(),
   liveApiEnabled: z.boolean().optional(),
   remoteScriptEnabled: z.boolean().optional(),
+  remoteScriptMinVersion: z.string().nullable().optional(),
   notation: z
     .custom<Notation>(isNotation, {
       message: `must be one of: ${NOTATIONS.join(", ")}`,
@@ -28,6 +30,7 @@ const debugConfigBodySchema = z.object({
 
 const releaseConfigBodySchema = debugConfigBodySchema.omit({
   remoteScriptEnabled: true,
+  remoteScriptMinVersion: true,
 });
 
 export type ConfigBody = Omit<
@@ -50,7 +53,7 @@ export interface ConfigBodyError {
  * @param body - The parsed request body
  * @param currentLiveApiEnabled - liveApiEnabled to use when the body omits it
  * @param debugBuild - Whether this is a debug build, the only kind that accepts
- *   `remoteScriptEnabled`
+ *   `remoteScriptEnabled` and `remoteScriptMinVersion`
  * @returns The validated body, or an error naming every bad field
  */
 export function parseConfigBody(
@@ -116,4 +119,5 @@ const FIELD_TYPES: Record<string, string> = {
   jsonOutput: "boolean",
   liveApiEnabled: "boolean",
   remoteScriptEnabled: "boolean",
+  remoteScriptMinVersion: "string",
 };

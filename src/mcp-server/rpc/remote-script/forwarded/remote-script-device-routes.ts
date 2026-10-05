@@ -49,13 +49,9 @@ export function registerRemoteScriptDeviceRoutes(): void {
 async function forwardRackMacrosRequest(
   args: unknown,
 ): Promise<RouteReply<Record<string, unknown>>> {
-  // The route only answers 400 itself, so a 404 is an older script that
-  // doesn't have it: the same as none running.
-  return await forwardRemoteScriptRequest(
-    "/device/macros",
-    { device_paths: devicePathsOf(args) },
-    true,
-  );
+  return await forwardRemoteScriptRequest("/device/macros", {
+    device_paths: devicePathsOf(args),
+  });
 }
 
 /**
@@ -69,11 +65,9 @@ async function forwardRackMacrosRequest(
 async function forwardSimplerReadRequest(
   args: unknown,
 ): Promise<RouteReply<Record<string, unknown>>> {
-  return await forwardRemoteScriptRequest(
-    "/device/simpler/read",
-    { device_paths: devicePathsOf(args) },
-    true,
-  );
+  return await forwardRemoteScriptRequest("/device/simpler/read", {
+    device_paths: devicePathsOf(args),
+  });
 }
 
 /**
@@ -93,17 +87,13 @@ async function forwardSimplerWriteRequest(
     unknown
   >;
 
-  return await forwardRemoteScriptRequest(
-    "/device/simpler/write",
-    {
-      device_path: requireString(args, "devicePath"),
-      ...(pitchBendRange != null && { pitch_bend_range: pitchBendRange }),
-      ...(notePitchBendRange != null && {
-        note_pitch_bend_range: notePitchBendRange,
-      }),
-    },
-    true,
-  );
+  return await forwardRemoteScriptRequest("/device/simpler/write", {
+    device_path: requireString(args, "devicePath"),
+    ...(pitchBendRange != null && { pitch_bend_range: pitchBendRange }),
+    ...(notePitchBendRange != null && {
+      note_pitch_bend_range: notePitchBendRange,
+    }),
+  });
 }
 
 /**

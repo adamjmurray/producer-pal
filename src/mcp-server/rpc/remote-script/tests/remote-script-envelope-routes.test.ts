@@ -7,7 +7,11 @@ import { describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "../forwarded/remote-script-envelope-routes.ts";
-import { useFakeRemoteScriptRoutes } from "./remote-script-test-helpers.ts";
+import {
+  OUTDATED_ANSWER,
+  unknownRouteAnswer,
+  useFakeRemoteScriptRoutes,
+} from "./remote-script-test-helpers.ts";
 
 const PARAMETER = {
   name: "Volume",
@@ -94,6 +98,14 @@ describe("remoteScript.envelope.read", () => {
 });
 
 describe("remoteScript.envelope failures", () => {
+  it("says an older remote script is out of date, not that the clip is missing", async () => {
+    await answerWith(unknownRouteAnswer("/envelope/read"));
+
+    expect(
+      await dispatchNodeRoute(ENVELOPE_ROUTES.read, { track: "t0", slot: 2 }),
+    ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
+  });
+
   it("words a dropped connection for clip automation, not Live's browser", async () => {
     await answerWith({ drop: true });
 

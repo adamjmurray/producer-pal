@@ -29,7 +29,9 @@ export async function runProbe(
   });
 
   if (!reply.available) {
-    throw new Error("The remote script isn't running in Live");
+    throw new Error(
+      reply.outdated ?? "The remote script isn't running in Live",
+    );
   }
 
   if (reply.status === 404) {

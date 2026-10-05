@@ -216,7 +216,7 @@ function perPath(
  * @param deadline - The request deadline
  * @returns The browser item, or null for a native device
  * @throws Error listing the native devices when the remote script isn't
- *   answering, since without it they are all there is
+ *   answering or is out of date, since without it they are all there is
  * @throws Error when the item is Producer Pal itself
  */
 async function findBrowserItem(
@@ -229,14 +229,7 @@ async function findBrowserItem(
 
   const item = await resolveBrowserDevice(deviceName, deadline);
 
-  if (item != null && isProducerPalBrowserItem(item)) {
-    throw new Error(
-      "cannot create the Producer Pal device: it is already running in this " +
-        "Set, and a second copy would break the connection this tool runs on",
-    );
-  }
-
-  if (item == null) {
+  if ("available" in item) {
     const validList =
       `Instruments: ${VALID_DEVICES.instruments.join(", ")} | ` +
       `MIDI Effects: ${VALID_DEVICES.midiEffects.join(", ")} | ` +
@@ -244,8 +237,17 @@ async function findBrowserItem(
 
     throw new Error(
       `invalid device "${deviceName}". Valid devices - ${validList}. ` +
-        "A plug-in or Max for Live device loads only with the Producer Pal " +
-        `remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+        (item.outdated == null
+          ? "A plug-in or Max for Live device loads only with the Producer " +
+            `Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`
+          : `A plug-in or Max for Live device can't load: ${item.outdated}`),
+    );
+  }
+
+  if (isProducerPalBrowserItem(item)) {
+    throw new Error(
+      "cannot create the Producer Pal device: it is already running in this " +
+        "Set, and a second copy would break the connection this tool runs on",
     );
   }
 

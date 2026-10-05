@@ -9,7 +9,9 @@ import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach } from "vitest";
+import { outdatedReason } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { clearNodeRoutes } from "../../node-request-protocol.ts";
+import { MIN_REMOTE_SCRIPT_VERSION } from "../port/remote-script-version.ts";
 
 /**
  * Make a throwaway directory to stand in for the User Library.
@@ -19,6 +21,25 @@ import { clearNodeRoutes } from "../../node-request-protocol.ts";
 export function makeScratchUserLibrary(label: string): string {
   return mkdtempSync(join(tmpdir(), `ppal-remote-script-${label}-`));
 }
+
+/**
+ * What the remote script's bridge answers for a route it doesn't have: 404 with
+ * the routes it does.
+ * @param route - The route asked for
+ * @returns The answer
+ */
+export function unknownRouteAnswer(route: string): FakeAnswer {
+  return {
+    status: 404,
+    body: { error: `unknown route: ${route}`, routes: ["/ping"] },
+  };
+}
+
+/** What a route answers when a script of unknown version lacks the route. */
+export const OUTDATED_ANSWER = {
+  available: false,
+  outdated: outdatedReason(null, MIN_REMOTE_SCRIPT_VERSION),
+};
 
 /** One request the stand-in remote script received. */
 export interface ReceivedRequest {

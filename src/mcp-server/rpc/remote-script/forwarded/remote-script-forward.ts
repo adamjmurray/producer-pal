@@ -10,6 +10,7 @@ import {
 import {
   type RemoteScriptReply,
   remoteScriptRequest,
+  unavailableReply,
 } from "../remote-script-client.ts";
 
 /**
@@ -17,8 +18,6 @@ import {
  * clip automation, rack macros.
  * @param route - The remote script's route, e.g. "/envelope/list"
  * @param body - The JSON body to POST, in the remote script's spelling
- * @param notFoundMeansMissing - Whether a 404 is the bridge not knowing the
- *   route (an older remote script), which counts as no remote script
  * @returns The remote script's JSON, an error worded for the model, or
  *   `available: false` when nothing answered
  * @throws Error when the remote script took the request but never answered
@@ -26,7 +25,6 @@ import {
 export async function forwardRemoteScriptRequest(
   route: string,
   body: Record<string, unknown>,
-  notFoundMeansMissing = false,
 ): Promise<RouteReply<Record<string, unknown>>> {
   let reply: RemoteScriptReply;
 
@@ -37,8 +35,8 @@ export async function forwardRemoteScriptRequest(
     throw new Error(REMOTE_SCRIPT_UNANSWERED);
   }
 
-  if (!reply.available || (notFoundMeansMissing && reply.status === 404)) {
-    return { available: false };
+  if (!reply.available) {
+    return unavailableReply(reply);
   }
 
   if (reply.status === 200) {

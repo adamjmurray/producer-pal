@@ -22,6 +22,7 @@ import {
   ignoreClipParams,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
+import { whyUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   remoteScriptExpiry,
@@ -233,7 +234,10 @@ async function startConversion(
   }
 
   if (!reply.available) {
-    return { ok: false, reason: CONVERT_NEEDS_REMOTE_SCRIPT };
+    return {
+      ok: false,
+      reason: whyUnavailable(reply, CONVERT_NEEDS_REMOTE_SCRIPT),
+    };
   }
 
   if (reply.error == null) {

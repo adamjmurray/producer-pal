@@ -21,6 +21,10 @@ import {
 import { createBrowserDevice } from "../../helpers/browser-devices.ts";
 import { createDevice } from "../../create-device.ts";
 
+/** What the remote script is told to say when it is too old. */
+const OUTDATED =
+  "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
+
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
@@ -209,6 +213,14 @@ describe("createDevice — from a preset", () => {
     await expect(
       createDevice({ preset: "Abdominal Bass", path: "t0/d+" }),
     ).rejects.toThrow(PRESET_NEEDS_REMOTE_SCRIPT);
+  });
+
+  it("says the remote script is out of date when it is", async () => {
+    answerLookups({ available: false, outdated: OUTDATED });
+
+    await expect(
+      createDevice({ preset: "Abdominal Bass", path: "t0/d+" }),
+    ).rejects.toThrow(OUTDATED);
   });
 
   it("says the lookup failed when Node gives no answer", async () => {

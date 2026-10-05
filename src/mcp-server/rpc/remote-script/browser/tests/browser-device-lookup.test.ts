@@ -12,9 +12,11 @@ import { RemoteScriptTimeout } from "../../remote-script-client.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
+  OUTDATED_ANSWER,
   type ReceivedRequest,
   queriesAsked,
   startFakeRemoteScript,
+  unknownRouteAnswer,
 } from "../../tests/remote-script-test-helpers.ts";
 
 /** Item paths under each remote script `type`. */
@@ -338,6 +340,17 @@ describe("lookUpBrowserDevice", () => {
     expect(await lookUpBrowserDevice("Reverb", inAMinute())).toStrictEqual({
       available: false,
     });
+  });
+
+  it("says so when the remote script is too old to have the route, not that nothing matched", async () => {
+    fake = await startFakeRemoteScript(() => unknownRouteAnswer("/list"));
+
+    expect(await lookUpBrowserDevice("Reverb", inAMinute())).toStrictEqual(
+      OUTDATED_ANSWER,
+    );
+    expect(
+      await lookUpBrowserDevice("Plug-Ins/VST3/X", inAMinute()),
+    ).toStrictEqual(OUTDATED_ANSWER);
   });
 
   describe("a name starting with a browser section", () => {

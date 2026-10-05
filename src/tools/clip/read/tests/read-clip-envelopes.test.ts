@@ -26,6 +26,10 @@ import {
 } from "#src/tools/clip/read/read-clip.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
+/** What the remote script is told to say when it is too old. */
+const OUTDATED =
+  "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
+
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
@@ -414,6 +418,16 @@ describe("readClip - envelopes", () => {
     expect(await readEnvelopes()).toBe(
       "the Producer Pal remote script isn't running, so clip automation can't be reached",
     );
+  });
+
+  it("says when the remote script is out of date", async () => {
+    setupClip();
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: false, outdated: OUTDATED },
+    });
+
+    expect(await readEnvelopes()).toBe(OUTDATED);
   });
 
   it("hands back what a route said went wrong", async () => {
