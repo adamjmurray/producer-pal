@@ -51,7 +51,8 @@ export function createLibraryFixture(
       device_type INTEGER DEFAULT 0,
       place_id INTEGER,
       subtype INTEGER,
-      flags INTEGER DEFAULT 1027
+      flags INTEGER DEFAULT 1027,
+      device_id TEXT DEFAULT ''
     );
     CREATE TABLE places (
       file_id INTEGER PRIMARY KEY,

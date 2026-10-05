@@ -40,6 +40,7 @@ import {
   resolveFileIdForPath,
   type SearchRow,
 } from "./candidate-query.ts";
+import { presetFolderNote } from "./preset-folder-note.ts";
 
 /**
  * Run a structured library search.
@@ -114,10 +115,13 @@ export async function librarySearch(
         await verifyItemPaths(items);
       }
 
+      const note = presetFolderNote(db, args, parentId);
+
       return {
         dbAvailable: true,
         ...(stalenessRisk && { stalenessRisk }),
         items,
+        ...(note != null && { note }),
       };
     } finally {
       db.close();

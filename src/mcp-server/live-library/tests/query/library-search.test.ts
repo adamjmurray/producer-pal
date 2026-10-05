@@ -711,7 +711,8 @@ function createDbWithTruncatedPath(): {
       mod_date INTEGER DEFAULT 0,
       place_id INTEGER,
       subtype INTEGER,
-      flags INTEGER DEFAULT 1027
+      flags INTEGER DEFAULT 1027,
+      device_id TEXT
     );
     CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
     INSERT INTO places VALUES (1, 1);

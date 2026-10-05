@@ -53,6 +53,8 @@ interface LibrarySearchResult {
   /** Present when DB was consulted; omitted when bypassed (source=sample-folder). */
   dbAvailable?: boolean;
   detail?: string;
+  /** Set when the default left matching plug-in preset folder files out. */
+  note?: string;
 }
 
 interface LibraryListTagsResult {
@@ -325,6 +327,34 @@ describe("ppal-library", () => {
 
       for (const item of result.items) {
         expect(item.source).toBe("user");
+      }
+    });
+
+    it("source preset-folder only returns plug-in preset folder items", async () => {
+      const result = await search({ source: "preset-folder", limit: 20 });
+
+      for (const item of result.items) {
+        expect(item.source).toBe("preset-folder");
+      }
+    });
+
+    it("leaves plug-in preset folder items out unless asked, and says so", async () => {
+      const asked = await search({ source: "preset-folder", limit: 1 });
+      const result = await search({ limit: 1000 });
+
+      for (const item of result.items) {
+        expect(item.source).not.toBe("preset-folder");
+      }
+
+      expect(asked.note).toBeUndefined();
+
+      // Only machines with plug-in sample libraries have anything to report.
+      if (asked.items.length > 0) {
+        expect(result.note).toMatch(
+          /^\d+ matching files? in plug-in preset folders left out; source: preset-folder includes them$/,
+        );
+      } else {
+        expect(result.note).toBeUndefined();
       }
     });
 

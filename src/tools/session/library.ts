@@ -213,6 +213,7 @@ export async function runSearch(
     // Propagate the stale-WAL advisory from the DB layer; omitted when absent.
     ...(dbResult.stalenessRisk && { stalenessRisk: dbResult.stalenessRisk }),
     items,
+    ...(dbResult.note != null && { note: dbResult.note }),
   };
 
   return detail == null ? base : { ...base, detail };

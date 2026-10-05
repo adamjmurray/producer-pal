@@ -42,6 +42,7 @@ export const LIBRARY_SOURCE_VALUES = [
   "builtin",
   "cloud",
   "plugin",
+  "preset-folder",
 ] as const;
 
 export const LIBRARY_ACTION_VALUES = [

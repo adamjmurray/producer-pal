@@ -36,6 +36,7 @@ import {
 } from "./candidate-query.ts";
 import { decodeFeatureVector } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
+import { presetFolderNote } from "./preset-folder-note.ts";
 
 /** Default cap on duplicate groups returned (most-duplicated first). */
 const DEFAULT_FIND_DUPLICATES_LIMIT = 50;
@@ -129,7 +130,11 @@ function runFindDuplicates(
     items: rowsInGroup.map((r) => buildLibraryItem(r, paths, tagsByFile)),
   }));
 
-  return { ...base, groups };
+  const note = presetFolderNote(db, args, resolved.parentId, {
+    analyzedOnly: true,
+  });
+
+  return { ...base, groups, ...(note != null && { note }) };
 }
 
 /**

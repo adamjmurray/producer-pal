@@ -43,6 +43,7 @@ const OPERATOR = "device:ableton:instr:Operator";
 const MELD = "device:ableton:instr:InstrumentMeld";
 const INSTRUMENT_RACK = "device:ableton:instr:InstrumentGroupDevice";
 const REVERB = "device:ableton:audiofx:Reverb";
+const PLUGIN_DEVICE = "device:au:instr:1:2:3";
 
 let dir: string;
 let dbPath: string;
@@ -61,8 +62,9 @@ type Row = [
 ];
 
 /**
- * Write a files DB. Place 10 is the User Library and 20 a pack; the rows under
- * 90 stand in for another installed Live, which isn't a place.
+ * Write a files DB. Place 10 is the User Library, 20 a pack and 70 a plug-in
+ * preset folder; the rows under 90 stand in for another installed Live, which
+ * isn't a place.
  *
  * @returns Path to the DB
  */
@@ -75,7 +77,7 @@ function writeDb(): string {
       name TEXT, file_type INTEGER, place_id INTEGER DEFAULT 0,
       flags INTEGER DEFAULT 3, device_type INTEGER DEFAULT 0, device_id TEXT);
     CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
-    INSERT INTO places VALUES (10, 1), (20, 0);
+    INSERT INTO places VALUES (10, 1), (20, 0), (70, 5);
   `);
 
   const rows: Row[] = [
@@ -143,6 +145,15 @@ function writeDb(): string {
       "Hidden Kit.adg",
       ADG,
       { place: 20, flags: 0, deviceType: 1, deviceId: DRUM_RACK },
+    ],
+    [70, 3, "Plugin Presets", FLDR],
+    [71, 70, "Sample Kit.adg", ADG, { place: 70 }],
+    [
+      72,
+      70,
+      "Linked Kit.adg",
+      ADG,
+      { place: 70, deviceType: 1, deviceId: PLUGIN_DEVICE },
     ],
     [90, 1, "Other Live", FLDR],
     // Drift: two Drift presets and one Operator preset in its folder, and
@@ -247,6 +258,19 @@ describe("findPresetFiles", () => {
 
   afterAll(() => {
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("leaves out files in preset folders that no plug-in owns, as Live's browser does", async () => {
+    expect(await findPresetFiles({ name: "sample kit" })).toStrictEqual([]);
+  });
+
+  it("lists presets in preset folders that a plug-in owns", async () => {
+    expect(await findPresetFiles({ name: "linked kit" })).toStrictEqual([
+      {
+        name: "Linked Kit.adg",
+        path: "/Users/me/Plugin Presets/Linked Kit.adg",
+      },
+    ]);
   });
 
   it("finds a preset by name, with its path", async () => {

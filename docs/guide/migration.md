@@ -708,6 +708,12 @@ new.
   for them; both were always 0.
 - **`ppal-read-clip` has no `view`.** `path` says it: `t0/s3` is a session slot,
   `t0[5|1]` an arrangement position.
+- **`ppal-library` leaves out what Live hides in plug-in preset folders.**
+  Sample libraries that plug-ins install in `Audio/Presets` (Serum 2's, say) no
+  longer turn up in library-wide searches, tag counts and the like, as in Live's
+  browser. Pass `source: "preset-folder"` to reach them. Plug-in presets there
+  stay listed, as `source: "plugin"`. A search, `find-similar` or
+  `find-duplicates` that left matches out says so in `note`.
 
 ## Enum values are kebab-case in 2.5
 

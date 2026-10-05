@@ -92,8 +92,11 @@ Live, or make sure your standalone Max is up to date. See
 :::
 
 - Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin, or your sample
-  folder)
+  source category (User Library, Pack, Built-in, Cloud, Plugin, plug-in preset
+  folders, or your sample folder). The other files in plug-in preset folders
+  (`Audio/Presets`), such as sample libraries, are hidden by Live's browser and
+  left out unless you ask for them; plug-in presets there stay listed under
+  Plugin
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
 - Sort by `use-count` (Live's persistent usage counter, which surfaces what you

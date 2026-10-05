@@ -37,6 +37,7 @@ import {
 } from "./candidate-query.ts";
 import { decodeFeatureVector, euclideanDistance } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
+import { presetFolderNote } from "./preset-folder-note.ts";
 
 /** Default top-K for findSimilar — a focused shortlist, not search's broad 50. */
 const DEFAULT_FIND_SIMILAR_LIMIT = 20;
@@ -141,8 +142,17 @@ function runFindSimilar(
   }
 
   const ranked = rankCandidates(db, args, seed, resolved.parentId);
+  const note = presetFolderNote(db, args, resolved.parentId, {
+    sourceShowsHidden: false,
+    analyzedOnly: true,
+  });
 
-  return { ...base, seed: { path: seedPath, found: true }, items: ranked };
+  return {
+    ...base,
+    seed: { path: seedPath, found: true },
+    items: ranked,
+    ...(note != null && { note }),
+  };
 }
 
 /**

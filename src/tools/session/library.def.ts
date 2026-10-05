@@ -151,9 +151,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
       aliasedEnum(LIBRARY_SOURCE_VALUES, LIBRARY_SOURCE_ALIASES).optional(),
       {
         default:
-          "where the file lives (search only). sample-folder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
+          "where the file lives (search only). sample-folder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins and their presets | preset-folder=other files in plug-ins' preset folders (Audio/Presets), which Live's browser hides",
         smallModel:
-          "where the file lives. sample-folder | user | pack | builtin | cloud | plugin",
+          "where the file lives. sample-folder | user | pack | builtin | cloud | plugin | preset-folder (other files in plug-ins' preset folders, hidden in Live's browser)",
       },
     ),
 

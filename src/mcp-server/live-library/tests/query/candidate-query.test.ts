@@ -118,9 +118,19 @@ describe("buildLibraryItem", () => {
       file_type: 0,
       subtype: null,
       folder_kind: null,
+      linked_to_plugin: 0,
       ...overrides,
     };
   }
+
+  it("reports a preset-folder file as plugin only when Live linked it to a plug-in", () => {
+    const sourceOf = (overrides: Partial<SearchRow>): string | null =>
+      buildLibraryItem(makeRow(overrides), new Map(), new Map()).source;
+
+    expect(sourceOf({ folder_kind: 5 })).toBe("preset-folder");
+    expect(sourceOf({ folder_kind: 5, linked_to_plugin: 1 })).toBe("plugin");
+    expect(sourceOf({ folder_kind: 1, linked_to_plugin: 1 })).toBe("user");
+  });
 
   it("uses the resolved path, folder, and truncation flag when present", () => {
     const resolved: ResolvedPath = {
