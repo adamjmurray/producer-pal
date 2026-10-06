@@ -421,6 +421,68 @@ describe("ppal-duplicate with a source list", () => {
     ]);
   });
 
+  // A-B-A song layout: A is named twice, apart. Copies are made in the order
+  // named, so each later copy cuts the one before it, B's across A's and then
+  // the second A's across B's, whichever source it came from.
+  it("makes the copies of a source named twice in the order named", async () => {
+    const a = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1", "2bar");
+    const b = await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1", "2bar");
+
+    await sleep(100);
+
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id: [a, b, a].join(","),
+        toPath: [231, 232, 233]
+          .map((bar) => `t${EMPTY_MIDI_TRACK}[${bar}|1]`)
+          .join(","),
+      }),
+    );
+
+    expect(copies.map((copy) => copy.detail)).toStrictEqual([
+      `shortened by t${EMPTY_MIDI_TRACK}[232|1] later in this call`,
+      `shortened by t${EMPTY_MIDI_TRACK}[233|1] later in this call`,
+      undefined,
+    ]);
+
+    await sleep(100);
+
+    // Each copy is still where its entry says, with its own source's notes.
+    const clips = await Promise.all(copies.map((copy) => readClip(copy.id)));
+
+    expect(clips.map((clip) => clip.path)).toStrictEqual(
+      copies.map((copy) => copy.path),
+    );
+    expect(clips[0]!.notes).toContain("C3");
+    expect(clips[1]!.notes).toContain("D3");
+    expect(clips[2]!.notes).toContain("C3");
+  });
+
+  // The second turn of A doesn't hide the first one's copy landing on B, which
+  // would clear it before its turn.
+  it("refuses a copy onto a later source even when its own source comes again", async () => {
+    const a = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1", "2bar");
+    const b = await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1", "2bar");
+
+    await sleep(100);
+
+    const arranged = parseToolResult<DuplicateClipResult>(
+      await duplicateClips({ id: b, toPath: `t${EMPTY_MIDI_TRACK}[241|1]` }),
+    );
+
+    await sleep(100);
+
+    const result = await duplicateClips({
+      id: [a, arranged.id, a].join(","),
+      toPath: [241, 250, 260]
+        .map((bar) => `t${EMPTY_MIDI_TRACK}[${bar}|1]`)
+        .join(","),
+    });
+
+    expect(JSON.stringify(result)).toContain("would overwrite id");
+    expect(JSON.stringify(result)).toContain(arranged.id);
+  });
+
   // duplicate used to take a path only for a drum pad, so a path a model just
   // read out of a result could not be spent here.
   it("names its sources by path, and by path alongside id", async () => {

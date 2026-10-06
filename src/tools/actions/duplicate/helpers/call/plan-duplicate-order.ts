@@ -3,11 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The order the copies are made in. Copies land on each other, so the order is
-// part of what they do: track copies each land right after their source, so the
-// last made sits nearest it; a clip copy a later one cuts short is made before
-// it; and a copy on the source clip's own span is made after the rest, which
-// would otherwise copy what it left of the source.
+// The order the copies are made in: the order named, because copies land on
+// each other and the later one wins, whichever source it came from. The
+// exceptions are per source: track copies each land right after their source,
+// so a source's are made last to first to end up in the order named; and a clip
+// copy on the source clip's own span is made after the source's other copies,
+// which would otherwise copy what it left of the source.
 
 import {
   type Plan,
@@ -31,6 +32,9 @@ interface Written {
   named: string;
 }
 
+/** The copies of one source clip or object, in call order. */
+type Group = Written[];
+
 /**
  * Decide the order the copies are written in.
  * @param targets - The call's copies, in the order named
@@ -46,7 +50,7 @@ export function planDuplicateOrder(
   superseded: Superseded,
   run: DuplicateRun,
 ): Plan {
-  const bySource = new Map<string, Written[]>();
+  const groups = new Map<string, Group>();
 
   for (const [index, target] of targets.entries()) {
     if (target.skip != null || superseded.unwritten.has(index)) {
@@ -54,72 +58,52 @@ export function planDuplicateOrder(
     }
 
     const { body, label } = target.data;
-    const key = "sourceId" in body ? body.sourceId : String(index);
+    const key = sourceKey(body, index);
 
-    bySource.set(key, [
-      ...(bySource.get(key) ?? []),
+    groups.set(key, [
+      ...(groups.get(key) ?? []),
       { index, body, label, named: target.named.value },
     ]);
   }
 
-  return {
-    order: [...bySource.values()].flatMap((group) =>
-      orderOneSource(group, superseded, run),
-    ),
-  };
+  const late = new Set(
+    [...groups.values()].flatMap((group) => landingOnSource(group, run)),
+  );
+
+  return { order: scheduled(groups, late, superseded) };
 }
 
 // --- Helpers below main export ---
 
 /**
- * The order one source's copies are written in.
- * @param group - This source's copies that will be written, in call order
- * @param superseded - What later copies do to earlier ones
- * @param run - The call's shared state
- * @returns The copies' indexes, in the order to write them
+ * What a copy is grouped by: its source, or itself when it has none.
+ * @param body - The copy
+ * @param index - Its place in the call
+ * @returns The key
  */
-function orderOneSource(
-  group: Written[],
-  superseded: Superseded,
-  run: DuplicateRun,
-): number[] {
-  const indexes = group.map(({ index }) => index);
-  const kind = (group[0] as Written).body.kind;
-
-  // Each track copy lands right after the source, ahead of the ones made
-  // before it. Making them last to first leaves them in the order named.
-  if (kind === "track") {
-    return indexes.toReversed();
-  }
-
-  return kind === "arrangement"
-    ? arrangementOrder(group, superseded, run)
-    : indexes;
+function sourceKey(body: CopyBody, index: number): string {
+  return "sourceId" in body ? body.sourceId : String(index);
 }
 
 /**
- * Order a source's arrangement copies: those that land on the source clip
- * last, and a copy a later one cuts short before the one that cuts it.
+ * The indexes of a source's copies that land on the source clip itself.
  * @param group - The source's copies that will be written, in call order
- * @param superseded - What later copies do to earlier ones
  * @param run - The call's shared state
- * @returns The copies' indexes, in the order to write them
- * @throws Error when no order does both
+ * @returns Their indexes, none unless these are arrangement copies
  */
-function arrangementOrder(
-  group: Written[],
-  superseded: Superseded,
-  run: DuplicateRun,
-): number[] {
+function landingOnSource(group: Group, run: DuplicateRun): number[] {
+  const first = (group[0] as Written).body;
+
+  if (first.kind !== "arrangement") {
+    return [];
+  }
+
   // A source's group holds only its arrangement copies.
   const copies = group.map(({ body, label }) => ({
     body: body as ArrangementCopy,
     label,
   }));
-  const source = liveObject(
-    run,
-    (copies[0] as (typeof copies)[number]).body.sourceId,
-  );
+  const source = liveObject(run, first.sourceId);
   const { numerator, denominator } = meterOf(run);
   const over = copiesOverSource(
     source,
@@ -129,83 +113,184 @@ function arrangementOrder(
       copySpanBeats(source, label.length, numerator, denominator),
     ),
   );
-  const late = new Set([...over].map((at) => (group[at] as Written).index));
-  const indexes = group.map(({ index }) => index);
-  // The copies the source can't spare go last, each part in the order named.
-  const base = [
-    ...indexes.filter((index) => !late.has(index)),
-    ...indexes.filter((index) => late.has(index)),
-  ];
-  const ordered = cutShortFirst(base, superseded);
 
-  refuseUnorderable(group, ordered, late);
-
-  return ordered;
+  return [...over].map((at) => (group[at] as Written).index);
 }
 
 /**
- * Move each copy that a later one cuts short ahead of the copies that cut it,
- * changing nothing else.
- * @param base - The order so far
+ * Put the copies in call order, then hold back the ones that must wait: a copy
+ * on its source clip's own span waits for the source's other copies, and a
+ * copy another one cuts short is already ahead of it.
+ * @param groups - The copies that will be written, by source
+ * @param late - The copies that land on their own source clip
  * @param superseded - What later copies do to earlier ones
- * @returns The order, with every cut-short copy before the copies cutting it
+ * @returns The order to write in
+ * @throws Error when no order does both
  */
-function cutShortFirst(base: number[], superseded: Superseded): number[] {
-  const waitsFor = new Map<number, number[]>();
+function scheduled(
+  groups: Map<string, Group>,
+  late: ReadonlySet<number>,
+  superseded: Superseded,
+): number[] {
+  const base = callOrder(groups);
+  const copies = new Map(
+    [...groups.values()].flatMap((group) =>
+      group.map((copy) => [copy.index, { copy, group }] as const),
+    ),
+  );
+  // The copies that cut an earlier one short wait for it.
+  const cuts = new Map<number, number[]>();
 
   for (const [earlier, laters] of superseded.shortenedBy) {
     for (const later of laters) {
-      waitsFor.set(later, [...(waitsFor.get(later) ?? []), earlier]);
+      if (copies.has(earlier) && copies.has(later)) {
+        cuts.set(later, [...(cuts.get(later) ?? []), earlier]);
+      }
     }
   }
 
+  const done = new Set<number>();
   const ordered: number[] = [];
-  const left = [...base];
+  // What a copy still waits for. A copy on its source clip waits for the rest
+  // of that source's copies.
+  const blockers = (index: number): number[] =>
+    [
+      ...(cuts.get(index) ?? []),
+      ...(late.has(index)
+        ? (copies.get(index) as { group: Group }).group
+            .map((other) => other.index)
+            .filter((other) => !late.has(other))
+        : []),
+    ].filter((other) => !done.has(other));
 
-  while (left.length > 0) {
-    // A copy only ever waits on an earlier one, never the other way round, so
-    // some copy is always ready.
-    const at = left.findIndex((index) =>
-      (waitsFor.get(index) ?? []).every(
-        (earlier) => ordered.includes(earlier) || !base.includes(earlier),
-      ),
-    );
+  let from = 0;
 
-    ordered.push(left.splice(at, 1)[0] as number);
+  while (ordered.length < base.length) {
+    while (done.has(base[from] as number)) {
+      from++;
+    }
+
+    let at = from;
+
+    while (
+      at < base.length &&
+      (done.has(base[at] as number) || blockers(base[at] as number).length > 0)
+    ) {
+      at++;
+    }
+
+    if (at === base.length) {
+      throw unorderable(
+        base.filter((index) => !done.has(index)),
+        blockers,
+        late,
+        (index) => copies.get(index) as { copy: Written; group: Group },
+      );
+    }
+
+    done.add(base[at] as number);
+    ordered.push(base[at] as number);
   }
 
   return ordered;
 }
 
 /**
- * Refuses an order in which a copy on the source's own span is made before one
- * that has to copy the whole source.
- * @param group - The source's copies that will be written
- * @param ordered - The order to write in
- * @param late - The copies that land on the source's own span
- * @throws Error naming the two copies
+ * The copies in call order, except that a source's track copies are made last
+ * to first, each in the place of one of its own.
+ * @param groups - The copies that will be written, by source
+ * @returns The indexes, in the order to start from
  */
-function refuseUnorderable(
-  group: Written[],
-  ordered: number[],
-  late: ReadonlySet<number>,
-): void {
-  const firstLate = ordered.findIndex((index) => late.has(index));
-  const after = ordered.findIndex(
-    (index, at) => firstLate >= 0 && at > firstLate && !late.has(index),
-  );
+function callOrder(groups: Map<string, Group>): number[] {
+  const order = [...groups.values()]
+    .flat()
+    .map(({ index }) => index)
+    .toSorted((a, b) => a - b);
+  const placeOf = new Map(order.map((index, place) => [index, place]));
 
-  if (after === -1) {
-    return;
+  for (const group of groups.values()) {
+    if ((group[0] as Written).body.kind !== "track") {
+      continue;
+    }
+
+    // Each track copy lands right after the source, ahead of the ones made
+    // before it. Making them last to first leaves them in the order named.
+    const indexes = group.map(({ index }) => index);
+
+    for (const [at, index] of indexes.toReversed().entries()) {
+      order[placeOf.get(indexes[at] as number) as number] = index;
+    }
   }
 
-  const [over, other] = [ordered[firstLate], ordered[after]].map(
-    (index) => group.find((copy) => copy.index === index)?.named,
-  );
+  return order;
+}
 
-  throw new Error(
-    `the copy to "${over}" lands on the source clip itself, so it has to be ` +
-      `made after the others, but the copy to "${other}" lands over part of ` +
-      `it and has to be made after it. Split them into two calls.`,
+/**
+ * The error for copies that each have to wait for another. A copy on the source
+ * clip itself has to come after the source's other copies, so one of those
+ * can't also have to come after it.
+ * @param left - The copies still to write, in call order
+ * @param blockers - What a copy still waits for
+ * @param late - The copies that land on their own source clip
+ * @param lookup - Finds a copy and its source's copies by its index
+ * @returns The error, naming the two copies
+ */
+function unorderable(
+  left: number[],
+  blockers: (index: number) => number[],
+  late: ReadonlySet<number>,
+  lookup: (index: number) => { copy: Written; group: Group },
+): Error {
+  // Waits that only look back at an earlier copy can't loop, so every ring
+  // passes through a copy on its source clip waiting for one of the source's
+  // others, which in turn waits (through whatever) for it.
+  const [over, other] = left
+    .filter((index) => late.has(index))
+    .flatMap((index) =>
+      lookup(index)
+        .group.map((copy) => copy.index)
+        .filter(
+          (each) =>
+            left.includes(each) &&
+            !late.has(each) &&
+            waitsFor(each, index, blockers),
+        )
+        .map((each) => [index, each] as const),
+    )[0] as readonly [number, number];
+
+  return new Error(
+    `the copy to "${lookup(over).copy.named}" lands on the source clip ` +
+      `itself, so it has to be made after the others, but the copy to ` +
+      `"${lookup(other).copy.named}" has to be made after it. Split them ` +
+      `into two calls.`,
   );
+}
+
+/**
+ * Whether a copy waits for another, through any copies between.
+ * @param index - The copy
+ * @param target - The copy it might wait for
+ * @param blockers - What a copy still waits for
+ * @param seen - The copies already looked at
+ * @returns True when it does
+ */
+function waitsFor(
+  index: number,
+  target: number,
+  blockers: (index: number) => number[],
+  seen = new Set<number>(),
+): boolean {
+  return blockers(index).some((wait) => {
+    if (wait === target) {
+      return true;
+    }
+
+    if (seen.has(wait)) {
+      return false;
+    }
+
+    seen.add(wait);
+
+    return waitsFor(wait, target, blockers, seen);
+  });
 }

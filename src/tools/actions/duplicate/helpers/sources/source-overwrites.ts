@@ -49,7 +49,6 @@ export function refuseClipOverwrites(
     return;
   }
 
-  const turnOf = new Map(sources.map((share, turn) => [share.id, turn]));
   const copies = targets.flatMap(({ named, covers, data }): CopyPlace[] => {
     const body = data?.body;
 
@@ -59,7 +58,8 @@ export function refuseClipOverwrites(
 
     return (covers ?? []).map((cover) => ({
       sourceId: body.sourceId,
-      turn: turnOf.get(body.sourceId) as number,
+      // A source named twice has two turns; this copy belongs to one of them.
+      turn: body.turn,
       destination: named.value,
       place: "slot" in cover ? cover.slot : cover.lane,
       spans: () =>

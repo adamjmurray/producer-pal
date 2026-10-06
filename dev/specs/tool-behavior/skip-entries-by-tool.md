@@ -304,10 +304,12 @@ with a tool, the tool wins.
   one is `ok: false`
   (`not written: <later> was meant to replace it, but failed`). A copy cleared
   by something nobody predicted loses its `id` and says it was overwritten.
-  Nothing is `deleted: true`. A copy that lands on the source clip itself is
-  made after the others, which copy it whole; when a copy that must go last also
-  has to come first to be cut short, the call is refused before anything is
-  written.
+  Nothing is `deleted: true`. Copies are made in the order named, so the later
+  of two overlapping copies wins whichever source it came from, and a source
+  named twice, apart (`A,B,A`), is two turns. A copy that lands on the source
+  clip itself is made after that source's other copies, which copy it whole;
+  when a copy that must go last also has to come first to be cut short, the call
+  is refused before anything is written.
 - **duplicate: Live fails partway.** A copy that landed keeps its normal entry
   (`id`, where it is now) plus a `detail` of what landed and what didn't: a
   track or scene copy whose naming, coloring or clips failed, a copy Live threw

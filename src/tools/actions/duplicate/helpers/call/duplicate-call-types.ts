@@ -85,7 +85,7 @@ export type CopyBody =
   | { kind: "track"; sourceId: string }
   | { kind: "scene"; sourceId: string }
   | { kind: "scene-arrangement"; sourceId: string; startBeats: number }
-  | { kind: "slot"; sourceId: string; slot: ClipSlotPosition }
+  | { kind: "slot"; sourceId: string; turn: number; slot: ClipSlotPosition }
   | ArrangementCopy
   | { kind: "lane"; entry: string; target: LaneTarget }
   | { kind: "device" | "chain" | "pad"; sourceId: string; toPath?: string };
@@ -94,6 +94,8 @@ export type CopyBody =
 export interface ArrangementCopy {
   kind: "arrangement";
   sourceId: string;
+  /** Which source entry made it: a source named twice has two turns. */
+  turn: number;
   target: ArrangementTrack;
   startBeats: number;
 }

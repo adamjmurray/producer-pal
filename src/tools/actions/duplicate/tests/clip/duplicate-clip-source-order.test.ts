@@ -311,7 +311,7 @@ describe("duplicate clip fan-out order", () => {
         arrangementStart: "2|1,5|1",
       }),
     ).rejects.toThrow(
-      'the copy to "t0[2|1]" lands on the source clip itself, so it has to be made after the others, but the copy to "t0[5|1]" lands over part of it and has to be made after it. Split them into two calls.',
+      'the copy to "t0[2|1]" lands on the source clip itself, so it has to be made after the others, but the copy to "t0[5|1]" has to be made after it. Split them into two calls.',
     );
     expect(opOrder).toStrictEqual([]);
   });

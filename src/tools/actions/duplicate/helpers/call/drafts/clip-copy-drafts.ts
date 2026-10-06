@@ -75,8 +75,8 @@ export function clipCopyDrafts(
     const where = destinations[index] as ClipDestinations;
 
     return where.destination === "session"
-      ? slotDrafts(source, where.slots, params)
-      : arrangementDrafts(source, where, params);
+      ? slotDrafts(source, index, where.slots, params)
+      : arrangementDrafts(source, index, where, params);
   });
 }
 
@@ -118,12 +118,14 @@ function slotBlocker(
 /**
  * The drafts of a source copied into clip slots.
  * @param source - The source
+ * @param turn - The source's turn in the call
  * @param slots - Its destination slots, in order
  * @param params - What the clip copies are told about the call
  * @returns One draft per slot
  */
 function slotDrafts(
   source: SourceShare,
+  turn: number,
   slots: ClipSlotPosition[],
   params: ClipDraftParams,
 ): CopyDraft[] {
@@ -143,7 +145,7 @@ function slotDrafts(
     return {
       named: addressed(path),
       make: () => ({
-        body: { kind: "slot", sourceId: source.id, slot },
+        body: { kind: "slot", sourceId: source.id, turn, slot },
         covers: () => [{ slot: path }],
       }),
     };
@@ -161,6 +163,7 @@ interface ArrangementSource {
 /**
  * The drafts of a source copied onto the arrangement, one per destination.
  * @param share - The source
+ * @param turn - The source's turn in the call
  * @param where - Where its copies go
  * @param params - What the clip copies are told about the call
  * @returns One draft per destination, in the order named
@@ -168,6 +171,7 @@ interface ArrangementSource {
  */
 function arrangementDrafts(
   share: SourceShare,
+  turn: number,
   where: ClipDestinations,
   params: ClipDraftParams,
 ): CopyDraft[] {
@@ -262,6 +266,7 @@ function arrangementDrafts(
         body: {
           kind: "arrangement",
           sourceId: share.id,
+          turn,
           target,
           startBeats: beats,
         } satisfies ArrangementCopy,
