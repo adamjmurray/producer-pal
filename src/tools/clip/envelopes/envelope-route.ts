@@ -8,6 +8,7 @@
 // meets one wording, not two.
 
 import {
+  remoteScriptChange,
   remoteScriptRoute,
   type RouteOutcome,
 } from "#src/tools/shared/remote-script/remote-script-route.ts";
@@ -35,4 +36,20 @@ export function envelopeRoute<T>(
   deadline?: number | null,
 ): Promise<RouteOutcome<T>> {
   return remoteScriptRoute<T>(route, args, deadline, REMOTE_SCRIPT_MISSING);
+}
+
+/**
+ * Call an envelope route that writes or clears, so Live skips it if it hasn't
+ * started by the time V8 stops waiting.
+ * @param route - The Node route that forwards to the remote script
+ * @param args - Which clip, which parameter of it, and what to write
+ * @param deadline - The request deadline from ToolContext, if any
+ * @returns The route's result, or why there isn't one
+ */
+export function envelopeChange<T>(
+  route: string,
+  args: object,
+  deadline?: number | null,
+): Promise<RouteOutcome<T>> {
+  return remoteScriptChange<T>(route, args, deadline, REMOTE_SCRIPT_MISSING);
 }

@@ -55,6 +55,14 @@ Mechanics: [clip-envelopes.md](../../live-api/clip-envelopes.md).
 remote script. A line it can't write is a `detail` on that clip's entry
 (`envelope "<target>": <why>`), and the other lines still run.
 
+- **A line that stalls may still have landed; one Live skipped didn't.** When
+  the route doesn't answer, or its connection is lost after the request went
+  out, the line's `detail` says its points may still have landed (or that it may
+  still have been cleared), and the lines after it aren't sent; so does running
+  out of time before a line is sent. A line whose expiry ran out before Live
+  started it changed nothing: its `detail` says so and the other lines still
+  run.
+
 - **A curve is spelled `~N`.** Points join with `/` (straight), `_` (hold, then
   jump) or `~N` (curved ramp, N from -1 to 1, no space after the `~`). A bare
   `~` or an amount outside -1..1 refuses the whole call before anything is

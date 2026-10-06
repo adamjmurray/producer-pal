@@ -304,10 +304,11 @@ number in range before writing.
   `/device/simpler/write` before the rest of the target's update, and hands each
   entry's outcome to `setParamValues` through its `settled` map. The result is
   `{name, value}` when it read back as asked, `ok: false` and why otherwise.
-  Without the remote script the entry says it needs it. If the route doesn't
-  answer, the write may have landed: the entry says it _may have changed_, the
-  target keeps its place (the pipeline's landed journal), and later Simplers in
-  the call aren't tried.
+  Without the remote script the entry says it needs it. The request carries an
+  expiry, so Live skips it if it hasn't started it by the time V8 stops waiting.
+  If the route doesn't answer, the write may have landed: the entry says it _may
+  have changed_, the target keeps its place (the pipeline's landed journal), and
+  later Simplers in the call aren't tried.
 
 Actions via `update-device`'s new `actions: string[]` arg:
 

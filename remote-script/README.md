@@ -142,12 +142,14 @@ Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
-skipped with a 504 (a re-run is safe). Producer Pal sends one with every
-`/list`, `/load`, `/hotswap` and `/device/duplicate` of a device call, a bit
-under the time it has left, so one deadline covers the lookup and the load, and
-a change it stopped waiting for isn't made later. A job Live started but didn't
-finish in 30s is also a 504, with `started: true`: Live may have made the
-change.
+skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
+and with every route whose result a caller waits on and that changes the Set
+(`/load`, `/hotswap`, `/device/duplicate`, `/clip/convert`, `/envelope/write`,
+`/envelope/clear`, `/device/simpler/write`), a bit under the time it has left,
+so one deadline covers the lookup and the load, and a change it stopped waiting
+for isn't made later. `/undo/end` is fire-and-forget and sends none. A new route
+that changes the Set must be sent one too. A job Live started but didn't finish
+in 30s is also a 504, with `started: true`: Live may have made the change.
 
 ### `GET /ping`
 

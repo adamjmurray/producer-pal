@@ -23,7 +23,8 @@ export const REMOTE_SCRIPT_ROUTES = {
 // wait. Node derives every HTTP wait from that expiry, so the steps don't stack
 // their own limits, and the remote script skips a job it hasn't started by then
 // rather than make a change V8 already reported as failed. The fixed waits
-// below are for calls that carry no expiry.
+// below are for calls that carry no expiry: reads, which change nothing for a
+// late answer to undo. Every route that changes the Set carries one.
 
 /** Node's wait for one HTTP reply that carries no expiry. */
 export const REMOTE_SCRIPT_HTTP_TIMEOUT_MS = 35_000;

@@ -138,12 +138,16 @@ with a tool, the tool wins.
   of date (which says so and how to update it), the remote script refused, or it
   read back different (`landed at 11, not 12`). The entries are written ahead of
   the target's other writes, one call per Simpler, the last of each name. A
-  route that doesn't answer may still have written: the entry says the value
-  _may have changed_ and keeps its place (never a lone throw), and the Simplers
-  after it in the call say they weren't tried and to re-run. A call with no time
-  left says the value wasn't set and names the target to re-run. Where the sync
-  param write is all there is (create-device, a rack's `pC1/d0/` shortcut) the
-  entry says to use update-device on the Simpler's own path.
+  route that doesn't answer, or whose connection is lost after the request went
+  out, may still have written: the entry says the value _may have changed_ and
+  keeps its place (never a lone throw), and the Simplers after it in the call
+  say they weren't tried and to re-run. A write whose expiry ran out before Live
+  started it changed nothing: the entry says
+  `not set: ... nothing changed, re-run it`, and the Simplers after it are still
+  tried. A call with no time left says the value wasn't set and names the target
+  to re-run. Where the sync param write is all there is (create-device, a rack's
+  `pC1/d0/` shortcut) the entry says to use update-device on the Simpler's own
+  path.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

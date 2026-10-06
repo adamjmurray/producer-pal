@@ -549,6 +549,45 @@ describe("readClip - envelopes", () => {
     expect(requestNode).toHaveBeenCalledTimes(2);
   });
 
+  it("stops reading after a lost connection, and says which parameters it left", async () => {
+    setupClip();
+
+    const lost =
+      "the connection to the Producer Pal remote script was lost before it answered";
+
+    vi.mocked(requestNode).mockImplementation(async (route) =>
+      route === ENVELOPE_ROUTES.list
+        ? {
+            success: true,
+            result: {
+              available: true,
+              result: { envelopes: [MIXER_VOLUME, MIXER_SEND] },
+            },
+          }
+        : {
+            success: true,
+            result: { available: true, error: lost, unfinished: true },
+          },
+    );
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 2,
+        detail: lost,
+      },
+      {
+        parameter: "Send A",
+        id: "send-param",
+        eventCount: 2,
+        detail: `not read: ${lost}`,
+      },
+    ]);
+    // The list, then the one read that stalled.
+    expect(requestNode).toHaveBeenCalledTimes(2);
+  });
+
   it("says when the route itself went unanswered", async () => {
     setupClip();
     vi.mocked(requestNode).mockResolvedValue({ success: false });

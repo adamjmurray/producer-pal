@@ -5,7 +5,8 @@
 
 /**
  * E2E tests for the remote script's envelope routes called directly: clearing
- * every envelope on a clip, and refusing return and master tracks.
+ * every envelope on a clip, refusing return and master tracks, and skipping a
+ * change whose expiry has run out.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -88,6 +89,32 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("remote script envelope routes", () => {
       status: 200,
       body: { cleared: false, all: true, remaining: false },
     });
+  });
+
+  it("skips a write and a clear whose expiry has run out, changing nothing", async () => {
+    await clipWithVolumeEnvelope();
+
+    const target = { track: TRACK, slot: 0, parameter: "volume" };
+    const before = (await postEnvelopeRoute("read", target)).body;
+
+    for (const [route, extra] of [
+      ["write", { points: [{ time: 0, value: 0.1 }] }],
+      ["clear", {}],
+    ] as const) {
+      const skipped = await postEnvelopeRoute(route, {
+        ...target,
+        ...extra,
+        expires_in_ms: 0,
+      });
+
+      expect(skipped.status).toBe(504);
+      expect(skipped.body.error).toMatch(/expired before Live ran it/);
+      expect(skipped.body.started).toBeUndefined();
+    }
+
+    expect((await postEnvelopeRoute("read", target)).body).toStrictEqual(
+      before,
+    );
   });
 
   it("refuses return and master tracks, which have no clips", async () => {

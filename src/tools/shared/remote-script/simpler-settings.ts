@@ -14,7 +14,7 @@ import {
 import { REMOTE_SCRIPT_UNANSWERED } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
 import {
   type RouteOutcome,
-  remoteScriptRoute,
+  remoteScriptChange,
 } from "#src/tools/shared/remote-script/remote-script-route.ts";
 import {
   MAX_SIMPLERS_PER_CALL,
@@ -70,9 +70,10 @@ export function lookUpSimplerSettings(
 }
 
 /**
- * Set a Simpler's pitch bend ranges through the remote script. Never throws:
- * a route that fails or doesn't answer comes back as `stalled: "unanswered"`,
- * since the write may still have landed.
+ * Set a Simpler's pitch bend ranges through the remote script. Never throws.
+ * A write that got no answer, or failed once the request went out, comes back
+ * as `stalled: "unanswered"`, since it may still have landed. One the remote
+ * script refused or skipped is a plain failure: nothing changed.
  * @param simpler - The Simpler
  * @param change - The settings to change, one or both
  * @param deadline - The request deadline from ToolContext, if any
@@ -86,7 +87,7 @@ export async function writeSimplerSettings(
   const request: SimplerWriteRequest = { devicePath: simpler.path, ...change };
 
   try {
-    const outcome = await remoteScriptRoute<SimplerSettingsEntry>(
+    const outcome = await remoteScriptChange<SimplerSettingsEntry>(
       SIMPLER_SETTINGS_ROUTES.write,
       request,
       deadline,

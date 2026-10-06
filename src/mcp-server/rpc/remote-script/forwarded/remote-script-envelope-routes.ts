@@ -10,6 +10,7 @@ import {
 import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { requireString } from "../../route-string-args.ts";
+import { requireExpiry } from "./remote-script-change.ts";
 import { forwardRemoteScriptRequest } from "./remote-script-forward.ts";
 
 /** The V8-side name of each param the remote script spells differently. */
@@ -23,6 +24,9 @@ const BODY_KEYS: Record<string, string> = {
   limit: "limit",
   points: "points",
 };
+
+/** The routes that change the Set; the rest only read. */
+const CHANGING_ROUTES: ReadonlySet<string> = new Set(["write", "clear"]);
 
 /**
  * Register the routes V8 uses to read and write clip automation envelopes
@@ -46,7 +50,8 @@ export function registerRemoteScriptEnvelopeRoutes(): void {
  * @param args - The route args, in V8's spelling
  * @returns The remote script's JSON, an error worded for the model, or
  *   `available: false` when nothing answered
- * @throws Error when the remote script took the request but never answered
+ * @throws Error when a change sends no `expiresInMs`, or the remote script took
+ *   the request but never answered
  */
 async function forwardEnvelopeRequest(
   name: string,
@@ -55,6 +60,7 @@ async function forwardEnvelopeRequest(
   return await forwardRemoteScriptRequest(
     `/envelope/${name}`,
     envelopeBody(args),
+    CHANGING_ROUTES.has(name) ? requireExpiry(args) : undefined,
   );
 }
 

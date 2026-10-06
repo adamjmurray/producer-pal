@@ -13,7 +13,7 @@ import {
   type RouteReply,
 } from "./remote-script-route-contract.ts";
 import { whyUnavailable } from "./outdated-remote-script.ts";
-import { remoteScriptWait } from "./remote-script-wait.ts";
+import { remoteScriptExpiry, remoteScriptWait } from "./remote-script-wait.ts";
 
 /**
  * What one route answered: its result, or why there isn't one. `stalled` marks
@@ -32,7 +32,7 @@ export type RouteOutcome<T> =
     };
 
 /**
- * Call one remote-script route.
+ * Call one remote-script route that only reads.
  * @param route - The Node route that forwards to the remote script
  * @param args - What to send it
  * @param deadline - The request deadline from ToolContext, if any
@@ -41,15 +41,58 @@ export type RouteOutcome<T> =
  *   do without the answer
  * @returns The route's result, or why there isn't one
  */
-export async function remoteScriptRoute<T>(
+export function remoteScriptRoute<T>(
   route: string,
   args: object,
   deadline: number | null | undefined,
   missing: string,
   maxWaitMs?: number,
 ): Promise<RouteOutcome<T>> {
+  return callRoute<T>(route, args, deadline, missing, { maxWaitMs });
+}
+
+/**
+ * Call one remote-script route that changes the Set. It sends `expiresInMs`, so
+ * Live skips the job if it hasn't started it by the time V8 stops waiting,
+ * rather than make a change V8 already reported as failed. A change that fails
+ * after Live may have started it comes back `stalled: "unanswered"`.
+ * @param route - The Node route that forwards to the remote script
+ * @param args - What to send it
+ * @param deadline - The request deadline from ToolContext, if any
+ * @param missing - What to say when the remote script isn't running
+ * @returns The route's result, or why there isn't one
+ */
+export function remoteScriptChange<T>(
+  route: string,
+  args: object,
+  deadline: number | null | undefined,
+  missing: string,
+): Promise<RouteOutcome<T>> {
+  return callRoute<T>(route, args, deadline, missing, { change: true });
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Call one route, folding every way it can fail into one outcome.
+ * @param route - The Node route that forwards to the remote script
+ * @param args - What to send it
+ * @param deadline - The request deadline from ToolContext, if any
+ * @param missing - What to say when the remote script isn't running
+ * @param options - `maxWaitMs`: a shorter wait than the usual one; `change`:
+ *   send the expiry a change needs
+ * @returns The route's result, or why there isn't one
+ */
+async function callRoute<T>(
+  route: string,
+  args: object,
+  deadline: number | null | undefined,
+  missing: string,
+  options: { maxWaitMs?: number; change?: boolean },
+): Promise<RouteOutcome<T>> {
   const usual = remoteScriptWait(deadline);
-  const waitMs = usual == null ? null : Math.min(usual, maxWaitMs ?? usual);
+  const waitMs =
+    usual == null ? null : Math.min(usual, options.maxWaitMs ?? usual);
 
   if (waitMs == null) {
     return {
@@ -60,7 +103,13 @@ export async function remoteScriptRoute<T>(
     };
   }
 
-  const response = await requestNode<RouteReply<T>>(route, args, waitMs);
+  const response = await requestNode<RouteReply<T>>(
+    route,
+    options.change
+      ? { ...args, expiresInMs: remoteScriptExpiry(waitMs) }
+      : args,
+    waitMs,
+  );
   const reply = response.result;
 
   if (!response.success || reply == null) {
@@ -82,7 +131,14 @@ export async function remoteScriptRoute<T>(
     };
   }
 
-  return "error" in reply
-    ? { ok: false, reason: reply.error, available: true }
-    : { ok: true, result: reply.result };
+  if (!("error" in reply)) {
+    return { ok: true, result: reply.result };
+  }
+
+  return {
+    ok: false,
+    reason: reply.error,
+    available: true,
+    ...(reply.unfinished === true && { stalled: "unanswered" as const }),
+  };
 }

@@ -21,7 +21,7 @@ import { type EnvelopeLine } from "./envelope-lines.ts";
 import { envelopeWritePoints } from "./envelope-write-points.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
-  envelopeRoute,
+  envelopeChange,
   type RouteOutcome,
 } from "./envelope-route.ts";
 import {
@@ -260,7 +260,7 @@ async function writeOneLine(
   }
 
   if (line.notation === "") {
-    const cleared = await envelopeRoute<EnvelopeClearResult>(
+    const cleared = await envelopeChange<EnvelopeClearResult>(
       ENVELOPE_ROUTES.clear,
       request,
       deadline,
@@ -280,7 +280,7 @@ async function writeOneLine(
     return { ok: false, reason: errorMessage(error), available: true };
   }
 
-  const outcome = await envelopeRoute<EnvelopeWriteResult>(
+  const outcome = await envelopeChange<EnvelopeWriteResult>(
     ENVELOPE_ROUTES.write,
     {
       ...request,

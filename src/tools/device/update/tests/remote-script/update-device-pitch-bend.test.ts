@@ -310,6 +310,25 @@ describe("updateDevice pitch bend params without a good answer", () => {
     });
   });
 
+  it("keeps the entry when the write failed after Live may have started it", async () => {
+    remoteScriptAnswers({
+      success: true,
+      result: {
+        available: true,
+        error:
+          "the connection to the Producer Pal remote script was lost before it answered",
+        unfinished: true,
+      },
+    });
+
+    expect(await update({ id: "simpler-1", params: [PITCH] })).toStrictEqual({
+      ...HIT,
+      detail: expect.stringContaining(
+        "may have changed: the connection to the Producer Pal remote script was lost before it answered; read the device to check",
+      ),
+    });
+  });
+
   it("doesn't ask again for the Simplers after one that got no answer", async () => {
     registerSecondSimpler();
     remoteScriptAnswers({ success: false });

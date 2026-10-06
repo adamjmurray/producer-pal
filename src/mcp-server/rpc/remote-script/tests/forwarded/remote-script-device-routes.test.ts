@@ -6,15 +6,20 @@
 import { describe, expect, it } from "vitest";
 import { RACK_MACROS_ROUTE } from "#src/tools/shared/remote-script/rack-macros-contract.ts";
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
-import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
-import { registerRemoteScriptDeviceRoutes } from "../forwarded/remote-script-device-routes.ts";
+import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
+import { registerRemoteScriptDeviceRoutes } from "../../forwarded/remote-script-device-routes.ts";
 import {
   OUTDATED_ANSWER,
   unknownRouteAnswer,
   useFakeRemoteScriptRoutes,
-} from "./remote-script-test-helpers.ts";
+} from "../remote-script-test-helpers.ts";
 
 const PATHS = ["live_set tracks 0 devices 0", "live_set tracks 1 devices 2"];
+
+const EXPIRES_IN_MS = 5000;
+
+const LOST =
+  "the connection to the Producer Pal remote script was lost before it answered";
 
 const answerWith = useFakeRemoteScriptRoutes(registerRemoteScriptDeviceRoutes);
 
@@ -55,14 +60,18 @@ describe("remoteScript.device.macros", () => {
     ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
   });
 
-  it("words a dropped connection as no answer", async () => {
+  it("words a dropped connection as a lost connection, not a timeout, and stops like no answer", async () => {
     await answerWith({ drop: true });
 
     expect(
       await dispatchNodeRoute(RACK_MACROS_ROUTE, { devicePaths: PATHS }),
     ).toStrictEqual({
-      success: false,
-      error: "the Producer Pal remote script did not answer in time",
+      success: true,
+      result: {
+        available: true,
+        error: LOST,
+        unfinished: true,
+      },
     });
   });
 
@@ -136,6 +145,7 @@ describe("remoteScript.device.simplerWrite", () => {
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
         devicePath: PATHS[0],
         pitchBendRange: 12,
+        expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({ success: true, result: { available: true, result } });
     expect(remote.requests).toStrictEqual([
@@ -143,7 +153,11 @@ describe("remoteScript.device.simplerWrite", () => {
         method: "POST",
         route: "/device/simpler/write",
         query: {},
-        body: { device_path: PATHS[0], pitch_bend_range: 12 },
+        body: {
+          device_path: PATHS[0],
+          pitch_bend_range: 12,
+          expires_in_ms: EXPIRES_IN_MS,
+        },
       },
     ]);
   });
@@ -155,12 +169,14 @@ describe("remoteScript.device.simplerWrite", () => {
       devicePath: PATHS[0],
       pitchBendRange: 0,
       notePitchBendRange: 24,
+      expiresInMs: EXPIRES_IN_MS,
     });
 
     expect(remote.requests[0]?.body).toStrictEqual({
       device_path: PATHS[0],
       pitch_bend_range: 0,
       note_pitch_bend_range: 24,
+      expires_in_ms: EXPIRES_IN_MS,
     });
   });
 
@@ -174,6 +190,7 @@ describe("remoteScript.device.simplerWrite", () => {
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
         devicePath: PATHS[0],
         pitchBendRange: 25,
+        expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({
       success: true,
@@ -191,12 +208,47 @@ describe("remoteScript.device.simplerWrite", () => {
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
         devicePath: PATHS[0],
         pitchBendRange: 3,
+        expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
   });
 
-  it("words a dropped connection as no answer", async () => {
+  it("says a dropped connection is not a timeout, and that the write may have landed", async () => {
     await answerWith({ drop: true });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
+        devicePath: PATHS[0],
+        pitchBendRange: 3,
+        expiresInMs: EXPIRES_IN_MS,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: LOST,
+        unfinished: true,
+      },
+    });
+  });
+
+  it("calls a write the remote script never answered a timeout", async () => {
+    await answerWith(null);
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
+        devicePath: PATHS[0],
+        pitchBendRange: 3,
+        expiresInMs: 40,
+      }),
+    ).toStrictEqual({
+      success: false,
+      error: "the Producer Pal remote script did not answer in time",
+    });
+  });
+
+  it("refuses a call with no expiry, sending nothing", async () => {
+    const remote = await answerWith({ body: {} });
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
@@ -205,7 +257,52 @@ describe("remoteScript.device.simplerWrite", () => {
       }),
     ).toStrictEqual({
       success: false,
-      error: "the Producer Pal remote script did not answer in time",
+      error: "expiresInMs must be a number, 0 or more",
+    });
+    expect(remote.requests).toStrictEqual([]);
+  });
+
+  it("sends nothing once the expiry is used up, and says nothing changed", async () => {
+    const remote = await answerWith({ body: {} });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
+        devicePath: PATHS[0],
+        pitchBendRange: 3,
+        expiresInMs: 0,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: "ran out of time before the request left",
+      },
+    });
+    expect(remote.requests).toStrictEqual([]);
+  });
+
+  it("marks a write Live started but didn't finish as unfinished", async () => {
+    await answerWith({
+      status: 504,
+      body: {
+        error: "Live started the request but didn't finish it",
+        started: true,
+      },
+    });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
+        devicePath: PATHS[0],
+        pitchBendRange: 3,
+        expiresInMs: EXPIRES_IN_MS,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: {
+        available: true,
+        error: "Live started the request but didn't finish it",
+        unfinished: true,
+      },
     });
   });
 
@@ -216,6 +313,7 @@ describe("remoteScript.device.simplerWrite", () => {
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
         devicePath: 3,
         pitchBendRange: 3,
+        expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({ success: false, error: "devicePath must be a string" });
   });

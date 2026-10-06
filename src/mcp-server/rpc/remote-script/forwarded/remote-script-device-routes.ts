@@ -11,6 +11,7 @@ import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-r
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { requireString } from "../../route-string-args.ts";
+import { requireExpiry } from "./remote-script-change.ts";
 import { forwardRemoteScriptRequest } from "./remote-script-forward.ts";
 
 /**
@@ -76,8 +77,8 @@ async function forwardSimplerReadRequest(
  *   spelling
  * @returns The remote script's JSON, an error worded for the model, or
  *   `available: false` when nothing answered
- * @throws Error when `devicePath` isn't a string, or the remote script took
- *   the request but never answered
+ * @throws Error when `devicePath` isn't a string, `expiresInMs` is missing, or
+ *   the remote script took the request but never answered
  */
 async function forwardSimplerWriteRequest(
   args: unknown,
@@ -87,13 +88,17 @@ async function forwardSimplerWriteRequest(
     unknown
   >;
 
-  return await forwardRemoteScriptRequest("/device/simpler/write", {
-    device_path: requireString(args, "devicePath"),
-    ...(pitchBendRange != null && { pitch_bend_range: pitchBendRange }),
-    ...(notePitchBendRange != null && {
-      note_pitch_bend_range: notePitchBendRange,
-    }),
-  });
+  return await forwardRemoteScriptRequest(
+    "/device/simpler/write",
+    {
+      device_path: requireString(args, "devicePath"),
+      ...(pitchBendRange != null && { pitch_bend_range: pitchBendRange }),
+      ...(notePitchBendRange != null && {
+        note_pitch_bend_range: notePitchBendRange,
+      }),
+    },
+    requireExpiry(args),
+  );
 }
 
 /**

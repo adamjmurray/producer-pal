@@ -12,8 +12,12 @@ import { type RemoteScriptUnavailable } from "./outdated-remote-script.ts";
 export const REMOTE_SCRIPT_UNANSWERED =
   "the Producer Pal remote script did not answer in time";
 
-/** What such a route answers. `error` is worded for the model. */
+/**
+ * What such a route answers. `error` is worded for the model; `unfinished`
+ * marks a failure after the request went out: a change may have landed, and the
+ * next call would fail the same way.
+ */
 export type RouteReply<Result> =
   | RemoteScriptUnavailable
-  | { available: true; error: string }
+  | { available: true; error: string; unfinished?: true }
   | { available: true; result: Result };

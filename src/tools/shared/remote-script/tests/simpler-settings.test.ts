@@ -9,6 +9,8 @@ import {
   lookUpSimplerSettings,
   writeSimplerSettings,
 } from "#src/tools/shared/remote-script/simpler-settings.ts";
+import { REMOTE_SCRIPT_REQUEST_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { MAX_SIMPLERS_PER_CALL } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 
@@ -46,6 +48,28 @@ describe("lookUpSimplerSettings", () => {
 
     expect(requestNode).toHaveBeenCalledTimes(2);
     expect(answers).toHaveLength(MAX_SIMPLERS_PER_CALL + 1);
+  });
+
+  it("stops asking after a lost connection, and gives every Simpler the reason", async () => {
+    const lost =
+      "the connection to the Producer Pal remote script was lost before it answered";
+
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: true, error: lost, unfinished: true },
+    });
+
+    const answers = await lookUpSimplerSettings(
+      simplers(MAX_SIMPLERS_PER_CALL + 1),
+      null,
+    );
+
+    expect(requestNode).toHaveBeenCalledTimes(1);
+    expect(answers).toStrictEqual(
+      Array.from({ length: MAX_SIMPLERS_PER_CALL + 1 }, () => ({
+        unreadable: lost,
+      })),
+    );
   });
 
   it("gives the reason for a Simpler the remote script can't read", async () => {
@@ -132,6 +156,64 @@ describe("writeSimplerSettings", () => {
         "the Producer Pal remote script did not answer in time (channel closed)",
       available: true,
       stalled: "unanswered",
+    });
+  });
+
+  it("sends the expiry a change needs, a bit under its wait", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: true, result: {} },
+    });
+
+    await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null);
+
+    const [, args, waitMs] = vi.mocked(requestNode).mock.calls[0] ?? [];
+
+    expect(args).toStrictEqual({
+      devicePath: simpler.path,
+      pitchBendRange: 12,
+      expiresInMs: remoteScriptExpiry(waitMs as number),
+    });
+    expect(waitMs).toBe(REMOTE_SCRIPT_REQUEST_TIMEOUT_MS);
+  });
+
+  it("calls a write that failed after Live may have started it unanswered", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        available: true,
+        error:
+          "the connection to the Producer Pal remote script was lost before it answered",
+        unfinished: true,
+      },
+    });
+
+    expect(
+      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null),
+    ).toStrictEqual({
+      ok: false,
+      reason:
+        "the connection to the Producer Pal remote script was lost before it answered",
+      available: true,
+      stalled: "unanswered",
+    });
+  });
+
+  it("calls a write the remote script skipped a plain failure", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        available: true,
+        error: "the request expired before Live ran it; nothing changed",
+      },
+    });
+
+    expect(
+      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null),
+    ).toStrictEqual({
+      ok: false,
+      reason: "the request expired before Live ran it; nothing changed",
+      available: true,
     });
   });
 });

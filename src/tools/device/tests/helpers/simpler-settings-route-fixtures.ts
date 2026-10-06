@@ -56,12 +56,17 @@ export function simplerPathsRead(): unknown[] {
 }
 
 /**
- * The writes sent.
+ * The writes sent, without the expiry every change carries.
  * @returns One request per write
  */
 export function simplerWritesSent(): SimplerWriteRequest[] {
   return vi
     .mocked(requestNode)
     .mock.calls.filter(([route]) => route === SIMPLER_SETTINGS_ROUTES.write)
-    .map(([, args]) => args as SimplerWriteRequest);
+    .map(([, args]) => {
+      const { expiresInMs: _expiry, ...request } = args as SimplerWriteRequest &
+        Record<"expiresInMs", unknown>;
+
+      return request;
+    });
 }

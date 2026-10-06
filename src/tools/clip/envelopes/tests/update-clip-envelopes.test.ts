@@ -13,6 +13,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupArrangementMidiClipMock,
@@ -121,15 +122,39 @@ describe("updateClip - envelopes", () => {
   }
 
   /**
-   * The args one envelope route was called with.
+   * The args one envelope route was called with, less the expiry a change
+   * carries.
    * @param route - The route to look for
    * @returns Its args, or undefined when it was never called
    */
   function routeArgs(route: string): unknown {
-    return vi
+    const args = vi
       .mocked(requestNode)
       .mock.calls.find((call) => call[0] === route)?.[1];
+
+    if (args == null) {
+      return undefined;
+    }
+
+    const { expiresInMs: _expiry, ...rest } = args as Record<string, unknown>;
+
+    return rest;
   }
+
+  it.each([
+    [ENVELOPE_ROUTES.write, `volume: ${NOTATION}`],
+    [ENVELOPE_ROUTES.clear, "volume:"],
+  ])("sends %s an expiry a bit under its wait", async (route, envelopes) => {
+    await updateClip({ id: "123", envelopes });
+
+    const [, args, waitMs] =
+      vi.mocked(requestNode).mock.calls.find((call) => call[0] === route) ?? [];
+
+    expect(args).toStrictEqual(
+      expect.objectContaining({ expiresInMs: remoteScriptExpiry(45_000) }),
+    );
+    expect(waitMs).toBe(45_000);
+  });
 
   it("writes a device parameter named by id, through its rack chains", async () => {
     const result = await updateClip({
@@ -331,6 +356,81 @@ describe("updateClip - envelopes", () => {
           'envelope "volume": the Producer Pal remote script did not answer in time; its points may still have landed; envelopes not written, since the next would wait the same way: "472", "pan"',
       }),
     );
+  });
+
+  it("says a write that failed after Live may have started it may still have landed", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        available: true,
+        error:
+          "the connection to the Producer Pal remote script was lost before it answered",
+        unfinished: true,
+      },
+    });
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: `volume: ${NOTATION}\npan: ${NOTATION}`,
+    });
+
+    expect(requestNode).toHaveBeenCalledTimes(1);
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "123",
+        envelopes: 0,
+        detail:
+          'envelope "volume": the connection to the Producer Pal remote script was lost before it answered; its points may still have landed; envelopes not written, since the next would wait the same way: "pan"',
+      }),
+    );
+  });
+
+  it("says a clear that failed after Live may have started it may still have happened", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        available: true,
+        error: "Live started the request but didn't finish it within 30.0s",
+        unfinished: true,
+      },
+    });
+
+    expect(await updateClip({ id: "123", envelopes: "volume:" })).toStrictEqual(
+      expect.objectContaining({
+        detail:
+          'envelope "volume": Live started the request but didn\'t finish it within 30.0s; it may still have been cleared',
+      }),
+    );
+  });
+
+  it("calls a write the remote script skipped a plain failure, and goes on", async () => {
+    vi.mocked(requestNode).mockResolvedValueOnce({
+      success: true,
+      result: {
+        available: true,
+        error:
+          "the request expired before Live ran it; nothing changed, re-run it",
+      },
+    });
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: true, result: {} },
+    });
+
+    expect(
+      await updateClip({
+        id: "123",
+        envelopes: `volume: ${NOTATION}\npan: ${NOTATION}`,
+      }),
+    ).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 1,
+        detail: expect.stringMatching(
+          /^envelope "volume": the request expired before Live ran it; nothing changed, re-run it/,
+        ) as string,
+      }),
+    );
+    expect(requestNode).toHaveBeenCalledTimes(2);
   });
 
   it("says a stalled clear may still have happened", async () => {
