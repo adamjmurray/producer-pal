@@ -135,6 +135,26 @@ see headers, so `withPortalVersion`
 differ the block adds one sentence saying which side is older and to update it.
 A caller with no header (chat UI, direct HTTP clients) gets no block.
 
+## What the portal carries
+
+The portal is plain Node with no repo beside it, so anything it installs has to
+ship with it:
+
+- **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
+  same plugin the device bundle uses. The portal never reads `remote-script/`
+  from disk.
+- **The frozen device** (`Producer_Pal.amxd`, ~10 MB) is a plain file next to
+  `producer-pal-portal.js`, in the npm package and in the mcpb. It is not
+  embedded: base64 in the bundle would be parsed on every start for a feature
+  used about once, and the device's own bundle must never be able to reach it,
+  or the .amxd would contain itself. `findBundledDevice()`
+  (`src/portal/bundled-device.ts`) locates it and returns null when none
+  shipped.
+
+Only `npm run release:package` puts the device there, because it exists only
+after the manual freeze. Every other build (dev, CI, e2e) removes any copy and
+runs in "no device bundled" mode. See `dev/process/releasing.md`.
+
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats
 clip notes (`ToolContext.notation`), and V8 holds it as a session global with no

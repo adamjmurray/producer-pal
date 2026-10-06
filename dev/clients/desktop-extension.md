@@ -12,7 +12,14 @@ npm run dxt:build
 Generates `claude-desktop-extension/manifest.json` from template, extracts tool
 definitions, and bundles into `Producer_Pal.mcpb`.
 
-**Distribution**: Both `.mcpb` file AND frozen Max device required.
+**Distribution**: Both `.mcpb` file AND frozen Max device required. The mcpb
+also carries a copy of the frozen device beside the portal script, so the portal
+can install it without a download. That copy exists only in a release package
+(`npm run release:package`, run after the Max freeze). `dxt:build` alone, and
+every plain `npm run build`, produces an mcpb with no device, and the portal
+treats that as "none bundled". The Max device bundle never contains the `.amxd`.
+See [releasing](../process/releasing.md) and
+[what the portal carries](../architecture/runtime-boundary.md#what-the-portal-carries).
 
 ## Bridge Behavior
 

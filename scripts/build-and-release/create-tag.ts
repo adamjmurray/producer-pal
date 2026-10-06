@@ -8,6 +8,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  checkBuildMatchesCheckout,
+  readBuildInfo,
+  readCheckout,
+} from "./helpers/release-package/build-info.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -48,15 +53,6 @@ if (configVersion !== version) {
   );
 }
 
-if (git("status", "--porcelain") !== "") {
-  fail(
-    "Working tree is not clean.",
-    "Every build output is gitignored, so a clean tree after `npm run release`",
-    "is the normal state — whatever is showing up here is a source change that",
-    "the tag would not cover.",
-  );
-}
-
 // What the previous flow had no way to check. Building and tagging are separate
 // steps by design, so the tag can drift off the artifacts — commit something
 // after the build and the tag points at code nothing was built from. It used to
@@ -64,34 +60,18 @@ if (git("status", "--porcelain") !== "") {
 // and compared it against the SHA baked into the build, so a tag one commit
 // ahead made every installed copy think it had been superseded, permanently.
 // That comparison is gone, but the tag should still mean what it says.
-const build = readBuildInfo();
+const checkout = readCheckout(git);
+const mismatch = checkBuildMatchesCheckout({
+  build: readBuildInfo(join(rootDir, "release")),
+  version,
+  checkout,
+});
 
-if (build == null) {
-  fail(
-    "Nothing has been built from this checkout.",
-    "release/build-info.json is missing or unreadable (an interrupted release",
-    "can leave it truncated). Run `npm run release` first — this",
-    "tags a build you have already looked at, so there has to be one.",
-  );
+if (mismatch != null) {
+  fail(...mismatch);
 }
 
-if (build.version !== version) {
-  fail(
-    `The build in release/ is ${build.version}, but package.json says ${version}.`,
-    `The version moved after the build, so ${tag} would name artifacts that do`,
-    "not exist. Rebuild: npm run release",
-  );
-}
-
-const head = git("rev-parse", "--short=7", "HEAD");
-
-if (build.commit !== head) {
-  fail(
-    `The build in release/ came from ${build.commit}, but HEAD is ${head}.`,
-    "Something was committed after the build, so the tag would point at code",
-    "the artifacts were not built from. Rebuild: npm run release",
-  );
-}
+const head = checkout.head;
 
 if (git("tag", "--list", tag) !== "") {
   fail(
@@ -120,41 +100,6 @@ console.log("\nPush it (nothing is public until you do):");
 console.log(`   git push origin HEAD ${tag}\n`);
 
 // --- Helpers below ---
-
-interface BuildInfo {
-  version: string;
-  commit: string;
-}
-
-/**
- * Reads what the last `npm run release` recorded about its build.
- * @returns The build's version and commit, or null if nothing has been built
- */
-function readBuildInfo(): BuildInfo | null {
-  let parsed: unknown;
-
-  try {
-    // Parse inside the try as well: an interrupted `npm run release` can leave a
-    // truncated build-info.json, and a raw SyntaxError stack here would replace
-    // the caller's polished fail() message.
-    parsed = JSON.parse(
-      readFileSync(join(rootDir, "release/build-info.json"), "utf8"),
-    );
-  } catch {
-    return null;
-  }
-
-  if (
-    parsed == null ||
-    typeof parsed !== "object" ||
-    !("version" in parsed) ||
-    !("commit" in parsed)
-  ) {
-    return null;
-  }
-
-  return { version: String(parsed.version), commit: String(parsed.commit) };
-}
 
 /**
  * Runs a git command and captures its output.

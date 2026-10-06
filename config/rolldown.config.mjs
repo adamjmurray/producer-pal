@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "rolldown";
 import { replacePlugin } from "rolldown/plugins";
 import { BUILD_SHA } from "./build-sha.mjs";
+import { bundleDevice } from "./rolldown-plugin-bundle-device.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
 import { embedRemoteScript } from "./rolldown-plugin-embed-remote-script.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
@@ -24,6 +25,10 @@ const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
 
 const thirdPartyLicensesFolder = join(rootDir, "licenses");
+
+// The two folders the portal is written to.
+const extensionDir = join(rootDir, "claude-desktop-extension");
+const npmDir = join(rootDir, "npm");
 
 const envVarReplacements = {
   "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
@@ -140,11 +145,11 @@ export default defineConfig([
     output: [
       {
         ...outputBase,
-        file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
+        file: join(extensionDir, "producer-pal-portal.js"),
       },
       {
         ...outputBase,
-        file: join(rootDir, "npm/producer-pal-portal.js"),
+        file: join(npmDir, "producer-pal-portal.js"),
       },
     ],
     platform: "node",
@@ -167,24 +172,33 @@ export default defineConfig([
         shebang: "#!/usr/bin/env node",
       }),
       replacePlugin(envVarReplacements, { preventAssignment: true }),
+      // Same reason as the device bundle: the portal installs the remote script
+      // and must not read remote-script/ off disk when it runs.
+      embedRemoteScript(),
+      // The frozen device ships as a file beside the portal, not inside it.
+      // Only `npm run release:package` sets this; plain builds bundle none.
+      bundleDevice({
+        dirs: [extensionDir, npmDir],
+        deviceFile: process.env.PRODUCER_PAL_DEVICE_FILE,
+      }),
       copyFiles([
-        { src: licensePath, dest: "claude-desktop-extension" },
+        { src: licensePath, dest: extensionDir },
         {
           src: thirdPartyLicensesFolder,
-          dest: "claude-desktop-extension",
+          dest: extensionDir,
         },
-        { src: licensePath, dest: "npm" },
+        { src: licensePath, dest: npmDir },
         {
           src: [
             join(thirdPartyLicensesFolder, "mcp-typescript-sdk-license"),
             join(thirdPartyLicensesFolder, "zod-license"),
             join(thirdPartyLicensesFolder, "README.md"),
           ],
-          dest: "npm/licenses",
+          dest: join(npmDir, "licenses"),
         },
         {
           src: join(rootDir, "assets/image/producer-pal-logo.svg"),
-          dest: "npm",
+          dest: npmDir,
         },
       ]),
     ],

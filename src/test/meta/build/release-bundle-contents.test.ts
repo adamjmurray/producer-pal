@@ -12,8 +12,11 @@
 // So this builds the release bundles for real and inspects which modules went
 // in — the artifact, not the config text.
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   BUILD_STATS_STUBS,
@@ -56,8 +59,15 @@ const BUNDLES = [
   { name: "portal", index: 2, stubs: [] },
 ] as const;
 
+// Stands in for the frozen .amxd. Set before the config loads, as a release
+// package would, so a bundler that pulled the device in would carry this text.
+const FAKE_DEVICE_TEXT = "FAKE-AMXD-BYTES-4f1c9a";
+
 const moduleIds: Record<string, string[]> = {};
+const chunkCode: Record<string, string> = {};
+let portalWithInstaller = "";
 let bundleCount = 0;
+let scratchDir = "";
 
 beforeAll(async () => {
   // The config reads these at import time; a shell that happens to export one
@@ -66,15 +76,48 @@ beforeAll(async () => {
     delete process.env[flag];
   }
 
+  scratchDir = mkdtempSync(join(tmpdir(), "ppal-bundle-contents-"));
+
+  const fakeDevice = join(scratchDir, "Producer_Pal.amxd");
+
+  writeFileSync(fakeDevice, FAKE_DEVICE_TEXT);
+  process.env.PRODUCER_PAL_DEVICE_FILE = fakeDevice;
+
   const config = await import("../../../../config/rolldown.config.mjs");
   const configs = config.default as (InputOptions & { output: unknown })[];
 
   bundleCount = configs.length;
 
   for (const { name, index } of BUNDLES) {
-    moduleIds[name] = await buildModuleIds(configs[index] as InputOptions);
+    const built = await buildChunks(configs[index] as InputOptions);
+
+    moduleIds[name] = built.ids;
+    chunkCode[name] = built.code;
   }
+
+  // The portal doesn't import the installer yet, and a module nothing imports
+  // is never loaded, so the real portal build can't show whether the embedding
+  // plugin is wired in. Build the portal's own config around an entry that does.
+  const probeEntry = join(scratchDir, "probe-entry.ts");
+
+  writeFileSync(
+    probeEntry,
+    `import { EMBEDDED_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/embedded-remote-script.ts";\n` +
+      "console.log(EMBEDDED_REMOTE_SCRIPT_FILES);\n",
+  );
+
+  const probed = await buildChunks({
+    ...(configs[2] as InputOptions),
+    input: probeEntry,
+  });
+
+  portalWithInstaller = probed.code;
 }, 120_000);
+
+afterAll(() => {
+  delete process.env.PRODUCER_PAL_DEVICE_FILE;
+  rmSync(scratchDir, { recursive: true, force: true });
+});
 
 // BUNDLES addresses the configs by index, so a fourth one appended to the
 // rolldown config would ship unchecked by anything here.
@@ -113,15 +156,44 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
   it("does not import node:vm", () => {
     expect(moduleIds[name]).not.toContain("node:vm");
   });
+
+  // The frozen device ships beside the portal as a file. Importing it would put
+  // 10 MB in the bundle, and in the device's own bundle the .amxd would contain
+  // itself.
+  it("does not contain the frozen device", () => {
+    expect(moduleIds[name]?.filter((id) => id.endsWith(".amxd"))).toStrictEqual(
+      [],
+    );
+    expect(chunkCode[name]).not.toContain(FAKE_DEVICE_TEXT);
+  });
+});
+
+describe("remote script embedding", () => {
+  // Remote-script files are flat in the embedded map: a literal key per file.
+  const EMBEDDED_KEY = '"bridge.py":';
+
+  it("is in the device bundle", () => {
+    expect(chunkCode["mcp-server"]).toContain(EMBEDDED_KEY);
+  });
+
+  it("is in the portal bundle once the portal imports the installer", () => {
+    expect(portalWithInstaller).toContain(EMBEDDED_KEY);
+  });
+
+  it("does not read remote-script/ from disk at runtime", () => {
+    expect(portalWithInstaller).not.toContain("readRemoteScriptSource");
+  });
 });
 
 /**
- * Bundle one rolldown config in memory and list the modules that went in.
+ * Bundle one rolldown config in memory.
  *
  * @param input - One entry from the rolldown config, output stripped
- * @returns Repo-relative module ids, in bundle order
+ * @returns The modules that went in (repo-relative, bundle order) and the generated code
  */
-async function buildModuleIds(input: InputOptions): Promise<string[]> {
+async function buildChunks(
+  input: InputOptions,
+): Promise<{ ids: string[]; code: string }> {
   const bundle = await rolldown(input);
 
   let generated: RolldownOutput;
@@ -132,13 +204,16 @@ async function buildModuleIds(input: InputOptions): Promise<string[]> {
     await bundle.close();
   }
 
-  return generated.output.flatMap((chunk) =>
-    chunk.type === "chunk"
-      ? Object.keys(chunk.modules).map((id) =>
-          id.startsWith(`${projectRoot}/`)
-            ? id.slice(projectRoot.length + 1)
-            : id,
-        )
-      : [],
-  );
+  const chunks = generated.output.filter((out) => out.type === "chunk");
+
+  return {
+    ids: chunks.flatMap((chunk) =>
+      Object.keys(chunk.modules).map((id) =>
+        id.startsWith(`${projectRoot}/`)
+          ? id.slice(projectRoot.length + 1)
+          : id,
+      ),
+    ),
+    code: chunks.map((chunk) => chunk.code).join("\n"),
+  };
 }

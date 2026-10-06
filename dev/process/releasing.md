@@ -122,18 +122,16 @@ release build.
 
 ## Step 1: Build Release Files
 
-1. Build release versions of desktop extensions and the portal script:
+1. Build the release bundles:
 
    ```sh
    npm run release
    ```
 
-   This creates:
-   - `release/Producer_Pal.mcpb` (Claude Desktop extension)
-
-   It refuses to build if your shell has a debug flag set — they are substituted
-   into the bundles, so a leftover `ENABLE_CODE_EXEC=true` would ship code
-   execution to everyone.
+   This builds the device and portal bundles and records the version and commit
+   in `release/build-info.json`. It refuses to build if your shell has a debug
+   flag set — they are substituted into the bundles, so a leftover
+   `ENABLE_CODE_EXEC=true` would ship code execution to everyone.
 
    It also prints the **build** these files identify themselves as. The release
    tag has to land on that commit — see
@@ -145,6 +143,30 @@ release build.
    - Open the device in Max
    - Click the freeze button
    - Save as: `release/Producer_Pal.amxd`
+
+3. Package the portal, the extension and the npm folder:
+
+   ```sh
+   npm run release:package
+   ```
+
+   The portal ships a copy of the frozen device (a plain file next to
+   `producer-pal-portal.js`, never inside any bundle), so this has to come after
+   the freeze. It refuses unless `release/` belongs to this checkout, the same
+   test `npm run tag` applies (clean tree, HEAD equal to the commit in
+   `build-info.json`, matching version), and unless the frozen device belongs to
+   that build: its bytes must contain `const VERSION = "x.y.z"`, and the file
+   must be newer than `build-info.json`, which catches a freeze left over from
+   an earlier build of the same version. Then it builds the portal, makes
+   `release/Producer_Pal.mcpb` (device included), and leaves the same device and
+   portal in `npm/`. If a step fails it lists what was written and what was not;
+   fix the cause and re-run.
+
+   Don't run a plain `npm run build` afterwards: with no frozen device to hand
+   it, it removes the device from `npm/` and the extension folder. Plain builds
+   (dev, CI, e2e) bundle no device, and the portal treats that as "none
+   bundled". `npm pack` refuses in that state (`prepack` runs
+   `npm run guard:device`), so a tarball can't ship without the device.
 
 ## Step 2: Create GitHub Pre-Release
 
@@ -303,7 +325,7 @@ Test the exact bytes that would be published, from a local tarball instead:
 ```sh
 cd npm
 npm pack                              # → producer-pal-X.Y.Z-rcN.tgz
-tar -tzf producer-pal-*.tgz           # inspect contents
+tar -tzf producer-pal-*.tgz           # inspect contents: Producer_Pal.amxd must be there
 npm install -g ./producer-pal-*.tgz
 ```
 
@@ -358,19 +380,21 @@ After testing succeeds:
    the artifacts have to carry `X.Y.Z`, not `X.Y.Z-rc4`:
 
    ```sh
-   npm run release   # then freeze the Max device, as in Step 1
-   npm run tag       # creates vX.Y.Z
+   npm run release           # then freeze the Max device, as in Step 1
+   npm run release:package
+   npm run tag               # creates vX.Y.Z
    ```
 
    Create a new GitHub release for `vX.Y.Z` (not a pre-release) and upload the
    fresh files. This is the release everyone gets prompted to install.
 
 4. Publish to npm — the first and only publish of this version. Pack the
-   `npm run release` build, test that tarball as in Step 4, then publish that
-   same file:
+   `npm run release:package` build, test that tarball as in Step 4, then publish
+   that same file:
 
    ```sh
    npm login
+   npm run guard:device                  # npm/ still holds this version's device
    cd npm
    npm run guard:no-prerelease
    npm pack                              # → producer-pal-X.Y.Z.tgz; test it
@@ -379,10 +403,9 @@ After testing succeeds:
    cd ..
    ```
 
-   Publish the tarball, not the folder: publishing the folder runs
-   `prepublishOnly`, which rebuilds without the release's `BUILD_SHA`, so the
-   bytes differ from the ones tested. Publishing a tarball skips
-   `prepublishOnly`, guard included, which is why the guard runs by hand.
+   Publish the tarball, not the folder, so what ships is the file you tested.
+   Publishing a tarball skips `prepublishOnly`, guard included, which is why the
+   guards run by hand. `npm pack` runs the device guard itself (`prepack`).
 
    No `--tag next` dance: the version is a GA version, so `latest` is where it
    belongs.
@@ -417,6 +440,7 @@ candidate numbering exists to avoid. A fix means the next candidate:
    ```sh
    npm run release
    # Freeze Max device again
+   npm run release:package
    npm run tag
    git push origin dev vX.Y.Z-rcN
    ```
@@ -474,8 +498,10 @@ can run `npx producer-pal` to connect any MCP client to Producer Pal.
 **Publishing Process:**
 
 ```sh
-# Build everything (including npm/ folder), as the release does
+# Build and package everything (including the npm/ folder), as the release does
 npm run release
+# ...freeze the Max device, as in Step 1, then:
+npm run release:package
 
 # Change to npm directory
 cd npm
@@ -490,6 +516,7 @@ npx producer-pal # actually use this with an MCP Client, running it on the comma
 npm uninstall -g producer-pal
 
 # When ready, publish the tested tarball (not the folder)
+(cd .. && npm run guard:device)
 npm run guard:no-prerelease
 npm publish ./producer-pal-X.Y.Z.tgz
 rm producer-pal-X.Y.Z.tgz
@@ -500,12 +527,16 @@ cd ..
 
 **Notes:**
 
-- Publishing the folder runs the `prepublishOnly` hook in `npm/package.json`:
-  `guard:no-prerelease` (which fails on an `-rcN` version), then `npm run build`
-  without the release's `BUILD_SHA` — different bytes from the tested tarball.
-  Publishing the tarball skips the hook, so run the guard by hand
+- `npm pack` (and publishing the folder) runs the `prepack` hook in
+  `npm/package.json`: `npm run guard:device`, which fails unless
+  `npm/Producer_Pal.amxd` exists and carries this version. Publishing the folder
+  also runs `prepublishOnly`, which is `guard:no-prerelease` (fails on an `-rcN`
+  version). Neither rebuilds: a plain build would remove the device. Publishing
+  a tarball skips `prepublishOnly`, so run both guards by hand
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
+  - `Producer_Pal.amxd` (the frozen device, copied in by
+    `npm run release:package`; the portal installs it, never the bundle)
   - `LICENSE` (MIT license)
   - `licenses/` (only portal dependencies: MCP SDK, zod)
   - `README.md` (npm-specific documentation)
