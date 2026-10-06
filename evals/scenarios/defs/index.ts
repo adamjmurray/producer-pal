@@ -18,12 +18,17 @@ export {
 export { automationClearOne } from "./clip/automation/automation-clear-one.ts";
 export { automationNoRemoteScript } from "./clip/automation/automation-no-remote-script.ts";
 export { automationReadEnvelopes } from "./clip/automation/automation-read.ts";
+export { automationWriteCurve } from "./clip/automation/automation-write-curve.ts";
 export {
   automationWriteDeviceParam,
   automationWriteMixer,
 } from "./clip/automation/automation-write.ts";
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export { arpeggioBracketIdiom } from "./clip/notation/arpeggio-bracket-idiom.ts";
+export {
+  audioConvertDrumRack,
+  audioConvertToMidi,
+} from "./clip/audio-convert.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,

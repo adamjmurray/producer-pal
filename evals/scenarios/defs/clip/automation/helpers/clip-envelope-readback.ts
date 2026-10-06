@@ -74,19 +74,46 @@ export function envelopesOf(result: unknown): ClipEnvelopeRead[] {
   return Array.isArray(envelopes) ? (envelopes as ClipEnvelopeRead[]) : [];
 }
 
+/** A connector between two points: `/` (ramp), `_` (jump) or `~N` (curve). */
+const CONNECTOR = /\s+(?:\/|_|~[-+]?[\d.]+)\s+/;
+
+/** The `~N` amounts of an envelope's curved ramps. */
+const CURVE_AMOUNT = /\s~([-+]?\d*\.?\d+)(?=\s)/g;
+
 /**
- * The raw point values of an envelope's notation, in time order. Live's display
- * text in parentheses is dropped first, since it may hold numbers too.
+ * Drop the "(display)" Live adds after a point, which may hold numbers too.
+ *
+ * @param events - An envelope's `events` notation
+ * @returns The notation without displays
+ */
+function withoutDisplays(events: string | undefined): string {
+  return (events ?? "").replaceAll(/\([^()]*\)/g, "");
+}
+
+/**
+ * The raw point values of an envelope's notation, in time order.
  *
  * @param events - An envelope's `events` notation
  * @returns One value per point
  */
 export function envelopeValues(events: string | undefined): number[] {
-  return (events ?? "")
-    .replaceAll(/\([^()]*\)/g, "")
-    .split(/\s*[~>]\s*/)
+  return withoutDisplays(events)
+    .split(CONNECTOR)
     .map((point) => Number(point.trim().split(/\s+/)[1]))
     .filter((value) => !Number.isNaN(value));
+}
+
+/**
+ * The amounts of an envelope's curved ramps (`~N`), in time order. A straight
+ * ramp (`/`) and a jump (`_`) have none.
+ *
+ * @param events - An envelope's `events` notation
+ * @returns One amount per curved ramp, -1 to 1
+ */
+export function curveAmounts(events: string | undefined): number[] {
+  return [...` ${withoutDisplays(events)} `.matchAll(CURVE_AMOUNT)].map(
+    (match) => Number(match[1]),
+  );
 }
 
 /**
