@@ -33,7 +33,7 @@ import {
 import {
   assertPathEntries,
   assertTrackChain,
-} from "./device-chain-readback.ts";
+} from "./helpers/device-chain-readback.ts";
 
 const TOOL_CREATE_DEVICE = "ppal-create-device";
 

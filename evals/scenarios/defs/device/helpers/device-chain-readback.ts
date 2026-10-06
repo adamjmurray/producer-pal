@@ -8,9 +8,9 @@
  * a track's device chain read back in order.
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
-import { type EvalAssertion, type EvalTurnResult } from "../../types.ts";
-import { listEntries } from "../path/path-assertions.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
+import { type EvalAssertion, type EvalTurnResult } from "../../../types.ts";
+import { listEntries } from "../../path/path-assertions.ts";
 
 /** One device in a track read's flat `devices` list. */
 interface ReadDevice {

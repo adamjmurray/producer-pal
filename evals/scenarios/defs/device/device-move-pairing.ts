@@ -38,7 +38,7 @@ import {
   assertPathEntries,
   assertTrackChain,
   pathEntries,
-} from "./device-chain-readback.ts";
+} from "./helpers/device-chain-readback.ts";
 
 const TOOL_UPDATE_DEVICE = "ppal-update-device";
 

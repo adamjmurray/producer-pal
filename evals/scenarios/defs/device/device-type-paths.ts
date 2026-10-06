@@ -30,7 +30,10 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
-import { assertTrackChain, pathEntries } from "./device-chain-readback.ts";
+import {
+  assertTrackChain,
+  pathEntries,
+} from "./helpers/device-chain-readback.ts";
 
 const TOOL_UPDATE_DEVICE = "ppal-update-device";
 
