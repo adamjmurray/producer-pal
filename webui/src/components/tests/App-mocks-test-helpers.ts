@@ -22,6 +22,10 @@ vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 vi.mock(import("#webui/hooks/theme/use-theme"), () => ({ useTheme: vi.fn() }));
+vi.mock(import("#webui/hooks/connection/use-remote-script-notice"), () => ({
+  useRemoteScriptNotice: () => null,
+}));
+
 vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
   useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
 }));

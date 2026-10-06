@@ -12,8 +12,10 @@ import {
 import { withMemory } from "../memory/memory-inject.ts";
 import { withSkills } from "../skills-inject.ts";
 import { type WrappedCallLiveApi } from "./connect-append.ts";
+import { shareConnectPing } from "./connect-ping.ts";
 import { withNextStep } from "./next-step-inject.ts";
 import { withPortalVersion } from "./portal-version-inject.ts";
+import { withRemoteScriptNotice } from "./remote-script-notice-inject.ts";
 
 /** The live device settings the connect-enrichment blocks depend on. */
 export interface ConnectEnrichmentConfig {
@@ -37,11 +39,11 @@ export interface ConnectEnrichmentConfig {
  * neither the skills nor any context block, and no longer carries nextStep.
  *
  * Order is the point of this function. Blocks land inner-to-outer, so a
- * successful connect response reads: portal version, skills, project context,
- * global context, memory index, next step. withNextStep MUST stay outermost — it
- * reads the same context and memory the blocks before it carry (to decide
- * whether this is a user we know nothing about) and its instruction only works
- * as the final word.
+ * successful connect response reads: portal version, remote script notice,
+ * skills, project context, global context, memory index, next step.
+ * withNextStep MUST stay outermost — it reads the same context and memory the
+ * blocks before it carry (to decide whether this is a user we know nothing
+ * about) and its instruction only works as the final word.
  * Settings arrive through a getter because the device can change them between
  * requests; createMcpServer is rebuilt per POST /mcp for the same reason.
  *
@@ -53,20 +55,26 @@ export function enrichConnect(
   inner: CallLiveApiFunction,
   getConfig: () => ConnectEnrichmentConfig,
 ): WrappedCallLiveApi {
-  const portalVersioned = withPortalVersion(
-    inner,
-    () => getConfig().portalVersion,
+  // The skills and the remote script notice both need the script's ping.
+  const connectPing = shareConnectPing(inner);
+  const portalVersioned = withRemoteScriptNotice(
+    withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
+    connectPing.getPing,
   );
 
   return withNextStep(
     withMemory(
       withGlobalContext(
         withProjectContext(
-          withSkills(portalVersioned, () => ({
-            notation: getConfig().notation,
-            smallModelMode: getConfig().smallModelMode,
-            tools: getConfig().tools,
-          })),
+          withSkills(
+            portalVersioned,
+            () => ({
+              notation: getConfig().notation,
+              smallModelMode: getConfig().smallModelMode,
+              tools: getConfig().tools,
+            }),
+            connectPing.getPing,
+          ),
           () => getConfig().projectContext,
         ),
       ),

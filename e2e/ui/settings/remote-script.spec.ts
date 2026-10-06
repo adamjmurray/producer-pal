@@ -8,6 +8,7 @@
 // what the tab shows before, during, and after the POST.
 
 import { type Page, expect, test } from "@playwright/test";
+import { installStubs } from "../ui-test-helpers";
 import {
   openRemoteScriptTab,
   setupSettingsTest,
@@ -213,5 +214,68 @@ test.describe("Settings — remote script (stubbed backend)", () => {
     await expect(page.getByTestId("remote-script-error")).toHaveText(
       "No such directory: /nope",
     );
+  });
+
+  test("flags an update in the header, opens the tab, and follows the install", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await stubRemoteScript(
+      page,
+      status({
+        installed: true,
+        installedVersion: "1.1.0",
+        running: true,
+        runningVersion: "1.1.0",
+        updateAvailable: true,
+      }),
+      {
+        status: 200,
+        body: {
+          path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal`,
+          version: "1.2.0",
+        },
+        after: { installedVersion: "1.2.0", updateAvailable: false },
+      },
+    );
+    await page.goto("/chat-ui.html");
+
+    await page.getByRole("button", { name: "(script update)" }).click();
+
+    // The badge opens Settings on the Remote Script tab.
+    await expect(page.getByTestId("remote-script-status")).toBeVisible();
+
+    await page.getByTestId("remote-script-install").click();
+
+    // Updated but not yet loaded by Live: the badge asks for a restart.
+    await expect(
+      page.getByRole("button", { name: "(restart Live)" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "(script update)" }),
+    ).toBeHidden();
+  });
+
+  test("shows no header badge when the script is current", async ({ page }) => {
+    await installStubs(page);
+    await stubRemoteScript(
+      page,
+      status({
+        installed: true,
+        installedVersion: "1.2.0",
+        running: true,
+        runningVersion: "1.2.0",
+      }),
+      { status: 200, body: {} },
+    );
+    await page.goto("/chat-ui.html");
+
+    await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "(script update)" }),
+    ).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "(restart Live)" }),
+    ).toBeHidden();
   });
 });

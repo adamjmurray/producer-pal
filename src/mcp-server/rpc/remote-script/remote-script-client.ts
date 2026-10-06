@@ -465,15 +465,6 @@ export async function remoteScriptPing(): Promise<RemoteScriptPing> {
 }
 
 /**
- * Whether the remote script is running. Never throws.
- * @returns True when it answered its ping
- */
-export async function pingRemoteScript(): Promise<boolean> {
-  const ping = await remoteScriptPing();
-
-  return ping.running;
-}
-
 /**
  * An unavailable reply as a route answers it: no remote script to ask, and why
  * it is too old when one is running.

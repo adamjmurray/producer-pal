@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useState } from "preact/hooks";
+import { liveRunsOtherCopy } from "#src/shared/version-check";
 import {
   type RemoteScriptStatus,
   useRemoteScript,
@@ -66,9 +67,7 @@ export function RemoteScriptTab() {
 
       {status.installed && (
         <EnableSteps
-          open={
-            !status.running || status.installedVersion !== status.runningVersion
-          }
+          open={!status.running || liveRunsOtherCopy(status)}
           restartFor={restartVersion(status)}
         />
       )}
@@ -153,14 +152,12 @@ function liveSuffix(status: RemoteScriptStatus): string {
 
 /**
  * The version Live would pick up on a restart: an install or update landed
- * while Live is still running an older copy.
+ * while Live is still running a different copy.
  * @param status - The server's remote-script status
  * @returns The installed version, or null when Live is already running it
  */
 function restartVersion(status: RemoteScriptStatus): string | null {
-  return status.running && status.installedVersion !== status.runningVersion
-    ? status.installedVersion
-    : null;
+  return liveRunsOtherCopy(status) ? status.installedVersion : null;
 }
 
 interface InstallFormProps {

@@ -61,6 +61,7 @@ export type UseChatModeStateParams = Omit<
   | "onOpenSettings"
   | "onOpenToolsSettings"
   | "onOpenConnectionSettings"
+  | "onOpenRemoteScriptSettings"
   | "onOpenContext"
   | "onOpenInstructions"
 > &

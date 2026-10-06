@@ -30,6 +30,7 @@ export function ChatApp(props: ChatAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenRemoteScriptSettings,
     onOpenContext,
     onOpenInstructions,
   } = props;
@@ -69,6 +70,7 @@ export function ChatApp(props: ChatAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
       onOpenContext={onOpenContext}
       onOpenInstructions={onOpenInstructions}
       onStop={chat.stopResponse}

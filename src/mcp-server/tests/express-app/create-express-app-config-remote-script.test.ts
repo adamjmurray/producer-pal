@@ -17,7 +17,9 @@ async function ping(): Promise<boolean> {
   const client =
     await import("../../rpc/remote-script/remote-script-client.ts");
 
-  return await client.pingRemoteScript();
+  const { running } = await client.remoteScriptPing();
+
+  return running;
 }
 
 // Whether a request to the remote script is held back as out of date. Imported
@@ -26,7 +28,7 @@ async function heldBackAsOutdated(): Promise<boolean> {
   const client =
     await import("../../rpc/remote-script/remote-script-client.ts");
 
-  await client.pingRemoteScript();
+  await client.remoteScriptPing();
 
   const reply = await client.remoteScriptRequest({ route: "/list" });
 

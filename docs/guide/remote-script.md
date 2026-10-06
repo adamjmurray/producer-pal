@@ -90,6 +90,15 @@ setting is kept.
 If the installed script is newer than your Producer Pal device, the tab offers
 **Downgrade to match** instead.
 
+You don't have to open Settings to find out. The Chat UI header shows **(script
+update)** when the installed script doesn't match your Producer Pal build, and
+**(restart Live)** when Live is running a different version than the installed
+one, for example right after an update or a downgrade. Click either to open the
+Remote Script tab. Your AI assistant also tells you when it connects. The badge
+clears on its own once Live is running the installed script: it re-checks when
+you come back to the Chat UI window and when Producer Pal reconnects after Live
+restarts.
+
 ## Uninstalling
 
 There is no uninstall button yet, so remove it by hand:

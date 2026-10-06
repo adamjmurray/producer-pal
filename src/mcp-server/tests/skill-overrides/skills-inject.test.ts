@@ -208,6 +208,28 @@ describe("withRemoteScriptAnswer", () => {
     }
   });
 
+  it("uses the ping it is given instead of asking the remote script", async () => {
+    const getPing = vi.fn(async () => ({
+      running: true,
+      liveVersion: null,
+      scriptVersion: "2.5.0",
+      otherOnPort: null,
+    }));
+
+    expect(await withRemoteScriptAnswer({}, getPing)).toStrictEqual({
+      remoteScript: true,
+    });
+
+    const wrapped = withSkills(
+      fakeInner(connectResponse()),
+      () => ({}),
+      getPing,
+    );
+
+    expect(lastText(await wrapped("ppal-connect", {}))).toContain(HEADING);
+    expect(getPing).toHaveBeenCalledTimes(2);
+  });
+
   it("doesn't when something else answers the port", async () => {
     const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
 

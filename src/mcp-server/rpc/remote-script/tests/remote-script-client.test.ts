@@ -7,7 +7,6 @@ import http from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   RemoteScriptTimeout,
-  pingRemoteScript,
   remoteScriptPing,
   remoteScriptRequest,
   replyError,
@@ -212,45 +211,6 @@ describe("remoteScriptRequest", () => {
       status: 0,
       body: { ok: true },
     });
-  });
-});
-
-describe("pingRemoteScript", () => {
-  it("is true when the remote script answers ok", async () => {
-    await answerWith({
-      body: { ok: true, live_version: "12.4.5", script_version: "2.4.1" },
-    });
-
-    expect(await pingRemoteScript()).toBe(true);
-  });
-
-  it("is false for a reply without script_version: that isn't our script", async () => {
-    await answerWith({ body: { ok: true, live_version: "12.4.5" } });
-
-    expect(await pingRemoteScript()).toBe(false);
-  });
-
-  it("is false for any other answer", async () => {
-    await answerWith({ status: 500, body: { ok: false } });
-
-    expect(await pingRemoteScript()).toBe(false);
-  });
-
-  it("is false when nothing is listening", async () => {
-    expect(await pingRemoteScript()).toBe(false);
-  });
-
-  it("is false when the connection is taken but no answer comes", async () => {
-    const remote = await answerWith(null);
-
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-
-    const ping = pingRemoteScript();
-
-    await vi.waitFor(() => expect(remote.requests).toHaveLength(1));
-    vi.advanceTimersByTime(1000);
-
-    expect(await ping).toBe(false);
   });
 });
 

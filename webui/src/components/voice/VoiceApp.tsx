@@ -40,6 +40,7 @@ export function VoiceApp(props: VoiceAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenRemoteScriptSettings,
     onOpenContext,
     clearViewingMode,
     undoDelete,
@@ -90,6 +91,7 @@ export function VoiceApp(props: VoiceAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
       onOpenContext={onOpenContext}
     >
       <VoiceTranscript

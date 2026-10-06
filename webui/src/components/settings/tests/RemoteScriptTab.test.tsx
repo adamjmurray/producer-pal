@@ -255,6 +255,32 @@ describe("RemoteScriptTab", () => {
     );
   });
 
+  it("asks for a restart when Live runs a newer copy than the installed one", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      running: true,
+      runningVersion: "1.3.0",
+    });
+
+    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
+      "Restart Live to load v1.2.0.",
+    );
+  });
+
+  it("asks for a restart between two pre-releases of one version", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.2.0-rc2",
+      running: true,
+      runningVersion: "1.2.0-rc1",
+    });
+
+    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
+      "Restart Live to load v1.2.0-rc2.",
+    );
+  });
+
   it("offers a plain Install for a typed path the status doesn't describe", async () => {
     await renderTab({
       installed: true,

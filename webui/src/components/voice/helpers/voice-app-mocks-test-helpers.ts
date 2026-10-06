@@ -34,6 +34,10 @@ vi.mock(
   },
 );
 
+vi.mock(import("#webui/hooks/connection/use-remote-script-notice"), () => ({
+  useRemoteScriptNotice: () => null,
+}));
+
 vi.mock(import("#webui/hooks/connection/use-update-check"), async () => {
   const { voiceAppMocks } = await import("./voice-app-test-helpers");
 

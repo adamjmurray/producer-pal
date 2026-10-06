@@ -41,6 +41,8 @@ describe("ChatHeader", () => {
     isHistoryOpen: false,
     update: null,
     onDismissUpdate: vi.fn(),
+    remoteScriptNotice: null,
+    onOpenRemoteScriptSettings: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
@@ -598,6 +600,29 @@ describe("ChatHeader", () => {
       render(<ChatHeader {...defaultProps} />);
 
       expect(screen.queryByTitle(/^Locked:/)).toBeNull();
+    });
+  });
+
+  describe("remote script badge", () => {
+    it("shows nothing by default", () => {
+      render(<ChatHeader {...defaultProps} />);
+
+      expect(screen.queryByText("(script update)")).toBeNull();
+    });
+
+    it("opens the Remote Script settings when clicked", () => {
+      const onOpenRemoteScriptSettings = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          remoteScriptNotice="restart"
+          onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
+        />,
+      );
+      fireEvent.click(screen.getByText("(restart Live)"));
+
+      expect(onOpenRemoteScriptSettings).toHaveBeenCalledOnce();
     });
   });
 

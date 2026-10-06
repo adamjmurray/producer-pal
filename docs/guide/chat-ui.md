@@ -26,7 +26,9 @@ no other app to install.
 - **New conversation** - Start a fresh conversation
 - **Bookmark star** - Pin the active conversation
 - **Logo, title & version** - Shows an "update" link when a newer version is
-  available
+  available, and "script update" or "restart Live" when the
+  [remote script](/guide/remote-script#updating) needs updating or Live needs a
+  restart to load the installed version
 - **Connection status** - Shows "Ready" when connected to Ableton
 
 ### Right
@@ -546,7 +548,8 @@ The Remote Script tab installs the optional Producer Pal
 [remote script](/guide/remote-script), which lets the AI load plug-ins, Max for
 Live devices, and presets. It shows whether the script is installed and whether
 Live is running it, and offers an update when your Producer Pal build has a
-newer one.
+newer one. The header also flags this, so you can spot it without opening
+Settings.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Remote Script tab" width="500"/>
 

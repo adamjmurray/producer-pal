@@ -10,7 +10,7 @@ import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-sc
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import {
-  pingRemoteScript,
+  remoteScriptPing,
   setRemoteScriptEnabled,
 } from "../remote-script-client.ts";
 import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
@@ -73,12 +73,16 @@ describe("the remote script switch", () => {
     }));
 
     // Control: the stand-in answers while the switch is on.
-    expect(await pingRemoteScript()).toBe(true);
+    const control = await remoteScriptPing();
+
+    expect(control.running).toBe(true);
     fake.requests.length = 0;
 
     setRemoteScriptEnabled(false);
 
-    expect(await pingRemoteScript()).toBe(false);
+    const switchedOff = await remoteScriptPing();
+
+    expect(switchedOff.running).toBe(false);
     const status = await remoteScriptStatus();
 
     expect(status.running).toBe(false);

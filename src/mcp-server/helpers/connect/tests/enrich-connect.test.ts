@@ -5,20 +5,74 @@
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
 import {
   connectResponse,
   fakeInnerCall,
   useTempConfigDir,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
+import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import {
   enrichConnect,
   type ConnectEnrichmentConfig,
 } from "../enrich-connect.ts";
 
+const { remoteScriptPing, remoteScriptStatus } = vi.hoisted(() => ({
+  remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
+  remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
+}));
+
+// The real ones read the developer's running Live and User Library.
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/remote-script-client.ts"),
+  async (original) => ({ ...(await original()), remoteScriptPing }),
+);
+
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/remote-script-status.ts"),
+  () => ({ remoteScriptStatus }),
+);
+
 const getDir = useTempConfigDir();
+
+/**
+ * A status for an installed, current script that Live is running.
+ * @param overrides - Fields to change
+ * @returns The status
+ */
+function currentStatus(
+  overrides: Partial<RemoteScriptStatus> = {},
+): RemoteScriptStatus {
+  return {
+    userLibrary: "/lib",
+    installed: true,
+    installedVersion: VERSION,
+    bundledVersion: VERSION,
+    running: true,
+    runningVersion: VERSION,
+    liveVersion: "12.4.0",
+    otherOnPort: null,
+    updateAvailable: false,
+    installedNewer: false,
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  remoteScriptPing.mockReset();
+  remoteScriptStatus.mockReset();
+  remoteScriptPing.mockResolvedValue({
+    running: true,
+    liveVersion: "12.4.0",
+    scriptVersion: VERSION,
+    otherOnPort: null,
+  });
+  remoteScriptStatus.mockResolvedValue(currentStatus());
+});
 
 /**
  * Run the full enrichment chain over a ppal-connect call.
@@ -68,6 +122,30 @@ describe("enrichConnect", () => {
     expect(blocks[1]).toContain("portalVersion: 1.0.0");
     expect(blocks[2]).toContain("Producer Pal Skills");
     expect(blocks.at(-1)).toContain("Report the connection status");
+  });
+
+  it("puts the remote script line after the portal line and before the skills", async () => {
+    remoteScriptStatus.mockResolvedValue(
+      currentStatus({ installedVersion: "0.0.1", updateAvailable: true }),
+    );
+
+    const blocks = await enrichedBlocks({ portalVersion: "1.0.0" });
+
+    expect(blocks[1]).toContain("portalVersion: 1.0.0");
+    expect(blocks[2]).toContain("remoteScript:");
+    expect(blocks[3]).toContain("Producer Pal Skills");
+  });
+
+  it("pings the remote script once per connect, for the skills and the notice together", async () => {
+    await enrichedBlocks();
+
+    expect(remoteScriptPing).toHaveBeenCalledOnce();
+  });
+
+  it("adds no remote script line when the script is current", async () => {
+    const blocks = await enrichedBlocks();
+
+    expect(blocks.some((block) => block.includes("remoteScript:"))).toBe(false);
   });
 
   it("adds no portal line for a request that did not come through a portal", async () => {

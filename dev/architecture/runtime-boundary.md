@@ -43,6 +43,26 @@ reports where Live's User Library is (read from its browser database), what is
 installed there, and what `/ping` says is running; `POST /remote-script/install`
 writes the folder.
 
+The script updates separately from the device, so it drifts. Both the chat UI
+header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
+`src/shared/version-check.ts`): **update** when the installed copy differs from
+this build and isn't newer (`updateAvailable`), **restart** when Live runs a
+different version than the installed one, in either direction (after an update
+or a downgrade). Both use `!==` rather than `isNewerVersion`, which can't order
+two pre-releases of one version (`-rc1` vs `-rc2`). Nothing is flagged when the
+script isn't installed or another program answers on the port.
+
+- **Chat UI:** a `(script update)` or `(restart Live)` badge beside the version
+  opens Settings → Remote Script. It reads `GET /remote-script` on load, on
+  window focus, and when the MCP connection comes back (Live restarted). A later
+  read that succeeds clears it; a failed read leaves it as it was. It also
+  follows the tab's own reads.
+- **`ppal-connect`:** `withRemoteScriptNotice`
+  (`src/mcp-server/helpers/connect/remote-script-notice-inject.ts`) appends a
+  `remoteScript:` line after the portal line. It shares the skills' `/ping` for
+  the connect (`connect-ping.ts`), reads the installed version off disk, and
+  gives up after 1.5 s. A status that fails or times out adds no line.
+
 ## Warnings ride inside the response JSON
 
 V8 puts a request's warnings in a `warnings?: string[]` field on the response

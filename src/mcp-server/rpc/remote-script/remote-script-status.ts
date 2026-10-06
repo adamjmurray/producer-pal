@@ -9,7 +9,10 @@ import { VERSION } from "#src/shared/config.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { setRunningLiveMajor } from "../../live-library/live-db-path.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
-import { remoteScriptPing } from "./remote-script-client.ts";
+import {
+  remoteScriptPing,
+  type RemoteScriptPing,
+} from "./remote-script-client.ts";
 import { remoteScriptPath } from "./remote-script-install.ts";
 
 /** Matches the one line version.py holds. */
@@ -40,10 +43,13 @@ export interface RemoteScriptStatus {
  * startup and only when the control surface is selected, so a fresh install
  * reads installed but not running until the user restarts Live.
  *
+ * @param knownPing - A ping the caller just made, to avoid asking Live again
  * @returns The status, with nulls for anything that couldn't be read
  */
-export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
-  const ping = await remoteScriptPing();
+export async function remoteScriptStatus(
+  knownPing?: RemoteScriptPing,
+): Promise<RemoteScriptStatus> {
+  const ping = knownPing ?? (await remoteScriptPing());
 
   // The running Live picks which browser database to read. The ping is the
   // only place Node learns that on its own. A ping that failed says nothing

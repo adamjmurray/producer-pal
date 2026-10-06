@@ -165,6 +165,27 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
+  // Remote script status (the header badge reads it on load) — not installed,
+  // so no badge. A spec that wants one registers its own route after this.
+  await page.route("**/remote-script", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        userLibrary: null,
+        installed: false,
+        installedVersion: null,
+        bundledVersion: "1.2.0",
+        running: false,
+        runningVersion: null,
+        liveVersion: null,
+        otherOnPort: null,
+        updateAvailable: false,
+        installedNewer: false,
+      }),
+    }),
+  );
+
   // Bypass the first-run settings screen: mark settings configured with a dummy
   // Gemini (text) provider so the app routes straight to the chat screen. No
   // real key is needed — the conversation panel renders regardless.

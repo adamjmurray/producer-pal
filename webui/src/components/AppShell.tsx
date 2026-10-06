@@ -10,6 +10,7 @@ import {
   ConversationPanel,
   type ConversationPanelProps,
 } from "#webui/components/chat/ConversationPanel";
+import { useRemoteScriptNotice } from "#webui/hooks/connection/use-remote-script-notice";
 import { useUpdateCheck } from "#webui/hooks/connection/use-update-check";
 
 /** State and handlers for the conversation history panel.
@@ -29,6 +30,7 @@ interface AppShellProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenRemoteScriptSettings: () => void;
   onOpenContext: () => void;
   children: ComponentChildren;
 }
@@ -44,6 +46,7 @@ interface AppShellProps {
  * @param props.onOpenSettings - Open the settings modal on the default tab
  * @param props.onOpenToolsSettings - Open settings on the tools tab
  * @param props.onOpenConnectionSettings - Open settings on the connection tab
+ * @param props.onOpenRemoteScriptSettings - Open settings on the Remote Script tab
  * @param props.onOpenContext - Open the project context view
  * @param props.children - Content rendered inside the card body
  * @returns App shell element wrapping `children`
@@ -55,10 +58,12 @@ export function AppShell({
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
+  onOpenRemoteScriptSettings,
   onOpenContext,
   children,
 }: AppShellProps) {
   const { update, dismissUpdate } = useUpdateCheck();
+  const remoteScriptNotice = useRemoteScriptNotice(mcpStatus);
 
   const activeConv = conversationPanel.activeConversationId
     ? conversationPanel.conversations.find(
@@ -75,6 +80,8 @@ export function AppShell({
         isActiveBookmarked={activeConv?.bookmarked}
         update={update}
         onDismissUpdate={dismissUpdate}
+        remoteScriptNotice={remoteScriptNotice}
+        onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
         onOpenConnectionSettings={onOpenConnectionSettings}

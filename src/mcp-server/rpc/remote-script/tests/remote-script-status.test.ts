@@ -107,6 +107,18 @@ describe("remoteScriptStatus", () => {
     expect(status.installedNewer).toBe(false);
   });
 
+  it("offers an update between two pre-releases of one version", async () => {
+    // isNewerVersion can't order -rc1 and -rc2 (both are "pre-release"), so
+    // "behind this build" can't depend on it.
+    installRemoteScript(scratchDir);
+    writeInstalledVersion(`VERSION = "${VERSION}-older-rc"\n`);
+
+    const status = await remoteScriptStatus();
+
+    expect(status.updateAvailable).toBe(true);
+    expect(status.installedNewer).toBe(false);
+  });
+
   it("flags a newer installed version instead of offering an update", async () => {
     installRemoteScript(scratchDir);
     writeInstalledVersion('VERSION = "999.0.0"\n');
@@ -154,6 +166,22 @@ describe("remoteScriptStatus", () => {
     expect(status.running).toBe(true);
     expect(status.runningVersion).toBe("2.0.0");
     expect(status.liveVersion).toBe("12.4.5");
+  });
+
+  it("uses a ping it is handed instead of asking Live again", async () => {
+    remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, live_version: "12.4.5", script_version: "2.0.0" },
+    }));
+
+    const status = await remoteScriptStatus({
+      running: true,
+      liveVersion: "12.1.0",
+      scriptVersion: "1.0.0",
+      otherOnPort: null,
+    });
+
+    expect(status.runningVersion).toBe("1.0.0");
+    expect(remote.requests).toStrictEqual([]);
   });
 
   it("records the running Live's major, for picking its browser database", async () => {

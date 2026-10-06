@@ -30,6 +30,26 @@ export interface RemoteScriptStatus {
   installedNewer: boolean;
 }
 
+type StatusListener = (status: RemoteScriptStatus) => void;
+
+const statusListeners = new Set<StatusListener>();
+
+/**
+ * Follow every status the Remote Script tab reads, so the header badge stays
+ * in step with an install without a second request.
+ * @param listener - Called with each status the tab reads
+ * @returns Stops listening
+ */
+export function subscribeRemoteScriptStatus(
+  listener: StatusListener,
+): () => void {
+  statusListeners.add(listener);
+
+  return () => {
+    statusListeners.delete(listener);
+  };
+}
+
 export interface UseRemoteScriptReturn {
   status: RemoteScriptStatus | null;
   /** True while a status read is in flight. */
@@ -82,6 +102,10 @@ export function useRemoteScript(): UseRemoteScriptReturn {
 
       setStatus(next);
       setLoadError(null);
+
+      for (const listener of statusListeners) {
+        listener(next);
+      }
     } catch (err) {
       // A newer read or the tab going away aborted this one: not a failure.
       if (signal.aborted) {

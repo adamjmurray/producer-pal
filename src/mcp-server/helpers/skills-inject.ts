@@ -9,7 +9,10 @@ import {
 } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import * as console from "../node-for-max-logger.ts";
-import { remoteScriptPing } from "../rpc/remote-script/remote-script-client.ts";
+import {
+  remoteScriptPing,
+  type RemoteScriptPing,
+} from "../rpc/remote-script/remote-script-client.ts";
 import { outdatedScript } from "../rpc/remote-script/port/remote-script-version.ts";
 import {
   withConnectAppend,
@@ -33,15 +36,18 @@ import { readSkillOverrides } from "./skill-overrides-store.ts";
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param getContext - Reads the current notation/small-model settings
+ * @param getPing - Reads the remote script ping; pass a shared one to save a
+ *   second ping per connect
  * @returns A callLiveApi that appends the skills block to ppal-connect results
  */
 export function withSkills(
   inner: CallLiveApiFunction,
   getContext: () => BuildSkillsOptions,
+  getPing: () => Promise<RemoteScriptPing> = remoteScriptPing,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () =>
     buildSkills(
-      await withRemoteScriptAnswer(getContext()),
+      await withRemoteScriptAnswer(getContext(), getPing),
       readSkillOverrides(),
       (message) => console.warn(`Producer Pal Skills: ${message}`),
     ),
@@ -55,19 +61,21 @@ export function withSkills(
  * small-model mode skips the ping.
  *
  * @param options - The rest of the skills context
+ * @param getPing - Reads the remote script ping
  * @returns The same options, with `remoteScript` set
  */
 export async function withRemoteScriptAnswer(
   options: BuildSkillsOptions,
+  getPing: () => Promise<RemoteScriptPing> = remoteScriptPing,
 ): Promise<BuildSkillsOptions> {
-  const ping =
-    options.smallModelMode === true ? null : await remoteScriptPing();
+  if (options.smallModelMode === true) {
+    return { ...options, remoteScript: false };
+  }
+
+  const ping = await getPing();
 
   return {
     ...options,
-    remoteScript:
-      ping != null &&
-      ping.running &&
-      outdatedScript(ping.scriptVersion) == null,
+    remoteScript: ping.running && outdatedScript(ping.scriptVersion) == null,
   };
 }
