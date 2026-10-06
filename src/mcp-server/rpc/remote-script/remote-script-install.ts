@@ -4,17 +4,16 @@
 // SPDX-License-Identifier: MIT
 
 import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, join } from "node:path";
 import { EMBEDDED_REMOTE_SCRIPT_FILES } from "./embedded-remote-script.ts";
 import {
-  isLibraryFolder,
   libraryPathExists,
   listLibraryFolder,
   removeFromLibrary,
   renameInLibrary,
   writeLibraryFile,
-} from "./user-library-fs.ts";
+} from "./user-library/user-library-fs.ts";
+import { resolveUserLibraryFolder } from "./user-library/user-library-folder.ts";
 
 // Live runs `import <folder>`, so the folder name must be a valid Python name.
 const SCRIPT_FOLDER = "Producer_Pal";
@@ -23,9 +22,6 @@ const SCRIPT_FOLDER = "Producer_Pal";
 const LEFTOVER = new RegExp(
   `^${SCRIPT_FOLDER}\\.(tmp|old)-[\\da-f]{8}(-[\\da-f]{4}){3}-[\\da-f]{12}$`,
 );
-
-/** A bad install target, which the REST route answers with a 400. */
-export class RemoteScriptInstallError extends Error {}
 
 /**
  * Write the bundled remote script into a Live User Library, replacing whatever
@@ -39,20 +35,10 @@ export class RemoteScriptInstallError extends Error {}
  *
  * @param userLibrary - Path to Live's User Library folder, a leading `~` allowed
  * @returns Where the script was written
- * @throws {RemoteScriptInstallError} When userLibrary isn't an absolute path to an existing folder
+ * @throws {UserLibraryFolderError} When userLibrary isn't an absolute path to an existing folder
  */
 export function installRemoteScript(userLibrary: string): { path: string } {
-  const library = expandHome(userLibrary);
-
-  if (!isAbsolute(library)) {
-    throw new RemoteScriptInstallError(`Not an absolute path: ${userLibrary}`);
-  }
-
-  if (!isLibraryFolder(library)) {
-    throw new RemoteScriptInstallError(`Not a folder: ${library}`);
-  }
-
-  const path = remoteScriptPath(library);
+  const path = remoteScriptPath(resolveUserLibraryFolder(userLibrary));
   // Unique names, so a leftover that can't be removed never blocks an install.
   const temp = `${path}.tmp-${randomUUID()}`;
   const backup = `${path}.old-${randomUUID()}`;
@@ -82,21 +68,6 @@ export function remoteScriptPath(userLibrary: string): string {
 }
 
 // --- Helpers below the main exports ---
-
-/**
- * Expand a leading `~` to the user's home folder. Live shows the User Library
- * path with a `~`, and that's what people paste in.
- *
- * @param path - A path, possibly starting with `~`
- * @returns The path with a leading `~` replaced
- */
-function expandHome(path: string): string {
-  if (path === "~") {
-    return homedir();
-  }
-
-  return path.startsWith("~/") ? join(homedir(), path.slice(2)) : path;
-}
 
 /**
  * Move the new copy into place, keeping the old install as a backup until the

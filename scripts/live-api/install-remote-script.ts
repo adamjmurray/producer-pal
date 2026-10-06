@@ -24,10 +24,8 @@
  * Remote Scripts at startup, so without --reload, restart Live afterwards.
  */
 
-import {
-  RemoteScriptInstallError,
-  installRemoteScript,
-} from "#src/mcp-server/rpc/remote-script/remote-script-install.ts";
+import { installRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-install.ts";
+import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
 import { addReloadRoute } from "./hot-reload/add-reload-route.ts";
 import {
   describeReload,
@@ -69,7 +67,7 @@ try {
   }
 } catch (error) {
   console.error(
-    error instanceof RemoteScriptInstallError
+    error instanceof UserLibraryFolderError
       ? `ABLETON_USER_LIBRARY: ${error.message}`
       : String(error),
   );

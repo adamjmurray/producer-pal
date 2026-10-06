@@ -63,6 +63,25 @@ script isn't installed or another program answers on the port.
   the connect (`connect-ping.ts`), reads the installed version off disk, and
   gives up after 1.5 s. A status that fails or times out adds no line.
 
+## The device install
+
+The portal (plain Node) can copy the bundled `Producer_Pal.amxd` into the User
+Library's `Presets/MIDI Effects/Max MIDI Effect/`, the folder the remote
+script's `mfl-device` lookup and the docs use. The code is `src/portal/setup/`:
+`deviceFileStatus` compares the installed file with the bundled one (by the
+`const VERSION = "x.y.z"` line a frozen device contains, else by bytes), and
+`installDevice` copies to a temp file and renames, so a failed write keeps the
+old device. A device that's newer, or can't be placed by version, is skipped
+unless `force` is set. Other `Producer_Pal*.amxd` copies in the library are
+reported and never deleted, because a second copy makes adding the device to a
+Set ambiguous.
+
+Both install paths share `rpc/remote-script/user-library/`: its
+`user-library-fs.ts` holds every fs call on a User Library path (the CodeQL rule
+in its header), and `user-library-folder.ts` validates the folder. A failure
+after something changed comes back as a `failed` result that says what changed,
+not a throw.
+
 ## Warnings ride inside the response JSON
 
 V8 puts a request's warnings in a `warnings?: string[]` field on the response

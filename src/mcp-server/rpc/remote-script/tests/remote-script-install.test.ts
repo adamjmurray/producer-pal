@@ -21,11 +21,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
 import {
-  RemoteScriptInstallError,
   installRemoteScript,
   remoteScriptPath,
 } from "../remote-script-install.ts";
 import { readRemoteScriptSource } from "../remote-script-source.ts";
+import { UserLibraryFolderError } from "../user-library/user-library-folder.ts";
 import {
   PY_ONLY_SOURCE,
   writeScriptTreeWithJunk,
@@ -150,7 +150,7 @@ describe("installRemoteScript", () => {
 
   it("refuses a folder that isn't there", () => {
     expect(() => installRemoteScript(join(scratchDir, "nope"))).toThrow(
-      RemoteScriptInstallError,
+      UserLibraryFolderError,
     );
   });
 

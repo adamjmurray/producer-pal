@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Every fs call on a path from a request goes through this file.
+// Every fs call on a path from a request goes through this file. The device
+// install (src/portal/setup/) follows the same rule.
 //
 // The remote script install takes the User Library folder from the REST
 // request, so CodeQL's path-injection check flags each fs call that uses it.
@@ -19,8 +20,11 @@
 // below that calls fs re-raises its alert; dismiss it again with this reason.
 
 import {
+  chmodSync,
+  copyFileSync,
   lstatSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -51,6 +55,68 @@ export function isLibraryFolder(path: string): boolean {
  */
 export function listLibraryFolder(folder: string): string[] {
   return readdirSync(folder);
+}
+
+export interface LibraryEntry {
+  name: string;
+  isFolder: boolean;
+}
+
+/**
+ * Like `listLibraryFolder`, but says which names are folders. A link to a
+ * folder counts as a file, so a walk never follows one out of the library.
+ *
+ * @param folder - Folder to list
+ * @returns The names in it, each flagged as a folder or not
+ */
+export function listLibraryEntries(folder: string): LibraryEntry[] {
+  return readdirSync(folder, { withFileTypes: true }).map((entry) => ({
+    name: entry.name,
+    isFolder: entry.isDirectory(),
+  }));
+}
+
+/**
+ * @param file - File to read
+ * @returns The file's bytes
+ */
+export function readLibraryBytes(file: string): Buffer {
+  return readFileSync(file);
+}
+
+/**
+ * Copy a file, replacing the destination if it's there.
+ *
+ * @param from - File to copy
+ * @param to - Where the copy goes
+ */
+export function copyIntoLibrary(from: string, to: string): void {
+  copyFileSync(from, to);
+}
+
+/**
+ * @param file - File to change
+ * @param mode - Permission bits
+ */
+export function setLibraryFileMode(file: string, mode: number): void {
+  chmodSync(file, mode);
+}
+
+/**
+ * @param path - Path to check
+ * @returns When it was last modified, in epoch ms, or undefined when it's gone
+ */
+export function libraryModifiedMs(path: string): number | undefined {
+  return statSync(path, { throwIfNoEntry: false })?.mtimeMs;
+}
+
+/**
+ * Make a folder and any missing parents. A folder that's there is fine.
+ *
+ * @param folder - Folder to make
+ */
+export function makeLibraryFolder(folder: string): void {
+  mkdirSync(folder, { recursive: true });
 }
 
 /**
