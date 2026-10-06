@@ -55,6 +55,7 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 async function fetchConfig(): Promise<{
   notation?: Notation;
   liveApiEnabled?: boolean;
+  smallModelMode?: boolean;
 }> {
   const response = await fetch(CONFIG_URL);
 
@@ -65,6 +66,7 @@ async function fetchConfig(): Promise<{
   return (await response.json()) as {
     notation?: Notation;
     liveApiEnabled?: boolean;
+    smallModelMode?: boolean;
   };
 }
 
@@ -92,6 +94,17 @@ export async function getLiveApiEnabled(): Promise<boolean> {
   const config = await fetchConfig();
 
   return config.liveApiEnabled === true;
+}
+
+/**
+ * Whether the server is in small-model mode.
+ *
+ * @returns True when small-model mode is on
+ */
+export async function getSmallModelMode(): Promise<boolean> {
+  const config = await fetchConfig();
+
+  return config.smallModelMode === true;
 }
 
 /**
