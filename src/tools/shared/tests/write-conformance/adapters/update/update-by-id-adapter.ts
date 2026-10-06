@@ -32,6 +32,8 @@ interface UpdateByIdConfig {
   lateProp: { name: string; value: unknown };
   /** A property the tool refuses for several targets at once */
   refusedProp: { name: string; value: unknown };
+  /** Other calls with an unparsable entry, each in its own mode of the tool */
+  unparsableModes?: (register: (n: number) => void) => Array<() => ToolArgs>;
 }
 
 /**
@@ -72,6 +74,8 @@ export function updateByIdAdapter(config: UpdateByIdConfig): WriteToolAdapter {
 
       return { path: `${id(0)},not-a-path`, name: "A,B" };
     },
+
+    unparsableModes: config.unparsableModes?.(register),
 
     unappliable: () => {
       register(2);

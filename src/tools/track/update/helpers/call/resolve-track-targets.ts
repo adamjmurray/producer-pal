@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { targetObject } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
@@ -33,6 +33,10 @@ export function trackTargets(call: TrackCall): Array<Target<TrackPayload>> {
   // whole, because a lane an earlier entry created can't be taken back.
   const lanes = planTakeLaneTargets(call.named);
 
+  // A path that doesn't parse refuses the call; the lookup below parses it
+  // again and says any legacy spelling.
+  refuseUnparsableEntries(call.targets.path, "path");
+
   return call.named.map((named, index): Target<TrackPayload> => {
     const spec = lanes.get(index);
 
@@ -44,11 +48,6 @@ export function trackTargets(call: TrackCall): Array<Target<TrackPayload>> {
         key: spec.laneIndex == null ? undefined : laneKey(spec),
         data: { kind: "lane", spec },
       };
-    }
-
-    if (named.param === "path") {
-      // Quiet: the lookup below parses it again and says any legacy spelling.
-      parseObjectPath(named.value, "path", true);
     }
 
     try {

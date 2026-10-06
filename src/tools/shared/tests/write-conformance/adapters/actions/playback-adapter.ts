@@ -74,6 +74,13 @@ export const playbackAdapter: WriteToolAdapter = {
     return { path: "t0/s0,not-a-path" };
   },
 
+  // The other actions that take a path read it their own way.
+  unparsableModes: ["play-scene", "stop-session-clips"].map((action) => () => {
+    setUpClips(2);
+
+    return { action, path: "t0/s0,not-a-path" };
+  }),
+
   unappliable: () => {
     setUpClips(2);
     mockNonExistentObjects();

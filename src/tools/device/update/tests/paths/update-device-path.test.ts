@@ -502,6 +502,19 @@ describe("updateDevice with path parameter", () => {
     });
   });
 
+  it("warns once about a legacy-spelled path in a list", () => {
+    registerMockObject("device-456", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ path: "0/1,t0/d0", name: "A,B" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'path "0/1" is the old slot spelling; use "t0/s1"',
+    ]);
+  });
+
   describe("multiple comma-separated paths", () => {
     let device100: RegisteredMockObject;
     let device101: RegisteredMockObject;

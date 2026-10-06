@@ -72,6 +72,13 @@ export const updateClipAdapter: WriteToolAdapter = {
     return { path: "t0/s0,not-a-path", name: "A,B" };
   },
 
+  // An arrangement path and a take lane path are read apart from a slot.
+  unparsableModes: ["t0[1|1]", "t0/l0[1|1]"].map((first) => () => {
+    setUpClips(2);
+
+    return { path: `${first},not-a-path`, name: "A,B" };
+  }),
+
   unparsableDestinations: [
     () => {
       setUpClips(2);

@@ -15,4 +15,12 @@ export const updateTrackAdapter = updateByIdAdapter({
   register: registerTracks,
   lateProp: { name: "mute", value: true },
   refusedProp: { name: "sendGainDb", value: -3 },
+  // A take lane path is planned apart from a track path.
+  unparsableModes: (register) => [
+    () => {
+      register(2);
+
+      return { path: "t0/l0,not-a-path", name: "A,B" };
+    },
+  ],
 });

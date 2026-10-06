@@ -105,6 +105,15 @@ export const updateDeviceAdapter: WriteToolAdapter = {
     return { path: "t0/d0,not-a-path", name: "A,B" };
   },
 
+  unparsableModes: [
+    () => {
+      setUpDevices(2);
+
+      // The wrap would take d0 and note the bad entry; it refuses instead.
+      return { path: "t0/d0,not-a-path", wrapInRack: true };
+    },
+  ],
+
   unparsableDestinations: [
     () => {
       setUpDevices(2);

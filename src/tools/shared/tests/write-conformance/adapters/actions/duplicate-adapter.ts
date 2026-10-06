@@ -12,6 +12,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   LIVE_FAILURE,
@@ -63,15 +64,15 @@ export const duplicateAdapter: WriteToolAdapter = {
     return { path: "t0,not-a-path" };
   },
 
+  // Each type reads its sources its own way.
+  unparsableModes: DUPLICATE_TYPES.map((type) => () => {
+    setUpTracks();
+
+    return { type, path: "t0,not-a-path" };
+  }),
+
   // One call per kind of destination: each reads toPath its own way.
-  unparsableDestinations: [
-    "clip",
-    "track",
-    "scene",
-    "device",
-    "chain",
-    "drum-pad",
-  ].map((type) => () => {
+  unparsableDestinations: DUPLICATE_TYPES.map((type) => () => {
     setUpTracks();
 
     return { type, id: "t0", toPath: "t1,not-a-path" };

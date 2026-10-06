@@ -14,7 +14,7 @@ import {
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
@@ -152,6 +152,11 @@ const DEVICE_WRITE: WriteSpec<
 function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
   const named = namedTargets({ id: call.ids, path: call.path });
 
+  // A path that doesn't parse is a mistake in the call, so it refuses the
+  // call, wrapping or not; one that parses but names nothing skips only its
+  // own target.
+  refuseUnparsableEntries(call.path, "path");
+
   // One rack from every device named, so one target.
   if (call.wrapInRack === true) {
     const { ids, path, toPath } = call;
@@ -165,12 +170,6 @@ function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
   }
 
   return named.map((target): Target<DevicePayload> => {
-    // A path that doesn't parse is a mistake in the call, so it refuses the
-    // call; one that parses but names nothing skips only its own target.
-    if (target.param === "path") {
-      parseObjectPath(target.value, "path");
-    }
-
     try {
       const resolved = resolveNamedTarget(target);
 

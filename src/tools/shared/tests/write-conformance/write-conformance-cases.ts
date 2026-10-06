@@ -191,6 +191,14 @@ async function expectUnparsableRefused(
   adapter: WriteToolAdapter,
 ): Promise<void> {
   await expectRefusal(adapter, needs(adapter, "unparsable")());
+
+  // The parse error itself, so a call refused for some other reason can't pass.
+  freshLive();
+  await expectEachRefused(
+    adapter,
+    adapter.unparsableModes ?? [],
+    'invalid path "not-a-path"',
+  );
 }
 
 async function expectUnparsableDestinationRefused(

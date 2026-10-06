@@ -14,6 +14,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
 import {
   type NamedTarget,
@@ -54,11 +55,7 @@ export function deleteTargets(call: DeleteCall): Array<Target<DeletePayload>> {
   // A path that can't be parsed was written wrong, so it refuses the call
   // before anything is looked up. One that parses but names the wrong kind of
   // thing skips only its own target.
-  for (const target of named) {
-    if (target.param === "path") {
-      parseObjectPath(target.value, "path", true);
-    }
-  }
+  refuseUnparsableEntries(call.path, "path");
 
   return named.map((target) => resolveTarget(target, call.type));
 }

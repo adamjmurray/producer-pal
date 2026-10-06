@@ -6,7 +6,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { targetObject } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { sceneIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type SceneCall } from "./parse-scene-call.ts";
@@ -25,12 +25,11 @@ export interface ScenePayload {
  * @throws Error when a path can't be parsed
  */
 export function sceneTargets(call: SceneCall): Array<Target<ScenePayload>> {
-  return call.named.map((named): Target<ScenePayload> => {
-    if (named.param === "path") {
-      // Quiet: the lookup below parses it again and says any legacy spelling.
-      parseObjectPath(named.value, "path", true);
-    }
+  // Quiet: the lookup below parses each path again and says any legacy
+  // spelling.
+  refuseUnparsableEntries(call.targets.path, "path");
 
+  return call.named.map((named): Target<ScenePayload> => {
     try {
       const scene = targetObject(named, "scene", sceneToUpdateAtPath);
 

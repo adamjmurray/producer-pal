@@ -536,6 +536,32 @@ describe("updateDevice - wrapInRack", () => {
     );
   });
 
+  it("refuses a wrap whose list has an unparsable path, wrapping nothing", () => {
+    expect(() => updateDevice({ path: "t0/d0,zzz", wrapInRack: true })).toThrow(
+      /invalid path "zzz"/,
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(track0.call).not.toHaveBeenCalledWith(
+      "insert_device",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(liveSet.call).not.toHaveBeenCalledWith(
+      "move_device",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("warns once about a legacy-spelled path in a wrap's list", () => {
+    updateDevice({ path: "0/1,t0/d0", wrapInRack: true });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'path "0/1" is the old slot spelling; use "t0/s1"',
+    ]);
+  });
+
   // A wrap makes one rack, so a toPath naming nowhere to put it leaves nothing
   // to report on — unlike the sibling move, which skips and carries on.
   it.each([

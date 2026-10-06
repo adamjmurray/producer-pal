@@ -119,6 +119,15 @@ export const createClipAdapter: WriteToolAdapter = {
     return { path: "t0/s0,not-a-path" };
   },
 
+  // An arrangement path is read apart from a session slot.
+  unparsableModes: [
+    () => {
+      setUpSession();
+
+      return { path: "t0[1|1],not-a-path" };
+    },
+  ],
+
   unappliable: () => {
     setUpSession();
     audioTrack();

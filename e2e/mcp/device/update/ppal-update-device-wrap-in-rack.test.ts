@@ -208,6 +208,31 @@ describe("ppal-update-device wrapInRack", () => {
     ).toBe(devicePath);
   });
 
+  // A path that can't be parsed was written wrong: the whole wrap is refused,
+  // not run on the entries that did parse.
+  it("refuses a wrap whose list has an unparsable path, wrapping nothing", async () => {
+    const trackIndex = await createMidiTrack(ctx.client!);
+    const devicePath = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${trackIndex}`,
+    );
+    const count = await readDeviceCount(ctx.client!, trackIndex);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${devicePath},zzz`, wrapInRack: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('invalid path "zzz"');
+    expect(getToolWarnings(result)).toStrictEqual([]);
+
+    // Nothing was wrapped: the device is still where it was, and no rack came.
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(count);
+    expect((await readDevice(devicePath)).type).toContain("Compressor");
+  });
+
   it("appends the rack when toPath names a track and no index", async () => {
     const source = await createMidiTrack(ctx.client!);
     const dest = await createMidiTrack(ctx.client!);

@@ -109,6 +109,11 @@ export interface WriteToolAdapter {
   replacedLater?: () => ReplacedScenario;
   /** A call with an entry that can't be parsed */
   unparsable?: () => ToolArgs;
+  /**
+   * The same bad entry in each mode of the tool that reads its targets its own
+   * way (a wrap, a type, a lane): every mode parses before it writes.
+   */
+  unparsableModes?: Array<() => ToolArgs>;
   /** Calls whose destination list holds an entry that can't be parsed, one per kind of destination */
   unparsableDestinations?: Array<() => ToolArgs>;
   unappliable?: () => UnappliableScenario;

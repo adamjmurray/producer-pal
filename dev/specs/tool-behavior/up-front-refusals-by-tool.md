@@ -38,6 +38,9 @@ follows the code; when it disagrees with a tool, the tool wins.
   track with a single position, can't cover several clips and is refused. One
   track or take lane takes several when `arrangementStart` names a position per
   clip.
+- **`updateDevice` refuses a `path` entry it can't parse** before anything is
+  written, with `wrapInRack` or without; an entry that parses but names no
+  device skips only its own target (a wrap notes it on the rack's entry).
 - **`duplicate` and `updateDevice` refuse a `toPath` entry they can't parse**
   before anything is copied or moved, for every kind of copy (clip, track onto a
   lane, scene, device, chain, drum pad). One that parses but can't be applied

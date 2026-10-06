@@ -11,6 +11,7 @@ import {
   registerMockObject,
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
+import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { LIVE_FAILURE, namedOrder } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -93,6 +94,13 @@ export const deleteAdapter: WriteToolAdapter = {
 
     return { path: "t0,not-a-path" };
   },
+
+  // Each type reads its targets its own way.
+  unparsableModes: DELETABLE_TYPES.map((type) => () => {
+    setUpTracks(2);
+
+    return { type, path: "t0,not-a-path" };
+  }),
 
   unappliable: () => {
     // Live leaves t1 where it is, which the call finds out afterward.
