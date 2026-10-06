@@ -11,9 +11,9 @@
  * same and only the speed differs: this grades what the user ends up with, not
  * the route.
  *
- * `setup` renames the Lead track's Utility "Lead Trim" and sets its Gain to
+ * `setup` renames the Lead track's Utility "Lead Trim" and sets its Output to
  * -6 dB, so a copy made by adding a fresh Utility instead fails on both the
- * name and the Gain. The Lead's whole chain is read back, so a stray extra
+ * name and the Output. The Lead's whole chain is read back, so a stray extra
  * device or a copy that landed in the wrong place fails too.
  */
 
@@ -43,11 +43,11 @@ const TRIM_GAIN_DB = -6;
 /** The copy lands right after the original, which is where the tool puts it. */
 const DEFAULT_COPY_PATH = "t3/d4";
 
-/** Gain reads back as the dB it was set to, give or take rounding. */
+/** Output reads back as the dB it was set to, give or take rounding. */
 const GAIN_TOLERANCE_DB = 0.1;
 
 /**
- * Rename the Lead's Utility and set its Gain, then check it reads back that
+ * Rename the Lead's Utility and set its Output, then check it reads back that
  * way. Throws if it doesn't, so a seed that never took can't pass the scenario
  * for the wrong reason.
  *
@@ -59,7 +59,7 @@ async function seedLeadTrim(mcpClient: Client): Promise<void> {
     arguments: {
       path: UTILITY_PATH,
       name: TRIM_NAME,
-      params: [{ name: "Gain", value: TRIM_GAIN_DB }],
+      params: [{ name: "Output", value: TRIM_GAIN_DB }],
     },
   });
 
@@ -71,19 +71,19 @@ async function seedLeadTrim(mcpClient: Client): Promise<void> {
       }),
     ),
   ) as { name?: string };
-  const gain = paramNumber(read, "Gain");
+  const gain = paramNumber(read, "Output");
 
   if (read.name !== TRIM_NAME || !isTrimGain(gain)) {
     throw new Error(
-      `seeding ${UTILITY_PATH} failed: reads as name "${read.name}", Gain ${gain}`,
+      `seeding ${UTILITY_PATH} failed: reads as name "${read.name}", Output ${gain}`,
     );
   }
 }
 
 /**
- * Whether a Gain reading is the seeded one.
+ * Whether an Output reading is the seeded one.
  *
- * @param gain - The Gain a read reported
+ * @param gain - The Output a read reported
  * @returns True when it is -6 dB, give or take rounding
  */
 function isTrimGain(gain: number | undefined): boolean {
@@ -117,7 +117,7 @@ export const deviceCopyInPlace: EvalScenario = {
       { type: "Utility", name: TRIM_NAME },
     ]),
 
-    // The copy, wherever the model's own call reports it, carries the Gain.
+    // The copy, wherever the model's own call reports it, carries the Output.
     {
       type: "state",
       tool: TOOL_READ_DEVICE,
@@ -128,9 +128,9 @@ export const deviceCopyInPlace: EvalScenario = {
           ) ?? DEFAULT_COPY_PATH,
         include: ["params", "param-values"],
       }),
-      expect: (result) => isTrimGain(paramNumber(result, "Gain")),
+      expect: (result) => isTrimGain(paramNumber(result, "Output")),
       explain: (result) =>
-        `expected the copy's Gain to be ${TRIM_GAIN_DB} dB, got ${paramNumber(result, "Gain")}`,
+        `expected the copy's Output to be ${TRIM_GAIN_DB} dB, got ${paramNumber(result, "Output")}`,
     },
 
     asSignal({
