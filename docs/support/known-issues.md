@@ -4,7 +4,7 @@ Known bugs and rough edges.
 
 ::: tip Looking for what Producer Pal can't do?
 
-Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
+Clip envelopes lost on some moves, VST/AU plug-in internals, audio analysis and
 synthesis, drum pitch maps, and lengthening looped arrangement clips are
 **[Limitations](/features/limitations)**: design boundaries rather than bugs, so
 they aren't listed here.

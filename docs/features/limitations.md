@@ -64,9 +64,11 @@ of the two applied.
 
 Producer Pal can manage audio clips (set gain, pitch, and warp settings, change
 clip length, arrange clips in the Arrangement, and load and manage samples on
-Simpler instruments, Drum Rack pads included), but it cannot listen to, analyze,
-or transcribe the audio itself. No detecting notes, key, or tempo from a
-waveform; no audio-to-MIDI; no synthesizing audio from scratch.
+Simpler instruments, Drum Rack pads included), but it cannot listen to or
+analyze the audio itself. No detecting key or tempo from a waveform, no
+synthesizing audio from scratch. The one audio-to-MIDI route is Live's own
+conversion of an audio clip to a new MIDI track (drums, melody or harmony),
+which needs the [remote script](/guide/remote-script).
 
 ::: tip Workaround: drive it from a coding agent
 
