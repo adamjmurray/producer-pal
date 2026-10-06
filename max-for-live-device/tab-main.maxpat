@@ -14,14 +14,81 @@
         "boxes": [
             {
                 "box": {
-                    "id": "obj-21",
-                    "linecount": 2,
+                    "annotation": "Dismiss this update notice.",
+                    "bgcolor": [ 0.596078431372549, 0.933333333333333, 1.0, 1.0 ],
+                    "fontface": 0,
+                    "hidden": 1,
+                    "hint": "",
+                    "id": "obj-72",
+                    "maxclass": "textbutton",
+                    "numinlets": 1,
+                    "numoutlets": 3,
+                    "outlettype": [ "", "", "int" ],
+                    "parameter_enable": 0,
+                    "patching_rect": [ 620.0, 497.0, 20.0, 20.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 228.0, 4.0, 20.0, 22.0 ],
+                    "rounded": 8.0,
+                    "text": "×",
+                    "textoncolor": [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
+                    "textovercolor": [ 0.231372549019608, 0.03921568627451, 0.72156862745098, 1.0 ],
+                    "usetextovercolor": 1,
+                    "varname": "Producer Pal update dismiss"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-73",
                     "maxclass": "message",
                     "numinlets": 2,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 416.0, 435.0, 166.0, 35.0 ],
-                    "text": "script sendbox \"Producer Pal update available\" hidden 1"
+                    "patching_rect": [ 620.0, 535.0, 80.0, 22.0 ],
+                    "text": "dismissUpdate"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-74",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 620.0, 570.0, 89.0, 22.0 ],
+                    "text": "s ---node-script"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-75",
+                    "maxclass": "newobj",
+                    "numinlets": 0,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 620.0, 257.0, 66.0, 22.0 ],
+                    "text": "r ---config"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-76",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "patching_rect": [ 620.0, 329.0, 129.0, 22.0 ],
+                    "text": "route updateDismissed"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-21",
+                    "linecount": 4,
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 416.0, 435.0, 166.0, 63.0 ],
+                    "text": "script sendbox \"Producer Pal update available\" hidden 1, script sendbox \"Producer Pal update dismiss\" hidden 1"
                 }
             },
             {
@@ -85,13 +152,13 @@
             {
                 "box": {
                     "id": "obj-53",
-                    "linecount": 2,
+                    "linecount": 4,
                     "maxclass": "message",
                     "numinlets": 2,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 391.0, 329.0, 166.0, 35.0 ],
-                    "text": "script sendbox \"Producer Pal update available\" hidden 0"
+                    "patching_rect": [ 391.0, 329.0, 166.0, 63.0 ],
+                    "text": "script sendbox \"Producer Pal update available\" hidden 0, script sendbox \"Producer Pal update dismiss\" hidden 0"
                 }
             },
             {
@@ -109,7 +176,7 @@
                     "parameter_enable": 0,
                     "patching_rect": [ 243.0, 497.0, 100.0, 20.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 147.0, 4.0, 101.0, 22.0 ],
+                    "presentation_rect": [ 125.0, 4.0, 101.0, 22.0 ],
                     "rounded": 8.0,
                     "text": "Update available",
                     "textoncolor": [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
@@ -480,6 +547,30 @@
                 "patchline": {
                     "destination": [ "obj-23", 0 ],
                     "source": [ "obj-8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-73", 0 ],
+                    "source": [ "obj-72", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-74", 0 ],
+                    "source": [ "obj-73", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-76", 0 ],
+                    "source": [ "obj-75", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-21", 0 ],
+                    "source": [ "obj-76", 0 ]
                 }
             }
         ],

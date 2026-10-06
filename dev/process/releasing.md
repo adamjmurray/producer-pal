@@ -224,6 +224,14 @@ It's also why dismissing an update can be keyed on the version number alone
 (`dismissedUpdateVersion` in the global settings): a re-cut has a new version,
 so it shows up again even after the last one was dismissed.
 
+Both surfaces can dismiss. The chat UI's `×` writes the setting through
+`PUT /settings`; the device's `×` sends `dismissUpdate` to the Node server,
+which writes the same setting. Either way the server then tells the device to
+hide its notice right away (`config updateDismissed` outlet message, handled in
+`tab-main.maxpat`). Turning update checking off in the chat UI hides it the same
+way. The chat UI sees a dismissal made in the device the next time it loads
+`GET /update`.
+
 The commit SHA is still baked into the artifacts and shown next to the version
 in the device UI, but it's diagnostic only: it says which commit produced these
 bytes when a bug report and a version number disagree. Nothing branches on it.

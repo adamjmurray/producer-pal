@@ -30,6 +30,7 @@ import {
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
+import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
@@ -122,6 +123,12 @@ registerProjectContextBackupNodeRoutes({
   setProjectContext: (value: string) => {
     config.projectContext = value;
   },
+});
+
+// The device's update notice has a × button. The patch sends this; the setting
+// itself is Node-side only.
+Max.addHandler("dismissUpdate", () => {
+  void dismissUpdate();
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {

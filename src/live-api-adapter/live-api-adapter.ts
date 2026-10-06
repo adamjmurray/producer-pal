@@ -357,6 +357,12 @@ export function liveApiEnabled(): void {}
 export function tools(): void {}
 
 /**
+ * Ignore the update-notice dismissal. It only tells the device's Main tab to
+ * hide its notice.
+ */
+export function updateDismissed(): void {}
+
+/**
  * Chunk one payload for the Max IPC boundary and send it, as:
  * ["mcp_response", requestId, chunk1, ..., chunkN, END_OF_CHUNKS].
  *
