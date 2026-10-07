@@ -52,7 +52,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "evals/schema-compat/probe-schema-compat-cli.ts": 27,
   "evals/scenarios/defs/clip/notation/arpeggio-bracket-idiom.ts": 27,
   "evals/scenarios/defs/clip/notation/pretransforms-slm.ts": 26,
-  "evals/scenarios/defs/clip/transforms/note-ops-roll-and-merge.ts": 32,
   "evals/scenarios/defs/context/context-onboarding.ts": 26,
   "evals/scenarios/defs/context/context-write-layers.ts": 27,
   "evals/scenarios/defs/context/helpers/context-scenario-setup.ts": 30,
