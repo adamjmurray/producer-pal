@@ -113,6 +113,8 @@ describe("enrichConnect", () => {
     expect(blocks[2]).toContain("Project context (this Live Set):");
     expect(blocks[3]).toContain("Global context (all projects):");
     expect(blocks[4]).toContain("Memory index");
+    expect(blocks[4]).toContain("Read an entry before work it covers");
+    expect(blocks[4]).toContain("rewrite that entry right away");
     expect(blocks[5]).toContain("Report the connection status");
   });
 
