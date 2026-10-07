@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
@@ -238,7 +239,7 @@ function readDeviceById(
   const device = LiveAPI.from(`id ${deviceId}`);
 
   if (!device.exists()) {
-    throw new Error(`id "${deviceId}" does not exist`);
+    throw new Error(idDoesNotExist(deviceId));
   }
 
   // duplicate and delete both hand back pad ids, so reading one has to answer

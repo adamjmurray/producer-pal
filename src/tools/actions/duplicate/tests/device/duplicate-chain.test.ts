@@ -407,7 +407,10 @@ describe("duplicate - chain", () => {
 
     await expect(
       duplicate({ type: "chain", id: "chain-0", toPath: "t0/d0/pC1/d0" }),
-    ).rejects.toThrow("no destination rack at toPath");
+    ).rejects.toThrow(
+      'no destination rack at toPath "t0/d0/pC1/d0"; name a rack, e.g. ' +
+        '"t0/d0" or "t0/d0/c+" (not a pad, a chain or a plain device)',
+    );
   });
 
   it("says on the copy's entry that macro mappings do not come along", async () => {

@@ -10,7 +10,10 @@ import {
   namedParam,
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idDoesNotExist,
+  publishedType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -127,7 +130,7 @@ export function resolveIdParam(id: string): ResolveIdResult {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(`id "${id}" does not exist`);
+    throw new Error(idDoesNotExist(id));
   }
 
   const type = object.type;

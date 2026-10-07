@@ -66,9 +66,9 @@ describe("updateDevice — d+ as a move destination", () => {
   // spelling mistake there — and the refusal names the tools that take it.
   it("refuses a d+ as the device to update", () => {
     expect(() => updateDevice({ path: "t1/d+", name: "x" })).toThrow(
-      'invalid path "t1/d+" - "d+" appends a device, which only ' +
-        "ppal-create-device, ppal-duplicate and ppal-update-device do; " +
-        'name an existing device as "d<index>"',
+      'invalid path "t1/d+" - "d+" appends a device, so it only works as a ' +
+        "destination: path in ppal-create-device, toPath in ppal-duplicate " +
+        'and ppal-update-device; name an existing device as "d<index>"',
     );
   });
 });

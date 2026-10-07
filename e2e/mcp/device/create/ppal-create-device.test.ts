@@ -490,7 +490,7 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      '"d+" appends a device, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device',
     );
   });
 
@@ -557,7 +557,7 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      '"c+" appends a chain, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device',
     );
   });
 

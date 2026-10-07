@@ -26,6 +26,7 @@ import {
   pastTheEndReason,
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import {
   type WrittenContainer,
@@ -191,7 +192,10 @@ export function resolveCreationTarget(path: string): CreationTarget {
 
   if (!container?.exists()) {
     throw new Error(
-      withChainsLeft(`container at path "${path}" does not exist`, madeChains),
+      withChainsLeft(
+        `container at path "${path}" does not exist${nestedRackHintForPath(path)}`,
+        madeChains,
+      ),
     );
   }
 

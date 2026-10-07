@@ -188,7 +188,9 @@ function resolveDestinationRack(
   // A chain goes into a rack, so a toPath naming anything else — a track, a
   // chain, a plain device — has no chain slot to offer.
   if (object == null) {
-    throw new Error(`no destination rack at toPath "${toPath}"`);
+    throw new Error(
+      `no destination rack at toPath "${toPath}"; name a rack, e.g. "t0/d0" or "t0/d0/c+" (not a pad, a chain or a plain device)`,
+    );
   }
 
   const destinationClass = object.getProperty("class_name") as string;

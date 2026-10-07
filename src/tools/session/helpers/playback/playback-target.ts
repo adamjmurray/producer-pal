@@ -15,7 +15,10 @@ import {
   refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idDoesNotExist,
+  publishedType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
   type ObjectPath,
@@ -347,7 +350,7 @@ function idSceneRefs(ids: string | undefined): {
     const object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      problems.push(`id "${id}" does not exist`);
+      problems.push(idDoesNotExist(id));
       continue;
     }
 

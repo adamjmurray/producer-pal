@@ -11,7 +11,10 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
-import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idDoesNotExist,
+  typeMismatch,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   requireDestinationPerSource,
   requireSameLength,
@@ -424,7 +427,7 @@ function typeLookup(
  */
 function vetObject(object: LiveAPI, id: string, type: string): LiveAPI {
   if (!object.exists()) {
-    throw new Error(`id "${id}" does not exist`);
+    throw new Error(idDoesNotExist(id));
   }
 
   const mismatch = typeMismatch(object, type);

@@ -21,16 +21,16 @@ export const NEW_TAKE_LANE_ADVICE =
 /** Appends a chain to the rack (or drum pad) the rest of the path names. */
 export const NEW_CHAIN = "c+";
 
-/** Why a tool that only reads or writes an existing object can't take a `c+`. */
+/** Why a path naming an existing object can't take a `c+`, and where one works. */
 export const NEW_CHAIN_ADVICE =
-  '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+  '"c+" appends a chain, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device';
 
 /** Appends a device to the container the rest of the path names. */
 export const NEW_DEVICE = "d+";
 
-/** Why a tool that only reads or writes an existing object can't take a `d+`. */
+/** Why a path naming an existing object can't take a `d+`, and where one works. */
 export const NEW_DEVICE_ADVICE =
-  '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+  '"d+" appends a device, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device';
 
 const LEGACY_TRACK = /^(\d+)$/;
 const LEGACY_SLOT = /^(\d+)\/(\d+)$/;

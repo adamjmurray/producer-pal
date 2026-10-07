@@ -131,3 +131,9 @@ below it — warns once per request, even off a rack with no layered pad yet:
 teaching the rule only after it bites is too late. The warning carries the
 pad-relative spelling, so the caller can start writing it. A comma-separated
 list making the same point several times over only gets told once.
+
+A miss says what to try instead when it can. A pad path aimed at a rack that
+holds the Drum Rack (`t0/d0/pC1` when the kit is `t0/d0/c0/d0`) answers with the
+nested path, whichever tool raised it. An `id` that parses as a path (`t0/d1`)
+answers "send it as path, not id". A `c+` or `d+` where only an existing object
+will do says which param of which tool takes one.

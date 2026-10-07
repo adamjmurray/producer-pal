@@ -11,6 +11,7 @@
 // there and this call can't remove is skipped, with the reason a lone target
 // would have thrown. A path that can't be parsed refuses the whole call.
 
+import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
@@ -37,7 +38,12 @@ export type DeletePayload =
   | {
       /** Nothing is there, so the write has nothing to do */
       kind: "nothing";
+      /** What to try instead, when the path aimed at the wrong rack */
+      hint?: string;
     };
+
+/** The delete types whose paths run down a track's device chain. */
+const DEVICE_CHAIN_TYPES = new Set(["device", "chain", "drum-pad"]);
 
 /** An absent target: what the call asked for has already happened. */
 export const NOTHING_TO_DELETE = "nothing to delete";
@@ -107,7 +113,9 @@ function resolveTarget(
         resolvePathForType(type, requestPath));
 
   if (lookup.id == null) {
-    return lookup.empty ? nothingThere(named) : { named, skip: lookup.reason };
+    return lookup.empty
+      ? nothingThere(named, nestedKitHint(named, type))
+      : { named, skip: lookup.reason };
   }
 
   const { id } = lookup;
@@ -135,10 +143,27 @@ function resolveTarget(
  * A target with nothing there. It has no key: nothing is named twice that
  * isn't there.
  * @param named - The target, as the caller named it
+ * @param hint - What to try instead, when there is something to suggest
  * @returns A target whose write does nothing
  */
-function nothingThere(named: NamedTarget): Target<DeletePayload> {
-  return { named, data: { kind: "nothing" } };
+function nothingThere(
+  named: NamedTarget,
+  hint?: string,
+): Target<DeletePayload> {
+  return { named, data: { kind: "nothing", ...(hint && { hint }) } };
+}
+
+/**
+ * The nested-kit "did you mean" for a pad, chain or device path that found
+ * nothing. Only those types' paths go down a device chain, which the hint walks.
+ * @param named - The target, as the caller named it
+ * @param type - Type of objects to delete
+ * @returns The hint, or undefined when there is none to give
+ */
+function nestedKitHint(named: NamedTarget, type: string): string | undefined {
+  return named.param === "path" && DEVICE_CHAIN_TYPES.has(type)
+    ? nestedRackHintForPath(named.value)
+    : undefined;
 }
 
 /**

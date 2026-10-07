@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { type ChainMixerReport } from "./chain/chain-mixer-report.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
@@ -254,7 +255,10 @@ function moveDevice(
     refuseTargetWork(
       notes,
       ["toPath"],
-      withChainsLeft(`not moved: nothing at toPath "${toPath}"`, madeChains),
+      withChainsLeft(
+        `not moved: nothing at toPath "${toPath}"${nestedRackHintForPath(toPath, "toPath")}`,
+        madeChains,
+      ),
     );
   } else if (outcome === "refused") {
     const explained = reason == null ? "" : `: ${reason}`;

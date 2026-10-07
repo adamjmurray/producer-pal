@@ -82,9 +82,9 @@ describe('narrowing a "c+" path', () => {
   // refusal has to name the tools that would have made one.
   it("is refused where an existing object was wanted", () => {
     expect(() => requireDevicePath(parseObjectPath("t0/d1/c+"))).toThrow(
-      'invalid path "t0/d1/c+" - "c+" appends a chain, which only ' +
-        "ppal-create-device, ppal-duplicate and ppal-update-device do; " +
-        'name an existing chain as "c<index>"',
+      'invalid path "t0/d1/c+" - "c+" appends a chain, so it only works as a ' +
+        "destination: path in ppal-create-device, toPath in ppal-duplicate " +
+        'and ppal-update-device; name an existing chain as "c<index>"',
     );
   });
 

@@ -420,7 +420,8 @@ export function nestedDrumRackHint(
 ): string {
   const device = LiveAPI.from(liveApiPath);
 
-  if (!device.exists()) {
+  // A Drum Rack is the kit itself, so a missing pad on it isn't a nesting miss.
+  if (!device.exists() || device.getProperty("can_have_drum_pads")) {
     return "";
   }
 

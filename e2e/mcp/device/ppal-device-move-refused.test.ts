@@ -499,7 +499,7 @@ describe('"d+" as the device to update', () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      '"d+" appends a device, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device',
     );
   });
 });

@@ -6,6 +6,7 @@
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { targetLabel } from "./object-path-for-api.ts";
+import { parseObjectPath } from "./object-path.ts";
 
 /** What the tools call each Live class a path or id can reach. */
 const TYPE_WORDS: Partial<Record<LiveObjectType, string>> = {
@@ -34,7 +35,7 @@ export function validateIdType(id: string, expectedType: string): LiveAPI {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(`id "${id}" does not exist`);
+    throw new Error(idDoesNotExist(id));
   }
 
   const mismatch = typeMismatch(object, expectedType);
@@ -44,6 +45,19 @@ export function validateIdType(id: string, expectedType: string): LiveAPI {
   }
 
   return object;
+}
+
+/**
+ * The reason an `id` names nothing. Ids are numbers, so one that parses as a
+ * path ("t0/d1") says to send it as `path` instead.
+ * @param id - The id as the caller wrote it
+ * @param noun - What the id was meant to name, when the caller knows
+ * @returns The reason
+ */
+export function idDoesNotExist(id: string, noun?: string): string {
+  const what = noun == null ? "id" : `${noun} with id`;
+
+  return `${what} "${id}" does not exist${pathAsIdHint(id)}`;
 }
 
 /**
@@ -111,4 +125,25 @@ function isTypeMatch(
     default:
       return false;
   }
+}
+
+/**
+ * The advice for an id that is really a path, or "" for anything else.
+ * @param id - The id as the caller wrote it
+ * @returns The advice, or ""
+ */
+function pathAsIdHint(id: string): string {
+  // A real id is all digits. The letter test also keeps the legacy numeric
+  // path spellings ("2", "2/3") out of the parser.
+  if (!/[a-z]/i.test(id)) {
+    return "";
+  }
+
+  try {
+    parseObjectPath(id, "id", true);
+  } catch {
+    return "";
+  }
+
+  return `; "${id.trim()}" is a path, so send it as path, not id`;
 }

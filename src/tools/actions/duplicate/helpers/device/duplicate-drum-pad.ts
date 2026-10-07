@@ -14,6 +14,7 @@ import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   findDrumPadByNote,
   invalidateRackChains,
+  nestedDrumRackHint,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
@@ -22,7 +23,13 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
+import {
+  NEW_CHAIN,
+  NEW_DEVICE,
+  pathError,
+} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 export interface DuplicateDrumPadResult {
   id: string;
@@ -81,7 +88,7 @@ export function duplicateDrumPad(
 
   if (source.rackPath !== destination.rackPath) {
     throw new Error(
-      `a drum-pad copy stays within one rack, but the source pad and toPath "${toPath}" are in different racks`,
+      `a drum-pad copy stays within one rack, but the source pad and toPath "${toPath}" are in different racks${nestedDrumRackHint(destination.rackPath, midiToNoteName(destination.midi) as string)}`,
     );
   }
 
@@ -154,6 +161,18 @@ function refuseRackWithoutPads(rack: LiveAPI): void {
  * @throws Error when the path doesn't name one pad
  */
 export function resolvePadTarget(path: string, label: string): PadTarget {
+  const parsed = parseObjectPath(path, label, true);
+
+  // A pad copy never makes a chain or a device of its own, so say what the
+  // destination should be instead of listing who takes a `c+`.
+  if (parsed.kind === "new-chain" || parsed.kind === "new-device") {
+    throw pathError(
+      label,
+      path,
+      `a drum-pad copy goes onto a whole pad like "t0/d0/pC1", and layers on any chains it has; drop the "${parsed.kind === "new-chain" ? NEW_CHAIN : NEW_DEVICE}"`,
+    );
+  }
+
   const resolved = resolvePathToLiveApi(path, label);
 
   if (resolved.namesNothing != null) {

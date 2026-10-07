@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
@@ -54,7 +55,7 @@ export async function duplicateClipToArrangement(
   const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {
-    throw new Error(`id "${clipId}" does not exist`);
+    throw new Error(idDoesNotExist(clipId));
   }
 
   const trackIndex = destTrackIndex ?? clip.trackIndex;

@@ -6,7 +6,10 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idDoesNotExist,
+  typeMismatch,
+} from "#src/tools/shared/validation/id-validation.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
@@ -66,7 +69,7 @@ function idTarget(id: string): Target<SlotPayload> {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    return { named, skip: `id "${id}" does not exist` };
+    return { named, skip: idDoesNotExist(id) };
   }
 
   const mismatch = typeMismatch(object, "clip");

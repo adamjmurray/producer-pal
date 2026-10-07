@@ -34,8 +34,9 @@ describe("readOneDevice with path parameter", () => {
     "refuses %s, which makes a device",
     (path) => {
       expect(() => readOneDevice({ path })).toThrow(
-        `"d+" appends a device, which only ppal-create-device, ppal-duplicate ` +
-          `and ppal-update-device do; name an existing device as "d<index>"`,
+        `"d+" appends a device, so it only works as a destination: path in ` +
+          `ppal-create-device, toPath in ppal-duplicate and ppal-update-device; ` +
+          `name an existing device as "d<index>"`,
       );
     },
   );

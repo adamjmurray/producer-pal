@@ -167,7 +167,7 @@ function deleteTarget(
   const { data, named } = target;
 
   if (data.kind === "nothing") {
-    return noteEntry(named, NOTHING_TO_DELETE);
+    return noteEntry(named, `${NOTHING_TO_DELETE}${data.hint ?? ""}`);
   }
 
   const { type, tracks, groups } = step.checked;

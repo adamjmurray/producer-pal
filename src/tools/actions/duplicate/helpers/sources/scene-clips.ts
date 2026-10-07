@@ -7,6 +7,7 @@
 // what it covers and to write, and copying never moves them, so a call reads
 // the scene once and shares the pass.
 
+import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -71,7 +72,7 @@ export function sceneIndexOf(sceneId: string): number {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
-    throw new Error(`scene with id "${sceneId}" does not exist`);
+    throw new Error(idDoesNotExist(sceneId, "scene"));
   }
 
   const sceneIndex = scene.sceneIndex;

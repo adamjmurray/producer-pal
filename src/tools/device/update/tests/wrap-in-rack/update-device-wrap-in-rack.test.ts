@@ -501,7 +501,7 @@ describe("updateDevice - wrapInRack", () => {
     [
       "c+ path",
       { path: "t0/d0/c+" },
-      'invalid path "t0/d0/c+" - "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      'invalid path "t0/d0/c+" - "c+" appends a chain, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device; name an existing chain as "c<index>"',
     ],
     // No rack at t0/d0, so the pad names nothing.
     [

@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
+import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import {
   type DrumPadGroup,
   chainsOnDrumPad,
@@ -44,7 +46,9 @@ export function resolveNamedTarget({
 
   if (!resolved) {
     throw new Error(
-      param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
+      param === "id"
+        ? idDoesNotExist(value)
+        : `${nothingAtPath(value)}${nestedRackHintForPath(value)}`,
     );
   }
 
