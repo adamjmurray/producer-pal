@@ -33,7 +33,19 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     ).toStrictEqual(caching);
   });
 
-  it("keeps legacy budget thinking for Haiku", () => {
+  it("uses adaptive thinking for Haiku 5.5", () => {
+    expect(
+      buildProviderOptions("vercel", "Max", "anthropic/claude-haiku-5.5"),
+    ).toStrictEqual({
+      ...caching,
+      anthropic: {
+        thinking: { type: "adaptive", display: "summarized" },
+        effort: "max",
+      },
+    });
+  });
+
+  it("keeps legacy budget thinking for Haiku 4.5", () => {
     expect(
       buildProviderOptions("vercel", "Max", "anthropic/claude-haiku-4.5"),
     ).toStrictEqual({

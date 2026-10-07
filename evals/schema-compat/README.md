@@ -45,7 +45,7 @@ node --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [fla
 ```
 
 - **models** — `provider/model` or prefix-inferred (e.g. `gemini-3.5-flash`,
-  `mistral/mistral-small-latest`, `openrouter/anthropic/claude-haiku-4.5`).
+  `mistral/mistral-small-latest`, `openrouter/anthropic/claude-haiku-5.5`).
   Defaults to one model per supported provider (Gemini, OpenAI, Mistral,
   OpenRouter). Models whose API key is missing show as `no-key`.
 - `--repeat=N` — independent draws per cell (default **3**). A single draw can't

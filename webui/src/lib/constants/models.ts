@@ -127,7 +127,7 @@ export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { value: "claude-fable-5-1", label: "Claude Fable 5.1" },
-  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  { value: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
   OTHER_MODEL_OPTION,
 ];
 

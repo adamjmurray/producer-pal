@@ -9,6 +9,7 @@ import {
   isAlwaysOnThinkingModel,
   isOpenAIReasoningModel,
   isLegacyNonThinkingModel,
+  isLegacyThinkingModel,
   mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
@@ -30,6 +31,19 @@ describe("config-builders", () => {
     it("is false for other models", () => {
       expect(isAlwaysOnThinkingModel("claude-sonnet-5-5")).toBe(false);
       expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
+    });
+  });
+
+  describe("isLegacyThinkingModel", () => {
+    it("is true for Haiku 4.5 ids", () => {
+      expect(isLegacyThinkingModel("claude-haiku-4-5")).toBe(true);
+      expect(isLegacyThinkingModel("claude-haiku-4-5-20251001")).toBe(true);
+      expect(isLegacyThinkingModel("anthropic/claude-haiku-4.5")).toBe(true);
+    });
+
+    it("is false for Haiku 5.5, which rejects budget thinking", () => {
+      expect(isLegacyThinkingModel("claude-haiku-5-5")).toBe(false);
+      expect(isLegacyThinkingModel("anthropic/claude-haiku-5.5")).toBe(false);
     });
   });
 

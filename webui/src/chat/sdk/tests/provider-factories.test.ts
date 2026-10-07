@@ -330,7 +330,13 @@ describe("transformAnthropicRequest", () => {
       expect(parsed.thinking).toStrictEqual({ type: "disabled" });
     });
 
-    it("leaves omitted thinking alone for legacy (Haiku) models", async () => {
+    it("injects disabled thinking when omitted on Haiku 5.5", async () => {
+      const parsed = await transform({ model: "claude-haiku-5-5" });
+
+      expect(parsed.thinking).toStrictEqual({ type: "disabled" });
+    });
+
+    it("leaves omitted thinking alone for legacy (Haiku 4.5) models", async () => {
       const parsed = await transform({ model: "claude-haiku-4-5" });
 
       expect(parsed.thinking).toBeUndefined();

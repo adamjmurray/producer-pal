@@ -160,7 +160,7 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
     // runs adaptive thinking. The app omits `thinking` only for the "Off"
     // level, and the @ai-sdk/anthropic provider drops a providerOptions
     // `{type:"disabled"}` before it reaches the wire, so make the choice
-    // explicit here to honor "Off". Legacy (Haiku) and always-on (Fable /
+    // explicit here to honor "Off". Legacy (Haiku 4.5) and always-on (Fable /
     // Mythos, which 400 on disabled) models keep the omitted-thinking body.
     body.thinking = { type: "disabled" };
     modified = true;
@@ -177,7 +177,7 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
  * Whether an omitted `thinking` field should be forced to `{type: "disabled"}`.
  * True for adaptive-by-default Anthropic models where omitting `thinking` would
  * otherwise run adaptive thinking (Sonnet 5+); false for legacy enabled-thinking
- * models (Haiku), always-on models (Fable / Mythos) that reject `disabled`, and
+ * models (Haiku 4.5), always-on models (Fable / Mythos) that reject `disabled`, and
  * pre-3.7 models (via the free-text "Other..." input) that reject the `thinking`
  * field entirely — injecting `disabled` on those 400s every send.
  * @param body - Parsed Anthropic request body

@@ -85,12 +85,12 @@ export function mapTurnDetectionToConfig(
 
 /**
  * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
- * Haiku 4.5 does not support adaptive thinking yet.
+ * Only Haiku 4.5: it lacks adaptive thinking, and Haiku 5.5+ rejects budgetTokens.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if model needs legacy thinking config
  */
 export function isLegacyThinkingModel(model: string): boolean {
-  return model.includes("haiku");
+  return model.includes("haiku-4");
 }
 
 /**
