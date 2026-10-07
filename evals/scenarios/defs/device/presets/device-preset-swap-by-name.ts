@@ -24,6 +24,7 @@ import {
   TOOL_CONNECT,
 } from "../../clip/helpers/clip-tool-constants.ts";
 import { firstResultPath } from "../../helpers/new-track-path.ts";
+import { describeNames } from "../helpers/describe-names.ts";
 
 const KIT = /505/;
 
@@ -83,22 +84,6 @@ function drumRackNames(result: unknown): string[] {
     .map((device) => device.name ?? "");
 }
 
-/**
- * Failure text for the racks found: "none" only when there are no racks.
- *
- * @param names - Each Drum Rack's name, "" when unnamed
- * @returns The racks, quoted, with unnamed ones marked
- */
-function describeRacks(names: string[]): string {
-  if (names.length === 0) {
-    return "none";
-  }
-
-  return names
-    .map((name) => (name === "" ? "(unnamed)" : `"${name}"`))
-    .join(", ");
-}
-
 export const devicePresetSwapByName: EvalScenario = {
   id: "device-preset-swap-by-name",
   tags: ["devices"],
@@ -127,7 +112,7 @@ export const devicePresetSwapByName: EvalScenario = {
         return racks.length === 1 && KIT.test(racks[0] ?? "");
       },
       explain: (result) =>
-        `expected one Drum Rack named for the 505 kit, Drum Racks are: ${describeRacks(drumRackNames(result))}`,
+        `expected one Drum Rack named for the 505 kit, Drum Racks are: ${describeNames(drumRackNames(result))}`,
     },
 
     { type: "token_usage", maxTokens: 2_500 },

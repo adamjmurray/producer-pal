@@ -24,6 +24,7 @@ import {
   TOOL_CONNECT,
 } from "../../clip/helpers/clip-tool-constants.ts";
 import { newTrackPath } from "../../helpers/new-track-path.ts";
+import { describeNames } from "../helpers/describe-names.ts";
 
 const KIT = /505/;
 
@@ -64,7 +65,7 @@ export const deviceKitByName: EvalScenario = {
       args: (turns) => ({ path: newTrackPath(turns), include: ["devices"] }),
       expect: (result) => deviceNames(result).some((name) => KIT.test(name)),
       explain: (result) =>
-        `expected a device named for the 505 kit on the new track, devices are: ${deviceNames(result).join(", ") || "none"}`,
+        `expected a device named for the 505 kit on the new track, devices are: ${describeNames(deviceNames(result))}`,
     },
 
     asSignal({
