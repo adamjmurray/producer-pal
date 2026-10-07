@@ -184,3 +184,59 @@ describe("a built-in function's argument count", () => {
     }
   });
 });
+
+describe("a compound assignment of a position function", () => {
+  it.each([
+    ["timing += swing(0.3, n/8)", "swing", "timing +="],
+    ["timing -= swing(0.05)", "swing", "timing -="],
+    ["timing *= swing(0.05)", "swing", "timing *="],
+    ["timing /= swing(0.05)", "swing", "timing /="],
+    ["timing += quant(n/16)", "quant", "timing +="],
+    ["timing -= quant(n/16)", "quant", "timing -="],
+    ["timing *= quant(n/16)", "quant", "timing *="],
+    ["timing /= quant(n/16)", "quant", "timing /="],
+    ["C3: 1|1-2|1: timing += swing(0.05)", "swing", "timing +="],
+    ["velocity += quant(n/4)", "quant", "velocity +="],
+  ])("is refused: %s", (transform, fn, op) => {
+    const param = op.split(" ")[0];
+
+    expect(() => tryParseTransform(transform, 4, 4)).toThrow(
+      `${fn}() returns the new start, so use "${param} = ${fn}(...)", not "${op}"`,
+    );
+  });
+
+  it("is refused by applyTransforms before any note changes", () => {
+    const notes = createTestNote({ start_time: 2 });
+
+    expect(() => applyTransforms(notes, "timing += swing(0.3)", 4, 4)).toThrow(
+      "swing() returns the new start",
+    );
+    expect(notes[0]?.start_time).toBe(2);
+  });
+
+  it("is refused in an audio transform too", () => {
+    expect(() =>
+      tryParseTransform("gain += quant(n/4)", 4, 4, "audio"),
+    ).toThrow('use "gain = quant(...)", not "gain +="');
+  });
+
+  it("still allows plain assignment and other compound values", () => {
+    for (const transform of [
+      "timing = swing(0.3, n/8)",
+      "timing = quant(n/16)",
+      "C3: timing = swing(0.05)",
+      "timing += 0.1",
+      "timing -= n/16",
+      "timing *= 0.5",
+      "timing = note.start * swing(0.05)",
+      "timing = note.start / quant(n/16)",
+      "timing = note.start + swing(0.05)",
+      "timing += rand(-0.01, 0.01)",
+      "timing += quant(n/16) - note.start",
+      "timing += min(0.1, swing(0.05) - note.start)",
+      "velocity += legato()",
+    ]) {
+      expect(() => tryParseTransform(transform, 4, 4)).not.toThrow();
+    }
+  });
+});

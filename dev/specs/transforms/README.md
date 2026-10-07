@@ -54,6 +54,9 @@ every clip, so warning and skipping would repeat one line per clip and return a
 result that reads as success. `ppal-create-clip`, `ppal-update-clip` and
 `ppal-duplicate` run the same check where they parse the transform. Refused: a
 duplicate selector, a pitch name used as a value for anything but `pitch`, a
+compound assignment (`+=`, `-=`, `*=`, `/=`) whose value is directly a `swing()`
+or `quant()` call (they return a position, so `timing += swing(0.3)` would add
+the note's start to itself; the message says to use `timing = swing(...)`), a
 built-in with the wrong argument count, and a constant argument that can't be
 evaluated, isn't finite or is out of range (a ratchet count below 2 or grid of
 0, a repeat offset of 0 or count below 1, a `curve()` exponent of 0 or less).

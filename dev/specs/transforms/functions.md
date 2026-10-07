@@ -5,7 +5,7 @@
 ### swing(amount [, grid] [, raw])
 
 Delays off-beat notes to create a swing feel. Returns absolute position — use
-with `timing =`.
+with `timing =`. `timing += swing(...)` (or `-=`, `*=`, `/=`) is refused.
 
 - **amount**: Delay in musical beats applied to off-beat notes (0.02=subtle,
   0.05=medium, 0.1=heavy). Negative values push off-beats early.
@@ -43,7 +43,7 @@ timing = swing(0.05, n/16, raw) // 16th-note swing, no auto-quantize
 ### quant(grid)
 
 Snaps note timing to the nearest grid point. Returns absolute position — use
-with `timing =`.
+with `timing =`; a compound assignment is refused, as for `swing()`.
 
 - **grid**: Grid size as a note value or numeric musical beats. Must be > 0 —
   unlike a waveform period, a zero or negative grid has nothing to snap to. Same

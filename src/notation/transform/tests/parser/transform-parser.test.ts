@@ -27,6 +27,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "velocity",
           operator: "add",
+          compound: "+=",
           expression: 10,
         },
       ]);
@@ -53,6 +54,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "velocity",
           operator: "add",
+          compound: "+=",
           expression: 10,
         },
         {
@@ -60,6 +62,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "timing",
           operator: "add",
+          compound: "+=",
           expression: 0.05,
         },
       ]);
@@ -76,6 +79,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "velocity",
           operator: "add",
+          compound: "+=",
           expression: 1,
         },
         {
@@ -83,6 +87,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "timing",
           operator: "add",
+          compound: "+=",
           expression: 2,
         },
         {
@@ -90,6 +95,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "duration",
           operator: "add",
+          compound: "+=",
           expression: 3,
         },
         {
@@ -97,6 +103,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "probability",
           operator: "add",
+          compound: "+=",
           expression: 4,
         },
         {
@@ -104,6 +111,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "deviation",
           operator: "add",
+          compound: "+=",
           expression: 5,
         },
         {
@@ -111,6 +119,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "pitch",
           operator: "add",
+          compound: "+=",
           expression: 6,
         },
       ]);
@@ -253,6 +262,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "velocity",
           operator: "add",
+          compound: "-=",
           expression: { type: "subtract", left: 0, right: 30 },
         },
       ]);
@@ -424,6 +434,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "gain",
           operator: "add",
+          compound: "+=",
           expression: 3,
         },
       ]);
@@ -610,6 +621,7 @@ describe("Transform Parser", () => {
           timeRange: null,
           parameter: "pitch",
           operator: "add",
+          compound: "+=",
           expression: 12,
         },
       ]);

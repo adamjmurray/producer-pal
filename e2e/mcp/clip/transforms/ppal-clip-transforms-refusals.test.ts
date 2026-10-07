@@ -29,10 +29,11 @@ const REFUSAL = "ratchet() needs a count of 2 or more";
 /**
  * Assert a tool call was refused with the transform's message.
  * @param result - The raw tool result
+ * @param message - Text the refusal must contain
  */
-function expectRefused(result: unknown): void {
+function expectRefused(result: unknown, message = REFUSAL): void {
   expect(isToolError(result)).toBe(true);
-  expect(getToolErrorMessage(result)).toContain(REFUSAL);
+  expect(getToolErrorMessage(result)).toContain(message);
 }
 
 /**
@@ -113,4 +114,24 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
     expect(getToolErrorMessage(result)).toContain('expected ",", ")"');
     expect((await readClipNotes(clipId)).match(/C3/g)).toHaveLength(1);
   });
+
+  it.each([
+    ["swing", "timing += swing(0.3, n/8)", "timing +="],
+    ["quant", "timing -= quant(n/16)", "timing -="],
+  ])(
+    "ppal-update-clip refuses %s() under a compound operator",
+    async (fn, transforms, op) => {
+      const clipId = await createMidiClip(97, "v80 C3 2|1");
+
+      expectRefused(
+        await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: { id: clipId, transforms },
+        }),
+        `${fn}() returns the new start, so use "timing = ${fn}(...)", not "${op}"`,
+      );
+      // Still at beat 2, not slid later
+      expect(await readClipNotes(clipId)).toContain("2|1");
+    },
+  );
 });

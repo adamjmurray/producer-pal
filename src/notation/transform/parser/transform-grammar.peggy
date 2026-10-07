@@ -70,10 +70,11 @@
   // Desugars a shorthand additive op (v±N, p±N) to the same shape the full form
   // produces in assignmentBody: subtract becomes add-of-negation, add stays add.
   function shorthandAdditive(parameter, operator, value) {
+    const compound = COMPOUND_OPERATORS[operator];
     if (operator === "subtract") {
-      return { parameter, operator: "add", expression: { type: "subtract", left: 0, right: value } };
+      return { parameter, operator: "add", compound, expression: { type: "subtract", left: 0, right: value } };
     }
-    return { parameter, operator, expression: value };
+    return { parameter, operator, compound, expression: value };
   }
 
   // Intrinsic scalar note properties allowed inside a where() predicate. Selection-
@@ -134,6 +135,9 @@
         return;
     }
   }
+
+  // The compound assignment operators, by the name the `operator` rule gives them.
+  const COMPOUND_OPERATORS = { add: "+=", subtract: "-=", multiply: "*=", divide: "/=" };
 
   // Maps transform parameters to their note/audio variable for *= and /= desugaring.
   // timing uses note.start (absolute position) since there is no note.timing offset variable.
@@ -345,15 +349,18 @@ barBeatPoint "bar|beat position"
 // (v/p/n + bare-pitch) that desugar to the same { parameter, operator, expression }.
 assignmentBody
   = parameter:parameter _ operator:operator _ expression:expression {
+      // `compound` records the operator as written, since the desugaring below
+      // loses it (`-=` becomes add, `*=` and `/=` become set).
+      const compound = COMPOUND_OPERATORS[operator];
       if (operator === "subtract") {
-        return { parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+        return { parameter, operator: "add", compound, expression: { type: "subtract", left: 0, right: expression } };
       }
       if (operator === "multiply" || operator === "divide") {
         const varInfo = PARAM_TO_VARIABLE[parameter];
         const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
-        return { parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
+        return { parameter, operator: "set", compound, expression: { type: operator, left: currentValue, right: expression } };
       }
-      return { parameter, operator, expression };
+      return compound == null ? { parameter, operator, expression } : { parameter, operator, compound, expression };
     }
   / shorthand
 

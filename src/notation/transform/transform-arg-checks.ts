@@ -7,6 +7,7 @@ import {
   findArityError,
   type ArityNode,
 } from "./helpers/functions/function-arity.ts";
+import { checkPositionFunctionAssignment } from "./helpers/functions/position-function-assignment.ts";
 import { checkNoteOpArgs } from "./helpers/note-ops/note-op-arg-checks.ts";
 import {
   argError,
@@ -28,7 +29,8 @@ import {
 /**
  * Throw for a mistake in the transform text: a duplicate selector, a pitch name
  * used as a number, a note op with the wrong arguments, a `curve()` exponent
- * that is not above 0.
+ * that is not above 0, a compound assignment of a function that returns a
+ * position (`timing += swing(...)`).
  *
  * A mistake that holds in every meter throws {@link TransformArgError}, which
  * callers use to refuse the whole call. A constant that mixes note values or bar
@@ -124,6 +126,7 @@ function checkAssignment(
   const { expression, parameter } = assignment;
 
   throwIfArityError([expression, assignment.predicate ?? undefined]);
+  checkPositionFunctionAssignment(assignment);
 
   // A bare pitch name is a number only for `pitch`, and would otherwise
   // silently become its MIDI number (`velocity = b2` -> 59).

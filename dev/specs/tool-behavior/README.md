@@ -138,7 +138,8 @@ How the tool answers depends on what is wrong:
 - **`count` with a destination list**, and `capture` with `count` on
   create-scene: refused, since the destinations already say how many.
 - **A bad transform arg** is refused when it does not depend on the clip's
-  meter, and skipped per clip when it does
+  meter, and skipped per clip when it does. A compound assignment of a
+  `swing()`/`quant()` call (`timing += swing(...)`) is refused the same way
   ([transform spec](../transforms/README.md)).
 
 ### A param only another action reads

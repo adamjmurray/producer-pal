@@ -12,6 +12,7 @@ const V_MINUS_10_ADD_OF_NEGATION = [
   assignment({
     parameter: "velocity",
     operator: "add",
+    compound: "-=",
     expression: { type: "subtract", left: 0, right: 10 },
   }),
 ];
@@ -43,7 +44,12 @@ describe("Transform Parser - shorthand", () => {
   describe("additive operator shorthand (v±N, p±N)", () => {
     it("desugars v+10 to velocity add", () => {
       expect(parseAssignments("v+10")).toStrictEqual([
-        assignment({ parameter: "velocity", operator: "add", expression: 10 }),
+        assignment({
+          parameter: "velocity",
+          operator: "add",
+          compound: "+=",
+          expression: 10,
+        }),
       ]);
     });
 
@@ -58,6 +64,7 @@ describe("Transform Parser - shorthand", () => {
         assignment({
           parameter: "probability",
           operator: "add",
+          compound: "+=",
           expression: 0.1,
         }),
       ]);
@@ -68,6 +75,7 @@ describe("Transform Parser - shorthand", () => {
         assignment({
           parameter: "probability",
           operator: "add",
+          compound: "-=",
           expression: { type: "subtract", left: 0, right: 0.1 },
         }),
       ]);
@@ -79,6 +87,7 @@ describe("Transform Parser - shorthand", () => {
           pitchRange: { startPitch: 36, endPitch: 36 },
           parameter: "velocity",
           operator: "add",
+          compound: "-=",
           expression: { type: "subtract", left: 0, right: 10 },
         }),
       );
@@ -383,6 +392,32 @@ describe("Transform Parser - shorthand", () => {
 
     it("rejects bare token prefix with no value (v)", () => {
       expect(() => parseAssignments("v")).toThrow('but "v" found');
+    });
+  });
+
+  describe("compound operator record", () => {
+    it("records the operator as written, and none for =", () => {
+      const compounds = [
+        "velocity += 1",
+        "velocity -= 1",
+        "velocity *= 2",
+        "velocity /= 2",
+        "velocity = 1",
+        "timing = note.start * 2",
+        "v+10",
+        "p-0.1",
+      ].map((line) => parseAssignments(line)[0]!.compound);
+
+      expect(compounds).toStrictEqual([
+        "+=",
+        "-=",
+        "*=",
+        "/=",
+        undefined,
+        undefined,
+        "+=",
+        "-=",
+      ]);
     });
   });
 });

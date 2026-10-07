@@ -125,6 +125,9 @@ export interface TimeRange {
 export interface TransformAssignment {
   parameter: string;
   operator: "add" | "set";
+  /** The compound operator as written (`+=`, `-=`, `*=`, `/=`), which the
+   * parser desugars into `operator` + `expression`. Absent for plain `=`. */
+  compound?: "+=" | "-=" | "*=" | "/=";
   expression: ExpressionNode;
   pitchRange?: PitchRange | null;
   timeRange?: TimeRange | null;
