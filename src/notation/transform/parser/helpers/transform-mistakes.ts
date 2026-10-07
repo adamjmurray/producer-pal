@@ -38,6 +38,7 @@ const CHECKS: MistakeCheck[] = [
   shorthandMathMistake,
   afterParameterMistake,
   danglingOperator,
+  angleConstantMistake,
   unknownParameterMistake,
 ];
 
@@ -122,4 +123,17 @@ function danglingOperator(line: FailedLine): string | null {
     !/(?<![\w.])n[\d.]*.$/.test(head)
     ? `nothing after "${op}" — add a value or remove it.`
     : null;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a radians constant (`pi`, `tau`, `Math.PI`), which
+ *   waveform arguments don't use
+ */
+function angleConstantMistake(line: FailedLine): string | null {
+  const name = /^(?:Math\.)?(?:pi|tau)(?![\w.])/i.exec(line.rest)?.[0];
+
+  return name == null
+    ? null
+    : `there is no ${name}: sin(), cos(), saw(), tri() and square() take a cycle length, not an angle — e.g. sin(1bar) or sin(n/4).`;
 }

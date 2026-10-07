@@ -149,6 +149,30 @@ describe("transform syntax error details", () => {
     expect(errorFor(source)).toContain(expected);
   });
 
+  it("says there is no pi and what a waveform takes", () => {
+    expect(errorFor("velocity = 64 + 30*sin(note.start * 2 * pi)")).toBe(
+      'transform syntax error at position 40 (line 1, column 41) near "pi)": there is no pi: sin(), cos(), saw(), tri() and square() take a cycle length, not an angle — e.g. sin(1bar) or sin(n/4).',
+    );
+  });
+
+  it.each([
+    ["C1: velocity = 100 + 20*sin(2*pi*note.start/4)", "pi"],
+    ["velocity = 2*pi", "pi"],
+    ["velocity = sin(PI)", "PI"],
+    ["velocity = tau", "tau"],
+    ["velocity = sin(note.start * TAU)", "TAU"],
+    ["velocity = 50 * sin(Math.PI * 2)", "Math.PI"],
+  ])("names the radians constant in %s", (source, name) => {
+    expect(errorFor(source)).toContain(
+      `there is no ${name}: sin(), cos(), saw(), tri() and square() take a cycle length`,
+    );
+  });
+
+  it("doesn't call a longer name a radians constant", () => {
+    expect(errorFor("velocity = pi2 +")).not.toContain("there is no");
+    expect(errorFor("velocity = pitch.x +")).not.toContain("there is no");
+  });
+
   it("reports the failing line of a multi-line string", () => {
     expect(errorFor("velocity = 1\nlength = n/4")).toContain(
       'position 13 (line 2, column 1) near "length = n/4": length isn\'t a parameter — write "duration = n/4".',
