@@ -49,6 +49,7 @@ export const deviceKitByName: EvalScenario = {
   tags: ["devices"],
   description: "Load a named library drum kit on a new track, unprompted",
   kind: "capability",
+  requires: { params: ["preset"] },
   liveSet: "basic-midi-4-track",
 
   messages: [MSG_CONNECT, "Load the 505 Classic Kit on a new MIDI track."],

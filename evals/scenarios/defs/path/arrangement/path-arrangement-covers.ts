@@ -8,11 +8,10 @@
  *
  * A 4-bar clip at bar 1 runs through bar 4, so "the clip playing at bar 3" is
  * `t3[3|1]` — no need to find where the clip starts. This grades that the model
- * trusts that: every path it sends for track 3 sits at bar 3, and one
- * `ppal-update-clip` renames the clip, by that path or by the id a
- * `ppal-read-clip` at bar 3 returned. Reading the clip at bar 3 is fine. Reading
- * the track, or aiming at another bar (`t3[1|1]`), means it went looking for the
- * start.
+ * trusts that: one `ppal-update-clip` renames the clip, by a bar-3 path or by
+ * the id a `ppal-read-clip` at bar 3 returned. Reads before the write are
+ * harmless and not graded. Writing to another bar (`t3[1|1]`), or by an id read
+ * from the clip's start, means it went looking for the start.
  *
  * `kind: "capability"` — an improvement target, not a regression guard.
  */
@@ -37,45 +36,23 @@ import { listEntries } from "../path-assertions.ts";
 const CLIP_NAME = "Long One";
 
 /** Lead is track 3; bar 3 is inside the clip and not where it starts. */
-const TRACK_3 = /^t3(\[|$)/;
 const COVERED_PATH = /^t3\[3\|[\d.]+\]$/;
 
 /**
  * The model trusts the covering coordinate instead of hunting for the start.
+ * Graded on the write: reads are free, but an id only counts if a bar-3 read
+ * returned it.
  * @param turn - Turn index to grade
  * @returns A custom assertion over every call the turn made
  */
 function assertTrustsCoveringBar(turn: number): EvalAssertion {
   return {
     type: "custom",
-    description: "aims at bar 3 only, never looks for the clip's start",
+    description: "renames by the bar-3 coordinate, never by the clip's start",
     assert: (turns) => {
       const calls = getAllToolCalls(turns, turn);
       const reads = calls.filter((call) => call.name === TOOL_READ_CLIP);
       const writes = calls.filter((call) => call.name === TOOL_UPDATE_CLIP);
-      const strays = calls.filter(
-        (call) => !reads.includes(call) && !writes.includes(call),
-      );
-
-      if (strays.length > 0) {
-        throw new Error(
-          `called ${strays.map((call) => call.name).join(", ")} to find the ` +
-            `clip: the bar the user named is enough to address it`,
-        );
-      }
-
-      for (const call of calls) {
-        for (const path of listEntries(call.args.path)) {
-          const aimed = path.replaceAll(" ", "");
-
-          if (TRACK_3.test(aimed) && !COVERED_PATH.test(aimed)) {
-            throw new Error(
-              `${call.name} aimed at '${aimed}', not bar 3 of track 3 ` +
-                `(t3[3|1]), which covers the clip`,
-            );
-          }
-        }
-      }
 
       if (writes.length !== 1) {
         throw new Error(

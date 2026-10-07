@@ -127,6 +127,7 @@ export const durationReachForQuarter: EvalScenario = {
   description:
     "`make it a quarter note` → n/4 (absolute), not bare 1/4 (a 16th in 4/4)",
   kind: "capability",
+  requires: { transforms: true },
   liveSet: LIVE_SET,
 
   messages: [

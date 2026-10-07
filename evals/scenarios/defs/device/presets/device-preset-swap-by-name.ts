@@ -83,13 +83,29 @@ function drumRackNames(result: unknown): string[] {
     .map((device) => device.name ?? "");
 }
 
+/**
+ * Failure text for the racks found: "none" only when there are no racks.
+ *
+ * @param names - Each Drum Rack's name, "" when unnamed
+ * @returns The racks, quoted, with unnamed ones marked
+ */
+function describeRacks(names: string[]): string {
+  if (names.length === 0) {
+    return "none";
+  }
+
+  return names
+    .map((name) => (name === "" ? "(unnamed)" : `"${name}"`))
+    .join(", ");
+}
+
 export const devicePresetSwapByName: EvalScenario = {
   id: "device-preset-swap-by-name",
   tags: ["devices"],
   description: "Swap a named library drum kit onto an existing Drum Rack",
   kind: "capability",
   liveSet: "basic-midi-4-track",
-  requires: { tools: ["ppal-update-device"] },
+  requires: { tools: ["ppal-update-device"], params: ["preset"] },
 
   setup: seedEmptyDrumRack,
 
@@ -111,7 +127,7 @@ export const devicePresetSwapByName: EvalScenario = {
         return racks.length === 1 && KIT.test(racks[0] ?? "");
       },
       explain: (result) =>
-        `expected one Drum Rack named for the 505 kit, Drum Racks are: ${drumRackNames(result).join(", ") || "none"}`,
+        `expected one Drum Rack named for the 505 kit, Drum Racks are: ${describeRacks(drumRackNames(result))}`,
     },
 
     { type: "token_usage", maxTokens: 2_500 },

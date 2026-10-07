@@ -65,18 +65,14 @@ describe("path-arrangement-covers assertTrustsCoveringBar", () => {
     expect(grade([readClip("t3[3|1]"), renameById("7")])).toBe(true);
   });
 
-  it("fails when the model reads the track to find the clip", () => {
-    expect(() => grade([readTrack, rename("t3[3|1]")])).toThrow(
-      /called ppal-read-track to find the clip/,
-    );
+  it("ignores reads before a correct write", () => {
+    expect(grade([readTrack, rename("t3[3|1]")])).toBe(true);
+    expect(grade([readClip("t3[1|1]"), rename("t3[3|1]")])).toBe(true);
   });
 
   it("fails on a path at another bar of track 3", () => {
     expect(() => grade([rename("t3[1|1]")])).toThrow(
-      /ppal-update-clip aimed at 't3\[1\|1\]'/,
-    );
-    expect(() => grade([readClip("t3[1|1]"), rename("t3[3|1]")])).toThrow(
-      /ppal-read-clip aimed at 't3\[1\|1\]'/,
+      /path 't3\[1\|1\]' is not a bar-3 coordinate/,
     );
   });
 
@@ -104,6 +100,9 @@ describe("path-arrangement-covers assertTrustsCoveringBar", () => {
     );
     expect(() => grade([readClip("t3[3|1]"), renameById("9")])).toThrow(
       /ids read: 7/,
+    );
+    expect(() => grade([readClip("t3[1|1]"), renameById("7")])).toThrow(
+      /ids read: none/,
     );
   });
 });

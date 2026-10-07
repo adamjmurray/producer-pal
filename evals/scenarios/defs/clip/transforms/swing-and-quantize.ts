@@ -16,6 +16,16 @@ import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
+// 16th-note grid: n/16 (absolute note value) or 0.25 (bare beats, = a 16th in
+// 4/4). Quantizing is `quant(grid)` or its hand-rolled equivalent
+// `round(note.start / grid) * grid`, optionally with the last grid in parens.
+const GRID = String.raw`(?:n/16|0\.25)`;
+
+/** The turn-4 transform: hats snapped to the 16th-note grid. */
+const QUANTIZE_16TH = new RegExp(
+  String.raw`Ab1: timing = (?:quant\(${GRID}\)|round\(note\.start / ${GRID}\) \* \(?${GRID}\)?\s*(?:$|\n))`,
+);
+
 export const swingAndQuantize: EvalScenario = {
   id: "swing-and-quantize",
   tags: ["transforms"],
@@ -110,11 +120,7 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 4,
       args: expect.objectContaining({
-        // 16th-note grid: n/16 (absolute note value) or 0.25 (bare beats, =
-        // a 16th in 4/4). The old synced-period form 1/4t was removed.
-        transforms: expect.stringMatching(
-          /Ab1: timing = quant\((n\/16|0\.25)\)/,
-        ),
+        transforms: expect.stringMatching(QUANTIZE_16TH),
       }) as Record<string, unknown>,
     },
     assertNamesTarget({ turn: 4, tool: TOOL_UPDATE_CLIP }),
