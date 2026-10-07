@@ -10,7 +10,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { validateIdType } from "../id-validation.ts";
+import { idOrPathRequired, validateIdType } from "../id-validation.ts";
 
 describe("validateIdType", () => {
   beforeEach(() => {
@@ -168,5 +168,17 @@ describe("validateIdType", () => {
         `t0 (id track_1) is not a ${expectedType} (found track)`,
       );
     }
+  });
+});
+
+describe("idOrPathRequired", () => {
+  it("should say an id or a path is needed", () => {
+    expect(idOrPathRequired()).toBe("id or path is required");
+  });
+
+  it("should name the action when given one", () => {
+    expect(idOrPathRequired("play-session-clips")).toBe(
+      'id or path is required for action "play-session-clips"',
+    );
   });
 });

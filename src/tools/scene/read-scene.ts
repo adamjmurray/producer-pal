@@ -23,7 +23,10 @@ import {
   round2dp,
   roundDisplayValue,
 } from "#src/tools/shared/helpers/rounding.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idOrPathRequired,
+  validateIdType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   readFanOut,
   type ReadResult,
@@ -118,7 +121,7 @@ export function readOneScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   const { includeClips, includeColor } = parseIncludeArray(

@@ -13,7 +13,7 @@ import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-fr
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
   description:
-    "Read scene settings and clips. Returns overview by default. Use include to add detail.",
+    "Read scene settings and clips by id or path. Returns overview by default. Use include to add detail.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

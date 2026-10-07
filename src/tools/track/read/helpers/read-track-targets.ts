@@ -9,7 +9,10 @@ import {
   namedIdParam,
   namedParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idOrPathRequired,
+  validateIdType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import { trackApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 export interface ReadTrackArgs {
@@ -59,7 +62,7 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     trackIndex == null &&
     category !== "master"
   ) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   if (trackId != null || path != null) {

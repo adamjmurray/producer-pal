@@ -61,6 +61,18 @@ export function idDoesNotExist(id: string, noun?: string): string {
 }
 
 /**
+ * The refusal for a call that names no target. Shared so every tool words it
+ * the same way.
+ * @param action - The action that needs a target, for tools with several
+ * @returns The reason
+ */
+export function idOrPathRequired(action?: string): string {
+  const reason = "id or path is required";
+
+  return action == null ? reason : `${reason} for action "${action}"`;
+}
+
+/**
  * Why an object isn't the type a call asked for, or null when it is. Shared so
  * a tool reporting the mismatch in a result entry says it the same way as one
  * throwing it.

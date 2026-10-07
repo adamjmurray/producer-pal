@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
   type PairedLabels,
@@ -83,7 +84,7 @@ export function parseSceneCall(args: UpdateSceneArgs): SceneCall {
   const targets = foldTargetParams({ id, ids, path, paths });
 
   if (targetCount(targets) === 0) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   // Before the no-write refusal: a list with a hole is the first thing wrong.

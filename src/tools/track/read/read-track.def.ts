@@ -13,7 +13,7 @@ import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-fr
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
   description:
-    "Read track settings, clips, and devices. Returns overview by default. Use include to add detail.",
+    "Read track settings, clips, and devices by id or path. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,

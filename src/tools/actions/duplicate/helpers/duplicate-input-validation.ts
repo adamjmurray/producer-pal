@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
 import { isTakeLaneRequested } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
@@ -35,7 +36,7 @@ export function validateBasicInputs(
   // `id` and `path` name different objects and add up, so either will do and
   // both together are a longer source list, not a conflict.
   if (id == null && path == null) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   if (count < 1) {

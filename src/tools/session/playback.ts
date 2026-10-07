@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -260,7 +261,7 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
   }
 
   if (call.clips.length === 0) {
-    throw new Error(`id or path is required for action "${call.action}"`);
+    throw new Error(idOrPathRequired(call.action));
   }
 
   if (call.action !== PLAY_SESSION_CLIPS) {

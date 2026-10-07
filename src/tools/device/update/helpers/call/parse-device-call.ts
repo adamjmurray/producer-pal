@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
   namedIdParam,
@@ -55,7 +56,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   const namedPaths = namedPathParam(path, paths);
 
   if (namedIds == null && namedPaths == null) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   refuseNoWrite(args, "targets");

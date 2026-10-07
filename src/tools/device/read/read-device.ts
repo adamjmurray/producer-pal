@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idDoesNotExist,
+  idOrPathRequired,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
@@ -120,7 +123,7 @@ export function readOneDevice(
   path = namedParam(path, "path");
 
   if (deviceId == null && path == null) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   const includeAll = include.includes("*");

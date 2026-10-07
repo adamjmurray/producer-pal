@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import {
   namedIdParam,
@@ -55,7 +56,7 @@ export function parseDeleteCall(args: DeleteArgs): DeleteCall {
   const path = namedPathParam(args.path, args.paths);
 
   if (ids == null && path == null) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   return {

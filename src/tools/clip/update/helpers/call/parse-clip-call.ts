@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type EnvelopeLine,
@@ -105,7 +106,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
   const named = namedTargets(folded);
 
   if (named.length === 0) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   refuseNoWrite(args, "clips");
