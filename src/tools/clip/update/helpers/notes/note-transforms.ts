@@ -26,6 +26,9 @@ import {
   type ScaleMaskReader,
 } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
+  type ClipPlayRegion,
+  clipPlayRegion,
+  countPutOutside,
   getClipNoteCount,
   rawNotesToCopiedNotes,
   readClipNotes,
@@ -102,6 +105,9 @@ export function applyTransformsToExistingNotes(
     clipContext,
   );
 
+  // Read before anything is written, so a failed read leaves the clip alone.
+  const region = clipPlayRegion(clip);
+
   removeAllClipNotes(clip);
 
   // Dedupe then sort before re-adding, identically to the merge path: a
@@ -128,7 +134,33 @@ export function applyTransformsToExistingNotes(
   return {
     noteCount: getClipNoteCount(clip),
     ...countTransforms(combineOutcomes(preOutcome, postOutcome), written),
+    putOutside: countPutOutsideRegion(region, written, mutedNotes, visible),
   };
+}
+
+/**
+ * How many of the notes a write put in the clip start outside its region,
+ * leaving out muted notes and any note that was already there and was written
+ * back as it was.
+ * @param region - The clip's play region
+ * @param written - Everything written back, muted notes included
+ * @param muted - The muted notes among them
+ * @param before - The visible notes as the write read them
+ * @returns The number the write put outside the region
+ */
+export function countPutOutsideRegion(
+  region: ClipPlayRegion,
+  written: NoteEvent[],
+  muted: NoteEvent[],
+  before: Record<string, unknown>[],
+): number {
+  const mutedSet = new Set(muted);
+
+  return countPutOutside(
+    written.filter((note) => !mutedSet.has(note)),
+    region,
+    before,
+  );
 }
 
 /**

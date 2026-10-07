@@ -22,13 +22,14 @@ export const NOTE = {
 export const DROPPED = "dropped 1 duplicate note at the same pitch and start";
 
 /**
- * Register the update-clip mocks with clip 123 as a 4-beat MIDI clip.
+ * Register the update-clip mocks with clip 123 as a 2-bar MIDI clip, long
+ * enough that a bar copy stays inside its region.
  * @returns The registered clip mocks
  */
 export function setupDuplicateNoteMocks(): UpdateClipMocks {
   const mocks = setupUpdateClipMocks();
 
-  setupMidiClipMock(mocks.clip123, { length: 4 });
+  setupMidiClipMock(mocks.clip123, { length: 8 });
 
   return mocks;
 }

@@ -20,6 +20,37 @@ export function droppedDuplicatesNote(count: number): string | null {
 }
 
 /**
+ * @param count - How many notes
+ * @returns "1 note" or "3 notes"
+ */
+function notesCount(count: number): string {
+  return `${count} note${count === 1 ? "" : "s"}`;
+}
+
+/**
+ * What to say when notes start outside the clip's region (before it or at its
+ * end), where Live keeps them but never plays them.
+ * @param count - How many notes lie outside the region
+ * @returns The note for the clip's entry, or null when none do
+ */
+export function notesOutsideRegionNote(count: number): string | null {
+  return count > 0
+    ? `${notesCount(count)} ${count === 1 ? "is" : "are"} outside the region and won't play`
+    : null;
+}
+
+/**
+ * What to say when a write put notes outside the clip's region.
+ * @param count - How many of the notes the call wrote lie outside the region
+ * @returns The note for the clip's entry, or null when none do
+ */
+export function notesLandedOutsideNote(count: number): string | null {
+  return count > 0
+    ? `${notesCount(count)} landed outside the region and won't play`
+    : null;
+}
+
+/**
  * What to say when a transform was sent for a clip with no notes to change.
  * @param sent - The transform params that were sent, e.g. `["transforms"]`
  * @param hasMuted - Whether the clip has muted notes, which edits leave alone

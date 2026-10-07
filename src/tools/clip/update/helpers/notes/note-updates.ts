@@ -26,6 +26,7 @@ import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   clipNoteScanWindow,
+  clipPlayRegion,
   getClipNoteCount,
   rawNotesToCopiedNotes,
   readClipNotes,
@@ -34,6 +35,7 @@ import {
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
+  countPutOutsideRegion,
   hasNoteEdits,
   noteDroppedDuplicates,
 } from "./note-transforms.ts";
@@ -150,6 +152,9 @@ export function handleNoteUpdates(
   // Dedupe same-pitch+start collisions (new wins, over a muted note too), then
   // sort by start so Live truncates same-pitch overlaps instead of deleting the
   // earlier write. See note-sort.ts.
+  // Read before anything is written, so a failed read leaves the clip alone.
+  const region = clipPlayRegion(clip);
+
   removeAllClipNotes(clip);
 
   const { notes: mergedNotes, collisions } = dedupeAndSortNotes(
@@ -193,6 +198,7 @@ export function handleNoteUpdates(
   return {
     noteCount: getClipNoteCount(clip),
     ...countTransforms(combineOutcomes(preOutcome, postOutcome), mergedNotes),
+    putOutside: countPutOutsideRegion(region, mergedNotes, mutedNotes, visible),
   };
 }
 

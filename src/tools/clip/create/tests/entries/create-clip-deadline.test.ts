@@ -89,6 +89,8 @@ describe("createClip - deadline exceeded", () => {
     clip.get.mockImplementation((prop: string) => {
       switch (prop) {
         case "length":
+        case "end_marker":
+        case "loop_end":
           return [4];
         case "signature_numerator":
           return [4];

@@ -8,6 +8,8 @@
 // a throw partway keeps the entry for the clip that exists by then.
 
 import { type AudioReadBack } from "#src/tools/clip/helpers/audio-clip-properties.ts";
+import { notesLandedOutsideNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import { countStartingOutside } from "#src/tools/shared/clip/clip-notes.ts";
 import { ignoredParamsNote } from "#src/tools/clip/helpers/ignored-params-note.ts";
 import { type SlotWork } from "#src/tools/clip/helpers/clip-results.ts";
 import { recordLandedClip } from "#src/tools/shared/clip/landings/landing-log.ts";
@@ -74,6 +76,7 @@ export async function writeCreatedClip(
   // What the clip can't use of what was sent, said on its own entry
   for (const note of [
     ...payload.transform.details,
+    notesLandedOutsideNote(outsideRegion(made.clip, payload)),
     ...payload.skippedTransforms,
     ignoredParamsNote(...unusableParams(step.checked, payload)),
   ]) {
@@ -101,6 +104,18 @@ export async function writeCreatedClip(
 }
 
 // --- Helpers below main export ---
+
+/**
+ * How many of the notes written to a new MIDI clip start outside its region.
+ * @param clip - The clip, with its region and notes written
+ * @param payload - The target's payload
+ * @returns The count, 0 for an audio clip
+ */
+function outsideRegion(clip: LiveAPI, payload: CreatePayload): number {
+  return payload.plan.sampleFile
+    ? 0
+    : countStartingOutside(clip, payload.transform.notes);
+}
 
 /**
  * Give the new clip what the call asked for and build its entry.

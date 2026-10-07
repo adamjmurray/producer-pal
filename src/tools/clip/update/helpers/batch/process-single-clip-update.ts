@@ -236,11 +236,13 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     notation: context.notation,
   });
 
-  reportNotesOutsideRegion(params, isAudioClip);
-
+  // Journal the landing first: the report reads the clip when the region moved,
+  // and a throw there keeps the entry for the notes that did land.
   if (noteResult != null) {
     noteLanded(reasons, "notes", { id: clip.id });
   }
+
+  reportNotesOutsideRegion(params, isAudioClip, noteResult);
 
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, reasons, {

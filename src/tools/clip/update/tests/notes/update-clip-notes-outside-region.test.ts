@@ -240,3 +240,186 @@ describe("updateClip - notes outside the region", () => {
     expect(JSON.stringify(result)).not.toContain("won't play");
   });
 });
+
+describe("updateClip - notes an edit puts outside an unmoved region", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+  });
+
+  it("counts the notes a transform pushes past the end", async () => {
+    setupClip(mocks, LOOPING_8, [0, 1, 2]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "timing += 2bar",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "3 notes landed outside the region and won't play",
+      }),
+    );
+  });
+
+  it("counts them in a clip that doesn't loop", async () => {
+    setupClip(mocks, PLAIN_8, [0, 1]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "timing += 2bar",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "2 notes landed outside the region and won't play",
+      }),
+    );
+  });
+
+  it("counts a transform's notes before the start, which also never play", async () => {
+    setupClip(mocks, LOOPING_8, [4]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "timing -= 2bar",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "1 note landed outside the region and won't play",
+      }),
+    );
+  });
+
+  it("counts the notes a preTransform pushes out", async () => {
+    setupClip(mocks, LOOPING_8, [0, 1]);
+
+    const result = await updateClip({
+      id: "123",
+      preTransforms: "timing += 2bar",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "2 notes landed outside the region and won't play",
+      }),
+    );
+  });
+
+  it("counts new notes written past the scan window, which a later read never sees", async () => {
+    setupClip(mocks, LOOPING_8, [0]);
+
+    const result = await updateClip({ id: "123", notes: "C3 6|1" });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "1 note landed outside the region and won't play",
+      }),
+    );
+  });
+
+  it("leaves out notes that were already outside", async () => {
+    setupClip(mocks, LOOPING_8, [0, 9, 12]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "velocity = 50",
+    });
+
+    expect(result).not.toHaveProperty("detail");
+  });
+
+  it("counts only the notes it added when others were already outside", async () => {
+    setupClip(mocks, LOOPING_8, [0, 9]);
+
+    const result = await updateClip({ id: "123", notes: "C3 1|1 D3 4|1" });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "1 note landed outside the region and won't play",
+      }),
+    );
+  });
+
+  it("doesn't count muted notes a transform leaves alone", async () => {
+    setupClip(mocks, LOOPING_8, [0], [9]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "velocity = 50",
+    });
+
+    expect(result).not.toHaveProperty("detail");
+  });
+
+  it("says nothing when the transform keeps every note inside", async () => {
+    setupClip(mocks, LOOPING_8, [0, 1]);
+
+    const result = await updateClip({
+      id: "123",
+      transforms: "timing += n/8",
+    });
+
+    expect(result).not.toHaveProperty("detail");
+  });
+
+  it("writes nothing when the region can't be read", async () => {
+    setupClip(mocks, LOOPING_8, [0, 1]);
+    mocks.clip123.get.mockImplementation((prop: string) => {
+      if (prop === "loop_end") {
+        throw new Error("Live refused");
+      }
+
+      return [prop === "length" ? 8 : 0];
+    });
+
+    await expect(
+      updateClip({ id: "123", transforms: "timing += 2bar" }),
+    ).rejects.toThrow("Live refused");
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
+      "remove_notes_extended",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+  });
+
+  it("keeps the notes' landing on the entry when the region report's read throws", async () => {
+    setupClip(mocks, LOOPING_8, [0, 1]);
+
+    // Reads: the merge's, its count, then the report's.
+    const call = mocks.clip123.call.getMockImplementation() as (
+      ...args: unknown[]
+    ) => unknown;
+    let reads = 0;
+
+    mocks.clip123.call.mockImplementation(
+      (method: string, ...args: unknown[]) => {
+        if (method === "get_notes_extended" && ++reads === 3) {
+          throw new Error("Live refused");
+        }
+
+        return call(method, ...args);
+      },
+    );
+
+    const result = await updateClip({
+      id: "123",
+      length: "1bar",
+      notes: "C3 1|1",
+    });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: expect.stringMatching(/^Live refused; already changed: .*notes/),
+    });
+  });
+});

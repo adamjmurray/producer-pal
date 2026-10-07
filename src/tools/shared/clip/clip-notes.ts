@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /** A note copied as-is: everything add_new_notes takes, minus note_id. */
 export interface CopiedNote extends NoteEvent {
@@ -185,4 +186,94 @@ export function clipNoteScanWindow(clip: LiveAPI): [number, number] {
   const fromTime = regionStart - lengthBeats;
 
   return [fromTime, regionEnd + lengthBeats - fromTime];
+}
+
+/** The notes a clip plays start in [from, to), in note time. */
+export interface ClipPlayRegion {
+  from: number;
+  to: number;
+}
+
+/**
+ * Where a MIDI clip's notes play. A looping clip plays from start_marker once,
+ * then loops loop_start..loop_end.
+ * @param clip - The MIDI clip
+ * @returns The region a note must start in to play
+ */
+export function clipPlayRegion(clip: LiveAPI): ClipPlayRegion {
+  const looping = (clip.getProperty("looping") as number) > 0;
+  const startMarker = clip.getProperty("start_marker") as number;
+
+  return {
+    from: looping
+      ? Math.min(startMarker, clip.getProperty("loop_start") as number)
+      : startMarker,
+    to: clip.getProperty(looping ? "loop_end" : "end_marker") as number,
+  };
+}
+
+/**
+ * Whether a note starts outside the region, so it never plays.
+ * @param note - Anything with a start_time
+ * @param region - The clip's play region
+ * @returns True when the note starts before the region or at or after its end
+ */
+export function startsOutside(
+  note: { start_time: number },
+  region: ClipPlayRegion,
+): boolean {
+  return note.start_time < region.from || note.start_time >= region.to;
+}
+
+/**
+ * A note's identity for telling the notes a call wrote from the ones already
+ * there: its pitch and start, to the tolerance a round trip through Live keeps.
+ * @param note - Anything with a pitch and start_time
+ * @returns A key equal for notes in the same slot
+ */
+export function noteSlotKey(note: {
+  pitch: number;
+  start_time: number;
+}): string {
+  return `${note.pitch}@${Math.round(note.start_time / SAME_TIME_EPSILON)}`;
+}
+
+/**
+ * How many of the notes just written to a clip start outside its region.
+ * @param clip - The MIDI clip, with its region already set
+ * @param written - The notes written to it
+ * @returns The number that start outside the region and so never play
+ */
+export function countStartingOutside(
+  clip: LiveAPI,
+  written: { start_time: number }[],
+): number {
+  const region = clipPlayRegion(clip);
+
+  return written.filter((note) => startsOutside(note, region)).length;
+}
+
+/**
+ * How many of the notes an edit wrote start outside the region, leaving out the
+ * ones that were already there and are written back as they were.
+ * @param written - The visible notes the edit wrote
+ * @param region - The clip's play region
+ * @param before - The clip's visible notes as the edit read them
+ * @returns The number the edit put outside the region
+ */
+export function countPutOutside(
+  written: { pitch: number; start_time: number }[],
+  region: ClipPlayRegion,
+  before: Record<string, unknown>[],
+): number {
+  const alreadyOutside = new Set(
+    (before as unknown as { pitch: number; start_time: number }[])
+      .filter((note) => startsOutside(note, region))
+      .map(noteSlotKey),
+  );
+
+  return written.filter(
+    (note) =>
+      startsOutside(note, region) && !alreadyOutside.has(noteSlotKey(note)),
+  ).length;
 }

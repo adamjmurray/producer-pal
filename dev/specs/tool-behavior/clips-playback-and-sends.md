@@ -188,6 +188,27 @@ after:
   its own before and after, the report is their sum, and a note changed in both
   counts twice.
 
+## Notes outside the region
+
+Live keeps a note that starts before the clip's region or at or after its end,
+but never plays it. A note far enough out is also past the window every note
+read and rewrite uses, so it drops out of `noteCount` and later reads. No
+refusal, no skip: the write lands as asked, and the clip's entry says so in
+`detail`:
+
+- `ppal-create-clip`: `N notes landed outside the region and won't play`, for
+  the notes the call wrote (after any transform).
+- `ppal-update-clip` that moves the region (`start` or `length`) and edits
+  notes: `N notes are outside the region and won't play`, for every note the
+  clip then holds outside it, since the region move is what put them there.
+- `ppal-update-clip` that edits notes and leaves the region alone:
+  `N notes landed outside the region and won't play`, for the notes the edit put
+  there. Notes that were already outside are not counted, so a clip with old
+  overhang doesn't nag on every edit.
+- An update with `duplicateLoop` or `arrangementLength` is not checked: either
+  can change the region after the notes are written.
+- Muted notes are never counted. `code` rewrites are not checked yet.
+
 ## Muted notes
 
 No note notation can spell a muted note, so a muted note read back as an

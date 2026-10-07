@@ -322,3 +322,24 @@ describe("ppal-create-clip result entries", () => {
     expect(slot.notes).toContain("E3");
   });
 });
+
+describe("ppal-create-clip notes outside the clip's region", () => {
+  // A note that starts past the clip's end stays in the clip but never plays,
+  // so the entry has to say how many did.
+  it("counts the notes that start past the end of a clip with a set length", async () => {
+    const entry = parseToolResult<{ detail?: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}/s0`,
+          length: "1bar",
+          notes: "C3 1|1 D3 1|6 E3 2|1",
+        },
+      }),
+    );
+
+    expect(entry.detail).toBe(
+      "2 notes landed outside the region and won't play",
+    );
+  });
+});

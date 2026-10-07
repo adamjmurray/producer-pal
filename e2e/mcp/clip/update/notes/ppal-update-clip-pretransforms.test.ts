@@ -179,6 +179,32 @@ describe("ppal-update-clip notes outside the region", () => {
   });
 });
 
+describe("ppal-update-clip notes an edit puts outside the region", () => {
+  // A transform can push notes past the clip's end. Live keeps them but never
+  // plays them, so the entry has to say how many.
+  it("counts the notes a transform pushes past the end", async () => {
+    const clipId = await createMidiClip(0, "C3 1|1\nE3 1|3");
+
+    const detail = await updateClipDetail({
+      id: clipId,
+      transforms: "timing += 2bar",
+    });
+
+    expect(detail).toBe("2 notes landed outside the region and won't play");
+  });
+
+  it("counts new notes written past the end", async () => {
+    const clipId = await createMidiClip(0, "C3 1|1");
+
+    const detail = await updateClipDetail({
+      id: clipId,
+      notes: "G3 2|3 A3 3|1",
+    });
+
+    expect(detail).toBe("1 note landed outside the region and won't play");
+  });
+});
+
 describe("ppal-update-clip transform parse errors", () => {
   // A model reads the parse error to repair its transform, so the error must
   // name the fix, not just a position — and the clip stays as it was.

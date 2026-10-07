@@ -41,6 +41,9 @@ export interface NoteUpdateResult {
   deletedNotes?: number;
   /** Set only when the call changed the length itself (see duplicateLoop). */
   length?: string;
+  /** Not part of the entry: notes the write put outside the region, for the
+   * report that runs once the call's region is final. */
+  putOutside?: number;
 }
 
 /** What `convert` made: the new track, and its MIDI clip when the kind makes one. */

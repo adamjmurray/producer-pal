@@ -207,13 +207,11 @@ export function getClipProperty(prop: string): unknown[] | null {
     case "looping":
       return [0];
     case "start_marker":
-      return [1];
-    case "end_marker":
-      return [5];
     case "loop_start":
-      return [1];
+      return [0];
+    case "end_marker":
     case "loop_end":
-      return [5];
+      return [4];
     case "signature_numerator":
       return [4];
     case "signature_denominator":

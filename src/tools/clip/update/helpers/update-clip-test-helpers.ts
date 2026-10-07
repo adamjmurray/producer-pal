@@ -298,16 +298,22 @@ export function setupMidiClipMock(
   clip: RegisteredMockObject,
   opts: MidiClipMockOptions = {},
 ): void {
+  // A real clip always has a length, and duplicateLoop reports it. Without a
+  // default the result reads back "0bar" and looks like a bug in the code
+  // under test rather than a gap in the fixture.
+  const length = opts.length ?? 8;
+
   clip.get.mockImplementation(
     clipGet(clip, {
       is_arrangement_clip: 0,
       is_midi_clip: 1,
       signature_numerator: 4,
       signature_denominator: 4,
-      // A real clip always has one, and duplicateLoop reports it. Without a
-      // default the result reads back "0bar" and looks like a bug in the code
-      // under test rather than a gap in the fixture.
-      length: 8,
+      length,
+      // The region a clip of that length plays. Without it every note reads as
+      // outside the region and the report would flag each one.
+      end_marker: length,
+      loop_end: length,
       ...opts,
     }),
   );

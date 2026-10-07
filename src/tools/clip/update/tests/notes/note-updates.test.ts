@@ -415,7 +415,11 @@ describe("muted notes in an edit", () => {
     it("changes only visible notes and writes the muted one back as it was", () => {
       const { addedNotes, result } = transform([rawNote(60, 0, 1), MUTED]);
 
-      expect(result).toStrictEqual({ noteCount: 1, transformed: 1 });
+      expect(result).toStrictEqual({
+        noteCount: 1,
+        transformed: 1,
+        putOutside: 0,
+      });
       expect(addedNotes).toContainEqual(MUTED_WRITTEN);
       expect(addedNotes.filter((note) => note.velocity === 20)).toHaveLength(1);
     });
