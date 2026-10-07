@@ -139,7 +139,8 @@ How the tool answers depends on what is wrong:
   create-scene: refused, since the destinations already say how many.
 - **A bad transform arg** is refused when it does not depend on the clip's
   meter, and skipped per clip when it does. A compound assignment of a
-  `swing()`/`quant()` call (`timing += swing(...)`) is refused the same way
+  `swing()`/`quant()` call (`timing += swing(...)`) is refused the same way, as
+  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`)
   ([transform spec](../transforms/README.md)).
 
 ### A param only another action reads

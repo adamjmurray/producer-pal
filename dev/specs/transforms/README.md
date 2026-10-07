@@ -57,11 +57,12 @@ duplicate selector, a pitch name used as a value for anything but `pitch`, a
 compound assignment (`+=`, `-=`, `*=`, `/=`) whose value is directly a `swing()`
 or `quant()` call (they return a position, so `timing += swing(0.3)` would add
 the note's start to itself; the message says to use `timing = swing(...)`), a
-built-in with the wrong argument count, and a constant argument that can't be
-evaluated, isn't finite or is out of range (a ratchet count below 2 or grid of
-0, a repeat offset of 0 or count below 1, a `curve()` exponent of 0 or less).
-Argument counts count only positional args — the trailing `sync`/`raw` keywords
-are not arguments.
+`swing()` amount whose size reaches its grid in beats (`swing(0.56, n/8)`; a
+percent-looking amount gets the delay it should have been), a built-in with the
+wrong argument count, and a constant argument that can't be evaluated, isn't
+finite or is out of range (a ratchet count below 2 or grid of 0, a repeat offset
+of 0 or count below 1, a `curve()` exponent of 0 or less). Argument counts count
+only positional args — the trailing `sync`/`raw` keywords are not arguments.
 
 Two kinds of argument can't be judged up front, and are reported on the clip as
 the transform runs:

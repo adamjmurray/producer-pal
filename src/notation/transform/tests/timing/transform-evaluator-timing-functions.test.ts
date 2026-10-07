@@ -8,7 +8,7 @@ import { evaluateTransform } from "#src/notation/transform/transform-evaluator.t
 import {
   createContext,
   expectTransformError,
-} from "./evaluator/transform-evaluator-test-helpers.ts";
+} from "../evaluator/transform-evaluator-test-helpers.ts";
 
 describe("Transform Evaluator - swing()", () => {
   describe("8th-note swing (default period)", () => {

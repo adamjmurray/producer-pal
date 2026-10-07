@@ -6,6 +6,7 @@
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import { type EvalContext } from "../transform-context.ts";
+import { DEFAULT_SWING_GRID, swingAmountError } from "./swing-amount.ts";
 
 /**
  * Evaluate swing function (delay off-beat notes for swing feel).
@@ -26,10 +27,17 @@ export function evaluateSwing(
   // beats: an 8th note in x/4, a 16th in x/8, etc. (the natural swing
   // subdivision per meter). NOT a fixed n/8 — that coincides only in x/4.
   // Pass an explicit grid arg to override.
-  let grid = 0.5;
+  let grid = DEFAULT_SWING_GRID;
 
   if (args.length === 2) {
     grid = parseGrid(args[1] as ExpressionNode, ctx, "swing");
+  }
+
+  // The up-front check judges constants; this catches the rest (rand(), etc.).
+  const refusal = swingAmountError(amount, grid);
+
+  if (refusal != null) {
+    throw new Error(refusal);
   }
 
   const period = grid * 2;

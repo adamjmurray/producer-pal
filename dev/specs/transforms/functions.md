@@ -8,7 +8,12 @@ Delays off-beat notes to create a swing feel. Returns absolute position — use
 with `timing =`. `timing += swing(...)` (or `-=`, `*=`, `/=`) is refused.
 
 - **amount**: Delay in musical beats applied to off-beat notes (0.02=subtle,
-  0.05=medium, 0.1=heavy). Negative values push off-beats early.
+  0.05=medium, 0.1=heavy). Negative values push off-beats early. Must be under
+  the grid in beats (|amount| < grid): a delay of a whole grid or more lands the
+  off-beat on or past the next on-beat, which is never swing, so the call is
+  refused. A value that looks like an MPC swing percent (0.5-0.75 or 50-75, as
+  in `swing(0.56)`) gets the equivalent delay in the message:
+  `(percent - 50)% * 2 * grid`, e.g. 56% on `n/8` is 0.06.
 - **grid**: Swing subdivision grid. Default is half the meter's beat — the
   off-beat between beats: an 8th note in x/4 meters, a 16th in x/8 (the natural
   swing subdivision per meter). It is _not_ a fixed `n/8`, which would coincide

@@ -57,6 +57,7 @@ describe("updateClip - a bad transform argument is refused before any clip is to
     ["gain = C3", `pitch name "C3" isn't a value for gain`],
     ["timing += swing(0.3, n/8)", "swing() returns the new start"],
     ["timing -= quant(n/16)", "quant() returns the new start"],
+    ["timing = swing(0.56)", "for 56% swing, use 0.06"],
   ])(
     "refuses %s for a MIDI and an audio clip together, touching neither",
     async (transforms, message) => {
