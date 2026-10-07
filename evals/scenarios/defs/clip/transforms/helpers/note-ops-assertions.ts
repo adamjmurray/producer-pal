@@ -12,11 +12,39 @@
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../../../types.ts";
+import { getToolCalls } from "../../../../assertions/index.ts";
+import { argText } from "../../../arg-text.ts";
+import { assertNotesRead } from "../../helpers/clip-note-assertions.ts";
 import {
+  TOOL_CONNECT,
+  TOOL_CREATE_CLIP,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
 } from "../../helpers/clip-tool-constants.ts";
 import { getTransforms } from "../../helpers/clip-turn-readers.ts";
+
+/** Connect, read the clip's notes in turn 1, then edit it in turn 2. */
+export const READ_THEN_UPDATE: EvalAssertion[] = [
+  { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+  assertNotesRead(1),
+  { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+];
+
+/** Connect, create the clip in turn 1, then edit it in turn 2. */
+export const CREATE_THEN_UPDATE: EvalAssertion[] = [
+  { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+  { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+  { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+];
+
+/**
+ * Output-token ceiling for a note-op scenario.
+ * @param maxTokens - The ceiling
+ * @returns A token-usage assertion
+ */
+export function tokenBudget(maxTokens: number): EvalAssertion {
+  return { type: "token_usage", maxTokens };
+}
 
 /** What to read back: the clip, and (optionally) the length it must keep. */
 interface OutcomeSpec {
@@ -103,6 +131,35 @@ export function usedTransform(
 
       if (!pattern.test(transforms)) {
         throw new Error(`expected ${label}: ${transforms.slice(0, 120)}`);
+      }
+
+      return true;
+    },
+  };
+}
+
+/**
+ * Check the model rewrote the notes itself: update-clip got `notes` and no
+ * call in the turn used `transforms`.
+ *
+ * @param turn - Turn that edited the clip
+ * @returns A custom assertion
+ */
+export function wroteNotesDirectly(turn: number): EvalAssertion {
+  return {
+    type: "custom",
+    description: "wrote the notes directly, without a transform",
+    assert: (turns) => {
+      const calls = getToolCalls(turns, turn).filter(
+        (c) => c.name === TOOL_UPDATE_CLIP,
+      );
+
+      if (calls.some((c) => argText(c.args.transforms) !== "")) {
+        throw new Error("used transforms");
+      }
+
+      if (!calls.some((c) => argText(c.args.notes) !== "")) {
+        throw new Error(`no ${TOOL_UPDATE_CLIP} call wrote notes`);
       }
 
       return true;

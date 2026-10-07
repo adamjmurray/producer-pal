@@ -18,11 +18,9 @@
  */
 
 import { asSignal } from "../../../assertions/index.ts";
-import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
-import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { type EvalScenario } from "../../../types.ts";
 import {
   MSG_CONNECT,
-  TOOL_CONNECT,
   TOOL_CREATE_CLIP,
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
@@ -37,30 +35,12 @@ import {
   SESSION_HELD,
   SPLIT_LIVE_SET,
 } from "./helpers/note-ops-clips.ts";
-import { usedTransform } from "./helpers/note-ops-assertions.ts";
-
-/** Connect, read the clip's notes in turn 1, then edit it in turn 2. */
-const READ_THEN_UPDATE: EvalAssertion[] = [
-  { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-  assertNotesRead(1),
-  { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-];
-
-/** Connect, create the clip in turn 1, then edit it in turn 2. */
-const CREATE_THEN_UPDATE: EvalAssertion[] = [
-  { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-  { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-  { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-];
-
-/**
- * Output-token ceiling for a note-op scenario.
- * @param maxTokens - The ceiling
- * @returns A token-usage assertion
- */
-function tokenBudget(maxTokens: number): EvalAssertion {
-  return { type: "token_usage", maxTokens };
-}
+import {
+  CREATE_THEN_UPDATE,
+  READ_THEN_UPDATE,
+  tokenBudget,
+  usedTransform,
+} from "./helpers/note-ops-assertions.ts";
 
 export const noteOpsRatchetRoll: EvalScenario = {
   id: "note-ops-ratchet-roll",

@@ -107,6 +107,11 @@ export {
   noteOpsRepeat,
   noteOpsSplit,
 } from "./clip/transforms/note-ops-roll-and-merge.ts";
+export {
+  noteOpsMergeWithTransform,
+  noteOpsSplitDirectNotes,
+  noteOpsSplitWithTransform,
+} from "./clip/transforms/note-ops-explicit-route.ts";
 export { legatoTransforms } from "./clip/transforms/legato-transforms.ts";
 export { transformRandomBakedOrReplayed } from "./clip/transforms/transform-random-baked-or-replayed.ts";
 export { melodyTransforms } from "./clip/transforms/melody-transforms.ts";

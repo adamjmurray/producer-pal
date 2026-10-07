@@ -10,7 +10,11 @@ import {
   type EvalTurnResult,
   type StateAssertion,
 } from "../../../../types.ts";
-import { noteOpOutcome, usedTransform } from "./note-ops-assertions.ts";
+import {
+  noteOpOutcome,
+  usedTransform,
+  wroteNotesDirectly,
+} from "./note-ops-assertions.ts";
 
 const updateTurn = (args: Record<string, unknown>): EvalTurnResult[] => [
   {
@@ -41,6 +45,26 @@ describe("usedTransform", () => {
   it("fails when notes were written instead", () => {
     expect(() => run(split, updateTurn({ notes: "C3 1|1" }))).toThrow(
       "transforms parameter missing",
+    );
+  });
+});
+
+describe("wroteNotesDirectly", () => {
+  const direct = wroteNotesDirectly(0);
+
+  it("passes when notes were written and no transform used", () => {
+    expect(run(direct, updateTurn({ notes: "C3 1|1" }))).toBe(true);
+  });
+
+  it("fails when a transform was used", () => {
+    expect(() =>
+      run(direct, updateTurn({ notes: "C3 1|1", transforms: "split(2|1)" })),
+    ).toThrow("used transforms");
+  });
+
+  it("fails when no notes were written", () => {
+    expect(() => run(direct, updateTurn({ split: "2|1" }))).toThrow(
+      "wrote notes",
     );
   });
 });
