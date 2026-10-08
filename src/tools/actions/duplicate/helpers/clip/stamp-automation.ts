@@ -96,19 +96,18 @@ export async function stampAutomation(
   place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo[]>,
 ): Promise<MinimalClipInfo[]> {
   const { lengthBeats, context } = request;
-  const scratch = openScratchSlot(request.track);
   const stamped: Stamped = { beats: 0 };
   const notes: string[] = [];
+  const report = context.reportScratch ?? ((message) => notes.push(message));
   let placed: MinimalClipInfo[];
 
   try {
+    const scratch = openScratchSlot(request.track, report);
+
     try {
       placed = await stampThenPlace(request, scratch, stamped, place);
     } finally {
-      removeSessionClip(
-        scratch,
-        context.reportScratch ?? ((message) => notes.push(message)),
-      );
+      removeSessionClip(scratch, report);
     }
   } catch (error) {
     throw failureWithChanges(error, stamped, lengthBeats, notes);

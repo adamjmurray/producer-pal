@@ -507,7 +507,9 @@ export function assertBoundaryDetection(
   clipSlot: { call: ReturnType<typeof vi.fn> },
   filePath = "/audio/test.wav",
 ): void {
-  expect(mockCreate).toHaveBeenCalledWith(expect.anything(), 1, filePath);
+  const args = [expect.anything(), 1, filePath, expect.any(Function)];
+
+  expect(mockCreate).toHaveBeenCalledWith(...args);
   expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
 }
 

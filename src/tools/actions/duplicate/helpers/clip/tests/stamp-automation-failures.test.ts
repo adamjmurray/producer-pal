@@ -288,3 +288,48 @@ describe("a scratch copy Live won't remove", () => {
     );
   });
 });
+
+describe("a failure while finding the scratch slot", () => {
+  /** Live fails the first read of the scenes after a scene is made. */
+  function failAfterSceneMade(): void {
+    const liveSet = lookupMockObject(undefined, livePath.liveSet);
+    const makeScene = liveSet!.methods.create_scene as (
+      index: unknown,
+    ) => unknown;
+
+    liveSet!.methods.create_scene = (index) => {
+      const made = makeScene(index);
+
+      liveSet!.get.mockImplementationOnce(() => {
+        throw new Error("Live says no");
+      });
+
+      return made;
+    };
+  }
+
+  it("removes the scene it made before the failure goes on", async () => {
+    const world = registerStampWorld();
+
+    failAfterSceneMade();
+
+    await expect(copyAtLength(world, 10)).rejects.toThrow("Live says no");
+    expect(world.sceneCount()).toBe(1);
+  });
+
+  it("says a scene it couldn't remove in the failure", async () => {
+    const world = registerStampWorld();
+
+    failAfterSceneMade();
+
+    const liveSet = lookupMockObject(undefined, livePath.liveSet);
+
+    liveSet!.methods.delete_scene = () => {
+      throw new Error("Live says no more");
+    };
+
+    await expect(copyAtLength(world, 10)).rejects.toThrow(
+      "left an empty scene behind: couldn't remove the scratch scene (Live says no more)",
+    );
+  });
+});

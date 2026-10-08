@@ -11,7 +11,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { handleUnloopedLengthening } from "#src/tools/clip/arrangement/helpers/unlooped-lengthening.ts";
 import { handleArrangementShortening } from "#src/tools/clip/arrangement/helpers/arrangement-length-changes.ts";
-import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import {
   cleanupTempClip,
   extendSongIfNeeded,
@@ -23,6 +26,7 @@ import {
 import {
   createAndDeleteTempClip,
   createAudioClipInSession,
+  openScratchSlot,
   removeSessionClip,
 } from "../helpers/arrangement-tiling-clips.ts";
 import { registerSceneWorld } from "./helpers/session-scene-test-helpers.ts";
@@ -55,6 +59,30 @@ function registerAudioClip(properties: Record<string, unknown>): LiveAPI {
   });
 
   return LiveAPI.from("id scene_world_source");
+}
+
+/**
+ * Lengthens a warped, unlooped audio clip past what it shows, which reads the
+ * file's end through a scratch clip.
+ * @param reasons - Where the clip's entry gathers what it has to say
+ */
+function lengthenWarpedAudio(reasons: ClipReasons): void {
+  handleUnloopedLengthening({
+    clip: registerAudioClip({
+      warping: 1,
+      end_marker: 4,
+      loop_start: 0,
+      loop_end: 4,
+      file_path: "/audio/take.wav",
+    }),
+    isAudioClip: true,
+    arrangementLengthBeats: 12,
+    currentArrangementLength: 4,
+    currentEndTime: 4,
+    clipStartMarker: 0,
+    track: track(),
+    reasons,
+  });
 }
 
 /** Where a caller says what it couldn't remove: its clip's entry, or a warning. */
@@ -94,25 +122,12 @@ const CALLERS: Array<[string, (report: Report) => void]> = [
     (report) => {
       const reasons = newClipReasons();
 
-      handleUnloopedLengthening({
-        clip: registerAudioClip({
-          warping: 1,
-          end_marker: 4,
-          loop_start: 0,
-          loop_end: 4,
-          file_path: "/audio/take.wav",
-        }),
-        isAudioClip: true,
-        arrangementLengthBeats: 12,
-        currentArrangementLength: 4,
-        currentEndTime: 4,
-        clipStartMarker: 0,
-        track: track(),
-        reasons,
-      });
-
-      for (const said of reasons.said.get("scene_world_source") ?? []) {
-        report(said);
+      try {
+        lengthenWarpedAudio(reasons);
+      } finally {
+        for (const said of reasons.said.get("scene_world_source") ?? []) {
+          report(said);
+        }
       }
     },
   ],
@@ -272,10 +287,157 @@ describe("a failure while the scratch clip exists", () => {
   );
 
   it("leaves no scene when a lengthened clip can't read its file's end", () => {
-    const world = registerSceneWorld(false, true);
+    const world = registerSceneWorld(false, "unreadable");
     const [, run] = CALLERS[2] as (typeof CALLERS)[number];
 
     expect(() => run(() => {})).toThrow("Live says no");
     expect(world.sceneCount()).toBe(1);
+  });
+});
+
+// Live can refuse the scratch clip itself, or a write to it. Whatever the
+// helper made before that goes before the throw does.
+describe("a failure while the scratch clip is made", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const SLOT = "scene_world_slot_1";
+
+  it.each(CALLERS)(
+    "leaves no scene when Live refuses it for %s",
+    (_caller, run) => {
+      const world = registerSceneWorld(false, "create-refused");
+
+      expect(() => run(() => {})).toThrow("Live says no");
+      expect(world.sceneCount()).toBe(1);
+    },
+  );
+
+  it("removes the scene it made, and no clip, when Live refuses the clip", () => {
+    const world = registerSceneWorld(false, "create-refused");
+
+    expect(() => createAudioClipInSession(track(), 4, "/tmp/a.wav")).toThrow(
+      "Live says no",
+    );
+    expect(world.sceneCount()).toBe(1);
+    expect(lookupMockObject(SLOT)?.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+    );
+  });
+
+  it("removes nothing when it made no scene and Live refuses the clip", () => {
+    const world = registerSceneWorld(true, "create-refused");
+
+    expect(() => createAudioClipInSession(track(), 4, "/tmp/a.wav")).toThrow(
+      "Live says no",
+    );
+    expect(world.sceneCount()).toBe(1);
+
+    const liveSet = lookupMockObject(undefined, livePath.liveSet);
+
+    expect(liveSet?.call).not.toHaveBeenCalledWith(
+      "delete_scene",
+      expect.anything(),
+    );
+    expect(
+      lookupMockObject("scene_world_slot_0")?.call,
+    ).not.toHaveBeenCalledWith("delete_clip");
+  });
+
+  it("removes the clip and the scene when a later write is refused", () => {
+    const world = registerSceneWorld(false, "set-refused");
+
+    expect(() => createAudioClipInSession(track(), 4, "/tmp/a.wav")).toThrow(
+      "Live says no",
+    );
+    expect(world.sceneCount()).toBe(1);
+    expect(lookupMockObject(SLOT)?.call).toHaveBeenCalledWith("delete_clip");
+  });
+
+  it("removes the clip, and no scene, when a later write is refused in an empty last scene", () => {
+    const world = registerSceneWorld(true, "set-refused");
+
+    expect(() => createAudioClipInSession(track(), 4, "/tmp/a.wav")).toThrow(
+      "Live says no",
+    );
+    expect(world.sceneCount()).toBe(1);
+    expect(lookupMockObject("scene_world_slot_0")?.call).toHaveBeenCalledWith(
+      "delete_clip",
+    );
+  });
+
+  it("says a scene it couldn't remove to the caller's reporter, and still throws Live's error", () => {
+    const world = registerSceneWorld(false, "create-refused");
+    const said: string[] = [];
+
+    refuseSceneRemoval();
+
+    expect(() =>
+      createAudioClipInSession(track(), 4, "/tmp/a.wav", (message) =>
+        said.push(message),
+      ),
+    ).toThrow("Live says no");
+    expect(said).toStrictEqual([
+      "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
+    ]);
+    expect(world.sceneCount()).toBe(2);
+    expect(consoleMock.warn).not.toHaveBeenCalled();
+  });
+
+  it("hands a scene a lengthened clip couldn't remove to that clip's reasons", () => {
+    registerSceneWorld(false, "create-refused");
+    refuseSceneRemoval();
+
+    const reasons = newClipReasons();
+
+    expect(() => lengthenWarpedAudio(reasons)).toThrow("Live says no");
+    expect(reasons.said.get("scene_world_source")).toStrictEqual([
+      "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
+    ]);
+    expect(consoleMock.warn).not.toHaveBeenCalled();
+  });
+
+  it("still cleans up, and throws Live's error, when the slot can't be read back", () => {
+    const world = registerSceneWorld(false, "set-refused");
+    const exists = vi.spyOn(LiveAPI.prototype, "exists");
+
+    exists.mockImplementation(() => {
+      throw new Error("read says no");
+    });
+
+    expect(() => createAudioClipInSession(track(), 4, "/tmp/a.wav")).toThrow(
+      /^Live says no$/,
+    );
+    exists.mockRestore();
+    expect(world.sceneCount()).toBe(1);
+    expect(lookupMockObject(SLOT)?.call).toHaveBeenCalledWith("delete_clip");
+  });
+
+  it("removes the scene it made when finding the slot fails", () => {
+    const world = registerSceneWorld(false);
+    const trackWithoutIndex = {
+      get trackIndex(): number {
+        throw new Error("Live says no");
+      },
+    } as unknown as LiveAPI;
+
+    expect(() => openScratchSlot(trackWithoutIndex)).toThrow("Live says no");
+    expect(world.sceneCount()).toBe(1);
+  });
+
+  it("makes no scene to remove when finding the slot fails in an empty last scene", () => {
+    const world = registerSceneWorld(true);
+    const trackWithoutIndex = {
+      get trackIndex(): number {
+        throw new Error("Live says no");
+      },
+    } as unknown as LiveAPI;
+
+    expect(() => openScratchSlot(trackWithoutIndex)).toThrow("Live says no");
+    expect(world.sceneCount()).toBe(1);
+    expect(
+      lookupMockObject(undefined, livePath.liveSet)?.call,
+    ).not.toHaveBeenCalledWith("delete_scene", expect.anything());
   });
 });

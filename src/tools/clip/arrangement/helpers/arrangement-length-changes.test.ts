@@ -552,6 +552,7 @@ describe("arrangement-length-changes", () => {
         expect.anything(),
         4.0, // tempClipLength = 8 - 4 = 4
         "/test.wav",
+        undefined, // no reportScratch in this call
       );
 
       // Should set warping, looping, and loop_end on the duplicated arrangement clip

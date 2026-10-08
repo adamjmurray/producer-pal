@@ -358,6 +358,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       expect.objectContaining({ _path: String(livePath.track(0)) }),
       8.0, // tempClipLength = originalEnd (16) - newEnd (8)
       "/path/to/silence.wav",
+      expect.any(Function), // reportScratch
     );
 
     mockCreateAudioClip.mockRestore();

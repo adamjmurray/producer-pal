@@ -209,7 +209,8 @@ Files: `arrangement-tiling-clips.ts` (`createAndDeleteTempClip`),
 
 When you need an arrangement audio clip with a specific length:
 
-1. `createAudioClipInSession(track, length, filePath)` — creates in session view
+1. `createAudioClipInSession(track, length, filePath, report?)` — creates in
+   session view. If it throws, it removes what it made (clip, scene) first.
 2. Set content markers (`loop_start`, `loop_end`, `start_marker`, `end_marker`)
 3. `duplicate_clip_to_arrangement` at target position — inherits session clip's
    arrangement length

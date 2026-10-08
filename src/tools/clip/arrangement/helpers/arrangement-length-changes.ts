@@ -432,7 +432,12 @@ function truncateWithTempClip({
   lanes?.wroteOnTrack(track, position, position + length);
 
   if (isAudioClip) {
-    const session = createAudioClipInSession(track, length, silenceWavPath);
+    const session = createAudioClipInSession(
+      track,
+      length,
+      silenceWavPath,
+      reportScratch,
+    );
     let tempClip: LiveAPI;
 
     // The scratch clip goes whether or not the copy landed: a throw would

@@ -140,7 +140,9 @@ function lengthenWarpedUnloopedAudio(
 
   // Create session clip with minimal loop_end (1) to detect file content boundary
   // without extending end_marker past the actual file content
-  const session = createAudioClipInSession(track, 1, filePath);
+  const reportScratch = (message: string): void =>
+    noteClipReason(reasons, clip.id, message);
+  const session = createAudioClipInSession(track, 1, filePath, reportScratch);
 
   // end_marker on the session clip stays at the file's natural content length
   // in the warped beat grid (createAudioClipInSession sets loop_end but not end_marker)
@@ -151,9 +153,7 @@ function lengthenWarpedUnloopedAudio(
   try {
     fileContentBoundary = session.clip.getProperty("end_marker") as number;
   } finally {
-    removeSessionClip(session, (message) =>
-      noteClipReason(reasons, clip.id, message),
-    );
+    removeSessionClip(session, reportScratch);
   }
 
   const totalContentFromStart = fileContentBoundary - clipStartMarker;
