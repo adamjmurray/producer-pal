@@ -8,7 +8,6 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
 import {
   type AppliedTarget,
   type MaybePromise,
-  type Step,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
   duplicateArrangementClipToSlot,
@@ -34,6 +33,7 @@ import {
   type CopyLabel,
   type CopyPayload,
   type DuplicateCall,
+  type DuplicateStep,
   type DuplicateRun,
 } from "./duplicate-call-types.ts";
 import {
@@ -55,7 +55,7 @@ import { writeArrangementCopy } from "./write-arrangement-copy.ts";
 export function writeDuplicateCopy(
   run: DuplicateRun,
   target: AppliedTarget<CopyPayload>,
-  step: Step<DuplicateCall>,
+  step: DuplicateStep,
 ): MaybePromise<object> {
   const { body, label } = target.data;
   const call = step.checked;
@@ -88,7 +88,7 @@ export function writeDuplicateCopy(
  * @returns The entry
  * @throws Error carrying the skip's detail
  */
-function landed(entry: object, step: Step<DuplicateCall>): object {
+function landed(entry: object, step: DuplicateStep): object {
   const skip = entry as { ok?: false; detail?: string };
 
   if (skip.ok === false) {
@@ -148,7 +148,7 @@ function writeTrack(
   sourceId: string,
   label: CopyLabel,
   call: DuplicateCall,
-  step: Step<DuplicateCall>,
+  step: DuplicateStep,
 ): object {
   // Read fresh: a copy made for an earlier source moves this one along.
   const trackIndex = regularTrackIndex(validateIdType(sourceId, "track"));
@@ -212,7 +212,7 @@ async function writeSceneArrangement(
   body: Extract<CopyBody, { kind: "scene-arrangement" }>,
   label: CopyLabel,
   call: DuplicateCall,
-  step: Step<DuplicateCall>,
+  step: DuplicateStep,
   run: DuplicateRun,
 ): Promise<object> {
   const { numerator, denominator } = meterOf(run);
@@ -245,7 +245,7 @@ async function writeSceneArrangement(
  */
 function writeLane(
   body: Extract<CopyBody, { kind: "lane" }>,
-  step: Step<DuplicateCall>,
+  step: DuplicateStep,
   run: DuplicateRun,
 ): object {
   const { numerator, denominator } = meterOf(run);

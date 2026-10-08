@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { settleDestination } from "#src/tools/actions/duplicate/helpers/call/settle-destination.ts";
+import { settleDestination } from "#src/tools/actions/duplicate/helpers/call/settle/settle-destination.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {

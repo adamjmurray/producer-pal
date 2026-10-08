@@ -15,12 +15,13 @@ import {
   type DuplicateArgs,
   type DuplicateCall,
   type DuplicateRun,
+  type LateCopy,
 } from "./helpers/call/duplicate-call-types.ts";
 import { newDuplicateRun } from "./helpers/call/duplicate-run.ts";
 import { duplicateTargets } from "./helpers/call/duplicate-targets.ts";
 import { parseDuplicateCall } from "./helpers/call/parse-duplicate-call.ts";
 import { planDuplicateOrder } from "./helpers/call/plan-duplicate-order.ts";
-import { settleDuplicate } from "./helpers/call/settle-duplicate.ts";
+import { settleDuplicate } from "./helpers/call/settle/settle-duplicate.ts";
 import { writeDuplicateCopy } from "./helpers/call/write-duplicate-copy.ts";
 
 /**
@@ -71,7 +72,14 @@ export async function duplicate(
  */
 function duplicateSpec(
   run: DuplicateRun,
-): WriteSpec<DuplicateArgs, DuplicateCall, CopyPayload, DuplicateCall, object> {
+): WriteSpec<
+  DuplicateArgs,
+  DuplicateCall,
+  CopyPayload,
+  DuplicateCall,
+  object,
+  LateCopy | undefined
+> {
   return {
     tool: "ppal-duplicate",
     words: {

@@ -8,12 +8,15 @@
 // exceptions are per source: track copies each land right after their source,
 // so a source's are made last to first to end up in the order named; and a clip
 // copy on the source clip's own span is made after the source's other copies,
-// which would otherwise copy what it left of the source.
+// which would otherwise copy what it left of the source. When a source has two
+// or more of those, each would also trim the source for the next, so the plan
+// tells them to copy a spare of it instead (see duplicate-run.ts).
 
 import {
   type Plan,
   type Superseded,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { copiesOverSource, copySpanBeats } from "../clip/copy-plan.ts";
 import { liveObject, meterOf } from "./duplicate-run.ts";
 import {
@@ -22,6 +25,7 @@ import {
   type CopyLabel,
   type DuplicateRun,
   type DuplicateTarget,
+  type LateCopy,
 } from "./duplicate-call-types.ts";
 
 /** A copy that will be written, with the place it has in the call. */
@@ -35,13 +39,26 @@ interface Written {
 /** The copies of one source clip or object, in call order. */
 type Group = Written[];
 
+/** A source's arrangement copies, and which of them land on the source itself. */
+interface Landing {
+  /** The indexes of the copies that land on the source clip */
+  indexes: number[];
+  /** Whether a spare of the source can stand in for it */
+  sparable: boolean;
+  /** The source's track, when it has one */
+  trackIndex: number | null;
+  /** How far every one of the copies reaches, on the track it lands on */
+  reaches: Array<{ trackIndex: number; end: number }>;
+}
+
 /**
  * Decide the order the copies are written in.
  * @param targets - The call's copies, in the order named
  * @param superseded - The copies nothing will write, and the ones a later copy
  *   cuts short
  * @param run - The call's shared state
- * @returns The order to write in
+ * @returns The order to write in, and for the copies made from a spare of
+ *   their source, what that needs
  * @throws Error when a copy that has to be made last must also come before
  *   another
  */
@@ -49,7 +66,7 @@ export function planDuplicateOrder(
   targets: DuplicateTarget[],
   superseded: Superseded,
   run: DuplicateRun,
-): Plan {
+): Plan<LateCopy | undefined> {
   const groups = new Map<string, Group>();
 
   for (const [index, target] of targets.entries()) {
@@ -66,11 +83,15 @@ export function planDuplicateOrder(
     ]);
   }
 
-  const late = new Set(
-    [...groups.values()].flatMap((group) => landingOnSource(group, run)),
+  const landings = [...groups.values()].map((group) =>
+    landingOnSource(group, run),
   );
+  const late = new Set(landings.flatMap(({ indexes }) => indexes));
 
-  return { order: scheduled(groups, late, superseded) };
+  return {
+    order: scheduled(groups, late, superseded),
+    each: spareNeeds(landings, targets.length),
+  };
 }
 
 // --- Helpers below main export ---
@@ -86,16 +107,17 @@ function sourceKey(body: CopyBody, index: number): string {
 }
 
 /**
- * The indexes of a source's copies that land on the source clip itself.
+ * A source's copies that land on the source clip itself.
  * @param group - The source's copies that will be written, in call order
  * @param run - The call's shared state
- * @returns Their indexes, none unless these are arrangement copies
+ * @returns Which copies land on the source, whether a spare can stand in for
+ *   it, its track, and how far each copy reaches
  */
-function landingOnSource(group: Group, run: DuplicateRun): number[] {
+function landingOnSource(group: Group, run: DuplicateRun): Landing {
   const first = (group[0] as Written).body;
 
   if (first.kind !== "arrangement") {
-    return [];
+    return { indexes: [], sparable: false, trackIndex: null, reaches: [] };
   }
 
   // A source's group holds only its arrangement copies.
@@ -105,16 +127,63 @@ function landingOnSource(group: Group, run: DuplicateRun): number[] {
   }));
   const source = liveObject(run, first.sourceId);
   const { numerator, denominator } = meterOf(run);
+  const spans = copies.map(({ label }) =>
+    copySpanBeats(source, label.length, numerator, denominator),
+  );
   const over = copiesOverSource(
     source,
     copies.map(({ body }) => body.target),
     copies.map(({ body }) => body.startBeats),
-    copies.map(({ label }) =>
-      copySpanBeats(source, label.length, numerator, denominator),
-    ),
+    spans,
   );
 
-  return [...over].map((at) => (group[at] as Written).index);
+  return {
+    indexes: [...over].map((at) => (group[at] as Written).index),
+    // A take-lane clip can neither be duplicated nor deleted through the API,
+    // so it has no spare. Without a track there is nowhere to put one.
+    sparable: !isTakeLaneClip(source) && source.trackIndex != null,
+    trackIndex: source.trackIndex,
+    reaches: copies.map(({ body }, at) => ({
+      trackIndex: body.target.trackIndex,
+      end: body.startBeats + (spans[at] as number),
+    })),
+  };
+}
+
+/**
+ * What each copy made from a spare is told, by its place in the call.
+ * @param landings - Each source's copies, and which land on itself
+ * @param count - How many targets the call has
+ * @returns One entry per target, empty for a copy that needs no spare
+ */
+function spareNeeds(
+  landings: Landing[],
+  count: number,
+): Array<LateCopy | undefined> {
+  const needs: Array<LateCopy | undefined> = Array.from(
+    { length: count },
+    () => undefined,
+  );
+  // The spare has to sit past every copy of the call on its track, not only the
+  // late ones: another source's copy made between them could land on it.
+  const reach = new Map<number, number>();
+
+  for (const { trackIndex, end } of landings.flatMap((each) => each.reaches)) {
+    reach.set(trackIndex, Math.max(end, reach.get(trackIndex) ?? 0));
+  }
+
+  for (const { indexes, sparable, trackIndex } of landings) {
+    if (sparable && indexes.length >= 2) {
+      for (const index of indexes) {
+        needs[index] = {
+          copies: indexes.length,
+          clearBeats: reach.get(trackIndex as number) ?? 0,
+        };
+      }
+    }
+  }
+
+  return needs;
 }
 
 /**

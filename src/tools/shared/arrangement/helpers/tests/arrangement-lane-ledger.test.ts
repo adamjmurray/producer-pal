@@ -567,3 +567,69 @@ describe("LaneLedger that skips the call's own clips", () => {
     );
   });
 });
+
+describe("LaneLedger with a clip set aside", () => {
+  beforeEach(() => {
+    resetLaneMocks();
+  });
+
+  it("doesn't report a set-aside clip the lane was read with, once it is gone", () => {
+    setMainLane([
+      { id: "a", start: 0, end: 8 },
+      { id: "spare", start: 100, end: 108 },
+    ]);
+
+    const ledger = new LaneLedger();
+
+    ledger.setAside("spare");
+    ledger.scan(MAIN);
+    setMainLane([
+      { id: "a", start: 0, end: 8 },
+      { id: "new", start: 16, end: 24 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["new"])).toBeUndefined();
+  });
+
+  it("doesn't count a set-aside clip that appeared after the lane was read", () => {
+    setMainLane([{ id: "a", start: 0, end: 16 }]);
+
+    const ledger = new LaneLedger();
+
+    ledger.scan(MAIN);
+    ledger.setAside("spare");
+    setMainLane([
+      { id: "a", start: 0, end: 4 },
+      { id: "new", start: 4, end: 8 },
+      { id: "spare", start: 100, end: 116 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["new"])).toBe(
+      "shortened the clip at t0[1|1]",
+    );
+
+    // Gone again, and still nothing to say about it.
+    setMainLane([
+      { id: "a", start: 0, end: 4 },
+      { id: "new", start: 4, end: 8 },
+      { id: "next", start: 8, end: 12 },
+    ]);
+
+    expect(ledger.afterWrite(MAIN, ["next"])).toBeUndefined();
+  });
+
+  it("reports a clip again once it is no longer set aside", () => {
+    setMainLane([{ id: "spare", start: 100, end: 108 }]);
+
+    const ledger = new LaneLedger();
+
+    ledger.setAside("spare");
+    ledger.unsetAside("spare");
+    ledger.scan(MAIN);
+    setMainLane([{ id: "new", start: 100, end: 108 }]);
+
+    expect(ledger.afterWrite(MAIN, ["new"])).toBe(
+      "overwrote the clip at t0[26|1]",
+    );
+  });
+});

@@ -311,7 +311,16 @@ with a tool, the tool wins.
   named twice, apart (`A,B,A`), is two turns. A copy that lands on the source
   clip itself is made after that source's other copies, which copy it whole;
   when a copy that must go last also has to come first to be cut short, the call
-  is refused before anything is written.
+  is refused before anything is written. Each such copy trims the source for the
+  next, so when a source has two or more, they are made from a spare: a full
+  copy of the source, parked past the end of its track just before the first of
+  them and deleted after the last, however the call ends (a refused copy, the
+  deadline). A spare Live won't delete stays where it is, and an entry says so
+  (`a spare copy of the source clip is still at <where>; delete it`): the last
+  copy's, or the first's when the last never got its turn (the deadline). If the
+  spare can't be made, none of those copies is. A take-lane source has no spare:
+  its clips can be neither duplicated nor deleted through the API, so its copies
+  on its own lane still copy what an earlier one left of it.
 - **duplicate: Live fails partway.** A copy that landed keeps its normal entry
   (`id`, where it is now) plus a `detail` of what landed and what didn't: a
   track or scene copy whose naming, coloring or clips failed, a copy Live threw

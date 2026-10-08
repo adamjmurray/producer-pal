@@ -13,6 +13,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  deleteMockObject,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -38,6 +39,11 @@ export interface LiveLaneOptions {
   clips?: LaneClip[];
   /** How long a clip made by `duplicate_clip_to_arrangement` is. */
   copyBeats?: number;
+  /**
+   * Make each copy as long as its source is right now, when the source is on
+   * the lane, so a source a write trimmed is copied trimmed.
+   */
+  copiesSourceLength?: boolean;
 }
 
 /** A simulated lane, and what to do to it. */
@@ -67,13 +73,54 @@ export interface LiveLane {
 }
 
 /**
+ * What is left of a lane once a write has cleared a range.
+ * @param lane - The clips on the lane
+ * @param start - Where the range begins, in beats
+ * @param end - Where it ends
+ * @param nextId - Makes the id for a clip Live re-creates
+ * @returns The clips that remain
+ */
+function clearRange(
+  lane: LaneClip[],
+  start: number,
+  end: number,
+  nextId: (kind: string) => string,
+): LaneClip[] {
+  const kept: LaneClip[] = [];
+
+  for (const clip of lane) {
+    if (clip.end <= start || clip.start >= end) {
+      kept.push(clip);
+    } else if (clip.start < start && clip.end > end) {
+      kept.push(
+        { ...clip, end: start },
+        { id: nextId("tail"), start: end, end: clip.end },
+      );
+    } else if (clip.start < start) {
+      kept.push({ ...clip, end: start });
+    } else if (clip.end > end && clip.start > start) {
+      kept.push({ ...clip, start: end });
+    } else if (clip.end > end) {
+      kept.push({ id: nextId("rest"), start: end, end: clip.end });
+    }
+
+    if (!kept.some((each) => each.id === clip.id)) {
+      // A cleared clip keeps its id and loses its path, as in Live.
+      registerMockObject(clip.id, { path: "" });
+    }
+  }
+
+  return kept;
+}
+
+/**
  * Register a track (or one of its take lanes) holding clips that overwrite the
  * way Live's do.
  * @param options - Where the lane is, and what is on it
  * @returns The lane
  */
 export function registerLiveLane(options: LiveLaneOptions): LiveLane {
-  const { trackIndex, laneIndex, copyBeats = 8 } = options;
+  const { trackIndex, laneIndex, copyBeats = 8, copiesSourceLength } = options;
   const owner =
     laneIndex == null
       ? livePath.track(trackIndex)
@@ -133,31 +180,7 @@ export function registerLiveLane(options: LiveLaneOptions): LiveLane {
   const nextId = (kind: string): string => `${kind}-${trackIndex}-${made++}`;
 
   const clear = (start: number, end: number): void => {
-    const kept: LaneClip[] = [];
-
-    for (const clip of lane) {
-      if (clip.end <= start || clip.start >= end) {
-        kept.push(clip);
-      } else if (clip.start < start && clip.end > end) {
-        kept.push(
-          { ...clip, end: start },
-          { id: nextId("tail"), start: end, end: clip.end },
-        );
-      } else if (clip.start < start) {
-        kept.push({ ...clip, end: start });
-      } else if (clip.end > end && clip.start > start) {
-        kept.push({ ...clip, start: end });
-      } else if (clip.end > end) {
-        kept.push({ id: nextId("rest"), start: end, end: clip.end });
-      }
-
-      if (!kept.some((each) => each.id === clip.id)) {
-        // A cleared clip keeps its id and loses its path, as in Live.
-        registerMockObject(clip.id, { path: "" });
-      }
-    }
-
-    lane = kept;
+    lane = clearRange(lane, start, end, nextId);
   };
 
   const write = (start: number, end: number, id?: string): string => {
@@ -178,10 +201,35 @@ export function registerLiveLane(options: LiveLaneOptions): LiveLane {
     return clipId;
   };
 
+  const copyLength = (source: unknown): number => {
+    const clip = lane.find((each) => `id ${each.id}` === source);
+
+    return copiesSourceLength && clip != null
+      ? clip.end - clip.start
+      : copyBeats;
+  };
+
   track.methods.duplicate_clip_to_arrangement = (
-    _source: unknown,
+    source: unknown,
     beats: unknown,
-  ) => ["id", write(Number(beats), Number(beats) + copyBeats)];
+  ) => {
+    const length = copyLength(source);
+
+    return ["id", write(Number(beats), Number(beats) + length)];
+  };
+
+  ownerMock.methods.delete_clip = (source: unknown) => {
+    const id = lane.find((each) => `id ${each.id}` === source)?.id;
+
+    if (id != null) {
+      lane = lane.filter((each) => each.id !== id);
+      deleteMockObject(id);
+      publish();
+    }
+
+    return ["id", 0];
+  };
+
   ownerMock.methods.create_midi_clip = (start: unknown, length: unknown) => [
     "id",
     write(Number(start), Number(start) + Number(length)),

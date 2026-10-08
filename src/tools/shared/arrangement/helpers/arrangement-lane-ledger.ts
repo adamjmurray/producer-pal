@@ -17,6 +17,9 @@
 // written by the call, or is what Live left of one: a copy's split-off tail, or
 // the rest of a copy re-created under a new id. A new clip anywhere else is
 // never assumed to be ours.
+//
+// A clip the call makes only to copy from, and deletes, is set aside: never
+// reported, whether it is there at a baseline, a cut-off part, or gone again.
 
 import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
@@ -61,6 +64,7 @@ export class LaneLedger {
   private baselines = new Map<string, Map<string, ClipSpan>>();
   private baselinesOf: number;
   private readonly skipOwn: boolean;
+  private readonly aside = new Set<string>();
 
   /**
    * @param options - How to report
@@ -73,6 +77,23 @@ export class LaneLedger {
     this.skipOwn = options.skipOwn === true;
     this.lanes = options.lanes ?? new LaneView();
     this.baselinesOf = this.lanes.generation;
+  }
+
+  /**
+   * Never report a clip: it is a stand-in the call made to copy from, and will
+   * delete. Say so as soon as it exists.
+   * @param id - The clip's id
+   */
+  setAside(id: string): void {
+    this.aside.add(fromLiveApiId(id));
+  }
+
+  /**
+   * Report on a clip again, once it is gone for good.
+   * @param id - The clip's id
+   */
+  unsetAside(id: string): void {
+    this.aside.delete(fromLiveApiId(id));
   }
 
   /**
@@ -181,7 +202,7 @@ export class LaneLedger {
 
     this.lanes.changed(lane, wrote);
 
-    const now = this.lanes.clips(lane, api);
+    const now = this.shown(lane, api);
     const after = new Map(now.map((clip) => [clip.id, clip]));
     const before = [...baseline.values()]
       .filter((clip) => !wrote.has(clip.id))
@@ -249,12 +270,22 @@ export class LaneLedger {
       return known;
     }
 
-    const noted = new Map(
-      this.lanes.clips(lane, api).map((clip) => [clip.id, clip]),
-    );
+    const noted = new Map(this.shown(lane, api).map((clip) => [clip.id, clip]));
 
     this.baselines.set(key, noted);
 
     return noted;
+  }
+
+  /**
+   * The lane's clips as the ledger reports them: all but those set aside.
+   * @param lane - The lane
+   * @param api - The lane object
+   * @returns The clips, in Live's order
+   */
+  private shown(lane: ArrangementLane, api: LiveAPI): ClipSpan[] {
+    return this.lanes
+      .clips(lane, api)
+      .filter((clip) => !this.aside.has(clip.id));
   }
 }

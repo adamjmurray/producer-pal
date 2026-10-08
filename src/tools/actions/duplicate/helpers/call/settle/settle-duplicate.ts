@@ -10,27 +10,28 @@ import {
   type Call,
   type Done,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
-import { applyTransformsToDuplicatedClips } from "../clip/apply-clip-transforms.ts";
-import { reportOverwrittenCopies } from "../clip/overwrites/overwritten-copies.ts";
+import { applyTransformsToDuplicatedClips } from "../../clip/apply-clip-transforms.ts";
+import { reportOverwrittenCopies } from "../../clip/overwrites/overwritten-copies.ts";
 import {
   settleDevicePaths,
   type DeviceCopy,
-} from "../device/device-copy-entry.ts";
-import { focusIfRequested } from "../focus-if-requested.ts";
+} from "../../device/device-copy-entry.ts";
+import { focusIfRequested } from "../../focus-if-requested.ts";
 import { groupCopyMembersDetail } from "./group-copy-members.ts";
+import { releaseSpares } from "../spare/source-spare.ts";
 import {
   settleCopyPaths,
   type CopyEntry,
-} from "../sources/copy-path-settling.ts";
+} from "../../sources/copy-path-settling.ts";
 import {
   noteUnhonoredTrackToPath,
   routeTrackCopy,
-} from "../sources/duplicate-track.ts";
+} from "../../sources/duplicate-track.ts";
 import {
   type CopyPayload,
   type DuplicateCall,
   type DuplicateRun,
-} from "./duplicate-call-types.ts";
+} from "../duplicate-call-types.ts";
 
 type DuplicateDone = Done<CopyPayload, DuplicateCall, object>;
 
@@ -41,9 +42,9 @@ interface TrackCopy {
 }
 
 /**
- * Once every copy has had its turn: name where each copy is now, say what a
- * later copy did to an earlier one, run what is applied to all the copies, and
- * focus the last one.
+ * Once every copy has had its turn: delete any spare copy still left, name
+ * where each copy is now, say what a later copy did to an earlier one, run what
+ * is applied to all the copies, and focus the last one.
  * @param run - The call's shared state
  * @param done - What the call did
  * @param call - The call's shared state, for its warnings
@@ -55,6 +56,12 @@ export async function settleDuplicate(
 ): Promise<void> {
   const parsed = done.checked;
   const { type } = parsed;
+
+  // First: a copy the deadline never reached leaves its spare in the lanes.
+  for (const { index, note } of releaseSpares(run)) {
+    appendDetail(done.entries[index] as { detail?: string }, note);
+  }
+
   const copies = writtenEntries(done);
 
   if (parsed.laneCopy) {

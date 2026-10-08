@@ -12,6 +12,7 @@ import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type Cover,
+  type Step,
   type Target,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -71,6 +72,32 @@ export interface DuplicateCall {
   /** The param the caller wrote the positions in */
   startParam: string;
 }
+
+/** What the plan tells a copy made from a spare of its source. */
+export interface LateCopy {
+  /** How many copies of this source are made from the spare */
+  copies: number;
+  /** The furthest beat any copy of the call reaches on the track */
+  clearBeats: number;
+}
+
+/** A copy's turn in the call, with what the plan told it. */
+export type DuplicateStep = Step<DuplicateCall, LateCopy | undefined>;
+
+/** A source's spare copy, kept while its late copies are made. */
+export type Spare =
+  | {
+      id: string;
+      trackIndex: number;
+      /** Late copies still to be made from it */
+      remaining: number;
+      /** The first late copy's place in the call: its entry says if the spare is left */
+      index: number;
+    }
+  | {
+      /** Why none could be made */
+      refused: string;
+    };
 
 /** What each copy is told about itself, paired by its place in the call. */
 export interface CopyLabel {
@@ -145,6 +172,8 @@ export interface DuplicateRun {
   tracks: Map<number, LiveAPI>;
   /** The source objects the call has looked up, by id */
   objects: Map<string, LiveAPI>;
+  /** The spare copies kept for sources with late copies, by the source's id */
+  spares: Map<string, Spare>;
   /** What each source clip's slot copies share, by the clip's id */
   slotSources: Map<string, SlotCopySource>;
   /** Deprecated: the name for a take lane a copy makes */

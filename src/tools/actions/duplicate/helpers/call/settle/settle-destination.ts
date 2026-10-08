@@ -20,7 +20,7 @@ import {
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { hasArrangementPosition } from "../duplicate-destinations.ts";
+import { hasArrangementPosition } from "../../duplicate-destinations.ts";
 
 /** Where the copies land, in one spelling. */
 export interface SettledDestination {

@@ -48,6 +48,7 @@ function runWithClips(...sources: string[]): DuplicateRun {
       {
         trackIndex,
         takeLaneIndex: null,
+        path: `live_set tracks ${trackIndex} arrangement_clips 0`,
         getProperty: (name: string) =>
           ({ is_arrangement_clip: 1, start_time: 0, end_time: 16 })[name],
       } as unknown as LiveAPI,
@@ -228,5 +229,88 @@ describe("planDuplicateOrder", () => {
     ).toThrow(
       /"sourceId":"a".*lands on the source clip itself.*"sourceId":"a".*has to be made after it\. Split them into two calls\./s,
     );
+  });
+
+  describe("copies made from a spare of their source", () => {
+    it("tells two copies on their source to copy a spare", () => {
+      const targets = [arranged("a", 0, 0), arranged("a", 0, 4)];
+      const need = { copies: 2, clearBeats: 20 };
+
+      expect(
+        planDuplicateOrder(targets, nothing(), runWithClips("a")).each,
+      ).toStrictEqual([need, need]);
+    });
+
+    it("tells a lone copy on its source nothing", () => {
+      const targets = [arranged("a", 0, 0), arranged("a", 5, 4)];
+
+      expect(
+        planDuplicateOrder(targets, nothing(), runWithClips("a")).each,
+      ).toStrictEqual([undefined, undefined]);
+    });
+
+    it("counts only the copies that will be written", () => {
+      const targets = [
+        arranged("a", 0, 0),
+        arranged("a", 0, 4),
+        arranged("a", 0, 8),
+      ];
+
+      expect(
+        planDuplicateOrder(targets, nothing([1]), runWithClips("a")).each,
+      ).toStrictEqual([
+        { copies: 2, clearBeats: 24 },
+        undefined,
+        { copies: 2, clearBeats: 24 },
+      ]);
+    });
+
+    it("puts the spare past every copy of the call on the track", () => {
+      // b's copy is made between a's two, and lands far on a's track.
+      const targets = [
+        arranged("a", 0, 0),
+        arranged("b", 0, 100),
+        arranged("a", 0, 4),
+      ];
+
+      expect(
+        planDuplicateOrder(targets, nothing(), runWithClips("a", "b")).each,
+      ).toStrictEqual([
+        { copies: 2, clearBeats: 116 },
+        undefined,
+        { copies: 2, clearBeats: 116 },
+      ]);
+    });
+
+    it("gives a take-lane source none: its clips can't be deleted", () => {
+      const lane = { trackIndex: 0, takeLane: 0 };
+      const run = {
+        objects: new Map([
+          [
+            "a",
+            {
+              trackIndex: 0,
+              takeLaneIndex: 0,
+              path: "live_set tracks 0 take_lanes 0 arrangement_clips 0",
+              getProperty: (name: string) =>
+                ({ is_arrangement_clip: 1, start_time: 0, end_time: 16 })[name],
+            } as unknown as LiveAPI,
+          ],
+        ]),
+        meter: { numerator: 4, denominator: 4 },
+      } as DuplicateRun;
+      const onLane = (startBeats: number): DuplicateTarget =>
+        copy({
+          kind: "arrangement",
+          sourceId: "a",
+          turn: 0,
+          target: lane,
+          startBeats,
+        });
+
+      expect(
+        planDuplicateOrder([onLane(0), onLane(4)], nothing(), run).each,
+      ).toStrictEqual([undefined, undefined]);
+    });
   });
 });

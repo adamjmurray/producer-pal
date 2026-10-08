@@ -32,7 +32,7 @@ import {
  * @param context - Short description of the failed operation for the error message
  * @returns The new clip's ID string
  */
-function verifyDupResult(result: unknown, context: string): string {
+export function verifyDupResult(result: unknown, context: string): string {
   const newClip = clipFromDuplicateResult(result);
 
   if (!newClip.exists()) {

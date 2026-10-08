@@ -24,7 +24,7 @@ import {
   type DuplicateArgs,
   type DuplicateCall,
 } from "./duplicate-call-types.ts";
-import { settleDestination } from "./settle-destination.ts";
+import { settleDestination } from "./settle/settle-destination.ts";
 
 /**
  * Read a duplicate call once: refuse what is malformed, and settle where the

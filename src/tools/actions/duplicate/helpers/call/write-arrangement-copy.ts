@@ -10,21 +10,23 @@ import {
   type ArrangementTrack,
   type ResolvedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { type Step } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateOneCopy } from "../clip/duplicate-one-copy.ts";
 import { clearedCopy } from "../minimal-clip-info.ts";
 import {
   type ArrangementCopy,
   type CopyLabel,
-  type DuplicateCall,
   type DuplicateRun,
+  type DuplicateStep,
 } from "./duplicate-call-types.ts";
 import { liveObject, meterOf, trackFor } from "./duplicate-run.ts";
+import { madeFromSpare, sourceSpare } from "./spare/source-spare.ts";
 
 /**
  * Make one clip copy on the arrangement. A copy Live declined after clearing
  * clips still changed the Set, so it keeps its entry and says what was cleared;
- * one that cleared nothing is a skip.
+ * one that cleared nothing is a skip. A copy on its source clip along with
+ * others is made from a spare of the source, which the last of them deletes.
  * @param body - The copy to make
  * @param label - Its name, color and length
  * @param named - Where it is headed, as a skip entry spells it
@@ -38,7 +40,78 @@ export async function writeArrangementCopy(
   body: ArrangementCopy,
   label: CopyLabel,
   named: { value: string },
-  step: Step<DuplicateCall>,
+  step: DuplicateStep,
+  run: DuplicateRun,
+): Promise<object> {
+  const late = step.planned;
+
+  if (late == null) {
+    return await copyFrom(
+      { object: liveObject(run, body.sourceId), id: body.sourceId },
+      body,
+      label,
+      named,
+      step,
+      run,
+    );
+  }
+
+  const spare = sourceSpare(run, body.sourceId, late, step.index);
+  let entry: object;
+
+  try {
+    entry = await copyFrom(
+      { object: spare, id: spare.id },
+      body,
+      label,
+      named,
+      step,
+      run,
+    );
+  } catch (error) {
+    // The throw becomes the copy's entry, so a spare left behind goes on it.
+    const left = madeFromSpare(run, body.sourceId);
+
+    if (left != null) {
+      step.landed(left);
+    }
+
+    throw error;
+  }
+
+  const left = madeFromSpare(run, body.sourceId);
+
+  if (left != null) {
+    const { clips } = entry as { clips?: object[] };
+
+    appendDetail(clips?.[0] ?? entry, left);
+  }
+
+  return entry;
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Make the copy from a clip: the source, or its spare.
+ * @param from - The clip to copy, and the id to copy it by
+ * @param from.object - The clip
+ * @param from.id - Its id
+ * @param body - The copy to make
+ * @param label - Its name, color and length
+ * @param named - Where it is headed, as a skip entry spells it
+ * @param named.value - The destination's path
+ * @param step - The copy's turn in the call
+ * @param run - The call's shared state
+ * @returns The copy's entry
+ * @throws Error when no copy landed and nothing was cleared
+ */
+async function copyFrom(
+  from: { object: LiveAPI; id: string },
+  body: ArrangementCopy,
+  label: CopyLabel,
+  named: { value: string },
+  step: DuplicateStep,
   run: DuplicateRun,
 ): Promise<object> {
   const { target } = body;
@@ -59,8 +132,8 @@ export async function writeArrangementCopy(
 
       return resolved;
     },
-    object: liveObject(run, body.sourceId),
-    id: body.sourceId,
+    object: from.object,
+    id: from.id,
     name: label.name,
     color: label.color,
     arrangementLength: label.length,
@@ -94,8 +167,6 @@ export async function writeArrangementCopy(
   throw new Error(attempt.refused);
 }
 
-// --- Helpers below main export ---
-
 /**
  * The take lane a copy lands on, made when it isn't there yet. A lane can't be
  * deleted, so one made is said to have landed whatever the copy then does.
@@ -106,7 +177,7 @@ export async function writeArrangementCopy(
  */
 function laneFor(
   target: ArrangementTrack,
-  step: Step<DuplicateCall>,
+  step: DuplicateStep,
   run: DuplicateRun,
 ): ResolvedTakeLane {
   const key = takeLaneLabel(target);

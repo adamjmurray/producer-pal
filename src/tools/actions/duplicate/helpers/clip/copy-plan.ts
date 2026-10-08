@@ -18,7 +18,8 @@ import { parseArrangementLength } from "./arrangement-length.ts";
  * the source is shorter afterwards and every copy made after it would be a copy
  * of the leftover. Those copies have to be made last, which keeps the rest of
  * the fan-out copying the whole clip, and makes the result independent of the
- * order the destinations happened to be listed in.
+ * order the destinations happened to be listed in. Two or more are made from a
+ * spare of the source, since each trims it for the next.
  *
  * A copy is in the way only when it lands on the source's own lane and the span
  * it clears — `spanBeats` forward from its start — reaches the source, the same

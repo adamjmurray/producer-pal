@@ -34,6 +34,7 @@ export function newDuplicateRun(context: Partial<ToolContext>): DuplicateRun {
     lanes: new Map(),
     tracks: new Map(),
     objects: new Map(),
+    spares: new Map(),
     slotSources: new Map(),
     takeLaneName: undefined,
     namesTakeLane: false,
