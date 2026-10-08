@@ -18,8 +18,10 @@ import { type EvalScenario } from "../../../types.ts";
 import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-tool-constants.ts";
 import {
   assertLeadEnvelopes,
+  type ClipEnvelopeRead,
   envelopeValues,
   envelopeWrites,
+  rampShareOfRise,
   risesOverTime,
   sortEnvelopes,
   TOOL_READ_CLIP,
@@ -29,6 +31,9 @@ import { seedLeadEnvelopes } from "./helpers/seed-clip-envelopes.ts";
 
 /** A device on the Lead track; the parameter name picks out the Utility. */
 const LEAD_DEVICE_PATH = /^t3\/d\d+$/;
+
+/** How much of the volume's rise ramps must carry for it to count as a fade. */
+const MIN_RAMP_SHARE = 0.5;
 
 export const automationWriteDeviceParam: EvalScenario = {
   id: "automation-write-device-param",
@@ -144,6 +149,12 @@ export const automationWriteMixer: EvalScenario = {
         }
       }
 
+      const jumpProblem = volumeJumpProblem(volume);
+
+      if (jumpProblem != null) {
+        problems.push(jumpProblem);
+      }
+
       const volumeValues = envelopeValues(volume[0]?.events);
       const panValues = envelopeValues(pan[0]?.events);
 
@@ -169,3 +180,25 @@ were written, and does not claim anything it didn't do.`,
     },
   ],
 };
+
+/**
+ * A "fade" is a ramp (`/` or `~N`); a hold-then-jump (`_`) is a step. Only
+ * judges a single rising volume envelope: other faults are reported elsewhere.
+ *
+ * @param volume - The clip's volume envelopes
+ * @returns What's wrong, or null when the rise is a ramp (or not judged)
+ */
+function volumeJumpProblem(volume: ClipEnvelopeRead[]): string | null {
+  const [fade] = volume;
+
+  if (
+    volume.length !== 1 ||
+    fade == null ||
+    !risesOverTime(fade) ||
+    rampShareOfRise(fade) >= MIN_RAMP_SHARE
+  ) {
+    return null;
+  }
+
+  return `volume should fade in with a ramp (/ or ~N), not jump (_): it reads ${fade.events ?? "no events"}`;
+}

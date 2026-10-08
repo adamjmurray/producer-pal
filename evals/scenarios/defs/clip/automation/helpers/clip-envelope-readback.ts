@@ -131,6 +131,45 @@ export function risesOverTime(envelope: ClipEnvelopeRead): boolean {
   return values.length >= 2 && first != null && last != null && first < last;
 }
 
+/** A connector with its token kept, to tell a ramp (`/`, `~N`) from a jump. */
+const CONNECTOR_TOKEN = /\s+(\/|_|~[-+]?[\d.]+)\s+/;
+
+/**
+ * How much of an envelope's net rise comes from ramps (`/` or `~N`) rather than
+ * jumps (`_`), as a share from 0 to 1. A fade is all ramp; a hold-then-jump is
+ * none. 0 when the envelope doesn't end higher than it starts.
+ *
+ * @param envelope - The envelope to check
+ * @returns The share of the first-to-last rise that ramps carry
+ */
+export function rampShareOfRise(envelope: ClipEnvelopeRead): number {
+  // split with a capture group gives point, connector, point, connector, ...
+  const parts = withoutDisplays(envelope.events).split(CONNECTOR_TOKEN);
+  const first = pointValue(parts[0]);
+  const last = pointValue(parts.at(-1));
+  let ramped = 0;
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const rise = pointValue(parts[i + 1]) - pointValue(parts[i - 1]);
+
+    if (parts[i] !== "_" && rise > 0) {
+      ramped += rise;
+    }
+  }
+
+  return last > first ? Math.min(1, ramped / (last - first)) : 0;
+}
+
+/**
+ * The value of one "bar|beat value" point, NaN when it has none.
+ *
+ * @param point - One point's notation
+ * @returns The point's value
+ */
+function pointValue(point: string | undefined): number {
+  return Number((point ?? "").trim().split(/\s+/)[1]);
+}
+
 /**
  * Split the clip's envelopes into volume, pan and the rest of the mixer (the
  * sends), and the device parameters. Live's names for the mixer parameters

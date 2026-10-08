@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   curveAmounts,
   envelopeValues,
+  rampShareOfRise,
   risesOverTime,
 } from "./clip-envelope-readback.ts";
 
@@ -45,6 +46,37 @@ describe("curveAmounts", () => {
 
   it("is empty for a straight ramp", () => {
     expect(curveAmounts("1|1 0 / 2|1 1")).toStrictEqual([]);
+  });
+});
+
+describe("rampShareOfRise", () => {
+  const share = (events: string): number =>
+    rampShareOfRise({ parameter: "Track Volume", eventCount: 2, events });
+
+  it.each([
+    ["a straight ramp", "1|1 0 / 3|1 1"],
+    ["a curved ramp", "1|1 0 ~-0.7 3|1 1"],
+    ["a ramp after a hold", "1|1 0 _ 1|3 0 / 3|1 0.85"],
+    ["a ramp with Live's display text", "1|1 0 (-inf dB) / 3|1 0.85 (0 dB)"],
+    ["a ramp then a plateau", "1|1 0 ~0.5 2|1 0.85 / 3|1 0.85"],
+  ])("is 1 for %s", (_name, events) => {
+    expect(share(events)).toBe(1);
+  });
+
+  it.each([
+    ["a hold then a jump", "1|1 0 _ 2|1 1"],
+    ["a staircase", "1|1 0 _ 1|3 0.5 _ 2|1 1"],
+  ])("is 0 for %s", (_name, events) => {
+    expect(share(events)).toBe(0);
+  });
+
+  it("counts only the ramped part of a mixed envelope", () => {
+    expect(share("1|1 0 / 2|1 0.25 _ 3|1 1")).toBe(0.25);
+  });
+
+  it("is 0 for an envelope that falls or has no notation", () => {
+    expect(share("1|1 1 / 3|1 0")).toBe(0);
+    expect(share("")).toBe(0);
   });
 });
 
