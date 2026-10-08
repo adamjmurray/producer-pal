@@ -1,0 +1,310 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+// Writing the `envelopes` lines to one clip, one round trip to the remote
+// script per line. The clip is a session clip, or the scratch clip an
+// arrangement clip's lane is stamped from.
+
+import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import {
+  appendDetail,
+  joinDetails,
+} from "#src/tools/shared/helpers/entry-details.ts";
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
+import { type EnvelopeLine } from "./envelope-lines.ts";
+import { envelopeWritePoints } from "./envelope-write-points.ts";
+import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
+import {
+  findSameParameter,
+  resolveEnvelopeLines,
+  type ResolvedEnvelopeLine,
+} from "./envelope-targets.ts";
+import {
+  ENVELOPE_ROUTES,
+  type EnvelopeClearResult,
+  type EnvelopeWriteResult,
+} from "./remote-script-envelope-contract.ts";
+
+/** The clip the lines write to, and the meter their times are spelled in. */
+export interface ClipAddress {
+  trackIndex: number;
+  slot: number;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+  /** Where the clip stops playing, in beats; Live keeps events past it */
+  endBeats: number;
+  /** An audio clip with warping off: Live keeps its envelopes but never plays them */
+  unwarped: boolean;
+  /** Live before 12.4 has no `Envelope.create_event`, so points can't be written */
+  canWritePoints: boolean;
+  /**
+   * The clip is a scratch one, copied onto an arrangement clip's span to write
+   * the track's lane. A lane can't be cleared, so an empty line is refused.
+   */
+  carrier?: boolean;
+}
+
+/** Why points aren't written to an unwarped audio clip. */
+const UNWARPED_CLIP_REFUSAL =
+  "not written: an unwarped audio clip can't play envelopes. Set warping: true on the clip, then write it again";
+
+/** The oldest Live whose Python API can write envelope points. */
+const WRITE_POINTS_MIN_VERSION = "12.4";
+
+/** Why points aren't written on an older Live. */
+const OLD_LIVE_REFUSAL = `not written: writing envelope points requires Live ${WRITE_POINTS_MIN_VERSION} or later. An empty line still clears an envelope`;
+
+/** Why an empty line does nothing to an arrangement clip. */
+const LANE_CLEAR_REFUSAL =
+  "not cleared: an arrangement lane can't be cleared; write a flat line instead";
+
+/** The user had moved the parameter, which mutes its automation until re-enabled. */
+const REENABLED_NOTE = "re-enabled its automation, which was overridden";
+
+/**
+ * Whether this Live can write envelope points.
+ * @returns True on 12.4 or later
+ */
+export function canWriteEnvelopePoints(): boolean {
+  return liveVersionAtLeast(WRITE_POINTS_MIN_VERSION);
+}
+
+/**
+ * Write the lines one at a time, stopping when the remote script turns out not
+ * to be there, or when it stops answering or the request runs out of time: the
+ * next line would stall the same way. Nothing here throws: a line the remote
+ * script turned down becomes a detail on the entry, and the lines after it
+ * still run.
+ * @param entry - The clip's result entry, written to
+ * @param lines - The `envelopes` param, already read into lines
+ * @param address - The clip the lines write to, and its meter
+ * @param deadline - The request deadline, if any
+ * @returns How many lines were written
+ */
+export async function writeEachLine(
+  entry: ClipResult,
+  lines: readonly EnvelopeLine[],
+  address: ClipAddress,
+  deadline: number | null | undefined,
+): Promise<number> {
+  const resolved = resolveEnvelopeLines(lines, address.trackIndex);
+  const clash = findSameParameter(resolved);
+
+  // Each line replaces its parameter's whole envelope, so two on one parameter
+  // can't both stand. Refused, as two lines naming the same text are.
+  if (clash != null) {
+    entry.envelopes = `not written: "${clash[0].target}" and "${clash[1].target}" are the same parameter; give one line per parameter, since each replaces that parameter's whole envelope`;
+
+    return 0;
+  }
+
+  let written = 0;
+
+  for (const [index, line] of lines.entries()) {
+    const outcome = await writeOneLine(
+      resolved[index] as ResolvedEnvelopeLine,
+      address,
+      deadline,
+    );
+
+    if (outcome.ok) {
+      written += 1;
+
+      if (outcome.note != null) {
+        appendDetail(entry, `envelope "${line.target}": ${outcome.note}`);
+      }
+
+      continue;
+    }
+
+    if (!outcome.available) {
+      entry.envelopes = outcome.reason;
+
+      return 0;
+    }
+
+    if (outcome.stalled != null) {
+      reportStalled(entry, outcome, line, lines.slice(index + 1), address);
+      break;
+    }
+
+    appendDetail(entry, `envelope "${line.target}": ${outcome.reason}`);
+  }
+
+  entry.envelopes = written;
+
+  return written;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Say where a stalled write stopped, and which lines it left alone.
+ * @param entry - The clip's result entry, written to
+ * @param outcome - The failed route call
+ * @param line - The line that stalled
+ * @param rest - The lines after it, none of them sent
+ * @param address - The clip the lines write to
+ */
+function reportStalled(
+  entry: ClipResult,
+  outcome: Extract<RouteOutcome<unknown>, { ok: false }>,
+  line: EnvelopeLine,
+  rest: readonly EnvelopeLine[],
+  address: ClipAddress,
+): void {
+  if (outcome.stalled === "out-of-time") {
+    appendDetail(
+      entry,
+      `${outcome.reason}; envelopes not written, re-run for ${named([line, ...rest])}`,
+    );
+
+    return;
+  }
+
+  appendDetail(
+    entry,
+    `envelope "${line.target}": ${outcome.reason}; ${stalledOutcome(line, address)}`,
+  );
+
+  if (rest.length > 0) {
+    appendDetail(
+      entry,
+      `envelopes not written, since the next would wait the same way: ${named(rest)}`,
+    );
+  }
+}
+
+/**
+ * What a stalled line may have done.
+ * @param line - The line that stalled
+ * @param address - The clip the lines write to
+ * @returns The words for the entry
+ */
+function stalledOutcome(line: EnvelopeLine, address: ClipAddress): string {
+  if (address.carrier === true) {
+    return "its points may or may not be in the lane";
+  }
+
+  return line.notation === ""
+    ? "it may still have been cleared"
+    : "its points may still have landed";
+}
+
+/**
+ * Quote each line's target, for a detail.
+ * @param lines - The lines to name
+ * @returns The targets, comma-separated
+ */
+function named(lines: readonly EnvelopeLine[]): string {
+  return lines.map(({ target }) => `"${target}"`).join(", ");
+}
+
+/**
+ * Write or clear one parameter's envelope.
+ * @param resolved - The line to apply, with the parameter it reaches
+ * @param address - The clip it writes to, and its meter
+ * @param deadline - The request deadline, if any
+ * @returns Whether it landed, and why it didn't when it didn't
+ */
+async function writeOneLine(
+  resolved: ResolvedEnvelopeLine,
+  address: ClipAddress,
+  deadline: number | null | undefined,
+): Promise<RouteOutcome<unknown> & { note?: string }> {
+  if ("error" in resolved) {
+    return { ok: false, reason: resolved.error, available: true };
+  }
+
+  const { line, target } = resolved;
+  const request = {
+    track: `t${String(address.trackIndex)}`,
+    slot: address.slot,
+    ...target,
+  };
+
+  if (line.notation === "" && address.carrier === true) {
+    return { ok: false, reason: LANE_CLEAR_REFUSAL, available: true };
+  }
+
+  // A clear still runs: removing an envelope that can't play does no harm.
+  if (line.notation !== "" && address.unwarped) {
+    return { ok: false, reason: UNWARPED_CLIP_REFUSAL, available: true };
+  }
+
+  if (line.notation !== "" && !address.canWritePoints) {
+    return { ok: false, reason: OLD_LIVE_REFUSAL, available: true };
+  }
+
+  if (line.notation === "") {
+    const cleared = await envelopeChange<EnvelopeClearResult>(
+      ENVELOPE_ROUTES.clear,
+      request,
+      deadline,
+    );
+
+    return cleared.ok && !cleared.result.cleared
+      ? { ...cleared, note: "there was no envelope to clear" }
+      : cleared;
+  }
+
+  let points;
+
+  try {
+    // The up-front check parsed in 4/4; this clip's meter can still refuse it.
+    points = parseEnvelopeNotation(line.notation, address);
+  } catch (error) {
+    return { ok: false, reason: errorMessage(error), available: true };
+  }
+
+  const outcome = await envelopeChange<EnvelopeWriteResult>(
+    ENVELOPE_ROUTES.write,
+    {
+      ...request,
+      points: envelopeWritePoints(points),
+    },
+    deadline,
+  );
+
+  return outcome.ok
+    ? {
+        ...outcome,
+        note: joinDetails([
+          outcome.result.re_enabled ? REENABLED_NOTE : undefined,
+          pastEndNote(points, address),
+        ]),
+      }
+    : outcome;
+}
+
+/**
+ * Live stores a point past the clip's end but never plays it, which is almost
+ * always a wrong bar number rather than what was meant.
+ * @param points - What was written
+ * @param address - The clip and its meter
+ * @returns The note, or undefined when every point is inside the clip
+ */
+function pastEndNote(
+  points: readonly { time: number }[],
+  address: ClipAddress,
+): string | undefined {
+  const past = points.find((point) => point.time > address.endBeats);
+
+  if (past == null) {
+    return undefined;
+  }
+
+  const spell = (beats: number) =>
+    abletonBeatsToBarBeat(
+      beats,
+      address.timeSigNumerator,
+      address.timeSigDenominator,
+    );
+
+  return `point ${spell(past.time)} is past the clip end (${spell(address.endBeats)}), so it never plays`;
+}

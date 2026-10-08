@@ -15,6 +15,7 @@ it, and creating or deleting a clip cleared it.
 | A lane's value at a time        | move the playhead, read `parameter.value` | values only, ~10 reads/s  |
 | A lane's breakpoints and curves | saved `.als` only                         | as of the last save       |
 | Write a lane over a span        | copy a session clip with envelopes        | replaces clips there      |
+| Write a lane under a clip       | park, stamp, put back (below)             | new clip id               |
 | Clear or remove a lane          | none                                      | —                         |
 
 No Python object holds a track's automation lane. `Track`, `MixerDevice`,
@@ -58,6 +59,35 @@ position. A clip re-created on a take lane carries no envelopes at all.
 What carries: mixer volume, pan, sends, track activator, rack macros, and device
 parameters inside racks. Chain mixer volume doesn't (and `ppal-update-clip`
 already refuses chain and drum-pad parameters).
+
+## Writing a lane under an existing arrangement clip
+
+`ppal-update-clip` `envelopes` on an arrangement clip (MIDI or audio) writes the
+lane over exactly that clip's span, keeping the clip. The copy that writes a
+lane replaces the clips under it, and copying an arrangement clip writes
+nothing, so the route is:
+
+1. Make a scratch session clip on the same track (an empty MIDI clip, or a
+   warped silent audio clip on an audio track), as long as the clip, and write
+   the envelopes into it. Nothing in the arrangement has changed yet.
+2. **Park**: `duplicate_clip_to_arrangement(clip, farTime)`, a bar past the
+   Set's end and the last clip on the main lane and take lanes, so it lands on
+   nothing.
+3. **Stamp**: `duplicate_clip_to_arrangement(scratch, clip.start_time)` writes
+   the lane and replaces the clip with an empty one.
+4. **Put back**: `duplicate_clip_to_arrangement(parked, clip.start_time)`
+   restores the clip (new id) and writes nothing to the lane.
+5. Delete the parked copy and the scratch clip.
+
+Parking beats re-creating the clip from its notes: the copy keeps everything the
+API can't read back (MPE, warp markers, file, gain, pitch). The Set grows while
+a clip is parked and shrinks back when it is deleted. The scratch clip must be
+warped on audio tracks, or its envelopes never play; the arrangement clip's own
+warping doesn't matter.
+
+If putting the clip back fails, the parked copy is the only one holding its
+content: it is kept, and the entry names its position and id. A lane can't be
+cleared this way either; a flat line overwrites it.
 
 ## Reading
 

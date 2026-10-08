@@ -295,7 +295,7 @@ async function updatePiece(
     );
     // Last, and on the entry the rest of the update settled on: a move
     // re-creates the clip under a new id.
-    await applyClipEnvelopes(updated[0], call.envelopeLines, context.deadline);
+    await applyClipEnvelopes(updated[0], call.envelopeLines, context);
     // After the envelopes, so it converts the clip as the call left it.
     await applyClipConvert({
       entry: updated[0],

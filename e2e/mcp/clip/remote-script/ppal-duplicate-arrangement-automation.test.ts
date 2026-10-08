@@ -30,7 +30,6 @@ import {
   EMPTY_MIDI_TRACK,
 } from "../../e2e-test-set.ts";
 import {
-  parseToolResult,
   setConfig,
   setupMcpTestContext,
   sleep,
@@ -49,6 +48,7 @@ import {
 import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 import { settledTool } from "../helpers/envelope-route-test-helpers.ts";
+import { laneAt as readLaneAt } from "../helpers/arrangement-lane-test-helpers.ts";
 
 const MIDI_TRACK = 3;
 /** Beats each kind of clip loops, and where its ramp stops climbing. */
@@ -62,10 +62,6 @@ const ANCHOR_BAR = 400;
 
 type Kind = keyof typeof TRACKS;
 
-interface LiveApiResult {
-  results: unknown[];
-}
-
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-duplicate — automation at another length",
   () => {
@@ -75,37 +71,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     skipBeforeLive(ctx, "12.4", "Envelope.create_event, which writes points");
 
-    /** Run operations on a Live object through ppal-live-api. */
-    const liveApi = async (
-      path: string,
-      operations: unknown[],
-    ): Promise<LiveApiResult> =>
-      parseToolResult<LiveApiResult>(
-        await callTool(ctx.client!, "ppal-live-api", { path, operations }),
-      );
-
-    /** Read the track's pan at a song time: set the time, wait, then read. */
-    const laneAt = async (
-      trackIndex: number,
-      songBeats: number,
-    ): Promise<number> => {
-      await liveApi("live_set", [
-        { type: "set-property", property: "back_to_arranger", value: 0 },
-        {
-          type: "set-property",
-          property: "current_song_time",
-          value: songBeats,
-        },
-      ]);
-      await sleep(250);
-
-      const read = await liveApi(
-        `live_set tracks ${String(trackIndex)} mixer_device panning`,
-        [{ type: "get-property", property: "value" }],
-      );
-
-      return read.results[0] as number;
-    };
+    /** Read the track's pan at a song time. */
+    const laneAt = (trackIndex: number, songBeats: number): Promise<number> =>
+      readLaneAt(ctx.client!, trackIndex, songBeats);
 
     /** What the lane should read `into` beats into a copy of a looping clip. */
     const ramp = (kind: Kind, into: number): number => {

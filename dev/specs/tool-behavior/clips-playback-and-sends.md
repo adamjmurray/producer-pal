@@ -93,6 +93,45 @@ remote script. A line it can't write is a `detail` on that clip's entry
   `envelope "<target>": re-enabled its automation, which was overridden`. A
   parameter that wasn't overridden adds nothing.
 
+### Envelopes on an arrangement clip
+
+Mechanics:
+[arrangement-automation.md](../../live-api/arrangement-automation.md).
+
+An arrangement clip (MIDI or audio) has no envelopes of its own, so `envelopes`
+writes the track's automation lane over exactly the clip's span, keeping the
+clip. Every line goes into one scratch session clip as long as the clip, and one
+stamp writes them all.
+
+- **Times** run from where the clip starts (1|1), in the clip's meter, once
+  across the whole span, however the clip loops. A point past the span's end is
+  noted as it is on a session clip
+  (`point 3|2 is past the clip end (3|1), so it never plays`).
+- **The clip is re-created.** The entry carries the clip's **new id** and its
+  path, and `envelopes` counts the lines written. The lane can't be read back,
+  so nothing echoes it.
+- **An empty line is refused**: nothing can clear a lane.
+  `envelope "<target>": not cleared: an arrangement lane can't be cleared; write a flat line instead`.
+  The other lines still run.
+- **Nothing is changed unless a line was written.** When every line is refused
+  (or the remote script is missing, stalls, is too old for points, or the
+  request is out of time first), the entry says so, `envelopes` is 0 and its
+  `detail` ends `the clip and its lane are unchanged`. The clip is not parked.
+- **Refused before anything is touched**, as the `envelopes` text: a clip on a
+  take lane, a frozen track, an audio clip when the silence file isn't known.
+- **Failure after Live changed.** The clip is parked a bar past the Set's end
+  while the lane is stamped, then copied back.
+  - Parking fails: `envelopes: 0`,
+    `not written: couldn't park the clip (<why>); it and the lane are unchanged`.
+  - The stamp fails: the parked copy is deleted and the clip stays,
+    `not written: couldn't write the lane (<why>); the clip is unchanged`.
+  - Putting the clip back fails: the parked copy is kept. The entry names it
+    (`id`, `path`) and says
+    `couldn't put the clip back (<why>); already changed: the lane was written and the clip was replaced by an empty clip carrying the automation; its copy is parked at <path> (id <id>), so move it back`.
+  - The parked copy or the scratch clip can't be deleted afterwards:
+    `left a copy of the clip parked at <path> (id <id>): <why>; delete it`, or
+    the scratch wording of the arrangement tools.
+
 Any clip read (`ppal-read-clip`, and the clips `ppal-read-track` and
 `ppal-read-scene` list) adds `envs: true` to a session clip whose
 `has_envelopes` is true, whatever `include` says. It follows Live's flag, so it

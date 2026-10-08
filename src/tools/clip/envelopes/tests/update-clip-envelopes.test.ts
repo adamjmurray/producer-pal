@@ -268,20 +268,6 @@ describe("updateClip - envelopes", () => {
     );
   });
 
-  it("sends an arrangement clip to the track's automation lane", async () => {
-    const result = await updateClip({
-      id: "789",
-      envelopes: `volume: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: expect.stringContaining("automation lane") as string,
-      }),
-    );
-  });
-
   it("says when the remote script is out of date", async () => {
     answerRoutes({ available: false, outdated: OUTDATED });
 

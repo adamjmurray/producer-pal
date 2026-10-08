@@ -79,9 +79,9 @@ export interface ClipResult {
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
   /**
-   * How many of the `envelopes` lines landed, or why none could: an arrangement
-   * clip has no envelopes of its own, and only the remote script reaches them.
-   * A line that failed on its own says so in `detail`.
+   * How many of the `envelopes` lines landed, or why none could: only the
+   * remote script reaches them. A line that failed on its own says so in
+   * `detail`.
    */
   envelopes?: number | string;
   /** The track `convert` made from this clip, and its MIDI clip. */
