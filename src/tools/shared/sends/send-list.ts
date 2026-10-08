@@ -90,6 +90,21 @@ export function readSendBack(
 }
 
 /**
+ * Add to what a send's entry says, keeping any detail already on it.
+ * @param entry - The send's entry
+ * @param detail - What to add, if anything
+ * @returns The entry, with the detail joined on
+ */
+export function withDetail(
+  entry: SendResult,
+  detail: string | undefined,
+): SendResult {
+  return detail == null
+    ? entry
+    : { ...entry, detail: joinDetails([entry.detail, detail]) };
+}
+
+/**
  * Add what a send's return spelling had to say to its entry, keeping any detail
  * already on it.
  * @param entry - The send's entry
@@ -100,9 +115,7 @@ export function withClash(
   entry: SendResult,
   clash: string | undefined,
 ): SendResult {
-  return clash == null
-    ? entry
-    : { ...entry, detail: joinDetails([entry.detail, clash]) };
+  return withDetail(entry, clash);
 }
 
 /**

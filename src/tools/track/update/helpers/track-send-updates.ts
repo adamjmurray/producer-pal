@@ -19,7 +19,12 @@ import {
   readSendBack,
   refusedSend,
   withClash,
+  withDetail,
 } from "#src/tools/shared/sends/send-list.ts";
+import {
+  AUTOMATION_OVERRIDDEN,
+  overridesAutomation,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import {
   findReturnIndex,
@@ -211,9 +216,14 @@ function writeTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
     );
   }
 
-  target.set("display_value", send.gainDb);
+  const overrode = overridesAutomation(target, () => {
+    target.set("display_value", send.gainDb);
+  });
 
-  return readSendBack(target, send.name, send.returnId, send.gainDb);
+  return withDetail(
+    readSendBack(target, send.name, send.returnId, send.gainDb),
+    overrode ? AUTOMATION_OVERRIDDEN : undefined,
+  );
 }
 
 /**

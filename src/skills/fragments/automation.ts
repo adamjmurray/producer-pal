@@ -16,7 +16,7 @@ export const automation = `## Clip Automation
 
 **Read** with ppal-read-clip \`include: ["envelopes"]\` — any clip read shows \`envs: true\` on a session clip that has some. Each entry names the automated parameter, its \`id\`, and its points.
 
-A track read (\`mixer\`), a device read (params with values, or \`chains\`) and a live set read (tempo) show \`automation\` where the arrangement has a lane. It's unknown, and left out, while the track plays from Session.
+A track read (\`mixer\`), a device read (params with values, or \`chains\`) and a live set read (tempo) show \`automation\` where the arrangement has a lane. It's unknown, and left out, while the track plays from Session. Writing a parameter that has an arrangement lane (a mixer field, a device param, tempo, mute) overrides the lane, which Live then ignores until Re-Enable Automation; the result says so.
 
 **Write** with ppal-update-clip \`envelopes\`: one \`<target>: <notation>\` line per parameter. A target is a parameter \`id\` (a device read lists them) or a mixer name — \`volume\`, \`pan\`, \`send0\`... Each line replaces that parameter's whole envelope; on a session clip a line with nothing after the colon clears it. Don't rewrite an envelope read as \`truncated\`: the part not shown is lost.
 

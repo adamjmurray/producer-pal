@@ -4,8 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  automationOverriddenDetail,
+  overridesAutomation,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import {
   type TargetNotes,
   noteLanded,
+  noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
@@ -44,7 +49,8 @@ export function isParamEnabled(param: LiveAPI): boolean {
  * a value the parameter doesn't hold.
  *
  * A disabled parameter is refused on the target's entry: Live accepts the
- * `set`, reports success, and ignores it.
+ * `set`, reports success, and ignores it. A write that overrides the
+ * parameter's arrangement lane says so there too.
  *
  * Max serializes some floats as strings (a pan of 0.0001 comes back as
  * "9.999999747378752e-05"), which publish as the number they spell; a volume at
@@ -76,8 +82,15 @@ export function setParamAndReadBack(
     return undefined;
   }
 
-  param.set(property, value);
+  const overrode = overridesAutomation(param, () => {
+    param.set(property, value);
+  });
+
   noteLanded(notes, field);
+
+  if (overrode) {
+    noteTarget(notes, automationOverriddenDetail(field));
+  }
 
   return publishedReadBack(param.getProperty(property), round);
 }

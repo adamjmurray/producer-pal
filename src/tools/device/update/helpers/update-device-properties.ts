@@ -32,6 +32,10 @@ import {
   updateMacroVariation,
 } from "./rack-macro-updates.ts";
 import {
+  automationOverriddenDetail,
+  overridesActivator,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import {
   type TargetNotes,
   newTargetNotes,
   noteLanded,
@@ -255,8 +259,18 @@ export function updateNonDeviceProperties(
   noteIfSet(ignored, "abCompare", options.abCompare);
 
   if (options.mute != null) {
-    target.set("mute", options.mute ? 1 : 0);
+    const { mute } = options;
+
+    // Mute drives the chain activator, which can carry an arrangement lane.
+    const overrode = overridesActivator(target, "chain_activator", () => {
+      target.set("mute", mute ? 1 : 0);
+    });
+
     noteLanded(notes, "mute");
+
+    if (overrode) {
+      noteTarget(notes, automationOverriddenDetail("mute"));
+    }
   }
 
   if (options.solo != null) {

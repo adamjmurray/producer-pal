@@ -8,8 +8,10 @@
 
 import {
   isSuperseded,
+  joinDetails,
   markSuperseded,
 } from "#src/tools/shared/helpers/entry-details.ts";
+import { AUTOMATION_OVERRIDDEN } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import {
   looseLabelKey,
   parseLabel,
@@ -398,6 +400,8 @@ export interface WrittenParam {
   /** The bare number the call asked for, when there was one. Decides whether
    * the entry reports a value at all, and never reaches the result itself. */
   requested?: number;
+  /** Set when the write overrode the param's arrangement lane */
+  overrode?: true;
 }
 
 /**
@@ -634,7 +638,7 @@ function writtenResult(
     requested == null || differsAtPublishedResolution(requested, value);
 
   if (!changed && entry.detail == null) {
-    return { id, name };
+    return withOverride({ id, name }, entry);
   }
 
   // A value the write itself knew it changed says why; one only the read-back
@@ -643,5 +647,31 @@ function writtenResult(
     entry.detail ??
     (changed && requested != null ? readBackDetail(["value"]) : undefined);
 
-  return detail == null ? { id, name, value } : { id, name, value, detail };
+  return withOverride(
+    detail == null ? { id, name, value } : { id, name, value, detail },
+    entry,
+  );
+}
+
+/**
+ * Say on a written param's entry that its write overrode the arrangement lane.
+ * The value is reported only when it already was.
+ * @param result - The entry, before the override
+ * @param entry - The param the write landed on
+ * @returns The entry, with the override joined onto its detail
+ */
+function withOverride<T extends LandedParam | ParamValueResult>(
+  result: T,
+  entry: WrittenParam,
+): T {
+  if (entry.overrode !== true) {
+    return result;
+  }
+
+  const detail = joinDetails([
+    "detail" in result ? result.detail : undefined,
+    AUTOMATION_OVERRIDDEN,
+  ]);
+
+  return { ...result, detail };
 }

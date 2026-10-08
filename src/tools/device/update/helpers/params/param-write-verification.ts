@@ -8,6 +8,7 @@ import {
   readParameterBasic,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { setParamValueAndVerify } from "#src/tools/shared/device/helpers/param-writing.ts";
+import { writeCheckingOverride } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 
 /** What the caller asked for, for the entry that reports the write. */
 export interface WriteReport {
@@ -36,7 +37,9 @@ export function writeParam(
   report: WriteReport = {},
 ): ParamWriteOutcome {
   const { changed, requested } = report;
-  const refused = setParamValueAndVerify(param, rawValue);
+  const { result: refused, overrode } = writeCheckingOverride(param, () =>
+    setParamValueAndVerify(param, rawValue),
+  );
 
   if (refused != null) {
     // Both facts: Live took nothing, and the value it was offered was already
@@ -50,5 +53,6 @@ export function writeParam(
     ...readParameterBasic(param),
     ...(changed == null ? {} : { detail: changed }),
     ...(requested == null ? {} : { requested }),
+    ...(overrode ? { overrode: true as const } : {}),
   };
 }

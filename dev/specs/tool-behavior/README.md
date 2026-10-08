@@ -360,6 +360,20 @@ entry so the error doesn't hide what landed.
     (`live_set loop`) can't use this: a stale read would report the old value as
     a change.
   - `ppal-select` reports the selection the call produced, not an echo.
+- **A write that overrides arrangement automation says so.** Writing a parameter
+  that has an arrangement lane makes Live ignore the whole lane until the user
+  presses Re-Enable Automation (`automation_state` becomes 2). The write still
+  goes ahead; the target's entry gets one `detail`,
+  `<field>: arrangement automation overridden — Live ignores it until Re-Enable Automation`
+  (`tempo`, `gainDb`, `pan`, `mute`). A param or send that has its own entry
+  carries the sentence alone, on that entry. One shared helper serves every tool
+  (`automation-override.ts`). Live updates `automation_state` a tick late, so it
+  is read before the write only: the note appears when the state was 1 and the
+  write changed the value (tempo, and the activator's value for mute). Writing
+  the value already held overrides nothing. Already overridden (2), no lane, and
+  unknown (0, as while the track plays from Session) stay silent. Writes to a
+  fresh object, such as a copy, never have a lane. Writes that move many
+  parameters at once (a macro variation, an A/B swap, a preset) are not checked.
 - **A write that shifts other objects' paths** gets no per-call warning. The
   tool description says once that inserting, deleting or duplicating shifts
   later siblings. A deleted object's result path is its address from before the

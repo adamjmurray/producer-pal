@@ -166,6 +166,41 @@ export function keepsParamValue(
 }
 
 /**
+ * Give a parameter an arrangement automation state, and make writes to a
+ * property other than its `value` move or keep its `value`, the way a real
+ * write to a send level, gain or mute does. The state stays put: Live updates
+ * it a tick later, so the tool reads it before the write only.
+ * @param param - The registered DeviceParameter mock
+ * @param state - `automation_state` (default 1: a lane; 2 overridden; 0 none)
+ * @param changesValue - Whether a write changes the parameter's `value`
+ *   (default true). Omit it when the write sets `value` itself.
+ * @param writtenOn - The object whose write drives the parameter, when it
+ *   isn't the parameter (mute on a track)
+ */
+export function automatedParam(
+  param: RegisteredMockObject,
+  state = 1,
+  changesValue?: boolean,
+  writtenOn: RegisteredMockObject = param,
+): void {
+  const write = writtenOn.set.getMockImplementation();
+
+  param.properties.automation_state = state;
+
+  if (changesValue == null) {
+    return;
+  }
+
+  param.properties.value ??= 0;
+  writtenOn.set.mockImplementation((...args: unknown[]) => {
+    const before = param.properties.value;
+
+    write?.(...args);
+    param.properties.value = changesValue ? Number(before) + 1 : before;
+  });
+}
+
+/**
  * Look up a registered mock object by ID or path.
  * @param id - Bare ID (e.g., "123")
  * @param path - Object path (e.g., "live_set tracks 0")

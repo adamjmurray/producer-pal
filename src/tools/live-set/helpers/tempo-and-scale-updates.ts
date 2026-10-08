@@ -15,6 +15,8 @@ import {
   publishedReadBack,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { overridesAutomation } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import { round2dp } from "#src/tools/shared/helpers/rounding.ts";
 import { keptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 
@@ -43,20 +45,32 @@ export interface ParsedScale {
  * @param tempo - Tempo in BPM
  * @param result - Result object to update
  * @param result.tempo - Tempo property to set
+ * @returns True when the write overrode the tempo's arrangement automation
  */
 export function applyTempo(
   liveSet: LiveAPI,
   tempo: number,
   result: { tempo?: PublishedValue },
-): void {
-  // Range already refused by validateTempo, before any property was written.
-  liveSet.set("tempo", tempo);
+): boolean {
+  const songTempo = LiveAPI.from(livePath.masterTrack().mixerDevice()).child(
+    "song_tempo",
+  );
+  const overrode = overridesAutomation(
+    songTempo,
+    () => {
+      // Range already refused by validateTempo, before any property was written.
+      liveSet.set("tempo", tempo);
+    },
+    () => liveSet.getProperty("tempo"),
+  );
 
   const landed = publishedReadBack(liveSet.getProperty("tempo"), round2dp);
 
   if (landed != null && differsAtPublishedResolution(tempo, landed, round2dp)) {
     result.tempo = landed;
   }
+
+  return overrode;
 }
 
 /**

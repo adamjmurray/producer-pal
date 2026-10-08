@@ -97,6 +97,22 @@ overridden it. It reads 0 while the track plays a session clip or is stopped in
 Session (`Song.back_to_arranger` lit, `playing_slot_index` not -1). Session clip
 automation also sets it while the clip plays. It's cheap.
 
+**Writing an automated parameter overrides it.** Setting the value of a
+parameter whose state reads 1 (a `DeviceParameter` `value`, a send,
+`Song.tempo`, or `Track.mute` / `Chain.mute`, which drive the activator
+parameters) moves it to 2: Live then ignores the whole lane, everywhere and
+during playback, until the user presses Re-Enable Automation. Writing the value
+the parameter already holds does not override it.
+
+`automation_state` updates a tick after the write, so a read in the same request
+still shows 1 (the same lag as reading values after moving the playhead; even
+`Song.re_enable_automation()` followed by a read still shows 2). Values do read
+back at once. The write tools therefore read the state before the write and say
+so on the target's entry when it was 1 and the value changed. 2, no lane, and 0
+(unknown) stay silent. Probed on 12.4 for tempo, track and chain volume and a
+rack macro. Mute is checked the same way (the activator's value) but not probed
+yet.
+
 **Whether it can be trusted.** A regular track follows the arrangement exactly
 when `Track.playing_slot_index` is -1. It is -2 when the track was stopped in
 Session (clip stop button) and >= 0 while a session clip plays or Back to

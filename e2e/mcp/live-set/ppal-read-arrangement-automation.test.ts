@@ -26,6 +26,11 @@ import {
   sleep,
 } from "../mcp-test-helpers.ts";
 import { callTool } from "../clip/helpers/arrangement-clip-query-test-helpers.ts";
+import {
+  liveApi,
+  recordArrangementLanes,
+  setProperty,
+} from "./helpers/arrangement-recording-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -42,29 +47,6 @@ interface ReadLiveSetResult {
 interface ReadRackResult {
   chains: { automation?: string[]; detail?: string }[];
   detail?: string;
-}
-
-/**
- * Run operations on a Live object through ppal-live-api.
- * @param path - Live path of the object
- * @param operations - Operations to run, in order
- */
-async function liveApi(path: string, operations: unknown[]): Promise<void> {
-  await callTool(ctx.client!, "ppal-live-api", { path, operations });
-}
-
-/**
- * Set a property on a Live object.
- * @param path - Live path of the object
- * @param property - Property name
- * @param value - New value
- */
-async function setProperty(
-  path: string,
-  property: string,
-  value: number,
-): Promise<void> {
-  await liveApi(path, [{ type: "set-property", property, value }]);
 }
 
 /**
@@ -94,21 +76,10 @@ describe("arrangement automation on tempo and rack chains", () => {
   beforeAll(async () => {
     await setConfig({ liveApiEnabled: true });
 
-    // Nothing else may record: only the parameters changed below get a lane.
-    await setProperty("live_set tracks 10", "arm", 0);
-
-    await setProperty("live_set", "record_mode", 1);
-    await liveApi("live_set", [{ type: "call", method: "start_playing" }]);
-    await sleep(1000);
-    await setProperty("live_set", "tempo", 130);
-    await setProperty(CHAIN_VOLUME, "value", 0.6);
-    await sleep(1000);
-    await setProperty("live_set", "tempo", 140);
-    await setProperty(CHAIN_VOLUME, "value", 0.7);
-    await sleep(500);
-    await setProperty("live_set", "record_mode", 0);
-    await liveApi("live_set", [{ type: "call", method: "stop_playing" }]);
-    await sleep(500);
+    await recordArrangementLanes(ctx.client!, async (second) => {
+      await setProperty(ctx.client!, "live_set", "tempo", second ? 140 : 130);
+      await setProperty(ctx.client!, CHAIN_VOLUME, "value", second ? 0.7 : 0.6);
+    });
   });
 
   // The config resets before each test, which hides ppal-live-api again.
@@ -129,7 +100,7 @@ describe("arrangement automation on tempo and rack chains", () => {
   });
 
   it("still names the tempo while every track is stopped in Session", async () => {
-    await liveApi("live_set tracks 1", [
+    await liveApi(ctx.client!, "live_set tracks 1", [
       { type: "call", method: "stop_all_clips" },
     ]);
     await sleep(250);
@@ -138,7 +109,7 @@ describe("arrangement automation on tempo and rack chains", () => {
   });
 
   it("says once on the rack that a chain's automation is unknown from Session", async () => {
-    await liveApi("live_set tracks 1", [
+    await liveApi(ctx.client!, "live_set tracks 1", [
       { type: "call", method: "stop_all_clips" },
     ]);
     await sleep(250);

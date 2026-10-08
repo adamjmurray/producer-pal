@@ -22,8 +22,13 @@ import {
   readSendGainDb,
   refusedSend,
   withClash,
+  withDetail,
   withSupersededSends,
 } from "#src/tools/shared/sends/send-list.ts";
+import {
+  AUTOMATION_OVERRIDDEN,
+  overridesAutomation,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import {
   asFiniteNumber,
   roundDisplayValue,
@@ -66,6 +71,8 @@ export interface ChainMixerApplied extends MixerApplied {
 interface WrittenChainSend extends IndexedSend {
   /** The send parameter, ready to read back */
   param: LiveAPI;
+  /** Whether this write overrode the send's arrangement lane */
+  overrode: boolean;
 }
 
 /**
@@ -332,7 +339,10 @@ function applyChainSend(
     return null;
   }
 
-  param.set("display_value", send.gainDb);
+  const overrode = overridesAutomation(param, () => {
+    param.set("display_value", send.gainDb);
+  });
+
   noteLanded(notes, `send ${info.name}`);
 
   return {
@@ -341,6 +351,7 @@ function applyChainSend(
     name: info.name,
     returnId: info.id,
     param,
+    overrode,
     ...(clash == null ? {} : { clash }),
   };
 }
@@ -389,11 +400,21 @@ function applyChainSends(
   }
 
   const { winners, collisions } = dedupeSendsByReturn(scalar, list);
+  // A send named twice is overridden by its first write; the last one's entry
+  // is the one that says so.
+  const overridden = new Set(
+    [...(scalar == null ? [] : [scalar]), ...list]
+      .filter((send) => send.overrode)
+      .map((send) => send.index),
+  );
   const landed = new Map(
     winners.map((send) => [
       send.index,
       withClash(
-        readSendBack(send.param, send.name, send.returnId, send.gainDb),
+        withDetail(
+          readSendBack(send.param, send.name, send.returnId, send.gainDb),
+          overridden.has(send.index) ? AUTOMATION_OVERRIDDEN : undefined,
+        ),
         send.clash,
       ),
     ]),

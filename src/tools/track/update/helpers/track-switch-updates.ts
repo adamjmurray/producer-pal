@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  automationOverriddenDetail,
+  overridesActivator,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import {
   type TargetNotes,
   noteLanded,
   noteTarget,
@@ -49,14 +53,25 @@ export function applyTrackSwitches(
     );
   }
 
-  track.setAll(
-    {
-      mute: isMain ? undefined : mute,
-      solo: isMain ? undefined : solo,
-      arm: armable ? arm : undefined,
-    },
-    (property) => noteLanded(notes, property),
-  );
+  const write = (): void => {
+    track.setAll(
+      {
+        mute: isMain ? undefined : mute,
+        solo: isMain ? undefined : solo,
+        arm: armable ? arm : undefined,
+      },
+      (property) => noteLanded(notes, property),
+    );
+  };
+
+  // Mute drives the track activator, which can carry an arrangement lane.
+  if (mute != null && !isMain) {
+    if (overridesActivator(track, "track_activator", write)) {
+      noteTarget(notes, automationOverriddenDetail("mute"));
+    }
+  } else {
+    write();
+  }
 }
 
 /**

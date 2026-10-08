@@ -5,6 +5,8 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
+import { automationOverriddenDetail } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -220,9 +222,7 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
 
   result.id = liveSet.id;
 
-  if (tempo != null) {
-    applyTempo(liveSet, tempo, result);
-  }
+  const overrodeTempo = tempo != null && applyTempo(liveSet, tempo, result);
 
   if (timeSignature != null) {
     applyTimeSignature(liveSet, timeSignature, result);
@@ -235,6 +235,10 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
 
   if (readBack != null) {
     result.detail = readBack;
+  }
+
+  if (overrodeTempo) {
+    appendDetail(result, automationOverriddenDetail("tempo"));
   }
 
   if (scale != null) {
