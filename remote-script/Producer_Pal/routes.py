@@ -61,6 +61,8 @@ def ping(bridge, params):
         "ok": True,
         "live_version": version,
         "script_version": VERSION,
+        # Where Live finds the files this script loads. None when unknown.
+        "user_library": browser.user_library(),
         # getattr: a hot reload can put this route on a bridge from before it had one.
         "port": getattr(bridge, "port", None),
         # Of the implementation files when they were last loaded.

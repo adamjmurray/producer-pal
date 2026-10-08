@@ -109,6 +109,30 @@ export async function listToolNames(session: PortalSession): Promise<string[]> {
 }
 
 /**
+ * Call a tool and read its text.
+ * @param session - A running portal session
+ * @param name - The tool
+ * @param args - Its arguments
+ * @returns The first text block, and whether the call was an error
+ */
+export async function callToolText(
+  session: PortalSession,
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<{ text: string; isError: boolean | undefined }> {
+  const result = await session.client.callTool({ name, arguments: args });
+  const content = Array.isArray(result.content) ? result.content : [];
+  const first: unknown = content.find(
+    (item: { type?: unknown }) => item.type === "text",
+  );
+
+  return {
+    text: textOf(first),
+    isError: result.isError === true ? true : undefined,
+  };
+}
+
+/**
  * Register portals and devices for teardown. Call once at module level, then
  * pass each one to the returned function as you start it.
  * @returns Registers a resource and hands it back
@@ -138,6 +162,19 @@ export function settle(): Promise<void> {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * @param block - A content block of a tool result
+ * @returns Its text, or "" when it has none
+ */
+function textOf(block: unknown): string {
+  return block != null &&
+    typeof block === "object" &&
+    "text" in block &&
+    typeof block.text === "string"
+    ? block.text
+    : "";
+}
 
 /**
  * The built portal, or a readable error when the build hasn't been run.

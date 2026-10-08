@@ -224,8 +224,33 @@ describe("remoteScriptPing", () => {
       running: true,
       liveVersion: "12.4.5",
       scriptVersion: "2.4.1",
+      userLibrary: null,
       otherOnPort: null,
     });
+  });
+
+  it("reports the User Library the script runs from", async () => {
+    await answerWith({
+      body: {
+        ok: true,
+        script_version: "2.5.0",
+        user_library: "/Music/Ableton/User Library",
+      },
+    });
+
+    const ping = await remoteScriptPing();
+
+    expect(ping.userLibrary).toBe("/Music/Ableton/User Library");
+  });
+
+  it("reads a null User Library as unknown", async () => {
+    await answerWith({
+      body: { ok: true, script_version: "2.5.0", user_library: null },
+    });
+
+    const ping = await remoteScriptPing();
+
+    expect(ping.userLibrary).toBeNull();
   });
 
   it("names the port when something else answers there", async () => {

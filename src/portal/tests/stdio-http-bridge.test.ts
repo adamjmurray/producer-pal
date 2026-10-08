@@ -28,6 +28,7 @@ import {
   callToolWithMcpError,
   expectBrandedErrorText,
   expectRequestHeaders,
+  expectSetupGuidance,
   getHandler,
   mockClient,
   mockLiveApiTool,
@@ -126,6 +127,7 @@ vi.mock(import("../file-logger.ts"), () => ({
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { logger } from "../file-logger.ts";
+import { fakeOfflineDeps } from "../offline/tests/offline-test-helpers.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
 describe("StdioHttpBridge", () => {
@@ -140,8 +142,11 @@ describe("StdioHttpBridge", () => {
     mockServer.connect.mockResolvedValue(undefined);
     mockServer.sendToolListChanged.mockResolvedValue(undefined);
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // No remote script, so an offline call gets the not-running guidance.
     bridge = new StdioHttpBridge(
       "http://localhost:3350/mcp",
+      {},
+      fakeOfflineDeps(),
     ) as unknown as TestBridge;
   });
 
@@ -262,24 +267,6 @@ describe("StdioHttpBridge", () => {
       expect(narrowed.fallbackTools.tools.map((t) => t.name)).toStrictEqual([
         "ppal-read-live-set",
       ]);
-    });
-  });
-
-  describe("_createSetupErrorResponse", () => {
-    it("returns setup error response with correct structure", () => {
-      const response = bridge._createSetupErrorResponse();
-
-      expect(response).toStrictEqual({
-        content: [
-          {
-            type: "text",
-            text: expect.stringContaining("Cannot connect to Ableton Live."),
-          },
-        ],
-        isError: true,
-      });
-
-      expectBrandedErrorText(response);
     });
   });
 
@@ -698,10 +685,10 @@ describe("StdioHttpBridge", () => {
 
       const result = await callToolHandler(callToolRequest());
 
-      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
+      expectSetupGuidance(result);
       // Verify that error response behavior was triggered
       expect(logger.debug).toHaveBeenCalledWith(
-        "[Bridge] Connectivity problem detected. Returning setup error response",
+        "[Bridge] Connectivity problem detected. Answering offline",
       );
     });
 
@@ -777,7 +764,7 @@ describe("StdioHttpBridge", () => {
         -32000, // ErrorCode.ConnectionClosed
       );
 
-      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
+      expectSetupGuidance(result);
       expect(bridge.isConnected).toBe(false);
     });
 

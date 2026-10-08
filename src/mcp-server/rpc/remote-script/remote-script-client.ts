@@ -436,6 +436,11 @@ export interface RemoteScriptPing {
   running: boolean;
   liveVersion: string | null;
   scriptVersion: string | null;
+  /**
+   * The User Library the script runs from, which is where Live finds the files
+   * it loads. Null when it doesn't say: a dev checkout, or a script too old to.
+   */
+  userLibrary: string | null;
   /** The port another program answered on, when it isn't our script. */
   otherOnPort: number | null;
 }
@@ -551,6 +556,7 @@ async function askForPing(
         running: true,
         liveVersion: stringOrNull(reply.body.live_version),
         scriptVersion,
+        userLibrary: stringOrNull(reply.body.user_library),
         otherOnPort: null,
       },
       kind: "ours",
@@ -573,6 +579,7 @@ function notRunning(otherOnPort: number | null = null): RemoteScriptPing {
     running: false,
     liveVersion: null,
     scriptVersion: null,
+    userLibrary: null,
     otherOnPort,
   };
 }

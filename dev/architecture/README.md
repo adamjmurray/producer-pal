@@ -163,7 +163,10 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 
 - Zero runtime dependencies (all bundled)
 - Graceful degradation when Live isn't running
-- Returns helpful setup instructions when offline
+- Answers calls itself when the device is offline (`src/portal/offline/`): it
+  pings the remote script to say whether Live is up without Producer Pal, and
+  runs `ppal-manage` `install-remote-script`. See
+  [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
 - Declares `tools.listChanged` and tells the client to re-list once the device
   comes online, so a cached offline tool list gets corrected. The stateless HTTP
   server can't send that itself — every `POST /mcp` is a fresh server — but the

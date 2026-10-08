@@ -156,8 +156,10 @@ may have made the change.
 
 Liveness, Live's version, and this script's (`script_version`, from
 `version.py`, which the build stamps with the Producer Pal release). Also the
-`port` it is listening on, and `source_hash`: a hash of the implementation files
-when they were last loaded. See [Hot reload](#hot-reload).
+`port` it is listening on, `user_library` (the User Library the script runs
+from; `null` for a dev checkout, absent from older scripts), and `source_hash`:
+a hash of the implementation files when they were last loaded. See
+[Hot reload](#hot-reload).
 
 ### `GET /list`
 

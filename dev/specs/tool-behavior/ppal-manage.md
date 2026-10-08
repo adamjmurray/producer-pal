@@ -85,3 +85,26 @@ so. One step is one write call, since each is closed as one undo step.
 - **A failure after the request went out** (no answer, a lost connection, a job
   Live started and didn't finish): throws, saying the step may have been applied
   and to read the Live Set before trying again. It never says nothing happened.
+
+## While Producer Pal isn't running
+
+The portal (the npx and Desktop-extension bridge) answers some calls itself when
+the device doesn't. It does this only when the failure is a connection failure,
+not an error the device sent, and only for `ppal-manage` when this portal lists
+it (small-model mode and `--disable-tools` drop it).
+
+- **`ppal-manage` args are checked first**, by the same code the device uses
+  (`manage-args.ts`), so a bad call reads the same either way. Errors read
+  `Error: <why>`, as on the device.
+- **`install-remote-script`** runs in the portal through the same code as the
+  device's route and gives the same `{ version, path, nextSteps }` and the same
+  errors.
+- **`undo` and `redo`** need the device, so they get the guidance below.
+- **Every other offline call** gets guidance, worded by whether Live's remote
+  script answers a ping (capped at about 1 s):
+  - **Answers:** "Producer Pal isn't in this Live Set", and to tell the user to
+    add the device by hand.
+  - **Doesn't:** Live 12.3+ must be running with the device loaded, plus the
+    setup URL. When `ppal-manage` is listed, it adds that
+    `install-remote-script` works now, then the user restarts Live and chooses
+    the Control Surface.

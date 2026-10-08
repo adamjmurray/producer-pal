@@ -50,6 +50,38 @@ export type InstallReply =
   | { installed: true; version: string; path: string }
   | { installed: false; error: string };
 
+/** What an install tells the caller, and what is left for the user to do. */
+export interface ManageInstallResult {
+  version: string;
+  path: string;
+  nextSteps: string;
+}
+
+/**
+ * Live only reads Remote Scripts at startup, so the restart comes first: until
+ * then a first install isn't in the Control Surface list to choose.
+ */
+export const INSTALL_NEXT_STEPS =
+  'Tell the user to finish in Live: restart Live, then, on first install, choose "Producer Pal" as a Control Surface in Settings → Link, Tempo & MIDI.';
+
+/**
+ * The result of an install the route answered.
+ * @param reply - What the install route answered
+ * @returns The version and path installed, and what the user does next
+ * @throws Error with the route's own wording when the install failed
+ */
+export function manageInstallResult(reply: InstallReply): ManageInstallResult {
+  if (!reply.installed) {
+    throw new Error(reply.error);
+  }
+
+  return {
+    version: reply.version,
+    path: reply.path,
+    nextSteps: INSTALL_NEXT_STEPS,
+  };
+}
+
 /**
  * What the remote script reports after undoing or redoing: how many steps it
  * took, why it took fewer than asked, and what Live can undo and redo now.

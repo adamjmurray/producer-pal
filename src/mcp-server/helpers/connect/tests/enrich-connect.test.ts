@@ -69,6 +69,7 @@ beforeEach(() => {
     running: true,
     liveVersion: "12.4.0",
     scriptVersion: VERSION,
+    userLibrary: null,
     otherOnPort: null,
   });
   remoteScriptStatus.mockResolvedValue(currentStatus());

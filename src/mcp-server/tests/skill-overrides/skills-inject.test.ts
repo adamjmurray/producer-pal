@@ -213,6 +213,7 @@ describe("withRemoteScriptAnswer", () => {
       running: true,
       liveVersion: null,
       scriptVersion: "2.5.0",
+      userLibrary: null,
       otherOnPort: null,
     }));
 

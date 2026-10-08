@@ -19,8 +19,8 @@ import {
   type Server as HttpServer,
   type ServerResponse,
 } from "node:http";
-import { createServer as createNetServer } from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { closeServer, reservePort } from "./local-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 /** The only tool the stub device offers. */
@@ -89,7 +89,7 @@ export async function createStubDevice(
     origin: `http://127.0.0.1:${port}`,
     requests,
     start: () => listen(server, port),
-    stop: () => close(server),
+    stop: () => closeServer(server),
   };
 
   if (options.online !== false) await device.start();
@@ -151,30 +151,6 @@ async function handleRequest(
 }
 
 /**
- * Find a free port and release it, so the device can claim it later — the only
- * way to point a portal at a device that isn't listening yet.
- * @returns The port number
- */
-function reservePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createNetServer();
-
-    probe.on("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const address = probe.address();
-
-      if (address == null || typeof address === "string") {
-        reject(new Error("Could not reserve a port for the stub device"));
-
-        return;
-      }
-
-      probe.close(() => resolve(address.port));
-    });
-  });
-}
-
-/**
  * Start listening.
  * @param server - The device's HTTP server
  * @param port - The reserved port
@@ -182,25 +158,6 @@ function reservePort(): Promise<number> {
 function listen(server: HttpServer, port: number): Promise<void> {
   return new Promise((resolve) => {
     server.listen(port, "127.0.0.1", () => resolve());
-  });
-}
-
-/**
- * Stop listening, dropping live connections.
- * @param server - The device's HTTP server
- */
-function close(server: HttpServer): Promise<void> {
-  return new Promise((resolve) => {
-    if (!server.listening) {
-      resolve();
-
-      return;
-    }
-
-    // The portal's HTTP client keeps its socket alive, which would hold close()
-    // open until that socket times out.
-    server.closeAllConnections();
-    server.close(() => resolve());
   });
 }
 

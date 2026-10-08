@@ -39,6 +39,7 @@ const PING: RemoteScriptPing = {
   running: true,
   liveVersion: "12.4.0",
   scriptVersion: "2.3.0",
+  userLibrary: null,
   otherOnPort: null,
 };
 

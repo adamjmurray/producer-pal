@@ -167,6 +167,7 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
       running: false,
       liveVersion: null,
       scriptVersion: null,
+      userLibrary: null,
       otherOnPort: preferred.port,
     });
   });

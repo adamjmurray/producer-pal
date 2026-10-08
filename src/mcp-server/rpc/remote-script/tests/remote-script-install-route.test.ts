@@ -23,6 +23,7 @@ import {
   remoteScriptPath,
 } from "../install/remote-script-install.ts";
 import { registerRemoteScriptInstallRoute } from "../install/remote-script-install-route.ts";
+import { installRemoteScriptReply } from "../install/remote-script-install-reply.ts";
 import { makeScratchUserLibrary } from "./remote-script-test-helpers.ts";
 
 vi.mock(import("../../../live-library/query/user-library-path.ts"), () => ({
@@ -77,6 +78,21 @@ describe("manage.installRemoteScript", () => {
       path,
     });
     expect(existsSync(join(path, "__init__.py"))).toBe(true);
+  });
+
+  it("answers the same when called directly, as the portal does", async () => {
+    clearNodeRoutes();
+
+    expect(await installRemoteScriptReply(` ${library} `)).toStrictEqual({
+      installed: true,
+      version: VERSION,
+      path: remoteScriptPath(library),
+    });
+    expect(await installRemoteScriptReply()).toStrictEqual({
+      installed: true,
+      version: VERSION,
+      path: remoteScriptPath(library),
+    });
   });
 
   it("installs into the User Library it is given, without looking", async () => {

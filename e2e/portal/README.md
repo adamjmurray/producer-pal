@@ -28,10 +28,21 @@ the build-verification job, right after the build that produces it.
 - `tests/portal-reconnect.test.ts` — a portal that came up before the device:
   the fallback list, then the `tools/list_changed` nudge once the device answers
   (and no nudge when it was there all along).
+- `tests/portal-offline-manage.test.ts` — what the portal answers itself while
+  the device is down: the setup guidance (by whether the remote script answers)
+  and `ppal-manage` `install-remote-script`.
 
 Unit tests in `src/portal/tests/` already cover how tool names and group aliases
 resolve. These cover what only a real process can show: argv parsed by the
 shipped bundle, and the result on the wire.
+
+## The stub remote script
+
+`stub-remote-script.ts` stands in for the Producer Pal remote script inside
+Live. The portal finds it through `PPAL_REMOTE_SCRIPT_PORT` (`script.env`). It
+answers `/ping` and any route a test gives it, and records what it was sent.
+With `online: false` the port is reserved but nothing answers, like a Live with
+no script.
 
 ## The stub device
 

@@ -257,6 +257,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
       running: true,
       liveVersion: "12.4.5",
       scriptVersion: "2.4.0",
+      userLibrary: null,
       otherOnPort: null,
     });
   });

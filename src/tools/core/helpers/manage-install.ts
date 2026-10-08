@@ -6,24 +6,12 @@
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import {
   INSTALL_WAIT_MS,
+  manageInstallResult,
   type InstallReply,
   type InstallRequest,
   MANAGE_ROUTES,
+  type ManageInstallResult,
 } from "./manage-contract.ts";
-
-/** What an install tells the caller, and what is left for the user to do. */
-export interface ManageInstallResult {
-  version: string;
-  path: string;
-  nextSteps: string;
-}
-
-/**
- * Live only reads Remote Scripts at startup, so the restart comes first: until
- * then a first install isn't in the Control Surface list to choose.
- */
-const NEXT_STEPS =
-  'Tell the user to finish in Live: restart Live, then, on first install, choose "Producer Pal" as a Control Surface in Settings → Link, Tempo & MIDI.';
 
 /**
  * Install the bundled remote script into the User Library, in Node (V8 has no
@@ -56,9 +44,5 @@ export async function installFromTool(
     );
   }
 
-  if (!reply.installed) {
-    throw new Error(reply.error);
-  }
-
-  return { version: reply.version, path: reply.path, nextSteps: NEXT_STEPS };
+  return manageInstallResult(reply);
 }

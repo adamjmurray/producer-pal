@@ -41,6 +41,12 @@ _USER_LIBRARY = (
 )
 
 
+def user_library():
+    """The User Library this script was installed into, or None when it
+    isn't running from one (a dev checkout)."""
+    return _USER_LIBRARY
+
+
 # How a Places folder's `uri` starts. Packs' URIs carry no disk path.
 _USERFOLDER = "userfolder:"
 

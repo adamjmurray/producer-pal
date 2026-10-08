@@ -75,10 +75,6 @@ export interface TestBridge {
   };
   start: () => Promise<void>;
   stop: () => Promise<void>;
-  _createSetupErrorResponse: () => {
-    content: Array<{ type: string; text: string }>;
-    isError: boolean;
-  };
   _createMisconfiguredUrlResponse: () => {
     content: Array<{ type: string; text: string }>;
     isError: boolean;
@@ -227,4 +223,24 @@ export async function callToolWithMcpError(
     content: Array<{ type: string; text: string }>;
     isError?: boolean;
   };
+}
+
+/**
+ * Assert that a response is the setup guidance for a Live that isn't running
+ * Producer Pal.
+ * @param response - What the bridge returned for the call
+ */
+export function expectSetupGuidance(response: unknown): void {
+  expect(response).toStrictEqual({
+    content: [
+      {
+        type: "text",
+        text: expect.stringContaining("Cannot connect to Ableton Live."),
+      },
+    ],
+    isError: true,
+  });
+  expectBrandedErrorText(
+    response as { content: Array<{ type: string; text: string }> },
+  );
 }

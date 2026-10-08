@@ -110,7 +110,7 @@ interface McpTextContent {
  */
 export type McpErrorCode = "timeout";
 
-interface McpResponse {
+export interface McpResponse {
   content: McpTextContent[];
   isError?: boolean;
   /** Structured error category, set only for specific error origins. */

@@ -17,12 +17,13 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
+import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
+import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
+import { SETUP_URL } from "./offline/offline-guidance.ts";
 import {
   type BridgeOptions,
   requestHeaderTransportOptions,
 } from "./portal-settings.ts";
-
-const SETUP_URL = "https://producer-pal.org/installation";
 
 // Widened to number on purpose: the code read off a thrown error is an
 // unknown narrowed to number, which shares no enum type with ErrorCode, and
@@ -54,20 +55,35 @@ export class StdioHttpBridge {
   // we serve the fallback, cleared once we've told the client to re-list.
   private servedFallbackTools = false;
   private options: BridgeOptions;
+  private offlineDeps: OfflineDeps;
 
-  constructor(httpUrl: string, options: BridgeOptions = {}) {
+  constructor(
+    httpUrl: string,
+    options: BridgeOptions = {},
+    offlineDeps: OfflineDeps = realOfflineDeps,
+  ) {
     this.httpUrl = httpUrl;
     this.options = options;
+    this.offlineDeps = offlineDeps;
     this.fallbackTools = buildFallbackTools(options);
   }
 
-  private _createSetupErrorResponse() {
-    return formatErrorResponse(`❌ Cannot connect to Ableton Live.
-
-Ensure Ableton Live 12.3+ is running with the Producer Pal Max for Live device loaded.
-Tell the user to check ${SETUP_URL} for setup instructions.
-
-(Producer Pal ${VERSION})`);
+  /**
+   * The answer to a call while the device is unreachable.
+   * @param request - The tool call
+   * @returns The response
+   */
+  private _answerOffline(request: CallToolRequest) {
+    return answerOfflineCall(
+      {
+        name: request.params.name,
+        args: request.params.arguments ?? {},
+        manageOffered: this.fallbackTools.tools.some(
+          (tool) => tool.name === MANAGE_TOOL,
+        ),
+      },
+      this.offlineDeps,
+    );
   }
 
   private _createMisconfiguredUrlResponse() {
@@ -335,12 +351,13 @@ Tell the user to check ${SETUP_URL} for configuration help.
           }
         }
 
-        // Return setup error when Producer Pal is not available
+        // Producer Pal is not available: do what can be done without it, or say
+        // how to get it running.
         logger.debug(
-          `[Bridge] Connectivity problem detected. Returning setup error response`,
+          `[Bridge] Connectivity problem detected. Answering offline`,
         );
 
-        return this._createSetupErrorResponse();
+        return await this._answerOffline(request);
       },
     );
 

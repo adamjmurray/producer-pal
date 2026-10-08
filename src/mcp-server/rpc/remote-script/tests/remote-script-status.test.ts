@@ -177,6 +177,7 @@ describe("remoteScriptStatus", () => {
       running: true,
       liveVersion: "12.1.0",
       scriptVersion: "1.0.0",
+      userLibrary: null,
       otherOnPort: null,
     });
 
