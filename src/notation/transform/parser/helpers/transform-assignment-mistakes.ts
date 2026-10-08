@@ -5,6 +5,7 @@
 
 import { type FailedLine, fixParses } from "./failed-line.ts";
 import {
+  parameterAlias,
   suggestTransformName,
   TRANSFORM_PARAMETERS,
 } from "./transform-vocabulary.ts";
@@ -21,6 +22,8 @@ const PARAM_AND_OP_AT_END = new RegExp(
 const ASSIGNMENT_AT_START = new RegExp(
   String.raw`^([A-Za-z_][\w.]*)\s*(${ASSIGN_OP}|:)\s*(.*)$`,
 );
+// A lone name, then anything: `start 2|1`.
+const NAME_THEN_REST = /^([A-Za-z]+)(?:\s+(.*))?$/;
 // A note value or bar count.
 const DURATION = String.raw`n[\d.]*\/[1-9]\d*[dt]?|n?\d+bars?`;
 const DURATION_VALUE = new RegExp(`^(${DURATION})$`);
@@ -125,14 +128,15 @@ export function afterParameterMistake(line: FailedLine): string | null {
 /**
  * @param line - The failing line
  * @returns Hint for an assignment to a name that isn't a parameter, as in
- *   `length *= 0.5` or `v: 95`
+ *   `length *= 0.5` or `v: 95`, or a known stand-in name with no operator
+ *   (`start 2|1`)
  */
 export function unknownParameterMistake(line: FailedLine): string | null {
   const { before, rest } = line;
   const match = ASSIGNMENT_AT_START.exec(rest);
 
   if (match == null) {
-    return null;
+    return aliasWithoutOperator(line);
   }
 
   const [, name = "", op, value = ""] = match;
@@ -173,11 +177,38 @@ export function unknownParameterMistake(line: FailedLine): string | null {
     return `${name} isn't a parameter — use one of: ${TRANSFORM_PARAMETERS.join(", ")}.`;
   }
 
-  return checked(
+  const fix = checked(
     `${name} isn't a parameter`,
     before,
     `${suggestion} ${op === ":" ? "=" : op} ${value}`,
   );
+
+  // The value may be what won't parse (`start = 2|1`); the name is still wrong.
+  return (
+    fix ??
+    (op === ":" ? null : `${name} isn't a parameter — use ${suggestion}.`)
+  );
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a known stand-in name with no operator, as in `start 2|1`
+ */
+function aliasWithoutOperator(line: FailedLine): string | null {
+  const { before, rest } = line;
+  const [, name = "", value = ""] = NAME_THEN_REST.exec(rest) ?? [];
+  const alias = parameterAlias(name);
+
+  if (alias == null) {
+    return null;
+  }
+
+  const fix =
+    value === ""
+      ? null
+      : checked(`${name} isn't a parameter`, before, `${alias} = ${value}`);
+
+  return fix ?? `${name} isn't a parameter — use ${alias}.`;
 }
 
 /**

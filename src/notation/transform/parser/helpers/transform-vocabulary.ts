@@ -50,13 +50,30 @@ export const WHERE_PROPERTIES = [
 // Words models reach for that no edit distance would find.
 const SYNONYMS: Record<string, string> = {
   v: "velocity",
+  note: "pitch",
+  key: "pitch",
   length: "duration",
   len: "duration",
   start: "timing",
   time: "timing",
   position: "timing",
+  pos: "timing",
+  onset: "timing",
+  offset: "timing",
+  chance: "probability",
   timing: "start",
 };
+
+/**
+ * @param name - A name as written
+ * @returns The parameter it is a known stand-in for (`start` → timing), or
+ *   null; typos don't count
+ */
+export function parameterAlias(name: string): string | null {
+  const alias = SYNONYMS[name.toLowerCase()];
+
+  return alias != null && TRANSFORM_PARAMETERS.includes(alias) ? alias : null;
+}
 
 /**
  * Suggest the valid name a mistyped one most likely meant.
