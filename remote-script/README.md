@@ -464,6 +464,8 @@ files as last loaded. `/reload` returns the same `hash`.
   browser, which finds whatever copy is in your library.
 - **Tests**: `tests/` runs routes against fake Live objects, outside Live:
   `npm run remote-script:test`.
-- **Stay out of the Sounds and Drums sections**: listing `app.browser.sounds`
-  crashed Live 12.4.6 with an internal assert. The `type` param only reaches the
-  sections above, and presets are found under their devices or by file.
+- **No need to walk the Sounds and Drums sections**: they're tag views, and
+  every item in them is also in another section, so it loads by that path.
+  `ppal-library` covers their categories from Live's database. Listing
+  `app.browser.sounds` crashed Live 12.4.6 once with an internal assert, which
+  couldn't be reproduced since.
