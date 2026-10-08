@@ -257,12 +257,24 @@ def same_name(a, b):
 
 
 def _walk(root, segments):
-    """The item at `segments` below `root`, or None."""
-    try:
-        item, _ = resolve_path(root, "/".join(segments))
-    except PathNotFound:
-        return None
-    return item
+    """The item at `segments` below `root`, or None.
+
+    Live's browser drops the extension from a Max device's name (the file
+    `Producer_Pal.amxd` shows as `Producer_Pal`), so a file name with a
+    device or preset suffix is tried without it too.
+    """
+    tries = [segments]
+    name = segments[-1] if segments else ""
+    for suffix in _SUFFIXES:
+        if name.lower().endswith(suffix):
+            tries.append(segments[:-1] + [name[: -len(suffix)]])
+    for attempt in tries:
+        try:
+            item, _ = resolve_path(root, "/".join(attempt))
+        except PathNotFound:
+            continue
+        return item
+    return None
 
 
 def _file_segments(path):

@@ -142,6 +142,21 @@ class PlacesByLocationTest(unittest.TestCase):
         self.assertIs(item, library.children[0])
         self.assertEqual(path, "User Library/kick.wav")
 
+    def test_a_device_file_matches_its_name_without_the_extension(self):
+        device = FakeItem("Producer_Pal")
+        library = FakeItem("User Library", [FakeItem("Presets", [device])])
+        with mock.patch.object(browser, "_USER_LIBRARY", "/Users/me/User Library"):
+            item, _ = browser.find_file(
+                fake_browser([], user_library=library),
+                "/Users/me/User Library/Presets/Producer_Pal.amxd",
+            )
+        self.assertIs(item, device)
+
+    def test_a_preset_named_with_its_extension_still_matches(self):
+        preset = FakeItem("Bass.adv")
+        place = FakeItem("Presets", [preset], uri="userfolder:/Users/me/Presets")
+        self.assertIs(find("/Users/me/Presets/Bass.adv", [place])[0], preset)
+
     def test_symlinked_folder_or_file_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             real = os.path.join(tmp, "real", "Samples")
