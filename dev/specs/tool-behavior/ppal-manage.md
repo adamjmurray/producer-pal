@@ -58,6 +58,12 @@ description tells the model to ask the user first, since it changes their Set.
   what happened to the file in the User Library (installed, updated, already
   current, kept because the installed one is newer or can't be ordered, or kept
   because the update failed, with why). `nextSteps` is `Call ppal-connect next.`
+- **An installed device newer than the bundled one:** it is loaded as it is, and
+  `device` adds that this portal is older than it and the user should update the
+  portal (the npx package or the Claude Desktop extension).
+- **A remote script that is too old:** refused before anything is copied. The
+  error says to update it, that nothing was added, and to call
+  `add-producer-pal` again after the user restarts Live.
 
 ## `undo` and `redo`
 
@@ -134,6 +140,9 @@ it (small-model mode and `--disable-tools` drop it).
       installed older or unreadable (offer the update).
     - **Remote script (running):** if it is older than the minimum, say to
       update it before adding the device.
+    - **Newer than the portal:** when the remote script (installed or running)
+      or the installed device is newer than this portal, it adds that the portal
+      is older and the user should update it.
     - **Device:** says what `add-producer-pal` will do: install to the path,
       update it (installed version to bundled version), add the one already
       there (nothing to install), or add a newer or different one as is. With no

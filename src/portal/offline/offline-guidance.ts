@@ -74,6 +74,10 @@ function runningAdvice(
   status: OfflineInstallStatus | undefined,
 ): string {
   return manageOffered
-    ? runningHint(outdatedScript(ping.scriptVersion), status)
+    ? runningHint(
+        outdatedScript(ping.scriptVersion),
+        status,
+        ping.scriptVersion,
+      )
     : `Tell the user to add the Producer Pal Max for Live device to it, per ${SETUP_URL}.`;
 }

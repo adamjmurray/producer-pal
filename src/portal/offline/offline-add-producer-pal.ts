@@ -16,7 +16,9 @@ import {
 import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { outdatedScript } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
+import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
@@ -107,7 +109,9 @@ async function userLibraryFor(
   const outdated = outdatedScript(ping.scriptVersion);
 
   if (outdated != null) {
-    throw new AddFailed(`${outdated}. Nothing was added.`);
+    throw new AddFailed(
+      `${outdated}. Nothing was added. Call add-producer-pal again after the user restarts Live.`,
+    );
   }
 
   const library = await firstUserLibrary(
@@ -187,7 +191,17 @@ function copyNote(result: DeviceInstallResult): string {
     return "already installed and up to date";
   }
 
-  return `used the installed device as it is (${result.previousVersion ?? "unknown version"}; the bundled one is ${result.bundledVersion ?? "unknown"} and the installed one is newer or can't be ordered against it)`;
+  const { previousVersion, bundledVersion } = result;
+
+  if (
+    previousVersion != null &&
+    bundledVersion != null &&
+    isNewerVersion(bundledVersion, previousVersion)
+  ) {
+    return `used the installed device (${previousVersion}), which is newer than this portal's (${bundledVersion}). ${UPDATE_PORTAL_ADVICE}`;
+  }
+
+  return `used the installed device as it is (${previousVersion ?? "unknown version"}; the bundled one is ${bundledVersion ?? "unknown"} and the installed one is newer or can't be ordered against it)`;
 }
 
 /**

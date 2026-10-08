@@ -322,6 +322,13 @@ export function resolveCompactOutput(
  */
 export const PORTAL_VERSION_HEADER = "x-producer-pal-portal-version";
 
+/** Where users get the portal, for telling them how to update it. */
+export const PORTAL_SOURCES =
+  "the npx producer-pal package or the Claude Desktop extension";
+
+/** What to tell the model when the portal is older than what it works with. */
+export const UPDATE_PORTAL_ADVICE = `Tell the user to update the portal: ${PORTAL_SOURCES}.`;
+
 /**
  * The portal version a request carries, or undefined when the header is absent
  * or isn't a version. It is quoted into the connect result the model reads, so

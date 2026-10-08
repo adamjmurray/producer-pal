@@ -7,7 +7,7 @@
 // Each device sentence says what ppal-manage add-producer-pal will do.
 
 import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
-import { VERSION } from "#src/shared/config.ts";
+import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type OfflineInstallStatus } from "./offline-install-status.ts";
@@ -38,18 +38,20 @@ export function notRunningHint(
 Or run ${INSTALL_WITH_TOOL} now (it works without Producer Pal), then ask the user to restart Live and choose Producer Pal as a Control Surface. After that, ${ADD_CALL} adds the device.`;
   }
 
-  return `\n${script} ${afterThat(status)}`;
+  return `\n${script} ${afterThat(status)}${olderPortalNote(status, null)}`;
 }
 
 /**
  * What to do when the remote script answers but the device isn't in the Set.
  * @param outdated - Why the running script is too old, or null when it isn't
  * @param status - What was found, if anything
+ * @param runningScript - The version of the running remote script, if known
  * @returns The hint
  */
 export function runningHint(
   outdated: string | null,
   status: OfflineInstallStatus | undefined,
+  runningScript: string | null = null,
 ): string {
   if (outdated != null) {
     const after =
@@ -68,7 +70,39 @@ export function runningHint(
 
   const ask = `Ask the user, then call ${ADD_CALL}.`;
 
-  return device == null ? ask : `${ask} It ${device}`;
+  const hint = device == null ? ask : `${ask} It ${device}`;
+
+  return `${hint}${olderPortalNote(status, runningScript)}`;
+}
+
+/**
+ * Say so when something installed is newer than this portal, which can't be
+ * fixed from here.
+ * @param status - What was found, if anything
+ * @param runningScript - The version of the running remote script, if known
+ * @returns A sentence starting with a space, or "" when the portal is newest
+ */
+function olderPortalNote(
+  status: OfflineInstallStatus | undefined,
+  runningScript: string | null,
+): string {
+  const newer = [
+    ["remote script", runningScript ?? status?.script?.installedVersion],
+    ["device", status?.device?.installedVersion],
+  ].filter(
+    (found): found is [string, string] =>
+      found[1] != null && isNewerVersion(VERSION, found[1]),
+  );
+
+  if (newer.length === 0) {
+    return "";
+  }
+
+  const what = newer
+    .map(([name, version]) => `${name} (${version})`)
+    .join(" and the installed ");
+
+  return ` This portal (${VERSION}) is older than the installed ${what}. ${UPDATE_PORTAL_ADVICE}`;
 }
 
 /**

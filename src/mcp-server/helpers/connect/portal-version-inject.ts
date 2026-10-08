@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { VERSION } from "#src/shared/config.ts";
+import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
@@ -44,7 +44,7 @@ function portalVersionLine(portalVersion: string | undefined): string | null {
   const line = `portalVersion: ${portalVersion}`;
 
   if (isNewerVersion(portalVersion, VERSION)) {
-    return `${line}. The portal is older than the device (${VERSION}). Tell the user to update the portal: the npx producer-pal package or the Claude Desktop extension.`;
+    return `${line}. The portal is older than the device (${VERSION}). ${UPDATE_PORTAL_ADVICE}`;
   }
 
   if (isNewerVersion(VERSION, portalVersion)) {

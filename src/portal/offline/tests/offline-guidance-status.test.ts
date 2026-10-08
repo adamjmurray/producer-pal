@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
-import { VERSION } from "#src/shared/config.ts";
+import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
 import { type DeviceFileStatus } from "../../setup/device-file-status.ts";
 import { type OfflineDeps } from "../offline-deps.ts";
 import { offlineGuidance } from "../offline-guidance.ts";
@@ -32,6 +32,14 @@ const ADD = 'ppal-manage action "add-producer-pal"';
 const RESTART =
   "ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Link, Tempo & MIDI";
 const NEW_TRACK = "to a new MIDI track";
+
+/**
+ * @param what - What is newer than the portal, e.g. "remote script (99.0.0)"
+ * @returns The sentence the guidance ends with
+ */
+function olderPortal(what: string): string {
+  return ` This portal (${VERSION}) is older than the installed ${what}. ${UPDATE_PORTAL_ADVICE}`;
+}
 
 /**
  * @param installedVersion - The installed script's version
@@ -108,6 +116,23 @@ Or set it up now: run ${INSTALL} (installs to ${SCRIPT_PATH}), then ${RESTART}. 
       expect(text).not.toContain(`Or set it up`);
     },
   );
+
+  it("says the portal is older than an installed script that is newer", async () => {
+    const { text } = await guide(true, NOT_RUNNING, {
+      installedRemoteScript: vi.fn(() => script("99.0.0")),
+    });
+
+    expect(text).toContain(`installs the Producer Pal device`);
+    expect(text).toContain(`${olderPortal("remote script (99.0.0)")}${FOOT}`);
+  });
+
+  it("stays quiet about the portal when the installed script is current", async () => {
+    const { text } = await guide(true, NOT_RUNNING, {
+      installedRemoteScript: vi.fn(() => script(VERSION)),
+    });
+
+    expect(text).not.toContain("older than the installed");
+  });
 
   it.each([
     ["0.0.1", "0.0.1"],
@@ -199,7 +224,7 @@ Or run ${INSTALL} now (it works without Producer Pal), then ask the user to rest
 });
 
 describe("offline guidance for the device file", () => {
-  const cases: Array<[string, DeviceFileStatus, string]> = [
+  const cases: Array<[string, DeviceFileStatus, string, string?]> = [
     [
       "an older installed device",
       device("installed-older", {
@@ -210,13 +235,14 @@ describe("offline guidance for the device file", () => {
     ],
     [
       "the same device",
-      device("same", { installedVersion: "2.5.0" }),
-      `adds the Producer Pal device already in the User Library (2.5.0) ${NEW_TRACK}; nothing needs installing.`,
+      device("same", { installedVersion: VERSION }),
+      `adds the Producer Pal device already in the User Library (${VERSION}) ${NEW_TRACK}; nothing needs installing.`,
     ],
     [
       "a newer installed device",
       device("installed-newer", { installedVersion: "3.0.0" }),
       `adds the Producer Pal device already in the User Library (3.0.0) ${NEW_TRACK}, as is.`,
+      olderPortal("device (3.0.0)"),
     ],
     [
       "a different device with no version",
@@ -225,18 +251,21 @@ describe("offline guidance for the device file", () => {
     ],
   ];
 
-  it.each(cases)("says what happens with %s", async (_name, status, line) => {
-    const deps = { deviceFileStatus: vi.fn(() => status) };
-    const notRunning = await guide(true, NOT_RUNNING, deps);
-    const running = await guide(true, RUNNING, deps);
+  it.each(cases)(
+    "says what happens with %s",
+    async (_name, status, line, note = "") => {
+      const deps = { deviceFileStatus: vi.fn(() => status) };
+      const notRunning = await guide(true, NOT_RUNNING, deps);
+      const running = await guide(true, RUNNING, deps);
 
-    expect(notRunning.text).toContain(`After that, ${ADD} ${line}`);
-    expect(running.text).toBe(
-      `❌ Producer Pal isn't in this Live Set.
+      expect(notRunning.text).toContain(`After that, ${ADD} ${line}`);
+      expect(running.text).toBe(
+        `❌ Producer Pal isn't in this Live Set.
 
-Ask the user, then call ${ADD}. It ${line}${FOOT}`,
-    );
-  });
+Ask the user, then call ${ADD}. It ${line}${note}${FOOT}`,
+      );
+    },
+  );
 
   it("looks the device up in the bundled file's library", async () => {
     const { deps } = await guide(true, RUNNING);
@@ -249,6 +278,12 @@ Ask the user, then call ${ADD}. It ${line}${FOOT}`,
 });
 
 describe("offline guidance when the remote script is running", () => {
+  it("says the portal is older than a running script that is newer", async () => {
+    const { text } = await guide(true, { ...RUNNING, scriptVersion: "99.0.0" });
+
+    expect(text).toContain(`${olderPortal("remote script (99.0.0)")}${FOOT}`);
+  });
+
   it("doesn't look at the installed script", async () => {
     const { deps } = await guide(true, RUNNING);
 

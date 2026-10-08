@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
+import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
 import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
 import { NOT_RUNNING, RUNNING } from "./offline-test-helpers.ts";
@@ -90,7 +91,9 @@ describe("add-producer-pal before anything changes", () => {
     expect(response.isError).toBe(true);
     expect(text).toContain("out of date (running 1.0.0");
     expect(text).toContain('ppal-manage action "install-remote-script"');
-    expect(text).toContain("Nothing was added.");
+    expect(text).toContain(
+      "Nothing was added. Call add-producer-pal again after the user restarts Live.",
+    );
     expect(deps.installDevice).not.toHaveBeenCalled();
   });
 });
@@ -183,7 +186,12 @@ describe("add-producer-pal's device file", () => {
     [
       "skipped",
       { previousVersion: "9.0.0", bundledVersion: "2.5.0" },
-      "used the installed device as it is (9.0.0; the bundled one is 2.5.0 and the installed one is newer or can't be ordered against it)",
+      `used the installed device (9.0.0), which is newer than this portal's (2.5.0). ${UPDATE_PORTAL_ADVICE}`,
+    ],
+    [
+      "skipped",
+      { previousVersion: "2.5.0-rc2", bundledVersion: "2.5.0-rc1" },
+      "used the installed device as it is (2.5.0-rc2; the bundled one is 2.5.0-rc1 and the installed one is newer or can't be ordered against it)",
     ],
     [
       "skipped",

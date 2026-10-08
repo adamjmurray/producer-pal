@@ -5,6 +5,7 @@
 
 import { vi } from "vitest";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { type OfflineDeps } from "../offline-deps.ts";
 
 export const NOT_RUNNING: RemoteScriptPing = {
@@ -18,7 +19,7 @@ export const NOT_RUNNING: RemoteScriptPing = {
 export const RUNNING: RemoteScriptPing = {
   running: true,
   liveVersion: "12.4.0",
-  scriptVersion: "2.5.0",
+  scriptVersion: VERSION,
   userLibrary: null,
   otherOnPort: null,
 };
