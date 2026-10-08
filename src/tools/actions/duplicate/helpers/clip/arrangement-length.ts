@@ -116,7 +116,7 @@ export async function createClipsForLength(
     !carriesAutomation(
       sourceClip,
       arrangementLengthBeats,
-      clipLengthBeats(sourceClip),
+      copyLengthBeats(sourceClip),
     )
   ) {
     return await copyFrom(sourceClip);
@@ -159,7 +159,7 @@ async function copyForLength(
   context: Partial<ToolContext & TilingContext>,
   color: string | undefined,
 ): Promise<MinimalClipInfo[]> {
-  const sourceClipLength = clipLengthBeats(sourceClip);
+  const sourceClipLength = copyLengthBeats(sourceClip);
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
   const duplicatedClips: MinimalClipInfo[] = [];
 
@@ -359,4 +359,32 @@ async function lengthenCopy(
   } catch (error) {
     return [{ id: clipId, detail: errorMessage(error) }];
   }
+}
+
+/**
+ * How long a plain `duplicate_clip_to_arrangement` copy of a clip comes out.
+ * Not the clip's `length`, which is the loop length for a looped clip: an
+ * arrangement clip copies its whole span, and a looped session clip plays its
+ * pre-roll (start marker before loop start) once before the loop.
+ * @param clip - The clip to copy
+ * @returns The copy's length in beats
+ */
+export function copyLengthBeats(clip: LiveAPI): number {
+  if (clip.getProperty("is_arrangement_clip") === 1) {
+    return (
+      (clip.getProperty("end_time") as number) -
+      (clip.getProperty("start_time") as number)
+    );
+  }
+
+  // Only MIDI and warped audio loop, so these markers are beats.
+  if ((clip.getProperty("looping") as number) > 0) {
+    const preRoll =
+      (clip.getProperty("loop_start") as number) -
+      (clip.getProperty("start_marker") as number);
+
+    return clipLengthBeats(clip) + Math.max(0, preRoll);
+  }
+
+  return clipLengthBeats(clip);
 }
