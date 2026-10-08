@@ -8,10 +8,10 @@ import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
-} from "../../create-mcp-server.ts";
-import { remoteScriptRequest } from "./remote-script-client.ts";
-import { type McpResponse } from "../../max-api-adapter.ts";
-import { type RequestOverrides } from "../../helpers/request-overrides/request-overrides.ts";
+} from "../../../create-mcp-server.ts";
+import { remoteScriptRequest } from "../remote-script-client.ts";
+import { type McpResponse } from "../../../max-api-adapter.ts";
+import { type RequestOverrides } from "../../../helpers/request-overrides/request-overrides.ts";
 
 /**
  * Tools that may change the Set, read off their defs. Not ppal-manage: closing

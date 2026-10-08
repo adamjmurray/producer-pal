@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
-import { RemoteScriptTimeout } from "../../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../../remote-script-errors.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,

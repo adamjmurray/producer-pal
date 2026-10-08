@@ -12,6 +12,10 @@ import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/
 import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import {
+  RemoteScriptConnectionLost,
+  RemoteScriptTimeout,
+} from "./remote-script-errors.ts";
+import {
   forgetRemoteScriptPort as forgetPort,
   remoteScriptPortFromEnv,
   resolveRemoteScriptPort as resolvePort,
@@ -65,21 +69,6 @@ export type RemoteScriptAnswer = Extract<
   { available: true }
 >;
 
-/** The remote script took the connection but didn't answer in time. */
-export class RemoteScriptTimeout extends Error {
-  /**
-   * Whether the request went out. If so, Live may have acted on it; if not,
-   * nothing was asked of it.
-   */
-  readonly sent: boolean;
-
-  constructor(message: string, sent: boolean) {
-    super(message);
-    this.name = "RemoteScriptTimeout";
-    this.sent = sent;
-  }
-}
-
 export interface RemoteScriptRequest {
   method?: "GET" | "POST";
   /** The remote script's route, e.g. "/list" */
@@ -116,6 +105,7 @@ export interface RemoteScriptRequest {
  * @returns The reply, or `available: false`
  * @throws RemoteScriptTimeout when the remote script took the connection but
  *   didn't answer in time, or `expiresInMs` was used up before the request left
+ * @throws RemoteScriptConnectionLost when the connection broke after it was made
  */
 export async function remoteScriptRequest({
   method = "GET",
@@ -380,7 +370,9 @@ function sendRequest(
         const chunks: Buffer[] = [];
 
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("error", (error) => settle(() => reject(error)));
+        response.on("error", (error) =>
+          settle(() => reject(new RemoteScriptConnectionLost(error))),
+        );
         response.on("end", () => {
           const parsed = jsonObject(Buffer.concat(chunks).toString("utf8"));
 
@@ -407,11 +399,14 @@ function sendRequest(
         }
       }, CONNECT_TIMEOUT_MS),
       setTimeout(() => {
+        // Not connected yet means nothing was sent.
         settle(() =>
           reject(
             new RemoteScriptTimeout(
-              `Live's browser did not answer within ${timeoutMs / 1000}s`,
-              true,
+              connected
+                ? `Live's browser did not answer within ${timeoutMs / 1000}s`
+                : "ran out of time before connecting to Live's browser",
+              connected,
             ),
           ),
         );
@@ -425,7 +420,11 @@ function sendRequest(
       });
     });
     request.on("error", (error) => {
-      settle(() => (connected ? reject(error) : resolve({ available: false })));
+      settle(() =>
+        connected
+          ? reject(new RemoteScriptConnectionLost(error))
+          : resolve({ available: false }),
+      );
     });
     request.end(payload);
   });

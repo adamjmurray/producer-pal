@@ -10,10 +10,10 @@
 
 import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
 import {
-  RemoteScriptTimeout,
   replyError,
   type RemoteScriptAnswer,
 } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { outdatedScript } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
 import { errorMessage } from "#src/shared/error-message.ts";

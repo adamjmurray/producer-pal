@@ -10,8 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type RemoteScriptReply,
   remoteScriptRequest,
-  RemoteScriptTimeout,
 } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { describeReload, reloadRemoteScript } from "./reload-remote-script.ts";
 import { hashRemoteScript } from "./source-hash.ts";
 

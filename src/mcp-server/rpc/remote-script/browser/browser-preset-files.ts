@@ -17,7 +17,7 @@ import {
   type PresetScope,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { ambiguity } from "./browser-device-lookup.ts";
-import { RemoteScriptTimeout } from "../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 
 /** The files a preset can be. */
 const PRESET_FILE = /\.(?:adv|adg)$/i;

@@ -17,10 +17,8 @@ import { registerNodeRoute } from "../node-request-protocol.ts";
 import { requireString } from "../route-string-args.ts";
 import { lookUpBrowserDevice } from "./browser/browser-device-lookup.ts";
 import { lookUpBrowserPreset } from "./browser/browser-preset-lookup.ts";
-import {
-  RemoteScriptTimeout,
-  unavailableReply,
-} from "./remote-script-client.ts";
+import { unavailableReply } from "./remote-script-client.ts";
+import { RemoteScriptTimeout } from "./remote-script-errors.ts";
 import {
   failedChange,
   requestChange,

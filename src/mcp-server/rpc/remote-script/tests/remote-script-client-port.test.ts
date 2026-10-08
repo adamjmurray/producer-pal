@@ -5,11 +5,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  RemoteScriptTimeout,
   forgetRemoteScriptPort,
   remoteScriptPing,
   remoteScriptRequest,
 } from "../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,

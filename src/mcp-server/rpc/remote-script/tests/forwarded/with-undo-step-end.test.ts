@@ -8,9 +8,9 @@ import {
   type FakeAnswer,
   type FakeRemoteScript,
   startFakeRemoteScript,
-} from "./remote-script-test-helpers.ts";
-import { STANDARD_TOOL_DEFS } from "../../../create-mcp-server.ts";
-import { withUndoStepEnd } from "../with-undo-step-end.ts";
+} from "../remote-script-test-helpers.ts";
+import { STANDARD_TOOL_DEFS } from "../../../../create-mcp-server.ts";
+import { withUndoStepEnd } from "../../forwarded/with-undo-step-end.ts";
 
 const OK = { content: [{ type: "text", text: "{}" }] };
 const TIMEOUT = {

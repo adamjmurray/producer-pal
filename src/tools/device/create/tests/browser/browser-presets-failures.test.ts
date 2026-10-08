@@ -20,6 +20,7 @@ import {
   type BrowserItem,
   REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { CONNECTION_LOST } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -101,6 +102,29 @@ describe("hotswapPreset", () => {
 
     expect(await hotswapPreset(device(), PRESET, null)).toStrictEqual({
       error: "the remote script returned nothing",
+    });
+  });
+});
+
+describe("hotswapPreset when the connection dropped after the request went out", () => {
+  it("says Live may have loaded it anyway", async () => {
+    registerMockObject("drift", {
+      path: livePath.track(0).device(0),
+      properties: { name: "Drift" },
+    });
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        available: true,
+        error: CONNECTION_LOST,
+        unfinished: true,
+      },
+    });
+
+    expect(
+      await hotswapPreset(LiveAPI.from("drift"), PRESET, null),
+    ).toStrictEqual({
+      error: `${CONNECTION_LOST}; Live may have loaded it anyway, so check the device before re-running`,
     });
   });
 });

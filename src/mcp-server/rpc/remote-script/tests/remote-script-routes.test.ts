@@ -11,6 +11,7 @@ import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
 import {
   OUTDATED_ANSWER,
   unknownRouteAnswer,
+  callUntilItTimesOut,
   useFakeRemoteScriptRoutes,
 } from "./remote-script-test-helpers.ts";
 
@@ -201,13 +202,15 @@ describe("remoteScript.load", () => {
   });
 
   it("marks a load the remote script never answered as unfinished", async () => {
-    await answerWith(null);
+    const remote = await answerWith(null);
 
     expect(
-      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
-        ...LOAD_ARGS,
-        expiresInMs: 100,
-      }),
+      await callUntilItTimesOut(remote, 150, () =>
+        dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, {
+          ...LOAD_ARGS,
+          expiresInMs: 100,
+        }),
+      ),
     ).toStrictEqual({
       success: true,
       result: {
@@ -215,17 +218,6 @@ describe("remoteScript.load", () => {
         error: expect.stringContaining("did not answer within"),
         unfinished: true,
       },
-    });
-  });
-
-  it("fails the route when the connection drops mid-load", async () => {
-    await answerWith({ drop: true });
-
-    expect(
-      await dispatchNodeRoute(REMOTE_SCRIPT_ROUTES.load, LOAD_ARGS),
-    ).toStrictEqual({
-      success: false,
-      error: expect.stringMatching(/socket hang up|ECONNRESET/),
     });
   });
 

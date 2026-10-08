@@ -3,10 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import {
-  remoteScriptRequest,
-  RemoteScriptTimeout,
-} from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { remoteScriptRequest } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { hashRemoteScript } from "./source-hash.ts";
 
 const RELOAD_TIMEOUT_MS = 10_000;

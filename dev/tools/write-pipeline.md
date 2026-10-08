@@ -130,7 +130,7 @@ A hook that adds an await without these breaks warnings silently.
 
 Live merges every change into one undo step until something closes it. Node
 closes it after each write call: `withUndoStepEnd`
-([`with-undo-step-end.ts`](../../src/mcp-server/rpc/remote-script/with-undo-step-end.ts))
+([`with-undo-step-end.ts`](../../src/mcp-server/rpc/remote-script/forwarded/with-undo-step-end.ts))
 sends `POST /undo/end` to the remote script once the last running write call
 settles, so overlapping calls share a step. It never begins a step (a begin left
 open by a crash or timeout would merge everything after it) and doesn't wait for

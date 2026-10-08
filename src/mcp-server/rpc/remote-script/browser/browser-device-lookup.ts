@@ -13,11 +13,11 @@ import { pathSegment } from "../../../live-library/reconstruct-path.ts";
 import {
   type RemoteScriptAnswer,
   type RemoteScriptReply,
-  RemoteScriptTimeout,
   remoteScriptRequest,
   replyError,
   unavailableReply,
 } from "../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
 export const SECTIONS = [

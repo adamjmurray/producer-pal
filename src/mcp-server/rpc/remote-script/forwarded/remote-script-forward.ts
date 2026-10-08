@@ -9,14 +9,14 @@ import {
 } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
 import {
   type RemoteScriptReply,
-  RemoteScriptTimeout,
   remoteScriptRequest,
   unavailableReply,
 } from "../remote-script-client.ts";
-
-/** What a caller is told when the connection broke after the request went out. */
-const CONNECTION_LOST =
-  "the connection to the Producer Pal remote script was lost before it answered";
+import {
+  CONNECTION_LOST,
+  RemoteScriptConnectionLost,
+  RemoteScriptTimeout,
+} from "../remote-script-errors.ts";
 
 /**
  * Forward one request to a remote-script route that V8 calls for its result:
@@ -77,7 +77,8 @@ export async function forwardRemoteScriptRequest(
  * "did not answer in time".
  * @param error - What `remoteScriptRequest` threw
  * @returns An error reply, `unfinished` when the request went out
- * @throws Error when the request went out and nothing answered in time
+ * @throws Error when the request went out and nothing answered in time, or
+ *   whatever else was thrown
  */
 function failedRequest(error: unknown): {
   available: true;
@@ -93,12 +94,11 @@ function failedRequest(error: unknown): {
     return { available: true, error: error.message };
   }
 
-  // The connection was made, then lost. Live may have acted on a change, and
-  // the next call would meet the same loss, so the caller stops like it does
-  // for no answer. Node's own error text isn't for the model.
-  return {
-    available: true,
-    error: CONNECTION_LOST,
-    unfinished: true,
-  };
+  if (error instanceof RemoteScriptConnectionLost) {
+    // Live may have acted on a change, and the next call would meet the same
+    // loss, so the caller stops like it does for no answer.
+    return { available: true, error: CONNECTION_LOST, unfinished: true };
+  }
+
+  throw error;
 }

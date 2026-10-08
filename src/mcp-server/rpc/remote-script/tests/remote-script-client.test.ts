@@ -6,14 +6,18 @@
 import http from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  RemoteScriptTimeout,
   remoteScriptPing,
   remoteScriptRequest,
   replyError,
 } from "../remote-script-client.ts";
 import {
+  RemoteScriptConnectionLost,
+  RemoteScriptTimeout,
+} from "../remote-script-errors.ts";
+import {
   type FakeAnswer,
   type FakeRemoteScript,
+  callUntilItTimesOut,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
 
@@ -94,23 +98,47 @@ describe("remoteScriptRequest", () => {
   });
 
   it("throws when the connection is taken but no answer comes", async () => {
-    await answerWith(null);
+    const remote = await answerWith(null);
 
     await expect(
-      remoteScriptRequest({ route: "/list", timeoutMs: 50 }),
+      callUntilItTimesOut(remote, 50, () =>
+        remoteScriptRequest({ route: "/list", timeoutMs: 50 }),
+      ),
     ).rejects.toThrow("Live's browser did not answer within 0.05s");
   });
 
   it("marks a timeout as sent, since Live may have acted on it", async () => {
-    await answerWith(null);
+    const remote = await answerWith(null);
 
-    const error = await remoteScriptRequest({
-      route: "/list",
-      timeoutMs: 50,
-    }).catch((caught: unknown) => caught);
+    const error = await callUntilItTimesOut(remote, 50, () =>
+      remoteScriptRequest({ route: "/list", timeoutMs: 50 }).catch(
+        (caught: unknown) => caught,
+      ),
+    );
 
     expect(error).toBeInstanceOf(RemoteScriptTimeout);
     expect(error).toHaveProperty("sent", true);
+  });
+
+  it("marks a timeout before the connection as not sent", async () => {
+    await answerWith({ body: { ok: true } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    // Advancing before the event loop turns means the socket hasn't connected.
+    const reply = remoteScriptRequest({ route: "/list", timeoutMs: 50 }).catch(
+      (caught: unknown) => caught,
+    );
+
+    vi.advanceTimersByTime(50);
+
+    const error = await reply;
+
+    expect(error).toBeInstanceOf(RemoteScriptTimeout);
+    expect(error).toHaveProperty("sent", false);
+    expect(error).toHaveProperty(
+      "message",
+      "ran out of time before connecting to Live's browser",
+    );
   });
 
   describe("with an expiry", () => {
@@ -142,14 +170,13 @@ describe("remoteScriptRequest", () => {
     });
 
     it("waits a moment past the expiry for the reply, not the fixed 35s", async () => {
-      await answerWith(null);
-
-      const started = Date.now();
+      const remote = await answerWith(null);
 
       await expect(
-        remoteScriptRequest({ route: "/list", expiresInMs: 100 }),
+        callUntilItTimesOut(remote, 150, () =>
+          remoteScriptRequest({ route: "/list", expiresInMs: 100 }),
+        ),
       ).rejects.toThrow("Live's browser did not answer within 0.15s");
-      expect(Date.now() - started).toBeLessThan(2000);
     });
 
     it.each([0, -5])("sends nothing at %s", async (expiresInMs) => {
@@ -182,7 +209,7 @@ describe("remoteScriptRequest", () => {
 
     await expect(
       remoteScriptRequest({ route: "/ping", timeoutMs: 5000 }),
-    ).rejects.toThrow(/socket hang up|ECONNRESET/);
+    ).rejects.toBeInstanceOf(RemoteScriptConnectionLost);
   });
 
   it("throws when the answer is cut off", async () => {
@@ -190,7 +217,7 @@ describe("remoteScriptRequest", () => {
 
     await expect(
       remoteScriptRequest({ route: "/ping", timeoutMs: 5000 }),
-    ).rejects.toThrow("aborted");
+    ).rejects.toBeInstanceOf(RemoteScriptConnectionLost);
   });
 
   it("reads a reply with no status code as status 0", async () => {

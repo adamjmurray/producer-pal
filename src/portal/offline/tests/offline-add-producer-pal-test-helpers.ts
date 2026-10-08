@@ -4,10 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { vi } from "vitest";
-import {
-  RemoteScriptTimeout,
-  type RemoteScriptReply,
-} from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { type RemoteScriptReply } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
 import { type DeviceInstallResult } from "../../setup/device-install.ts";
 import { type OfflineDeps } from "../offline-deps.ts";

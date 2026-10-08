@@ -7,8 +7,10 @@ import { describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "../../forwarded/remote-script-envelope-routes.ts";
+import { CONNECTION_LOST } from "../../remote-script-errors.ts";
 import {
   OUTDATED_ANSWER,
+  callUntilItTimesOut,
   unknownRouteAnswer,
   useFakeRemoteScriptRoutes,
 } from "../remote-script-test-helpers.ts";
@@ -25,9 +27,6 @@ const PARAMETER = {
 };
 
 const EXPIRES_IN_MS = 5000;
-
-const LOST =
-  "the connection to the Producer Pal remote script was lost before it answered";
 
 const answerWith = useFakeRemoteScriptRoutes(
   registerRemoteScriptEnvelopeRoutes,
@@ -125,7 +124,7 @@ describe("remoteScript.envelope failures", () => {
       success: true,
       result: {
         available: true,
-        error: LOST,
+        error: CONNECTION_LOST,
         unfinished: true,
       },
     });
@@ -140,22 +139,24 @@ describe("remoteScript.envelope failures", () => {
       success: true,
       result: {
         available: true,
-        error: LOST,
+        error: CONNECTION_LOST,
         unfinished: true,
       },
     });
   });
 
   it("calls a write the remote script never answered a timeout", async () => {
-    await answerWith(null);
+    const remote = await answerWith(null);
 
     expect(
-      await dispatchNodeRoute(ENVELOPE_ROUTES.write, {
-        track: "t0",
-        slot: 0,
-        points: [{ time: 0, value: 0 }],
-        expiresInMs: 40,
-      }),
+      await callUntilItTimesOut(remote, 60, () =>
+        dispatchNodeRoute(ENVELOPE_ROUTES.write, {
+          track: "t0",
+          slot: 0,
+          points: [{ time: 0, value: 0 }],
+          expiresInMs: 40,
+        }),
+      ),
     ).toStrictEqual({
       success: false,
       error: "the Producer Pal remote script did not answer in time",

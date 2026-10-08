@@ -8,8 +8,10 @@ import { RACK_MACROS_ROUTE } from "#src/tools/shared/remote-script/rack-macros-c
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptDeviceRoutes } from "../../forwarded/remote-script-device-routes.ts";
+import { CONNECTION_LOST } from "../../remote-script-errors.ts";
 import {
   OUTDATED_ANSWER,
+  callUntilItTimesOut,
   unknownRouteAnswer,
   useFakeRemoteScriptRoutes,
 } from "../remote-script-test-helpers.ts";
@@ -17,9 +19,6 @@ import {
 const PATHS = ["live_set tracks 0 devices 0", "live_set tracks 1 devices 2"];
 
 const EXPIRES_IN_MS = 5000;
-
-const LOST =
-  "the connection to the Producer Pal remote script was lost before it answered";
 
 const answerWith = useFakeRemoteScriptRoutes(registerRemoteScriptDeviceRoutes);
 
@@ -69,7 +68,7 @@ describe("remoteScript.device.macros", () => {
       success: true,
       result: {
         available: true,
-        error: LOST,
+        error: CONNECTION_LOST,
         unfinished: true,
       },
     });
@@ -226,21 +225,23 @@ describe("remoteScript.device.simplerWrite", () => {
       success: true,
       result: {
         available: true,
-        error: LOST,
+        error: CONNECTION_LOST,
         unfinished: true,
       },
     });
   });
 
   it("calls a write the remote script never answered a timeout", async () => {
-    await answerWith(null);
+    const remote = await answerWith(null);
 
     expect(
-      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-        devicePath: PATHS[0],
-        pitchBendRange: 3,
-        expiresInMs: 40,
-      }),
+      await callUntilItTimesOut(remote, 60, () =>
+        dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
+          devicePath: PATHS[0],
+          pitchBendRange: 3,
+          expiresInMs: 40,
+        }),
+      ),
     ).toStrictEqual({
       success: false,
       error: "the Producer Pal remote script did not answer in time",

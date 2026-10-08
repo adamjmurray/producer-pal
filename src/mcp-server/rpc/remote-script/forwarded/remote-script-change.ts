@@ -6,15 +6,19 @@
 import {
   type RemoteScriptAnswer,
   type RemoteScriptReply,
-  RemoteScriptTimeout,
   remoteScriptRequest,
   replyError,
 } from "../remote-script-client.ts";
+import {
+  CONNECTION_LOST,
+  RemoteScriptConnectionLost,
+  RemoteScriptTimeout,
+} from "../remote-script-errors.ts";
 
 /**
  * POST a change to the remote script. A timeout comes back as the 504 the
- * remote script itself sends: `started` when the request went out, so Live may
- * have made the change.
+ * remote script itself sends, and a connection lost after the request went out
+ * as a 502: both `started`, so Live may have made the change.
  * @param request - What to send
  * @param request.route - The remote script's route
  * @param request.body - JSON body
@@ -29,6 +33,14 @@ export async function requestChange(request: {
   try {
     return await remoteScriptRequest({ method: "POST", ...request });
   } catch (error) {
+    if (error instanceof RemoteScriptConnectionLost) {
+      return {
+        available: true,
+        status: 502,
+        body: { error: CONNECTION_LOST, started: true },
+      };
+    }
+
     if (!(error instanceof RemoteScriptTimeout)) {
       throw error;
     }

@@ -8,7 +8,7 @@ import {
   lookUpBrowserDevice,
   normalizedName,
 } from "../browser-device-lookup.ts";
-import { RemoteScriptTimeout } from "../../remote-script-client.ts";
+import { RemoteScriptTimeout } from "../../remote-script-errors.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,

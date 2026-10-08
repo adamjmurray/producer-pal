@@ -8,7 +8,7 @@ import http from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import { outdatedReason } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import { MIN_REMOTE_SCRIPT_VERSION } from "../port/remote-script-version.ts";
@@ -130,6 +130,40 @@ export async function startFakeRemoteScript(
       });
     },
   };
+}
+
+/**
+ * Run a call against a stand-in that never answers, and let its wait run out
+ * only once the stand-in has the request. A wait timed on the real clock could
+ * end before the socket connects, which the client counts as not sent.
+ * @param remote - The stand-in, which must never answer
+ * @param waitMs - The wait to let run out: the call's reply wait
+ * @param call - Makes the call
+ * @returns What the call came to
+ */
+export async function callUntilItTimesOut<T>(
+  remote: FakeRemoteScript,
+  waitMs: number,
+  call: () => Promise<T>,
+): Promise<T> {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+  try {
+    const pending = call();
+
+    // A stand-in with the request means the client had connected.
+    while (remote.requests.length === 0) {
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+    }
+
+    vi.advanceTimersByTime(waitMs);
+
+    return await pending;
+  } finally {
+    vi.useRealTimers();
+  }
 }
 
 /**
