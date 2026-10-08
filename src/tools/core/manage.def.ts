@@ -28,7 +28,8 @@ export const toolDefManage = defineTool("ppal-manage", {
       .enum(MANAGE_ACTIONS)
       .describe(
         "install-remote-script: put the remote script in the User Library " +
-          "(some features need it); the user must then restart Live. " +
+          "(adds clip automation, plug-in/preset loading, audio-to-MIDI and " +
+          "undo/redo); the user must then restart Live. " +
           "undo, redo: step back or forward; needs the remote script",
       ),
 

@@ -9,6 +9,10 @@
 /** The tool call that installs it. */
 export const INSTALL_WITH_TOOL = 'ppal-manage action "install-remote-script"';
 
+/** What the remote script adds, for a model deciding whether to suggest it. */
+export const REMOTE_SCRIPT_ADDS =
+  "It adds clip automation, loading plug-ins, Max for Live devices and presets, audio-to-MIDI conversion, and undo/redo with one undo step per tool call.";
+
 /** Where the user installs it by hand. */
 export const INSTALL_IN_CHAT_UI =
   "the Producer Pal chat UI's Settings → Remote Script";

@@ -13,6 +13,9 @@ import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remot
 import { VERSION } from "#src/shared/config.ts";
 import { withRemoteScriptNotice } from "../remote-script-notice-inject.ts";
 
+const ADDS =
+  "It adds clip automation, loading plug-ins, Max for Live devices and presets, audio-to-MIDI conversion, and undo/redo with one undo step per tool call.";
+
 const { remoteScriptStatus, warn } = vi.hoisted(() => ({
   remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
   warn: vi.fn(),
@@ -145,7 +148,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough();
 
     expect(content[1]?.text).toBe(
-      `remoteScript: not installed. To install it, call ${INSTALL}, then tell the user to restart Live.`,
+      `remoteScript: not installed. ${ADDS} To install it, call ${INSTALL}, then tell the user to restart Live.`,
     );
   });
 
@@ -162,7 +165,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough(undefined, false);
 
     expect(content[1]?.text).toBe(
-      "remoteScript: not installed. Tell the user to install it (Chat UI > Settings > Remote Script > Install), then restart Live.",
+      `remoteScript: not installed. ${ADDS} Tell the user to install it (Chat UI > Settings > Remote Script > Install), then restart Live.`,
     );
   });
 
@@ -185,7 +188,7 @@ describe("withRemoteScriptNotice", () => {
       const content = await connectThrough(undefined, manage);
 
       expect(content[1]?.text).toBe(
-        `remoteScript: v${VERSION} is installed but not running. Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Link, Tempo & MIDI, or restart Live. Reinstalling won't help.`,
+        `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Link, Tempo & MIDI, or restart Live. Reinstalling won't help.`,
       );
     }
   });
