@@ -37,6 +37,9 @@ clip's automation envelopes into the track's lane. Over the copy's span:
 
 Deleting the arrangement copy afterwards leaves the lane as written.
 
+Warped audio clips behave like MIDI clips. An unwarped audio clip writes nothing
+to the lane, matching its envelopes never playing.
+
 Copying an **arrangement** clip (or moving one, which Producer Pal does by copy
 and delete) neither writes nor clears the lane: automation stays at the old
 position. A clip re-created on a take lane carries no envelopes at all.
