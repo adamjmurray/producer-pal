@@ -16,6 +16,8 @@ export const automation = `## Clip Automation
 
 **Read** with ppal-read-clip \`include: ["envelopes"]\` — any clip read shows \`envs: true\` on a session clip that has some. Each entry names the automated parameter, its \`id\`, and its points.
 
+A track read (\`mixer\`) and a device read (params with values) show \`automation\` where the arrangement has a lane. It's unknown, and left out, while the track plays from Session.
+
 **Write** with ppal-update-clip \`envelopes\`: one \`<target>: <notation>\` line per parameter. A target is a parameter \`id\` (a device read lists them) or a mixer name — \`volume\`, \`pan\`, \`send0\`... Each line replaces that parameter's whole envelope; a line with nothing after the colon clears it. Don't rewrite an envelope read as \`truncated\`: the part not shown is lost.
 
 **Notation** is \`bar|beat value\` points in the clip's meter, joined by \`/\` (straight ramp), \`_\` (hold, then jump) or \`~N\` (curved ramp, N from -1 to 1 with no space; positive bends above the straight line, negative below): \`1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1\`. Values are RAW, usually 0..1 — not the display units a device read's \`min\`/\`max\` use (a % reads 0..100). An out-of-range value is refused with the real range. Mixer \`volume\`: 0.85 = 0 dB, 1 = +6 dB; \`pan\`: -1 = hard left, 0 = center, 1 = hard right.

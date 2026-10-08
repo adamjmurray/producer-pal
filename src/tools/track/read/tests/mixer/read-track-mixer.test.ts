@@ -9,8 +9,8 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   setupReturnTrackNames,
   setupTrackMixerMocks,
-} from "./helpers/read-track-registry-test-helpers.ts";
-import { readOneTrack } from "../read-track.ts";
+} from "../helpers/read-track-registry-test-helpers.ts";
+import { readOneTrack } from "../../read-track.ts";
 
 const RETURN_TRACKS = [
   { name: "Reverb", id: "return1" },

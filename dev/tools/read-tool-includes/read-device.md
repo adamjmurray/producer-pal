@@ -101,6 +101,12 @@ that range is a word rather than a number — Glue Compressor's `Release` reads
 `"A"` for Auto, Compressor's `Ratio` reads `"inf : 1"` — the word is trimmed off
 the range and reported as `alsoAccepts`, which update-device takes as a value.
 
+A param with an arrangement lane carries `automation: "active"`, or
+`"overridden"` once the user overrode it. When the device's track plays from
+Session the lane state can't be read, so no param carries the flag and the
+device's `detail` says so. Return and main track devices always report. Nested
+chain devices' params aren't read.
+
 ## Include: `"sample"`
 
 A focused discovery view: adds just the Simpler sample file path as a flat

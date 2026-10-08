@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -39,6 +39,7 @@ interface SetupTrackMixerMocksOptions {
   rightSplitProperties?: Record<string, unknown>;
   sendIds?: string[];
   sendValues?: number[];
+  sendProperties?: Record<string, unknown>[];
 }
 
 interface ResolvedTrackMixerMocksOptions {
@@ -63,6 +64,7 @@ interface ResolvedTrackMixerMocksOptions {
   rightSplitProperties: Record<string, unknown>;
   sendIds: string[];
   sendValues: number[];
+  sendProperties: Record<string, unknown>[];
 }
 
 interface TrackMixerMockHandles {
@@ -99,6 +101,7 @@ const DEFAULT_TRACK_MIXER_OPTIONS: ResolvedTrackMixerMocksOptions = {
   rightSplitProperties: {},
   sendIds: [],
   sendValues: [],
+  sendProperties: [],
 };
 
 /**
@@ -149,6 +152,7 @@ export function setupTrackMock(
  * @param options.rightSplitProperties - Right split property overrides
  * @param options.sendIds - Send parameter IDs
  * @param options.sendValues - Send parameter values in dB
+ * @param options.sendProperties - Per-send property overrides, by send index
  * @returns Registered handles for the created objects
  */
 export function setupTrackMixerMocks(
@@ -221,7 +225,12 @@ export function setupTrackMixerMocks(
   });
 
   sends.push(
-    ...setupSendParameters(mixerPath, resolved.sendIds, resolved.sendValues),
+    ...setupSendParameters(
+      mixerPath,
+      resolved.sendIds,
+      resolved.sendValues,
+      resolved.sendProperties,
+    ),
   );
 
   return {
@@ -354,6 +363,7 @@ function setupSendParameters(
   mixerPath: string,
   sendIds: string[],
   sendValues: number[],
+  sendProperties: Record<string, unknown>[],
 ): RegisteredMockObject[] {
   return sendIds.map((sendId, index) =>
     registerMockObject(sendId, {
@@ -361,6 +371,7 @@ function setupSendParameters(
       type: "DeviceParameter",
       properties: {
         display_value: sendValues[index] ?? 0,
+        ...sendProperties[index],
       },
     }),
   );

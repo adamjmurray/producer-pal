@@ -38,6 +38,8 @@ export interface ProcessChainsOptions {
 export interface ReadDeviceParametersOptions {
   includeValues?: boolean;
   search?: string;
+  /** False when the device's track plays from Session; no `automation` flags. */
+  showAutomation?: boolean;
 }
 
 /**
@@ -375,7 +377,7 @@ export function readDeviceParameters(
   device: LiveAPI,
   options: ReadDeviceParametersOptions = {},
 ): Record<string, unknown>[] {
-  const { includeValues = false, search } = options;
+  const { includeValues = false, search, showAutomation = true } = options;
 
   let parameters = device.getChildren("parameters");
 
@@ -397,5 +399,7 @@ export function readDeviceParameters(
   // argument, which readParameter would read as the device name.
   const deviceName = device.getProperty("class_display_name") as string;
 
-  return parameters.map((param) => readParameter(param, deviceName));
+  return parameters.map((param) =>
+    readParameter(param, deviceName, showAutomation),
+  );
 }

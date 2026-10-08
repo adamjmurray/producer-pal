@@ -8,6 +8,11 @@ import { STATE } from "#src/tools/constants.ts";
 import { trackCategoryPath } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 import { computeState } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
+  AUTOMATION_UNKNOWN_FROM_SESSION,
+  followsArrangement,
+} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import {
   readReturnTrackInfo,
   type ReturnTrackInfo,
 } from "#src/tools/shared/sends/return-track-info.ts";
@@ -39,6 +44,9 @@ interface MixerResult {
   leftPan?: unknown;
   rightPan?: unknown;
   sends?: SendInfo[];
+  /** The mixer fields with an arrangement lane, "(overridden)" where the user
+   * overrode it. Omitted when none, or when the track plays from Session. */
+  automation?: string[];
   /** What the mixer read couldn't line up; goes on the track's own entry */
   detail?: string;
 }
@@ -168,7 +176,7 @@ export function addProducerPalHostInfo(
  * Read mixer device properties (gain, panning, and sends)
  * @param track - Track object
  * @param returnTracks - The Live Set's return tracks, when the caller already read them
- * @returns Object with gain, pan, and sends properties, or empty if mixer doesn't exist
+ * @returns Object with gain, pan, sends and automation properties, or empty if mixer doesn't exist
  */
 export function readMixerProperties(
   track: LiveAPI,
@@ -181,11 +189,13 @@ export function readMixerProperties(
   }
 
   const result: MixerResult = {};
+  const automatable: Array<[string, LiveAPI]> = [];
 
   const volume = mixer.child("volume");
 
   if (volume.exists()) {
     result.gainDb = readGainDb(volume);
+    automatable.push(["gainDb", volume]);
   }
 
   const panningMode = mixer.getProperty("panning_mode");
@@ -202,16 +212,19 @@ export function readMixerProperties(
 
     if (leftSplit.exists()) {
       result.leftPan = readPan(leftSplit);
+      automatable.push(["leftPan", leftSplit]);
     }
 
     if (rightSplit.exists()) {
       result.rightPan = readPan(rightSplit);
+      automatable.push(["rightPan", rightSplit]);
     }
   } else {
     const panning = mixer.child("panning");
 
     if (panning.exists()) {
       result.pan = readPan(panning);
+      automatable.push(["pan", panning]);
     }
   }
 
@@ -226,17 +239,59 @@ export function readMixerProperties(
 
     result.sends = sends.map((send, i) => {
       const info = returns[i];
+      const returnName = info?.name ?? `Return ${i + 1}`;
+
+      automatable.push([`send ${returnName}`, send]);
 
       return {
         gainDb: readGainDb(send),
-        return: info?.name ?? `Return ${i + 1}`,
+        return: returnName,
         // Names collide and get renamed, so the id is what a write quotes back.
         ...(info == null ? {} : { returnId: info.id }),
       };
     });
   }
 
+  addAutomation(result, track, automatable);
+
   return result;
+}
+
+/**
+ * Name the mixer fields that have an arrangement lane, or say why they can't
+ * be known. The lane state only reads true while the track follows the
+ * arrangement.
+ * @param result - Mixer result to add `automation` or a `detail` to
+ * @param track - The track
+ * @param automatable - Each mixer field's name with its parameter
+ */
+function addAutomation(
+  result: MixerResult,
+  track: LiveAPI,
+  automatable: Array<[string, LiveAPI]>,
+): void {
+  if (!followsArrangement(track)) {
+    result.detail = joinDetails([
+      result.detail,
+      AUTOMATION_UNKNOWN_FROM_SESSION,
+    ]);
+
+    return;
+  }
+
+  const automation = automatable.flatMap(([name, param]) => {
+    const state = param.getProperty("automation_state");
+
+    if (state === 1) {
+      return [name];
+    }
+
+    return state === 2 ? [`${name} (overridden)`] : [];
+  });
+
+  if (automation.length > 0) {
+    result.automation = automation;
+  }
 }
 
 /**

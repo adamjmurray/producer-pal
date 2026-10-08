@@ -19,6 +19,11 @@ import {
   readDeviceParameters,
   readMacroVariations,
 } from "./helpers/device-reading.ts";
+import {
+  AUTOMATION_UNKNOWN_FROM_SESSION,
+  owningTrackFollowsArrangement,
+} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
@@ -458,10 +463,20 @@ function appendParameters(
   includeValues: boolean,
   paramSearch: string | undefined,
 ): void {
+  // `automation` is only read with values, and the track is checked once here
+  // rather than once per param.
+  const showAutomation =
+    !includeValues || owningTrackFollowsArrangement(device);
   const parameters = readDeviceParameters(device, {
     includeValues,
     search: paramSearch,
+    showAutomation,
   });
+
+  if (!showAutomation) {
+    appendDetail(deviceInfo, AUTOMATION_UNKNOWN_FROM_SESSION);
+  }
+
   const pseudoParams = readSpecializedParams(device, paramSearch);
   const merged = [...pseudoParams, ...parameters];
 

@@ -55,14 +55,23 @@ ignores them.
 
 Adds track-level mixer properties. Fields are merged into the track object.
 
-| Field         | Type     | Description                                                    |
-| ------------- | -------- | -------------------------------------------------------------- |
-| `gainDb`      | `string` | Volume display value (e.g., `"0.00 dB"`)                       |
-| `panningMode` | `string` | Only present when `"split"` (stereo mode omitted)              |
-| `pan`         | `number` | Pan position -1 to 1 (stereo mode)                             |
-| `leftPan`     | `number` | Left split pan (split mode only)                               |
-| `rightPan`    | `number` | Right split pan (split mode only)                              |
-| `sends`       | `Send[]` | Send levels; each `{ gainDb, return }` (omitted when no sends) |
+| Field         | Type       | Description                                                    |
+| ------------- | ---------- | -------------------------------------------------------------- |
+| `gainDb`      | `string`   | Volume display value (e.g., `"0.00 dB"`)                       |
+| `panningMode` | `string`   | Only present when `"split"` (stereo mode omitted)              |
+| `pan`         | `number`   | Pan position -1 to 1 (stereo mode)                             |
+| `leftPan`     | `number`   | Left split pan (split mode only)                               |
+| `rightPan`    | `number`   | Right split pan (split mode only)                              |
+| `sends`       | `Send[]`   | Send levels; each `{ gainDb, return }` (omitted when no sends) |
+| `automation`  | `string[]` | Mixer fields with an arrangement lane (see below)              |
+
+`automation` names fields as the result does (`gainDb`, `pan` or
+`leftPan`/`rightPan`, `send <return name>`), with ` (overridden)` after one the
+user overrode: `["gainDb", "pan (overridden)", "send A-Echo"]`. Omitted when
+nothing is automated. A regular track that plays from Session (a session clip
+playing, or stopped in Session) reports no lane state, so the field is omitted
+and the track's `detail` says the automation is unknown. Return and main tracks
+always report.
 
 Device-structural includes (`chains`, `return-chains`, `drum-pads`) are not
 available at this level. Use `ppal-read-device` for chain/drum-pad detail.

@@ -67,6 +67,14 @@ overridden it. It reads 0 while the track plays a session clip or is stopped in
 Session (`Song.back_to_arranger` lit, `playing_slot_index` not -1). Session clip
 automation also sets it while the clip plays. It's cheap.
 
+**Whether it can be trusted.** A regular track follows the arrangement exactly
+when `Track.playing_slot_index` is -1. It is -2 when the track was stopped in
+Session (clip stop button) and >= 0 while a session clip plays or Back to
+Arrangement is lit. Return and main tracks have no clip slots
+(`playing_slot_index` throws), so they always follow. `ppal-read-track`
+(`mixer`) and `ppal-read-device` (param values) show `automation` only when the
+track follows, and otherwise say it's unknown.
+
 **The value at a time.** With the transport stopped, set
 `Song.current_song_time` and read `parameter.value` on a **later** request: the
 value follows the lane, curves included. `sync_parameter_changes()` doesn't

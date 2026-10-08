@@ -240,6 +240,25 @@ function addStateFlags(
 }
 
 /**
+ * A param's arrangement automation state.
+ * @param paramApi - LiveAPI parameter object
+ * @param showAutomation - False to report none (the state can't be known)
+ * @returns "none", "active" or "overridden"; undefined when not shown
+ */
+function automationOf(
+  paramApi: LiveAPI,
+  showAutomation = true,
+): string | undefined {
+  if (!showAutomation) {
+    return undefined;
+  }
+
+  return AUTOMATION_STATE_MAP[
+    paramApi.getProperty("automation_state") as number
+  ];
+}
+
+/**
  * Read basic parameter info (id and name only)
  * @param paramApi - LiveAPI parameter object
  * @returns Parameter info with id and name
@@ -259,17 +278,20 @@ export function readParameterBasic(paramApi: LiveAPI): {
  * @param deviceName - The device's class_display_name, for the recorded-unit
  *   lookup. Omitted where the device isn't known; the param then reports a unit
  *   only if its own labels carry one.
+ * @param showAutomation - False where the param's track plays from Session, so
+ *   the automation state can't be known and no flag is better than a wrong one
+ *   (default true)
  * @returns Parameter info object
  */
 export function readParameter(
   paramApi: LiveAPI,
   deviceName?: string,
+  showAutomation?: boolean,
 ): Record<string, unknown> {
   const name = formatParamName(paramApi);
   const stateIdx = paramApi.getProperty("state") as number;
-  const automationIdx = paramApi.getProperty("automation_state") as number;
   const state = PARAM_STATE_MAP[stateIdx];
-  const automationState = AUTOMATION_STATE_MAP[automationIdx];
+  const automationState = automationOf(paramApi, showAutomation);
 
   if ((paramApi.getProperty("is_quantized") as number) > 0) {
     const valueItems = paramApi.getPropertyList("value_items") as (
