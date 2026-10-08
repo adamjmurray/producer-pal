@@ -11,6 +11,7 @@ import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-r
 
 export const MANAGE_ACTIONS = [
   "install-remote-script",
+  "add-producer-pal",
   "undo",
   "redo",
 ] as const;

@@ -23,6 +23,11 @@ export const RUNNING: RemoteScriptPing = {
   otherOnPort: null,
 };
 
+/** A device that never answers. */
+export function noDevice(): Promise<void> {
+  return Promise.reject(new Error("no device"));
+}
+
 /**
  * Offline dependencies that touch nothing: no remote script, no bundled device,
  * no User Library. A test overrides what it is about.

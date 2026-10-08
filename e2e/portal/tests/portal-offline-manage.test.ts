@@ -75,6 +75,9 @@ describe("the offline guidance", () => {
 
     expect(isError).toBe(true);
     expect(text).toContain("Producer Pal isn't in this Live Set.");
+    expect(text).toContain(
+      'Ask the user, then call ppal-manage action "add-producer-pal".',
+    );
     expect(text).not.toContain("Cannot connect");
   });
 

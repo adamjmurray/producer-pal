@@ -14,16 +14,19 @@ import {
 } from "#src/tools/core/helpers/manage-args.ts";
 import { manageInstallResult } from "#src/tools/core/helpers/manage-contract.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
+import { addProducerPal } from "./offline-add-producer-pal.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
 
 /**
  * Run a ppal-manage call the portal can answer without the device.
  * @param args - The call's arguments as sent
+ * @param connect - Connect to the device's server; throws until it answers
  * @param deps - What the answers reach out to
  * @returns The response, or null when only the device can answer (undo, redo)
  */
 export async function offlineManage(
   args: Record<string, unknown>,
+  connect: () => Promise<void>,
   deps: OfflineDeps,
 ): Promise<McpResponse | null> {
   let checked: CheckedManageArgs;
@@ -40,6 +43,10 @@ export async function offlineManage(
 
   if (checked.action === "install-remote-script") {
     return await installRemoteScript(checked.userLibrary, deps);
+  }
+
+  if (checked.action === "add-producer-pal") {
+    return await addProducerPal(checked.userLibrary, connect, deps);
   }
 
   return null;

@@ -81,6 +81,7 @@ export class StdioHttpBridge {
         manageOffered: this.fallbackTools.tools.some(
           (tool) => tool.name === MANAGE_TOOL,
         ),
+        connect: () => this._ensureHttpConnection(),
       },
       this.offlineDeps,
     );

@@ -14,6 +14,8 @@ import {
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 
+const ADD_ACTION = 'action "add-producer-pal"';
+
 export const SETUP_URL = "https://producer-pal.org/installation";
 
 /**
@@ -32,7 +34,7 @@ export async function offlineGuidance(
   const text = running
     ? `❌ Producer Pal isn't in this Live Set.
 
-Tell the user to add the Producer Pal Max for Live device to it, per ${SETUP_URL}.`
+${addDeviceHint(manageOffered)}`
     : `❌ Cannot connect to Ableton Live.
 
 Ensure Ableton Live 12.3+ is running with the Producer Pal Max for Live device loaded.
@@ -43,8 +45,18 @@ Tell the user to check ${SETUP_URL} for setup instructions.${manageOffered ? ins
 (Producer Pal ${VERSION})`);
 }
 
-/** @returns The line pointing at the install that works without the device */
+/**
+ * @param manageOffered - Whether this portal lists ppal-manage
+ * @returns How to get the device into the Set
+ */
+function addDeviceHint(manageOffered: boolean): string {
+  return manageOffered
+    ? `Ask the user, then call ppal-manage ${ADD_ACTION}.`
+    : `Tell the user to add the Producer Pal Max for Live device to it, per ${SETUP_URL}.`;
+}
+
+/** @returns The line pointing at what works without the device */
 function installHint(): string {
   return `
-Or run ${INSTALL_WITH_TOOL} now (it works without Producer Pal), then ask the user to restart Live and choose Producer Pal as a Control Surface.`;
+Or run ${INSTALL_WITH_TOOL} now (it works without Producer Pal), then ask the user to restart Live and choose Producer Pal as a Control Surface. After that, ppal-manage ${ADD_ACTION} adds the device.`;
 }

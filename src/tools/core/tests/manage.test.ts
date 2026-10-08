@@ -268,14 +268,14 @@ describe("ppal-manage install-remote-script", () => {
 describe("ppal-manage refusals", () => {
   it("needs an action", async () => {
     await expect(manage({})).rejects.toThrow(
-      "action must be one of: install-remote-script, undo, redo",
+      "action must be one of: install-remote-script, add-producer-pal, undo, redo",
     );
     await expect(manage()).rejects.toThrow("action must be one of");
   });
 
   it("refuses an unknown action, naming it", async () => {
     await expect(manage({ action: "reboot" })).rejects.toThrow(
-      'action must be one of: install-remote-script, undo, redo, not "reboot"',
+      'action must be one of: install-remote-script, add-producer-pal, undo, redo, not "reboot"',
     );
   });
 
@@ -290,9 +290,25 @@ describe("ppal-manage refusals", () => {
     "refuses userLibrary on %s, before asking anything",
     async (action) => {
       await expect(manage({ action, userLibrary: "/lib" })).rejects.toThrow(
-        /userLibrary is only for action "install-remote-script"/,
+        /userLibrary is only for action "install-remote-script" or "add-producer-pal"/,
       );
       expect(requestNode).not.toHaveBeenCalled();
     },
   );
+
+  it("refuses add-producer-pal when Producer Pal is running, before asking anything", async () => {
+    await expect(manage({ action: "add-producer-pal" })).rejects.toThrow(
+      "Producer Pal is already running in this Live Set",
+    );
+    await expect(
+      manage({ action: "add-producer-pal", userLibrary: "/lib" }),
+    ).rejects.toThrow("Producer Pal is already running in this Live Set");
+    expect(requestNode).not.toHaveBeenCalled();
+  });
+
+  it("refuses steps on add-producer-pal", async () => {
+    await expect(
+      manage({ action: "add-producer-pal", steps: 2 }),
+    ).rejects.toThrow(/steps is only for action "undo" or "redo"/);
+  });
 });

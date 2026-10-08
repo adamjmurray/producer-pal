@@ -1,9 +1,9 @@
 # ppal-manage
 
 Actions on Live itself, not on a track, clip or device: install the remote
-script, and undo and redo in Live's history. One call is one action, so there
-are no target lists, no entries and no skips: a call that can't do its action
-throws.
+script, add Producer Pal to the open Set, and undo and redo in Live's history.
+One call is one action, so there are no target lists, no entries and no skips: a
+call that can't do its action throws.
 
 It is not a target-list write, so it doesn't run through the
 [write pipeline](../../tools/write-pipeline.md), and it gets no undo step of its
@@ -15,10 +15,10 @@ switch it off like any tool. It sits in the `core` group.
 
 ## Refusals before anything runs
 
-- A missing or unknown `action` throws, listing the three:
-  `action must be one of: install-remote-script, undo, redo`.
-- `userLibrary` is only for `install-remote-script`. On `undo` or `redo` it is
-  refused as any
+- A missing or unknown `action` throws, listing the four:
+  `action must be one of: install-remote-script, add-producer-pal, undo, redo`.
+- `userLibrary` is only for `install-remote-script` and `add-producer-pal`. On
+  `undo` or `redo` it is refused as any
   [param only another action reads](README.md#a-param-only-another-action-reads).
 
 ## `install-remote-script`
@@ -44,6 +44,20 @@ Writes the bundled script into the User Library, replacing any copy, as Settings
 - **No answer from Node:** throws, saying the install may or may not have
   finished and to run it again. An install replaces the old copy whole, so
   repeating it is safe.
+
+## `add-producer-pal`
+
+Puts the Producer Pal device on a new MIDI track of the open Set. It only works
+while Producer Pal isn't running, so only the portal answers it (see
+[While Producer Pal isn't running](#while-producer-pal-isnt-running)). The tool
+description tells the model to ask the user first, since it changes their Set.
+
+- **On the device:** throws `Producer Pal is already running in this Live Set`,
+  after the same argument checks as every action.
+- **Result:** `{ track: { index, name }, device, nextSteps }`. `device` says
+  what happened to the file in the User Library (installed, updated, already
+  current, kept because the installed one is newer or can't be ordered, or kept
+  because the update failed, with why). `nextSteps` is `Call ppal-connect next.`
 
 ## `undo` and `redo`
 
@@ -99,6 +113,7 @@ it (small-model mode and `--disable-tools` drop it).
 - **`install-remote-script`** runs in the portal through the same code as the
   device's route and gives the same `{ version, path, nextSteps }` and the same
   errors.
+- **`add-producer-pal`** runs the steps below.
 - **`undo` and `redo`** need the device, so they get the guidance below.
 - **Every other offline call** gets guidance, worded by whether Live's remote
   script answers a ping (capped at about 1 s):

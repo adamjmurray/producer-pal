@@ -9,7 +9,7 @@ import { VERSION } from "#src/shared/config.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
 import { answerOfflineCall } from "../offline-call.ts";
 import { offlineManage } from "../offline-manage.ts";
-import { fakeOfflineDeps } from "./offline-test-helpers.ts";
+import { fakeOfflineDeps, noDevice } from "./offline-test-helpers.ts";
 
 /**
  * @param response - A tool response
@@ -30,6 +30,7 @@ describe("offlineManage install-remote-script", () => {
     );
     const response = await offlineManage(
       { action: "install-remote-script", userLibrary: " /lib " },
+      noDevice,
       fakeOfflineDeps({ installRemoteScript }),
     );
 
@@ -47,6 +48,7 @@ describe("offlineManage install-remote-script", () => {
 
     await offlineManage(
       { action: "install-remote-script" },
+      noDevice,
       fakeOfflineDeps({ installRemoteScript }),
     );
 
@@ -56,6 +58,7 @@ describe("offlineManage install-remote-script", () => {
   it("passes on the install's own error, saying what it left", async () => {
     const response = await offlineManage(
       { action: "install-remote-script" },
+      noDevice,
       fakeOfflineDeps({
         installRemoteScript: () =>
           Promise.resolve({
@@ -75,6 +78,7 @@ describe("offlineManage install-remote-script", () => {
   it("reports an install that threw", async () => {
     const response = await offlineManage(
       { action: "install-remote-script" },
+      noDevice,
       fakeOfflineDeps({
         installRemoteScript: () => Promise.reject(new Error("disk gone")),
       }),
@@ -87,7 +91,11 @@ describe("offlineManage install-remote-script", () => {
 
 describe("offlineManage arguments", () => {
   it("refuses an unknown action the way the device does", async () => {
-    const response = await offlineManage({ action: "wipe" }, fakeOfflineDeps());
+    const response = await offlineManage(
+      { action: "wipe" },
+      noDevice,
+      fakeOfflineDeps(),
+    );
 
     expect(response?.isError).toBe(true);
     expect(textOf(response)).toContain("action must be one of:");
@@ -98,6 +106,7 @@ describe("offlineManage arguments", () => {
     const installRemoteScript = vi.fn();
     const response = await offlineManage(
       { action: "undo", userLibrary: "/x" },
+      noDevice,
       fakeOfflineDeps({ installRemoteScript }),
     );
 
@@ -109,6 +118,7 @@ describe("offlineManage arguments", () => {
   it("refuses a userLibrary that isn't text", async () => {
     const response = await offlineManage(
       { action: "install-remote-script", userLibrary: 7 },
+      noDevice,
       fakeOfflineDeps(),
     );
 
@@ -118,7 +128,9 @@ describe("offlineManage arguments", () => {
   it.each(["undo", "redo"])(
     "leaves %s to the setup guidance",
     async (action) => {
-      expect(await offlineManage({ action }, fakeOfflineDeps())).toBeNull();
+      expect(
+        await offlineManage({ action }, noDevice, fakeOfflineDeps()),
+      ).toBeNull();
     },
   );
 });
@@ -137,6 +149,7 @@ describe("answerOfflineCall", () => {
         name: "ppal-manage",
         args: { action: "install-remote-script" },
         manageOffered: true,
+        connect: noDevice,
       },
       fakeOfflineDeps({ installRemoteScript }),
     );
@@ -147,7 +160,12 @@ describe("answerOfflineCall", () => {
 
   it("gives undo the setup guidance", async () => {
     const response = await answerOfflineCall(
-      { name: "ppal-manage", args: { action: "undo" }, manageOffered: true },
+      {
+        name: "ppal-manage",
+        args: { action: "undo" },
+        manageOffered: true,
+        connect: noDevice,
+      },
       fakeOfflineDeps(),
     );
 
@@ -161,6 +179,7 @@ describe("answerOfflineCall", () => {
         name: "ppal-manage",
         args: { action: "install-remote-script" },
         manageOffered: false,
+        connect: noDevice,
       },
       fakeOfflineDeps({ installRemoteScript }),
     );
@@ -171,7 +190,12 @@ describe("answerOfflineCall", () => {
 
   it("gives every other tool the setup guidance", async () => {
     const response = await answerOfflineCall(
-      { name: "ppal-connect", args: {}, manageOffered: true },
+      {
+        name: "ppal-connect",
+        args: {},
+        manageOffered: true,
+        connect: noDevice,
+      },
       fakeOfflineDeps(),
     );
 

@@ -8,15 +8,15 @@ tool that differs from a rule here is a bug in the tool.
 Changing one of these answers is a rule change: ask first, update this spec, and
 apply it to every tool at once.
 
-| Part                                                         | What is in it                                                     |
-| ------------------------------------------------------------ | ----------------------------------------------------------------- |
-| This file                                                    | Lists and pairing, refusals, skips, result entries, overwrites    |
-| [object-paths/](object-paths/README.md)                      | The path grammar, creating by path, results and errors            |
-| [clips-playback-and-sends.md](clips-playback-and-sends.md)   | Looping, `duplicateLoop`, muted notes, the playhead, send returns |
-| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md) | Where each tool applies the refusal rules                         |
-| [skip-entries-by-tool.md](skip-entries-by-tool.md)           | How each write tool applies the entry rules                       |
-| [ppal-manage.md](ppal-manage.md)                             | How `ppal-manage` answers: install, undo, redo, and its refusals  |
-| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)     | How to build the schema and the helpers that enforce these rules  |
+| Part                                                         | What is in it                                                              |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| This file                                                    | Lists and pairing, refusals, skips, result entries, overwrites             |
+| [object-paths/](object-paths/README.md)                      | The path grammar, creating by path, results and errors                     |
+| [clips-playback-and-sends.md](clips-playback-and-sends.md)   | Looping, `duplicateLoop`, muted notes, the playhead, send returns          |
+| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md) | Where each tool applies the refusal rules                                  |
+| [skip-entries-by-tool.md](skip-entries-by-tool.md)           | How each write tool applies the entry rules                                |
+| [ppal-manage.md](ppal-manage.md)                             | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals |
+| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)     | How to build the schema and the helpers that enforce these rules           |
 
 ## Lists and pairing
 

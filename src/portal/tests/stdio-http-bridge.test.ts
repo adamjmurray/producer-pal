@@ -127,6 +127,7 @@ vi.mock(import("../file-logger.ts"), () => ({
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { logger } from "../file-logger.ts";
+import { happyDeps } from "../offline/tests/offline-add-producer-pal-test-helpers.ts";
 import { fakeOfflineDeps } from "../offline/tests/offline-test-helpers.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
@@ -690,6 +691,31 @@ describe("StdioHttpBridge", () => {
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Connectivity problem detected. Answering offline",
       );
+    });
+
+    it("lets ppal-manage add Producer Pal offline, connecting through the bridge once it is up", async () => {
+      const b = new StdioHttpBridge(
+        "http://localhost:3350/mcp",
+        {},
+        happyDeps(),
+      ) as unknown as TestBridge;
+      const manage = { name: "ppal-manage", description: "", inputSchema: {} };
+
+      b.fallbackTools.tools.push(manage);
+
+      const callToolHandler = await startAndGetCallHandler(b);
+
+      // Down for the call itself, up by the time the bridge polls.
+      mockClient.connect
+        .mockRejectedValueOnce(new Error("Connection failed"))
+        .mockResolvedValue(undefined);
+
+      const result = await callToolHandler(
+        callToolRequest("ppal-manage", { action: "add-producer-pal" }),
+      );
+
+      expect(JSON.stringify(result)).toContain("track:{index:3,name:");
+      expect(b.isConnected).toBe(true);
     });
 
     it("sets up call tool handler that handles missing arguments", async () => {

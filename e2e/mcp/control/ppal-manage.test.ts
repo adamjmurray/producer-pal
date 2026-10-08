@@ -211,7 +211,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
 });
 
 // The install needs no remote script, so its refusals run in every e2e pass.
-describe("ppal-manage install-remote-script refusals", () => {
+describe("ppal-manage install-remote-script and add-producer-pal refusals", () => {
   const ctx = setupMcpTestContext();
 
   it("refuses a User Library that isn't a folder, installing nothing", async () => {
@@ -241,6 +241,18 @@ describe("ppal-manage install-remote-script refusals", () => {
     );
 
     expect(message).toContain("Not an absolute path");
+  });
+
+  // The portal answers add-producer-pal; the running device can only refuse.
+  it("refuses add-producer-pal, since Producer Pal is running", async () => {
+    const message = getToolErrorMessage(
+      await ctx.client!.callTool({
+        name: "ppal-manage",
+        arguments: { action: "add-producer-pal" },
+      }),
+    );
+
+    expect(message).toContain("Producer Pal is already running");
   });
 });
 

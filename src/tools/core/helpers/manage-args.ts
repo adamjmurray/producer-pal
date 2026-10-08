@@ -34,7 +34,7 @@ export interface CheckedManageArgs {
 
 // The only params that some actions don't read.
 const MANAGE_PARAM_HOMES: Record<string, ParamHome> = {
-  userLibrary: { action: ["install-remote-script"] },
+  userLibrary: { action: ["install-remote-script", "add-producer-pal"] },
   steps: { action: ["undo", "redo"] },
 };
 

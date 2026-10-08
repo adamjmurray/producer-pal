@@ -17,6 +17,8 @@ export interface OfflineCall {
   args: Record<string, unknown>;
   /** Whether this portal lists ppal-manage (small-model mode and `--disable-tools` drop it) */
   manageOffered: boolean;
+  /** Connect to the device's server; throws until it answers */
+  connect: () => Promise<void>;
 }
 
 /**
@@ -31,7 +33,7 @@ export async function answerOfflineCall(
   deps: OfflineDeps,
 ): Promise<McpResponse> {
   if (call.name === MANAGE_TOOL && call.manageOffered) {
-    const answer = await offlineManage(call.args, deps);
+    const answer = await offlineManage(call.args, call.connect, deps);
 
     if (answer != null) {
       return answer;

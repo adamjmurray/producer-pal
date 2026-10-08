@@ -9,7 +9,14 @@
 // comes back over the wire.
 
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -50,16 +57,18 @@ export interface Stoppable {
  * @param origin - The device origin to point it at (MCP_SERVER_ORIGIN)
  * @param args - CLI flags, e.g. ["--tools", "clip"]
  * @param env - Extra environment, e.g. { SMALL_MODEL_MODE: "true" }
+ * @param bundle - The portal script to run; defaults to the built one
  * @returns The connected session
  */
 export async function startPortal(
   origin: string,
   args: string[] = [],
   env: Record<string, string> = {},
+  bundle: string = portalBundle(),
 ): Promise<PortalSession> {
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [portalBundle(), ...args],
+    args: [bundle, ...args],
     env: portalEnv(origin, env),
     // The bridge writes a connect line to stderr; piping keeps it out of the
     // test report.
@@ -79,6 +88,37 @@ export async function startPortal(
   await client.connect(transport);
 
   return session;
+}
+
+/**
+ * A copy of the built portal in its own folder, so a device file beside it (or
+ * the lack of one) is the test's to decide. The shipped portal looks for
+ * Producer_Pal.amxd next to itself.
+ * @param withDevice - Put a stand-in device file beside the copy
+ * @returns The copy's path, and a stop that deletes it
+ */
+export function copyPortal(withDevice: boolean): {
+  file: string;
+  stop: () => Promise<void>;
+} {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-portal-copy-"));
+  // .mjs: the copy has no package.json saying the bundle is an ES module.
+  const file = join(dir, "producer-pal-portal.mjs");
+
+  copyFileSync(portalBundle(), file);
+
+  if (withDevice) {
+    writeFileSync(join(dir, "Producer_Pal.amxd"), "stand-in device");
+  }
+
+  return {
+    file,
+    stop: () => {
+      rmSync(dir, { recursive: true, force: true });
+
+      return Promise.resolve();
+    },
+  };
 }
 
 /**

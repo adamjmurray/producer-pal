@@ -31,6 +31,9 @@ the build-verification job, right after the build that produces it.
 - `tests/portal-offline-manage.test.ts` — what the portal answers itself while
   the device is down: the setup guidance (by whether the remote script answers)
   and `ppal-manage` `install-remote-script`.
+- `tests/portal-add-producer-pal.test.ts` — `ppal-manage` `add-producer-pal`
+  against the stub remote script, which starts the stub device on `/load`. It
+  runs a copy of the portal with a stand-in `Producer_Pal.amxd` beside it.
 
 Unit tests in `src/portal/tests/` already cover how tool names and group aliases
 resolve. These cover what only a real process can show: argv parsed by the
