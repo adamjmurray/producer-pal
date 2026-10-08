@@ -5,7 +5,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
-import { offlineGuidance, SETUP_URL } from "../offline-guidance.ts";
+import { offlineGuidance } from "../offline-guidance.ts";
+import { SETUP_URL } from "../offline-setup-hints.ts";
 import {
   fakeOfflineDeps,
   NOT_RUNNING,
@@ -23,6 +24,8 @@ async function guidance(
 ): Promise<string> {
   const deps = fakeOfflineDeps({
     ping: vi.fn(() => Promise.resolve(running ? RUNNING : NOT_RUNNING)),
+    // A lookup that fails drops its detail and leaves today's general wording.
+    findUserLibrary: vi.fn(() => Promise.reject(new Error("no lookup"))),
   });
   const response = await offlineGuidance(manageOffered, deps);
 
@@ -72,10 +75,21 @@ describe("offlineGuidance", () => {
     expect(text).toContain(`(Producer Pal ${VERSION})`);
   });
 
+  it("falls back to the general wording when a lookup throws", async () => {
+    const text = await guidance(false, true);
+
+    expect(text).toContain(
+      'Or run ppal-manage action "install-remote-script" now (it works without Producer Pal)',
+    );
+    expect(text).toContain(
+      'After that, ppal-manage action "add-producer-pal" adds the device.',
+    );
+  });
+
   it("asks once and waits for no one else's answer", async () => {
     const ping = vi.fn(() => Promise.resolve(NOT_RUNNING));
 
-    await offlineGuidance(true, { ping });
+    await offlineGuidance(true, fakeOfflineDeps({ ping }));
 
     expect(ping).toHaveBeenCalledTimes(1);
   });

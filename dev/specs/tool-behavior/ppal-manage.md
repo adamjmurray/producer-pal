@@ -117,9 +117,25 @@ it (small-model mode and `--disable-tools` drop it).
 - **`undo` and `redo`** need the device, so they get the guidance below.
 - **Every other offline call** gets guidance, worded by whether Live's remote
   script answers a ping (capped at about 1 s):
-  - **Answers:** "Producer Pal isn't in this Live Set", and to tell the user to
-    add the device by hand.
+  - **Answers:** "Producer Pal isn't in this Live Set". Without `ppal-manage`,
+    it says to add the device by hand.
   - **Doesn't:** Live 12.3+ must be running with the device loaded, plus the
-    setup URL. When `ppal-manage` is listed, it adds that
-    `install-remote-script` works now, then the user restarts Live and chooses
-    the Control Surface.
+    setup URL.
+  - **With `ppal-manage` listed**, it also says where things are and what the
+    next step does. It never throws: a lookup that fails drops its detail and
+    leaves the general wording. The ping isn't repeated.
+    - **User Library:** the one the running script reports, else the one
+      Producer Pal finds (the order `add-producer-pal` uses). When none is
+      found, it tells the model to ask the user for the path and pass it as
+      `userLibrary`.
+    - **Remote script (not running):** not installed (offers
+      `install-remote-script` and says where it installs), installed and this
+      version or newer (just restart Live and choose the Control Surface), or
+      installed older or unreadable (offer the update).
+    - **Remote script (running):** if it is older than the minimum, say to
+      update it before adding the device.
+    - **Device:** says what `add-producer-pal` will do: install to the path,
+      update it (installed version to bundled version), add the one already
+      there (nothing to install), or add a newer or different one as is. With no
+      device bundled, it sends the user to the install guide and doesn't point
+      at `add-producer-pal`.

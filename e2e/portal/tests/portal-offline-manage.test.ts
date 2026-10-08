@@ -9,12 +9,19 @@
 //
 // Run with: npm run e2e:portal
 
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   callToolText,
+  copyPortal,
   listToolNames,
   type PortalSession,
   startPortal,
@@ -41,20 +48,51 @@ function scratchLibrary(): string {
   return dir;
 }
 
+/** What a portal with the device down is set up with. */
+interface DownOptions {
+  /** Whether the stub remote script answers */
+  scriptRunning: boolean;
+  /** CLI flags for the portal */
+  args?: string[];
+  /** The User Library the running remote script reports */
+  library?: string;
+  /** The portal's HOME, where it looks for a User Library of its own */
+  home?: string;
+  /** Whether the portal ships with the device file */
+  bundled?: boolean;
+}
+
 /**
  * A portal whose device is down, with a remote script that answers or not.
+ * @param options - See {@link DownOptions}
+ * @returns The portal
+ */
+async function portalDown(options: DownOptions): Promise<PortalSession> {
+  const device = track(await createStubDevice({ online: false }));
+  const script = track(
+    await createStubRemoteScript({
+      online: options.scriptRunning,
+      userLibrary: options.library,
+    }),
+  );
+  const copy = track(copyPortal(options.bundled !== false));
+  // The user's real Live preferences must not steer the library lookup.
+  const home = options.home ?? scratchLibrary();
+  const env = { ...script.env, HOME: home, USERPROFILE: home };
+
+  return track(await startPortal(device.origin, options.args, env, copy.file));
+}
+
+/**
  * @param scriptRunning - Whether the stub remote script answers
  * @param args - CLI flags for the portal
  * @returns The portal
  */
-async function portalWithDeviceDown(
+function portalWithDeviceDown(
   scriptRunning: boolean,
   args: string[] = [],
 ): Promise<PortalSession> {
-  const device = track(await createStubDevice({ online: false }));
-  const script = track(await createStubRemoteScript({ online: scriptRunning }));
-
-  return track(await startPortal(device.origin, args, script.env));
+  return portalDown({ scriptRunning, args });
 }
 
 describe("the offline guidance", () => {
@@ -103,6 +141,153 @@ describe("the offline guidance", () => {
 
     expect(text).toContain("Cannot connect to Ableton Live.");
     expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
+  });
+});
+
+const DEVICE_DIR = ["Presets", "MIDI Effects", "Max MIDI Effect"];
+const CAN_FIND_LIBRARY = process.platform !== "linux";
+
+/**
+ * @param home - A portal's HOME
+ * @returns The User Library the portal finds there by default
+ */
+function defaultLibrary(home: string): string {
+  const parent = process.platform === "darwin" ? "Music" : "Documents";
+  const library = join(home, parent, "Ableton", "User Library");
+
+  mkdirSync(library, { recursive: true });
+
+  return library;
+}
+
+/**
+ * @param library - A User Library
+ * @param version - The version its remote script reports
+ */
+function installScript(library: string, version: string): void {
+  const folder = join(library, "Remote Scripts", "Producer_Pal");
+
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, "__init__.py"), "");
+  writeFileSync(join(folder, "version.py"), `VERSION = "${version}"\n`);
+}
+
+/**
+ * @param library - A User Library
+ * @param contents - What the installed device file holds
+ */
+function installDevice(library: string, contents: string): void {
+  mkdirSync(join(library, ...DEVICE_DIR), { recursive: true });
+  writeFileSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"), contents);
+}
+
+describe("the offline guidance names what is installed", () => {
+  it("asks for the User Library when none can be found", async () => {
+    const portal = await portalDown({ scriptRunning: false });
+
+    const { text } = await callToolText(portal, "ppal-connect");
+
+    expect(text).toContain("Live's User Library wasn't found");
+    expect(text).toContain("pass it as userLibrary");
+  });
+
+  it.skipIf(!CAN_FIND_LIBRARY)(
+    "offers the remote script install when it isn't there",
+    async () => {
+      const home = scratchLibrary();
+      const library = defaultLibrary(home);
+      const portal = await portalDown({ scriptRunning: false, home });
+
+      const { text } = await callToolText(portal, "ppal-connect");
+
+      expect(text).toContain(
+        `(installs to ${join(library, "Remote Scripts", "Producer_Pal")})`,
+      );
+      expect(text).toContain(
+        `installs the Producer Pal device to ${join(library, ...DEVICE_DIR, "Producer_Pal.amxd")}`,
+      );
+    },
+  );
+
+  it.skipIf(!CAN_FIND_LIBRARY)(
+    "says an installed remote script just isn't running",
+    async () => {
+      const home = scratchLibrary();
+
+      installScript(defaultLibrary(home), "99.0.0");
+
+      const portal = await portalDown({ scriptRunning: false, home });
+      const { text } = await callToolText(portal, "ppal-connect");
+
+      expect(text).toContain("remote script is installed (99.0.0,");
+      expect(text).toContain("but not running");
+    },
+  );
+
+  it.skipIf(!CAN_FIND_LIBRARY)(
+    "offers an update for an old remote script",
+    async () => {
+      const home = scratchLibrary();
+
+      installScript(defaultLibrary(home), "0.0.1");
+
+      const portal = await portalDown({ scriptRunning: false, home });
+      const { text } = await callToolText(portal, "ppal-connect");
+
+      expect(text).toContain("is out of date (0.0.1; this is ");
+      expect(text).toContain("to update it");
+    },
+  );
+
+  it("says what adding the device will install", async () => {
+    const library = scratchLibrary();
+    const portal = await portalDown({ scriptRunning: true, library });
+
+    const { text } = await callToolText(portal, "ppal-connect");
+
+    expect(text).toContain(
+      `It installs the Producer Pal device to ${join(library, ...DEVICE_DIR, "Producer_Pal.amxd")} and adds it to a new MIDI track.`,
+    );
+  });
+
+  it("says when the device is already there", async () => {
+    const library = scratchLibrary();
+
+    installDevice(library, "stand-in device");
+
+    const portal = await portalDown({ scriptRunning: true, library });
+    const { text } = await callToolText(portal, "ppal-connect");
+
+    expect(text).toContain("nothing needs installing");
+  });
+
+  it("says when a different device is used as is", async () => {
+    const library = scratchLibrary();
+
+    installDevice(library, "another device");
+
+    const portal = await portalDown({ scriptRunning: true, library });
+    const { text } = await callToolText(portal, "ppal-connect");
+
+    expect(text).toContain(
+      "Producer Pal device already in the User Library (unknown version) to a new MIDI track, as is.",
+    );
+  });
+
+  it("sends the user to the install guide when no device shipped", async () => {
+    const library = scratchLibrary();
+    const portal = await portalDown({
+      scriptRunning: true,
+      library,
+      bundled: false,
+    });
+
+    const { text } = await callToolText(portal, "ppal-connect");
+
+    expect(text).toContain(
+      "ppal-manage can't add the device from this install",
+    );
+    expect(text).not.toContain("add-producer-pal");
   });
 });
 

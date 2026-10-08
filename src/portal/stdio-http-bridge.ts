@@ -19,7 +19,7 @@ import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
 import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
-import { SETUP_URL } from "./offline/offline-guidance.ts";
+import { SETUP_URL } from "./offline/offline-setup-hints.ts";
 import {
   type BridgeOptions,
   requestHeaderTransportOptions,

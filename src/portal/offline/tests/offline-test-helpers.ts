@@ -48,6 +48,12 @@ export function fakeOfflineDeps(
     installDevice: vi.fn(() => {
       throw new Error("installDevice not set up");
     }),
+    installedRemoteScript: vi.fn(() => {
+      throw new Error("installedRemoteScript not set up");
+    }),
+    deviceFileStatus: vi.fn(() => {
+      throw new Error("deviceFileStatus not set up");
+    }),
     fileExists: vi.fn(() => false),
     sleep: vi.fn(() => Promise.resolve()),
     now: vi.fn(() => 0),

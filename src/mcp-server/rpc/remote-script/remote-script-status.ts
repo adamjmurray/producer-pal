@@ -61,11 +61,10 @@ export async function remoteScriptStatus(
   }
 
   const userLibrary = await findUserLibraryPath();
-  const folder = userLibrary == null ? null : remoteScriptPath(userLibrary);
-  const installed = folder != null && existsSync(join(folder, "__init__.py"));
-  const installedVersion = installed
-    ? readScriptVersion(join(folder, "version.py"))
-    : null;
+  const { installed, installedVersion } =
+    userLibrary == null
+      ? { installed: false, installedVersion: null }
+      : installedRemoteScript(userLibrary);
   const installedNewer =
     installedVersion != null && isNewerVersion(VERSION, installedVersion);
 
@@ -81,6 +80,36 @@ export async function remoteScriptStatus(
     updateAvailable:
       installed && installedVersion !== VERSION && !installedNewer,
     installedNewer,
+  };
+}
+
+/** The remote script as installed in one User Library. */
+export interface InstalledRemoteScript {
+  /** Where the script is installed, or would be */
+  path: string;
+  installed: boolean;
+  /** Null when not installed or version.py can't be read */
+  installedVersion: string | null;
+}
+
+/**
+ * Look for the remote script in a User Library. Never throws.
+ *
+ * @param userLibrary - Absolute path to Live's User Library folder
+ * @returns Whether the script is there, and its version
+ */
+export function installedRemoteScript(
+  userLibrary: string,
+): InstalledRemoteScript {
+  const path = remoteScriptPath(userLibrary);
+  const installed = existsSync(join(path, "__init__.py"));
+
+  return {
+    path,
+    installed,
+    installedVersion: installed
+      ? readScriptVersion(join(path, "version.py"))
+      : null,
   };
 }
 

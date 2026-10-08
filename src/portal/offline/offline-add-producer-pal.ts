@@ -21,7 +21,8 @@ import { type McpResponse } from "#src/shared/mcp-responses.ts";
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
-import { SETUP_URL } from "./offline-guidance.ts";
+import { firstUserLibrary } from "./offline-install-status.ts";
+import { SETUP_URL } from "./offline-setup-hints.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
 
 /** Live's browser can take a few seconds to see a file just written. */
@@ -121,20 +122,6 @@ async function userLibraryFor(
   }
 
   return library;
-}
-
-/**
- * @param known - The libraries the call and the remote script named, best first
- * @param deps - The lookup of last resort
- * @returns The first one named, else the one Producer Pal finds, else null
- */
-async function firstUserLibrary(
-  known: Array<string | null | undefined>,
-  deps: OfflineDeps,
-): Promise<string | null> {
-  const named = known.find((path) => path != null && path !== "");
-
-  return named ?? (await deps.findUserLibrary());
 }
 
 /**

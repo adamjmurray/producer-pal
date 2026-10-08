@@ -29,8 +29,11 @@ the build-verification job, right after the build that produces it.
   the fallback list, then the `tools/list_changed` nudge once the device answers
   (and no nudge when it was there all along).
 - `tests/portal-offline-manage.test.ts` — what the portal answers itself while
-  the device is down: the setup guidance (by whether the remote script answers)
-  and `ppal-manage` `install-remote-script`.
+  the device is down: the setup guidance (by whether the remote script answers,
+  and what is installed in the User Library) and `ppal-manage`
+  `install-remote-script`. The portal's HOME points at a temp folder so its User
+  Library lookup is repeatable; finding one there works on macOS and Windows
+  only.
 - `tests/portal-add-producer-pal.test.ts` — `ppal-manage` `add-producer-pal`
   against the stub remote script, which starts the stub device on `/load`. It
   runs a copy of the portal with a stand-in `Producer_Pal.amxd` beside it.
