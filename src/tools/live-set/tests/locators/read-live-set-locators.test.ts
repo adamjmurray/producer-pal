@@ -11,7 +11,7 @@ import { type LocatorInfo } from "#src/tools/shared/locator/locators.ts";
 import {
   masterTrackMockObject,
   setupLiveSetPathMappedMocks,
-} from "./read-live-set-path-mapped-test-helpers.ts";
+} from "../read-live-set-path-mapped-test-helpers.ts";
 
 interface SetupLocatorReadMocksOptions {
   // number simulates Live returning an all-digit name as a number, not a

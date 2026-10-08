@@ -8,6 +8,7 @@ import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
+import { automatedFieldNames } from "#src/tools/shared/arrangement/tracks/automated-fields.ts";
 import { readOneScene } from "#src/tools/scene/read-scene.ts";
 import { readLocators } from "#src/tools/shared/locator/locators.ts";
 import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
@@ -73,6 +74,11 @@ export function readLiveSet(
     tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
     timeSignature: `${String(timeSigNumerator)}/${String(timeSigDenominator)}`,
   };
+  const automation = tempoAutomation();
+
+  if (automation.length > 0) {
+    result.automation = automation;
+  }
 
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
@@ -168,6 +174,18 @@ export function readLiveSet(
   }
 
   return result;
+}
+
+/**
+ * Name the Live Set fields with an arrangement lane. Only the tempo can have
+ * one. The main track never plays from Session, so its state always reads true.
+ * @returns `["tempo"]`, `["tempo (overridden)"]`, or empty without a lane
+ */
+function tempoAutomation(): string[] {
+  const mixer = LiveAPI.from(livePath.masterTrack().mixerDevice());
+  const songTempo = mixer.child("song_tempo");
+
+  return songTempo.exists() ? automatedFieldNames([["tempo", songTempo]]) : [];
 }
 
 interface SessionClipCounts {

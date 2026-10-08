@@ -33,6 +33,14 @@ their layers, as `drum-pads` does.
 | -------- | --------- | ----------------------------------------- |
 | `chains` | `Chain[]` | Chain objects with devices or deviceCount |
 
+A chain whose mixer has an arrangement lane lists the fields in `automation`,
+named as the chain names them: `["gainDb", "pan (overridden)", "send A-Echo"]`
+(` (overridden)` once the user overrode one). A field at its default value is
+still named. When the rack's track plays from Session the lanes can't be read,
+so no chain carries `automation` and the entry that holds the chains (the rack,
+or the pad or chain read directly) says so once in its `detail`. Return and main
+track racks always report. Same for `return-chains` and `drum-pads`.
+
 ## Include: `"return-chains"`
 
 Same as `chains` but for rack return chains. Same depth behavior.

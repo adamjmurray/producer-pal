@@ -17,7 +17,14 @@ import {
   buildDrumPadFromChains,
   drumPadChainSummary,
 } from "#src/tools/shared/device/helpers/drum-pads-from-chains.ts";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
+import {
+  buildAddressedChainInfo,
+  buildChainInfo,
+} from "#src/tools/shared/device/helpers/chain-info.ts";
+import {
+  noteAutomationUnknown,
+  owningTrackFollowsArrangement,
+} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
 import {
   chainsForInNote,
   chainsOnDrumPad,
@@ -206,18 +213,15 @@ function readDrumPadChain(
   path: string,
   options: ReadOptions,
 ): Record<string, unknown> {
-  const devices = chain
-    .getChildren("devices")
-    .map((device: LiveAPI, index: number) => {
-      const devicePath = `${path}/d${index}`;
-
-      return readDeviceShared(device, {
+  return buildAddressedChainInfo(chain, path, (chainAutomation) =>
+    chain.getChildren("devices").map((device: LiveAPI, index: number) =>
+      readDeviceShared(device, {
         ...options,
-        parentPath: devicePath,
-      });
-    });
-
-  return buildChainInfo(chain, { path, devices });
+        chainAutomation,
+        parentPath: `${path}/d${index}`,
+      }),
+    ),
+  );
 }
 
 /**
@@ -245,11 +249,7 @@ export function buildDrumPadInfo(
   });
 
   if (withChains) {
-    drumPadInfo.chains = buildDrumPadChains(
-      chainsOnDrumPad(pad),
-      path,
-      options,
-    );
+    attachDrumPadChains(drumPadInfo, chainsOnDrumPad(pad), path, options);
   }
 
   return drumPadInfo;
@@ -295,35 +295,49 @@ function buildPadlessDrumPadInfo(
   );
 
   if (withChains) {
-    drumPadInfo.chains = buildDrumPadChains(chains, path, options);
+    attachDrumPadChains(drumPadInfo, chains, path, options);
   }
 
   return drumPadInfo;
 }
 
 /**
- * Build the chain info a drum pad carries, each under its own `cN` path.
+ * Give a drum pad the chain info it carries, each chain under its own `cN` path.
+ * The pad is the entry that says when the chains' automation is unknown.
+ * @param drumPadInfo - The pad's info, changed in place
  * @param chains - The pad's chains, in the order its `cN` segments name them
  * @param path - The pad's simplified path
  * @param options - Read options
- * @returns One chain info per chain
  */
-function buildDrumPadChains(
+function attachDrumPadChains(
+  drumPadInfo: Record<string, unknown>,
   chains: LiveAPI[],
   path: string,
   options: ReadOptions,
-): Record<string, unknown>[] {
-  return chains.map((chain: LiveAPI, chainIndex: number) => {
+): void {
+  const [first] = chains;
+  const follows = first == null || owningTrackFollowsArrangement(first);
+
+  drumPadInfo.chains = chains.map((chain: LiveAPI, chainIndex: number) => {
     const chainPath = `${path}/c${chainIndex}`;
     const devices = chain
       .getChildren("devices")
       .map((device: LiveAPI, deviceIndex: number) =>
         readDeviceShared(device, {
           ...options,
+          chainAutomation: follows,
           parentPath: `${chainPath}/d${deviceIndex}`,
         }),
       );
 
-    return buildChainInfo(chain, { path: chainPath, devices });
+    return buildChainInfo(chain, {
+      path: chainPath,
+      devices,
+      showAutomation: follows,
+    });
   });
+
+  if (!follows) {
+    noteAutomationUnknown(drumPadInfo);
+  }
 }

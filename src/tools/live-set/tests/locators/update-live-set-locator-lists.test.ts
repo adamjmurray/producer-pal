@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
-import { simulateLocators } from "./update-live-set-test-helpers.ts";
+import { simulateLocators } from "../update-live-set-test-helpers.ts";
 
 /** Locators the list tests start from. */
 const INTRO_VERSE = [

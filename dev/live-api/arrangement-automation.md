@@ -103,7 +103,13 @@ Session (clip stop button) and >= 0 while a session clip plays or Back to
 Arrangement is lit. Return and main tracks have no clip slots
 (`playing_slot_index` throws), so they always follow. `ppal-read-track`
 (`mixer`) and `ppal-read-device` (param values) show `automation` only when the
-track follows, and otherwise say it's unknown.
+track follows, and otherwise say it's unknown. `ppal-read-live-set` (tempo) and
+rack chain mixers (`ppal-read-device` `chains`) work the same way.
+
+The tempo (`master_track.mixer_device.song_tempo`) and return track parameters
+stay readable even with every track stopped in Session. A rack chain's mixer
+follows its owning track: its `automation_state` reads 1 while the track follows
+the arrangement and 0 while the track is stopped in Session.
 
 **The value at a time.** With the transport stopped, set
 `Song.current_song_time` and read `parameter.value` on a **later** request: the
@@ -129,8 +135,11 @@ can't trigger a save.
 - **Menu commands.** No menu item deletes or clears automation. Edit → Delete
   needs a time selection, and Edit → Select Loop only makes one while Live is
   frontmost: driven from the background, Delete stays disabled.
-- **Recording.** Arrangement automation recording writes in real time only, so a
-  32-bar lane takes 32 bars of playback. Not tried.
+- **Recording.** Arrangement recording (`Song.record_mode` 1 with the transport
+  running) does write lanes when the API changes a parameter's `value`, but in
+  real time only: a 32-bar lane takes 32 bars of playback. The e2e tests use it
+  to make lanes on the tempo, return tracks and rack chains, which clip copies
+  can't reach. Disarm every track first so nothing else records.
 
 ## Probing
 

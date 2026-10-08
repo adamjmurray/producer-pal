@@ -20,10 +20,9 @@ import {
   readMacroVariations,
 } from "./helpers/device-reading.ts";
 import {
-  AUTOMATION_UNKNOWN_FROM_SESSION,
+  noteAutomationUnknown,
   owningTrackFollowsArrangement,
 } from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
-import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
@@ -56,6 +55,13 @@ export interface ReadDeviceOptions {
    * reads devices and nothing else. See processDeviceChains.
    */
   chainsHidden?: boolean;
+  /**
+   * Whether the chains' track follows the arrangement, so a chain can name its
+   * automated mixer fields. Left out, the rack checks and says so itself when it
+   * doesn't; set by a caller that already checked, so a rack inside a chain
+   * neither checks again nor says it again.
+   */
+  chainAutomation?: boolean;
 }
 
 interface DeviceWithChains {
@@ -318,6 +324,7 @@ export function readDevice(
     maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
     chainsHidden = false,
+    chainAutomation,
   } = options;
 
   if (depth > maxDepth) {
@@ -365,6 +372,7 @@ export function readDevice(
     includeDrumPads,
     includeSample,
     chainsHidden,
+    chainAutomation,
     depth,
     maxDepth,
     readDeviceFn: readDevice,
@@ -474,7 +482,7 @@ function appendParameters(
   });
 
   if (!showAutomation) {
-    appendDetail(deviceInfo, AUTOMATION_UNKNOWN_FROM_SESSION);
+    noteAutomationUnknown(deviceInfo);
   }
 
   const pseudoParams = readSpecializedParams(device, paramSearch);

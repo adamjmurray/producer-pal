@@ -11,7 +11,7 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readOneDevice } from "../read-device.ts";
+import { readOneDevice } from "../../read-device.ts";
 
 const UNKNOWN =
   "arrangement automation unknown while the track plays from Session";

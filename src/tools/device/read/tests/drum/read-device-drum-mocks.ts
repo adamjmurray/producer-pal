@@ -8,6 +8,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerArrangementTrack } from "../read-device-test-helpers.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface PadProps {
@@ -44,6 +45,8 @@ interface DrumPadMockConfig {
   chainProperties?: Record<string, ChainProps>;
   deviceProperties?: Record<string, DeviceProps>;
   returnChainNames?: string[];
+  /** Extra properties for the rack itself */
+  rackProperties?: Record<string, unknown>;
 }
 
 /**
@@ -55,6 +58,7 @@ interface DrumPadMockConfig {
  * @param config.chainProperties - Chain properties by ID
  * @param config.deviceProperties - Device properties by ID
  * @param config.returnChainNames - Names of the rack's return chains, in send order
+ * @param config.rackProperties - Extra properties for the rack itself
  * @returns Registered mock objects for device, pads, chains, and devices
  */
 // eslint-disable-next-line complexity -- hierarchical mock setup requires multiple loops
@@ -71,6 +75,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
     chainProperties = {},
     deviceProperties = {},
     returnChainNames = [],
+    rackProperties = {},
   } = config;
 
   const returnChainIds = returnChainNames.map((_, i) => `return-chain-${i}`);
@@ -88,6 +93,8 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
     ({ padProps }) => padProps.chainIds ?? [],
   );
 
+  registerArrangementTrack();
+
   // Register the main drum rack device
   const device = registerMockObject(deviceId, {
     path: livePath.track(1).device(0),
@@ -97,6 +104,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
       drum_pads: padIds.flatMap((p) => ["id", p]),
       chains: rackChainIds.flatMap((c) => ["id", c]),
       return_chains: returnChainIds.flatMap((c) => ["id", c]),
+      ...rackProperties,
     },
   });
 

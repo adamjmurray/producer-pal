@@ -12,7 +12,7 @@ import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import {
   setupLocatorCreationMocks,
   setupLocatorMocks,
-} from "./update-live-set-test-helpers.ts";
+} from "../update-live-set-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateLiveSet - locator operations", () => {

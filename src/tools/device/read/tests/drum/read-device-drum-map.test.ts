@@ -10,6 +10,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { CHAIN_TYPE } from "#src/tools/constants.ts";
 import { postProcessDrumMap } from "../../helpers/drum-map-post-processing.ts";
 import { readOneDevice } from "../../read-device.ts";
+import { registerArrangementTrack } from "../read-device-test-helpers.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -85,6 +86,7 @@ function setupKitPad(): void {
 
 /** An Instrument Rack whose chain holds a Drum Rack, at "t1/d0/c0/d0". */
 function setupInstrumentRackWithKit(): void {
+  registerArrangementTrack();
   registerMockObject("rack", {
     path: DEVICE,
     type: "Device",

@@ -76,14 +76,33 @@ interface WrittenChainSend extends IndexedSend {
  * @returns Object with any of gainDb, pan, sends
  */
 export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
+  return readChainMixerAndParams(chain).values;
+}
+
+/** A chain mixer parameter that can carry an arrangement lane. */
+export type AutomatableField = [name: string | (() => string), param: LiveAPI];
+
+/**
+ * Read a chain's mixer as {@link readChainMixer} does, and hand back its
+ * parameters, so a caller wanting their automation doesn't build them again.
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @returns The non-default settings, and every mixer parameter by the name the
+ *   chain entry gives it (a send's name is only worked out when asked for)
+ */
+export function readChainMixerAndParams(chain: LiveAPI): {
+  values: Record<string, unknown>;
+  automatable: AutomatableField[];
+} {
   const info: Record<string, unknown> = {};
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
-    return info;
+    return { values: info, automatable: [] };
   }
 
-  const gainDb = mixer.child("volume").getProperty("display_value");
+  const volume = mixer.child("volume");
+  const panning = mixer.child("panning");
+  const gainDb = volume.getProperty("display_value");
 
   // Round before the check, same as pan below.
   const roundedGainDb = roundDisplayValue(gainDb, roundGainDb);
@@ -92,7 +111,7 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
     info.gainDb = roundedGainDb;
   }
 
-  const pan = mixer.child("panning").getProperty("value");
+  const pan = panning.getProperty("value");
 
   // Round before the check: sub-1% noise is centered as far as Live is
   // concerned, and reporting it as `pan: 0` would contradict "non-default only".
@@ -102,13 +121,24 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
     info.pan = roundedPan;
   }
 
-  const sends = readActiveSends(chain, mixer);
+  const sendParams = mixer.getChildren("sends");
+  const sends = readActiveSends(chain, sendParams);
 
   if (sends.length > 0) {
     info.sends = sends;
   }
 
-  return info;
+  const automatable: AutomatableField[] = [
+    ["gainDb", volume],
+    ["pan", panning],
+    ...sendParams.map((send, index): AutomatableField => [
+      () =>
+        `send ${sendReturnName(returnChainInfo(chain)[index]?.name, index)}`,
+      send,
+    ]),
+  ];
+
+  return { values: info, automatable };
 }
 
 /**
@@ -422,12 +452,11 @@ export function chainLabel(chain: LiveAPI): string {
 /**
  * Read the sends that are turned up, named after the rack's return chains
  * @param chain - Chain the mixer belongs to
- * @param mixer - The chain's mixer device
+ * @param sendParams - The chain mixer's send parameters, one per return chain
  * @returns Active sends as {return, returnId, gainDb}
  */
-function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
-  const active = mixer
-    .getChildren("sends")
+function readActiveSends(chain: LiveAPI, sendParams: LiveAPI[]): SendResult[] {
+  const active = sendParams
     .map((send, index) => ({ send, index }))
     .filter(({ send }) => {
       const value = asFiniteNumber(send.getProperty("value"));
@@ -443,14 +472,21 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
 
   return active.map(({ send, index }) => {
     const info = returns[index];
-    const rawName = info?.name;
-    // getName() reports "" (not null/undefined) for a nameless return chain,
-    // so an empty name needs the fallback too, not just a missing one.
-    const name =
-      rawName == null || rawName === "" ? `Return ${index + 1}` : rawName;
 
-    return readSendGainDb(send, name, info?.id);
+    return readSendGainDb(send, sendReturnName(info?.name, index), info?.id);
   });
+}
+
+/**
+ * The name a chain's send entry shows for the return chain it feeds.
+ * @param rawName - The return chain's name, if it has one
+ * @param index - The send's position
+ * @returns The name, or `Return <n>` for a missing or empty one
+ */
+function sendReturnName(rawName: string | undefined, index: number): string {
+  // getName() reports "" (not null/undefined) for a nameless return chain,
+  // so an empty name needs the fallback too, not just a missing one.
+  return rawName == null || rawName === "" ? `Return ${index + 1}` : rawName;
 }
 
 /**
@@ -467,7 +503,9 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
  * @param chain - Chain or DrumChain LiveAPI object
  * @returns Return chain names and ids, index-aligned with the chain's sends
  */
-function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
+export function returnChainInfo(
+  chain: LiveAPI,
+): { name: string; id: string }[] {
   const rackId = chain.getChildIds("canonical_parent")[0];
 
   if (rackId == null) {

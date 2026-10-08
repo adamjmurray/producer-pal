@@ -20,6 +20,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readOneDevice } from "../../read-device.ts";
+import { registerArrangementTrack } from "../read-device-test-helpers.ts";
 
 /** Pads the fixture kit fills, each holding one chain with one instrument. */
 const PADS = 16;
@@ -40,6 +41,7 @@ const RACK = livePath.track(1).device(0);
  * read pays for the rest.
  */
 function setupKit(sendsActive = false): void {
+  registerArrangementTrack();
   const padIds = Array.from(
     { length: RACK_PADS },
     (_, note) => `pad${String(note)}`,
@@ -212,8 +214,9 @@ describe("readOneDevice drum rack build budget", () => {
 
     // Pins which way round it is: the mixer read is skipped because nothing
     // shows it, not because it stopped happening. Per chain that mixer costs
-    // the mixer device, a volume, a pan, and one send per return chain.
-    expect(liveApiBuildStats().resolved).toBe(2 + PADS * (2 + 3 + RETURNS));
+    // the mixer device, a volume, a pan, and one send per return chain. Naming
+    // the automated fields reuses those, and checks the rack's track once.
+    expect(liveApiBuildStats().resolved).toBe(2 + PADS * (2 + 3 + RETURNS) + 1);
   });
 
   it("names a chain's returns once per rack, not once per chain", () => {
@@ -237,7 +240,7 @@ describe("readOneDevice drum rack build budget", () => {
     // built once for the whole kit. (Building the rack from the chain's path
     // to read its id cost one more object a pad: PADS more here.)
     expect(liveApiBuildStats().resolved).toBe(
-      2 + PADS * (2 + 3 + RETURNS) + 1 + RETURNS,
+      2 + PADS * (2 + 3 + RETURNS) + 1 + RETURNS + 1,
     );
   });
 });

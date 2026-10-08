@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type EntryWithDetail,
+  appendDetail,
+} from "#src/tools/shared/helpers/entry-details.ts";
 
 /**
  * Why a read leaves out `automation` for a track that plays from Session. A
@@ -42,4 +46,15 @@ export function owningTrackFollowsArrangement(object: LiveAPI): boolean {
   }
 
   return followsArrangement(LiveAPI.from(livePath.track(trackIndex)));
+}
+
+/**
+ * Say on an entry that its automation is unknown, unless it already says so —
+ * a device read can hit this from its params and from its chains.
+ * @param entry - The entry the unknown automation belongs to
+ */
+export function noteAutomationUnknown(entry: EntryWithDetail): void {
+  if (!(entry.detail ?? "").includes(AUTOMATION_UNKNOWN_FROM_SESSION)) {
+    appendDetail(entry, AUTOMATION_UNKNOWN_FROM_SESSION);
+  }
 }

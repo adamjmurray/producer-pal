@@ -15,7 +15,7 @@ import {
   isDeviceTreeType,
   wrongTargetTypeMessage,
 } from "#src/tools/shared/device/device-target-types.ts";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
+import { buildAddressedChainInfo } from "#src/tools/shared/device/helpers/chain-info.ts";
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
@@ -318,9 +318,11 @@ function readChainObject(
   path: string | null,
   options: ReadOptions,
 ): Record<string, unknown> {
-  const devices = chain
-    .getChildren("devices")
-    .map((device) => readDeviceShared(device, options));
-
-  return buildChainInfo(chain, { path, devices });
+  return buildAddressedChainInfo(chain, path, (chainAutomation) =>
+    chain
+      .getChildren("devices")
+      .map((device) =>
+        readDeviceShared(device, { ...options, chainAutomation }),
+      ),
+  );
 }

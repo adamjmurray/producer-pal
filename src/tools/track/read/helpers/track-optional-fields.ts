@@ -11,6 +11,7 @@ import {
   AUTOMATION_UNKNOWN_FROM_SESSION,
   followsArrangement,
 } from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
+import { automatedFieldNames } from "#src/tools/shared/arrangement/tracks/automated-fields.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   readReturnTrackInfo,
@@ -279,15 +280,7 @@ function addAutomation(
     return;
   }
 
-  const automation = automatable.flatMap(([name, param]) => {
-    const state = param.getProperty("automation_state");
-
-    if (state === 1) {
-      return [name];
-    }
-
-    return state === 2 ? [`${name} (overridden)`] : [];
-  });
+  const automation = automatedFieldNames(automatable);
 
   if (automation.length > 0) {
     result.automation = automation;

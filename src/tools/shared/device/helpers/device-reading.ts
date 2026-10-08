@@ -12,6 +12,10 @@ import {
 import { processDrumPads } from "./drum-pads-from-chains.ts";
 import { buildChainInfo } from "./chain-info.ts";
 import { buildChainPath, buildReturnChainPath } from "./path/insertion-path.ts";
+import {
+  noteAutomationUnknown,
+  owningTrackFollowsArrangement,
+} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
 
 // Re-export for external use
 export { buildChainInfo };
@@ -29,6 +33,8 @@ export interface ProcessChainsOptions {
   includeSample?: boolean;
   /** See ReadDeviceOptions.chainsHidden */
   chainsHidden?: boolean;
+  /** See ReadDeviceOptions.chainAutomation */
+  chainAutomation?: boolean;
   depth: number;
   maxDepth: number;
   readDeviceFn: ReadDeviceFn;
@@ -80,6 +86,7 @@ export function isRedundantDeviceClassName(
  * @param maxDepth - Max depth for device expansion
  * @param readDeviceFn - readDevice function for recursive expansion
  * @param deviceOptions - Options passed to readDeviceFn for nested devices
+ * @param showAutomation - Whether to name the chain's automated mixer fields
  * @returns Chain info object
  */
 function buildChainAtDepth(
@@ -89,11 +96,16 @@ function buildChainAtDepth(
   maxDepth: number,
   readDeviceFn: ReadDeviceFn,
   deviceOptions: Record<string, unknown>,
+  showAutomation: boolean,
 ): Record<string, unknown> {
   if (depth >= maxDepth) {
     const deviceCount = chain.getChildCount("devices");
 
-    return buildChainInfo(chain, { path: chainPath, deviceCount });
+    return buildChainInfo(chain, {
+      path: chainPath,
+      deviceCount,
+      showAutomation,
+    });
   }
 
   const devices = chain.getChildren("devices").map((d, deviceIndex) => {
@@ -102,7 +114,7 @@ function buildChainAtDepth(
     return readDeviceFn(d, { ...deviceOptions, parentPath: nestedDevicePath });
   });
 
-  return buildChainInfo(chain, { path: chainPath, devices });
+  return buildChainInfo(chain, { path: chainPath, devices, showAutomation });
 }
 
 /**
@@ -121,6 +133,7 @@ function processRegularChains(
     includeDrumPads,
     includeSample = false,
     chainsHidden = false,
+    chainAutomation = false,
     depth,
     maxDepth,
     readDeviceFn,
@@ -140,6 +153,7 @@ function processRegularChains(
       includeDrumPads,
       includeSample,
       chainsHidden,
+      chainAutomation,
       depth: depth + 1,
       maxDepth,
     };
@@ -154,6 +168,7 @@ function processRegularChains(
             maxDepth,
             readDeviceFn,
             deviceOptions,
+            chainAutomation,
           ),
     );
   }
@@ -222,6 +237,19 @@ export function processDeviceChains(
     return;
   }
 
+  // The track is checked once, by the rack the read started at; racks nested in
+  // its chains are told the answer.
+  // A drum rack shows its chains under its pads, and only when both are asked for.
+  const chainsShown =
+    deviceType === DEVICE_TYPE.DRUM_RACK
+      ? includeDrumPads && includeChains
+      : includeChains && !options.chainsHidden;
+  const mixersShown = chainsShown || includeReturnChains;
+  const chainAutomation =
+    options.chainAutomation ??
+    (mixersShown && owningTrackFollowsArrangement(device));
+  const chainOptions = { ...options, chainAutomation };
+
   // Process regular chains or drum pads
   if (includeChains || includeDrumPads) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {
@@ -235,9 +263,10 @@ export function processDeviceChains(
         readDeviceFn,
         devicePath,
         includeSample,
+        chainAutomation,
       );
     } else {
-      processRegularChains(device, deviceInfo, options);
+      processRegularChains(device, deviceInfo, chainOptions);
     }
   }
 
@@ -253,8 +282,42 @@ export function processDeviceChains(
       readDeviceFn,
       devicePath,
       includeSample,
+      chainAutomation,
     );
   }
+
+  if (options.chainAutomation == null && mixersShown && !chainAutomation) {
+    noteChainAutomationUnknown(deviceInfo, chainsShown);
+  }
+}
+
+/**
+ * Say the rack's chains can't report automation, when it holds any chain with
+ * a mixer to report.
+ * @param deviceInfo - The rack's entry, with its chains built
+ * @param chainsShown - Whether the rack's `chains` carry their mixers
+ */
+function noteChainAutomationUnknown(
+  deviceInfo: Record<string, unknown>,
+  chainsShown: boolean,
+): void {
+  const drumPads = (deviceInfo.drumPads ?? []) as Array<{ chains?: unknown[] }>;
+  const hasChains =
+    (chainsShown && hasEntries(deviceInfo.chains)) ||
+    hasEntries(deviceInfo.returnChains) ||
+    drumPads.some((pad) => hasEntries(pad.chains));
+
+  if (hasChains) {
+    noteAutomationUnknown(deviceInfo);
+  }
+}
+
+/**
+ * @param value - Any entry field
+ * @returns Whether it is a non-empty array
+ */
+function hasEntries(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
 }
 
 /**
@@ -268,6 +331,7 @@ export function processDeviceChains(
  * @param readDeviceFn - readDevice function
  * @param devicePath - Device path for building nested paths
  * @param includeSample - Pass the sample include to nested devices
+ * @param chainAutomation - Whether the chains can report their automation
  */
 function processReturnChains(
   device: LiveAPI,
@@ -279,6 +343,7 @@ function processReturnChains(
   readDeviceFn: ReadDeviceFn,
   devicePath: string | undefined,
   includeSample: boolean,
+  chainAutomation: boolean,
 ): void {
   const returnChains = device.getChildren("return_chains");
 
@@ -290,6 +355,7 @@ function processReturnChains(
     includeChains,
     includeReturnChains,
     includeSample,
+    chainAutomation,
     depth: depth + 1,
     maxDepth,
   };
@@ -306,6 +372,7 @@ function processReturnChains(
       maxDepth,
       readDeviceFn,
       deviceOptions,
+      chainAutomation,
     );
   });
 }
