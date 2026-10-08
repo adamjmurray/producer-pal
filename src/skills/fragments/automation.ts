@@ -24,7 +24,7 @@ A track read (\`mixer\`), a device read (params with values, or \`chains\`) and 
 
 **On an arrangement clip** time 1|1 is where the clip starts, running once across its whole span however it loops; points past its end never play. The lane returns to its old value after the span. The clip is re-created, so the result gives its **new id**; its content and settings are kept. A lane can't be cleared (a line with nothing after the colon is refused): write a flat line instead. Moving an arrangement clip leaves its automation behind.
 
-**To automate a span with no clip yet**, or to reuse an envelope: automate a session clip, duplicate it onto the span (any \`arrangementLength\` works: the lane follows what the copy plays), then delete the session clip. The copy writes the session clip's envelopes into the lane and replaces the arrangement clips under it, so when notes are already there, give the session clip the same notes.
+**To automate a span with no clip yet**, or to reuse an envelope: automate a session clip, duplicate it onto the span (any \`arrangementLength\` works: the lane follows what the copy plays), then delete the session clip. The copy writes the session clip's envelopes into the lane (its result says so) and replaces the arrangement clips under it, so when notes are already there, give the session clip the same notes.
 
 ## Converting Audio Clips
 

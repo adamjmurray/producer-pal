@@ -55,12 +55,50 @@ interface Stamped {
   problem?: string;
 }
 
+/** What a copy's entry says when Live wrote the clip's automation to the lane. */
+const LANE_WRITE_NOTE =
+  "wrote its automation to the track's arrangement lane over this span";
+
+/**
+ * Whether copying this session clip to the arrangement writes its automation
+ * into the track's lane. MIDI and warped audio carry automation; an unwarped
+ * clip's never plays, and an arrangement clip's copy writes nothing.
+ * `has_envelopes` is Live's own flag (true for any envelope).
+ * @param source - The clip being copied
+ * @returns True when the copy writes the lane
+ */
+export function writesLane(source: LiveAPI): boolean {
+  return (
+    source.getProperty("is_arrangement_clip") !== 1 &&
+    (source.getProperty("has_envelopes") as number) > 0 &&
+    (source.getProperty("is_midi_clip") === 1 ||
+      source.getProperty("warping") === 1)
+  );
+}
+
+/**
+ * Say on a copy's first entry that Live wrote the clip's automation to the lane.
+ * @param source - The clip that was copied
+ * @param placed - The copy's entries
+ * @returns The same entries
+ */
+export function withLaneWriteNote(
+  source: LiveAPI,
+  placed: MinimalClipInfo[],
+): MinimalClipInfo[] {
+  const [first] = placed;
+
+  if (first != null && writesLane(source)) {
+    appendDetail(first, LANE_WRITE_NOTE);
+  }
+
+  return placed;
+}
+
 /**
  * Whether copying this session clip at this length would put its automation in
- * the wrong place. MIDI and warped audio carry automation; an unwarped clip's
- * never plays, and a copy at the clip's own length writes the lane correctly.
- * `has_envelopes` is Live's own flag (true for any envelope), so a clip without
- * one costs no stamps.
+ * the wrong place: a copy at the clip's own length writes the lane correctly.
+ * A clip without envelopes costs no stamps.
  * @param source - The clip being copied
  * @param lengthBeats - The length asked for
  * @param sourceLengthBeats - The length a plain copy would have
@@ -72,11 +110,8 @@ export function carriesAutomation(
   sourceLengthBeats: number,
 ): boolean {
   return (
-    source.getProperty("is_arrangement_clip") !== 1 &&
     lengthBeats !== sourceLengthBeats &&
-    (source.getProperty("has_envelopes") as number) > 0 &&
-    (source.getProperty("is_midi_clip") === 1 ||
-      source.getProperty("warping") === 1) &&
+    writesLane(source) &&
     source.trackIndex != null &&
     source.sceneIndex != null
   );
@@ -116,7 +151,7 @@ export async function stampAutomation(
   const [first] = placed;
 
   if (first != null) {
-    const said = joinDetails([stampNote(stamped, lengthBeats), ...notes]);
+    const said = joinDetails([stampedNote(stamped, lengthBeats), ...notes]);
 
     if (said != null) {
       appendDetail(first, said);
@@ -374,13 +409,18 @@ function laneNote(stamped: Stamped, lengthBeats: number): string | undefined {
 }
 
 /**
- * What the lane was left with, when the stamping didn't finish.
+ * What the entry says about the lane: that it was written, or how far it got.
  * @param stamped - How far the stamping got
  * @param lengthBeats - The length it was after
- * @returns The note for the clip's entry, or undefined when it finished
+ * @returns The note for the clip's entry
  */
-function stampNote(stamped: Stamped, lengthBeats: number): string | undefined {
-  return stamped.problem == null ? undefined : laneNote(stamped, lengthBeats);
+function stampedNote(
+  stamped: Stamped,
+  lengthBeats: number,
+): string | undefined {
+  return stamped.problem == null
+    ? LANE_WRITE_NOTE
+    : laneNote(stamped, lengthBeats);
 }
 
 /**

@@ -12,7 +12,10 @@ import "../../../tests/duplicate-mocks-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createShortenedClipInHoldingMock } from "../../../tests/setup.ts";
-import { copyAtLength } from "./stamp-automation-test-helpers.ts";
+import {
+  copyAtLength,
+  LANE_WRITE_NOTE,
+} from "./stamp-automation-test-helpers.ts";
 import {
   registerStampWorld,
   type StampWorld,
@@ -235,7 +238,7 @@ describe("a scratch copy Live won't remove", () => {
     const clips = await copyAtLength(world, 10);
 
     expect(clips[0]?.detail).toBe(
-      "couldn't remove the scratch session clip (Live says no)",
+      `${LANE_WRITE_NOTE}; couldn't remove the scratch session clip (Live says no)`,
     );
     expect(world.sceneCount()).toBe(1);
   });
@@ -252,7 +255,7 @@ describe("a scratch copy Live won't remove", () => {
     const clips = await copyAtLength(world, 10);
 
     expect(clips[0]?.detail).toBe(
-      "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
+      `${LANE_WRITE_NOTE}; left an empty scene behind: couldn't remove the scratch scene (Live says no)`,
     );
   });
 
@@ -271,7 +274,7 @@ describe("a scratch copy Live won't remove", () => {
     expect(said).toStrictEqual([
       "couldn't remove the scratch session clip (Live says no)",
     ]);
-    expect(clips[0]?.detail).toBeUndefined();
+    expect(clips[0]?.detail).toBe(LANE_WRITE_NOTE);
   });
 
   it("keeps it on a failure that follows", async () => {

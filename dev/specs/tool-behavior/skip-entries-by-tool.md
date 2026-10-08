@@ -336,6 +336,15 @@ with a tool, the tool wins.
   `automation not written (<why>)`). If the copy then fails, the failure adds
   `already changed: automation written for ...`. A clip whose scratch copy can't
   be made is refused before anything changes.
+- **duplicate: a session clip's automation written to the lane.** Copying a
+  session clip with automation (MIDI, or warped audio) to the arrangement, at
+  any length, makes Live write that automation to the track's arrangement lane
+  over the copy's span, replacing what the lane held there for those parameters.
+  The copy's first entry (a clip copy's, or each track's in a scene copy) says
+  `wrote its automation to the track's arrangement lane over this span`, once. A
+  copy that stopped early says its own note above instead. A clip with no
+  automation, an unwarped audio clip and an arrangement source write nothing, so
+  say nothing.
 - **duplicate: a device copy that can't be placed.** With the remote script,
   Live copies a device right after the original. Nothing is moved or deleted
   until the device in that slot is checked to have the original's name and

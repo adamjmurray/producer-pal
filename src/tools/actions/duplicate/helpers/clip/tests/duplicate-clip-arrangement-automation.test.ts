@@ -3,12 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Stamping the lane changes nothing about what a clip copy reports: what it
-// overwrote reads the same with or without the clip's automation.
+// Stamping the lane changes nothing about what a clip copy reports about what
+// it overwrote, which reads the same with or without the clip's automation. The
+// automated copy only adds that it wrote the lane.
 
 import { describe, expect, it } from "vitest";
 import "../../../tests/duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import { LANE_WRITE_NOTE } from "./stamp-automation-test-helpers.ts";
 import { registerStampWorld } from "./stamp-world-test-helpers.ts";
 
 /**
@@ -46,7 +48,10 @@ describe("duplicate - a session clip with automation, at another length", () => 
     };
 
     expect(plain.result).toStrictEqual(entry);
-    expect(automated.result).toStrictEqual(entry);
+    expect(automated.result).toStrictEqual({
+      ...entry,
+      detail: `${LANE_WRITE_NOTE}; overwrote the clip at t0[5|1]`,
+    });
   });
 
   it("says what the lane got, and what was cleared, when the clip itself isn't placed", async () => {

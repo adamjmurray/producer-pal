@@ -15,10 +15,12 @@
  *
  * Every clip ramps pan up by 0.1 a beat from -0.8, holding its last value to
  * the clip's end (a 2-bar MIDI clip loops 8 beats, a 1-bar warped audio clip 4).
+ * The copy's entry says it wrote the lane, and says nothing for a clip with no
+ * automation (t3/s1).
  *
  * Uses: e2e-test-set — t3 "Lead" (MIDI) and t5 "Audio 2" (audio) with s2, s3,
- * s6 and s7 free in both; t8 holds an anchor clip so the song is long enough to
- * read anywhere in the test range.
+ * s4, s6 and s7 free in both; t8 holds an anchor clip so the song is long
+ * enough to read anywhere in the test range.
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-duplicate-arrangement-automation
@@ -30,6 +32,7 @@ import {
   EMPTY_MIDI_TRACK,
 } from "../../e2e-test-set.ts";
 import {
+  parseToolResult,
   setConfig,
   setupMcpTestContext,
   sleep,
@@ -59,6 +62,9 @@ const STEP_PER_BEAT = 0.1;
 const TOLERANCE = 0.03;
 /** Bar 400, far past everything the cases write. */
 const ANCHOR_BAR = 400;
+/** What a copy's entry says when Live wrote the clip's automation to the lane. */
+const LANE_WRITE_NOTE =
+  "wrote its automation to the track's arrangement lane over this span";
 
 type Kind = keyof typeof TRACKS;
 
@@ -134,18 +140,21 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     };
 
     const copyClip = async (
-      id: string,
+      source: { id: string } | { path: string },
       track: number,
       bar: number,
-      arrangementLength: string,
-    ): Promise<void> => {
-      await callTool(ctx.client!, "ppal-duplicate", {
+      arrangementLength?: string,
+    ): Promise<string> => {
+      const result = await callTool(ctx.client!, "ppal-duplicate", {
         type: "clip",
-        id,
+        ...source,
         toPath: `t${String(track)}[${String(bar)}|1]`,
-        arrangementLength,
+        ...(arrangementLength != null && { arrangementLength }),
       });
+
       await sleep(200);
+
+      return JSON.stringify(parseToolResult(result));
     };
 
     /** Where a track's last arrangement clip ends, in beats. */
@@ -199,7 +208,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         const length = kind === "midi" ? 4 : 2;
 
         await copyClip(
-          await automatedClip(kind, 2),
+          { id: await automatedClip(kind, 2) },
           track,
           101,
           `n${String(length)}/4`,
@@ -239,7 +248,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         const start = 440;
 
         await copyClip(
-          await automatedClip(kind, 3),
+          { id: await automatedClip(kind, 3) },
           TRACKS[kind],
           111,
           `n${String(length)}/4`,
@@ -259,6 +268,34 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         );
       },
     );
+
+    describe("the copy's entry", () => {
+      it.each(["midi", "audio"] as const)(
+        "says it wrote the lane, for a %s clip copied at its own length or another",
+        async (kind) => {
+          const source = { id: await automatedClip(kind, 4) };
+          const own = await copyClip(source, TRACKS[kind], 160);
+          const other = await copyClip(source, TRACKS[kind], 162, "n6/4");
+
+          for (const entry of [own, other]) {
+            expect(entry.split(LANE_WRITE_NOTE)).toHaveLength(2);
+          }
+        },
+      );
+
+      it("says nothing of the lane for a clip with no automation", async () => {
+        const plainClip = { path: `t${String(MIDI_TRACK)}/s1` };
+
+        for (const [bar, length] of [
+          [164, undefined],
+          [166, "n6/4"],
+        ] as const) {
+          const entry = await copyClip(plainClip, MIDI_TRACK, bar, length);
+
+          expect(entry).not.toContain(LANE_WRITE_NOTE);
+        }
+      });
+    });
 
     describe("a scene", () => {
       const sceneCopy = async (

@@ -10,6 +10,7 @@ import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrang
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { finishCopy, type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { type CopyAttempt } from "./duplicate-one-copy.ts";
+import { withLaneWriteNote } from "./stamp-automation.ts";
 import {
   createClipsForLength,
   parseArrangementLength,
@@ -108,7 +109,9 @@ export async function duplicateClipToArrangement(
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
     // clip, matching the guards in arrangement-tiling and update-clip.
     if (newClip.exists()) {
-      duplicatedClips.push(finishCopy(newClip, name, color));
+      duplicatedClips.push(
+        ...withLaneWriteNote(clip, [finishCopy(newClip, name, color)]),
+      );
     }
   }
 

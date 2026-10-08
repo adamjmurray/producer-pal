@@ -27,7 +27,11 @@ import {
   appendDetail,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
-import { carriesAutomation, stampAutomation } from "./stamp-automation.ts";
+import {
+  carriesAutomation,
+  stampAutomation,
+  withLaneWriteNote,
+} from "./stamp-automation.ts";
 import {
   finishCopy,
   readCopyBack,
@@ -119,7 +123,7 @@ export async function createClipsForLength(
       copyLengthBeats(sourceClip),
     )
   ) {
-    return await copyFrom(sourceClip);
+    return withLaneWriteNote(sourceClip, await copyFrom(sourceClip));
   }
 
   return await stampAutomation(

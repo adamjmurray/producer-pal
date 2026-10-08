@@ -7,6 +7,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { createClipsForLength } from "../arrangement-length.ts";
 import { type CopyEvent, type StampWorld } from "./stamp-world-test-helpers.ts";
 
+/** What a copy's entry says when Live wrote the clip's automation to the lane. */
+export const LANE_WRITE_NOTE =
+  "wrote its automation to the track's arrangement lane over this span";
+
 /**
  * Copy the world's source clip to track 0 at a length, as duplicate does.
  * @param world - The Set
