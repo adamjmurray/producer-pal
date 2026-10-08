@@ -3,6 +3,10 @@
 What Producer Pal can do with a track's arrangement automation lanes, as
 measured on Live 12.4.6 through the remote script. Not checked on Live 12.3.
 
+Measure on a track with an instrument. On a MIDI track with no audio output, the
+mixer volume's automation followed the clips instead: arrangement copies carried
+it, and creating or deleting a clip cleared it.
+
 ## Summary
 
 | Capability                      | Route                                     | Catch                     |
@@ -39,6 +43,13 @@ Deleting the arrangement copy afterwards leaves the lane as written.
 
 Warped audio clips behave like MIDI clips. An unwarped audio clip writes nothing
 to the lane, matching its envelopes never playing.
+
+**Other lengths.** A copy at the clip's own length does the above. At any other
+`arrangementLength`, `ppal-duplicate` writes the lane itself, by stamping (see
+[arrangement-operations.md](arrangement-operations.md#stamping-a-session-clips-automation)):
+the lane gets the content the final copy will play, looping like playback, and
+the clip is then placed from a copy with no envelopes. It skips the stamping for
+a clip with no envelopes (`has_envelopes`) and for unwarped audio.
 
 Copying an **arrangement** clip (or moving one, which Producer Pal does by copy
 and delete) neither writes nor clears the lane: automation stays at the old

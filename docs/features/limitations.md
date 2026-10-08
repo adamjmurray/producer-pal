@@ -70,8 +70,6 @@ automation lane. That comes with limits:
 
 - The copy replaces the clips already in that span, so automating a part you've
   already arranged means re-making it with the same notes.
-- Copy the clip at its own length. A longer copy tiles it, and only the first
-  tile carries the automation.
 - Producer Pal can't see the lane afterwards, or clear it. A later copy
   overwrites it over its own span, and the lane returns to its old value after.
 - Moving an arrangement clip leaves its automation where it was.

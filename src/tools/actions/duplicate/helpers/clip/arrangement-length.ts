@@ -27,6 +27,7 @@ import {
   appendDetail,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
+import { carriesAutomation, stampAutomation } from "./stamp-automation.ts";
 import {
   finishCopy,
   readCopyBack,
@@ -72,7 +73,10 @@ export function parseArrangementLength(
 }
 
 /**
- * Create clips to fill the specified arrangement length
+ * Create clips to fill the specified arrangement length. A session clip with
+ * automation, copied at another length than its own, has the lane written for
+ * the span first (see stamp-automation.ts) and is placed from a copy that
+ * carries none.
  * @param sourceClip - The source clip to duplicate
  * @param track - The track to create clips on
  * @param arrangementStartBeats - Start time in Ableton beats (quarter notes, 0-based)
@@ -94,6 +98,66 @@ export async function createClipsForLength(
   name?: string,
   context: Partial<ToolContext & TilingContext> = {},
   color?: string,
+): Promise<MinimalClipInfo[]> {
+  const copyFrom = (clip: LiveAPI): Promise<MinimalClipInfo[]> =>
+    copyForLength(
+      clip,
+      track,
+      arrangementStartBeats,
+      arrangementLengthBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      name,
+      context,
+      color,
+    );
+
+  if (
+    !carriesAutomation(
+      sourceClip,
+      arrangementLengthBeats,
+      clipLengthBeats(sourceClip),
+    )
+  ) {
+    return await copyFrom(sourceClip);
+  }
+
+  return await stampAutomation(
+    {
+      source: sourceClip,
+      track,
+      startBeats: arrangementStartBeats,
+      lengthBeats: arrangementLengthBeats,
+      context,
+    },
+    copyFrom,
+  );
+}
+
+/**
+ * Copy a clip to the arrangement at the length asked for, by holding area when
+ * it is shorter and by update-clip when it is longer.
+ * @param sourceClip - The clip to copy
+ * @param track - The track to create clips on
+ * @param arrangementStartBeats - Start time in Ableton beats
+ * @param arrangementLengthBeats - Total length to fill in Ableton beats
+ * @param songTimeSigNumerator - Song time signature numerator
+ * @param songTimeSigDenominator - Song time signature denominator
+ * @param name - Optional name for the clips
+ * @param context - Context object with silenceWavPath
+ * @param color - Optional color for the clips
+ * @returns Array of minimal clip info objects
+ */
+async function copyForLength(
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  arrangementStartBeats: number,
+  arrangementLengthBeats: number,
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
+  name: string | undefined,
+  context: Partial<ToolContext & TilingContext>,
+  color: string | undefined,
 ): Promise<MinimalClipInfo[]> {
   const sourceClipLength = clipLengthBeats(sourceClip);
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;

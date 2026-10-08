@@ -57,21 +57,24 @@ export interface SessionClipResult {
   sceneId?: string;
 }
 
+/** An empty clip slot on a track, for a scratch clip. */
+export interface ScratchSessionSlot {
+  slot: LiveAPI;
+  trackIndex: number;
+  sceneIndex: number;
+  /** The scene made to hold the clip, when the last one wasn't empty. Take it
+   * out with {@link removeSessionClip}, or it stays in the Set. */
+  sceneId?: string;
+}
+
 /**
- * Creates an audio clip in session view with controlled length.
- * Uses session view because create_audio_clip in arrangement doesn't support length control.
+ * Finds the clip slot a scratch session clip goes in: the track's slot in the
+ * last scene when that scene is empty, otherwise one in a scene made for it.
  *
  * @param track - LiveAPI track instance
- * @param targetLength - Desired clip length in beats
- * @param audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
- * @returns The created clip and slot in session view, and the scene made for
- *   them when the last one wasn't empty
+ * @returns The slot, and the scene made for it when the last one wasn't empty
  */
-export function createAudioClipInSession(
-  track: LiveAPI,
-  targetLength: number,
-  audioFilePath: string,
-): SessionClipResult {
+export function openScratchSlot(track: LiveAPI): ScratchSessionSlot {
   const liveSet = LiveAPI.from(livePath.liveSet);
   let sceneIds = liveSet.getChildIds("scenes");
   const lastSceneId = assertDefined(sceneIds.at(-1), "last scene ID");
@@ -98,8 +101,30 @@ export function createAudioClipInSession(
   const trackIndex = track.trackIndex as number;
   const sceneIndex = sceneIds.indexOf(workingSceneId);
 
-  // Create the audio clip in a clip slot
-  const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
+  return {
+    slot: LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex)),
+    trackIndex,
+    sceneIndex,
+    ...(isEmpty ? {} : { sceneId: workingSceneId }),
+  };
+}
+
+/**
+ * Creates an audio clip in session view with controlled length.
+ * Uses session view because create_audio_clip in arrangement doesn't support length control.
+ *
+ * @param track - LiveAPI track instance
+ * @param targetLength - Desired clip length in beats
+ * @param audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
+ * @returns The created clip and slot in session view, and the scene made for
+ *   them when the last one wasn't empty
+ */
+export function createAudioClipInSession(
+  track: LiveAPI,
+  targetLength: number,
+  audioFilePath: string,
+): SessionClipResult {
+  const { slot, trackIndex, sceneIndex, sceneId } = openScratchSlot(track);
 
   // create_audio_clip requires a file path
   slot.call("create_audio_clip", audioFilePath);
@@ -115,7 +140,7 @@ export function createAudioClipInSession(
   clip.set("loop_end", targetLength);
 
   // Return both clip and slot for cleanup
-  return { clip, slot, ...(isEmpty ? {} : { sceneId: workingSceneId }) };
+  return { clip, slot, ...(sceneId != null && { sceneId }) };
 }
 
 /**

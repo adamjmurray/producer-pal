@@ -242,6 +242,44 @@ algorithm. The workaround is guarded by a disable flag for periodic retesting.
 Files: `arrangement-tiling.ts` (`clearClipAtDuplicateTarget`,
 `clearOverlappingClip`)
 
+### Stamping a Session Clip's Automation
+
+Copying a session clip to the arrangement writes its automation into the lane
+over the copy's own span, and nothing else does (arrangement copies, tiles and
+holding-area moves write none). So at any other length than the clip's own, the
+lane would be wrong: a shortened copy goes through the holding area and writes
+past the song end, and a lengthened one tiles arrangement copies that carry
+none. `createClipsForLength` writes the lane first instead:
+
+1. Copy the session clip to a scratch slot on the destination track
+   (`openScratchSlot`, the same slot and scene logic `createAudioClipInSession`
+   uses).
+2. Work out the content playback goes through over the length: a looped clip
+   plays start marker to loop end (pre-roll included), then loop start to loop
+   end, cut at the length; an unlooped one plays on from its start marker
+   (`contentSegments`).
+3. For each stretch, set the scratch clip's markers to show just that, copy it
+   to the arrangement at its place, and delete the copy at once. The lane keeps
+   what the copy wrote. Looped clips set loop and markers (`clipRegionWrites`
+   orders them); unlooped ones set the start marker and loop end. Never toggle
+   `looping`: a warped clip's loop end resets.
+4. Copy the source onto the scratch slot again (exact markers), call
+   `clear_all_envelopes`, and run the normal shorten or lengthen with that
+   envelope-free clip as the source. Nothing it does touches the lane.
+
+Cost: about length / loop length + 2 copy and delete pairs. It is skipped when
+`has_envelopes` is false, for unwarped audio, for arrangement sources and when
+the length is the clip's own.
+
+The stamps clear what the final copy would clear (the same span), so the
+overwrite report is unchanged. Stamping stops at the request deadline or at the
+first failure and says how far the lane got on the clip's entry; the clip is
+still placed. A failure after the lane changed says so (`already changed:`). The
+scratch copy and its scene are always removed.
+
+Files: `stamp-automation.ts`, `content-segments.ts` (under
+`src/tools/actions/duplicate/helpers/clip/`)
+
 ### File Content Boundary Detection
 
 To determine how much actual audio content a file contains (in the warped beat

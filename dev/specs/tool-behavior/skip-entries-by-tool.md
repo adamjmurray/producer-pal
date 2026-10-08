@@ -316,6 +316,15 @@ with a tool, the tool wins.
   on after making it, a device whose temp track couldn't be deleted, a pad whose
   chains couldn't be named, a take lane made for a clip that then failed. Only a
   copy nothing of which landed is `ok: false`.
+- **duplicate: automation written for another length.** A session clip with
+  automation copied to the arrangement at an `arrangementLength` other than its
+  own has its track automation lane written for the span first. If that stops
+  early (a failure, the request deadline) the copy is still made, and its
+  `detail` says how far the lane got
+  (`automation written for the first 4 of 10 beats only (<why>)`, or
+  `automation not written (<why>)`). If the copy then fails, the failure adds
+  `already changed: automation written for ...`. A clip whose scratch copy can't
+  be made is refused before anything changes.
 - **duplicate: a device copy that can't be placed.** With the remote script,
   Live copies a device right after the original. Nothing is moved or deleted
   until the device in that slot is checked to have the original's name and
