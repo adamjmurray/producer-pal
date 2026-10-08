@@ -1,9 +1,10 @@
 ---
 title: Remote Script
 description:
-  Install the optional Producer Pal remote script so AI can load VST/AU
-  plug-ins, Max for Live devices, and presets in Ableton Live. Install from the
-  Chat UI, enable it in Live, update, and uninstall.
+  Install the optional Producer Pal remote script so AI can write clip
+  automation, load VST/AU plug-ins, Max for Live devices and presets, convert
+  audio to MIDI, and undo in Ableton Live. Install it, enable it in Live,
+  update, and uninstall.
 ---
 
 # Remote Script
@@ -15,6 +16,9 @@ else, such as a second Live, already has it. Producer Pal finds it either way.
 
 Install it if you want AI to:
 
+- **Read and write clip automation** on session clips: volume, pan, sends and
+  device parameters, with [Update Clip](/features/tools#ppal-update-clip). Needs
+  Live 12.4 or later.
 - **Load VST/AU plug-ins and Max for Live devices by name**, like "add Pro-Q 4
   to the bass track". The AI finds them with the
   [Library](/features/tools#ppal-library) tool. Without the script,
@@ -25,6 +29,11 @@ Install it if you want AI to:
   that's already in the Set with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
   device, or a rack, replaces the device, and its automation is lost.
+- **Convert audio to MIDI**: turn an audio clip's drums, melody or harmony into
+  a MIDI clip, or into a track with Simpler or a Drum Rack playing its sample,
+  like Live's own Convert commands.
+- **Reach more device settings**: Simpler's pitch-bend ranges, and which rack
+  macros are mapped.
 - **Undo one request at a time**: each request becomes a single undo step in
   Live, so Cmd+Z / Ctrl+Z reverts just that request. The AI can also undo and
   redo for you with the [Manage](/features/tools#ppal-manage) tool; Live's
