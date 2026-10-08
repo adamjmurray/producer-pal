@@ -123,6 +123,7 @@ describe("--tools", () => {
   it("keeps ppal-connect even when --disable-tools names it", () => {
     expect(disabledFor(["--disable-tools", "connect,core"])).toStrictEqual([
       "ppal-context",
+      "ppal-manage",
     ]);
   });
 

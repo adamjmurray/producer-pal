@@ -37,6 +37,8 @@ export interface ToolOptions {
   // overrides. See modal-config.ts.
   description: ModalDescription;
   annotations?: ToolAnnotations;
+  // True: small-model mode leaves the tool out entirely (see isOfferedInMode).
+  omitInSmallModel?: boolean;
   // Param descriptions/exclusions/enum-trims are co-located on each param via
   // param() (see modal-config.ts) — there is no separate override config.
   inputSchema: Record<string, ZodType>;
@@ -63,6 +65,20 @@ export interface ToolDefFunction {
 }
 
 /**
+ * Whether a tool is offered in a mode. Small-model mode drops a tool that opts
+ * out, from MCP and from REST alike.
+ * @param toolDef - The tool's definition
+ * @param smallModelMode - Whether small-model mode is on
+ * @returns True when the tool is offered
+ */
+export function isOfferedInMode(
+  toolDef: Pick<ToolDefFunction, "toolOptions">,
+  smallModelMode: boolean,
+): boolean {
+  return !(smallModelMode && toolDef.toolOptions.omitInSmallModel === true);
+}
+
+/**
  * Defines an MCP tool with validation and modal (notation / small-model) support
  * @param name - Tool name
  * @param options - Tool configuration options
@@ -78,7 +94,16 @@ export function defineTool(
     mcpOptions: McpOptions = {},
   ): void => {
     const { smallModelMode = false, notation } = mcpOptions;
-    const { inputSchema, description, ...toolConfig } = options;
+    const {
+      inputSchema,
+      description,
+      omitInSmallModel: _omitInSmallModel,
+      ...toolConfig
+    } = options;
+
+    if (!isOfferedInMode({ toolOptions: options }, smallModelMode)) {
+      return;
+    }
 
     // Hidden params still validate, but are not published — the model reads only
     // the canonical names while callers sending a retired or guessed one keep

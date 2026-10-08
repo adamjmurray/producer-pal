@@ -124,8 +124,12 @@ describe("withUndoStepEnd", () => {
       ...STANDARD_TOOL_DEFS.map((def) => def.toolName),
       "ppal-live-api",
     ];
+    // ppal-manage is not read-only, but an undo step closed right after an undo
+    // could wipe Live's redo history, and an install changes nothing in the Set.
     const writes = STANDARD_TOOL_DEFS.filter(
-      (def) => def.toolOptions.annotations?.readOnlyHint !== true,
+      (def) =>
+        def.toolOptions.annotations?.readOnlyHint !== true &&
+        def.toolName !== "ppal-manage",
     ).map((def) => def.toolName);
 
     expect(writes).toContain("ppal-create-track");

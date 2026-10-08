@@ -50,6 +50,12 @@ export const CONNECT_TOOL_ID = "ppal-connect";
  */
 export const CONTEXT_TOOL_ID = "ppal-context";
 
+/**
+ * The tool that installs the remote script and undoes and redoes. Connect and
+ * the remote script errors point at it only while it is on.
+ */
+export const MANAGE_TOOL_ID = "ppal-manage";
+
 /** The `ppal-` prefix every server tool name carries. */
 export const TOOL_NAME_PREFIX = "ppal-";
 
@@ -69,7 +75,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     alias: "core",
     label: "Core",
-    toolIds: [CONNECT_TOOL_ID, CONTEXT_TOOL_ID],
+    toolIds: [CONNECT_TOOL_ID, CONTEXT_TOOL_ID, MANAGE_TOOL_ID],
   },
   {
     alias: "session",

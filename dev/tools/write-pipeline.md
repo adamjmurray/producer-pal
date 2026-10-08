@@ -136,9 +136,10 @@ settles, so overlapping calls share a step. It never begins a step (a begin left
 open by a crash or timeout would merge everything after it) and doesn't wait for
 the answer. No end follows a timeout, since V8 may still be changing the Set. A
 Live without the remote script keeps one merged step. A tool that is not
-read-only (`readOnlyHint`) gets this with no code of its own. Don't open undo
-steps inside a tool or route: a begin closes the step holding the call's other
-changes.
+read-only (`readOnlyHint`) gets this with no code of its own, except
+`ppal-manage`: closing a step right after an undo could wipe Live's redo
+history. Don't open undo steps inside a tool or route: a begin closes the step
+holding the call's other changes.
 
 ## Adding a write tool
 

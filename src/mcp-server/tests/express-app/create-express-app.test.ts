@@ -132,6 +132,7 @@ describe("MCP Express App", () => {
       expect(toolNames).toStrictEqual([
         "ppal-connect",
         "ppal-context",
+        "ppal-manage",
         "ppal-read-live-set",
         "ppal-update-live-set",
         "ppal-read-track",

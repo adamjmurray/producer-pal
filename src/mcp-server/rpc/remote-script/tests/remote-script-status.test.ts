@@ -10,7 +10,7 @@ import { VERSION } from "#src/shared/config.ts";
 import {
   installRemoteScript,
   remoteScriptPath,
-} from "../remote-script-install.ts";
+} from "../install/remote-script-install.ts";
 import { remoteScriptStatus } from "../remote-script-status.ts";
 import {
   type FakeRemoteScript,

@@ -12,7 +12,8 @@ them — this list is so you don't discover that one at a time.
    and `<name>.ts` (the handler) beside it, plus `tests/`. See
    [tool-schemas.md](tool-schemas.md) for param shapes and per-mode
    descriptions. Set `annotations.readOnlyHint: true` if it changes nothing in
-   Live's undo history.
+   Live's undo history. `omitInSmallModel: true` keeps it out of small-model
+   mode entirely (`ppal-manage`).
 
 2. **Register the def** in `STANDARD_TOOL_DEFS`
    ([create-mcp-server.ts](../../src/mcp-server/create-mcp-server.ts)). This is

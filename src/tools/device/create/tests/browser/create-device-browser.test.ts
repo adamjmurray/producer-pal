@@ -25,7 +25,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
+import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { createDevice } from "../../create-device.ts";
 
 /** What the remote script is told to say when it is too old. */

@@ -8,7 +8,7 @@
 // param write can't wait on. They are written here, ahead of the rest of the
 // target's update, and each param entry is handed on with what it came to.
 
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
+import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import {
   type ParamEntry,
   paramEntryKey,

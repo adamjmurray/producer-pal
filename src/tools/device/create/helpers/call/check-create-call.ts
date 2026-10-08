@@ -12,15 +12,13 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type WrittenContainer } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type MaybePromise,
   type Target,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
-import {
-  REMOTE_SCRIPT_SETUP,
-  resolveBrowserDevice,
-} from "../browser-devices.ts";
+import { resolveBrowserDevice } from "../browser-devices.ts";
 import {
   presetScopeForDevice,
   resolveBrowserPreset,

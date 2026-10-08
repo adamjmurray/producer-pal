@@ -26,7 +26,9 @@ Install it if you want AI to:
   [Update Device](/features/tools#ppal-update-device). A preset for a different
   device, or a rack, replaces the device, and its automation is lost.
 - **Undo one request at a time**: each request becomes a single undo step in
-  Live, so Cmd+Z / Ctrl+Z reverts just that request.
+  Live, so Cmd+Z / Ctrl+Z reverts just that request. The AI can also undo and
+  redo for you with the [Manage](/features/tools#ppal-manage) tool; Live's
+  history includes your own edits, so it can revert something you did.
 - **Add Producer Pal to a Live Set** from a coding agent: to the open Set with
   the `producer-pal` [Agent Skill](/guide/skills), or while opening or creating
   one with `ableton-open-live-set`. This needs the device installed in your User
@@ -40,6 +42,15 @@ The remote script is an early prototype. It works on macOS and Windows, but how
 it is installed and what it does may change.
 
 :::
+
+## Install by asking the AI
+
+Ask the AI to install the remote script. It uses the
+[Manage](/features/tools#ppal-manage) tool, which writes the script to your User
+Library (it finds the folder itself, or asks you for it) and tells you the steps
+below: restart Live, and on the first install choose Producer Pal as a Control
+Surface. This works even when the script isn't running yet, and it isn't offered
+in [small model mode](/features#small-model-mode).
 
 ## Install from the Chat UI
 

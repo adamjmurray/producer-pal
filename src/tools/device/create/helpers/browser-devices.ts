@@ -69,10 +69,6 @@ export function lookupOutOfTime(nothingDone: string): string {
   return `${REQUEST_OUT_OF_TIME} searching Live's browser; ${nothingDone}, re-run it. If it keeps happening, ask the user to raise the Timeout setting`;
 }
 
-/** What to tell the user when a load needs the remote script. */
-export const REMOTE_SCRIPT_SETUP =
-  "ask the user to set it up in the Producer Pal chat UI's Settings → Remote Script (guide: https://producer-pal.org/guide/remote-script)";
-
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 

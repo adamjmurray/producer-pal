@@ -535,3 +535,28 @@ describe("buildSkills - clip automation gating", () => {
     ).not.toContain(HEADING);
   });
 });
+
+describe("buildSkills - undo and redo gating", () => {
+  const HEADING = "## Undo & Redo";
+
+  it("teaches it when ppal-manage is on, and says the user's edits are in the history", () => {
+    const skills = buildSkills({ tools: [...TOOL_NAMES] });
+
+    expect(skills).toContain(HEADING);
+    expect(skills).toContain("one edit the user made in Live");
+  });
+
+  it("teaches it when no toolset is given", () => {
+    expect(buildSkills({})).toContain(HEADING);
+  });
+
+  it("drops it when ppal-manage is switched off", () => {
+    const tools = TOOL_NAMES.filter((name) => name !== "ppal-manage");
+
+    expect(buildSkills({ tools })).not.toContain(HEADING);
+  });
+
+  it("is never in small-model mode", () => {
+    expect(buildSkills({ smallModelMode: true })).not.toContain(HEADING);
+  });
+});

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { MANAGE_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
   STANDARD_TOOL_DEFS,
@@ -12,10 +13,18 @@ import { remoteScriptRequest } from "./remote-script-client.ts";
 import { type McpResponse } from "../../max-api-adapter.ts";
 import { type RequestOverrides } from "../../helpers/request-overrides/request-overrides.ts";
 
-/** Tools that may change the Set, read off their defs. */
+/**
+ * Tools that may change the Set, read off their defs. Not ppal-manage: closing
+ * a step right after an undo could wipe Live's redo history, and installing
+ * changes nothing in the Set.
+ */
 const WRITE_TOOLS: ReadonlySet<string> = new Set(
   [...STANDARD_TOOL_DEFS, toolDefLiveApi]
-    .filter((def) => def.toolOptions.annotations?.readOnlyHint !== true)
+    .filter(
+      (def) =>
+        def.toolOptions.annotations?.readOnlyHint !== true &&
+        def.toolName !== MANAGE_TOOL_ID,
+    )
     .map((def) => def.toolName),
 );
 

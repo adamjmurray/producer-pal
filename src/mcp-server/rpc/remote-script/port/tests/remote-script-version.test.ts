@@ -19,7 +19,7 @@ afterEach(() => {
 describe("outdatedScript", () => {
   it("words a script older than the minimum", () => {
     expect(outdatedScript("2.4.0")).toBe(
-      `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it in the Producer Pal chat UI's Settings → Remote Script, then restart Live`,
+      `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it with ppal-manage action "install-remote-script" or in the Producer Pal chat UI's Settings → Remote Script, then restart Live`,
     );
   });
 

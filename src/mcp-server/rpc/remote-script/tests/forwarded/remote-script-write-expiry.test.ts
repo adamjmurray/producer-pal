@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { CONVERT_ROUTE } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
+import { MANAGE_ROUTES } from "#src/tools/core/helpers/manage-contract.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
@@ -52,6 +53,8 @@ const WRITES: Record<string, { node: string; args: object }> = {
     node: SIMPLER_SETTINGS_ROUTES.write,
     args: { devicePath: DEVICE, pitchBendRange: 2 },
   },
+  "/undo/undo": { node: MANAGE_ROUTES.undo, args: {} },
+  "/undo/redo": { node: MANAGE_ROUTES.redo, args: {} },
 };
 
 /** Routes that change the Set but report nothing a caller waits on. */

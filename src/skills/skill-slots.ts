@@ -22,6 +22,7 @@ import {
   gettingHelp,
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
+import { history } from "#src/skills/fragments/history.ts";
 import { library } from "#src/skills/fragments/library.ts";
 import { pluginsAndMaxDevices } from "#src/skills/fragments/devices/plugins-and-max-devices.ts";
 import {
@@ -119,6 +120,7 @@ export const SKILL_SLOT_NAMES = [
   "working-with-live",
   "context-standard",
   "context-basic",
+  "history",
   "getting-help",
   "getting-help-basic",
 
@@ -367,6 +369,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "A trimmed context guide for smaller or local models (small-model mode): the project and global documents only — small-model mode has no memory.",
     builtIn: contextBasic,
+  },
+
+  history: {
+    title: "Undo & redo",
+    description:
+      "How the AI uses ppal-manage to undo and redo: Live's history holds your own edits too, so it says what it undoes and asks first if you may have edited. Sent only while ppal-manage is on, and never in small-model mode.",
+    builtIn: history,
   },
 
   "getting-help": {

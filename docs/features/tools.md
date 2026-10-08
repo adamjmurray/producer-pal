@@ -64,6 +64,20 @@ gives you this shape.
 
 <!--@include: ../_generated/ppal-context-output.md-->
 
+### Manage (`ppal-manage`) {#ppal-manage}
+
+- Install the [Producer Pal remote script](/guide/remote-script) into your User
+  Library, without opening the Chat UI. Restart Live afterwards.
+- Undo and redo in Live's own history, one step or several at a time. One
+  Producer Pal tool call that changed the Live Set is one step. It never removes
+  Producer Pal itself. The history also holds your own edits in Live, so an undo
+  can revert something you did. Needs the remote script.
+- Not available in [small model mode](/features#small-model-mode).
+
+<!--@include: ../_generated/ppal-manage-schema.md-->
+
+<!--@include: ../_generated/ppal-manage-output.md-->
+
 ## Session Tools
 
 ### Playback (`ppal-playback`) {#ppal-playback}

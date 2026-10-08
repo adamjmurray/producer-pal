@@ -21,7 +21,7 @@ import {
   type ClipReasons,
   ignoreClipParams,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/device/create/helpers/browser-devices.ts";
+import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { whyUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {

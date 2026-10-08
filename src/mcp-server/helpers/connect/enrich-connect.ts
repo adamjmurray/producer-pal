@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type Notation } from "#src/shared/notation.ts";
+import { MANAGE_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   withGlobalContext,
@@ -60,6 +61,7 @@ export function enrichConnect(
   const portalVersioned = withRemoteScriptNotice(
     withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
     connectPing.getPing,
+    () => manageToolAvailable(getConfig()),
   );
 
   return withNextStep(
@@ -88,5 +90,19 @@ export function enrichConnect(
       projectContext: getConfig().projectContext,
       tools: getConfig().tools,
     }),
+  );
+}
+
+/**
+ * Whether the caller can use ppal-manage: small-model mode never offers it, and
+ * a toolset that leaves it out withholds it.
+ *
+ * @param config - Current device settings
+ * @returns True when the connect notice may point at the tool
+ */
+function manageToolAvailable(config: ConnectEnrichmentConfig): boolean {
+  return (
+    !config.smallModelMode &&
+    (config.tools == null || config.tools.includes(MANAGE_TOOL_ID))
   );
 }

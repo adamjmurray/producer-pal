@@ -88,6 +88,8 @@ export const standardDriver = `${HEADER}
 
 @include "./context-standard.md"
 
+@include "./history.md"
+
 @include "./getting-help.md"
 `;
 

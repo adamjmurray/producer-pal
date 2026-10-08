@@ -13,7 +13,7 @@ import {
   remoteScriptPing,
   type RemoteScriptPing,
 } from "./remote-script-client.ts";
-import { remoteScriptPath } from "./remote-script-install.ts";
+import { remoteScriptPath } from "./install/remote-script-install.ts";
 
 /** Matches the one line version.py holds. */
 const VERSION_LINE = /^VERSION\s*=\s*["']([^"']*)["']/m;

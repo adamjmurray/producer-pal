@@ -29,12 +29,15 @@ import {
 import { registerRemoteScriptConvertRoute } from "./forwarded/remote-script-convert-route.ts";
 import { registerRemoteScriptDeviceRoutes } from "./forwarded/remote-script-device-routes.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "./forwarded/remote-script-envelope-routes.ts";
+import { registerRemoteScriptUndoRoutes } from "./forwarded/remote-script-undo-routes.ts";
+import { registerRemoteScriptInstallRoute } from "./install/remote-script-install-route.ts";
 
 /**
  * Register every route V8 uses to reach the remote script: loading a plug-in,
  * Max for Live device, or preset, copying a device, plus clip envelopes,
- * conversions and rack macros. Every step of a device call gets the time V8 has left
- * (`expiresInMs`), not a limit of its own.
+ * conversions, rack macros and undo, and the one that installs it. Every step
+ * of a device call gets the time V8 has left (`expiresInMs`), not a limit of
+ * its own.
  */
 export function registerRemoteScriptRoutes(): void {
   registerNodeRoute(
@@ -84,6 +87,8 @@ export function registerRemoteScriptRoutes(): void {
   registerRemoteScriptEnvelopeRoutes();
   registerRemoteScriptConvertRoute();
   registerRemoteScriptDeviceRoutes();
+  registerRemoteScriptUndoRoutes();
+  registerRemoteScriptInstallRoute();
 }
 
 /**

@@ -15,6 +15,9 @@ they aren't listed here.
 
 With the [remote script](/guide/remote-script) installed, each Producer Pal
 request is its own undo step, so Cmd+Z / Ctrl+Z undoes one request at a time.
+The AI can undo and redo for you too (the [Manage](/features/tools#ppal-manage)
+tool). That uses Live's own history, which also holds your edits in Live, so an
+undo can revert something you did.
 
 Without it, Live groups all Live API changes into a single undo step until you
 interact with Live's UI (clicking, typing, etc.). So if you make multiple

@@ -15,6 +15,7 @@ apply it to every tool at once.
 | [clips-playback-and-sends.md](clips-playback-and-sends.md)   | Looping, `duplicateLoop`, muted notes, the playhead, send returns |
 | [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md) | Where each tool applies the refusal rules                         |
 | [skip-entries-by-tool.md](skip-entries-by-tool.md)           | How each write tool applies the entry rules                       |
+| [ppal-manage.md](ppal-manage.md)                             | How `ppal-manage` answers: install, undo, redo, and its refusals  |
 | [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)     | How to build the schema and the helpers that enforce these rules  |
 
 ## Lists and pairing
@@ -179,10 +180,10 @@ treated as missing: its requests are held back before they are sent, so nothing
 is asked of Live, and every caller falls back or refuses as it does when no
 script answers. Where the answer tells the model the script is needed or
 missing, it says instead that the script is out of date, with the running and
-needed versions, and to update it in Settings → Remote Script and restart Live.
-The same goes for a 404 that says the route is unknown; any other 404 still
-means "not found". The Skills teach remote-script features only for a current
-script.
+needed versions, and to update it with `ppal-manage` or in Settings → Remote
+Script and restart Live. The same goes for a 404 that says the route is unknown;
+any other 404 still means "not found". The Skills teach remote-script features
+only for a current script.
 
 ## Skips, no-ops and replaced targets
 

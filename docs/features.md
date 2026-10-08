@@ -2,7 +2,7 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live, with 21 tools for tracks, MIDI/audio clips, devices, and
+  Ableton Live, with 22 tools for tracks, MIDI/audio clips, devices, and
   arrangements.
 ---
 
@@ -188,9 +188,10 @@ required. For fully remote control, use
 ## Small Model Mode {#small-model-mode}
 
 Adapts Producer Pal for less capable AI models by returning simplified
-[skills](#skills) and removing advanced parameters from tool schemas. This is an
-ongoing R&D effort aimed at making [local models](/installation/choose-local)
-viable for completely offline, free, and private usage. Enable it on the
+[skills](#skills) and removing advanced parameters and tools from tool schemas
+(for example [Manage](/features/tools#ppal-manage)). This is an ongoing R&D
+effort aimed at making [local models](/installation/choose-local) viable for
+completely offline, free, and private usage. Enable it on the
 [device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
 settings, or via the [`--small-model-mode` flag](/guide/npx-cli#flags). Like
 [notation](/features/midi-notation), that's a global default MCP clients pick up
@@ -211,11 +212,11 @@ levers.
 
 ::: info Counting the tools
 
-There are **21 tools on by default**. Two more are experimental and opt-in:
+There are **22 tools on by default**. Two more are experimental and opt-in:
 [Direct Live API](/features/tools#ppal-live-api) and [Subagent](#subagents). The
-Chat UI counts all 23, so it reads `21/23` out of the box. An MCP client sees 21
+Chat UI counts all 24, so it reads `22/24` out of the box. An MCP client sees 22
 because Subagent is client-side and never appears in `listTools`, and Direct
-Live API is only registered when the device flag is on (which makes it 22).
+Live API is only registered when the device flag is on (which makes it 23).
 
 :::
 

@@ -241,7 +241,7 @@ describe("ChatHeader", () => {
     });
 
     it("explains the gap the experimental tools leave in the denominator", () => {
-      // 21/23 out of the box is the normal state, not a fault.
+      // 22/24 out of the box is the normal state, not a fault.
       render(
         <ChatHeader
           {...defaultProps}

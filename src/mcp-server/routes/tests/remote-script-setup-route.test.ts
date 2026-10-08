@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
-import { remoteScriptPath } from "../../rpc/remote-script/remote-script-install.ts";
+import { remoteScriptPath } from "../../rpc/remote-script/install/remote-script-install.ts";
 import { makeScratchUserLibrary } from "../../rpc/remote-script/tests/remote-script-test-helpers.ts";
 import {
   type MarkdownRouteServer,

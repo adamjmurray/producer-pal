@@ -32,7 +32,10 @@ import {
   resolveRequestProfile,
   type RequestProfile,
 } from "../helpers/http/request-profile.ts";
-import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  isOfferedInMode,
+  type ToolDefFunction,
+} from "#src/tools/shared/tool-framework/define-tool.ts";
 import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
 
@@ -48,15 +51,20 @@ interface RestApiConfig {
  * device Setup tab, or per-request via LIVE_API_HEADER, and small-model mode
  * drops it (as MCP does); when off, it is fully absent (not in the catalog,
  * not callable). When on it flows through the same
- * tools whitelist as every other tool.
+ * tools whitelist as every other tool. Small-model mode also drops any tool
+ * that opts out of it.
  *
  * @param profile - The resolved settings for this request
  * @returns The tool defs this request may see
  */
 function activeToolDefs(profile: RequestProfile): ToolDefFunction[] {
+  const standard = STANDARD_TOOL_DEFS.filter((td) =>
+    isOfferedInMode(td, profile.smallModelMode),
+  );
+
   return isLiveApiToolActive(profile.liveApiEnabled, profile.smallModelMode)
-    ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
-    : [...STANDARD_TOOL_DEFS];
+    ? [...standard, toolDefLiveApi]
+    : standard;
 }
 
 /**

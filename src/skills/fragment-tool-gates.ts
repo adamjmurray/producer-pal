@@ -237,6 +237,7 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],
+  history: ["ppal-manage"],
 
   "barbeat-standard": NOTE_TOOLS,
   "barbeat-basic": NOTE_TOOLS,

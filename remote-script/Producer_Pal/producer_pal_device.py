@@ -27,6 +27,19 @@ def holds_producer_pal(device):
     return any(holds_producer_pal(inner) for inner in _inner_devices(device))
 
 
+def count_producer_pal(song):
+    """How many top-level devices in the Set are, or hold, Producer Pal.
+
+    Looks at every track, return track and the main track. A rack holding it
+    counts once, so a step that moves it in or out of a rack doesn't change the
+    count.
+    """
+    tracks = list(song.tracks) + list(song.return_tracks) + [song.master_track]
+    return sum(
+        1 for track in tracks for device in track.devices if holds_producer_pal(device)
+    )
+
+
 def _inner_devices(device):
     chains = _members(device, "chains") + _members(device, "return_chains")
     for pad in _members(device, "drum_pads"):

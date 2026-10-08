@@ -35,6 +35,12 @@ const ROUTE_RESULTS: Record<string, unknown> = {
     ],
   },
 
+  "manage.installRemoteScript": {
+    installed: true,
+    version: "2.5.0",
+    path: "/Users/example/Music/Ableton/User Library/Remote Scripts/Producer_Pal",
+  },
+
   "globalContext.read": {
     content: "Prefer 8-bar sections. Never overwrite a clip without asking.",
     exists: true,

@@ -59,9 +59,12 @@ script isn't installed or another program answers on the port.
   follows the tab's own reads.
 - **`ppal-connect`:** `withRemoteScriptNotice`
   (`src/mcp-server/helpers/connect/remote-script-notice-inject.ts`) appends a
-  `remoteScript:` line after the portal line. It shares the skills' `/ping` for
-  the connect (`connect-ping.ts`), reads the installed version off disk, and
-  gives up after 1.5 s. A status that fails or times out adds no line.
+  `remoteScript:` line after the portal line: not installed, behind this build,
+  installed but not running, needing a Live restart, or just the running
+  version. It points at `ppal-manage` to install when the caller has it, else at
+  the Chat UI. It shares the skills' `/ping` for the connect
+  (`connect-ping.ts`), reads the installed version off disk, and gives up after
+  1.5 s. A status that fails or times out adds no line.
 
 ## The device install
 

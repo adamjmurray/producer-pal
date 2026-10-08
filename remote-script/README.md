@@ -145,11 +145,12 @@ Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
 skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
 and with every route whose result a caller waits on and that changes the Set
 (`/load`, `/hotswap`, `/device/duplicate`, `/clip/convert`, `/envelope/write`,
-`/envelope/clear`, `/device/simpler/write`), a bit under the time it has left,
-so one deadline covers the lookup and the load, and a change it stopped waiting
-for isn't made later. `/undo/end` is fire-and-forget and sends none. A new route
-that changes the Set must be sent one too. A job Live started but didn't finish
-in 30s is also a 504, with `started: true`: Live may have made the change.
+`/envelope/clear`, `/device/simpler/write`, `/undo/undo`, `/undo/redo`), a bit
+under the time it has left, so one deadline covers the lookup and the load, and
+a change it stopped waiting for isn't made later. `/undo/end` is fire-and-forget
+and sends none. A new route that changes the Set must be sent one too. A job
+Live started but didn't finish in 30s is also a 504, with `started: true`: Live
+may have made the change.
 
 ### `GET /ping`
 
@@ -372,6 +373,25 @@ Closes Live's pending undo step and answers `{ok: true}`. Live merges every
 change since the last step into one, so Producer Pal sends this after each write
 tool call (without waiting for the answer) and one undo reverts one call. It
 does nothing when no step is pending. Max for Live's LOM can't do this.
+
+### `POST /undo/undo`, `POST /undo/redo`
+
+Step Live's history back or forward with `song.undo()` and `song.redo()`.
+`steps` (a whole number 1 to 50, default 1; anything else is a 400) takes
+several, stopping early where history ends. Answers
+`{done, can_undo, can_redo, stopped?}`, read after the last step; `stopped` says
+why `done` is below `steps`. The history is Live's own, so it holds the user's
+edits in Live as well as Producer Pal's. It's a 409 (`nothing to undo`,
+`nothing to redo`) when Live says it can't, and nothing is called.
+
+**It never removes Producer Pal.** Before each step it counts the top-level
+devices that are or hold Producer Pal. A step that lowers the count (undoing the
+step that inserted it) is reversed at once, in the same call, and the call stops
+with `stopped` set. The device's server restarts as a new process, so that
+answer usually never arrives. The trip is remembered on the bridge (so another
+Set, which gets a new bridge, starts clear): the next step in the same direction
+is a 409 that touches nothing, until `/undo/end` (Producer Pal wrote again) or a
+step the other way clears it.
 
 ## How it works
 

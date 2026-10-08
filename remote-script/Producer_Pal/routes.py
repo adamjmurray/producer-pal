@@ -349,4 +349,6 @@ POST_ONLY = (
     "/clip/convert",
     "/device/simpler/write",
     "/undo/end",
+    "/undo/undo",
+    "/undo/redo",
 )

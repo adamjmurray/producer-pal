@@ -486,7 +486,7 @@ library search and the AI stops being told how to search a library it can't
 reach. The saving is therefore bigger than the tool's own schema, and you don't
 have to trim skills by hand to match your toolset.
 
-The header's count is out of all 23 tools, so it reads **21/23** out of the box:
+The header's count is out of all 24 tools, so it reads **22/24** out of the box:
 the two experimental ones (**Live API** and **Subagent**, both under
 **Advanced**) are off until you switch them on. The denominator stays put as
 they move, so the fraction always means how much of the full set you're running.

@@ -23,7 +23,7 @@ import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
 import {
   installRemoteScript,
   remoteScriptPath,
-} from "../remote-script-install.ts";
+} from "../install/remote-script-install.ts";
 import { readRemoteScriptSource } from "../remote-script-source.ts";
 import { UserLibraryFolderError } from "../user-library/user-library-folder.ts";
 import {

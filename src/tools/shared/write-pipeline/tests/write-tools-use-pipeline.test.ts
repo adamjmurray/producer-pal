@@ -50,6 +50,8 @@ const READ_ONLY: Record<string, string | null> = {
   "ppal-read-device": null,
   "ppal-library": null,
   "ppal-context": "writes the project context, never the Live Set",
+  "ppal-manage":
+    "acts on Live's undo history and the remote script install, not on targets",
   "ppal-live-api":
     "a raw Live API escape hatch the model opts into; not a target-list write",
 };

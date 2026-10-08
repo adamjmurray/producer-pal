@@ -39,6 +39,7 @@ import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { connect } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
+import { manage } from "#src/tools/core/manage.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
@@ -154,6 +155,7 @@ const toolDispatch: Record<
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
   "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
+  "ppal-manage": (args, ctx) => manage(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
 };

@@ -73,6 +73,7 @@ a whole area you never use:
 | `object-paths` / `object-paths-basic`            | Addressing tracks and scenes by path: `t0`, `s0`, `rt0`, `mt`, the `+` spellings that create, and how a number you say maps onto one         |
 | `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                                    |
 | `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                                   |
+| `history`                                        | Undo and redo with the Manage tool: what a step is, and to say what it undoes and ask first if you may have edited                           |
 | `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                                              |
 | `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                                                  |
 | `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                                                         |

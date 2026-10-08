@@ -108,21 +108,22 @@ describe("enrichConnect", () => {
 
     const blocks = await enrichedBlocks({ projectContext: "House track." });
 
-    expect(blocks).toHaveLength(6); // the connect result itself, then five
-    expect(blocks[1]).toContain("Producer Pal"); // skills
-    expect(blocks[2]).toContain("Project context (this Live Set):");
-    expect(blocks[3]).toContain("Global context (all projects):");
-    expect(blocks[4]).toContain("Memory index");
-    expect(blocks[4]).toContain("Read an entry before work it covers");
-    expect(blocks[4]).toContain("rewrite that entry right away");
-    expect(blocks[5]).toContain("Report the connection status");
+    expect(blocks).toHaveLength(7); // the connect result itself, then six
+    expect(blocks[1]).toContain("remoteScript:");
+    expect(blocks[2]).toContain("Producer Pal"); // skills
+    expect(blocks[3]).toContain("Project context (this Live Set):");
+    expect(blocks[4]).toContain("Global context (all projects):");
+    expect(blocks[5]).toContain("Memory index");
+    expect(blocks[5]).toContain("Read an entry before work it covers");
+    expect(blocks[5]).toContain("rewrite that entry right away");
+    expect(blocks[6]).toContain("Report the connection status");
   });
 
   it("puts the portal version line right after the connect result, before the skills", async () => {
     const blocks = await enrichedBlocks({ portalVersion: "1.0.0" });
 
     expect(blocks[1]).toContain("portalVersion: 1.0.0");
-    expect(blocks[2]).toContain("Producer Pal Skills");
+    expect(blocks[3]).toContain("Producer Pal Skills");
     expect(blocks.at(-1)).toContain("Report the connection status");
   });
 
@@ -144,10 +145,54 @@ describe("enrichConnect", () => {
     expect(remoteScriptPing).toHaveBeenCalledOnce();
   });
 
-  it("adds no remote script line when the script is current", async () => {
+  it("gives just the version when the script is current", async () => {
     const blocks = await enrichedBlocks();
 
-    expect(blocks.some((block) => block.includes("remoteScript:"))).toBe(false);
+    expect(blocks).toContain(`remoteScript: v${VERSION} running`);
+  });
+
+  describe("the install pointer in the remote script line", () => {
+    const NOT_INSTALLED = {
+      installed: false,
+      installedVersion: null,
+      running: false,
+      runningVersion: null,
+    };
+
+    /**
+     * @param overrides - Device settings to override the defaults
+     * @returns The remote script line
+     */
+    async function lineFor(
+      overrides: Partial<ConnectEnrichmentConfig>,
+    ): Promise<string | undefined> {
+      remoteScriptStatus.mockResolvedValue(currentStatus(NOT_INSTALLED));
+
+      const blocks = await enrichedBlocks(overrides);
+
+      return blocks.find((block) => block.startsWith("remoteScript:"));
+    }
+
+    it("names ppal-manage when the toolset has it", async () => {
+      expect(await lineFor({})).toContain("ppal-manage");
+      expect(
+        await lineFor({ tools: ["ppal-connect", "ppal-manage"] }),
+      ).toContain("ppal-manage");
+    });
+
+    it("names the Chat UI when the toolset leaves ppal-manage out", async () => {
+      const line = await lineFor({ tools: ["ppal-connect"] });
+
+      expect(line).toContain("Chat UI");
+      expect(line).not.toContain("ppal-manage");
+    });
+
+    it("names the Chat UI in small-model mode", async () => {
+      const line = await lineFor({ smallModelMode: true });
+
+      expect(line).toContain("Chat UI");
+      expect(line).not.toContain("ppal-manage");
+    });
   });
 
   it("adds no portal line for a request that did not come through a portal", async () => {

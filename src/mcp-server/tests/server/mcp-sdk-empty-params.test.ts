@@ -15,6 +15,7 @@ import { buildFallbackTools } from "#src/portal/fallback-tools.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { connectMcpClient as connect } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { isOfferedInMode } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
 // The MCP SDK parses args against the published schema, coercing them, before
@@ -160,7 +161,11 @@ describe("published JSON Schema", () => {
 
       const { tools } = (received.at(-1) as { result: ListToolsResult }).result;
 
-      expect(tools.length).toBeGreaterThanOrEqual(STANDARD_TOOL_DEFS.length);
+      expect(tools.length).toBeGreaterThanOrEqual(
+        STANDARD_TOOL_DEFS.filter((def) =>
+          isOfferedInMode(def, profile.smallModelMode === true),
+        ).length,
+      );
       // The SDK's own converter, with the options it uses for tools/list.
       expect(schemaTexts(tools)).toStrictEqual(
         schemaTexts(tools, (name) =>

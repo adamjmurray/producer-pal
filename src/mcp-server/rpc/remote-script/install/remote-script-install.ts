@@ -5,15 +5,15 @@
 
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
-import { EMBEDDED_REMOTE_SCRIPT_FILES } from "./embedded-remote-script.ts";
+import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
 import {
   libraryPathExists,
   listLibraryFolder,
   removeFromLibrary,
   renameInLibrary,
   writeLibraryFile,
-} from "./user-library/user-library-fs.ts";
-import { resolveUserLibraryFolder } from "./user-library/user-library-folder.ts";
+} from "../user-library/user-library-fs.ts";
+import { resolveUserLibraryFolder } from "../user-library/user-library-folder.ts";
 
 // Live runs `import <folder>`, so the folder name must be a valid Python name.
 const SCRIPT_FOLDER = "Producer_Pal";

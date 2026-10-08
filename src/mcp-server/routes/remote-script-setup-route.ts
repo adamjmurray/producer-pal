@@ -10,7 +10,7 @@
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
 import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
-import { installRemoteScript } from "../rpc/remote-script/remote-script-install.ts";
+import { installRemoteScript } from "../rpc/remote-script/install/remote-script-install.ts";
 import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts";
 import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-library-folder.ts";
 
