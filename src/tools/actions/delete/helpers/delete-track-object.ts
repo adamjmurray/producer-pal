@@ -34,7 +34,8 @@ export function deleteTrackObject(
     return `Live has no way to delete the main track ${targetLabel(object)}`;
   }
 
-  // Check for return track first
+  // No host check here: Producer Pal is a MIDI effect, and a return track
+  // only takes audio effects, so it can never host the device.
   const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
 
   if (returnMatch) {
