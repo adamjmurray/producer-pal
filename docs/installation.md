@@ -26,7 +26,7 @@ Upgrading from a previous version? See the
 
 <div class="download-band download-band-compact">
   <h2 class="download-title">Step 1: Get the Max for Live Device</h2>
-  <p class="download-subtitle">Required for every setup.</p>
+  <p class="download-subtitle">Desktop apps and command-line tools can install it for you (see their guides). Everything else needs it.</p>
   <div class="download-actions">
     <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
       <span class="download-btn-label">Download Max for Live Device</span>

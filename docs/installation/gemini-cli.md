@@ -29,7 +29,7 @@ probably via OpenRouter as noted on that page).
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Configure Gemini CLI
 

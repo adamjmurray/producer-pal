@@ -68,6 +68,10 @@ gives you this shape.
 
 - Install the [Producer Pal remote script](/guide/remote-script) into your User
   Library, without opening the Chat UI. Restart Live afterwards.
+- Add the Producer Pal device to the open Live Set, on a new MIDI track, and
+  install it in your User Library first if needed. Works while Producer Pal
+  isn't running yet, through `npx producer-pal` or the Claude Desktop extension.
+  Needs the remote script.
 - Undo and redo in Live's own history, one step or several at a time. One
   Producer Pal tool call that changed the Live Set is one step. It never removes
   Producer Pal itself. The history also holds your own edits in Live, so an undo

@@ -16,7 +16,7 @@ environment variables are listed in the
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Configure Your AI
 
