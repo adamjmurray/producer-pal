@@ -38,6 +38,11 @@ the loop.
 - **Arrangement**: place, move, split, and duplicate clips along the timeline,
   add locators, and stack alternate versions on [take lanes](#take-lanes).
   [Clip tools →](/features/tools#clip-tools)
+- **Automation**: draw envelopes on Session clips for mixer and device
+  parameters, with ramps, jumps and curves. Copying an automated clip into the
+  Arrangement writes it onto the track. Needs the
+  [remote script](/guide/remote-script); see
+  [Limitations](/features/limitations).
 - **Session view**: create scenes, capture what's playing into a new one, and
   give a scene its own tempo and time signature.
   [Scene tools →](/features/tools#scene-tools)
@@ -62,8 +67,8 @@ the loop.
 Every tool, with its full parameter list:
 **[Tool Reference →](/features/tools)**
 
-What it can't do (VST/AU plug-in internals, audio analysis):
-**[Limitations →](/features/limitations)**
+What it can't do (VST/AU plug-in internals, direct arrangement automation, audio
+analysis): **[Limitations →](/features/limitations)**
 
 ## MIDI Notation {#custom-music-notation}
 

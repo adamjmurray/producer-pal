@@ -47,8 +47,8 @@ are **MIDI or warped audio**.
   the list route found none. It can't tell unreadable envelopes from readable
   ones when both exist.
 - Duplicating a Session clip keeps its envelopes, curves included. Duplicating
-  to the Arrangement writes the envelope into the track's automation lane, which
-  neither API can read.
+  to the Arrangement writes the envelope into the track's automation lane. See
+  [arrangement-automation.md](arrangement-automation.md).
 
 ## Overridden automation
 

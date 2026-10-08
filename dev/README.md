@@ -47,6 +47,8 @@ part is a file beside it.
   — what only the Python API can do, and how to probe it.
 - [live-api/clip-envelopes.md](live-api/clip-envelopes.md) — which clip
   envelopes the Python API reaches, their units, curves and undo.
+- [live-api/arrangement-automation.md](live-api/arrangement-automation.md) —
+  what can read and write a track's arrangement automation lanes.
 - [live-api/conversions.md](live-api/conversions.md) — `Live.Conversions`: audio
   clip to MIDI, Simpler or Drum Rack, and why the result is found by diff.
 - [live-api/rack-macro-mappings.md](live-api/rack-macro-mappings.md) — what can

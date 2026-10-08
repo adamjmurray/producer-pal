@@ -2,8 +2,9 @@
 title: Limitations
 description:
   What Producer Pal can't do, and the workarounds. No control over VST/AU
-  plug-in internals, no audio analysis or synthesis, no visibility into
-  arrangement time signature changes, and one drum pitch map per track.
+  plug-in internals, arrangement automation only through Session clips, no audio
+  analysis or synthesis, no visibility into arrangement time signature changes,
+  and one drum pitch map per track.
 ---
 
 # Limitations
@@ -59,6 +60,21 @@ envelopes behind:
 A move along a track's own arrangement lane is not affected. A re-created audio
 clip also loses any warp markers you edited by hand, and the result says which
 of the two applied.
+
+## Arrangement Automation Goes Through Session Clips
+
+Live's API can't read or draw a track's arrangement automation directly. With
+the [remote script](/guide/remote-script), Producer Pal draws automation on
+Session clips, and copying one into the Arrangement writes it onto the track's
+automation lane. That comes with limits:
+
+- The copy replaces the clips already in that span, so automating a part you've
+  already arranged means re-making it with the same notes.
+- Copy the clip at its own length. A longer copy tiles it, and only the first
+  tile carries the automation.
+- Producer Pal can't see the lane afterwards, or clear it. A later copy
+  overwrites it over its own span, and the lane returns to its old value after.
+- Moving an arrangement clip leaves its automation where it was.
 
 ## Audio Content Can't Be Analyzed or Generated
 
