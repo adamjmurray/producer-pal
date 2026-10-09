@@ -280,11 +280,44 @@ describe("applySpecializedActions", () => {
     expect(results[2]).toStrictEqual({ action: "Reverse " });
   });
 
+  it("fails the earlier mentions of an action whose last mention failed", () => {
+    const device = registerDevice("Simpler");
+
+    registerMockObject("dev-1", {
+      type: "Device",
+      properties: { class_display_name: "Simpler" },
+      methods: {
+        crop: () => {
+          throw new Error("Live refused the crop");
+        },
+      },
+    });
+
+    const results = applySpecializedActions(device, [
+      "crop",
+      "reverse",
+      "Crop",
+      "crop ",
+    ]);
+    const replaced = 'not written: "crop " was meant to replace it, but failed';
+
+    expect(results).toStrictEqual([
+      { action: "crop", ok: false, detail: replaced },
+      { action: "reverse" },
+      { action: "Crop", ok: false, detail: replaced },
+      { action: "crop ", ok: false, detail: "Live refused the crop" },
+    ]);
+  });
+
   it("answers an unparseable action named twice once per mention", () => {
     const device = registerDevice("Simpler");
 
     expect(applySpecializedActions(device, ["1bad(", "1bad("])).toStrictEqual([
-      { action: "1bad(", detail: "named again later in this call" },
+      {
+        action: "1bad(",
+        ok: false,
+        detail: 'not written: "1bad(" was meant to replace it, but failed',
+      },
       {
         action: "1bad(",
         ok: false,

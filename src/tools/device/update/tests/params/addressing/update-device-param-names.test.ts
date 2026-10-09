@@ -197,7 +197,7 @@ describe("updateDevice - a name that matches more than one param", () => {
     );
 
     expect(message).toMatch(
-      /^no param landed — "Width": named again as "width" later in this call; "width": names 2 params /,
+      /^no param landed — "Width": not written: "width" was meant to replace it, but failed; "width": names 2 params /,
     );
     expect(bandwidth.set).not.toHaveBeenCalled();
     expect(stereoWidth.set).not.toHaveBeenCalled();
@@ -509,8 +509,8 @@ describe("updateDevice - one param named twice", () => {
     expect(paramThreshold.set).toHaveBeenCalledWith("value", 0.4);
   });
 
-  // Two misses with one key: the last reports the miss, the first is skipped.
-  it("skips an earlier copy of a name that reaches nothing", () => {
+  // Two misses with one key: the last reports the miss, the first fails with it.
+  it("fails an earlier copy of a name that reaches nothing", () => {
     const message = noParamLanded(() =>
       updateDevice({
         id: "125",
@@ -522,7 +522,7 @@ describe("updateDevice - one param named twice", () => {
     );
 
     expect(message).toMatch(
-      /^no param landed — "Nope": named again as "nope" later in this call; "nope": not found/,
+      /^no param landed — "Nope": not written: "nope" was meant to replace it, but failed; "nope": not found/,
     );
   });
 

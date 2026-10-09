@@ -114,4 +114,28 @@ describe("ppal-update-device: write rules", () => {
       { action: route },
     ]);
   });
+
+  it("fails the earlier mentions of an action whose last mention failed", async () => {
+    const track = await createMidiTrack(ctx.client!);
+    const id = await createTestDevice(ctx.client!, "Wavetable", `t${track}`);
+    const bad = "setModulation('Flt 1 Freq','LFO 1')";
+    const good = "addModulationTarget('Flt 1 Freq')";
+    const updated = parseToolResult<DeviceEntry>(
+      await call("ppal-update-device", { id, actions: [bad, good, bad] }),
+    );
+
+    expect(updated.actions).toStrictEqual([
+      {
+        action: bad,
+        ok: false,
+        detail: `not written: "${bad}" was meant to replace it, but failed`,
+      },
+      { action: good },
+      {
+        action: bad,
+        ok: false,
+        detail: "requires 3 arguments (target, source, amount)",
+      },
+    ]);
+  });
 });

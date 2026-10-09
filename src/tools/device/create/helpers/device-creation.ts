@@ -7,6 +7,7 @@
 // arrives: Live's insert_device for a native one, or a browser load moved into
 // place. Shared so both kinds resolve, warn, and fail alike.
 
+import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
@@ -18,10 +19,7 @@ import {
   ONE_INSTRUMENT_PER_CHAIN,
   deviceHasInstrument,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
-import {
-  type ParamResult,
-  refreshParamValues,
-} from "#src/tools/shared/device/helpers/param-reading.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   pastTheEndReason,
   resolveInsertionPath,

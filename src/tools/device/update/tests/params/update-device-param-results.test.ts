@@ -370,6 +370,24 @@ describe("updateDevice - written param values", () => {
     );
   });
 
+  it("fails the earlier sample when the last one leaves nothing to read", () => {
+    registerSimplerDevice();
+
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "simpler-1",
+        params: [
+          { name: "sample", value: "/nowhere/first.wav" },
+          { name: "Sample", value: "/nowhere/missing.wav" },
+        ],
+      }),
+    );
+
+    expect(message).toBe(
+      'no param landed — "sample": not written: "Sample" was meant to replace it, but failed; "sample": written, but no value reads back',
+    );
+  });
+
   it("reports a reason when a sample write leaves the old sample loaded", () => {
     registerSimplerWithSample();
 

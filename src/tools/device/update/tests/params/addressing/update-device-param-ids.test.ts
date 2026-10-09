@@ -202,7 +202,7 @@ describe("updateDevice - params addressed by id", () => {
     );
 
     expect(message).toBe(
-      'no param landed — "999": named again as id 999 later in this call; "999": not found on t0/d0 (id dev1)',
+      'no param landed — "999": not written: id 999 was meant to replace it, but failed; "999": not found on t0/d0 (id dev1)',
     );
   });
 

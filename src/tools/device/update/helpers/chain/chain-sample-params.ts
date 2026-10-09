@@ -7,6 +7,7 @@
 // and spell the pad in the param name. Both spellings below reach the same pad
 // as that shortcut does, and say the same things about it.
 
+import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import {
   type ParamEntry,
   paramEntryKey,
@@ -14,10 +15,8 @@ import {
 import {
   type ParamOutcome,
   type ParamResult,
-  refreshParamValues,
   skippedParam,
   skippedParamById,
-  supersededParam,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   resolveDrumChainSampleTarget,
@@ -25,7 +24,7 @@ import {
 } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { setParamValues } from "../../update-device-param-setters.ts";
-import { supersededParamReasons } from "../params/superseded-params.ts";
+import { paramOutcomes } from "../params/superseded-params.ts";
 import { type UpdatePropertyOptions } from "../update-device-properties.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { notApplicableReason } from "../update-target-types.ts";
@@ -55,33 +54,30 @@ export function applyChainSampleParams(
 ): ParamResult[] {
   const params = options.params ?? [];
   const force = options.force ?? false;
-  const writable = params.filter(
-    (entry) => type === "DrumChain" && isSampleParam(paramEntryKey(entry).key),
-  );
   // Each entry is written on its own below, so a later `sample` entry has to
-  // be spotted here, or both would load. Only entries that would be written
-  // compete: the rest are not applicable either way.
-  const superseded = supersededParamReasons(null, writable);
+  // be spotted, or both would load. Only entries that would be written compete:
+  // the rest are not applicable either way.
+  const writes = (entry: ParamEntry): boolean =>
+    type === "DrumChain" && isSampleParam(paramEntryKey(entry).key);
 
   return refreshParamValues(
-    params.flatMap((entry) => {
-      const { key, byId } = paramEntryKey(entry);
-      const writableIndex = writable.indexOf(entry);
+    paramOutcomes(
+      null,
+      params,
+      (entry) => {
+        if (writes(entry)) {
+          return writeChainSample(target, entry, force, notes, chainsMade);
+        }
 
-      if (writableIndex === -1) {
+        const { key, byId } = paramEntryKey(entry);
         const reason = notApplicableReason("params", type, target);
 
         return [
           byId ? skippedParamById(key, reason) : skippedParam(key, reason),
         ];
-      }
-
-      const overridden = superseded.get(writableIndex);
-
-      return overridden == null
-        ? writeChainSample(target, entry, force, notes, chainsMade)
-        : [supersededParam(key, byId, overridden)];
-    }),
+      },
+      writes,
+    ),
   );
 }
 

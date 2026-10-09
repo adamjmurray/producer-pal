@@ -182,7 +182,7 @@ describe("updateDevice - every action failed", () => {
     expect(() =>
       updateDevice({ id: "simpler-1", actions: ["nope", "nope"] }),
     ).toThrow(
-      'no action landed — "nope": named again later in this call; "nope": unknown action for this device',
+      'no action landed — "nope": not written: "nope" was meant to replace it, but failed; "nope": unknown action for this device',
     );
   });
 

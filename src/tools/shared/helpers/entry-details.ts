@@ -8,6 +8,15 @@
 // wording. The mark is non-enumerable, so JSON, equality checks and a spread
 // ignore it, and a copy of the entry loses it: read it before copying.
 const SUPERSEDED = Symbol("superseded");
+// The later entry an overridden one was meant to be replaced by, so its fate
+// can be checked once every entry has landed or failed.
+const REPLACER = Symbol("replacer");
+
+/** The later entry that was to replace an overridden one, and how to name it. */
+export interface Replacer {
+  entry: object;
+  by: string;
+}
 
 /** Any result entry that can carry a detail. */
 export interface EntryWithDetail {
@@ -55,4 +64,22 @@ export function markSuperseded<T extends object>(entry: T): T {
  */
 export function isSuperseded(entry: object): boolean {
   return (entry as { [SUPERSEDED]?: true })[SUPERSEDED] === true;
+}
+
+/**
+ * Say which later entry an overridden entry was left unwritten for.
+ * @param entry - The overridden entry, changed in place
+ * @param replacer - The later entry and how to name it
+ */
+export function linkReplacer(entry: object, replacer: Replacer): void {
+  Object.defineProperty(entry, REPLACER, { value: replacer });
+}
+
+/**
+ * The later entry an overridden entry was left unwritten for.
+ * @param entry - Any nested entry
+ * @returns The later entry, or undefined when none was linked
+ */
+export function replacerOf(entry: object): Replacer | undefined {
+  return (entry as { [REPLACER]?: Replacer })[REPLACER];
 }

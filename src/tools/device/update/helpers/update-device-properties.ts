@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
@@ -10,7 +11,6 @@ import {
   type UnresolvedParam,
   paramResultLanded,
   paramWritten,
-  refreshParamValues,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { applyChainSampleParams } from "./chain/chain-sample-params.ts";
 import {

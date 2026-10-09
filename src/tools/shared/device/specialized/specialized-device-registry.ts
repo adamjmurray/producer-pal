@@ -25,6 +25,7 @@ import {
 } from "../helpers/param-reading.ts";
 import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
 import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { failUnreplacedEntries } from "#src/tools/shared/write-pipeline/plans/replaced-entries.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
@@ -192,7 +193,8 @@ export function readSpecializedParams(
 /**
  * Parse and dispatch the `actions` arg for a specialized device. Every action
  * keeps its slot, and nothing warns: its entry is where the caller reads what
- * happened to it. An action named again later runs only at its last mention.
+ * happened to it. An action named again later runs only at its last mention; if
+ * that one is refused, the earlier mention is too.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
  * @returns One entry per action sent, in order
@@ -205,8 +207,7 @@ export function applySpecializedActions(
   // Running the same action twice does nothing the first run didn't: the last
   // mention runs, like any other target named twice.
   const overridden = lastWins(actions.map((raw) => [actionKey(raw)]));
-
-  return actions.map((raw, index): ActionResult => {
+  const results = actions.map((raw, index): ActionResult => {
     if (overridden.has(index)) {
       return markSuperseded({ action: raw, detail: namedAgain() });
     }
@@ -238,6 +239,19 @@ export function applySpecializedActions(
       return refusedAction(raw, errorMessage(e));
     }
   });
+
+  // An earlier mention that gave way to a last one that failed wasn't run.
+  return failUnreplacedEntries(
+    results,
+    new Map(
+      [...overridden].map(([index, later]) => [
+        index,
+        { index: later, by: `"${actions[later]}"` },
+      ]),
+    ),
+    (result) => "ok" in result,
+    (result, detail) => refusedAction(result.action, detail),
+  );
 }
 
 /**
