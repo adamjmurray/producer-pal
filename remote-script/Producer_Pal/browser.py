@@ -32,6 +32,9 @@ TYPES = {
 # Browser names that are really filenames.
 _SUFFIXES = (".amxd", ".adg", ".adv")
 
+# Only Max devices lose their extension in the browser.
+_DEVICE_SUFFIX = ".amxd"
+
 # The install puts this file in <User Library>/Remote Scripts/Producer_Pal.
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _USER_LIBRARY = (
@@ -265,22 +268,58 @@ def same_name(a, b):
 def _walk(root, segments):
     """The item at `segments` below `root`, or None.
 
-    Live's browser drops the extension from a Max device's name (the file
-    `Producer_Pal.amxd` shows as `Producer_Pal`), so a file name with a
-    device or preset suffix is tried without it too.
+    Folders match by name. The file is matched by its exact name first. Live
+    drops the extension from a Max device's name (`Producer_Pal.amxd` shows as
+    `Producer_Pal`), so next the file name is matched against the end of each
+    item's `uri`, which keeps the real file name. A suffix is never stripped to
+    match some other item: `Kit.adv` must not find a Max device named `Kit`.
     """
-    tries = [segments]
-    name = segments[-1] if segments else ""
-    for suffix in _SUFFIXES:
-        if name.lower().endswith(suffix):
-            tries.append(segments[:-1] + [name[: -len(suffix)]])
-    for attempt in tries:
-        try:
-            item, _ = resolve_path(root, "/".join(attempt))
-        except PathNotFound:
-            continue
-        return item
+    if not segments:
+        return None
+    try:
+        folder, _ = resolve_path(root, "/".join(segments[:-1]))
+    except PathNotFound:
+        return None
+    name = segments[-1]
+    wanted = _path_name(name).lower()
+    children = list(folder.children)
+    for child in children:
+        if _path_name(child.name).lower() == wanted:
+            return child
+    for child in children:
+        if _uri_file_name(child) == wanted:
+            return child
+    # Without a usable uri, only a Max device may match by its bare name.
+    stem = wanted[: -len(_DEVICE_SUFFIX)]
+    if stem and wanted.endswith(_DEVICE_SUFFIX):
+        for child in children:
+            if (
+                not _has_uri(child)
+                and child.is_device
+                and _path_name(child.name).lower() == stem
+            ):
+                return child
     return None
+
+
+def _has_uri(item):
+    uri = getattr(item, "uri", None)
+    return isinstance(uri, str) and bool(uri)
+
+
+def _uri_file_name(item):
+    """The last part of an item's `uri` as a lowercase file name, or None.
+
+    The uri ends with the real file name, URL-encoded, after the last ":" or
+    "#" (a top-level item in a Place or pack has "#" before it):
+    `query:UserLibrary#Presets:Max%20MIDI%20Effect:Producer_Pal.amxd`,
+    `userfolder:/Users/me/Devices#Producer_Pal.amxd`. A "+" stays literal.
+    """
+    if not _has_uri(item):
+        return None
+    uri = item.uri
+    tail = uri[max(uri.rfind(":"), uri.rfind("#")) + 1 :]
+    return _path_name(unquote(tail)).lower()
 
 
 def _file_segments(path):

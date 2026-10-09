@@ -142,8 +142,11 @@ class PlacesByLocationTest(unittest.TestCase):
         self.assertIs(item, library.children[0])
         self.assertEqual(path, "User Library/kick.wav")
 
-    def test_a_device_file_matches_its_name_without_the_extension(self):
-        device = FakeItem("Producer_Pal")
+    def test_a_max_device_file_is_found_through_its_uri(self):
+        device = FakeItem(
+            "Producer_Pal", uri="query:UserLibrary#Presets:Producer_Pal.amxd"
+        )
+        device.is_device = True
         library = FakeItem("User Library", [FakeItem("Presets", [device])])
         with mock.patch.object(browser, "_USER_LIBRARY", "/Users/me/User Library"):
             item, _ = browser.find_file(

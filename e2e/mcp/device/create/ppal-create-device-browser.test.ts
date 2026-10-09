@@ -17,6 +17,8 @@
  *
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
  */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
@@ -242,6 +244,76 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(response.status).toBe(409);
       expect(body.error).toContain("Producer Pal is already in this Live Set");
       expect(await trackCount()).toBe(before);
+    });
+
+    describe("loading Producer_Pal.amxd by file path", () => {
+      /**
+       * POST /load with a file path.
+       * @param path - The file's absolute path
+       * @returns The HTTP status and error text
+       */
+      async function loadFile(
+        path: string,
+      ): Promise<{ status: number; error?: string }> {
+        const response = await fetch(
+          `http://127.0.0.1:${await resolveRemoteScriptPort()}/load`,
+          { method: "POST", body: JSON.stringify({ type: "file", path }) },
+        );
+        const body = (await response.json()) as { error?: string };
+
+        return { status: response.status, error: body.error };
+      }
+
+      /**
+       * The installed Producer_Pal.amxd, or skip when this machine has none in
+       * its User Library.
+       * @param skip - The test's `skip`
+       * @returns The file's absolute path
+       */
+      async function installedDevice(skip: () => never): Promise<string> {
+        const ping = await fetch(
+          `http://127.0.0.1:${await resolveRemoteScriptPort()}/ping`,
+        );
+        const { user_library: library } = (await ping.json()) as {
+          user_library: string | null;
+        };
+        const file =
+          library == null
+            ? null
+            : join(
+                library,
+                "Presets",
+                "MIDI Effects",
+                "Max MIDI Effect",
+                "Producer_Pal.amxd",
+              );
+
+        return file != null && existsSync(file) ? file : skip();
+      }
+
+      it("finds the device by its .amxd path", async ({ skip }) => {
+        const before = await trackCount();
+        const { status, error } = await loadFile(await installedDevice(skip));
+
+        // Found, then refused because the Set already has one
+        expect(status).toBe(409);
+        expect(error).toContain("Producer Pal is already in this Live Set");
+        expect(await trackCount()).toBe(before);
+      });
+
+      it("does not match the device through another extension", async ({
+        skip,
+      }) => {
+        const before = await trackCount();
+        const file = await installedDevice(skip);
+        const { status, error } = await loadFile(
+          file.replace(/\.amxd$/, ".adv"),
+        );
+
+        expect(status).toBe(404);
+        expect(error).toContain("holds");
+        expect(await trackCount()).toBe(before);
+      });
     });
   },
 );

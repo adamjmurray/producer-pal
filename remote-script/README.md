@@ -129,7 +129,10 @@ path down whichever browser tree mirrors its folder: the User Library (the one
 this script is installed in), a Places folder, or a pack under Packs. The User
 Library and Places folders are matched by their real location. Live doesn't say
 where a pack is on disk, so packs are matched by name. If several packs could
-hold the file, the load is refused with a 409 listing them.
+hold the file, the load is refused with a 409 listing them. The file name must
+match exactly: Live drops only a Max device's extension, so `Foo.amxd` is
+matched against each item's `uri`, and `Foo.adv` never loads a Max device named
+`Foo`.
 
 ## Routes
 
