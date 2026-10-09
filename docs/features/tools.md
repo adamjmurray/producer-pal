@@ -72,6 +72,10 @@ gives you this shape.
   install it in your User Library first if needed. Works while Producer Pal
   isn't running yet, through `npx producer-pal` or the Claude Desktop extension.
   Needs the remote script.
+- Update the Producer Pal device in the open Live Set to the version your
+  `npx producer-pal` or Claude Desktop extension ships. It replaces the device
+  in place and keeps your project context. Your AI offers this when the device
+  is older. Needs the remote script.
 - Undo and redo in Live's own history, one step or several at a time. One
   Producer Pal tool call that changed the Live Set is one step. It never removes
   Producer Pal itself. The history also holds your own edits in Live, so an undo
