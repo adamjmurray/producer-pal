@@ -186,6 +186,30 @@ describe("ppal-create-clip with a param the new clip can't use", () => {
     expect(created.warnings).toStrictEqual([]);
   });
 
+  // A blank sampleFile means no sample, so the clip is MIDI and its transforms
+  // run.
+  it("treats a blank sampleFile as a MIDI clip and runs its transforms", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s32`,
+        notes: "v100 C3 1|1",
+        transforms: "velocity += 10",
+        sampleFile: "",
+      },
+    });
+    const created = parseToolResultWithWarnings<CreateClipResult>(result);
+
+    expect(created.data.detail).toBeUndefined();
+    expect(created.warnings).toStrictEqual([]);
+
+    await sleep(100);
+
+    const clip = await readClipWithNotes(ctx.client!, created.data.id);
+
+    expect(clip.notes).toContain("v110");
+  });
+
   // firstStart only lands when the call also asks for looping, so anything else
   // says so on its own entry — the clip was still created.
   it("reports an ignored firstStart on the clip's own entry", async () => {

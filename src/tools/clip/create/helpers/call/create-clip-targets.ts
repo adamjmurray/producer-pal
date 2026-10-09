@@ -179,7 +179,7 @@ function targetFor(
           clipLength: plan.clipLength,
           droppedDuplicates: plan.droppedDuplicates,
           transformString: args.transforms ?? null,
-          isAudio: plan.sampleFile != null,
+          isAudio: Boolean(plan.sampleFile),
           endBeats: plan.timing.endBeats,
           startBeats: plan.timing.startBeats,
           timeSigNumerator: plan.timing.timeSigNumerator,

@@ -62,10 +62,10 @@ export function resolveClipTimingContext(
   // warned these as ignored. Don't parse them: a malformed one would throw on a
   // param we skipped, where the rule is warn and carry on. timeSignature still
   // applies to audio, so it stays.
-  const { start, firstStart, length, looping } =
-    sampleFile != null
-      ? { start: null, firstStart: null, length: null, looping: null }
-      : timing;
+  // Truthiness, not a null check: an empty sampleFile makes a MIDI clip.
+  const { start, firstStart, length, looping } = sampleFile
+    ? { start: null, firstStart: null, length: null, looping: null }
+    : timing;
 
   const { songTimeSigNumerator, songTimeSigDenominator } = song;
 
