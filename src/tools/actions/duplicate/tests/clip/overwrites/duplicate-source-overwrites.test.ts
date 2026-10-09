@@ -284,9 +284,9 @@ describe("duplicate - a copy onto another source", () => {
       expectNoArrangementCopy(track);
     });
 
-    // A length at or past the loop lands the whole 4-bar clip first, so the
-    // copy at bar 5 clears into B even though it ends up 2 bars long.
-    it("measures a looped copy by its full extent when it lands whole", async () => {
+    // A length that isn't shorter than the clip's 4-bar span lands the whole
+    // span first, so the copy at bar 5 clears into B at bar 7.
+    it("measures a looped copy by its full span when the length isn't shorter", async () => {
       registerClipsAAndB([0, 16, 4], [24, 40]);
 
       const track = registerTrack0();
@@ -296,11 +296,27 @@ describe("duplicate - a copy onto another source", () => {
           type: "clip",
           id: "clipA,clipB",
           toPath: "t0[5|1],t0[13|1]",
-          arrangementLength: "2bar",
+          arrangementLength: "4bar",
         }),
       ).rejects.toThrow(overwrite("t0[5|1]", 'id "clipB"'));
 
       expectNoArrangementCopy(track);
+    });
+
+    // A shorter length is cut to size off to the side, so the copy clears only
+    // 2 bars and never reaches B.
+    it("measures a looped copy by the length asked when it is shorter than its span", async () => {
+      registerClipsAAndB([0, 16, 4], [24, 40]);
+      registerTrack0();
+
+      const result = (await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t0[5|1],t0[13|1]",
+        arrangementLength: "2bar",
+      })) as Array<{ detail?: string }>;
+
+      expect(result[0]?.detail ?? "").not.toContain("overwrite");
     });
 
     it("measures a session source by its clip length", async () => {

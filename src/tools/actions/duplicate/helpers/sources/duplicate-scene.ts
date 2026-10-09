@@ -5,7 +5,6 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
@@ -17,6 +16,7 @@ import { arrangementPath } from "#src/tools/shared/validation/helpers/object-pat
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
+  copyLengthBeats,
   createClipsForLength,
   parseArrangementLength,
 } from "../clip/arrangement-length.ts";
@@ -320,7 +320,7 @@ async function copyTrackClip(
     const { made, cleared } = await copyClearingAsync(
       ledger,
       mainLaneOf(trackIndex, track),
-      copyReach(startBeats, clipLengthBeats(clip), lengthBeats),
+      copyReach(startBeats, copyLengthBeats(clip), lengthBeats),
       write,
       (clips) => clips.flatMap(copiedIds),
     );

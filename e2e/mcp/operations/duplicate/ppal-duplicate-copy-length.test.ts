@@ -4,11 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E tests for arrangementLength on a clip whose copy is longer than its
- * loop: a looped session clip with pre-roll, and an arrangement clip that spans
- * more than its loop. Asking for the loop length used to be read as "no change"
- * and copied the whole span.
- * Uses: e2e-test-set (t8 is an empty MIDI track; s5 is an empty scene)
+ * E2E tests for a clip whose copy is longer than its loop: a looped session
+ * clip with pre-roll, and an arrangement clip that spans more than its loop.
+ * Asking for the loop length used to be read as "no change" and copied the
+ * whole span. A copy is also measured at that length when a later copy in the
+ * same call lands on it.
+ * Uses: e2e-test-set (t8 is an empty MIDI track; s5 and s6 are empty scenes)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/duplicate/ppal-duplicate-copy-length.test.ts
@@ -93,5 +94,42 @@ describe("ppal-duplicate arrangementLength on a copy longer than its loop", () =
     const spanning = await copyTo(source.id, 321);
 
     expect((await copyTo(spanning.id, 331, "3bar")).length).toBe("3bar");
+  });
+
+  it("keeps the tail of a pre-roll copy a shorter copy lands on", async () => {
+    // A 1-bar loop with a 1-bar pre-roll: the first copy is 2 bars long.
+    const looped = await call<{ id: string }>("ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}/s5`,
+      notes: "C3 1|1",
+      length: "2bar",
+      looping: true,
+    });
+
+    await call("ppal-update-clip", {
+      id: looped.id,
+      start: "2|1",
+      length: "1bar",
+      firstStart: "1|1",
+    });
+
+    const short = await call<{ id: string }>("ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}/s6`,
+      notes: "D3 1|1",
+      length: "1bar",
+    });
+    const result = await call<Array<{ id?: string; detail?: string }>>(
+      "ppal-duplicate",
+      {
+        type: "clip",
+        id: `${looped.id},${short.id}`,
+        toPath: `t${EMPTY_MIDI_TRACK}[341|1],t${EMPTY_MIDI_TRACK}[341|1]`,
+      },
+    );
+
+    // The 2-bar copy is written and cut to 1 bar, not skipped as replaced.
+    expect(result).toHaveLength(2);
+    expect(result[0]?.id).toBeDefined();
+    expect(result[0]?.detail).toContain("shortened");
+    expect(result[1]?.id).toBeDefined();
   });
 });

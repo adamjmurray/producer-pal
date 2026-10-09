@@ -9,7 +9,10 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { requireSameLength } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { parseArrangementLength } from "./arrangement-length.ts";
+import {
+  copyLengthBeats,
+  parseArrangementLength,
+} from "./arrangement-length.ts";
 
 /**
  * The copies that land on the source clip's own span.
@@ -87,12 +90,8 @@ export function copySpanBeats(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
 ): number {
-  const sourceLength =
-    (source.getProperty("end_time") as number) -
-    (source.getProperty("start_time") as number);
-
   if (arrangementLength == null || isTakeLaneClip(source)) {
-    return sourceLength;
+    return knownCopyLength(source);
   }
 
   return parseArrangementLength(
@@ -100,6 +99,21 @@ export function copySpanBeats(
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
+}
+
+/**
+ * The source's own copy length, or NaN when the clip can't be read. Planning
+ * runs before any copy, so an unreadable clip fails on its own copy later, not
+ * the whole call here.
+ * @param source - The clip being copied
+ * @returns The length in beats, or NaN
+ */
+function knownCopyLength(source: LiveAPI): number {
+  try {
+    return copyLengthBeats(source);
+  } catch {
+    return Number.NaN;
+  }
 }
 
 /** The copies a call makes, and where each one sits in what was requested. */

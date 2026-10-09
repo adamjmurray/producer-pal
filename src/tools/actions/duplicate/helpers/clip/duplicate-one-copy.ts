@@ -9,7 +9,6 @@ import {
   type ArrangementTrack,
   type ResolvedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
@@ -24,6 +23,7 @@ import {
   takeLaneOf,
   type CopyLane,
 } from "./overwrites/copy-overwrites.ts";
+import { copyLengthBeats } from "./arrangement-length.ts";
 import { copySpanBeats } from "./copy-plan.ts";
 import {
   PartialRecreateError,
@@ -156,7 +156,7 @@ async function clearingCopy(
     options.songTimeSigNumerator,
     options.songTimeSigDenominator,
   );
-  const sourceBeats = clipLengthBeats(object);
+  const sourceBeats = copyLengthBeats(object);
   const { made, cleared } = await copyClearingAsync(
     options.ledger,
     where,

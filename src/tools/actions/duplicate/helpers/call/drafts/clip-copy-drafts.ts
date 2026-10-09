@@ -29,7 +29,10 @@ import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type Cover } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
-import { parseArrangementLength } from "../../clip/arrangement-length.ts";
+import {
+  copyLengthBeats,
+  parseArrangementLength,
+} from "../../clip/arrangement-length.ts";
 import { type ClipDestinations } from "../../clip/clip-destinations.ts";
 import { destinationPath } from "../../clip/copy-entries.ts";
 import { planCopies } from "../../clip/copy-plan.ts";
@@ -325,21 +328,17 @@ function arrangementCovers(
   meter: SongMeter,
 ): Cover[] | undefined {
   const { numerator, denominator } = meter;
-  const own =
-    clip.sceneIndex == null
-      ? (clip.getProperty("end_time") as number) -
-        (clip.getProperty("start_time") as number)
-      : clipLengthBeats(clip);
-  // A re-created copy is never resized, so only a duplicate takes the length.
+  // A re-created copy of a session clip is its loop length; a duplicate is
+  // what copyLengthBeats says. Only a duplicate takes the length asked for.
   const recreated = target.takeLane != null || isTakeLaneClip(clip);
+  const own =
+    recreated && clip.sceneIndex != null
+      ? clipLengthBeats(clip)
+      : copyLengthBeats(clip);
   const span =
     label.length == null || recreated
       ? own
-      : lengthReach(
-          parseArrangementLength(label.length, numerator, denominator),
-          own,
-          clipLengthBeats(clip),
-        );
+      : parseArrangementLength(label.length, numerator, denominator);
 
   if (!Number.isFinite(span) || span <= 0) {
     return undefined;
@@ -353,20 +352,6 @@ function arrangementCovers(
       as: arrangementPositionPath(arrangementLaneOf(target), startBeats, meter),
     },
   ];
-}
-
-/**
- * How far a length-asked copy clears. One shorter than the clip's own length is
- * cut to size off to the side first, so it clears just that. Otherwise Live's
- * duplicate lands the whole clip, clearing all of its extent, before it is
- * lengthened or trimmed.
- * @param beats - The length asked for
- * @param own - The source's extent on its lane
- * @param clipLength - The source's own length
- * @returns The span the copy clears, in beats
- */
-function lengthReach(beats: number, own: number, clipLength: number): number {
-  return beats < clipLength ? beats : Math.max(beats, own);
 }
 
 /**
