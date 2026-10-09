@@ -1,9 +1,10 @@
 # ppal-manage
 
 Actions on Live itself, not on a track, clip or device: install the remote
-script, add Producer Pal to the open Set, and undo and redo in Live's history.
-One call is one action, so there are no target lists, no entries and no skips: a
-call that can't do its action throws.
+script, add Producer Pal to the open Set, update the running Producer Pal
+device, and undo and redo in Live's history. One call is one action, so there
+are no target lists, no entries and no skips: a call that can't do its action
+throws.
 
 It is not a target-list write, so it doesn't run through the
 [write pipeline](../../tools/write-pipeline.md), and it gets no undo step of its
@@ -15,10 +16,10 @@ switch it off like any tool. It sits in the `core` group.
 
 ## Refusals before anything runs
 
-- A missing or unknown `action` throws, listing the four:
-  `action must be one of: install-remote-script, add-producer-pal, undo, redo`.
-- `userLibrary` is only for `install-remote-script` and `add-producer-pal`. On
-  `undo` or `redo` it is refused as any
+- A missing or unknown `action` throws, listing the five:
+  `action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo`.
+- `userLibrary` is only for `install-remote-script`, `add-producer-pal` and
+  `update-producer-pal`. On `undo` or `redo` it is refused as any
   [param only another action reads](README.md#a-param-only-another-action-reads).
 
 ## `install-remote-script`
@@ -54,16 +55,70 @@ description tells the model to ask the user first, since it changes their Set.
 
 - **On the device:** throws `Producer Pal is already running in this Live Set`,
   after the same argument checks as every action.
-- **Result:** `{ track: { index, name }, device, nextSteps }`. `device` says
-  what happened to the file in the User Library (installed, updated, already
-  current, kept because the installed one is newer or can't be ordered, or kept
-  because the update failed, with why). `nextSteps` is `Call ppal-connect next.`
+- **Result:** `{ track: { path, name }, device, nextSteps }`, where `path` is
+  the track path the tools use (`t3`). `device` says what happened to the file
+  in the User Library (installed, updated, already current, kept because the
+  installed one is newer or can't be ordered, or kept because the update failed,
+  with why). `nextSteps` is `Call ppal-connect next.`
 - **An installed device newer than the bundled one:** it is loaded as it is, and
   `device` adds that this portal is older than it and the user should update the
   portal (the npx package or the Claude Desktop extension).
 - **A remote script that is too old:** refused before anything is copied. The
   error says to update it, that nothing was added, and to call
   `add-producer-pal` again after the user restarts Live.
+
+## `update-producer-pal`
+
+Replaces the running Producer Pal device with the one this portal ships, in
+place: same track, same position, and the project context (kept in a device
+parameter) survives. Only the portal answers it, online or off, because the
+device being replaced dies with the swap. The tool description tells the model
+to ask the user first.
+
+- **On the device** (Chat UI, a direct HTTP client, or a portal too old to
+  answer it): throws that the update runs through the portal (the npx package or
+  the Claude Desktop extension), after the same argument checks as every action.
+- **Portal flow**, each step refusing with "nothing was changed" before the
+  swap:
+  1. Producer Pal not answering: the offline guidance below, which points at
+     `add-producer-pal`.
+  2. The running version is the device's own (`serverInfo.version`, asked
+     afresh). Equal to the portal's: a plain success saying there is nothing to
+     update. Newer than the portal's: refused, with how to update the portal. No
+     version reported: refused.
+  3. No bundled device: refused, with the install guide.
+  4. Remote script not running or too old: refused, as for `add-producer-pal`
+     (and an old script that lacks the `/replace-producer-pal` route reads as
+     too old). `userLibrary` is settled as for `add-producer-pal`.
+  5. The bundled device is copied into the User Library. A copy that fails
+     (Windows can lock a file Live has loaded) refuses, saying the file may be
+     in use. Whatever file would load, it must name a version newer than the
+     running device's, else the call refuses before the swap (a swap for the
+     same version would only restart the device). A different file left alone is
+     loaded only on those terms; the result then says so and that the portal is
+     older.
+  6. The remote script's `/replace-producer-pal` hot-swaps the Set's one
+     Producer Pal device with that file (a not-found is asked again for 15 s). A
+     refusal there (none in the Set, more than one, bad file) says nothing was
+     changed.
+  7. The bridge drops its connection and reconnects until a server answers with
+     a newer version than the old one (30 s), then tells the client to re-list
+     tools, which may differ between versions.
+- **After Live may have acted** (no answer to the swap request, a lost
+  connection, a 500, a 504 that started), the error says the device may have
+  been replaced and to call `ppal-connect` to see which version runs. If the
+  swap went through but no new server answers in time, it says Live replaced the
+  device, to wait and call `ppal-connect`, and not to update again (or, if the
+  old version still answers, to ask the user to check the device in Live).
+- **Result:** `{ device: { from, to }, track: { path, name }, nextSteps }`,
+  where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
+  loaded file was newer than the portal's. `nextSteps` is
+  `Call ppal-connect next.`
+- **The `ppal-connect` hint** comes from the portal, since old devices can't
+  learn new wording: when a successful `ppal-connect` finds a device older than
+  the portal, the portal appends a block telling the model to ask the user, then
+  call this action (or, without `ppal-manage`, to tell the user to update the
+  device). The device's own connect line only says when the _portal_ is older.
 
 ## `undo` and `redo`
 
@@ -120,6 +175,9 @@ it (small-model mode and `--disable-tools` drop it).
   device's route and gives the same `{ version, path, nextSteps }` and the same
   errors.
 - **`add-producer-pal`** runs the steps below.
+- **`update-producer-pal`** is answered by the portal whether the device is up
+  or not; see [above](#update-producer-pal). When the device is down it gets the
+  guidance below.
 - **`undo` and `redo`** need the device, so they get the guidance below.
 - **Every other offline call** gets guidance, worded by whether Live's remote
   script answers a ping (capped at about 1 s):

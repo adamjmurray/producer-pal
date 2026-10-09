@@ -167,6 +167,11 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
   pings the remote script to say whether Live is up without Producer Pal, and
   runs `ppal-manage` `install-remote-script` and `add-producer-pal`. See
   [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
+- Updates the running device in place (`src/portal/update/`): the bridge answers
+  `ppal-manage` `update-producer-pal` itself, online or off, since the device it
+  replaces dies with the swap, and adds an update hint to `ppal-connect` when
+  the device is older than the portal. See
+  [ppal-manage](../specs/tool-behavior/ppal-manage.md#update-producer-pal).
 - Declares `tools.listChanged` and tells the client to re-list once the device
   comes online, so a cached offline tool list gets corrected. The stateless HTTP
   server can't send that itself — every `POST /mcp` is a fresh server — but the

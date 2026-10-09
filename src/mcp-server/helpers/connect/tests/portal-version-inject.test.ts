@@ -44,13 +44,10 @@ describe("withPortalVersion", () => {
     );
   });
 
-  it("tells the user to update the device when it is older", async () => {
+  it("leaves a device that is older than the portal to the portal to say", async () => {
     const content = await connectThrough("99.0.0");
 
-    expect(content[1]?.text).toBe(
-      `portalVersion: 99.0.0. The device is older than the portal. ` +
-        `Tell the user to update the Producer Pal device (${VERSION}).`,
-    );
+    expect(content[1]?.text).toBe("portalVersion: 99.0.0");
   });
 
   it("adds nothing when the request did not come through a portal", async () => {

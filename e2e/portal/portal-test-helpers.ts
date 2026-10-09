@@ -95,9 +95,13 @@ export async function startPortal(
  * the lack of one) is the test's to decide. The shipped portal looks for
  * Producer_Pal.amxd next to itself.
  * @param withDevice - Put a stand-in device file beside the copy
+ * @param deviceVersion - The version the stand-in names, as a frozen device does
  * @returns The copy's path, and a stop that deletes it
  */
-export function copyPortal(withDevice: boolean): {
+export function copyPortal(
+  withDevice: boolean,
+  deviceVersion?: string,
+): {
   file: string;
   stop: () => Promise<void>;
 } {
@@ -108,7 +112,12 @@ export function copyPortal(withDevice: boolean): {
   copyFileSync(portalBundle(), file);
 
   if (withDevice) {
-    writeFileSync(join(dir, "Producer_Pal.amxd"), "stand-in device");
+    writeFileSync(
+      join(dir, "Producer_Pal.amxd"),
+      deviceVersion == null
+        ? "stand-in device"
+        : `stand-in device const VERSION = "${deviceVersion}"`,
+    );
   }
 
   return {
@@ -190,6 +199,26 @@ export function stopAfterEach(): <T extends Stoppable>(resource: T) => T {
     started.push(resource);
 
     return resource;
+  };
+}
+
+/**
+ * Temp folders that are deleted after each test. Call once at module level.
+ * @returns Makes a folder
+ */
+export function tempFolders(): () => string {
+  const made: string[] = [];
+
+  afterEach(() => {
+    for (const dir of made.splice(0)) rmSync(dir, { recursive: true });
+  });
+
+  return () => {
+    const dir = mkdtempSync(join(tmpdir(), "ppal-portal-e2e-"));
+
+    made.push(dir);
+
+    return dir;
   };
 }
 

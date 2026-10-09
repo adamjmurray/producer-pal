@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { PORTAL_SOURCES } from "#src/shared/config.ts";
 import { checkManageArgs, type ManageArgs } from "./helpers/manage-args.ts";
 import { type ManageInstallResult } from "./helpers/manage-contract.ts";
 import {
@@ -14,7 +15,8 @@ import { installFromTool } from "./helpers/manage-install.ts";
 /**
  * Act on Live itself: install the Producer Pal remote script, or undo and redo
  * in Live's history. Adding Producer Pal to a Set only works while it isn't
- * running, so here it is refused (the portal answers it).
+ * running, and updating it replaces the running device, so here both are
+ * refused (the portal answers them).
  *
  * Not a target-list write, so it doesn't run through the write pipeline. It
  * also gets no undo step of its own: closing one right after an undo could wipe
@@ -23,7 +25,8 @@ import { installFromTool } from "./helpers/manage-install.ts";
  * @param ctx - Per-request context carrying the deadline
  * @returns The install's version and path, or what Live can undo and redo now
  * @throws Error for an unknown action, a param the action doesn't read, a
- *   step that can't run, or `add-producer-pal` (Producer Pal is running)
+ *   step that can't run, `add-producer-pal` (Producer Pal is running), or
+ *   `update-producer-pal` (only the portal runs it)
  */
 export async function manage(
   args: ManageArgs = {},
@@ -37,6 +40,12 @@ export async function manage(
 
   if (action === "add-producer-pal") {
     throw new Error("Producer Pal is already running in this Live Set");
+  }
+
+  if (action === "update-producer-pal") {
+    throw new Error(
+      `update-producer-pal runs through the portal (${PORTAL_SOURCES}). This call didn't come through one, or the portal is too old for it. Tell the user to update the Producer Pal device by hand.`,
+    );
   }
 
   return await stepHistory(action, steps, ctx.deadline);

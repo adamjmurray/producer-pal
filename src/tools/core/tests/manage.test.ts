@@ -268,14 +268,14 @@ describe("ppal-manage install-remote-script", () => {
 describe("ppal-manage refusals", () => {
   it("needs an action", async () => {
     await expect(manage({})).rejects.toThrow(
-      "action must be one of: install-remote-script, add-producer-pal, undo, redo",
+      "action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo",
     );
     await expect(manage()).rejects.toThrow("action must be one of");
   });
 
   it("refuses an unknown action, naming it", async () => {
     await expect(manage({ action: "reboot" })).rejects.toThrow(
-      'action must be one of: install-remote-script, add-producer-pal, undo, redo, not "reboot"',
+      'action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo, not "reboot"',
     );
   });
 
@@ -290,7 +290,7 @@ describe("ppal-manage refusals", () => {
     "refuses userLibrary on %s, before asking anything",
     async (action) => {
       await expect(manage({ action, userLibrary: "/lib" })).rejects.toThrow(
-        /userLibrary is only for action "install-remote-script" or "add-producer-pal"/,
+        /userLibrary is only for action "install-remote-script", "add-producer-pal" or "update-producer-pal"/,
       );
       expect(requestNode).not.toHaveBeenCalled();
     },
@@ -303,6 +303,16 @@ describe("ppal-manage refusals", () => {
     await expect(
       manage({ action: "add-producer-pal", userLibrary: "/lib" }),
     ).rejects.toThrow("Producer Pal is already running in this Live Set");
+    expect(requestNode).not.toHaveBeenCalled();
+  });
+
+  it("sends update-producer-pal to the portal, before asking anything", async () => {
+    await expect(manage({ action: "update-producer-pal" })).rejects.toThrow(
+      /runs through the portal \(the npx producer-pal package or the Claude Desktop extension\)/,
+    );
+    await expect(
+      manage({ action: "update-producer-pal", userLibrary: "/lib" }),
+    ).rejects.toThrow("runs through the portal");
     expect(requestNode).not.toHaveBeenCalled();
   });
 

@@ -13,8 +13,9 @@ import {
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response says which portal it
- * came through, and flags a portal/device version mismatch. The portal and the
- * device are updated separately, so they drift.
+ * came through, and flags a portal older than the device. The portal and the
+ * device are updated separately, so they drift. A device older than the portal
+ * is the portal's to say: an old device can't learn new wording.
  *
  * Done Node-side because V8 can't see HTTP headers. A request with no portal
  * (chat UI, direct HTTP client) gets nothing.
@@ -45,10 +46,6 @@ function portalVersionLine(portalVersion: string | undefined): string | null {
 
   if (isNewerVersion(portalVersion, VERSION)) {
     return `${line}. The portal is older than the device (${VERSION}). ${UPDATE_PORTAL_ADVICE}`;
-  }
-
-  if (isNewerVersion(VERSION, portalVersion)) {
-    return `${line}. The device is older than the portal. Tell the user to update the Producer Pal device (${VERSION}).`;
   }
 
   return line;

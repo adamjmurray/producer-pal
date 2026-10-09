@@ -50,9 +50,9 @@ describe("POST /mcp portal version header", () => {
     );
   });
 
-  it("flags an older device", async () => {
-    expect(await portalLine({ [PORTAL_VERSION_HEADER]: "99.0.0" })).toContain(
-      "The device is older than the portal",
+  it("leaves an older device to the portal to say", async () => {
+    expect(await portalLine({ [PORTAL_VERSION_HEADER]: "99.0.0" })).toBe(
+      "portalVersion: 99.0.0",
     );
   });
 

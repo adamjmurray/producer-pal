@@ -8,13 +8,11 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
-import {
-  checkManageArgs,
-  type CheckedManageArgs,
-} from "#src/tools/core/helpers/manage-args.ts";
+import { type CheckedManageArgs } from "#src/tools/core/helpers/manage-args.ts";
 import { manageInstallResult } from "#src/tools/core/helpers/manage-contract.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 import { addProducerPal } from "./offline-add-producer-pal.ts";
+import { checkedManageArgs } from "./offline-manage-args.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
 
 /**
@@ -32,13 +30,9 @@ export async function offlineManage(
   let checked: CheckedManageArgs;
 
   try {
-    checked = checkManageArgs(args);
+    checked = checkedManageArgs(args);
   } catch (error) {
     return offlineError(errorMessage(error));
-  }
-
-  if (checked.userLibrary != null && typeof checked.userLibrary !== "string") {
-    return offlineError("userLibrary must be a string");
   }
 
   if (checked.action === "install-remote-script") {

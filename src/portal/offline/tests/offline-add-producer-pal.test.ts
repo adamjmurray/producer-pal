@@ -30,7 +30,7 @@ describe("add-producer-pal", () => {
 
     expect(response.isError).toBeUndefined();
     expect(responseText(response)).toBe(
-      '{track:{index:3,name:"3-MIDI"},device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
+      '{track:{path:"t3",name:"3-MIDI"},device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
     );
     expect(deps.installDevice).toHaveBeenCalledWith(
       LIBRARY,
@@ -383,7 +383,7 @@ describe("add-producer-pal's wait for the server", () => {
 
     expect(response.isError).toBe(true);
     expect(responseText(response)).toBe(
-      "Error: Producer Pal was added to track 3 \"3-MIDI\" but hasn't answered yet. Wait a moment, then call ppal-connect. Don't call add-producer-pal again.",
+      "Error: Producer Pal was added to t3 \"3-MIDI\" but hasn't answered yet. Wait a moment, then call ppal-connect. Don't call add-producer-pal again.",
     );
     expect(vi.mocked(connect).mock.calls.length).toBeGreaterThan(50);
   });

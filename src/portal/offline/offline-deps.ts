@@ -22,7 +22,7 @@ import {
 } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { libraryPathExists } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
 import { type InstallReply } from "#src/tools/core/helpers/manage-contract.ts";
-import { findBundledDevice } from "../bundled-device.ts";
+import { findBundledDevice } from "../setup/bundled-device.ts";
 import {
   type DeviceFileStatus,
   deviceFileStatus,

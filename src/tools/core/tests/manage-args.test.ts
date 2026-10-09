@@ -23,13 +23,13 @@ describe("checkManageArgs", () => {
 
   it("names the actions when none is given", () => {
     expect(() => checkManageArgs({})).toThrow(
-      "action must be one of: install-remote-script, add-producer-pal, undo, redo",
+      "action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo",
     );
   });
 
   it("names the action it doesn't know", () => {
     expect(() => checkManageArgs({ action: "wipe" })).toThrow(
-      'action must be one of: install-remote-script, add-producer-pal, undo, redo, not "wipe"',
+      'action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo, not "wipe"',
     );
   });
 
@@ -44,6 +44,16 @@ describe("checkManageArgs", () => {
       checkManageArgs({ action: "add-producer-pal", userLibrary: "/x" }),
     ).toStrictEqual({
       action: "add-producer-pal",
+      userLibrary: "/x",
+      steps: undefined,
+    });
+  });
+
+  it("reads userLibrary for update-producer-pal", () => {
+    expect(
+      checkManageArgs({ action: "update-producer-pal", userLibrary: "/x" }),
+    ).toStrictEqual({
+      action: "update-producer-pal",
       userLibrary: "/x",
       steps: undefined,
     });

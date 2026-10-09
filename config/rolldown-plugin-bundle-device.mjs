@@ -6,7 +6,7 @@
 import { copyFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-/** Must equal BUNDLED_DEVICE_FILENAME in src/portal/bundled-device.ts. */
+/** Must equal BUNDLED_DEVICE_FILENAME in src/portal/setup/bundled-device.ts. */
 export const DEVICE_FILENAME = "Producer_Pal.amxd";
 
 /**

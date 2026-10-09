@@ -9,16 +9,16 @@
 //
 // Run with: npm run e2e:portal
 
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   callToolText,
   copyPortal,
   listToolNames,
   startPortal,
   stopAfterEach,
+  tempFolders,
 } from "../portal-test-helpers";
 import { createStubDevice, DEVICE_TOOL } from "../stub-device";
 import {
@@ -27,11 +27,7 @@ import {
 } from "../stub-remote-script";
 
 const track = stopAfterEach();
-const scratch: string[] = [];
-
-afterEach(() => {
-  for (const dir of scratch.splice(0)) rmSync(dir, { recursive: true });
-});
+const newLibrary = tempFolders();
 
 const ADDED: RouteHandler = () => ({
   status: 200,
@@ -51,9 +47,7 @@ async function setup(
   load: RouteHandler,
   options: { scriptRunning?: boolean; bundled?: boolean } = {},
 ) {
-  const library = mkdtempSync(join(tmpdir(), "ppal-portal-e2e-"));
-
-  scratch.push(library);
+  const library = newLibrary();
 
   const device = track(await createStubDevice({ online: false }));
   const script = track(
@@ -99,7 +93,7 @@ describe("ppal-manage add-producer-pal", () => {
 
     expect(isError).toBeFalsy();
     expect(text).toBe(
-      '{track:{index:2,name:"2-MIDI"},device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
+      '{track:{path:"t2",name:"2-MIDI"},device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
     );
     expect(existsSync(join(library, ...AMXD))).toBe(true);
 

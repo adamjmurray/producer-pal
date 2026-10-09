@@ -10,8 +10,8 @@ import { MANAGE_ACTIONS, MAX_STEPS } from "./helpers/manage-contract.ts";
 export const toolDefManage = defineTool("ppal-manage", {
   title: "Manage",
   description:
-    "Act on Live itself: install the Producer Pal remote script, add " +
-    "Producer Pal to the open Live Set, or undo and redo in Live's history. " +
+    "Act on Live itself: install the Producer Pal remote script, add or " +
+    "update Producer Pal in the open Live Set, or undo and redo in Live's history. " +
     "That history includes the user's own edits in Live, so an undo may " +
     "revert something they did.",
 
@@ -34,6 +34,9 @@ export const toolDefManage = defineTool("ppal-manage", {
           "add-producer-pal: put the Producer Pal device on a new MIDI track " +
           "in the open Live Set, while Producer Pal isn't running yet; needs " +
           "the remote script. Ask the user first: it changes their Set. " +
+          "update-producer-pal: replace the running Producer Pal device with " +
+          "the newer one this connector ships, in place; needs the remote " +
+          "script. Ask the user first. " +
           "undo, redo: step back or forward; needs the remote script",
       ),
 
@@ -52,7 +55,7 @@ export const toolDefManage = defineTool("ppal-manage", {
       .string()
       .optional()
       .describe(
-        "install-remote-script, add-producer-pal only: absolute path to Live's User Library, " +
+        "install-remote-script, add-producer-pal, update-producer-pal only: absolute path to Live's User Library, " +
           "for when it can't be found automatically. Ask the user " +
           "(Live: Settings → Library → Location of User Library).",
       ),

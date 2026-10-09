@@ -151,7 +151,7 @@ ship with it:
   embedded: base64 in the bundle would be parsed on every start for a feature
   used about once, and the device's own bundle must never be able to reach it,
   or the .amxd would contain itself. `findBundledDevice()`
-  (`src/portal/bundled-device.ts`) locates it and returns null when none
+  (`src/portal/setup/bundled-device.ts`) locates it and returns null when none
   shipped.
 
 Only `npm run release:package` puts the device there, because it exists only

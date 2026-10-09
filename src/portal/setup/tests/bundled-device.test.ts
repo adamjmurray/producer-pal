@@ -38,7 +38,7 @@ describe("findBundledDevice", () => {
   });
 
   it("looks beside the running script by default, where a plain build has none", () => {
-    // Run from source, the portal sits in src/portal/, which never holds one.
+    // Run from source, the portal sits in src/portal/setup/, which never holds one.
     expect(findBundledDevice()).toBeNull();
   });
 });

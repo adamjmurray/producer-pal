@@ -38,6 +38,14 @@ the build-verification job, right after the build that produces it.
   against the stub remote script, which starts the stub device on `/load`. It
   runs a copy of the portal with a stand-in `Producer_Pal.amxd` beside it.
 
+- `tests/portal-update-producer-pal.test.ts` — `ppal-manage`
+  `update-producer-pal` with the device up. The stub remote script plays Live:
+  on `/replace-producer-pal` it makes the stub device report the portal's
+  version. Covers the swap, already current, a device newer than the portal, a
+  refused swap, a remote script without the route, and a device that isn't
+  running. The stub device has no `ppal-connect`, so the connect hint is only
+  unit tested.
+
 Unit tests in `src/portal/tests/` already cover how tool names and group aliases
 resolve. These cover what only a real process can show: argv parsed by the
 shipped bundle, and the result on the wire.

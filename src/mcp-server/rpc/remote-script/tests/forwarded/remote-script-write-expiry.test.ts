@@ -61,6 +61,12 @@ const WRITES: Record<string, { node: string; args: object }> = {
 const FIRE_AND_FORGET = ["/undo/end"];
 
 /**
+ * Routes the portal sends itself, not through V8 (it sends the expiry too: see
+ * the portal's update tests).
+ */
+const PORTAL_SENT = ["/replace-producer-pal"];
+
+/**
  * Order two strings.
  * @param a - One
  * @param b - The other
@@ -86,7 +92,9 @@ describe("remote script routes that change the Set", () => {
 
     expect(postOnly.length).toBeGreaterThan(0);
     expect(postOnly.toSorted(byText)).toStrictEqual(
-      [...Object.keys(WRITES), ...FIRE_AND_FORGET].toSorted(byText),
+      [...Object.keys(WRITES), ...FIRE_AND_FORGET, ...PORTAL_SENT].toSorted(
+        byText,
+      ),
     );
   });
 

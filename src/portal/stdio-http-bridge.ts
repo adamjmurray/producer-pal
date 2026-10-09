@@ -20,6 +20,9 @@ import { logger } from "./file-logger.ts";
 import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
+import { type RunningDevice } from "./update/running-device.ts";
+import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
+import { withUpdateHint } from "./update/update-connect-hint.ts";
 import {
   type BridgeOptions,
   requestHeaderTransportOptions,
@@ -78,13 +81,29 @@ export class StdioHttpBridge {
       {
         name: request.params.name,
         args: request.params.arguments ?? {},
-        manageOffered: this.fallbackTools.tools.some(
-          (tool) => tool.name === MANAGE_TOOL,
-        ),
+        manageOffered: this._manageOffered(),
         connect: () => this._ensureHttpConnection(),
       },
       this.offlineDeps,
     );
+  }
+
+  /** @returns Whether this portal lists ppal-manage (small-model mode and `--disable-tools` drop it) */
+  private _manageOffered(): boolean {
+    return this.fallbackTools.tools.some((tool) => tool.name === MANAGE_TOOL);
+  }
+
+  /** @returns The running device, as ppal-manage's update sees it */
+  private _runningDevice(): RunningDevice {
+    return {
+      connect: () => this._ensureHttpConnection(),
+      version: () => this.httpClient?.getServerVersion()?.version,
+      // The next connect closes the old client and handshakes again.
+      reset: () => {
+        this.isConnected = false;
+      },
+      toolsChanged: () => this._notifyToolListChanged(true),
+    };
   }
 
   private _createMisconfiguredUrlResponse() {
@@ -196,9 +215,12 @@ Tell the user to check ${SETUP_URL} for configuration help.
    * One direction only. Going offline needs no nudge: the next tools/list
    * serves the fallback anyway, and notifying from that handler would ask the
    * client to re-list the list it is already fetching.
+   *
+   * @param force - Send it even when no fallback list was served: a device
+   *   update can change the real list too
    */
-  private _notifyToolListChanged(): void {
-    if (!this.servedFallbackTools) {
+  private _notifyToolListChanged(force = false): void {
+    if (!force && !this.servedFallbackTools) {
       return;
     }
 
@@ -280,6 +302,17 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
+        const args = request.params.arguments ?? {};
+
+        // The device being updated can't answer its own replacement.
+        if (isUpdateCall(request.params.name, args, this._manageOffered())) {
+          return await answerUpdateCall(
+            args,
+            this._runningDevice(),
+            this.offlineDeps,
+          );
+        }
+
         // Always try to connect to HTTP server first
         try {
           await this._ensureHttpConnection();
@@ -302,7 +335,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
             `[Bridge] Tool call successful for ${request.params.name}`,
           );
 
-          return result;
+          return await withUpdateHint(
+            result,
+            { name: request.params.name, manageOffered: this._manageOffered() },
+            this._runningDevice(),
+          );
         } catch (error) {
           logger.error(
             `HTTP tool call failed for ${request.params.name}: ${errorMessage(error)}`,

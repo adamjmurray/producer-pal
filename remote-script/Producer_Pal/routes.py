@@ -15,7 +15,11 @@ from .preset_guard import (
     refuse_hotswapped_producer_pal,
     refuse_loaded_producer_pal,
 )
-from .producer_pal_device import holds_producer_pal, is_producer_pal
+from .producer_pal_device import (
+    holds_producer_pal,
+    is_producer_pal,
+    top_level_producer_pals,
+)
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
 from .undo import ROUTES as _UNDO_ROUTES
@@ -178,6 +182,42 @@ def hotswap_device(bridge, params):
     }
 
 
+def replace_producer_pal(bridge, params):
+    """Swap the Set's one Producer Pal device for another build of itself.
+
+    The old device's server dies with the swap; the new one starts its own.
+    """
+    item, _, _ = _find_item(bridge, dict(params, type=FILE_TYPE))
+    if not is_producer_pal(item.name):
+        raise RouteError(409, "%r isn't the Producer Pal device" % item.name)
+
+    song = bridge.song
+    found = top_level_producer_pals(song)
+    if not found:
+        raise RouteError(409, "Producer Pal isn't in this Live Set")
+    if len(found) > 1:
+        raise RouteError(
+            409,
+            "Producer Pal is in this Live Set %s times (%s) - a Set can only "
+            "have one" % (len(found), ", ".join(pal.track_path for pal in found)),
+        )
+
+    pal = found[0]
+    try:
+        after = hotswap.hotswap(
+            bridge.app.browser, item, pal.device, pal.device_path, song
+        )
+        name = after.name
+    except hotswap.DevicePathError:
+        # The swap was made; only reading the device back failed.
+        name = item.name
+
+    return {
+        "track": {"path": pal.track_path, "name": pal.track.name},
+        "device": {"name": name},
+    }
+
+
 def _kind_words(kind):
     return {
         "instrument": "an instrument",
@@ -192,20 +232,13 @@ def _refuse_second_producer_pal(song):
     Top-level devices only: descending into every rack on every load costs more
     than the rare nested device is worth.
     """
-    tracks = [("track %s" % i, track) for i, track in enumerate(song.tracks)]
-    tracks += [
-        ("return track %s" % i, track)
-        for i, track in enumerate(song.return_tracks)
-    ]
-    tracks.append(("master track", song.master_track))
-
-    for label, track in tracks:
-        if any(is_producer_pal(device.name) for device in track.devices):
-            raise RouteError(
-                409,
-                "Producer Pal is already in this Live Set, on %s %r - a Set can "
-                "only have one" % (label, track.name),
-            )
+    found = top_level_producer_pals(song)
+    if found:
+        raise RouteError(
+            409,
+            "Producer Pal is already in this Live Set, on %s %r - a Set can "
+            "only have one" % (found[0].track_path, found[0].track.name),
+        )
 
 
 def _item_kind(item_type, path):
@@ -332,6 +365,7 @@ ROUTES = {
     "/list": list_items,
     "/load": load,
     "/hotswap": hotswap_device,
+    "/replace-producer-pal": replace_producer_pal,
     **_DEVICE_COPY_ROUTES,
     **_ENVELOPE_ROUTES,
     **_RACK_MACRO_ROUTES,
@@ -345,6 +379,7 @@ ROUTES = {
 POST_ONLY = (
     "/load",
     "/hotswap",
+    "/replace-producer-pal",
     "/device/duplicate",
     "/envelope/write",
     "/envelope/clear",

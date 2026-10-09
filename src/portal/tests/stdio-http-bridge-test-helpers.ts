@@ -23,6 +23,7 @@ export const mockClient = {
   close: vi.fn(),
   listTools: vi.fn(),
   callTool: vi.fn(),
+  getServerVersion: vi.fn(),
 };
 
 /** The identity (name, version) each mocked Server was constructed with. */

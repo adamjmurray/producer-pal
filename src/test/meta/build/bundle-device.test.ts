@@ -18,7 +18,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BUNDLED_DEVICE_FILENAME } from "#src/portal/bundled-device.ts";
+import { BUNDLED_DEVICE_FILENAME } from "#src/portal/setup/bundled-device.ts";
 import { FROZEN_DEVICE_FILENAME } from "../../../../scripts/build-and-release/helpers/release-package/frozen-device.ts";
 import {
   bundleDevice,

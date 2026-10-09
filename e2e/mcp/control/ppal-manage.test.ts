@@ -254,6 +254,18 @@ describe("ppal-manage install-remote-script and add-producer-pal refusals", () =
 
     expect(message).toContain("Producer Pal is already running");
   });
+
+  // Same for update-producer-pal: the device it replaces can't answer it.
+  it("sends update-producer-pal to the portal", async () => {
+    const message = getToolErrorMessage(
+      await ctx.client!.callTool({
+        name: "ppal-manage",
+        arguments: { action: "update-producer-pal" },
+      }),
+    );
+
+    expect(message).toContain("runs through the portal");
+  });
 });
 
 describe("ppal-manage in small-model mode", () => {

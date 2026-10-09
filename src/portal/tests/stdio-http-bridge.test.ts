@@ -714,7 +714,7 @@ describe("StdioHttpBridge", () => {
         callToolRequest("ppal-manage", { action: "add-producer-pal" }),
       );
 
-      expect(JSON.stringify(result)).toContain("track:{index:3,name:");
+      expect(JSON.stringify(result)).toContain('track:{path:\\"t3\\"');
       expect(b.isConnected).toBe(true);
     });
 

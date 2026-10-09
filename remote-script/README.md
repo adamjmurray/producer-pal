@@ -144,13 +144,13 @@ Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
 skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
 and with every route whose result a caller waits on and that changes the Set
-(`/load`, `/hotswap`, `/device/duplicate`, `/clip/convert`, `/envelope/write`,
-`/envelope/clear`, `/device/simpler/write`, `/undo/undo`, `/undo/redo`), a bit
-under the time it has left, so one deadline covers the lookup and the load, and
-a change it stopped waiting for isn't made later. `/undo/end` is fire-and-forget
-and sends none. A new route that changes the Set must be sent one too. A job
-Live started but didn't finish in 30s is also a 504, with `started: true`: Live
-may have made the change.
+(`/load`, `/hotswap`, `/replace-producer-pal`, `/device/duplicate`,
+`/clip/convert`, `/envelope/write`, `/envelope/clear`, `/device/simpler/write`,
+`/undo/undo`, `/undo/redo`), a bit under the time it has left, so one deadline
+covers the lookup and the load, and a change it stopped waiting for isn't made
+later. `/undo/end` is fire-and-forget and sends none. A new route that changes
+the Set must be sent one too. A job Live started but didn't finish in 30s is
+also a 504, with `started: true`: Live may have made the change.
 
 ### `GET /ping`
 
@@ -240,6 +240,29 @@ Returns the device's name afterwards and whether Live `replaced` it.
   old one back, so the script deletes the new one and **the slot is left
   empty**. The 409 says so and has `changed: true`. If the delete fails, it says
   where the device is, still with `changed: true`.
+
+### `POST /replace-producer-pal`
+
+Swaps the Set's Producer Pal device for another build of itself, in place, the
+way `/hotswap` does. The portal uses it to update a running device.
+
+| Param  | Default  | Meaning                                        |
+| ------ | -------- | ---------------------------------------------- |
+| `path` | required | Absolute path of a `Producer_Pal.amxd` on disk |
+
+Finds the device itself: the one Producer Pal device sitting directly on a
+track, return track or the main track (racks aren't searched). Returns the
+`track` (`path`, in the tools' vocabulary: `t2`, `rt0` or `mt`, and `name`) and
+the new `device` name.
+
+- **The old device's server dies with the swap** and the new one starts its own,
+  usually within a second. The track, the device's position and its saved
+  settings (the project context) stay.
+- **Refused before anything changes** with a 409: the file isn't a Producer Pal
+  device, the Set has none, or it has more than one. A file the browser can't
+  find is a 404 (a file just written can take a few seconds to show up), and a
+  missing `path` a 400.
+- **A 500, or a 504 with `started`,** means Live may have swapped the device.
 
 ### `POST /device/duplicate`
 
