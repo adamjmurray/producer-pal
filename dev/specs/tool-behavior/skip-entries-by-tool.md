@@ -42,7 +42,9 @@ with a tool, the tool wins.
   order that clears nobody's way, and one that can't be ordered is refused with
   the clip it would land on named. Known gap: if Live fails while a lengthened
   clip's last partial tile is in the holding area past the track's clips, that
-  holding copy can be left there unreported.
+  holding copy can be left there unreported. Another known gap: when a target
+  throws partway, notes gathered for that clip before the throw are not carried
+  onto its failure entry.
 - **update-clip: a clip whose new meter can't read the notes or transforms is a
   skip.** A bar|beat range or constant that is fine in one clip's meter and not
   in another's (`1|5-2|1` is a bar in 4/4, backwards in 3/4) is checked per
