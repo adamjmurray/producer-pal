@@ -12,7 +12,9 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-timing
  */
 import { describe, expect, it } from "vitest";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
+  parseToolResultWithWarnings,
   type ReadClipResult,
   readClipWithNotes,
   setupMcpTestContext,
@@ -153,6 +155,35 @@ describe("ppal-clip-transforms (swing)", () => {
     const afterRawSwing = extractStartBeats(await readClipNotes(clipId));
 
     expect(afterRawSwing[1]).toBeCloseTo(0.65, 1);
+  });
+
+  it("swings off-beat pickup notes before the clip start", async () => {
+    // Pickups are read as negative offsets from 1|1: -1.5 and -0.5 are off-beats.
+    const created = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s66`,
+        notes: "n/8 C3 1|1-n3/8 C3 1|1-n1/8 C3 1|1",
+        length: "2bar",
+      },
+    });
+    const { data, warnings } = parseToolResultWithWarnings<{ id: string }>(
+      created,
+    );
+
+    expect(warnings.join("\n")).toContain("before the clip start");
+
+    const clipId = data.id;
+
+    await applyTransform(clipId, "timing = swing(0.1)");
+    const notes = await readClipNotes(clipId);
+    const pickups = [...notes.matchAll(/-n([\d.]*)\/(\d+)/g)]
+      .map((m) => -(Number(m[1] || 1) / Number(m[2])) * 4)
+      .toSorted((a, b) => a - b);
+
+    expect(pickups).toHaveLength(2);
+    expect(pickups[0]).toBeCloseTo(-1.4, 1);
+    expect(pickups[1]).toBeCloseTo(-0.4, 1);
   });
 
   it("swing(0) is a no-op", async () => {

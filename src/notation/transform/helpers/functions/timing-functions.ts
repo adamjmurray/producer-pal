@@ -5,6 +5,7 @@
 
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
+import { normalizePhase } from "../../transform-waveforms.ts";
 import { type EvalContext } from "../transform-context.ts";
 import { DEFAULT_SWING_GRID, swingAmountError } from "./swing-amount.ts";
 
@@ -53,8 +54,9 @@ export function evaluateSwing(
     effectivePosition = Math.round(ctx.position / quantGrid) * quantGrid;
   }
 
-  // Phase within the period cycle (0-1)
-  const phase = (effectivePosition / period) % 1.0;
+  // Phase within the period cycle (0-1). Wrapped so a pickup note before the
+  // clip start (negative position) lands in the right half.
+  const phase = normalizePhase(effectivePosition / period);
 
   // On-beat (first half): no offset. Off-beat (second half): full offset.
   const offset = phase < 0.5 ? 0 : amount;

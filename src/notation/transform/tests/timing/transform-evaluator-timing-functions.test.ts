@@ -154,6 +154,34 @@ describe("Transform Evaluator - swing()", () => {
     });
   });
 
+  describe("pickup notes (before the clip start)", () => {
+    it.each([
+      [-1.5, -1.4],
+      [-1, -1],
+      [-0.5, -0.4],
+      [-2.5, -2.4],
+    ])("position %s swings to %s", (position, expected) => {
+      const ctx = createContext({ position });
+      const result = evaluateTransform("timing = swing(0.1)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(expected, 10);
+    });
+
+    it("swings the off-beat with a custom grid", () => {
+      const ctx = createContext({ position: -0.25 });
+      const result = evaluateTransform("timing = swing(0.03, n/16)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(-0.22, 10);
+    });
+
+    it("swings a raw off-beat pickup", () => {
+      const ctx = createContext({ position: -0.5 });
+      const result = evaluateTransform("timing = swing(0.1, raw)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(-0.4, 10);
+    });
+  });
+
   describe("raw keyword", () => {
     it("skips auto-quantize for default grid", () => {
       const ctx = createContext({ position: 0.55 });

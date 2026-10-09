@@ -24,7 +24,8 @@ with `timing =`. `timing += swing(...)` (or `-=`, `*=`, `/=`) is refused.
 **Algorithm**: Each period (2× grid) is split into two halves. Notes in the
 first half (on-beat) get no offset. Notes in the second half (off-beat) get the
 full amount as offset. This is a step function, not a wave — every off-beat note
-gets the same delay.
+gets the same delay. Notes before the clip start (pickups) follow the same
+on/off pattern, continued backwards from 0.
 
 **Auto-quantize**: Before applying swing, notes are snapped to a `grid/4`
 quantize grid. This serves two purposes:
