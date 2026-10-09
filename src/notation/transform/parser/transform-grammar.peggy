@@ -339,7 +339,7 @@ barBeatPointSyncList
 // land below beat 1 (negative musical beats, before the clip start); that simply
 // falls outside every note at apply time. Consumed by `split` only.
 barBeatPoint "bar|beat position"
-  = bar:oneOrMoreInt "|" beat:beatValue {
+  = bar:barNumber "|" beat:beatValue {
     const beatsPerBar = options.beatsPerBar ?? 4;
     return { type: "barBeatPoint", musicalBeats: (bar - 1) * beatsPerBar + (beat - 1) };
   }
@@ -491,7 +491,7 @@ pitchAccidental
 // A bare bar|beat point (`4|3.5`) comes LAST so the range branch claims a real
 // `start-end` first; only a point with no `-` separator falls through to it.
 timeRange "time range"
-  = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
+  = startBar:barNumber "|" "*" "-" endBar:barNumber "|" "*" {
     // Reject a descending span, mirroring the beatValue range guard below: an
     // end bar before the start bar silently selected nothing (a warn-free no-op).
     // Equal bars stay valid (`3|*-3|*` == `3|*`).
@@ -500,10 +500,10 @@ timeRange "time range"
     }
     return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
   }
-  / bar:oneOrMoreInt "|" "*" {
+  / bar:barNumber "|" "*" {
     return { startBar: bar, startBeat: 1, endBar: bar + 1, endBeat: 1, endExclusive: true };
   }
-  / startBar:oneOrMoreInt "|" startBeat:beatValue "-" excl:"<"? endBar:oneOrMoreInt "|" endBeat:beatValue {
+  / startBar:barNumber "|" startBeat:beatValue "-" excl:"<"? endBar:barNumber "|" endBeat:beatValue {
     const beatsPerBar = options.beatsPerBar ?? 4;
     const start = borrowBars(startBar, startBeat, beatsPerBar);
     const end = borrowBars(endBar, endBeat, beatsPerBar);
@@ -527,7 +527,7 @@ timeRange "time range"
     if (excl != null) range.endExclusive = true;
     return range;
   }
-  / bar:oneOrMoreInt "|" beat:beatValue {
+  / bar:barNumber "|" beat:beatValue {
     // Bare bar|beat point (`4|3.5`, or `Gb1 4|3.5` paired with a pitch): target
     // only the note starting at exactly this position. Desugars to a degenerate
     // inclusive range [point, point] — the membership gate is inclusive on both
@@ -1026,6 +1026,19 @@ oneOrMoreInt
   = [1-9] [0-9]* {
     return Number.parseInt(text());
   }
+
+// The bar of a `bar|beat` position. A bar starting with 0 (`0|1`, `01|1`) can
+// only be the 0-indexed mistake, so it raises a targeted error instead of a
+// parse failure. Mirrors the barbeat note grammar's `badZeroBar` (Peggy can't
+// share a rule across grammars). Never matches a 0 not followed by the pipe.
+barNumber
+  = oneOrMoreInt
+  / badZeroBar
+
+badZeroBar
+  = "0" [0-9]* &"|" {
+      throw new Error(`bars are 1-indexed: the first bar is bar 1 (e.g. 1|1). Got bar ${text()}.`);
+    }
 
 unsignedInt
   = [0-9]+ {

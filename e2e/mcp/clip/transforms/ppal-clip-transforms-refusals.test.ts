@@ -116,6 +116,30 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
   });
 
   it.each([
+    ["a transform selector", "transforms", "0|1: velocity = 5"],
+    ["a transform range bound", "transforms", "1|1-0|3: velocity = 5"],
+    ["a split position", "transforms", "split(0|1)"],
+    ["a note position", "notes", "v80 C3 0|1"],
+    ["a bar copy", "notes", "@0=1"],
+  ])(
+    "ppal-update-clip steers bar 0 in %s to 1-indexed bars",
+    async (_label, param, text) => {
+      const clipId = await createMidiClip(99, "v80 C3 1|1");
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, [param]: text },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        "bars are 1-indexed: the first bar is bar 1 (e.g. 1|1). Got bar 0.",
+      );
+      // Untouched: the one note, still at the downbeat
+      expect(await readClipNotes(clipId)).toContain("1|1");
+    },
+  );
+
+  it.each([
     ["swing", "timing += swing(0.3, n/8)", "timing +="],
     ["quant", "timing -= quant(n/16)", "timing -="],
   ])(

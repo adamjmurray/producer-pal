@@ -116,15 +116,15 @@ barCopy "bar copy operation"
   }
 
 barOrRange
-  = start:oneOrMoreInt '-' end:oneOrMoreInt {
+  = start:copyBar '-' end:copyBar {
     return { range: [start, end] };
   }
-  / bar:oneOrMoreInt {
+  / bar:copyBar {
     return { bar: bar };
   }
 
 timePoints "time position"
-  = bar:oneOrMoreInt "|" beats:beatList {
+  = bar:barNumber "|" beats:beatList {
     const beatsPerBar = options.beatsPerBar ?? 4;
     return resolveStickyBars(bar, beats, beatsPerBar);
   }
@@ -144,7 +144,7 @@ beatList "beat list"
 // bare `beatSpec` (inherits it). Explicit-bar branch is ordered first so a
 // digit run followed by `|` is read as a new bar, not a bare beat.
 beatItem
-  = bar:oneOrMoreInt "|" beat:beatSpec { return { bar, beat }; }
+  = bar:barNumber "|" beat:beatSpec { return { bar, beat }; }
   / beat:beatSpec { return { bar: null, beat }; }
 
 beatSpec "beat specification"
@@ -473,6 +473,24 @@ oneOrMoreInt
   = [1-9] [0-9]* {
     return Number.parseInt(text());
   }
+
+// The bar of a `bar|beat` position. A bar starting with 0 (`0|1`, `01|1`) can
+// only be the 0-indexed mistake, so it raises a targeted error instead of a
+// parse failure. Never matches a 0 that isn't followed by the pipe.
+barNumber
+  = oneOrMoreInt
+  / &("0" [0-9]* "|") badZeroBar
+
+// A bar in a bar copy (`@2=1`, `@5=1-4`). Any bar starting with 0 is the
+// 0-indexed mistake; there is no pipe to tell it apart from.
+copyBar
+  = oneOrMoreInt
+  / badZeroBar
+
+badZeroBar
+  = "0" [0-9]* {
+      throw new Error(`bars are 1-indexed: the first bar is bar 1 (e.g. 1|1). Got bar ${text()}.`);
+    }
 
 signedInt
   = sign:"-"? value:unsignedInt {

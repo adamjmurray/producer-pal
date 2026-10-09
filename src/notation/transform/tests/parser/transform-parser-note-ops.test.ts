@@ -171,6 +171,18 @@ describe("Transform Parser - note-count operations (ratchet/repeat/split/merge)"
     it("rejects a 0 beat with the 1-indexed steer", () => {
       expect(() => parse("split(2|0)")).toThrow(/beats are 1-indexed/);
     });
+
+    it("rejects a 0 bar with the 1-indexed steer", () => {
+      const steer = /bars are 1-indexed.*first bar is bar 1.*Got bar 0\./;
+
+      expect(() => parse("split(0|1)")).toThrow(steer);
+      expect(() => parse("split(2|1, 0|3)")).toThrow(steer);
+      expect(() => parse("split(2|1, 0|3, sync)")).toThrow(steer);
+    });
+
+    it("accepts bars that merely contain a 0", () => {
+      expect(() => parse("split(10|1, 20|3)")).not.toThrow();
+    });
   });
 
   describe("selectors", () => {

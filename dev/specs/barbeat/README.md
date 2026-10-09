@@ -220,6 +220,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - `1|0` (and `1|0.x`) — beats are **1-indexed**; the downbeat is beat 1
     (`1|1`). For a pickup before it, offset from beat 1 (`1|1-n/4`). The
     `1|0`-as-pickup reading is deliberately **not** taught.
+  - `0|1` (and `01|1`) — bars are **1-indexed** too; the first bar is bar 1
+    (`1|1`). Same error in note positions, comma beat-lists, bar copies (`@0=1`,
+    `@1=0`), transform selectors and ranges, and `split()`.
   - `1.1`, `1:1` — positions use a **pipe** (`1|1`), not `.` or `:`.
   - a bare integer standing alone (e.g. `60`) — use a **note name** (`C3`), not
     a raw MIDI number.
