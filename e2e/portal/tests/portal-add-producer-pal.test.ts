@@ -143,6 +143,39 @@ describe("ppal-manage add-producer-pal", () => {
     expect(text).toContain("its server isn't answering");
   });
 
+  it("says it may have been added when the load fails inside Live", async () => {
+    const { portal } = await setup(() => ({
+      status: 500,
+      body: { error: "RuntimeError: load_item failed" },
+    }));
+
+    const { text, isError } = await callToolText(portal, "ppal-manage", {
+      action: "add-producer-pal",
+    });
+
+    expect(isError).toBe(true);
+    expect(text).toContain("load_item failed");
+    expect(text).toContain("so it may have been added to a new MIDI track");
+    expect(text).not.toContain("Nothing was added");
+  });
+
+  it("says nothing was added when the remote script removed its new track", async () => {
+    const { portal } = await setup(() => ({
+      status: 500,
+      body: {
+        error: "loading failed; the new track was removed",
+        changed: false,
+      },
+    }));
+
+    const { text, isError } = await callToolText(portal, "ppal-manage", {
+      action: "add-producer-pal",
+    });
+
+    expect(isError).toBe(true);
+    expect(text).toContain("Nothing was added to the Set");
+  });
+
   it("needs the remote script, and copies nothing without it", async () => {
     const { library, portal } = await setup(ADDED, { scriptRunning: false });
 

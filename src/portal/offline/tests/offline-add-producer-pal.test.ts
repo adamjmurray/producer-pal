@@ -296,16 +296,65 @@ describe("add-producer-pal's load", () => {
     expect(deps.request).toHaveBeenCalledTimes(1);
   });
 
-  it("passes on the remote script's text for any other failure", async () => {
+  it("passes on the remote script's text for a refusal it made before touching the Set", async () => {
     const deps = happyDeps({
-      request: requestAnswers(failure(500, "load_item blew up")),
+      request: requestAnswers(failure(400, "bad track_type")),
     });
     const response = await addProducerPalCall(deps);
 
     expect(responseText(response)).toBe(
-      "Error: Live couldn't add Producer Pal: load_item blew up. Nothing was added to the Set. The device file is in the User Library.",
+      "Error: Live couldn't add Producer Pal: bad track_type. Nothing was added to the Set. The device file is in the User Library.",
     );
     expect(deps.request).toHaveBeenCalledTimes(1);
+  });
+
+  it("says the Set is untouched when the remote script removed the track it made", async () => {
+    const deps = happyDeps({
+      request: requestAnswers({
+        available: true,
+        status: 500,
+        body: {
+          error: "loading failed; the new track was removed",
+          changed: false,
+        },
+      }),
+    });
+    const response = await addProducerPalCall(deps);
+
+    expect(responseText(response)).toContain("Nothing was added to the Set.");
+  });
+
+  it.each([
+    ["a 500", { status: 500, body: { error: "load_item blew up" } }],
+    [
+      "a 500 that couldn't remove the new track",
+      { status: 500, body: { error: "couldn't remove it", changed: true } },
+    ],
+    [
+      "a 504 after Live started",
+      { status: 504, body: { error: "took too long", started: true } },
+    ],
+  ])("says it may have been added after %s", async (_name, answer) => {
+    const deps = happyDeps({
+      request: requestAnswers({ available: true, ...answer }),
+    });
+    const response = await addProducerPalCall(deps);
+    const text = responseText(response);
+
+    expect(response.isError).toBe(true);
+    expect(text).toContain("so it may have been added to a new MIDI track");
+    expect(text).toContain("call ppal-connect");
+    expect(text).not.toContain("Nothing was added");
+    expect(deps.request).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing was added after a 504 where Live never ran the job", async () => {
+    const deps = happyDeps({
+      request: requestAnswers(failure(504, "Live did not run the request")),
+    });
+    const response = await addProducerPalCall(deps);
+
+    expect(responseText(response)).toContain("Nothing was added to the Set.");
   });
 
   it("says a remote script that went away left the Set alone", async () => {

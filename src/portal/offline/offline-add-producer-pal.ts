@@ -198,6 +198,12 @@ function loadFailure(reply: RemoteScriptAnswer): SetupFailed {
     );
   }
 
+  if (mayHaveAdded(reply)) {
+    return new SetupFailed(
+      `Live reported a problem while adding Producer Pal (${text}), so it may have been added to a new MIDI track. Wait a moment, then call ppal-connect. ${DONT_RETRY} ${FILE_LEFT}`,
+    );
+  }
+
   if (reply.status === 404) {
     return new SetupFailed(
       `Live's browser hasn't found the device file yet (${text}). Nothing was added to the Set. ${FILE_LEFT} Call add-producer-pal again in a moment.`,
@@ -207,6 +213,22 @@ function loadFailure(reply: RemoteScriptAnswer): SetupFailed {
   return new SetupFailed(
     `Live couldn't add Producer Pal: ${text}. Nothing was added to the Set. ${FILE_LEFT}`,
   );
+}
+
+/**
+ * The remote script refuses (400, 404, 409) before it touches the Set, and a
+ * 504 without `started` means Live never ran the job. Any other failure came
+ * after Live may have begun, unless the remote script says it cleaned up
+ * (`changed: false`).
+ * @param reply - The failure
+ * @returns True when the device may have been added
+ */
+function mayHaveAdded(reply: RemoteScriptAnswer): boolean {
+  if (reply.status === 504) {
+    return reply.body.started === true;
+  }
+
+  return reply.status >= 500 && reply.body.changed !== false;
 }
 
 /**

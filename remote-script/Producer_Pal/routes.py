@@ -101,25 +101,75 @@ def load(bridge, params):
     default_track_type = TRACK_TYPE_FOR_KIND.get(kind, UNKNOWN_KIND_TRACK_TYPE)
     track, created = _target_track(song, params, default_track_type)
 
+    before = list(track.devices)
+    try:
+        _load_onto(bridge, item, track, before, created, is_pal_item)
+        return {
+            "loaded": {"name": item.name, "path": path, "kind": kind},
+            "track": {"index": list(song.tracks).index(track), "name": track.name},
+            # Plugins and Max devices finish loading asynchronously, so this
+            # list can lag a request behind.
+            "devices": [device.name for device in track.devices],
+        }
+    except RouteError:
+        raise
+    except Exception as err:
+        if created:
+            _fail_after_creating_track(song, track, before, item.name, err)
+        raise
+
+
+def _load_onto(bridge, item, track, before, created, is_pal_item):
+    song = bridge.song
     # load_item loads into whatever track is selected, so select it first.
     song.view.selected_track = track
     live_browser = bridge.app.browser
     # In hotswap mode (Live's own, or ours left on) load_item replaces the
     # target device instead of adding one.
     live_browser.hotswap_target = None
-    before = list(track.devices)
     live_browser.load_item(item)
     # Producer Pal itself loads when the Set has none; a preset holding it never.
     if not is_pal_item:
         refuse_loaded_producer_pal(song, track, before, created)
 
-    return {
-        "loaded": {"name": item.name, "path": path, "kind": kind},
-        "track": {"index": list(song.tracks).index(track), "name": track.name},
-        # Plugins and Max devices finish loading asynchronously, so this list
-        # can lag a request behind.
-        "devices": [device.name for device in track.devices],
-    }
+
+def _fail_after_creating_track(song, track, before, item_name, err):
+    """Raise 500 after a failure on a track this load made.
+
+    Nothing landed: delete the empty track. Something did (or can't be told):
+    keep it, since the load itself worked. `changed` says whether the Set still
+    differs.
+    """
+    reason = "%s: %s" % (type(err).__name__, err)
+    if _device_landed(track, before):
+        raise RouteError(
+            500,
+            "%r was loaded onto the new track, but the request then failed (%s); "
+            "check the Set before retrying" % (item_name, reason),
+            changed=True,
+        )
+    try:
+        song.delete_track(list(song.tracks).index(track))
+    except Exception as delete_err:
+        raise RouteError(
+            500,
+            "loading %r failed (%s), and the new track couldn't be removed "
+            "(%s); delete it by hand" % (item_name, reason, delete_err),
+            changed=True,
+        )
+    raise RouteError(
+        500,
+        "loading %r failed (%s); the new track was removed" % (item_name, reason),
+        changed=False,
+    )
+
+
+def _device_landed(track, before):
+    """True when the track has a device it lacked before, or can't be read."""
+    try:
+        return any(device not in before for device in track.devices)
+    except Exception:
+        return True
 
 
 def hotswap_device(bridge, params):
@@ -158,8 +208,18 @@ def hotswap_device(bridge, params):
         )
 
     before_name = device.name
-    after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
-    refuse_hotswapped_producer_pal(song, device_path)
+    try:
+        after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
+        refuse_hotswapped_producer_pal(song, device_path)
+    except hotswap.DevicePathError as err:
+        # Live has already swapped it; only reading the slot back failed.
+        raise RouteError(
+            500,
+            "Live loaded %r onto the device, but the device at %s couldn't be "
+            "read back (%s); read the device to check what's there"
+            % (item.name, device_path, err),
+            changed=True,
+        )
     replaced = after != device
     # A preset for a different kind of device loads nothing. When the kind was
     # unknown up front, an untouched device is the only sign. A kept device is
