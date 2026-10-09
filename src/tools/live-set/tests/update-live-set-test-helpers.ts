@@ -220,6 +220,15 @@ export interface SimulateLocatorOptions {
   stallAt?: number;
   /** A time in beats where a cue toggle makes no locator */
   noCueAt?: number;
+  /** Where the playhead starts, in beats (default 0) */
+  playhead?: number;
+  /**
+   * Whether the Set is playing; a stop_playing call ends it. As in Live, a
+   * playhead write after that stop drags the start marker along.
+   */
+  playing?: boolean;
+  /** Where the start marker starts, in beats (default 0) */
+  startTime?: number;
 }
 
 /**
@@ -233,10 +242,24 @@ export interface SimulateLocatorOptions {
 export function simulateLocators(
   liveSetHandle: RegisteredMockObject,
   initial: SimulatedLocator[] = [],
-  { meter = [4, 4], stallAt, noCueAt }: SimulateLocatorOptions = {},
-): { locators: () => SimulatedLocator[] } {
+  {
+    meter = [4, 4],
+    stallAt,
+    noCueAt,
+    playhead: startAt = 0,
+    playing: startPlaying = false,
+    startTime: startMarker = 0,
+  }: SimulateLocatorOptions = {},
+): {
+  locators: () => SimulatedLocator[];
+  playhead: () => number;
+  startTime: () => number;
+} {
   const cues: Array<{ id: string; properties: Record<string, unknown> }> = [];
-  let playhead = 0;
+  let playhead = startAt;
+  let playing = startPlaying;
+  let startTime = startMarker;
+  let stoppedFromPlaying = false;
   // Live hands out ordinary object ids, assigned on creation.
   let nextId = 26;
 
@@ -275,6 +298,10 @@ export function simulateLocators(
         return [meter[1]];
       case "song_length":
         return [1000];
+      case "is_playing":
+        return [playing ? 1 : 0];
+      case "start_time":
+        return [startTime];
       case "current_song_time":
         return [playhead];
       case "cue_points":
@@ -287,11 +314,24 @@ export function simulateLocators(
   liveSetHandle.set.mockImplementation((prop: string, value: unknown) => {
     if (prop === "current_song_time" && value !== stallAt) {
       playhead = value as number;
+
+      if (stoppedFromPlaying) {
+        startTime = playhead;
+      }
+    }
+
+    if (prop === "start_time") {
+      startTime = value as number;
     }
   });
 
   // set_or_delete_cue toggles a locator at the playhead, the way Live does.
   liveSetHandle.call.mockImplementation((method: string) => {
+    if (method === "stop_playing") {
+      stoppedFromPlaying ||= playing;
+      playing = false;
+    }
+
     if (method !== "set_or_delete_cue") {
       return;
     }
@@ -314,5 +354,7 @@ export function simulateLocators(
         time: cue.properties.time as number,
         name: cue.properties.name as string,
       })),
+    playhead: () => playhead,
+    startTime: () => startTime,
   };
 }

@@ -29,6 +29,11 @@ import {
   type SongMeter,
 } from "./helpers/locator-targets.ts";
 import {
+  type RememberedTransport,
+  rememberTransport,
+  restoreTransport,
+} from "./helpers/locator-transport.ts";
+import {
   createLocator,
   renameLocator,
   validateLocatorOperation,
@@ -59,6 +64,8 @@ interface UpdateLiveSetRun {
   args: UpdateLiveSetArgs;
   /** Only includes properties that are actually set */
   result: Record<string, unknown>;
+  /** Where the playhead and start marker were before a locator edit */
+  transport?: RememberedTransport;
 }
 
 /** The call, read once. */
@@ -100,7 +107,16 @@ export async function updateLiveSet(
   context: UpdateLiveSetContext = {},
 ): Promise<Record<string, unknown>> {
   const run: UpdateLiveSetRun = { args, result: {} };
-  const locator = await runWrite(UPDATE_LIVE_SET_WRITE, run, context);
+  let locator;
+
+  try {
+    locator = await runWrite(UPDATE_LIVE_SET_WRITE, run, context);
+  } finally {
+    // Also after a throw or a deadline: an edit may have moved the playhead.
+    if (run.transport != null) {
+      await restoreTransport(run.transport);
+    }
+  }
 
   return {
     ...run.result,
@@ -259,6 +275,11 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
   if (checked.operation != null) {
     // Read again: the meter Live holds now, after any timeSignature write.
     checked.meter = readMeter(liveSet);
+  }
+
+  // Rename leaves the playhead and start marker alone.
+  if (checked.operation === "create" || checked.operation === "delete") {
+    checked.run.transport = rememberTransport(liveSet);
   }
 }
 

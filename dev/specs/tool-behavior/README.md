@@ -322,6 +322,11 @@ every skip. A lone locator refusal throws when it was the call's only work; when
 the call also changed something else (tempo), the locator keeps its `ok: false`
 entry so the error doesn't hide what landed.
 
+`create` and `delete` move the playhead (Live acts at it), and on a Set that was
+playing they drag the start marker along, so the call puts both back where they
+were. If that fails, a `Playhead not put back…` or `Start marker not put back…`
+warning says so; the entries and any error are unchanged.
+
 ## Result entries and observability
 
 - **Every explanation is `detail`**, skipped or not: a skip, a no-op, a partial
